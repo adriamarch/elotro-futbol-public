@@ -1,0 +1,2132 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<script src="../js/tema.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Redacción — ELOTROFÚTBOLTV</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="/favicon.ico?v=2" sizes="any">
+<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=2">
+<link rel="apple-touch-icon" href="../img/apple-touch-icon.png">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&family=Playfair+Display:wght@700;800&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/style.css?v=10">
+<!-- CSS específico del panel de administración: tablas, formularios,
+     media, y el overlay del panel de Minuto a Minuto (.mam-*). Antes no
+     estaba enlazado aquí, así que ese overlay se activaba (la clase
+     "mam-abierto" sí se añadía) pero sin ningún estilo aplicado: sin
+     position:fixed, sin z-index, sin fondo... por eso el clic parecía
+     "no hacer nada" (solo el salto del overflow:hidden del body). -->
+<link rel="stylesheet" href="css/admin.css?v=10">
+<!-- Tutorial guiado interactivo para nuevos redactores (overlay con
+     flechas/spotlight sobre el propio panel, ver js/tutorial.js). -->
+<link rel="stylesheet" href="css/tutorial.css?v=1">
+</head>
+<body>
+
+<div class="admin-header">
+  <div class="wrap">
+    <div class="brand-admin">
+      <img src="../img/logo.png" alt="ELOTROFÚTBOLTV - logo oficial">
+      <div class="brand-textos">
+        <span>EL<span class="brand-rojo">OTROFÚTBOL</span>TV</span>
+        <span class="brand-seccion"><span class="brand-sep"> · </span><span id="tituloSeccion">Redacción</span></span>
+      </div>
+    </div>
+    <div class="user-info">
+      <button type="button" class="theme-toggle" id="themeToggle" aria-label="Cambiar a modo oscuro" title="Modo oscuro/claro">
+        <svg class="theme-icon-luna" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        <svg class="theme-icon-sol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2.4M12 19.1v2.4M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M2.5 12h2.4M19.1 12h2.4M4.9 19.1l1.7-1.7M17.4 6.6l1.7-1.7"/></svg>
+      </button>
+      <div class="notif-wrap" id="notifWrap" style="display:none">
+        <button type="button" class="notif-campana" id="notifBtn" aria-label="Notificaciones">
+          <svg viewBox="0 0 24 24" width="36" height="36" fill="currentColor"><path fill-rule="evenodd" d="M5.25 9a6.75 6.75 0 0 1 13.5 0v.75c0 2.123.8 4.057 2.118 5.52a.75.75 0 0 1-.297 1.206 24.585 24.585 0 0 1-4.831 1.243 3.75 3.75 0 1 1-7.48 0A24.585 24.585 0 0 1 3.43 16.48a.75.75 0 0 1-.298-1.205A8.217 8.217 0 0 0 5.25 9.75V9Zm4.502 8.9a2.25 2.25 0 1 0 4.496 0 25.057 25.057 0 0 1-4.496 0Z" clip-rule="evenodd"/></svg>
+          <span class="notif-contador" id="notifContador" style="display:none">0</span>
+        </button>
+        <div class="notif-panel" id="notifPanel">
+          <div class="notif-panel-titulo">Novedades</div>
+          <div id="notifLista"><p class="notif-vacio">Cargando...</p></div>
+        </div>
+      </div>
+      <div class="sheet-overlay" id="notifOverlay"></div>
+      <div class="user-menu" id="cuentaWrap">
+        <button type="button" class="btn-usuario" id="cuentaBtn" aria-label="Cuenta">
+          <span class="user-avatar" id="cuentaAvatar"></span>
+          <span class="user-nombre" id="userNombre"></span>
+        </button>
+        <div class="user-dropdown" id="cuentaMenu">
+          <div class="user-dropdown-info">
+            <span class="user-avatar user-avatar-grande" id="cuentaAvatarGrande"></span>
+            <div class="user-dropdown-textos">
+              <strong id="cuentaNombreCompleto"></strong>
+              <span id="cuentaRolEtiqueta"></span>
+            </div>
+          </div>
+          <a href="javascript:void(0)" onclick="irAAjustesCuenta('perfil')">Editar perfil</a>
+          <a href="javascript:void(0)" onclick="irAAjustesCuenta('password')">Cambiar contraseña</a>
+          <a href="javascript:void(0)" onclick="irAAjustesCuenta('progreso')">Mi progreso</a>
+          <a href="javascript:void(0)" onclick="irAAjustesCuenta('sesiones')">Dispositivos</a>
+          <a href="../index.html">Ver la web</a>
+          <a href="../panel-analiticas.html" id="enlaceAnaliticas">Analíticas</a>
+          <button type="button" onclick="logout()">Cerrar sesión</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="tabs">
+    <button class="activo" data-tab="noticias"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z" opacity="0"/><path d="M19 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1Z"/><path d="M8 9h8M8 13h8M8 17h4"/></svg>Noticias</button>
+    <button data-tab="resultados"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.2l3.6 2.6-1.4 4.2h-4.4l-1.4-4.2z"/></svg>Resultados</button>
+    <button data-tab="ajustes" id="tabAjustesOculto" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>Ajustes de cuenta</button>
+    <button data-tab="contenido" id="tabContenido"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>Contenido</button>
+    <button data-tab="solicitudes" id="tabSolicitudes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Solicitudes<span class="tab-badge-pendientes" id="badgeSolicitudesPendientes" style="display:none;">0</span></button>
+    <button data-tab="tienda" id="tabTienda"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>Tienda<span class="tab-badge-pendientes" id="badgeTiendaPendientes" style="display:none;">0</span></button>
+    <button data-tab="usuarios" id="tabUsuarios"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>Usuarios</button>
+    <button data-tab="funcionalidades" id="tabFuncionalidades"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3 6.5 7 1-5 5 1.5 7-6.5-3.5L5 21.5l1.5-7-5-5 7-1z"/></svg>Funcionalidades<span class="tab-badge-pendientes" id="badgeFuncionalidadesPendientes" style="display:none;">0</span></button>
+  </div>
+
+  <!-- NOTICIAS: nueva noticia + listado -->
+  <div class="panel activo" id="panel-noticias">
+    <div class="subtabs" id="subtabsNoticias">
+      <button class="activo" data-subtab="nueva">+ Nueva noticia</button>
+      <button data-subtab="lista">Ver noticias</button>
+    </div>
+
+    <div class="subpanel activo" id="subpanel-nueva">
+      <div class="form-card">
+        <form id="formArticle">
+          <input type="hidden" id="articleId">
+          <input type="hidden" id="articleSlug">
+          <input type="hidden" id="articlePublicadoOriginal">
+          <input type="hidden" id="articleEstadoBorradorOriginal">
+          <input type="hidden" id="articleProgramadoParaOriginal">
+          <label>Título *</label>
+          <input type="text" id="titulo" required>
+
+          <label>Subtítulo</label>
+          <input type="text" id="subtitulo">
+
+          <div class="row3">
+            <div>
+              <label>Tipo</label>
+              <select id="tipo">
+                <option value="noticia">Noticia</option>
+                <option value="previa">Previa</option>
+                <option value="cronica">Crónica</option>
+                <option value="analisis">Análisis</option>
+                <option value="opinion">Opinión</option>
+                <option value="entrevista">Entrevista</option>
+              </select>
+            </div>
+            <div id="categoriaWrapNormal">
+              <label>Categoría</label>
+              <select id="categoria">
+                <option value="hypermotion">LaLiga Hypermotion</option>
+                <option value="primera_federacion">Primera Federación</option>
+                <option value="segunda_federacion">Segunda Federación</option>
+                <option value="amistoso">Amistoso</option>
+                <option value="general">General</option>
+              </select>
+            </div>
+            <div id="categoriaWrapAutomatico" style="display:none;">
+              <label>Categoría</label>
+              <div class="club-automatico-info" id="categoriaAutomaticoTexto">Se toma automáticamente del resultado vinculado</div>
+            </div>
+            <div id="clubWrapNormal">
+              <label>Club *</label>
+              <select id="club">
+                <option value="">General</option>
+              </select>
+            </div>
+            <div id="clubWrapAutomatico" style="display:none;">
+              <label>Club</label>
+              <div class="club-automatico-info" id="clubAutomaticoTexto">Se toma automáticamente del resultado vinculado</div>
+            </div>
+          </div>
+
+          <label>Categorías adicionales (opcional)</label>
+          <input type="text" id="categorias_adicionales_buscador" placeholder="Buscar categoría...">
+          <div id="categorias_adicionales_lista" class="equipos-picker-lista"></div>
+          <p class="ayuda-editor">
+            <span id="categorias_adicionales_contador">0 seleccionadas</span> ·
+            <span id="categorias_adicionales_ayuda">Puedes dejarlo sin especificar.</span>
+          </p>
+
+          <label for="autor_id">Autor de la noticia</label>
+          <select id="autor_id"></select>
+          <p class="ayuda-editor">Por defecto se firma con tu nombre. Si la noticia la ha escrito otra persona pero la subes tú, elige aquí quién la ha hecho para que quede firmada por ella.</p>
+
+          <label for="coautor_id">Segundo autor (opcional)</label>
+          <select id="coautor_id"><option value="">— Sin segundo autor —</option></select>
+          <p class="ayuda-editor">Si la noticia la habéis escrito entre dos personas, elige aquí a la segunda. Se mostrará firmada por ambas.</p>
+
+          <label>Fotos</label>
+          <div id="imagenesLista"></div>
+          <button type="button" class="btn-secundari" id="btnAddImagen" style="margin-top:8px;">+ Añadir otra foto</button>
+          <p class="ayuda-editor">Selecciona las fotografías, marca con "Portada" la que quieres que se vea en las tarjetas y elige dónde aparece dentro de la noticia con el desplegable de posición. Todas las fotos se muestran con el mismo ancho que el texto; si una foto no encaja en esa proporción, usa el botón ✂ para marcar qué parte no quieres que se recorte.</p>
+
+          <label>Collages de fotos (opcional)</label>
+          <div id="listaCollages"></div>
+          <button type="button" class="btn-secundari" id="btnAnadirCollage" style="margin-top:8px;">+ Añadir collage</button>
+          <p class="ayuda-editor">Combina 2, 3 o 4 fotos en una sola cuadrícula dentro del texto de la noticia, con la disposición que elijas.</p>
+
+          <label>Tweets y posts de Instagram incrustados (opcional)</label>
+          <div id="tweetsLista"></div>
+          <button type="button" class="btn-secundari" id="btnAddTweet" style="margin-top:8px;">+ Añadir tweet o post</button>
+          <p class="ayuda-editor">Pega la URL de un tweet (x.com o twitter.com) o de un post/reel de Instagram y elige dónde debe aparecer dentro de la noticia con el mismo selector de posición que las fotos. La plataforma se detecta sola a partir de la URL. Aquí se ve exactamente igual que en la web ya publicada.</p>
+
+          <label for="resultado_id_buscador">Resultado vinculado (opcional)</label>
+          <div class="autocompletar-resultado" style="position:relative;">
+            <input type="text" id="resultado_id_buscador" placeholder="Escribe un equipo, competición o jornada… o deja vacío para ver todos" autocomplete="off">
+            <div id="resultado_id_sugerencias" class="autocompletar-resultado-lista" style="display:none;"></div>
+          </div>
+          <select id="resultado_id" style="display:none;">
+            <option value="">— Ninguno —</option>
+            <option value="__nuevo__">+ Nuevo resultado…</option>
+          </select>
+          <p class="ayuda-editor">Si esta noticia o crónica es sobre un partido ya jugado, vincúlalo aquí para que su marcador aparezca dentro de la noticia. Si el partido todavía no está registrado en "Resultados", elige "+ Nuevo resultado…" para crearlo sin salir de la noticia.</p>
+
+          <label>Alineaciones (opcional)</label>
+          <div id="listaAlineacionesArticulo" class="lista-alineaciones"></div>
+          <button type="button" class="btn-secundari" id="btnAnadirAlineacionArticulo" style="margin-top:8px;" disabled>+ Añadir alineación</button>
+          <p class="ayuda-editor" id="ayudaAlineacionArticulo">Guarda primero la noticia como borrador para poder añadirle alineaciones.</p>
+          <p class="ayuda-editor" id="ayudaAlineacionArticuloVinculada" style="display:none;">Esta noticia está vinculada a un partido: la alineación es la misma que la del partido y se gestiona desde aquí o desde "Resultados" indistintamente, siempre sincronizada.</p>
+
+          <label>Encuesta (opcional)</label>
+          <div id="bloqueEncuestaArticulo"></div>
+          <p class="ayuda-editor" id="ayudaEncuestaArticulo">Guarda primero la noticia como borrador para poder añadirle una encuesta.</p>
+
+          <label>Contenido *</label>
+          <div class="editor-wrap">
+            <div class="editor-toolbar" id="editorToolbar">
+              <button type="button" class="b" data-cmd="bold" title="Negrita">N</button>
+              <button type="button" class="i" data-cmd="italic" title="Cursiva">C</button>
+              <button type="button" class="u" data-cmd="underline" title="Subrayado">S</button>
+              <span class="sep"></span>
+              <button type="button" data-block="p" title="Párrafo normal">Párrafo</button>
+              <button type="button" data-accion="entradilla" title="Marca el párrafo como entradilla (arranque en negrita destacada)">Entradilla</button>
+              <button type="button" data-block="h3" title="Subtítulo (H3)">H3</button>
+              <button type="button" data-block="blockquote" title="Cita destacada">Cita</button>
+              <span class="sep"></span>
+              <button type="button" data-cmd="insertUnorderedList" title="Lista con viñetas">• Lista</button>
+              <button type="button" data-cmd="insertOrderedList" title="Lista numerada">1. Lista</button>
+              <button type="button" data-accion="enlace" title="Insertar enlace">Enlace</button>
+              <span class="sep"></span>
+              <button type="button" data-cmd="undo" title="Deshacer">↺</button>
+              <button type="button" data-cmd="redo" title="Rehacer">↻</button>
+              <button type="button" data-cmd="removeFormat" title="Quitar formato del texto seleccionado">Limpiar</button>
+              <button type="button" class="plantilla-btn" data-accion="plantilla" title="Vuelve a poner la estructura estándar de una noticia">↻ Plantilla estándar</button>
+              <button type="button" class="copiar-formato-btn" data-accion="corregir-formato" title="Limpia el formato y corrige errores tipográficos habituales (espacios, comillas, guiones, minutos, resultados...) con reglas automáticas, sin IA">✓ Corregir formato</button>
+              <button type="button" class="copiar-formato-btn" data-accion="copiar-formato" title="Copia el contenido con su formato (negrita, enlaces, párrafos...) para pegarlo en una IA de traducción y que la traducción también salga con formato">⧉ Copiar con formato</button>
+              <button type="button" class="copiar-formato-btn" data-accion="pegar-html" title="Pega aquí el código HTML que te haya devuelto una IA, aplicando su formato (no como texto suelto)">⧉ Pegar HTML</button>
+            </div>
+            <div id="contenidoEditor" class="article-body" contenteditable="true" data-placeholder="Escribe aquí la noticia..."></div>
+          </div>
+          <p class="ayuda-editor">Selecciona texto y usa los botones para darle formato. "Entradilla" pone en negrita destacada el párrafo inicial, como en el resto de noticias de la web.</p>
+          <p class="contador-caracteres" id="contadorCaracteres">0 caracteres (mínimo 2000, máximo 8000)</p>
+
+          <div id="bloqueFichaTecnica" style="display:none;">
+            <label>Ficha técnica del partido (solo crónicas)</label>
+            <p class="ayuda-editor">Se muestra en una tarjeta al final de la crónica, en la web. Todos los campos son opcionales: rellena solo los que tengas.</p>
+            <div class="ficha-tecnica-caja">
+              <div class="row3">
+                <div>
+                  <label for="fichaCompeticion">Competición</label>
+                  <input type="text" id="fichaCompeticion" placeholder="Ej. LaLiga Hypermotion">
+                </div>
+                <div>
+                  <label for="fichaJornada">Jornada</label>
+                  <input type="text" id="fichaJornada" placeholder="Ej. Jornada 12">
+                </div>
+                <div>
+                  <label for="fichaFechaHora">Fecha y hora</label>
+                  <input type="text" id="fichaFechaHora" placeholder="Ej. 24/08/2026, 21:00">
+                </div>
+              </div>
+              <div class="row3">
+                <div>
+                  <label for="fichaEstadio">Estadio</label>
+                  <input type="text" id="fichaEstadio" placeholder="Ej. Nuevo Mirandilla">
+                </div>
+                <div>
+                  <label for="fichaCiudad">Ciudad</label>
+                  <input type="text" id="fichaCiudad" placeholder="Ej. Cádiz">
+                </div>
+                <div>
+                  <label for="fichaAsistencia">Asistencia de público</label>
+                  <input type="text" id="fichaAsistencia" placeholder="Ej. 15.320 espectadores">
+                </div>
+              </div>
+              <div class="row3">
+                <div>
+                  <label for="fichaArbitro">Árbitro</label>
+                  <input type="text" id="fichaArbitro" placeholder="Ej. José Luis Munuera Montero">
+                </div>
+                <div>
+                  <label for="fichaMvp">MVP del partido</label>
+                  <input type="text" id="fichaMvp" placeholder="Ej. Iñaki Williams">
+                </div>
+                <div></div>
+              </div>
+
+              <label>Goleadores</label>
+              <div id="listaFichaGoleadores"></div>
+              <button type="button" class="btn-secundari" id="btnAnadirGoleador" style="margin-top:8px;">+ Añadir goleador</button>
+
+              <label style="margin-top:16px;">Tarjetas</label>
+              <div id="listaFichaTarjetas"></div>
+              <button type="button" class="btn-secundari" id="btnAnadirTarjeta" style="margin-top:8px;">+ Añadir tarjeta</button>
+
+              <label for="fichaNotas" style="margin-top:16px;">Notas adicionales</label>
+              <textarea id="fichaNotas" rows="3" placeholder="Cualquier otro dato relevante del partido..."></textarea>
+            </div>
+          </div>
+
+          <label>Traducciones (opcional)</label>
+          <p class="ayuda-editor">Esta noticia se publica siempre en castellano. Si quieres, tradúcela también a otras lenguas; los idiomas que dejes en blanco no se traducen automáticamente y en la web se avisará de que no está disponible en ellos.</p>
+          <p class="traduccion-progreso" id="traduccionProgreso">
+            <span id="traduccionProgresoTexto">0 de 4 idiomas completos</span>
+            <span class="traduccion-progreso-barra"><span class="traduccion-progreso-relleno" id="traduccionProgresoRelleno" style="width:0%;"></span></span>
+          </p>
+          <div class="editor-wrap" style="padding:12px;">
+            <div class="editor-toolbar" id="traduccionTabs" style="background:transparent;border:none;padding:0 0 10px;">
+              <button type="button" class="activo" data-lang="eu">Euskera<span class="estado-idioma" data-estado-lang="eu"></span></button>
+              <button type="button" data-lang="ca">Català<span class="estado-idioma" data-estado-lang="ca"></span></button>
+              <button type="button" data-lang="gl">Galego<span class="estado-idioma" data-estado-lang="gl"></span></button>
+              <button type="button" data-lang="en">English<span class="estado-idioma" data-estado-lang="en"></span></button>
+            </div>
+            <div id="traduccionPaneles"></div>
+          </div>
+          <div id="avisosTraduccionGuardado" style="display:none;"></div>
+
+          <div class="opciones-noticia">
+            <label class="opcion-toggle">
+              <input type="checkbox" id="destacado">
+              <span class="opcion-toggle-caja"></span>
+              <span class="opcion-toggle-texto">
+                <span class="opcion-toggle-titulo">Noticia destacada</span>
+                <span class="opcion-toggle-sub">Aparece en portada</span>
+              </span>
+            </label>
+
+            <label class="opcion-toggle" for="publicado">
+              <input type="checkbox" id="publicado">
+              <span class="opcion-toggle-caja"></span>
+              <span class="opcion-toggle-texto">
+                <span class="opcion-toggle-titulo" id="publicadoLabel">Publicada</span>
+                <span class="opcion-toggle-sub">Desmarca para guardar como borrador</span>
+              </span>
+            </label>
+
+            <div id="bloqueBannerUrgente">
+              <label class="opcion-toggle opcion-toggle-urgente">
+                <input type="checkbox" id="bannerUrgente">
+                <span class="opcion-toggle-caja"></span>
+                <span class="opcion-toggle-texto">
+                  <span class="opcion-toggle-titulo">Marcar como última hora</span>
+                  <span id="bannerUrgenteEstado" class="opcion-toggle-sub" style="display:none;"></span>
+                </span>
+              </label>
+              <p class="ayuda-editor" id="avisoBannerUrgentePermiso" style="display:none;">Solo un administrador o un redactor de Nivel 2 o superior puede activar este banner.</p>
+            </div>
+
+            <div id="bloqueProgramarNoticia" style="display:none;">
+              <label class="opcion-toggle" for="programarNoticia">
+                <input type="checkbox" id="programarNoticia">
+                <span class="opcion-toggle-caja"></span>
+                <span class="opcion-toggle-texto">
+                  <span class="opcion-toggle-titulo">Programar publicación</span>
+                  <span class="opcion-toggle-sub">Elige cuándo se publicará</span>
+                </span>
+              </label>
+              <div id="campoFechaProgramada" style="display:none;">
+                <label for="programadoPara">Publicar el:</label>
+                <input type="datetime-local" id="programadoPara">
+              </div>
+              <p class="ayuda-editor" id="ayudaProgramarNoticia" style="display:none;">
+                La noticia se guardará sin publicar y se publicará ella sola en la fecha y hora que elijas (puede tardar hasta un minuto en aparecer justo a esa hora).
+              </p>
+            </div>
+          </div>
+          <p class="ayuda-editor" id="avisoPublicadoRedactorNivel2" style="display:none;"></p>
+
+          <div class="barra-acciones-form">
+            <button type="submit" class="btn-primari" id="btnGuardar">Publicar noticia</button>
+            <button type="button" class="btn-secundari" id="btnPrevisualizar">Previsualizar</button>
+            <button type="button" class="btn-secundari" id="btnCancelar" style="display:none" onclick="cancelarEdicion()">Cancelar edición</button>
+          </div>
+          <p id="msgOk">Guardado correctamente.</p>
+        </form>
+      </div>
+    </div>
+
+    <div class="subpanel" id="subpanel-lista">
+      <div class="buscador-lista">
+        <input type="search" id="buscadorArticulos" class="buscador-lista-input" placeholder="Buscar por título, categoría o autor...">
+        <span class="buscador-lista-contador" id="contadorArticulos"></span>
+      </div>
+      <table class="lista">
+        <thead><tr><th>Título</th><th>Categoría</th><th>Fecha</th><th>Estado</th><th>Acciones</th></tr></thead>
+        <tbody id="tablaArticulos"></tbody>
+      </table>
+      <div class="paginacion-lista" id="paginacionArticulos"></div>
+    </div>
+  </div>
+
+  <!-- RESULTADOS: nuevo resultado + listado -->
+  <div class="panel" id="panel-resultados">
+    <div class="subtabs" id="subtabsResultados">
+      <button class="activo" data-subtab="resultado">+ Nuevo resultado</button>
+      <button data-subtab="listaResultados">Ver resultados</button>
+      <button data-subtab="calendarioJornadas" id="subtabCalendarioJornadas_btn">Calendario de jornadas</button>
+      <button data-subtab="importacionRapida">Importación rápida</button>
+    </div>
+
+    <div class="subpanel" id="subpanel-importacionRapida">
+      <div class="form-card import-rapida-card" id="tarjetaImportacionRapida">
+        <div class="import-rapida-cabecera">
+          <span class="import-rapida-icono">⚡</span>
+          <div>
+            <h4 class="seccion-form-resultado" style="margin:0;">Importación rápida de partidos y resultados</h4>
+            <p class="ayuda-editor" style="margin:4px 0 0;">
+              Pega el texto tal cual lo copias de la web de resultados (funciona con varios formatos:
+              enlaces <code>[Equipo](url)</code>, el listado compacto con "Fin" / "Vie, 28/8", o el
+              calendario de partidos por jugar). Se detecta cada partido, su fecha, marcador y estado,
+              y la competición se adivina sola a partir de los nombres de los equipos.
+              <strong>Grupo (cuando aplique), fecha y ubicación son obligatorios</strong>: si el texto
+              pegado no los trae, se pueden rellenar a mano en la vista previa antes de importar.
+            </p>
+          </div>
+        </div>
+
+        <div class="import-rapida-textarea-wrap">
+          <textarea id="importRapidaTexto" rows="14" placeholder="Pega aquí el texto con los partidos y resultados..."></textarea>
+          <span class="import-rapida-contador" id="importRapidaContador"></span>
+        </div>
+
+        <div class="row2" style="margin-top:14px;">
+          <div>
+            <label>Año de los partidos</label>
+            <input type="number" id="importRapidaAnio" min="2000" max="2100">
+            <p class="ayuda-editor">Se usa para completar fechas que no traen año ("28 de Agosto").</p>
+          </div>
+          <div>
+            <label>Si no se detecta la jornada automáticamente</label>
+            <input type="number" id="importRapidaJornadaFallback" min="1" placeholder="Ej. 5 (opcional)">
+            <p class="ayuda-editor">Solo para partidos sin rango de fechas guardado en "Calendario de jornadas".</p>
+          </div>
+        </div>
+
+        <button type="button" class="btn-primario import-rapida-btn-analizar" id="btnImportRapidaAnalizar" style="margin-top:14px;">
+          <span class="import-rapida-btn-icono">🔍</span>
+          <span class="import-rapida-btn-texto">Analizar texto</span>
+          <span class="import-rapida-spinner" aria-hidden="true"></span>
+        </button>
+
+        <div id="importRapidaResultadoAnalisis" class="import-rapida-bloque-resultado" style="display:none;">
+          <h4 class="seccion-form-resultado">Vista previa</h4>
+          <div class="import-rapida-resumen-stats" id="importRapidaResumenStats"></div>
+          <p class="ayuda-editor import-rapida-avisos" id="importRapidaAvisos" style="display:none;"></p>
+          <div id="importRapidaLista" class="lista-eventos-partido import-rapida-lista"></div>
+          <div class="import-rapida-acciones">
+            <button type="button" class="btn-primario" id="btnImportRapidaConfirmar">
+              <span class="import-rapida-btn-icono">✅</span>
+              <span class="import-rapida-btn-texto">Confirmar e importar</span>
+              <span class="import-rapida-spinner" aria-hidden="true"></span>
+            </button>
+            <button type="button" class="btn-secundario" id="btnImportRapidaCancelar">Cancelar</button>
+          </div>
+        </div>
+
+        <div id="importRapidaResultadoFinal" class="import-rapida-bloque-resultado" style="display:none;">
+          <h4 class="seccion-form-resultado">Resultado de la importación</h4>
+          <div id="importRapidaLog" class="lista-eventos-partido import-rapida-lista import-rapida-log"></div>
+        </div>
+      </div>
+    </div>
+
+
+    <div class="subpanel activo" id="subpanel-resultado">
+      <!-- El formulario de "+ Nuevo resultado" (más abajo, #formCardResultado)
+           vive físicamente al final del documento, dentro de un modal
+           (#modalNuevoResultado), para poder reutilizarlo también desde el
+           desplegable "Resultado vinculado" del editor de noticias sin
+           duplicar sus ids. Aquí, en la pestaña "Resultados", se le hace
+           sitio con este contenedor vacío: al entrar en esta subpestaña, el
+           JS traslada el formulario aquí (ver moverFormularioResultadoAqui
+           en admin.js) para que se vea igual que siempre, sin overlay de
+           modal ni botón de cerrar. -->
+      <div id="anclaFormResultado"></div>
+    </div>
+    <div class="subpanel-resultado-oculto" style="display:none">
+      <div class="form-card form-card-resultado" id="formCardResultado">
+        <div class="resultado-cabecera" id="resultadoCabecera">
+          <div class="resultado-cabecera-liga">
+            <img id="resultadoCabeceraLogo" class="resultado-cabecera-logo resultado-cabecera-logo-hypermotion" src="../img/competiciones/hypermotion.png" alt="" onerror="this.style.display='none'">
+            <div>
+              <span class="resultado-cabecera-eyebrow" id="resultadoCabeceraEyebrow">Nuevo partido</span>
+              <h3 class="resultado-cabecera-titulo" id="resultadoCabeceraTitulo">LaLiga Hypermotion</h3>
+            </div>
+          </div>
+          <span class="resultado-cabecera-estado" id="resultadoCabeceraEstado">Por jugar</span>
+        </div>
+
+        <div class="marcador-preview" id="marcadorPreview">
+          <div class="marcador-preview-equipo" id="marcadorPreviewLocalWrap">
+            <div class="marcador-preview-escudo" id="marcadorPreviewEscudoLocal">🛡️</div>
+            <span class="marcador-preview-nombre" id="marcadorPreviewNombreLocal">Equipo local</span>
+          </div>
+          <div class="marcador-preview-centro">
+            <div class="marcador-preview-goles">
+              <span id="marcadorPreviewGolesLocal">–</span>
+              <span class="marcador-preview-separador">:</span>
+              <span id="marcadorPreviewGolesVisitante">–</span>
+            </div>
+            <span class="marcador-preview-jornada" id="marcadorPreviewJornada">Jornada —</span>
+          </div>
+          <div class="marcador-preview-equipo" id="marcadorPreviewVisitanteWrap">
+            <div class="marcador-preview-escudo" id="marcadorPreviewEscudoVisitante">🛡️</div>
+            <span class="marcador-preview-nombre" id="marcadorPreviewNombreVisitante">Equipo visitante</span>
+          </div>
+        </div>
+
+        <form id="formResultado">
+          <input type="hidden" id="resultadoId">
+          <h4 class="seccion-form-resultado">📋 Datos del partido</h4>
+          <div class="row2">
+            <div>
+              <label>Competición</label>
+              <select id="r_competicion">
+                <option value="hypermotion">LaLiga Hypermotion</option>
+                <option value="primera_federacion">Primera Federación</option>
+                <option value="segunda_federacion">Segunda Federación</option>
+                <option value="amistoso">Amistoso</option>
+              </select>
+            </div>
+            <div>
+              <label id="r_grupo_label">Grupo</label>
+              <select id="r_grupo">
+                <option value="">— Sin grupo —</option>
+              </select>
+            </div>
+          </div>
+          <div class="row3">
+            <div>
+              <label id="r_jornada_label">Jornada *</label>
+              <input type="number" id="r_jornada" required min="1">
+            </div>
+            <div>
+              <label>Fecha y hora del partido</label>
+              <input type="datetime-local" id="r_fecha">
+            </div>
+            <div>
+              <label>Estado</label>
+              <select id="r_estado">
+                <option value="programado">Por jugar</option>
+                <option value="en_juego">En juego</option>
+                <option value="retrasado">Retrasado</option>
+                <option value="anulado">Anulado</option>
+                <option value="finalizado">Finalizado</option>
+              </select>
+            </div>
+          </div>
+          <div class="row2" id="r_porjugar_extra_wrap">
+            <div>
+              <label>Ubicación del partido</label>
+              <input type="text" id="r_ubicacion" placeholder="Ej. Estadio Municipal, Tarragona">
+            </div>
+          </div>
+          <div class="row2" id="r_retrasado_wrap" style="display:none">
+            <div>
+              <label>Nueva fecha y hora prevista</label>
+              <input type="datetime-local" id="r_fecha_retrasado">
+            </div>
+          </div>
+          <div class="row2" id="r_flashscore_wrap" style="display:none">
+            <div>
+              <label>Enlace a Flashscore (opcional)</label>
+              <input type="url" id="r_flashscore" placeholder="https://www.flashscore.es/partido/...">
+            </div>
+          </div>
+          <h4 class="seccion-form-resultado">⚽ Equipos y marcador</h4>
+          <div class="row3">
+            <div>
+              <label>Equipo local *</label>
+              <div id="r_local_picker" class="team-picker"></div>
+              <div id="r_local_otro_wrap" class="equipo-otro-wrap" style="display:none">
+                <input type="text" id="r_local_otro_nombre" placeholder="Nombre del equipo">
+                <label class="label-escudo-otro">Escudo (PNG)
+                  <input type="file" id="r_local_otro_escudo" accept="image/*">
+                </label>
+                <div class="preview-escudo-otro" id="r_local_otro_preview"></div>
+              </div>
+            </div>
+            <div>
+              <label>Goles local</label>
+              <input type="number" id="r_goles_local" min="0">
+            </div>
+          </div>
+          <div class="row3">
+            <div>
+              <label>Equipo visitante *</label>
+              <div id="r_visitante_picker" class="team-picker"></div>
+              <div id="r_visitante_otro_wrap" class="equipo-otro-wrap" style="display:none">
+                <input type="text" id="r_visitante_otro_nombre" placeholder="Nombre del equipo">
+                <label class="label-escudo-otro">Escudo (PNG)
+                  <input type="file" id="r_visitante_otro_escudo" accept="image/*">
+                </label>
+                <div class="preview-escudo-otro" id="r_visitante_otro_preview"></div>
+              </div>
+            </div>
+            <div>
+              <label>Goles visitante</label>
+              <input type="number" id="r_goles_visitante" min="0">
+            </div>
+          </div>
+          <p id="msgOkResultado">Guardado correctamente.</p>
+        </form>
+
+        <!-- Goles y tarjetas del partido. Solo tiene sentido una vez el
+             resultado ya existe (necesita su id) y tiene marcador, así
+             que se muestra en modo edición o justo después de crear un
+             resultado que no esté "Por jugar". -->
+        <div id="bloqueEventosPartido" style="display:none">
+          <h4 class="titulo-eventos-partido">Goles y tarjetas</h4>
+          <p class="ayuda-editor">Añade aquí los goles, amarillas y rojas del partido, con el minuto y (opcionalmente) el dorsal y/o el nombre del jugador. Puedes rellenar solo el dorsal, solo el nombre, o los dos. Se mostrarán al hacer clic en el partido en la web pública.</p>
+          <button type="button" class="btn-minuto-a-minuto btn-minuto-a-minuto-destacado" id="btnAbrirMinutoAMinutoDesdeForm" style="display:none">⚽ Abrir panel de Minuto a Minuto</button>
+
+          <div id="listaEventosPartido" class="lista-eventos-partido"></div>
+
+          <form id="formEventoPartido" class="form-evento-partido">
+            <input type="hidden" id="ev_id">
+            <div class="row-evento">
+              <div id="ev_equipo_wrap">
+                <label>Equipo</label>
+                <select id="ev_equipo">
+                  <option value="local">Local</option>
+                  <option value="visitante">Visitante</option>
+                </select>
+              </div>
+              <div>
+                <label>Tipo</label>
+                <select id="ev_tipo">
+                  <option value="gol">Gol</option>
+                  <option value="gol_pp">Gol en propia puerta</option>
+                  <option value="gol_var">Gol anulado (VAR)</option>
+                  <option value="amarilla">Tarjeta amarilla</option>
+                  <option value="doble_amarilla">Doble amarilla</option>
+                  <option value="roja">Tarjeta roja</option>
+                  <option value="cambio">Cambio</option>
+                  <option value="penalti_fallado">Penalti fallado</option>
+                  <option value="var">Revisión VAR</option>
+                  <option value="nota">Nota</option>
+                  <option value="pausa_hidratacion">Pausa de hidratación</option>
+                  <option value="fin_pausa_hidratacion">Se reanuda el partido (tras hidratación)</option>
+                  <option value="inicio_partido">Comienza el partido</option>
+                  <option value="descanso">Descanso</option>
+                  <option value="fin_descanso">Comienza la 2ª parte</option>
+                  <option value="fin_partido">Final del partido</option>
+                  <option value="partido_retrasado">Partido retrasado</option>
+                  <option value="partido_anulado">Partido anulado</option>
+                  <option value="otro">Otra incidencia</option>
+                </select>
+              </div>
+              <div>
+                <label>Minuto *</label>
+                <input type="number" id="ev_minuto" min="0" max="130" required>
+              </div>
+              <div>
+                <label>Descuento</label>
+                <input type="number" id="ev_minuto_extra" min="0" max="15" placeholder="+2">
+              </div>
+              <div class="col-jugador" id="ev_dorsal_wrap">
+                <label id="ev_dorsal_label">Dorsal</label>
+                <input type="text" id="ev_dorsal" placeholder="Ej. 9 (opcional)" inputmode="numeric" style="max-width:90px;">
+              </div>
+              <div class="col-jugador" id="ev_jugador_wrap">
+                <label id="ev_jugador_label">Jugador</label>
+                <input type="text" id="ev_jugador" placeholder="Nombre del jugador (opcional)">
+              </div>
+              <div class="col-jugador" id="ev_asistencia_wrap" style="display:none">
+                <label id="ev_asistencia_label">Asistencia</label>
+                <input type="text" id="ev_asistencia" placeholder="Jugador que asiste (opcional)">
+                <input type="text" id="ev_sale" list="ev_sale_lista" placeholder="Jugador que sale (opcional)" style="display:none">
+                <datalist id="ev_sale_lista"></datalist>
+              </div>
+            </div>
+            <div id="ev_nota_wrap" style="display:none">
+              <label for="ev_nota" id="ev_nota_label">Nota</label>
+              <textarea id="ev_nota" rows="2" maxlength="500" placeholder="Comentario o apunte sobre el minuto (no suma gol ni tarjeta)"></textarea>
+            </div>
+            <div id="ev_bajar_gol_wrap" class="checkbox-line" style="display:none">
+              <input type="checkbox" id="ev_bajar_gol">
+              <label for="ev_bajar_gol" style="margin:0;">El gol ya se había sumado al marcador (bajar 1 gol al equipo elegido arriba)</label>
+            </div>
+            <div id="ev_anadido_wrap" style="display:none">
+              <label for="ev_anadido">Minutos de tiempo añadido (opcional)</label>
+              <input type="number" id="ev_anadido" min="0" max="15" placeholder="Ej. 2">
+            </div>
+            <div id="ev_nueva_hora_wrap" style="display:none">
+              <label for="ev_nueva_hora">Nueva hora prevista de inicio (HH:MM)</label>
+              <input type="text" id="ev_nueva_hora" placeholder="Ej. 17:30">
+            </div>
+            <p class="ayuda-editor ayuda-gol-pp" id="ev_ayuda_pp" style="display:none">En un gol en propia puerta, el equipo que se elige arriba es el del jugador que marca en su propia portería: el gol sumará en el marcador al equipo contrario.</p>
+            <p class="ayuda-editor ayuda-cambio" id="ev_ayuda_cambio" style="display:none">En un cambio, "Jugador" es quien entra al campo. Elige en "Sale" a quien sustituye: la lista solo muestra a quien está ahora mismo en el campo del equipo elegido arriba, según la alineación guardada. Si no aparece nadie, guarda antes la alineación del partido.</p>
+            <p class="ayuda-editor ayuda-nota" id="ev_ayuda_nota" style="display:none">Una nota es un apunte libre en el minuto a minuto (ej. "Lesión en la grada", "Cambio de árbitro"...): no lleva equipo ni suma al marcador, solo aparece en el timeline.</p>
+            <p class="ayuda-editor ayuda-cronometro" id="ev_ayuda_cronometro" style="display:none"></p>
+            <button type="submit" class="btn-secundari btn-anadir-evento">Añadir evento</button>
+            <button type="button" class="btn-secundari" id="btnCancelarEvento" style="display:none">Cancelar edición del evento</button>
+          </form>
+        </div>
+
+        <!-- Tanda de penaltis: solo tiene sentido en partidos eliminatorios
+             que acaban empatados. Se lleva aparte del resto de goles y
+             tarjetas porque no tiene un minuto real (se ordena por
+             lanzamiento: 1º, 2º, 3º...) y no toca el resultado del tiempo
+             reglamentario, solo penaltis_local/penaltis_visitante. -->
+        <div id="bloqueTandaPenaltis" style="display:none">
+          <h4 class="titulo-eventos-partido">Tanda de penaltis</h4>
+          <p class="ayuda-editor">Si el partido se decidió en la tanda de penaltis, añade aquí cada lanzamiento en el orden en que se tiraron. El resultado del tiempo reglamentario (arriba) no se toca: la tanda se muestra aparte, en pequeño y entre paréntesis.</p>
+
+          <div id="listaTandaPenaltis" class="lista-eventos-partido"></div>
+
+          <form id="formTandaPenaltis" class="form-evento-partido">
+            <input type="hidden" id="pen_id">
+            <div class="row-evento">
+              <div>
+                <label>Equipo que tira</label>
+                <select id="pen_equipo">
+                  <option value="local">Local</option>
+                  <option value="visitante">Visitante</option>
+                </select>
+              </div>
+              <div>
+                <label>Resultado</label>
+                <select id="pen_resultado">
+                  <option value="penalti_marcado">Marcado</option>
+                  <option value="penalti_fallado_tanda">Fallado / parado</option>
+                </select>
+              </div>
+              <div>
+                <label>Nº de lanzamiento *</label>
+                <input type="number" id="pen_orden" min="1" max="30" required placeholder="Ej. 1">
+              </div>
+              <div class="col-jugador">
+                <label>Dorsal</label>
+                <input type="text" id="pen_dorsal" placeholder="Ej. 9 (opcional)" inputmode="numeric" style="max-width:90px;">
+              </div>
+              <div class="col-jugador">
+                <label>Jugador</label>
+                <input type="text" id="pen_jugador" placeholder="Nombre del jugador (opcional)">
+              </div>
+            </div>
+            <button type="submit" class="btn-secundari btn-anadir-evento">Añadir lanzamiento</button>
+            <button type="button" class="btn-secundari" id="btnCancelarTandaPenaltis" style="display:none">Cancelar edición del lanzamiento</button>
+          </form>
+        </div>
+
+        <!-- Alineaciones del partido (local y visitante). Solo tiene
+             sentido una vez el resultado ya existe (necesita su id). -->
+        <div id="bloqueAlineacionesResultado" style="display:none">
+          <h4 class="titulo-eventos-partido">Alineaciones</h4>
+          <p class="ayuda-editor">Añade el once inicial de cada equipo sobre el campo. Es opcional: puedes añadir solo la del local, solo la del visitante, las dos, o ninguna.</p>
+          <div id="listaAlineacionesResultado" class="lista-alineaciones"></div>
+          <button type="button" class="btn-secundari" id="btnAnadirAlineacionResultado">+ Añadir alineación</button>
+        </div>
+
+        <!-- Importación rápida de eventos del partido: alineaciones +
+             goles + tarjetas pegados tal cual de una crónica, o el
+             minuto a minuto de Flashscore. Solo tiene sentido una vez
+             el resultado ya existe (necesita su id): para importarle
+             eventos a un partido hay que buscarlo primero en "Ver
+             resultados" y entrar en él desde aquí, igual que para
+             tocar su alineación o sus goles/tarjetas a mano. Así el
+             partido nunca hay que "encontrarlo" a partir del texto
+             pegado: ya es el que se está editando.
+             Usa el mismo lenguaje visual que el resto de bloques de la
+             ficha (título con línea superior + ayuda-editor), no una
+             tarjeta flotante aparte, para que se vea como una sección
+             más del partido y no como algo pegado con calzador. -->
+        <div id="bloqueImportacionRapidaEventos" style="display:none;">
+          <h4 class="titulo-eventos-partido import-eventos-titulo">
+            <span class="import-eventos-icono">📋</span> Importación rápida de eventos
+          </h4>
+          <p class="ayuda-editor">
+            Pega el texto tal cual con las alineaciones, los goles y las tarjetas (formato tipo
+            crónica: <code>Equipo: jugador, jugador (Suplente, 63'), ...</code>, luego
+            <code>Goles: ...</code> y <code>Tarjetas amarillas: ...</code>). Al confirmar se crean
+            la alineación de cada equipo (con los cambios) y los eventos de gol/tarjetas de
+            <strong>este partido</strong>. También se admite pegar el
+            <strong>minuto a minuto de Flashscore</strong> tal cual (idealmente la página completa,
+            con la cabecera de equipos); como ese formato no dice a qué equipo pertenece cada
+            evento, tendrás que elegir "Local" o "Visitante" a mano en cada uno antes de confirmar.
+          </p>
+
+          <div class="import-eventos-textarea-wrap">
+            <textarea id="importEventosTexto" rows="10" placeholder="Pega aquí las alineaciones, goles y tarjetas..."></textarea>
+            <span class="import-rapida-contador" id="importEventosContador"></span>
+          </div>
+
+          <div class="import-eventos-acciones">
+            <button type="button" class="btn-secundari import-eventos-btn" id="btnImportEventosAnalizar">
+              <span class="import-rapida-btn-icono">🔍</span>
+              <span class="import-rapida-btn-texto">Analizar texto</span>
+              <span class="import-rapida-spinner" aria-hidden="true"></span>
+            </button>
+          </div>
+
+          <div id="importEventosResultadoAnalisis" class="import-rapida-bloque-resultado" style="display:none;">
+            <h5 class="import-eventos-subtitulo">Vista previa</h5>
+            <p class="ayuda-editor import-rapida-avisos" id="importEventosAvisos" style="display:none;"></p>
+            <div id="importEventosLista" class="lista-eventos-partido import-rapida-lista"></div>
+            <div class="import-eventos-acciones">
+              <button type="button" class="btn-secundari import-eventos-btn" id="btnImportEventosConfirmar">
+                <span class="import-rapida-btn-icono">✅</span>
+                <span class="import-rapida-btn-texto">Confirmar e importar</span>
+                <span class="import-rapida-spinner" aria-hidden="true"></span>
+              </button>
+              <button type="button" class="btn-secundari" id="btnImportEventosCancelar">Cancelar</button>
+            </div>
+          </div>
+
+          <div id="importEventosResultadoFinal" class="import-rapida-bloque-resultado" style="display:none;">
+            <h5 class="import-eventos-subtitulo">Resultado de la importación</h5>
+            <div id="importEventosLog" class="lista-eventos-partido import-rapida-lista import-rapida-log"></div>
+          </div>
+        </div>
+
+        <!-- MVP (jugador destacado) del partido. Igual que las
+             alineaciones, solo tiene sentido una vez el resultado ya
+             existe. Se puede marcar aquí o, en vivo, desde el propio
+             panel de Minuto a Minuto una vez el partido está finalizado. -->
+        <div id="bloqueMvpResultado" style="display:none">
+          <h4 class="titulo-eventos-partido">MVP del partido</h4>
+          <p class="ayuda-editor">Elige el jugador destacado del partido (opcional). Aparecerá junto al escudo de su equipo en la página del resultado.</p>
+          <form id="formMvpResultado" class="form-evento-partido">
+            <div class="row-evento">
+              <div>
+                <label>Equipo</label>
+                <select id="mvp_equipo">
+                  <option value="local">Local</option>
+                  <option value="visitante">Visitante</option>
+                </select>
+              </div>
+              <div class="col-jugador">
+                <label>Dorsal</label>
+                <input type="text" id="mvp_dorsal" placeholder="Ej. 9 (opcional)" inputmode="numeric" style="max-width:90px;">
+              </div>
+              <div class="col-jugador">
+                <label>Jugador</label>
+                <input type="text" id="mvp_jugador" placeholder="Nombre del jugador">
+              </div>
+            </div>
+            <button type="submit" class="btn-secundari btn-anadir-evento">Guardar MVP</button>
+            <button type="button" class="btn-secundari" id="btnQuitarMvpResultado" style="display:none">Quitar MVP</button>
+          </form>
+        </div>
+
+        <!-- Guardar/Cancelar del PARTIDO en sí (datos, competición, marcador),
+             al final de toda la página. Los botones siguen enviando el
+             #formResultado de arriba gracias al atributo form="formResultado"
+             (no hace falta que estén dentro del <form> para dispararlo), así
+             que todo lo intermedio (goles y tarjetas, penaltis, alineaciones,
+             MVP) queda claramente como "subguardados" que se guardan cada
+             uno por su cuenta según se van rellenando, mientras que esta
+             barra final es la única acción que cierra la edición del
+             partido completo. -->
+        <div class="barra-acciones-form barra-acciones-form-principal">
+          <button type="submit" form="formResultado" class="btn-primari">Guardar resultado</button>
+          <button type="button" class="btn-secundari" id="btnCancelarResultado" style="display:none" onclick="cancelarEdicionResultado()">Cancelar edición</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="subpanel" id="subpanel-listaResultados">
+      <div class="buscador-lista">
+        <select id="filtroCompeticionResultados" class="buscador-lista-select" aria-label="Filtrar por competición">
+          <option value="">Todas las competiciones</option>
+        </select>
+        <select id="filtroEquipoResultados" class="buscador-lista-select" aria-label="Filtrar por equipo">
+          <option value="">Todos los equipos</option>
+        </select>
+        <input type="search" id="buscadorResultados" class="buscador-lista-input" placeholder="Buscar por competición, jornada o equipo...">
+        <button type="button" id="filtroSoloSinCubrirResultados" class="btn-secundari btn-filtro-sin-cubrir" aria-pressed="false" title="Mostrar solo los partidos en juego sin cubrir y los finalizados sin cubrir, del más reciente al menos reciente">🔴 Solo sin cubrir</button>
+        <span class="buscador-lista-contador" id="contadorResultados"></span>
+      </div>
+      <table class="lista">
+        <thead><tr><th>Competición</th><th>Jornada</th><th>Partido</th><th>Resultado</th><th>Estado</th><th>Acciones</th></tr></thead>
+        <tbody id="tablaResultados"></tbody>
+      </table>
+      <div class="paginacion-lista" id="paginacionResultados"></div>
+    </div>
+
+    <!-- Calendario de jornadas: sobre-escritura manual de la jornada
+         (intRound) que da TheSportsDB, que a menudo se equivoca, sobre
+         todo en Primera/Segunda RFEF. Cada bloque = "estos partidos,
+         jugados entre estas fechas, en esta competición/grupo, son la
+         jornada N". El relleno automático usa esto con prioridad sobre
+         lo que diga la API. -->
+    <div class="subpanel" id="subpanel-calendarioJornadas">
+      <div class="form-card">
+        <p class="ayuda-editor" style="margin:0 0 16px;">
+          Corrige aquí la jornada que TheSportsDB asigna mal a los partidos automáticos.
+          Define un rango de fechas por competición: todos los partidos jugados en ese
+          rango se guardan con la jornada que indiques, en vez de la de la API.
+        </p>
+
+        <div class="cal-jornadas-toolbar">
+          <select id="calJornadasCompeticion">
+            <option value="hypermotion">LaLiga Hypermotion</option>
+            <option value="primera_federacion">Primera Federación</option>
+            <option value="segunda_federacion">Segunda Federación</option>
+          </select>
+          <select id="calJornadasGrupo" style="display:none">
+            <option value="Grupo 1">Grupo 1</option>
+            <option value="Grupo 2">Grupo 2</option>
+            <option value="Grupo 3">Grupo 3</option>
+            <option value="Grupo 4">Grupo 4</option>
+            <option value="Grupo 5">Grupo 5</option>
+          </select>
+          <label class="cal-jornadas-check">
+            <input type="checkbox" id="calJornadasTodosGrupos" checked>
+            Aplicar a todos los grupos de esta competición
+          </label>
+          <button type="button" class="btn-secundario" id="btnRecalcularJornadas">↻ Recalcular partidos ya guardados</button>
+        </div>
+
+        <div id="calJornadasLista" class="cal-jornadas-lista"></div>
+
+        <button type="button" class="btn-anadir" id="btnAnadirRangoJornada">+ Añadir rango de jornada</button>
+      </div>
+    </div>
+
+    <!-- Fila-plantilla de un rango de jornada, clonada por JS. No se
+         muestra directamente (display:none): admin.js clona su
+         contenido para cada fila real en #calJornadasLista. -->
+    <template id="plantillaRangoJornada">
+      <div class="cal-jornada-fila" data-id="">
+        <span class="cal-jornada-numero">J<span class="cal-jornada-numero-valor"></span></span>
+        <input type="number" class="cal-jornada-input-jornada" min="1" placeholder="Jornada" title="Número de jornada">
+        <input type="date" class="cal-jornada-input-inicio" title="Fecha de inicio (inclusive)">
+        <span class="cal-jornada-hasta">→</span>
+        <input type="date" class="cal-jornada-input-fin" title="Fecha de fin (inclusive)">
+        <span class="cal-jornada-grupo-etiqueta"></span>
+        <button type="button" class="cal-jornada-guardar" title="Guardar cambios">💾</button>
+        <button type="button" class="cal-jornada-borrar" title="Eliminar este rango">🗑️</button>
+      </div>
+    </template>
+  </div>
+
+  <!-- AJUSTES DE CUENTA -->
+  <div class="panel" id="panel-ajustes">
+    <div class="info-cuenta">
+      Conectado como <b id="ajustesNombre"></b> — usuario <b id="ajustesUsername"></b> — rol <b id="ajustesRol"></b>
+    </div>
+
+    <div class="subtabs" id="subtabsAjustes">
+      <button class="activo" data-subtab="perfil">Editar perfil</button>
+      <button data-subtab="password">Cambiar contraseña</button>
+      <button data-subtab="progreso">Mi progreso</button>
+      <button data-subtab="sesiones">Dispositivos</button>
+    </div>
+
+    <div class="subpanel activo" id="subpanel-perfil">
+      <div class="form-card">
+        <h3 class="titulo-subseccion" style="margin-top:0;">Mis datos</h3>
+        <p class="ayuda-editor" style="margin:0 0 4px;">Esta es tu página de autor pública: se enlaza desde tu nombre en cada noticia que firmes, y cualquiera puede verla. <a id="linkPerfilPublico" href="#" target="_blank" rel="noopener">Ver mi perfil público →</a></p>
+        <form id="formPerfil">
+          <label for="perfil_nombre">Nombre *</label>
+          <input type="text" id="perfil_nombre" required>
+          <label for="perfil_email">Correo electrónico</label>
+          <input type="email" id="perfil_email">
+
+          <label for="perfil_equipo">Equipo</label>
+          <div class="equipo-bloqueado" id="perfil_equipo">
+            <span class="equipo-vacio" id="perfilEquipoVacio">— Sin especificar —</span>
+            <span class="equipo-candado">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+              Solo un administrador puede cambiarlo
+            </span>
+          </div>
+          <p class="ayuda-editor">El o los clubes de fútbol que sigues o cubres habitualmente. Se muestran en tu perfil público y junto a tu nombre al elegir autor en una noticia. Este campo lo asigna un administrador desde "Usuarios"; no se puede editar desde aquí.</p>
+
+<label for="perfil_avatar">Foto de perfil</label>
+<div class="fila-imagen-grupo avatar-picker-wrap">
+  <div class="fila-imagen">
+    <div class="imagen-preview-wrap">
+      <img id="previewAvatar" class="preview-imagen-fila" alt="" loading="lazy" hidden>
+      <input type="url" id="perfil_avatar" hidden>
+      <input type="hidden" id="perfil_avatar_foco" value="50% 50%">
+      <button type="button" class="btn-subir-imagen" id="btnSubirAvatar" title="Subir foto desde el dispositivo" aria-label="Subir foto desde el dispositivo"></button>
+      <input type="file" id="inputAvatarArchivo" accept="image/*" hidden>
+    </div>
+    <div class="fila-imagen-controles">
+      <div class="fila-imagen-controles-fila fila-acciones">
+        <button type="button" class="btn-foco" id="btnFocoAvatar" title="Elegir qué parte de la foto no se debe recortar nunca"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/></svg><span class="btn-foco-texto">Foco</span></button>
+        <button type="button" class="quitar-imagen" id="btnQuitarAvatar" title="Quitar esta foto">✕ Quitar</button>
+      </div>
+    </div>
+  </div>
+  <div class="foco-panel oculto" id="focoPanelAvatar">
+    <div class="foco-preview" id="focoPreviewAvatar"><div class="foco-marcador" id="focoMarcadorAvatar"></div></div>
+    <div class="foco-texto">
+      <p>Esta foto se muestra siempre con la misma proporción; si hace falta recortarla, haz clic en el punto de la imagen que quieres que se vea siempre.</p>
+      <button type="button" id="btnFocoResetAvatar">Centrar de nuevo</button>
+    </div>
+  </div>
+</div>
+<p class="ayuda-editor">Sube una foto desde tu dispositivo para tu perfil público.</p>
+
+          <label for="perfil_bio">Biografía</label>
+          <textarea id="perfil_bio" rows="3" maxlength="600" placeholder="Un par de líneas sobre ti: qué cubres, tu estilo, etc."></textarea>
+
+          <label for="perfil_experiencia">Experiencia previa</label>
+          <textarea id="perfil_experiencia" rows="4" maxlength="1200" placeholder="Medios en los que has trabajado, estudios, años de experiencia, etc."></textarea>
+          <p class="ayuda-editor">Se muestra también en tu perfil público, debajo de la biografía.</p>
+
+          <label style="margin-top:22px;">Mis redes sociales</label>
+          <p class="ayuda-editor" style="margin:0 0 4px;">Distintas de las redes del medio: estas son las tuyas propias, y solo se muestran en tu perfil de autor.</p>
+          <div class="row2">
+            <div>
+              <label for="perfil_twitter">X (Twitter)</label>
+              <input type="url" id="perfil_twitter" placeholder="https://twitter.com/...">
+            </div>
+            <div>
+              <label for="perfil_instagram">Instagram</label>
+              <input type="url" id="perfil_instagram" placeholder="https://instagram.com/...">
+            </div>
+          </div>
+          <div class="row2">
+            <div>
+              <label for="perfil_tiktok">TikTok</label>
+              <input type="url" id="perfil_tiktok" placeholder="https://tiktok.com/@...">
+            </div>
+            <div>
+              <label for="perfil_youtube">YouTube</label>
+              <input type="url" id="perfil_youtube" placeholder="https://youtube.com/@...">
+            </div>
+          </div>
+
+          <div class="barra-acciones-form">
+            <button type="submit" class="btn-primari">Guardar cambios</button>
+            <button type="button" class="btn-secundari" id="btnPrevisualizarPerfil">Previsualizar perfil</button>
+          </div>
+          <p id="msgOkPerfil">Datos actualizados correctamente.</p>
+          <p id="errPerfil"></p>
+        </form>
+      </div>
+    </div>
+
+    <div class="subpanel" id="subpanel-password">
+      <div class="form-card">
+        <h3 class="titulo-subseccion" style="margin-top:0;">Cambiar contraseña</h3>
+        <form id="formPassword">
+          <label for="passActual">Contraseña actual *</label>
+          <input type="password" id="passActual" required autocomplete="current-password">
+          <label for="passNueva">Nueva contraseña *</label>
+          <input type="password" id="passNueva" required minlength="8" autocomplete="new-password">
+          <label for="passNueva2">Repite la nueva contraseña *</label>
+          <input type="password" id="passNueva2" required minlength="8" autocomplete="new-password">
+          <div class="barra-acciones-form">
+            <button type="submit" class="btn-primari">Cambiar contraseña</button>
+          </div>
+          <p id="msgOkPassword">Contraseña actualizada correctamente.</p>
+          <p id="errPassword"></p>
+        </form>
+      </div>
+    </div>
+
+    <div class="subpanel" id="subpanel-progreso">
+      <div class="form-card" id="progresoNivelCont">
+        <p class="sesiones-vacio">Cargando tu progreso…</p>
+      </div>
+    </div>
+
+    <div class="subpanel" id="subpanel-sesiones">
+      <div class="form-card">
+        <h3 class="titulo-subseccion" style="margin-top:0;">Dispositivos conectados</h3>
+        <p class="ayuda-editor" style="margin:0 0 14px;">Estos son los dispositivos y navegadores donde tu cuenta tiene la sesión iniciada actualmente. Si no reconoces alguno, ciérralo.</p>
+        <div id="listaSesiones" class="lista-sesiones"></div>
+        <button type="button" class="btn-secundari" id="btnCerrarOtrasSesiones" style="margin-top:14px;">Cerrar todos los demás dispositivos</button>
+        <p id="msgOkSesiones"></p>
+        <p id="errSesiones"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- AJUSTES DEL MEDIO: redes sociales + fichas de equipo -->
+  <div class="panel" id="panel-funcionalidades">
+    <div class="subtabs" id="subtabsFuncionalidades">
+      <button class="activo" data-subtab="comentarios" id="subtabFuncComentarios_btn">Comentarios<span class="tab-badge-pendientes" id="badgeFuncComentarios" style="display:none;">0</span></button>
+      <button data-subtab="encuestas" id="subtabFuncEncuestas_btn">Encuestas</button>
+      <button data-subtab="newsletter" id="subtabFuncNewsletter_btn">Newsletter</button>
+      <button data-subtab="historial" id="subtabFuncHistorial_btn">Historial</button>
+      <button data-subtab="equipos">Equipos</button>
+      <button data-subtab="redesSociales" id="subtabRedesSociales_btn">Redes sociales</button>
+    </div>
+
+    <div class="subpanel activo" id="subpanel-comentarios">
+      <div class="subtabs" id="subtabsComentarios">
+        <button class="activo" data-subtab="comentariosPendientes">Pendientes</button>
+        <button data-subtab="comentariosAprobados">Aprobados</button>
+        <button data-subtab="comentariosRechazados">Rechazados</button>
+        <button data-subtab="comentariosDenunciados">Denunciados<span class="tab-badge-pendientes" id="badgeComentariosDenunciados" style="display:none;">0</span></button>
+      </div>
+
+      <div class="subpanel activo" id="subpanel-comentariosPendientes">
+        <p class="ayuda-editor" style="margin:0 0 14px;">Comentarios enviados por lectores, en espera de revisión. No se muestran en la web hasta que los apruebes.</p>
+        <div id="listaComentariosPendientes"><p class="solicitudes-vacio">Cargando...</p></div>
+      </div>
+
+      <div class="subpanel" id="subpanel-comentariosAprobados">
+        <p class="ayuda-editor" style="margin:0 0 14px;">Comentarios ya visibles en la web. Puedes rechazarlos o borrarlos en cualquier momento.</p>
+        <div id="listaComentariosAprobados"><p class="solicitudes-vacio">Cargando...</p></div>
+      </div>
+
+      <div class="subpanel" id="subpanel-comentariosRechazados">
+        <p class="ayuda-editor" style="margin:0 0 14px;">Comentarios descartados. Se conservan aquí para no volver a revisarlos por error, pero puedes aprobarlos o borrarlos si te equivocaste.</p>
+        <div id="listaComentariosRechazados"><p class="solicitudes-vacio">Cargando...</p></div>
+      </div>
+
+      <div class="subpanel" id="subpanel-comentariosDenunciados">
+        <p class="ayuda-editor" style="margin:0 0 14px;">Comentarios que uno o varios lectores han denunciado. Los que acumulan varias denuncias se ocultan automáticamente de la web hasta que los revises: puedes volver a mostrarlos o borrarlos.</p>
+        <div id="listaComentariosDenunciados"><p class="solicitudes-vacio">Cargando...</p></div>
+      </div>
+    </div>
+
+    <!-- ENCUESTAS: solo pueden votar lectores registrados, logueados y con
+         cuenta verificada (mismo requisito que comentar). Una encuesta
+         puede estar ligada a una noticia, destacada en portada, o ambas
+         cosas a la vez. -->
+    <div class="subpanel" id="subpanel-encuestas">
+      <p class="ayuda-editor" style="margin:0 0 14px;">Solo pueden votar lectores con cuenta, con sesión iniciada y con el correo verificado. Una encuesta puede estar ligada a una noticia, destacarse en portada, o ambas cosas a la vez.</p>
+      <button type="button" class="btn-primari" id="btnNuevaEncuesta" style="margin-bottom:16px;">+ Nueva encuesta</button>
+      <div id="listaEncuestas"><p class="solicitudes-vacio">Cargando...</p></div>
+    </div>
+
+    <!-- NEWSLETTER: suscriptores al boletín semanal (solo admins) -->
+    <div class="subpanel" id="subpanel-newsletter">
+      <h3 class="titulo-subseccion" style="margin-top:0;">Boletín semanal</h3>
+      <p class="ayuda-editor" style="margin:0 0 20px;">
+        Personas suscritas desde el formulario del pie de página. El boletín se envía automáticamente una vez a la semana con las últimas noticias publicadas, sin que haga falta hacer nada aquí. También puedes forzar un envío puntual con el botón de abajo, eligiendo a quién se le manda.
+      </p>
+      <div class="newsletter-cabecera">
+        <div class="contador-usuarios" id="contadorNewsletter" style="display:none;">
+          <span class="contador-usuarios-numero" id="contadorNewsletterNumero">0 / 0</span>
+          <span class="contador-usuarios-etiqueta">activos de los registrados</span>
+        </div>
+        <button type="button" class="btn-enviar-newsletter" onclick="abrirModalEnviarNewsletter()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7Z"/></svg>
+          Enviar boletín ahora
+        </button>
+      </div>
+      <div class="newsletter-envio-info" id="newsletterEnvioInfo" style="display:none;">
+        <div class="newsletter-envio-dato">
+          <span class="newsletter-envio-etiqueta">Próximo envío automático</span>
+          <span class="newsletter-envio-valor" id="newsletterProximoEnvio">—</span>
+        </div>
+        <div class="newsletter-envio-dato">
+          <span class="newsletter-envio-etiqueta">Último envío automático</span>
+          <span class="newsletter-envio-valor" id="newsletterUltimoEnvio">—</span>
+        </div>
+      </div>
+      <table class="lista">
+        <thead><tr><th>Email</th><th>Estado</th><th>Suscrito desde</th><th>Acciones</th></tr></thead>
+        <tbody id="tablaNewsletter"></tbody>
+      </table>
+    </div>
+
+    <!-- HISTORIAL DE ACCIONES (solo admins) -->
+    <div class="subpanel" id="subpanel-historial">
+      <h3 class="titulo-subseccion" style="margin-top:0;">Historial de acciones</h3>
+      <p class="ayuda-editor" style="margin:0 0 16px;">Registro de lo que hace cada persona del equipo: quién, qué acción, sobre qué y cuándo. Solo lo puede ver un administrador.</p>
+
+      <div class="form-card" style="margin-bottom:18px;">
+        <div class="row2">
+          <div>
+            <label>Buscar</label>
+            <input type="text" id="hist_q" placeholder="Buscar en la descripción o nombre...">
+          </div>
+          <div>
+            <label>Usuario</label>
+            <select id="hist_usuario"><option value="">— Todos —</option></select>
+          </div>
+        </div>
+        <div class="row2">
+          <div>
+            <label>Tipo de acción</label>
+            <select id="hist_accion"><option value="">— Todas —</option></select>
+          </div>
+          <div>
+            <label>Entidad</label>
+            <select id="hist_entidad">
+              <option value="">— Todas —</option>
+              <option value="articulo">Noticias/crónicas</option>
+              <option value="usuario">Usuarios</option>
+              <option value="media">Contenido multimedia</option>
+              <option value="resultado">Resultados</option>
+              <option value="settings">Ajustes del medio</option>
+              <option value="sesion">Sesión</option>
+            </select>
+          </div>
+        </div>
+        <div class="row2">
+          <div>
+            <label>Desde</label>
+            <input type="date" id="hist_desde">
+          </div>
+          <div>
+            <label>Hasta</label>
+            <input type="date" id="hist_hasta">
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;">
+          <button type="button" class="btn-primari" id="btnFiltrarHistorial">Filtrar</button>
+          <button type="button" class="btn-secundari" id="btnLimpiarHistorial">Limpiar filtros</button>
+        </div>
+      </div>
+
+      <table class="lista">
+        <thead><tr><th>Fecha</th><th>Usuario</th><th>Acción</th><th>Descripción</th><th>IP</th></tr></thead>
+        <tbody id="tablaHistorial"></tbody>
+      </table>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;flex-wrap:wrap;gap:10px;">
+        <span id="historialResumen" class="ayuda-editor" style="margin:0;"></span>
+        <div style="display:flex;gap:10px;">
+          <button type="button" class="btn-secundari" id="btnHistorialAnterior">← Anterior</button>
+          <button type="button" class="btn-secundari" id="btnHistorialSiguiente">Siguiente →</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="subpanel" id="subpanel-redesSociales">
+      <div class="form-card">
+        <p class="ayuda-editor" style="margin:0 0 4px;">Estos enlaces son los mismos que se muestran en toda la web (cabecera, pie y portada). Cambiándolos aquí se actualizan en un único sitio.</p>
+        <form id="formRedes">
+          <label for="red_twitter">X (Twitter)</label>
+          <input type="url" id="red_twitter" placeholder="https://twitter.com/...">
+          <label for="red_instagram">Instagram</label>
+          <input type="url" id="red_instagram" placeholder="https://instagram.com/...">
+          <label for="red_tiktok">TikTok</label>
+          <input type="url" id="red_tiktok" placeholder="https://tiktok.com/@...">
+          <label for="red_youtube">YouTube</label>
+          <input type="url" id="red_youtube" placeholder="https://youtube.com/@...">
+          <button type="submit" class="btn-primari">Guardar redes sociales</button>
+          <p id="msgOkRedes">Guardado correctamente.</p>
+          <p id="errRedes"></p>
+        </form>
+      </div>
+    </div>
+
+    <div class="subpanel" id="subpanel-equipos">
+      <div class="form-card equipo-info-card">
+        <p class="ayuda-editor" style="margin:0 0 4px;">Ficha informativa que se muestra en la página de cada equipo (entrenador, estadio, año de fundación, ciudad). Si un club no tiene datos aquí, simplemente no se muestra ningún recuadro en su página.</p>
+        <form id="formEquipoInfo">
+          <label for="equipoInfoClub">Club *</label>
+          <select id="equipoInfoClub" required>
+            <option value="">— Selecciona un club —</option>
+          </select>
+
+          <div class="equipo-info-fila">
+            <div>
+              <label for="equipoInfoEntrenador">Entrenador</label>
+              <input type="text" id="equipoInfoEntrenador" placeholder="Ej: Juan Pérez">
+            </div>
+            <div>
+              <label for="equipoInfoEstadio">Estadio</label>
+              <input type="text" id="equipoInfoEstadio" placeholder="Ej: Nuevo Estadio Municipal">
+            </div>
+          </div>
+
+          <div class="equipo-info-fila">
+            <div>
+              <label for="equipoInfoFundacion">Año de fundación</label>
+              <input type="number" id="equipoInfoFundacion" min="1800" max="2100" placeholder="Ej: 1913">
+            </div>
+            <div>
+              <label for="equipoInfoCiudad">Ciudad</label>
+              <input type="text" id="equipoInfoCiudad" placeholder="Ej: Tarragona">
+            </div>
+          </div>
+
+          <div class="equipo-info-botones">
+            <button type="submit" class="btn-primari">Guardar ficha del equipo</button>
+            <button type="button" class="btn-secundari" id="btnBorrarEquipoInfo" style="display:none;">Borrar ficha</button>
+          </div>
+          <p id="msgOkEquipoInfo">Guardado correctamente.</p>
+          <p id="errEquipoInfo"></p>
+        </form>
+      </div>
+
+      <h3 class="titulo-subseccion">Equipos con ficha</h3>
+      <div id="listaEquiposInfo"><p class="solicitudes-vacio">Cargando...</p></div>
+
+      <div id="bloqueEquiposInfoMisPendientes" style="display:none;">
+        <h3 class="titulo-subseccion">Tus propuestas pendientes de aprobación</h3>
+        <div id="listaEquiposInfoMisPendientes"></div>
+      </div>
+
+      <div id="bloqueEquiposInfoPendientes" style="display:none;">
+        <h3 class="titulo-subseccion">Propuestas pendientes de aprobación</h3>
+        <p class="ayuda-editor" style="margin:0 0 8px;">Fichas enviadas por redactores de Nivel 1: no se aplican hasta que las apruebes.</p>
+        <div id="listaEquiposInfoPendientes"><p class="solicitudes-vacio">Cargando...</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTENIDO: subir fotos/vídeos (cualquier redactor) + gestionarlos (solo admins) -->
+  <div class="panel" id="panel-contenido">
+    <div class="subtabs" id="subtabsContenido">
+      <button class="activo" data-subtab="subir">Subir contenido</button>
+      <button data-subtab="ver" id="subtabVerContenido">Ver contenido subido</button>
+    </div>
+
+    <div class="subpanel activo" id="subpanel-subir">
+      <div class="form-card" style="max-width:820px;">
+        <p class="ayuda-editor" style="margin:0 0 14px;">Sube aquí las fotos y vídeos del partido o la noticia: se guardan en su calidad original, sin comprimir, y las recibe el equipo de administración para poder descargarlas.</p>
+        <form id="formSubidaContenido">
+          <label for="tituloSubida">Título *</label>
+          <input type="text" id="tituloSubida" placeholder="Ej: Gol de la victoria — Jornada 12" required>
+
+          <label for="clubSubida">Club (opcional)</label>
+          <select id="clubSubida">
+            <option value="">— Sin especificar —</option>
+          </select>
+
+          <label for="descripcionSubida">Descripción (opcional)</label>
+          <textarea id="descripcionSubida" placeholder="Contexto del partido, nombres de jugadores, minuto de la jugada, créditos de autoría, etc."></textarea>
+
+          <label>Archivos *</label>
+          <div class="dropzone" id="dropzone">
+            <div class="icono-drop">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M12 4l-4.5 4.5M12 4l4.5 4.5"/><path d="M4 16v2.5A2.5 2.5 0 0 0 6.5 21h11a2.5 2.5 0 0 0 2.5-2.5V16"/></svg>
+            </div>
+            <p>Arrastra aquí tus fotos y vídeos</p>
+            <span>o haz clic para seleccionarlos — puedes subir varios a la vez, en la calidad original</span>
+            <input type="file" id="inputArchivos" multiple accept="image/*,video/*">
+          </div>
+
+          <div class="resumen-subida" id="resumenSubida">
+            <div class="dato"><b id="resumenCantidad">0</b><small>Archivos</small></div>
+            <div class="dato"><b id="resumenPeso">0 B</b><small>Peso total</small></div>
+            <div class="dato"><b id="resumenTipo">—</b><small>Tipo</small></div>
+          </div>
+
+          <div class="lista-archivos" id="listaArchivos"></div>
+
+          <button type="submit" class="btn-primari" id="btnSubir" disabled>Subir contenido</button>
+          <p id="msgOkSubida"></p>
+          <p id="errSubida"></p>
+        </form>
+      </div>
+    </div>
+
+    <div class="subpanel" id="subpanel-ver">
+      <div id="galeriaAdminWrap">
+        <div class="contenido-toolbar">
+          <p class="ayuda-editor" id="ayudaGaleriaContenido" style="margin:0;">Fotos y vídeos subidos por el equipo de redacción. Se guardan en su calidad original: al descargarlos obtienes el archivo exacto que se subió, sin ninguna compresión.</p>
+          <div class="filtros-contenido">
+            <button class="activo" data-filtro-media="todos">Todos</button>
+            <button data-filtro-media="foto">Fotos</button>
+            <button data-filtro-media="video">Vídeos</button>
+          </div>
+        </div>
+        <div class="galeria-contenido" id="galeriaContenido"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- USUARIOS (solo admins) -->
+  <div class="panel" id="panel-usuarios">
+    <div class="subtabs" id="subtabsUsuarios">
+      <button class="activo" data-subtab="redactores">Redactores</button>
+      <button data-subtab="lectores">Lectores</button>
+    </div>
+
+    <div class="subpanel activo" id="subpanel-redactores">
+      <h3 class="titulo-subseccion">PIN de "Última hora"</h3>
+      <div class="form-card" style="margin-bottom:24px;">
+        <p class="ayuda-editor" style="margin:0 0 10px;">
+          Un único PIN de 4 dígitos, compartido por todos los redactores, que permite publicar directamente una noticia urgente sin pasar por revisión. Cada vez que se usa se regenera solo, así que no hace falta gestionarlo por persona.
+        </p>
+        <button type="button" class="btn-ver-pin-ultima-hora" id="btnVerPinUltimaHora">Ver PIN actual</button>
+      </div>
+
+      <h3 class="titulo-subseccion">Crear nuevo usuario</h3>
+      <div class="form-card" style="margin-bottom:24px;">
+        <p class="ayuda-editor" style="margin:0 0 4px;">Por seguridad las contraseñas se guardan cifradas y no se pueden consultar. Si alguien pierde la suya, restablécela desde la tabla de abajo: se generará una nueva que deberás comunicarle.</p>
+        <form id="formNuevoUsuario">
+          <label>Usuario *</label>
+          <input type="text" id="nu_username" placeholder="p. ej. maria_gomez" required>
+          <div class="row2">
+            <div>
+              <label>Nombre *</label>
+              <input type="text" id="nu_nombre" required>
+            </div>
+            <div>
+              <label>Rol</label>
+              <select id="nu_rol">
+                <option value="redactor">Redactor</option>
+                <option value="admin">Administrador</option>
+              </select>
+            </div>
+          </div>
+          <label>Correo electrónico</label>
+          <input type="email" id="nu_email">
+          <label>Categoría</label>
+          <p class="ayuda-editor" style="margin:0 0 8px;">Opcional. Busca y añade una categoría (p. ej. "Arbitraje" o "Jurisdicción deportiva") para que este redactor solo pueda publicar en ella y no tenga equipo. Déjalo sin especificar para un redactor normal (con equipo, cualquier categoría).</p>
+          <div class="equipos-picker" id="nu_categoria_fija_picker">
+            <div class="equipos-picker-cabecera">
+              <span class="equipos-picker-contador" id="nu_categoria_fija_contador">0 seleccionadas</span>
+            </div>
+            <input type="text" class="equipos-picker-buscador" id="nu_categoria_fija_buscador" placeholder="Buscar categoría…">
+            <div class="equipos-picker-lista" id="nu_categoria_fija_lista"></div>
+            <p class="equipos-picker-ayuda" id="nu_categoria_fija_ayuda">Puedes dejarlo sin especificar.</p>
+          </div>
+          <div id="nu_equipo_bloque">
+            <label>Equipo</label>
+            <p class="ayuda-editor" style="margin:0 0 8px;">Opcional. Puedes dejarlo sin especificar o elegir hasta 3 equipos.</p>
+            <div class="equipos-picker" id="nu_equipo_picker">
+              <div class="equipos-picker-cabecera">
+                <span class="equipos-picker-contador" id="nu_equipo_contador">0 seleccionados</span>
+              </div>
+              <input type="text" class="equipos-picker-buscador" id="nu_equipo_buscador" placeholder="Buscar equipo…">
+              <div class="equipos-picker-lista" id="nu_equipo_lista"></div>
+              <p class="equipos-picker-ayuda" id="nu_equipo_ayuda">Puedes elegir hasta 3 equipos (o ninguno).</p>
+            </div>
+          </div>
+          <label>Contraseña inicial (déjalo en blanco para generar una automáticamente)</label>
+          <input type="text" id="nu_password" placeholder="Mínimo 8 caracteres">
+          <button type="submit" class="btn-primari">Crear usuario</button>
+          <p id="msgOkUsuario"></p>
+          <p id="errUsuario"></p>
+        </form>
+      </div>
+
+      <h3 class="titulo-subseccion">Usuarios ya registrados</h3>
+      <div class="contador-usuarios" id="contadorUsuarios" style="display:none;">
+        <span class="contador-usuarios-numero" id="contadorUsuariosNumero">0 / 0</span>
+        <span class="contador-usuarios-etiqueta">han iniciado sesión de los registrados</span>
+      </div>
+      <table class="lista">
+        <thead><tr><th>Usuario</th><th>Nombre</th><th>Rol</th><th>Correo</th><th>Equipo / Categoría</th><th>Nivel</th><th>Estado</th><th>Acciones</th></tr></thead>
+        <tbody id="tablaUsuarios"></tbody>
+      </table>
+    </div>
+
+    <!-- LECTORES: cuentas públicas registradas para comentar, solo lectura -->
+    <div class="subpanel" id="subpanel-lectores">
+      <h3 class="titulo-subseccion" style="margin-top:0;">Lectores registrados</h3>
+      <p class="ayuda-editor" style="margin:0 0 20px;">
+        Personas que se han creado una cuenta pública desde "Acceso" (modo Lector). Estas cuentas son independientes de las de redactores/administradores y se gestionan solas desde la web: aquí solo se pueden consultar.
+      </p>
+      <div class="contador-usuarios" id="contadorLectores" style="display:none;">
+        <span class="contador-usuarios-numero" id="contadorLectoresNumero">0 / 0</span>
+        <span class="contador-usuarios-etiqueta">con correo verificado de los registrados</span>
+      </div>
+      <table class="lista">
+        <thead><tr><th>Nombre</th><th>Correo</th><th>Estado</th><th>Registrado</th></tr></thead>
+        <tbody id="tablaLectores"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- USUARIOS (solo admins) -->
+  <!-- SOLICITUDES DE EDICIÓN -->
+  <div class="panel" id="panel-solicitudes">
+    <div class="subtabs" id="subtabsSolicitudes">
+      <button class="activo" data-subtab="solicitudesRecibidas">Pendientes de mi respuesta</button>
+      <button data-subtab="solicitudesMias">Mis solicitudes</button>
+    </div>
+
+    <div class="subpanel activo" id="subpanel-solicitudesRecibidas">
+      <p class="ayuda-editor" style="margin:0 0 14px;">Solicitudes que otro redactor te ha enviado (o, si eres administrador, todas las pendientes) para editar una noticia, crónica o resultado que no es suyo.</p>
+      <div id="listaSolicitudesRecibidas"><p class="solicitudes-vacio">Cargando...</p></div>
+    </div>
+
+    <div class="subpanel" id="subpanel-solicitudesMias">
+      <p class="ayuda-editor" style="margin:0 0 14px;">Solicitudes que tú has enviado para poder editar algo que no es tuyo.</p>
+      <div id="listaSolicitudesMias"><p class="solicitudes-vacio">Cargando...</p></div>
+    </div>
+  </div>
+
+  <!-- TIENDA DE ACREDITACIÓN -->
+  <div class="panel" id="panel-tienda">
+    <div class="subtabs" id="subtabsTienda">
+      <button class="activo" data-subtab="tiendaCatalogo">Catálogo</button>
+      <button data-subtab="tiendaMisPedidos">Mis pedidos</button>
+      <button data-subtab="tiendaGestion" id="subtabTiendaGestion" style="display:none;">Gestión de pedidos<span class="tab-badge-pendientes" id="badgeTiendaGestionPendientes" style="display:none;">0</span></button>
+      <button data-subtab="tiendaProductos" id="subtabTiendaProductos" style="display:none;">Productos</button>
+    </div>
+
+    <!-- Catálogo -->
+    <div class="subpanel activo" id="subpanel-tiendaCatalogo">
+      <p class="ayuda-editor" style="margin:0 0 16px;">
+        Productos oficiales de ElOtroFútbol para ir acreditado en el campo. El pago se hace por Bizum: eliges el producto, pagas y nos dices el concepto que has puesto para poder localizarlo. Cuando confirmemos el pago, tu pedido pasa a "Pagado".
+      </p>
+      <div class="tienda-buscador">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <input type="text" id="tiendaBuscador" placeholder="Buscar producto...">
+      </div>
+      <div class="tienda-grid" id="tiendaGrid">
+        <div class="tienda-skeleton"></div><div class="tienda-skeleton"></div><div class="tienda-skeleton"></div>
+      </div>
+    </div>
+
+    <!-- Ficha de producto: se abre al pulsar una tarjeta del catálogo -->
+    <div class="subpanel" id="subpanel-tiendaFicha">
+      <button type="button" class="tienda-ficha-volver" id="tiendaFichaVolver">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        Volver al catálogo
+      </button>
+      <div id="tiendaFichaContenido"><p class="solicitudes-vacio">Cargando...</p></div>
+    </div>
+
+    <!-- Mis pedidos -->
+    <div class="subpanel" id="subpanel-tiendaMisPedidos">
+      <p class="ayuda-editor" style="margin:0 0 14px;">El estado de todo lo que has pedido en la tienda.</p>
+      <div id="tiendaMisPedidosLista"><p class="solicitudes-vacio">Cargando...</p></div>
+    </div>
+
+    <!-- Gestión de pedidos (admin / gestor de tienda) -->
+    <div class="subpanel" id="subpanel-tiendaGestion">
+      <p class="ayuda-editor" style="margin:0 0 14px;">Todos los pedidos de todos los redactores. Marca como "Pagado" cuando confirmes el Bizum, y como "Enviado" cuando se lo hagas llegar.</p>
+      <div class="tienda-gestion-contadores" id="tiendaGestionContadores"></div>
+      <div class="tienda-gestion-barra">
+        <div class="tienda-gestion-filtros" id="tiendaGestionFiltros">
+          <button class="activo" data-estado="">Todos</button>
+          <button data-estado="pendiente_pago">Pendientes de pago</button>
+          <button data-estado="pagado">Pagados</button>
+          <button data-estado="enviado">Enviados</button>
+          <button data-estado="cancelado">Cancelados</button>
+        </div>
+        <div class="tienda-buscador tienda-buscador-gestion">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="text" id="tiendaGestionBuscador" placeholder="Buscar por redactor o producto...">
+        </div>
+      </div>
+      <div id="tiendaGestionLista"><p class="solicitudes-vacio">Cargando...</p></div>
+    </div>
+
+    <!-- Productos del catálogo (admin / gestor de tienda) -->
+    <div class="subpanel" id="subpanel-tiendaProductos">
+      <div class="tienda-productos-cabecera">
+        <p class="ayuda-editor" style="margin:0;">Los productos activos son los que ven los redactores en el catálogo. Desactiva uno en vez de borrarlo si quieres dejar de venderlo sin perder su historial de pedidos.</p>
+        <button type="button" class="btn-primari" onclick="abrirModalTiendaProducto()">+ Nuevo producto</button>
+      </div>
+      <div class="tienda-productos-barra">
+        <div class="tienda-gestion-contadores" id="tiendaProductosContadores"></div>
+        <div class="tienda-buscador tienda-buscador-gestion">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="text" id="tiendaProductosBuscador" placeholder="Buscar producto...">
+        </div>
+      </div>
+      <div id="tiendaProductosLista"><p class="solicitudes-vacio">Cargando...</p></div>
+    </div>
+  </div>
+
+
+</div>
+
+<!-- Modal de crear/editar producto de la tienda -->
+<div class="modal-overlay" id="modalTiendaProducto">
+  <div class="modal-caja">
+    <h3 class="titulo-subseccion" style="margin:0 0 16px;" id="tpTitulo">Nuevo producto</h3>
+
+    <label for="tpNombre">Nombre</label>
+    <input type="text" id="tpNombre" placeholder="Ej: Gorra oficial">
+
+    <label for="tpDescripcion">Descripción (opcional)</label>
+    <textarea id="tpDescripcion" rows="2" placeholder="Breve descripción del producto"></textarea>
+
+    <label for="tpPrecio">Precio (€)</label>
+    <input type="number" id="tpPrecio" min="0.01" step="0.01" placeholder="Ej: 15.00">
+
+    <label for="tpImagen">URL de la imagen (opcional)</label>
+    <input type="text" id="tpImagen" placeholder="https://...">
+
+    <label for="tpVariantes">Tallas/variantes (opcional, separadas por coma)</label>
+    <input type="text" id="tpVariantes" placeholder="Ej: S, M, L, XL">
+
+    <label for="tpOrden">Orden en el catálogo</label>
+    <input type="number" id="tpOrden" min="0" step="1" placeholder="0">
+
+    <label class="tienda-producto-activo-check">
+      <input type="checkbox" id="tpActivo" checked>
+      <span>Visible en el catálogo</span>
+    </label>
+
+    <p id="tpError" style="display:none;color:var(--rojo, #c00);margin-top:10px;"></p>
+
+    <button type="button" class="btn-primari" id="tpGuardar" style="width:100%;margin-top:16px;" onclick="guardarTiendaProducto()">Guardar producto</button>
+    <button type="button" class="btn-secundari" style="width:100%;margin:8px 0 0;" onclick="cerrarModalTiendaProducto()">Cancelar</button>
+  </div>
+</div>
+
+<!-- Modal de checkout de la tienda -->
+<div class="modal-overlay" id="modalTiendaCheckout">
+  <div class="modal-caja modal-caja-tienda">
+    <div class="tienda-checkout-cabecera">
+      <img id="tcImagen" class="tienda-checkout-imagen" src="" alt="" loading="lazy" hidden>
+      <div>
+        <h3 class="titulo-subseccion" style="margin:0 0 4px;" id="tcNombre">Producto</h3>
+        <p class="tienda-checkout-precio" id="tcPrecio">0,00 €</p>
+      </div>
+    </div>
+
+    <div id="tcVarianteGrupo" style="display:none;">
+      <label for="tcVariante">Talla</label>
+      <select id="tcVariante"></select>
+    </div>
+
+    <div class="tienda-bizum-caja">
+      <p class="tienda-bizum-titulo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+        Paga por Bizum
+      </p>
+      <p class="tienda-bizum-texto">Envía <strong id="tcPrecioBizum">0,00 €</strong> por Bizum al <strong>+34 669 17 80 59</strong> y pon como concepto tu nombre y el producto. Después, pega aquí el concepto/referencia que has usado para que podamos localizarlo:</p>
+      <label for="tcReferencia">Referencia del Bizum (opcional pero recomendado)</label>
+      <input type="text" id="tcReferencia" placeholder="Ej: Bizum de Juan Pérez, gorra">
+    </div>
+
+    <p id="tcError" style="display:none;color:var(--rojo, #c00);margin-top:10px;"></p>
+
+    <button type="button" class="btn-primari" id="tcConfirmar" style="width:100%;margin-top:16px;" onclick="confirmarPedidoTienda()">He pagado, confirmar pedido</button>
+    <button type="button" class="btn-secundari" style="width:100%;margin:8px 0 0;" onclick="cerrarModalTiendaCheckout()">Cancelar</button>
+  </div>
+</div>
+
+<!-- Envío manual del boletín (Newsletter, solo admins) -->
+<div class="modal-overlay" id="modalEnviarNewsletter">
+  <div class="modal-caja modal-caja-newsletter">
+    <div class="newsletter-modal-cabecera">
+      <span class="newsletter-modal-icono">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7Z"/></svg>
+      </span>
+      <div>
+        <h3 class="titulo-subseccion">Enviar boletín ahora</h3>
+        <p class="newsletter-modal-subtitulo">Con las últimas noticias publicadas, igual que el boletín automático. No afecta a la fecha del próximo envío semanal.</p>
+      </div>
+    </div>
+
+    <label class="newsletter-opcion-todos">
+      <input type="checkbox" id="enviarNewsletterTodos" class="newsletter-check-input" checked onchange="alternarSeleccionTodosNewsletter()">
+      <span class="newsletter-check" aria-hidden="true"></span>
+      <span>
+        <strong>Enviar a todos los suscriptores activos</strong>
+        <small>Desmarca esta casilla para elegir destinatarios concretos</small>
+      </span>
+    </label>
+
+    <div id="enviarNewsletterListaWrap" class="newsletter-picker" style="display:none;">
+      <input type="text" class="newsletter-picker-buscador" id="enviarNewsletterBuscador" placeholder="Buscar por email…" oninput="filtrarListaEnviarNewsletter()">
+      <div class="newsletter-picker-lista" id="enviarNewsletterLista"></div>
+      <p class="newsletter-picker-contador" id="enviarNewsletterContadorSeleccion">0 seleccionados</p>
+    </div>
+
+    <div class="newsletter-modal-acciones">
+      <button type="button" class="btn-primari" id="btnConfirmarEnviarNewsletter" onclick="confirmarEnvioNewsletter()">Enviar boletín</button>
+      <button type="button" class="btn-secundari" onclick="cerrarModalEnviarNewsletter()">Cancelar</button>
+    </div>
+    <p id="msgOkEnviarNewsletter" class="newsletter-modal-msg newsletter-modal-msg-ok"></p>
+    <p id="errEnviarNewsletter" class="newsletter-modal-msg newsletter-modal-msg-err"></p>
+  </div>
+</div>
+
+<!-- Editar equipos de un usuario (solo admins, desde la tabla de Usuarios) -->
+
+<div class="modal-overlay" id="modalEquiposUsuario">
+  <div class="modal-caja">
+    <h3 class="titulo-subseccion" style="margin-top:0;">Equipo y categoría de <span id="equiposUsuarioNombre"></span></h3>
+    <input type="hidden" id="equiposUsuarioId">
+    <label>Categoría</label>
+    <p class="ayuda-editor" style="margin:0 0 8px;">Opcional. Busca y añade una categoría (p. ej. "Arbitraje" o "Jurisdicción deportiva") para que este redactor solo pueda publicar en ella y no tenga equipo.</p>
+    <div class="equipos-picker" id="equiposUsuario_categoria_fija_picker">
+      <div class="equipos-picker-cabecera">
+        <span class="equipos-picker-contador" id="equiposUsuarioCategoriaFijaContador">0 seleccionadas</span>
+      </div>
+      <input type="text" class="equipos-picker-buscador" id="equiposUsuarioCategoriaFijaBuscador" placeholder="Buscar categoría…">
+      <div class="equipos-picker-lista" id="equiposUsuarioCategoriaFijaLista"></div>
+      <p class="equipos-picker-ayuda" id="equiposUsuarioCategoriaFijaAyuda">Puedes dejarlo sin especificar.</p>
+    </div>
+    <div id="equiposUsuario_equipo_bloque" style="margin-top:14px;">
+      <label>Equipo</label>
+      <p class="ayuda-editor" style="margin:0 0 10px;">Opcional. Puedes dejarlo sin especificar o elegir hasta 3 equipos.</p>
+      <div class="equipos-picker" id="equiposUsuarioPicker">
+        <div class="equipos-picker-cabecera">
+          <span class="equipos-picker-contador" id="equiposUsuarioContador">0 seleccionados</span>
+        </div>
+        <input type="text" class="equipos-picker-buscador" id="equiposUsuarioBuscador" placeholder="Buscar equipo…">
+        <div class="equipos-picker-lista" id="equiposUsuarioLista"></div>
+        <p class="equipos-picker-ayuda" id="equiposUsuarioAyuda">Puedes elegir hasta 3 equipos (o ninguno).</p>
+      </div>
+    </div>
+    <button type="button" class="btn-primari" id="btnGuardarEquiposUsuario" style="margin-top:18px;">Guardar</button>
+    <button type="button" class="btn-secundari" onclick="cerrarModalEquiposUsuario()">Cancelar</button>
+    <p id="msgOkEquiposUsuario" style="display:none;color:var(--celeste, #0a7);margin-top:10px;">Guardado correctamente.</p>
+    <p id="errEquiposUsuario" style="display:none;color:var(--rojo, #c00);margin-top:10px;"></p>
+  </div>
+</div>
+
+<!-- Nivel del colaborador (tabla de Usuarios, solo admins) -->
+<div class="modal-overlay" id="modalNivelUsuario">
+  <div class="modal-caja">
+    <h3 class="titulo-subseccion" style="margin-top:0;">Nivel de <span id="nivelUsuarioNombre"></span></h3>
+    <input type="hidden" id="nivelUsuarioId">
+
+    <div id="nivelUsuarioProgreso" style="margin-bottom:16px;">
+      <p class="sesiones-vacio">Cargando…</p>
+    </div>
+
+    <label for="nu_nivel_select">Nivel</label>
+    <select id="nu_nivel_select">
+      <option value="1">🟢 Nivel 1 — Principiante</option>
+      <option value="2">🔵 Nivel 2 — Aprendiz</option>
+      <option value="3">🟣 Nivel 3 — Maestro</option>
+      <option value="4">🟠 Nivel 4 — Experto</option>
+    </select>
+    <p class="ayuda-editor" style="margin:6px 0 0;">Cumplir las cifras mínimas no sube el nivel solo: valora también la calidad del trabajo, la puntualidad y el cumplimiento de las normas antes de decidir el ascenso.</p>
+
+    <label for="nu_nivel_nota">Nota (opcional)</label>
+    <textarea id="nu_nivel_nota" rows="3" maxlength="500" placeholder="Motivo del cambio, algo a mejorar, por qué todavía no sube aunque cumpla las cifras, etc."></textarea>
+
+    <button type="button" class="btn-primari" id="btnGuardarNivelUsuario" style="margin-top:14px;">Guardar nivel</button>
+    <button type="button" class="btn-secundari" onclick="cerrarModalNivelUsuario()">Cancelar</button>
+    <p id="msgOkNivelUsuario" style="display:none;color:var(--celeste, #0a7);margin-top:10px;">Guardado correctamente.</p>
+    <p id="errNivelUsuario" style="display:none;color:var(--rojo, #c00);margin-top:10px;"></p>
+
+    <h3 class="titulo-subseccion" style="margin-top:22px;">Historial de niveles</h3>
+    <div id="nivelUsuarioHistorial" class="lista-sesiones">
+      <p class="sesiones-vacio">—</p>
+    </div>
+  </div>
+</div>
+
+<!-- Elegir en qué punto del texto va una foto de posición personalizada -->
+<div class="modal-overlay" id="modalSelectorParrafo">
+  <div class="modal-caja modal-caja-parrafo">
+    <h3 class="titulo-subseccion" style="margin-top:0;">¿Dónde va esta foto?</h3>
+    <p class="selector-parrafo-ayuda">Haz clic entre dos párrafos del texto para marcar con una X el punto exacto donde se insertará la foto.</p>
+    <div class="selector-parrafo-lista" id="selectorParrafoLista"></div>
+    <p class="selector-parrafo-actual" id="selectorParrafoActual"><span class="marca-x">✕</span> <span id="selectorParrafoActualTexto">Tras el párrafo 1</span></p>
+    <button type="button" class="btn-primari" id="btnConfirmarParrafo" style="margin-top:14px;">Confirmar posición</button>
+    <button type="button" class="btn-secundari" onclick="cerrarModalSelectorParrafo()">Cancelar</button>
+  </div>
+</div>
+
+<!-- Editar contenido subido (solo lo puede abrir la persona que lo subió) -->
+<div class="modal-overlay" id="modalEditarMedia">
+  <div class="modal-caja">
+    <h3 class="titulo-subseccion" style="margin-top:0;">Editar contenido</h3>
+    <form id="formEditarMedia">
+      <input type="hidden" id="em_id">
+      <label for="em_titulo">Título *</label>
+      <input type="text" id="em_titulo" required>
+      <label for="em_club">Club (opcional)</label>
+      <select id="em_club"><option value="">— Sin especificar —</option></select>
+      <label for="em_descripcion">Descripción (opcional)</label>
+      <textarea id="em_descripcion" placeholder="Contexto del partido, nombres de jugadores, minuto de la jugada, créditos de autoría, etc."></textarea>
+      <button type="submit" class="btn-primari">Guardar cambios</button>
+      <button type="button" class="btn-secundari" onclick="cerrarModalEditarMedia()">Cancelar</button>
+      <p id="msgOkEditarMedia">Guardado correctamente.</p>
+      <p id="errEditarMedia"></p>
+    </form>
+  </div>
+</div>
+
+<!-- Contraseña restablecida (solo admins, desde "Usuarios") -->
+<div class="modal-overlay" id="modalPasswordGenerada">
+  <div class="modal-caja modal-caja-password">
+    <div class="password-modal-icono">🔑</div>
+    <h3 class="titulo-subseccion" style="margin-top:0;text-align:center;">Contraseña restablecida</h3>
+    <p class="ayuda-editor password-modal-texto">
+      Nueva contraseña para <strong id="pg_username"></strong>. Apúntala o cópiala ahora: no se volverá a mostrar.
+    </p>
+    <div class="password-modal-caja">
+      <input type="text" id="pg_password" readonly>
+      <button type="button" id="btnCopiarPasswordGenerada" title="Copiar contraseña">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+        <span>Copiar</span>
+      </button>
+    </div>
+    <p id="pg_copiado" class="password-modal-copiado">Copiada al portapapeles ✓</p>
+    <button type="button" class="btn-primari" id="btnEnviarMensajePasswordGenerada" style="width:100%;margin-top:18px;display:flex;align-items:center;justify-content:center;gap:8px;">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.9 9.9 0 0 0 4.74 1.21h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm5.8 14.09c-.24.68-1.4 1.31-1.94 1.36-.5.05-.99.25-3.31-.69-2.79-1.13-4.6-3.95-4.74-4.13-.14-.19-1.13-1.51-1.13-2.88 0-1.37.72-2.04.97-2.32.26-.28.56-.34.75-.34.19 0 .38 0 .54.01.18.01.41-.07.64.49.24.57.82 1.98.89 2.13.07.14.12.31.02.5-.09.19-.14.31-.28.47-.14.17-.29.37-.42.5-.14.14-.29.29-.12.57.16.28.72 1.19 1.55 1.93 1.06.95 1.96 1.24 2.24 1.38.28.14.44.12.6-.07.17-.19.71-.83.9-1.11.19-.28.38-.24.64-.14.26.09 1.65.78 1.93.92.28.14.47.21.54.33.07.12.07.68-.17 1.36z"/></svg>
+      <span>Enviar mensaje</span>
+    </button>
+    <button type="button" class="btn-secundari" id="btnCopiarMensajePasswordGenerada" style="width:100%;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:8px;">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+      <span>Copiar mensaje</span>
+    </button>
+    <button type="button" class="btn-secundari" style="width:100%;margin-top:8px;" onclick="cerrarModalPasswordGenerada()">Ya la he apuntado, cerrar</button>
+  </div>
+</div>
+
+<!-- PIN de "Última hora" al intentar publicar sin permiso directo -->
+<div class="modal-overlay" id="modalPinUltimaHora">
+  <div class="modal-caja modal-caja-pin">
+    <div class="pin-modal-icono">⚡</div>
+    <h3 class="titulo-subseccion" style="margin-top:0;">Última hora</h3>
+    <p class="ayuda-editor" style="margin:0;">
+      Como redactor, tus noticias se guardan como borrador hasta que las revise un administrador. Si es urgente, introduce tu PIN de 4 dígitos de "Última hora" para publicarla directamente.
+    </p>
+    <div class="pin-modal-inputs">
+      <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" id="pin_d1">
+      <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" id="pin_d2">
+      <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" id="pin_d3">
+      <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" id="pin_d4">
+    </div>
+    <p id="errPinUltimaHora" style="display:none;color:var(--rojo, #c00);margin:6px 0 0;font-size:.85rem;"></p>
+    <button type="button" class="btn-primari" id="btnConfirmarPinUltimaHora" style="width:100%;margin-top:16px;">Publicar ahora</button>
+    <button type="button" class="btn-secundari" id="btnGuardarComoBorradorPin" style="width:100%;margin:10px 0 0;">Guardar como borrador</button>
+    <button type="button" class="btn-secundari" style="width:100%;margin:8px 0 0;" onclick="cerrarModalPinUltimaHora()">Cancelar</button>
+  </div>
+</div>
+
+<!-- Al guardar una noticia como borrador: preguntar si ya está terminada -->
+<div class="modal-overlay" id="modalEstadoBorrador">
+  <div class="modal-caja">
+    <div class="pin-modal-icono">📝</div>
+    <h3 class="titulo-subseccion" style="margin-top:0;">¿Está terminada la noticia?</h3>
+    <p class="ayuda-editor" style="margin:0;">
+      Se va a guardar como borrador. Dinos si ya está lista para que la revisen o si todavía la estás escribiendo.
+    </p>
+    <button type="button" class="btn-primari" id="btnBorradorTerminado" style="width:100%;margin-top:16px;">Sí, está terminada</button>
+    <p class="ayuda-editor" style="margin:6px 0 0;font-size:.78rem;">Se avisará por correo a la redacción para que la revise.</p>
+    <button type="button" class="btn-secundari" id="btnBorradorEnProceso" style="width:100%;margin:14px 0 0;">No, la sigo escribiendo</button>
+    <p class="ayuda-editor" style="margin:6px 0 0;font-size:.78rem;">Se guarda igualmente, pero sin avisar por correo.</p>
+  </div>
+</div>
+
+<!-- Solicitar permiso para editar algo que no es tuyo -->
+<div class="modal-overlay" id="modalSolicitarEdicion">
+  <div class="modal-caja">
+    <h3 class="titulo-subseccion" style="margin-top:0;">Solicitar edición</h3>
+    <p class="ayuda-editor" style="margin:0 0 10px;">
+      Esto no es tuyo. Se enviará una solicitud al autor original y a los administradores; en cuanto la aprueben, podrás editarlo durante un tiempo limitado.
+    </p>
+    <input type="hidden" id="se_tipo">
+    <input type="hidden" id="se_id">
+    <label for="se_motivo">Motivo (opcional)</label>
+    <textarea id="se_motivo" placeholder="Explica brevemente por qué necesitas editarlo…"></textarea>
+    <button type="button" class="btn-primari" id="btnEnviarSolicitudEdicion" style="margin-top:12px;">Enviar solicitud</button>
+    <button type="button" class="btn-secundari" onclick="cerrarModalSolicitarEdicion()">Cancelar</button>
+    <p id="errSolicitarEdicion" style="display:none;color:var(--rojo, #c00);margin-top:10px;"></p>
+  </div>
+</div>
+
+<!-- PIN de "Última hora" único y compartido (solo admin lo ve) -->
+<div class="modal-overlay" id="modalPinRedactor">
+  <div class="modal-caja modal-caja-pin">
+    <h3 class="titulo-subseccion" style="margin-top:0;">PIN de "Última hora"</h3>
+    <p class="ayuda-editor" style="margin:0;">
+      Un único PIN de 4 dígitos, compartido por todos los redactores. Dáselo de palabra a quien lo necesite: se regenera solo en cuanto se usa para publicar, así que solo sirve una vez.
+    </p>
+    <div class="pin-modal-inputs" id="pr_pin_display" aria-live="polite">
+      <span class="pin-digito-mostrado" id="pr_pin_d1">•</span>
+      <span class="pin-digito-mostrado" id="pr_pin_d2">•</span>
+      <span class="pin-digito-mostrado" id="pr_pin_d3">•</span>
+      <span class="pin-digito-mostrado" id="pr_pin_d4">•</span>
+    </div>
+    <p id="errPinRedactor" style="display:none;color:var(--rojo, #c00);margin:6px 0 0;font-size:.85rem;"></p>
+    <p id="msgOkPinRedactor" style="display:none;color:#166534;margin:6px 0 0;font-size:.85rem;">PIN regenerado.</p>
+    <button type="button" class="btn-primari" id="btnGuardarPinRedactor" style="width:100%;margin-top:16px;">Regenerar PIN ahora</button>
+    <button type="button" class="btn-secundari" style="width:100%;margin:8px 0 0;" onclick="cerrarModalPinRedactor()">Cerrar</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalCompartir">
+  <div class="modal-caja modal-caja-compartir">
+    <h3 class="titulo-subseccion" style="margin-top:0;">📢 Compartir en redes</h3>
+    <p class="ayuda-editor" style="margin-top:0;">
+      Texto ya preparado para cada red. Cópialo (o ábrelo directamente en X) y pega la imagen de portada que descargues de la noticia.
+    </p>
+
+    <div class="compartir-link-caja">
+      <input type="text" id="cp_link" readonly>
+      <button type="button" class="btn-secundari" id="btnCopiarLinkCompartir">Copiar enlace</button>
+    </div>
+    <div class="aviso-programada-compartir" id="cp_aviso_programada" style="display:none">
+      <span class="aviso-programada-icono">⏳</span>
+      <div>
+        <p class="aviso-programada-titulo">Noticia programada, todavía no publicada</p>
+        <p class="aviso-programada-texto" id="cp_aviso_programada_texto"></p>
+      </div>
+    </div>
+
+    <div class="compartir-imagenes" id="cp_imagenes_wrap">
+      <p class="compartir-imagenes-titulo">Imágenes de la noticia</p>
+      <p class="compartir-ayuda" style="margin-top:0;">Descárgala para tenerla lista al pegar el texto en cada red.</p>
+      <div class="compartir-imagenes-lista" id="cp_imagenes_lista"></div>
+      <button type="button" class="btn-secundari" id="btnDescargarImagenesCompartir" style="margin-top:10px;">Descargar seleccionadas</button>
+    </div>
+
+    <div class="compartir-lista">
+      <div class="compartir-red">
+        <div class="compartir-red-cabecera">
+          <span class="compartir-red-icono x"><svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></span>
+          <span class="compartir-red-nombre">X (Twitter)</span>
+        </div>
+        <textarea id="cp_texto_x"></textarea>
+        <div class="compartir-red-contador" id="cp_contador_x">0 / 280</div>
+        <div class="compartir-red-acciones">
+          <button type="button" data-copiar="cp_texto_x">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+            <span>Copiar texto</span>
+          </button>
+          <button type="button" id="btnAbrirX">Abrir en X ya rellenado ↗</button>
+        </div>
+      </div>
+
+      <div class="compartir-red">
+        <div class="compartir-red-cabecera">
+          <span class="compartir-red-icono instagram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><rect x="2.5" y="2.5" width="19" height="19" rx="5.5"/><circle cx="12" cy="12" r="4.3"/><circle cx="17.35" cy="6.65" r="1.05" fill="currentColor" stroke="none"/></svg></span>
+          <span class="compartir-red-nombre">Instagram</span>
+        </div>
+        <textarea id="cp_texto_instagram"></textarea>
+        <div class="compartir-red-acciones">
+          <button type="button" data-copiar="cp_texto_instagram">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+            <span>Copiar texto</span>
+          </button>
+          <button type="button" id="btnAbrirInstagram">Abrir Instagram ↗</button>
+        </div>
+        <p class="compartir-ayuda">Instagram no permite prellenar el texto de una publicación desde fuera de la app: copia el texto, descarga la imagen de portada y pégalo al crear el post.</p>
+      </div>
+
+      <div class="compartir-red">
+        <div class="compartir-red-cabecera">
+          <span class="compartir-red-icono whatsapp"><svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.87 9.87 0 0 0 4.74 1.21h.01c5.46 0 9.9-4.45 9.9-9.91C21.96 6.45 17.5 2 12.04 2zm5.79 14.03c-.24.68-1.4 1.3-1.93 1.38-.49.08-1.11.11-1.79-.11-.41-.13-.94-.3-1.62-.6-2.85-1.23-4.71-4.1-4.85-4.29-.14-.19-1.16-1.54-1.16-2.94 0-1.4.73-2.09.99-2.37.26-.28.57-.35.76-.35.19 0 .38 0 .55.01.18.01.41-.07.64.49.24.57.81 1.98.88 2.12.07.14.12.31.02.5-.09.19-.14.31-.28.48-.14.16-.29.36-.42.49-.14.14-.28.29-.12.57.16.28.71 1.17 1.52 1.9 1.05.94 1.93 1.23 2.21 1.37.28.14.44.12.6-.07.17-.19.7-.81.89-1.09.19-.28.38-.23.64-.14.26.09 1.66.78 1.94.92.28.14.47.21.54.33.07.12.07.68-.17 1.35z"/></svg></span>
+          <span class="compartir-red-nombre">WhatsApp</span>
+        </div>
+        <textarea id="cp_texto_whatsapp"></textarea>
+        <div class="compartir-red-acciones">
+          <button type="button" data-copiar="cp_texto_whatsapp">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+            <span>Copiar texto</span>
+          </button>
+          <button type="button" id="btnAbrirWhatsapp">Abrir en WhatsApp ↗</button>
+        </div>
+      </div>
+
+    </div>
+
+    <button type="button" class="btn-primari" style="width:100%;margin-top:18px;" onclick="cerrarModalCompartir()">Cerrar</button>
+  </div>
+</div>
+
+<!-- Modal "+ Nuevo resultado" desde el editor de noticias: comparte el
+     mismo formulario físico (#formCardResultado) que la pestaña
+     "Resultados" — ver moverFormularioResultadoAqui() en admin.js, que
+     lo traslada aquí (o a #anclaFormResultado) según desde dónde se abra.
+     Se abre al elegir "+ Nuevo resultado…" en el desplegable "Resultado
+     vinculado" de la noticia, para poder dar de alta un partido sin
+     salir del editor. -->
+<!-- Modal crear/editar encuesta -->
+<div class="modal-overlay" id="modalEncuesta">
+  <div class="modal-caja">
+    <h3 class="titulo-subseccion" style="margin-top:0;" id="encuestaModalTitulo">Nueva encuesta</h3>
+    <input type="hidden" id="enc_id">
+
+    <label for="enc_pregunta">Pregunta</label>
+    <input type="text" id="enc_pregunta" maxlength="200" placeholder="¿Quién gana el clásico?">
+
+    <label style="margin-top:10px;">Opciones</label>
+    <div id="encOpcionesLista"></div>
+    <button type="button" class="btn-secundari" id="btnAnadirOpcionEncuesta" style="margin-top:6px;">+ Añadir opción</button>
+    <p class="ayuda-editor" style="margin:6px 0 0;">Entre 2 y 10 opciones. Si la encuesta ya tiene votos, cambiar el texto de una opción no borra sus votos, pero sí puede confundir a quien ya votó: mejor evitarlo salvo para corregir una errata.</p>
+
+    <label for="enc_articulo" style="margin-top:14px;">Noticia vinculada (opcional)</label>
+    <select id="enc_articulo">
+      <option value="">— Ninguna —</option>
+    </select>
+    <p class="ayuda-editor" style="margin:6px 0 0;">Si eliges una noticia, la encuesta aparecerá dentro de esa noticia.</p>
+
+    <label style="margin-top:14px; display:flex; align-items:center; gap:8px;">
+      <input type="checkbox" id="enc_en_portada" style="width:auto;">
+      Destacar en portada
+    </label>
+    <div id="encOrdenPortadaWrap" style="display:none; margin-top:8px;">
+      <label for="enc_orden_portada">Orden en portada</label>
+      <input type="number" id="enc_orden_portada" value="0" style="max-width:120px;">
+      <p class="ayuda-editor" style="margin:6px 0 0;">Si hay varias encuestas en portada, se muestran empezando por el número más bajo.</p>
+    </div>
+
+    <label for="enc_cierra_en" style="margin-top:14px;">Cierra automáticamente el (opcional)</label>
+    <input type="datetime-local" id="enc_cierra_en">
+    <p class="ayuda-editor" style="margin:6px 0 0;">Déjalo en blanco para cerrarla tú manualmente cuando quieras desde el listado.</p>
+
+    <button type="button" class="btn-primari" id="btnGuardarEncuesta" style="margin-top:16px;">Guardar encuesta</button>
+    <button type="button" class="btn-secundari" onclick="cerrarModalEncuesta()">Cancelar</button>
+    <p id="msgOkEncuesta" style="display:none;color:var(--celeste, #0a7);margin-top:10px;">Guardado correctamente.</p>
+    <p id="errEncuesta" style="display:none;color:var(--rojo, #c00);margin-top:10px;"></p>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalNuevoResultado">
+  <div class="modal-caja modal-caja-resultado">
+    <h3 class="titulo-subseccion" style="margin-top:0;">Nuevo resultado</h3>
+    <p class="ayuda-editor" style="margin-top:0;">Rellena el partido; al guardarlo se vinculará automáticamente a esta noticia.</p>
+    <div id="anclaFormResultadoModal"></div>
+    <button type="button" class="btn-secundari" style="margin-top:14px;" onclick="cerrarModalNuevoResultado()">Cerrar</button>
+  </div>
+</div>
+
+<!-- Modal editor de collage: elegir 2-4 fotos y una plantilla de
+     disposición, para combinarlas en una sola cuadrícula dentro del
+     texto de la noticia (ver abrirEditorCollage() en admin.js). -->
+<div class="modal-overlay" id="modalCollage">
+  <div class="modal-caja modal-caja-collage">
+    <h3 class="titulo-subseccion" style="margin-top:0;" id="collageModalTitulo">Collage de fotos</h3>
+    <input type="hidden" id="cl_grupo">
+
+    <label>Plantilla</label>
+    <div class="collage-plantilla-chips" id="collagePlantillaChips">
+      <button type="button" data-plantilla="2-horizontal">2 fotos · lado a lado</button>
+      <button type="button" data-plantilla="2-vertical">2 fotos · una encima de otra</button>
+      <button type="button" data-plantilla="3-una-grande">3 fotos · una grande + 2</button>
+      <button type="button" data-plantilla="3-fila">3 fotos · en fila</button>
+      <button type="button" data-plantilla="4-cuadricula">4 fotos · cuadrícula</button>
+    </div>
+
+    <label>Fotos del collage</label>
+    <div id="collageFotosLista"></div>
+    <p class="ayuda-editor" id="collageAyudaFotos"></p>
+
+    <label>Posición del collage</label>
+    <div class="collage-posicion-chips" id="collagePosicionChips">
+      <button type="button" data-posicion="inicio">Al inicio del artículo</button>
+      <button type="button" data-posicion="collage">Dentro del texto</button>
+      <button type="button" data-posicion="galeria">En la galería final</button>
+    </div>
+
+    <div id="collageTrasParrafoWrap">
+      <label for="cl_trasParrafo">Tras qué párrafo</label>
+      <button type="button" class="btn-elegir-parrafo" id="btnElegirParrafoCollage">
+        <span class="btn-elegir-parrafo-marca">✕</span>
+        <span class="btn-elegir-parrafo-texto" id="collageTrasParrafoTexto">tras párrafo 1</span>
+      </button>
+    </div>
+
+    <div class="barra-acciones-form">
+      <button type="button" class="btn-primari" id="btnGuardarCollage">Guardar collage</button>
+      <button type="button" class="btn-secundari" id="btnEliminarCollage" style="display:none">Eliminar collage</button>
+      <button type="button" class="btn-secundari" onclick="cerrarModalCollage()">Cancelar</button>
+    </div>
+    <p class="msg-error-alineacion" id="msgErrorCollage" style="display:none"></p>
+  </div>
+</div>
+
+<!-- Modal editor de alineación: campo de fútbol donde se arrastran los
+     jugadores a su posición. Un único formulario físico, reutilizado
+     tanto desde el editor de noticias como desde el de resultados (ver
+     abrirEditorAlineacion() en admin.js). -->
+<div class="modal-overlay" id="modalAlineacion">
+  <div class="modal-caja modal-caja-alineacion">
+    <h3 class="titulo-subseccion" style="margin-top:0;" id="alineacionModalTitulo">Alineación</h3>
+    <input type="hidden" id="al_id">
+    <input type="hidden" id="al_article_id">
+    <input type="hidden" id="al_result_id">
+
+    <div class="row3">
+      <div>
+        <label>Equipo *</label>
+        <div id="al_equipo_picker" class="team-picker"></div>
+        <div id="al_equipo_otro_wrap" class="equipo-otro-wrap" style="display:none">
+          <input type="text" id="al_equipo_otro_nombre" placeholder="Nombre del equipo">
+        </div>
+      </div>
+      <div>
+        <label for="al_formacion">Formación</label>
+        <select id="al_formacion">
+          <option value="4-3-3">4-3-3</option>
+          <option value="4-4-2">4-4-2</option>
+          <option value="4-2-3-1">4-2-3-1</option>
+          <option value="4-5-1">4-5-1</option>
+          <option value="3-4-3">3-4-3</option>
+          <option value="3-5-2">3-5-2</option>
+          <option value="5-3-2">5-3-2</option>
+          <option value="5-4-1">5-4-1</option>
+        </select>
+      </div>
+    </div>
+    <p class="ayuda-editor">Elige la formación para colocar automáticamente al once titular; después puedes arrastrar cada jugador para ajustar su posición exacta. Haz clic en un jugador para escribir su dorsal y nombre.</p>
+
+    <!-- Últimas alineaciones guardadas de este equipo (hasta 3, de sus
+         partidos finalizados más recientes), para copiar el once entero
+         de un plumazo en vez de escribirlo de nuevo. Se rellena al
+         elegir equipo -ver cargarUltimasAlineacionesEquipo() en
+         admin.js-. Oculto si el equipo no tiene alineaciones previas. -->
+    <div id="al_ultimas_wrap" class="alineacion-ultimas-wrap" style="display:none">
+      <label>Copiar de un partido anterior</label>
+      <div id="al_ultimas_lista" class="alineacion-ultimas-lista"></div>
+    </div>
+
+    <div class="alineacion-editor-campo-wrap">
+      <div class="alineacion-editor-campo" id="alineacionEditorCampo">
+        <div class="alineacion-campo-lineas"></div>
+        <div class="area-pequena-arriba"></div>
+        <div class="area-pequena-abajo"></div>
+        <div class="punto-penalti-arriba"></div>
+        <div class="punto-penalti-abajo"></div>
+        <div class="semicirculo-area-arriba"></div>
+        <div class="semicirculo-area-abajo"></div>
+        <div class="corner-arco corner-arco--tl"></div>
+        <div class="corner-arco corner-arco--tr"></div>
+        <div class="corner-arco corner-arco--bl"></div>
+        <div class="corner-arco corner-arco--br"></div>
+      </div>
+    </div>
+
+    <div class="alineacion-editor-jugador-datos" id="alineacionEditorDatos" style="display:none">
+      <p class="alineacion-editor-jugador-titulo" id="alineacionEditorDatosTitulo">Jugador</p>
+      <div class="row2">
+        <div>
+          <label>Dorsal</label>
+          <input type="text" id="al_jug_dorsal" inputmode="numeric" placeholder="Ej. 9">
+        </div>
+        <div>
+          <label>Nombre *</label>
+          <input type="text" id="al_jug_nombre" placeholder="Nombre del jugador">
+        </div>
+      </div>
+      <label class="al-jug-capitan-label">
+        <input type="checkbox" id="al_jug_capitan"> Capitán del equipo
+      </label>
+    </div>
+
+    <div class="alineacion-editor-suplentes">
+      <label>Suplentes (opcional)</label>
+      <div id="alineacionEditorSuplentesLista"></div>
+      <button type="button" class="btn-secundari" id="btnAnadirSuplenteAlineacion">+ Añadir suplente</button>
+    </div>
+
+    <div class="barra-acciones-form">
+      <button type="button" class="btn-primari" id="btnGuardarAlineacion">Guardar alineación</button>
+      <button type="button" class="btn-secundari" id="btnEliminarAlineacion" style="display:none">Eliminar alineación</button>
+      <button type="button" class="btn-secundari" onclick="cerrarModalAlineacion()">Cancelar</button>
+    </div>
+    <p class="msg-error-alineacion" id="msgErrorAlineacion" style="display:none"></p>
+  </div>
+</div>
+
+<!-- Panel de MINUTO A MINUTO: overlay a pantalla completa, se rellena e
+     inserta dinámicamente desde js/minuto-a-minuto.js (ver
+     abrirPanelMinutoAMinuto). Vacío por defecto. -->
+<div id="panelMinutoAMinuto"></div>
+
+<script src="../js/ui-alertas.js?v=3"></script>
+<script src="../js/config.js?v=12"></script>
+<script src="../js/clubs.js?v=2"></script>
+<script src="../js/corrector-formato.js?v=1"></script>
+<script src="js/admin.js?v=40"></script>
+<script src="js/dropzone-global.js?v=1"></script>
+<script src="js/minuto-a-minuto.js?v=5"></script>
+<script src="js/importacion-rapida.js?v=4"></script>
+<script src="js/importacion-rapida-eventos.js?v=1"></script>
+<script src="js/tutorial.js?v=1"></script>
+</body>
+</html>

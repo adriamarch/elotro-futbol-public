@@ -1,0 +1,8 @@
+User-agent: *
+Disallow: /admin/
+Disallow: /contenido.html
+Disallow: /buscar.html
+
+Sitemap: https://elotrofutbol.media/sitemap.xml
+Sitemap: https://elotrofutbol.media/sitemap-noticias.xml
+Sitemap: https://elotrofutbol.media/sitemap-news.xml

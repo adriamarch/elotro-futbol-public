@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<script src="js/tema.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="pageTitle">Buscar — ELOTROFÚTBOLTV</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="/favicon.ico?v=2" sizes="any">
+<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=2">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&family=Playfair+Display:wght@700;800&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css?v=16">
+</head>
+<body>
+
+<div id="site-header"></div>
+
+<main class="wrap">
+  <div id="ad-cabecera-buscar"></div>
+  <h2 class="section-title" id="tituloBusqueda">Resultados de la búsqueda</h2>
+  <div id="clubesBusqueda"></div>
+  <div class="grid-noticias" id="grid"></div>
+</main>
+
+<div id="site-footer"></div>
+
+<script src="js/ui-alertas.js?v=4"></script>
+<script src="js/config.js?v=15"></script>
+<script src="js/seo.js?v=4"></script>
+<script src="js/clubs.js?v=4"></script>
+<script src="js/lector-auth.js?v=13"></script>
+<script src="js/layout.js?v=6"></script>
+<script src="js/main.js?v=10"></script>
+<script src="js/cookies.js?v=1"></script>
+<script src="js/ads.js?v=1"></script>
+<script>
+document.getElementById("ad-cabecera-buscar").innerHTML = adSlot("cabecera");
+</script>
+<script>
+async function buscar() {
+  const q = new URLSearchParams(location.search).get("q") || "";
+
+  // Si lo buscado coincide con el nombre de uno o varios equipos: con
+  // UN solo club encontrado, se redirige directamente a su ficha (igual
+  // que hacía antes) para no hacer perder un paso a quien claramente
+  // busca ese equipo en concreto. Con VARIOS clubes encontrados (p.ej.
+  // buscar "nas" encuentra "Arenas Club" y otros que contengan esas
+  // letras) ya no se puede elegir uno a ciegas: se listan todos como
+  // accesos directos por encima de los resultados de artículos, para
+  // que la persona escoja el que buscaba en vez de quedarse solo con
+  // el primero que encontrara internamente la búsqueda. Se esperan los
+  // clubes personalizados antes de comprobarlo, para que también
+  // funcione con clubes añadidos a mano ("Otro equipo").
+  let clubesEncontrados = [];
+  if (q.trim()) {
+    await cargarCustomClubs();
+    clubesEncontrados = (typeof buscarClubesPorTexto === "function") ? buscarClubesPorTexto(q) : [];
+    if (clubesEncontrados.length === 1) {
+      const club = clubesEncontrados[0];
+      location.replace(`categoria.html?cat=${encodeURIComponent(club.categoria)}&club=${encodeURIComponent(club.nombre)}`);
+      return;
+    }
+  }
+
+  document.getElementById("tituloBusqueda").textContent = q ? `Resultados para: "${q}"` : "Buscar noticias";
+  fijarSeoBasico({
+    titulo: (q ? `Resultados para: "${q}"` : "Buscar noticias") + " — ELOTROFÚTBOLTV",
+    urlPath: location.pathname + location.search,
+    noindex: true,
+  });
+  const grid = document.getElementById("grid");
+
+  // Si hubo varios clubes coincidentes (con uno solo ya se habría
+  // redirigido más arriba), se listan aquí como accesos directos antes
+  // de los resultados de artículos.
+  const clubesEl = document.getElementById("clubesBusqueda");
+  if (clubesEncontrados.length > 1) {
+    clubesEl.innerHTML = `
+      <h3 class="section-subtitle">Equipos que coinciden con "${escapeHtml(q)}"</h3>
+      <div class="grid-clubes-busqueda">
+        ${clubesEncontrados.map(club => `
+          <a class="search-item search-item-club" href="categoria.html?cat=${encodeURIComponent(club.categoria)}&club=${encodeURIComponent(club.nombre)}">
+            <span class="search-item-cat">Ficha del equipo</span>
+            <span class="search-item-titulo">${escapeHtml(club.nombre)}</span>
+          </a>`).join("")}
+      </div>`;
+  }
+
+  if (!q.trim()) {
+    grid.innerHTML = estadoHTML({
+      titulo: "Escribe algo para buscar",
+      texto: "Usa el buscador de la cabecera para encontrar noticias, previas, crónicas y entrevistas por título o contenido.",
+      tipo: "busqueda",
+    });
+    return;
+  }
+
+  grid.innerHTML = spinnerHTML("Buscando...");
+  try {
+    const { articles } = await conReintento(async () => {
+      const res = await apiFetch(`/api/articles?q=${encodeURIComponent(q)}&limit=40`);
+      return res.json();
+    });
+    grid.innerHTML = articles.length
+      ? articles.map(cardHTML).join("")
+      : estadoHTML({
+          titulo: "Sin resultados",
+          texto: `No hemos encontrado ninguna noticia relacionada con "${q}". Prueba con otra palabra o revisa la ortografía.`,
+          tipo: "busqueda",
+          cta: `<a href="index.html" class="btn-volver">Ir a portada</a>`,
+        });
+    if (articles.length) insertarAdsEnGrid(grid);
+  } catch (err) {
+    grid.innerHTML = estadoHTML({
+      titulo: "No se ha podido conectar",
+      texto: "Ha habido un problema al realizar la búsqueda. Comprueba tu conexión e inténtalo de nuevo.",
+      tipo: "error",
+      cta: `<a href="javascript:location.reload()" class="btn-volver">Reintentar</a>`,
+    });
+  }
+}
+document.addEventListener("DOMContentLoaded", buscar);
+</script>
+</body>
+</html>

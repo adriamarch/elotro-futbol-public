@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Sitemap de las páginas estáticas del sitio (portada, categorías...).
+  Las noticias individuales (URL bonita /futbol/{categoria}/{slug}, que
+  internamente sigue sirviendo noticia.html vía public/_worker.js) NO
+  están aquí: viven en /sitemap-noticias.xml, generado al vuelo por el
+  worker a partir de /api/articles, porque su lista depende de la base
+  de datos y este archivo es estático. robots.txt referencia ambos
+  sitemaps.
+-->
+<urlset xmlns="https://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://elotrofutbol.media/</loc>
+    <changefreq>hourly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://elotrofutbol.media/calendario.html</loc>
+    <changefreq>hourly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://elotrofutbol.media/categoria.html?cat=hypermotion</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://elotrofutbol.media/categoria.html?cat=primera_federacion</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://elotrofutbol.media/categoria.html?cat=segunda_federacion</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://elotrofutbol.media/quienes-somos.html</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.4</priority>
+  </url>
+  <url>
+    <loc>https://elotrofutbol.media/linea-editorial.html</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.4</priority>
+  </url>
+  <url>
+    <loc>https://elotrofutbol.media/contacto.html</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://elotrofutbol.media/widgets.html</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.4</priority>
+  </url>
+</urlset>

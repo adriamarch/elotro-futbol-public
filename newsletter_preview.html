@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
+<style>
+  /* Fallback para clientes que sí soportan <style> pero no la media
+     query (poco frecuente, pero por si acaso): se queda en claro. */
+  .eof-fondo-pagina{background:#eef1f5;}
+  .eof-tarjeta-principal{background:#ffffff;box-shadow:0 8px 28px rgba(12,27,46,.14);}
+
+  @media (prefers-color-scheme: dark) {
+    /* Misma paleta que [data-theme="dark"] en public/css/style.css,
+       para que el correo se sienta como una extensión de la web. */
+    body, .eof-fondo-pagina{background:#11161f !important;}
+    .eof-tarjeta-principal{background:#1a2130 !important;box-shadow:0 8px 28px rgba(0,0,0,.45) !important;}
+    .eof-tarjeta{background:#1a2130 !important;border-color:#2a3242 !important;}
+    .eof-bloque-alt{background:#171d29 !important;}
+    .eof-bloque-encuesta{background:#241a1c !important;border-color:#40262b !important;}
+    .eof-texto, .eof-texto h1, .eof-texto h2, .eof-texto h3, .eof-texto p{color:#e7eaf0 !important;}
+    h1.eof-texto, h2.eof-texto, h3.eof-texto{color:#e7eaf0 !important;}
+    .eof-texto-suave{color:#9aa4b8 !important;}
+    .eof-etiqueta{color:#9aa4b8 !important;}
+    .eof-etiqueta-cat{background:#241a1c !important;}
+    .eof-pos-top{color:#ff5b73 !important;}
+    .eof-pie{background:#171d29 !important;border-top-color:#2a3242 !important;}
+    .eof-pie p, .eof-pie a{color:#7e879b !important;}
+    .eof-divisor{border-top-color:#2a3242 !important;}
+    .eof-subrayado{color:#e7eaf0 !important;}
+    /* El rojo, celeste y demás colores de marca se mantienen iguales en
+       ambos modos (igual que en la web): no se tocan aquí. */
+  }
+</style>
+</head>
+<body class="eof-fondo-pagina" style="margin:0;padding:0;background:#eef1f5;font-family:Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="eof-fondo-pagina" style="background:#eef1f5;padding:32px 12px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="eof-tarjeta-principal" style="max-width:560px;background:#ffffff;border-radius:14px;overflow:hidden;box-shadow:0 8px 28px rgba(12,27,46,.14);">
+
+          <!-- Cabecera (se mantiene igual en los dos modos: es --marino,
+               igual que la cabecera de la propia web) -->
+          <tr>
+            <td style="background:linear-gradient(135deg,#0c1b2e,#132840);padding:26px 28px;">
+              <img src="https://elotrofutbol.media/img/logo.png" alt="ELOTROFÚTBOLTV" height="32" style="display:block;">
+            </td>
+          </tr>
+          <tr><td style="height:4px;background:#d1132e;line-height:0;font-size:0;">&nbsp;</td></tr>
+
+          <!-- Titular -->
+          <tr>
+            <td style="padding:30px 28px 8px;">
+              <span class="eof-etiqueta-cat" style="display:inline-block;background:#fff0f0;color:#d1132e;font-size:10.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;padding:4px 11px;border-radius:12px;">Boletín semanal</span>
+              <h1 class="eof-texto" style="margin:14px 0 6px;font-size:22px;line-height:1.3;color:#0c1b2e;font-family:Georgia,serif;">Tu resumen de la semana</h1>
+              <p class="eof-texto-suave" style="margin:0;font-size:13.5px;color:#5a6270;">Noticias, resultados y clasificaciones de LaLiga Hypermotion, Primera y Segunda Federación.</p>
+            </td>
+          </tr>
+
+          <!-- Noticias -->
+          <tr>
+            <td style="padding:20px 28px 4px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td style="padding:0 0 20px;">
+            <a href="https://elotrofutbol.media/futbol/hypermotion/racing-golea" style="text-decoration:none;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="eof-tarjeta" style="background:#ffffff;border:1px solid #eef1f5;border-radius:10px;overflow:hidden;">
+                
+                <tr>
+                  <td style="padding:14px 16px;">
+                    <span class="eof-etiqueta-cat" style="display:inline-block;background:#eef1f5;color:#d1132e;font-size:10.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:3px 9px;border-radius:10px;margin-bottom:8px;">LaLiga Hypermotion</span>
+                    <h2 class="eof-texto" style="margin:0;font-size:16.5px;line-height:1.35;color:#0c1b2e;font-family:Georgia,serif;">El Racing golea en casa y se acerca al playoff</h2>
+                  </td>
+                </tr>
+              </table>
+            </a>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:0 0 20px;">
+            <a href="https://elotrofutbol.media/futbol/segunda-federacion/sorpresa-colista" style="text-decoration:none;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="eof-tarjeta" style="background:#ffffff;border:1px solid #eef1f5;border-radius:10px;overflow:hidden;">
+                
+                <tr>
+                  <td style="padding:14px 16px;">
+                    <span class="eof-etiqueta-cat" style="display:inline-block;background:#eef1f5;color:#d1132e;font-size:10.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:3px 9px;border-radius:10px;margin-bottom:8px;">Segunda Federación</span>
+                    <h2 class="eof-texto" style="margin:0;font-size:16.5px;line-height:1.35;color:#0c1b2e;font-family:Georgia,serif;">Sorpresa en Segunda Federación: el colista tumba al líder</h2>
+                  </td>
+                </tr>
+              </table>
+            </a>
+          </td>
+        </tr></table>
+            </td>
+          </tr>
+
+          <tr><td style="padding:6px 28px;"><div class="eof-divisor" style="border-top:1px solid #eef1f5;">&nbsp;</div></td></tr>
+
+          <!-- Resultados destacados -->
+          
+    <tr>
+      <td style="padding:6px 28px 0;">
+        <table role="presentation" cellpadding="0" cellspacing="0" style="margin-bottom:10px;">
+          <tr><td style="width:4px;background:#d1132e;border-radius:2px;">&nbsp;</td>
+          <td style="padding-left:10px;"><h3 class="eof-texto" style="margin:0;font-size:15px;color:#0c1b2e;">Resultados destacados</h3></td></tr>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:0 28px 26px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td style="padding:0 0 8px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="eof-bloque-alt" style="background:#f7f8fa;border-radius:8px;">
+          <tr>
+            <td style="padding:11px 14px;">
+              <span class="eof-etiqueta" style="display:block;font-size:9.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#9aa0ab;margin-bottom:5px;">LaLiga Hypermotion</span>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td class="eof-texto" style="font-size:13.5px;color:#0c1b2e;font-weight:600;text-align:left;">Racing de Santander</td>
+                  <td style="font-size:15px;color:#d1132e;font-weight:800;text-align:center;white-space:nowrap;padding:0 8px;">3 – 0</td>
+                  <td class="eof-texto" style="font-size:13.5px;color:#0c1b2e;font-weight:600;text-align:right;">Eibar</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr></table>
+      </td>
+    </tr>
+
+          <tr><td style="padding:0 28px;"><div class="eof-divisor" style="border-top:1px solid #eef1f5;">&nbsp;</div></td></tr>
+
+          <!-- Clasificaciones -->
+          <tr>
+            <td style="padding:20px 28px 2px;">
+              <h2 class="eof-etiqueta" style="margin:0 0 2px;font-size:12px;color:#9aa0ab;text-transform:uppercase;letter-spacing:.6px;">Clasificaciones</h2>
+            </td>
+          </tr>
+          
+    <tr>
+      <td style="padding:6px 28px 0;">
+        <table role="presentation" cellpadding="0" cellspacing="0" style="margin-bottom:10px;">
+          <tr><td style="width:4px;background:#d1132e;border-radius:2px;">&nbsp;</td>
+          <td style="padding-left:10px;">
+            <h3 class="eof-texto" style="margin:0;font-size:15px;color:#0c1b2e;">LaLiga Hypermotion</h3>
+          </td></tr>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:0 28px 26px;">
+        
+      <div class="eof-bloque-alt" style="background:#f7f8fa;border-radius:10px;padding:14px 14px 6px;margin-bottom:0;">
+        
+        
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;">
+      <thead>
+        <tr>
+          <th class="eof-etiqueta" style="padding:0 6px 6px;font-size:10px;color:#9aa0ab;text-transform:uppercase;letter-spacing:.4px;text-align:center;">#</th>
+          <th class="eof-etiqueta" style="padding:0 6px 6px;font-size:10px;color:#9aa0ab;text-transform:uppercase;letter-spacing:.4px;text-align:left;">Equipo</th>
+          <th class="eof-etiqueta" style="padding:0 6px 6px;font-size:10px;color:#9aa0ab;text-transform:uppercase;letter-spacing:.4px;text-align:center;">PJ</th>
+          <th class="eof-etiqueta" style="padding:0 6px 6px;font-size:10px;color:#9aa0ab;text-transform:uppercase;letter-spacing:.4px;text-align:center;">DG</th>
+          <th class="eof-etiqueta" style="padding:0 6px 6px;font-size:10px;color:#9aa0ab;text-transform:uppercase;letter-spacing:.4px;text-align:center;">Pts</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="eof-pos-top" style="padding:7px 6px;font-size:12.5px;color:#d1132e;font-weight:700;border-bottom:1px solid #eef1f5;text-align:center;">1</td>
+          <td class="eof-texto" style="padding:7px 6px;font-size:12.5px;color:#0c1b2e;font-weight:700;border-bottom:1px solid #eef1f5;">Racing de Santander</td>
+          <td class="eof-texto-suave" style="padding:7px 6px;font-size:12px;color:#5a6270;border-bottom:1px solid #eef1f5;text-align:center;">5</td>
+          <td class="eof-texto-suave" style="padding:7px 6px;font-size:12px;color:#5a6270;border-bottom:1px solid #eef1f5;text-align:center;">+8</td>
+          <td class="eof-texto" style="padding:7px 6px;font-size:13px;color:#0c1b2e;font-weight:700;border-bottom:1px solid #eef1f5;text-align:center;">13</td>
+        </tr>
+        <tr>
+          <td class="eof-pos-top" style="padding:7px 6px;font-size:12.5px;color:#d1132e;font-weight:700;border-bottom:1px solid #eef1f5;text-align:center;">2</td>
+          <td class="eof-texto" style="padding:7px 6px;font-size:12.5px;color:#0c1b2e;font-weight:700;border-bottom:1px solid #eef1f5;">Real Sociedad B</td>
+          <td class="eof-texto-suave" style="padding:7px 6px;font-size:12px;color:#5a6270;border-bottom:1px solid #eef1f5;text-align:center;">5</td>
+          <td class="eof-texto-suave" style="padding:7px 6px;font-size:12px;color:#5a6270;border-bottom:1px solid #eef1f5;text-align:center;">+3</td>
+          <td class="eof-texto" style="padding:7px 6px;font-size:13px;color:#0c1b2e;font-weight:700;border-bottom:1px solid #eef1f5;text-align:center;">10</td>
+        </tr></tbody>
+    </table>
+    
+      </div>
+      </td>
+    </tr>
+
+          <!-- Encuestas -->
+          
+    <tr>
+      <td style="padding:6px 28px 0;">
+        <table role="presentation" cellpadding="0" cellspacing="0" style="margin-bottom:10px;">
+          <tr><td style="width:4px;background:#d1132e;border-radius:2px;">&nbsp;</td>
+          <td style="padding-left:10px;"><h3 class="eof-texto" style="margin:0;font-size:15px;color:#0c1b2e;">Encuestas abiertas</h3></td></tr>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:0 28px 26px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td style="padding:0 0 10px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="eof-bloque-encuesta" style="background:#fff7f2;border:1px solid #f7d9d9;border-radius:8px;">
+          <tr>
+            <td style="padding:14px 16px;">
+              <p class="eof-texto" style="margin:0 0 10px;font-size:13.5px;line-height:1.4;color:#0c1b2e;font-weight:600;">🗳️ ¿Quién sube directo desde el Grupo 2?</p>
+              <a href="https://elotrofutbol.media/index.html#encuestas" style="display:inline-block;padding:8px 16px;border-radius:20px;background:#d1132e;color:#ffffff;text-decoration:none;font-size:11.5px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;">Votar en la web</a>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr></table>
+      </td>
+    </tr>
+
+          <!-- CTA (el botón rojo se mantiene igual en los dos modos) -->
+          <tr>
+            <td style="padding:4px 28px 34px;">
+              <table role="presentation" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="border-radius:24px;background:#d1132e;">
+                    <a href="https://elotrofutbol.media" style="display:inline-block;padding:13px 28px;font-family:Arial,sans-serif;font-size:13px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#ffffff;text-decoration:none;">Ver más en ELOTROFÚTBOLTV</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Pie -->
+          <tr>
+            <td class="eof-pie" style="padding:18px 28px;background:#f7f8fa;border-top:1px solid #eee;">
+              <p style="margin:0 0 6px;font-size:11.5px;color:#9aa0ab;">Recibes este correo porque te suscribiste al boletín de ELOTROFÚTBOLTV.</p>
+              <p style="margin:0;font-size:11.5px;color:#9aa0ab;"><a href="https://api.elotrofutbol.media/api/newsletter/baja?token=xyz" style="color:#9aa0ab;">Darme de baja</a></p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

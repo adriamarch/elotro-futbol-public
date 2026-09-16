@@ -1,0 +1,212 @@
+/* ============================================================
+   Tutorial guiado interactivo para nuevos redactores.
+   Overlay oscuro + "agujero" (spotlight) sobre el elemento real
+   del panel + tarjeta con flecha apuntando a ese elemento.
+   Pensado para convivir con el resto de admin.css sin chocar
+   con sus nombres de clase (todo prefijado con "tut-").
+   ============================================================ */
+
+#tutOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9990;
+  display: none;
+  pointer-events: none;
+}
+
+#tutOverlay.tut-activo { display: block; }
+
+/* Contenedor de centrado para los pasos "centrado" (bienvenida y
+   despedida): usa flexbox para colocar la tarjeta justo en medio de
+   la pantalla, sin depender de calcular top/left/transform a mano
+   (eso dependía de medir el tamaño de la tarjeta en el momento justo
+   y a veces se veía la tarjeta pegada arriba antes de recalcularse). */
+#tutCentroWrap {
+  position: fixed;
+  inset: 0;
+  z-index: 9992;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  pointer-events: none;
+}
+#tutCentroWrap.tut-activo { display: flex; }
+
+/* Capa oscura recortada con un "agujero" mediante box-shadow gigante
+   sobre un recuadro que sigue al elemento resaltado. Es más fiable que
+   clip-path con las prisas de reflow del panel (scroll, tabs, etc). */
+#tutSpotlight {
+  position: fixed;
+  border-radius: 10px;
+  box-shadow: 0 0 0 9999px rgba(10, 12, 16, 0.72);
+  pointer-events: none;
+  z-index: 9991;
+}
+
+#tutSpotlight.tut-sin-objetivo {
+  box-shadow: 0 0 0 9999px rgba(10, 12, 16, 0.72);
+}
+
+/* Anillo animado alrededor del elemento resaltado, para que salte a la
+   vista incluso en pantallas con mucho contenido alrededor. */
+#tutSpotlight::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 14px;
+  border: 2px solid #ff3b30;
+  animation: tutPulso 1.6s ease-in-out infinite;
+}
+
+@keyframes tutPulso {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,59,48,.45); }
+  50% { box-shadow: 0 0 0 7px rgba(255,59,48,0); }
+}
+
+/* Tarjeta explicativa */
+#tutCard {
+  position: fixed;
+  z-index: 9993;
+  width: min(340px, calc(100vw - 32px));
+  background: var(--tarjeta, #fff);
+  color: var(--texto, #1a1d24);
+  border: 1px solid var(--borde, transparent);
+  border-radius: 14px;
+  box-shadow: var(--sombra, 0 12px 40px rgba(0,0,0,.35)), 0 2px 8px rgba(0,0,0,.15);
+  padding: 18px 20px 16px;
+  pointer-events: auto;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+#tutCard .tut-paso-contador {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: #e63329;
+  margin: 0 0 6px;
+}
+
+#tutCard .tut-titulo {
+  font-family: 'Oswald', system-ui, sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0 0 8px;
+  line-height: 1.25;
+}
+
+#tutCard .tut-texto {
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0 0 16px;
+  color: inherit;
+  opacity: .92;
+}
+
+#tutCard .tut-barra-progreso {
+  height: 4px;
+  border-radius: 4px;
+  background: rgba(120,120,130,.25);
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+
+#tutCard .tut-barra-progreso-relleno {
+  height: 100%;
+  background: linear-gradient(90deg, #e63329, #ff6a5e);
+  border-radius: 4px;
+  transition: width .3s ease;
+}
+
+#tutCard .tut-botones {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+#tutCard .tut-botones-derecha {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+#tutCard button {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+  border: none;
+  transition: transform .12s ease, opacity .12s ease, background .12s ease;
+}
+
+#tutCard button:active { transform: scale(0.96); }
+
+#tutCard .tut-btn-siguiente {
+  background: #e63329;
+  color: #fff;
+}
+#tutCard .tut-btn-siguiente:hover { background: #cf2b22; }
+
+#tutCard .tut-btn-anterior {
+  background: transparent;
+  color: inherit;
+  opacity: .65;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+#tutCard .tut-btn-anterior:hover { opacity: 1; }
+#tutCard .tut-btn-anterior:disabled { visibility: hidden; }
+
+#tutCard .tut-btn-saltar {
+  background: transparent;
+  color: inherit;
+  opacity: .55;
+  font-weight: 500;
+}
+#tutCard .tut-btn-saltar:hover { opacity: .9; text-decoration: underline; }
+
+#tutCard .tut-cerrar-x {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  opacity: .5;
+  font-size: 15px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+#tutCard .tut-cerrar-x:hover { opacity: 1; background: rgba(120,120,130,.15); }
+
+/* Tarjeta de bienvenida / final, centrada, sin elemento que resaltar */
+/* Tarjeta de bienvenida / final: vive dentro de #tutCentroWrap (ver
+   arriba), que ya la centra con flexbox, así que aquí solo hace falta
+   su aspecto, no su posición. */
+#tutCard.tut-card-centrada {
+  position: static;
+  width: min(400px, calc(100vw - 32px));
+  text-align: center;
+  pointer-events: auto;
+}
+#tutCard.tut-card-centrada .tut-titulo { font-size: 22px; }
+#tutCard.tut-card-centrada .tut-botones { justify-content: center; flex-direction: column; }
+#tutCard.tut-card-centrada .tut-botones-derecha { margin-left: 0; }
+#tutCard.tut-card-centrada .tut-emoji {
+  font-size: 40px;
+  margin-bottom: 6px;
+  display: block;
+}
+
+@media (max-width: 640px) {
+  #tutCard { padding: 16px 16px 14px; }
+}

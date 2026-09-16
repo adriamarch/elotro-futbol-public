@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<script src="js/tema.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="pageTitle">Categoría — ELOTROFÚTBOLTV</title>
+<link rel="icon" href="/favicon.ico?v=2" sizes="any">
+<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=2">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&family=Playfair+Display:wght@700;800&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css?v=16">
+</head>
+<body>
+<script>document.body.dataset.page = new URLSearchParams(location.search).get("cat") || "general";</script>
+
+<div id="site-header"></div>
+
+<main class="wrap">
+  <div id="ad-cabecera-categoria"></div>
+  <div id="cabeceraClub" style="display:none; align-items:center; gap:12px; margin-bottom:8px;">
+    <img id="escudoClub" src="" alt="" style="max-width:120px; max-height:56px; width:auto; height:auto; object-fit:contain;">
+  </div>
+  <h2 class="section-title" id="tituloCategoria">Categoría</h2>
+  <p class="section-subtitle" id="subtituloCategoria" style="display:none"></p>
+  <div id="infoClub" class="info-club" style="display:none"></div>
+  <div id="partidosClub" class="partidos-club" style="display:none">
+    <div class="partidos-club-col">
+      <h3 class="partidos-club-titulo">Últimos resultados</h3>
+      <div id="ultimosResultadosClub"></div>
+    </div>
+    <div class="partidos-club-col">
+      <h3 class="partidos-club-titulo">Próximos partidos</h3>
+      <div id="proximosPartidosClub"></div>
+    </div>
+  </div>
+  <div class="grid-noticias" id="grid"></div>
+</main>
+
+<!-- Modal de detalle del partido, reutilizado igual que en resultados.html
+     para poder abrir el detalle de un partido del bloque de arriba. -->
+<div id="modalPartido" class="modal-partido" aria-hidden="true">
+  <div class="modal-partido-fondo" onclick="cerrarModalPartido()"></div>
+  <div class="modal-partido-caja" role="dialog" aria-modal="true" aria-labelledby="modalPartidoTitulo">
+    <button type="button" class="modal-partido-cerrar" onclick="cerrarModalPartido()" aria-label="Cerrar">✕</button>
+    <div class="modal-partido-cabecera">
+      <div class="modal-partido-equipo">
+        <img id="modalEscudoLocal" class="modal-partido-escudo" src="" alt="" loading="lazy">
+        <span id="modalNombreLocal" class="modal-partido-nombre"></span>
+      </div>
+      <div class="modal-partido-marcador">
+        <span id="modalMarcador"></span>
+        <span id="modalEstado" class="modal-partido-estado"></span>
+      </div>
+      <div class="modal-partido-equipo">
+        <img id="modalEscudoVisitante" class="modal-partido-escudo" src="" alt="" loading="lazy">
+        <span id="modalNombreVisitante" class="modal-partido-nombre"></span>
+      </div>
+    </div>
+    <p id="modalPartidoTitulo" class="modal-partido-subtitulo"></p>
+    <a id="modalEnlaceFlashscore" class="enlace-flashscore" href="" target="_blank" rel="noopener noreferrer" hidden>Ver en Flashscore<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></a>
+    <div id="modalNoticiasVinculadas" class="modal-noticias-vinculadas" hidden></div>
+    <div id="modalPartidoMvp" class="modal-partido-mvp" hidden></div>
+    <div id="modalPartidoAlineaciones" class="modal-partido-alineaciones"></div>
+    <div id="modalPartidoEventos" class="modal-partido-eventos"></div>
+  </div>
+</div>
+
+<div id="site-footer"></div>
+
+<script src="js/ui-alertas.js?v=4"></script>
+<script src="js/config.js?v=15"></script>
+<script src="js/seo.js?v=4"></script>
+<script src="js/clubs.js?v=4"></script>
+<script src="js/lector-auth.js?v=13"></script>
+<script src="js/layout.js?v=6"></script>
+<script src="js/partidos.js?v=9"></script>
+<script src="js/main.js?v=10"></script>
+<script src="js/cookies.js?v=1"></script>
+<script src="js/ads.js?v=1"></script>
+<script>
+document.getElementById("ad-cabecera-categoria").innerHTML = adSlot("cabecera");
+async function cargaCategoria() {
+  const params = new URLSearchParams(location.search);
+  const cat = params.get("cat") || "general";
+  const club = params.get("club");
+
+  // Clubes "personalizados" (añadidos desde "Otro equipo"), para que si
+  // el club de esta página es uno de ellos, se le pueda resolver bien el
+  // escudo (getEscudoUrl los consulta una vez cargados).
+  if (club) await cargarCustomClubs();
+
+  const titulo = club || categoriaLabel(cat);
+  document.getElementById("tituloCategoria").textContent = titulo;
+
+  const subtitulo = document.getElementById("subtituloCategoria");
+  if (club) {
+    // Se ha entrado desde una competición concreta, pero como ahora se
+    // listan TODAS las noticias del club (de cualquier competición o
+    // amistoso), el subtítulo ya no dice solo "Hypermotion" sino que
+    // deja claro que se ven todas.
+    subtitulo.textContent = `Todas las noticias · ${categoriaLabel(cat)} y otras competiciones`;
+    subtitulo.style.display = "block";
+
+    const cabecera = document.getElementById("cabeceraClub");
+    const escudoImg = document.getElementById("escudoClub");
+    escudoImg.classList.remove("logo-competicion-cabecera");
+    escudoImg.src = getEscudoUrl(club);
+    escudoImg.alt = `Escudo del ${club}`;
+    escudoImg.onerror = () => {
+      const slugFilial = resolverSlugEscudoFilial(club);
+      if (slugFilial) {
+        escudoImg.onerror = () => { escudoImg.src = ESCUDO_GENERICO; escudoImg.onerror = null; };
+        escudoImg.src = `img/escudos/${slugFilial}.png`;
+      } else {
+        escudoImg.src = ESCUDO_GENERICO;
+        escudoImg.onerror = null;
+      }
+    };
+    cabecera.style.display = "flex";
+    cargaInfoClub(club);
+    cargaPartidosClub(club);
+  } else {
+    const logoCat = categoriaLogo(cat);
+    if (logoCat) {
+      const cabecera = document.getElementById("cabeceraClub");
+      const escudoImg = document.getElementById("escudoClub");
+      // Solo el logo de LaLiga Hypermotion se pinta de blanco en modo
+      // oscuro (ver CSS más abajo): los de Primera y Segunda Federación
+      // se dejan tal cual, a petición expresa.
+      escudoImg.classList.toggle("logo-competicion-cabecera", cat === "hypermotion");
+      escudoImg.src = logoCat;
+      escudoImg.alt = `Logo de ${titulo}`;
+      escudoImg.onerror = () => { cabecera.style.display = "none"; };
+      cabecera.style.display = "flex";
+    }
+  }
+
+  // Migas: Inicio > Categoría [> Club]. Cuando se está viendo la ficha
+  // de un club, la categoría desde la que se entró sigue siendo el nivel
+  // intermedio (aunque esa página liste noticias de todas las
+  // competiciones del club), porque es el camino de navegación real que
+  // ha seguido el lector.
+  const migas = [{ nombre: categoriaLabel(cat), urlPath: `categoria.html?cat=${encodeURIComponent(cat)}` }];
+  if (club) migas.push({ nombre: club });
+
+  fijarSeoBasico({
+    titulo: `${titulo} — ELOTROFÚTBOLTV`,
+    descripcion: club
+      ? `Noticias, crónicas y resultados del ${club} en ELOTROFÚTBOLTV.`
+      : `Noticias y crónicas de ${categoriaLabel(cat)} en ELOTROFÚTBOLTV.`,
+    urlPath: location.pathname + location.search,
+    migas,
+  });
+
+  const grid = document.getElementById("grid");
+  grid.innerHTML = spinnerHTML();
+  try {
+    // Si se está viendo la ficha de un CLUB (viene "club" en la URL), se
+    // quiere ver TODO lo publicado sobre ese club, sin restringir por la
+    // competición desde la que se ha entrado: un mismo club puede tener
+    // noticias de LaLiga Hypermotion, de un amistoso, etc. Por eso aquí
+    // NO se manda "categoria" a la API cuando hay club (antes se mandaban
+    // los dos y, al combinarse con AND en el backend, se perdían las
+    // noticias del club que fueran de otra competición o de amistosos).
+    // Sin club (viendo la categoría entera), sí se sigue filtrando por
+    // categoría como siempre.
+    let path = club
+      ? `/api/articles?club=${encodeURIComponent(club)}&limit=40`
+      : `/api/articles?categoria=${encodeURIComponent(cat)}&limit=40`;
+    const { articles } = await conReintento(async () => {
+      const res = await apiFetch(path);
+      return res.json();
+    });
+    grid.innerHTML = articles.length
+      ? articles.map(cardHTML).join("")
+      : estadoHTML({
+          titulo: "Todavía no hay noticias aquí",
+          texto: club
+            ? `Aún no hemos publicado crónicas ni noticias sobre el ${club}. Vuelve pronto.`
+            : `De momento no hay contenido publicado en ${titulo}. Estamos trabajando en ello.`,
+          cta: `<a href="index.html" class="btn-volver">Ir a portada</a>`,
+        });
+    if (articles.length) insertarAdsEnGrid(grid);
+  } catch (err) {
+    grid.innerHTML = estadoHTML({
+      titulo: "No se ha podido conectar",
+      texto: "Ha habido un problema al cargar las noticias. Comprueba tu conexión e inténtalo de nuevo.",
+      tipo: "error",
+      cta: `<a href="javascript:location.reload()" class="btn-volver">Reintentar</a>`,
+    });
+  }
+}
+// Recuadro de info del equipo (entrenador, estadio, año de fundación,
+// ciudad). Solo se muestra si un admin ha rellenado esa ficha desde el
+// panel ("Ajustes del medio" -> "Equipos"); si el club no tiene fila en
+// club_info, el recuadro se queda oculto sin más (no es un error).
+const ICONOS_INFO_CLUB = {
+  Entrenador: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0 1 16 0v1"/></svg>`,
+  Estadio: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="12" rx="9" ry="6"/><ellipse cx="12" cy="12" rx="4" ry="6"/></svg>`,
+  Fundación: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>`,
+  Ciudad: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c-4.5-4.2-7-7.8-7-11a7 7 0 0 1 14 0c0 3.2-2.5 6.8-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>`,
+};
+
+// Etiquetas para las que el valor enlaza a su artículo de Wikipedia en
+// español. No incluye "Fundación": es un año, no el nombre de algo con
+// ficha propia en Wikipedia.
+//
+// En vez de construir la URL a ciegas (es.wikipedia.org/wiki/Nombre),
+// que puede dar un 404 si el artículo no se llama exactamente así, o
+// puede aterrizar en la página de otra persona/lugar que se llama
+// igual, se usa la API de búsqueda de Wikipedia para encontrar el
+// artículo real más parecido. Se añade una palabra de contexto a la
+// búsqueda para reducir (que no eliminar del todo) las coincidencias
+// con homónimos: el nombre del club para entrenador/estadio, y
+// "ciudad" para la ciudad. Si la búsqueda no devuelve nada, el dato
+// se muestra como texto normal, sin enlace.
+const ETIQUETAS_CON_WIKIPEDIA = new Set(["Entrenador", "Estadio", "Ciudad"]);
+const CACHE_WIKIPEDIA = new Map(); // evita repetir la misma búsqueda si se recarga la ficha
+
+async function buscaArticuloWikipediaTermino(termino) {
+  try {
+    const url = `https://es.wikipedia.org/w/api.php?action=query&list=search&format=json&origin=*&srlimit=1&srsearch=${encodeURIComponent(termino)}`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const titulo = data?.query?.search?.[0]?.title;
+    if (!titulo) return null;
+    return `https://es.wikipedia.org/wiki/${encodeURIComponent(titulo.replace(/ /g, "_"))}`;
+  } catch (err) {
+    return null; // sin conexión, CORS bloqueado, etc.: se deja sin enlazar
+  }
+}
+
+async function buscaArticuloWikipedia(valor, contexto, contextoAlternativo) {
+  const clave = `${valor}||${contexto || ""}||${contextoAlternativo || ""}`;
+  if (CACHE_WIKIPEDIA.has(clave)) return CACHE_WIKIPEDIA.get(clave);
+
+  const promesa = (async () => {
+    const terminoPrincipal = contexto ? `${valor} ${contexto}` : valor;
+    const url = await buscaArticuloWikipediaTermino(terminoPrincipal);
+    if (url) return url;
+    // Si la búsqueda con el contexto específico (p. ej. "entrenador") no
+    // encuentra nada -entrenadores poco conocidos cuya ficha no incluye
+    // esa palabra-, se reintenta con el nombre del club como último
+    // recurso: sigue siendo mejor que dejar el dato sin enlazar.
+    if (!contextoAlternativo) return null;
+    return buscaArticuloWikipediaTermino(`${valor} ${contextoAlternativo}`);
+  })();
+
+  CACHE_WIKIPEDIA.set(clave, promesa);
+  return promesa;
+}
+
+async function cargaInfoClub(club) {
+  const cont = document.getElementById("infoClub");
+  try {
+    const res = await apiFetch(`/api/club-info?club=${encodeURIComponent(club)}`);
+    const { info } = await res.json();
+    if (!info) return;
+
+    const datos = [
+      ["Entrenador", info.entrenador],
+      ["Estadio", info.estadio],
+      ["Fundación", info.fundacion],
+      ["Ciudad", info.ciudad],
+    ].filter(([, valor]) => valor);
+    if (!datos.length) return;
+
+    // Se pinta primero todo como texto plano (respuesta inmediata) y,
+    // en cuanto cada búsqueda en Wikipedia resuelve, se convierte ese
+    // dato concreto en enlace. Así la ficha no se queda esperando a la
+    // red externa para aparecer.
+    cont.innerHTML = `
+      <p class="info-club-titulo">Ficha del equipo</p>
+      <div class="info-club-datos">
+        ${datos.map(([etiqueta, valor], i) => `
+          <div class="info-club-dato">
+            <span class="info-club-icono">${ICONOS_INFO_CLUB[etiqueta] || ""}</span>
+            <span class="info-club-texto">
+              <span class="info-club-etiqueta">${escapeHtml(etiqueta)}</span>
+              <span class="info-club-valor" id="infoClubValor${i}">${escapeHtml(String(valor))}</span>
+            </span>
+          </div>`).join("")}
+      </div>`;
+    cont.style.display = "block";
+
+    datos.forEach(([etiqueta, valor], i) => {
+      if (!ETIQUETAS_CON_WIKIPEDIA.has(etiqueta)) return;
+      const CONTEXTOS = { Entrenador: "entrenador de fútbol", Estadio: "estadio de fútbol", Ciudad: "ciudad" };
+      const contexto = CONTEXTOS[etiqueta];
+      const contextoAlternativo = etiqueta === "Ciudad" ? null : club;
+      buscaArticuloWikipedia(valor, contexto, contextoAlternativo).then(url => {
+        if (!url) return; // no se encontró artículo: se deja como texto
+        const span = document.getElementById(`infoClubValor${i}`);
+        if (!span) return; // el usuario ya navegó a otra ficha
+        span.innerHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer" class="info-club-enlace">${escapeHtml(String(valor))}</a>`;
+      });
+    });
+  } catch (err) {
+    // Si falla, simplemente no se muestra el recuadro; no bloquea el
+    // resto de la página (noticias del club) por este dato accesorio.
+  }
+}
+
+// Últimos resultados y próximos partidos del club, en la propia ficha del
+// equipo. Se piden con "club=" (partido tanto de local como visitante,
+// de cualquier competición o amistoso, igual que las noticias de más
+// abajo) y luego se separan en dos listas usando el mismo criterio de
+// prioridad/orden que ya usa resultados.html (ordenarPartidosCronologicamente).
+const MAX_PARTIDOS_CLUB = 5;
+
+async function cargaPartidosClub(club) {
+  const cont = document.getElementById("partidosClub");
+  const contResultados = document.getElementById("ultimosResultadosClub");
+  const contProximos = document.getElementById("proximosPartidosClub");
+  try {
+    const { results } = await conReintento(async () => {
+      const res = await apiFetch(`/api/results?club=${encodeURIComponent(club)}&limit=100`);
+      return res.json();
+    });
+    if (!results.length) return; // Sin partidos: el bloque se queda oculto, no es un error.
+
+    const ordenados = ordenarPartidosCronologicamente(results);
+    const proximos = ordenados.filter(p => p.estado === "programado").slice(0, MAX_PARTIDOS_CLUB);
+    const jugados = ordenados.filter(p => p.estado !== "programado").slice(0, MAX_PARTIDOS_CLUB);
+
+    contResultados.innerHTML = jugados.length
+      ? jugados.map(p => partidoHTML(p, { mostrarCompeticion: true })).join("")
+      : `<p class="partidos-club-vacio">Todavía no hay resultados.</p>`;
+    contProximos.innerHTML = proximos.length
+      ? proximos.map(p => partidoHTML(p, { mostrarCompeticion: true })).join("")
+      : `<p class="partidos-club-vacio">No hay próximos partidos programados.</p>`;
+
+    // Se guardan en la misma caché global que usa partidos.js para poder
+    // abrir el modal de detalle al hacer clic, igual que en resultados.html.
+    PARTIDOS_CACHE = {};
+    results.forEach(r => { PARTIDOS_CACHE[r.id] = r; });
+    inicializarClicsPartidos("partidosClub");
+
+    cont.style.display = "grid";
+  } catch (err) {
+    // Si falla, no se muestra el bloque; no bloquea el resto de la
+    // página (info del club, noticias) por este dato accesorio.
+  }
+}
+
+document.addEventListener("DOMContentLoaded", cargaCategoria);
+</script>
+<style>
+  /* El logo de LaLiga Hypermotion es un PNG con trazos oscuros pensado
+     para fondo claro: en modo oscuro queda casi invisible sobre el
+     fondo oscuro de la cabecera. brightness(0) invert(1) lo vuelve
+     blanco sin necesidad de generar una versión aparte del archivo,
+     conservando la transparencia original. Solo se aplica a este logo
+     (no a Primera/Segunda Federación ni al escudo de un club), ver
+     cargaCategoria en el script de arriba. */
+  [data-theme="dark"] .logo-competicion-cabecera{filter:brightness(0) invert(1);}
+
+  .info-club{
+    background:var(--tarjeta); border:1px solid var(--borde); border-radius:var(--radio);
+    box-shadow:var(--sombra); padding:18px 22px; margin-bottom:26px;
+  }
+  .info-club-titulo{
+    font-family:var(--font-tit); text-transform:uppercase; font-size:.78rem;
+    letter-spacing:.5px; color:var(--rojo); font-weight:700; margin:0 0 14px;
+  }
+  .info-club-datos{
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:16px 24px;
+  }
+  .info-club-dato{display:flex; align-items:center; gap:12px;}
+  .info-club-icono{
+    flex-shrink:0; width:38px; height:38px; border-radius:50%;
+    background:var(--gris-claro); color:var(--celeste); display:flex;
+    align-items:center; justify-content:center;
+  }
+  .info-club-icono svg{width:19px; height:19px;}
+  .info-club-texto{display:flex; flex-direction:column; gap:1px; min-width:0;}
+  .info-club-etiqueta{font-size:.7rem; text-transform:uppercase; letter-spacing:.4px; color:#9aa0ab; font-weight:600;}
+  .info-club-valor{font-size:.94rem; color:var(--marino-texto); font-weight:700; line-height:1.3; overflow-wrap:break-word;}
+  .info-club-enlace{color:inherit; text-decoration:none; border-bottom:1px dashed currentColor;}
+  .info-club-enlace:hover{border-bottom-style:solid;}
+  @media(max-width:600px){
+    .info-club{padding:16px 18px; margin-bottom:20px;}
+    .info-club-datos{grid-template-columns:1fr 1fr; gap:14px 16px;}
+  }
+  @media(max-width:400px){
+    .info-club-datos{grid-template-columns:1fr;}
+  }
+
+  .partidos-club{
+    display:grid; grid-template-columns:1fr 1fr; gap:22px; margin-bottom:30px;
+  }
+  .partidos-club-titulo{
+    font-family:var(--font-tit); text-transform:uppercase; font-size:.85rem;
+    letter-spacing:.5px; color:var(--marino-texto); font-weight:700; margin:0 0 12px;
+  }
+  .partidos-club-vacio{
+    color:#9aa0ab; font-size:.88rem; background:var(--tarjeta); border:1px solid var(--borde);
+    border-radius:var(--radio); padding:14px 16px; margin:0;
+  }
+  @media(max-width:700px){
+    .partidos-club{grid-template-columns:1fr;}
+  }
+</style>
+</body>
+</html>

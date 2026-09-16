@@ -1,0 +1,1379 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<!-- <base href="/"> tiene que ir aquí, antes que cualquier recurso con
+     ruta relativa (incluido el <script> de justo debajo). Es necesario
+     porque public/_worker.js puede servir este mismo archivo bajo una
+     URL "profunda" tipo /futbol/categoria/mi-noticia (dos niveles bajo
+     la raíz): sin esto, "js/tema.js", "css/style.css", etc. se
+     resolverían contra /futbol/categoria/ en vez de contra la raíz del
+     sitio, y todo el CSS/JS de la página daría 404. Con <base href="/">
+     toda ruta relativa de esta página (aquí y en el resto del HTML) se
+     resuelve siempre contra la raíz, se sirva la página desde donde se
+     sirva. -->
+<base href="/">
+<script src="js/tema.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="pageTitle">Noticia — ELOTROFÚTBOLTV</title>
+<meta name="description" content="Noticias, crónicas y resultados del fútbol no profesional en ELOTROFÚTBOLTV.">
+<link rel="icon" href="/favicon.ico?v=2" sizes="any">
+<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=2">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&family=Playfair+Display:wght@700;800&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css?v=16">
+</head>
+<body>
+
+<div id="site-header"></div>
+
+<div id="barraProgresoLectura" class="barra-progreso-lectura" aria-hidden="true">
+  <div id="barraProgresoLecturaRelleno" class="barra-progreso-lectura-relleno"></div>
+</div>
+
+<main class="wrap" id="contenidoArticulo">
+  <p>Cargando...</p>
+</main>
+
+<div id="site-footer"></div>
+
+<script src="js/ui-alertas.js?v=4"></script>
+<script src="js/config.js?v=15"></script>
+<script src="js/seo.js?v=4"></script>
+<script src="js/clubs.js?v=4"></script>
+<script src="js/lector-auth.js?v=13"></script>
+<script src="js/encuestas.js?v=2"></script>
+<script src="js/layout.js?v=6"></script>
+<script src="js/cookies.js?v=1"></script>
+<script src="js/ads.js?v=1"></script>
+<script src="js/analiticas-tracking.js?v=1"></script>
+<script>
+const ES_PREVIEW = new URLSearchParams(location.search).get("preview") === "1";
+
+async function cargaArticulo() {
+  const cont = document.getElementById("contenidoArticulo");
+
+  // Modo previsualizacion: el panel de administracion deja la noticia sin
+  // guardar en sessionStorage antes de abrir esta pagina, para que el
+  // autor pueda verla igual que un lector antes de publicarla de verdad.
+  if (ES_PREVIEW) {
+    // Una previsualización no es una URL pública indexable: no lleva
+    // canonical/hreflang/JSON-LD reales, solo un noindex para estar
+    // seguros si por lo que sea un rastreador llegara a verla.
+    _seoMeta("name", "robots", "noindex, nofollow");
+    let article;
+    try {
+      article = JSON.parse(sessionStorage.getItem("eof_preview_articulo") || "null");
+    } catch { article = null; }
+    if (!article) {
+      cont.innerHTML = estadoHTML({
+        titulo: "Vista previa no disponible",
+        texto: "No se ha encontrado ningun contenido para previsualizar. Vuelve al panel e intentalo de nuevo.",
+        tipo: "error",
+        cta: `<a href="index.html" class="btn-volver">Ir a portada</a>`,
+      });
+      return;
+    }
+    mostrarAvisoPreview();
+    renderizaArticulo(article);
+
+    // Actualización en vivo: si el panel de administración (en otra
+    // pestaña) sigue editando esta misma noticia, nos avisa por
+    // BroadcastChannel con el artículo actualizado y volvemos a
+    // renderizar aquí, sin que el autor tenga que volver a pulsar
+    // "Previsualizar" ni recargar esta pestaña cada vez.
+    if ("BroadcastChannel" in window) {
+      const canalPreview = new BroadcastChannel("eof_preview_articulo");
+      canalPreview.onmessage = (ev) => {
+        if (!ev.data) return;
+        sessionStorage.setItem("eof_preview_articulo", JSON.stringify(ev.data));
+        mostrarAvisoPreview();
+        renderizaArticulo(ev.data);
+      };
+    }
+    return;
+  }
+
+  // El slug llega por query string en el formato antiguo (?slug=...) o,
+  // con la URL bonita /futbol/categoria/slug, directamente en el
+  // pathname: el navegador nunca ve el ?slug= interno que usa
+  // _worker.js para pedir este mismo archivo a env.ASSETS.fetch(), así
+  // que aquí hay que extraerlo también del pathname como alternativa.
+  const matchPathBonito = location.pathname.match(/^\/futbol\/[^/]+\/([^/]+)\/?$/);
+  const slug = new URLSearchParams(location.search).get("slug") || (matchPathBonito && decodeURIComponent(matchPathBonito[1]));
+  if (!slug) {
+    _seoMeta("name", "robots", "noindex");
+    cont.innerHTML = estadoHTML({
+      titulo: "Noticia no especificada",
+      texto: "El enlace al que has accedido no incluye ninguna noticia. Vuelve a la portada para seguir navegando.",
+      tipo: "error",
+      cta: `<a href="index.html" class="btn-volver">Ir a portada</a>`,
+    });
+    return;
+  }
+  try {
+    const { res, data } = await conReintento(async () => {
+      const res = await apiFetch(`/api/articles/${encodeURIComponent(slug)}`);
+      const data = await res.json().catch(() => null);
+      return { res, data };
+    });
+
+    // El slug ha cambiado desde que se compartió este enlace (el título
+    // se editó mientras la noticia todavía estaba en borrador/programada):
+    // se redirige de forma transparente al slug actual, conservando el
+    // resto de la query (p. ej. ?lang=eu) por si la llevaba.
+    if (data && data.redirect) {
+      const params = new URLSearchParams(location.search);
+      params.set("slug", data.redirect);
+      // IMPORTANTE: ruta ABSOLUTA (empieza por "/"). Si esta página se
+      // cargó desde la URL bonita /futbol/{categoria}/{slug}, una ruta
+      // relativa "noticia.html?..." se resolvería contra ese path (p.ej.
+      // /futbol/categoria/noticia.html?slug=... o peor aún con barra
+      // final /futbol/categoria/slug/noticia.html?...), que no es una
+      // ruta que el worker ni los estáticos reconozcan, y en combinación
+      // con las reglas de trailing-slash de Pages puede acabar en un
+      // bucle de redirecciones (ERR_TOO_MANY_REDIRECTS).
+      location.replace(`/noticia.html?${params.toString()}`);
+      return;
+    }
+
+    // La noticia existe y está programada, pero todavía no ha llegado su
+    // hora de publicación: se muestra una cuenta atrás en vez del error
+    // genérico, para quien haya recibido el enlace con antelación.
+    if (data && data.programado) {
+      _seoMeta("name", "robots", "noindex, nofollow");
+      pintarCuentaAtrasProgramada(data.programado);
+      return;
+    }
+
+    if (!res.ok || !data || !data.article) throw new Error("No encontrada");
+    renderizaArticulo(data.article);
+    // Tracking propio de vistas y tiempo de lectura (ver
+    // js/analiticas-tracking.js y public/panel-analiticas.html). Solo se
+    // dispara si la noticia se ha renderizado con éxito, para no contar
+    // vistas de errores/noticias no encontradas.
+    if (typeof window.iniciarTrackingLectura === "function") {
+      window.iniciarTrackingLectura(data.article.slug || slug, window.IDIOMA_NOTICIA_MOSTRADO || "es");
+    }
+  } catch (err) {
+    _seoMeta("name", "robots", "noindex");
+    cont.innerHTML = estadoHTML({
+      titulo: "No se ha podido cargar la noticia",
+      texto: "Puede que la noticia ya no exista o que haya un problema de conexion. Vuelve a la portada e intentalo de nuevo.",
+      tipo: "error",
+      cta: `<a href="index.html" class="btn-volver">Ir a portada</a>`,
+    });
+  }
+}
+
+// Pinta la cuenta atrás bonita para una noticia programada (todavía no
+// publicada) a la que alguien ha accedido con antelación mediante el
+// enlace ya compartido. Se actualiza cada segundo y, en cuanto llega a
+// cero, recarga la página sola para pasar a mostrar la noticia real (el
+// disparador programado del Worker la publica en torno a ese mismo
+// minuto, ver "scheduled" en worker/src/index.js).
+let _timerCuentaAtras = null;
+function pintarCuentaAtrasProgramada(programado) {
+  const cont = document.getElementById("contenidoArticulo");
+  // programado_para llega desde la base de datos en formato SQLite
+  // "YYYY-MM-DD HH:MM:SS" en UTC pero SIN indicar la zona. Si se le pasa
+  // tal cual a `new Date(...)`, la mayoría de navegadores lo interpretan
+  // como hora LOCAL en vez de UTC, así que el contador se desfasaba
+  // exactamente el huso horario del lector (p. ej. 2h en verano en
+  // España): mostraba menos tiempo del que quedaba de verdad. Se
+  // normaliza igual que ya se hace en partidos.js con inicio_cronometro_at.
+  let rawFecha = String(programado.programado_para).trim();
+  if (!/[zZ]|[+-]\d\d:?\d\d$/.test(rawFecha)) {
+    rawFecha = rawFecha.includes("T") ? rawFecha + "Z" : rawFecha.replace(" ", "T") + "Z";
+  }
+  const objetivo = new Date(rawFecha).getTime();
+
+  const tipoLabel = { noticia: "Noticia", previa: "Previa", cronica: "Crónica", analisis: "Análisis", opinion: "Opinión", entrevista: "Entrevista" }[programado.tipo] || "Artículo";
+
+  cont.innerHTML = `
+    <div class="programada-caja">
+      <span class="programada-etiqueta"><span class="punto-vivo"></span>${tipoLabel} programada</span>
+      <h1 class="programada-titulo">${escapeHtml(programado.titulo)}</h1>
+      <div class="programada-contador" id="programadaContador">
+        <div class="unidad"><span class="numero" id="pc_dias">00</span><span class="etiqueta-unidad">Días</span></div>
+        <div class="unidad"><span class="numero" id="pc_horas">00</span><span class="etiqueta-unidad">Horas</span></div>
+        <div class="unidad"><span class="numero" id="pc_min">00</span><span class="etiqueta-unidad">Min</span></div>
+        <div class="unidad"><span class="numero" id="pc_seg">00</span><span class="etiqueta-unidad">Seg</span></div>
+      </div>
+      <p class="programada-fecha">Se publica el ${formatFechaConHora(programado.programado_para)}</p>
+      <p class="programada-ayuda">Esta noticia todavía se está terminando de revisar. En cuanto llegue la hora se publicará ella sola aquí mismo, sin que tengas que hacer nada.</p>
+      <a href="index.html" class="btn-volver">Ir a portada mientras tanto</a>
+    </div>`;
+
+  const pad = (n) => String(Math.max(0, n)).padStart(2, "0");
+  function actualizar() {
+    const restante = objetivo - Date.now();
+    if (restante <= 0) {
+      clearInterval(_timerCuentaAtras);
+      // Se recarga sola: para entonces la noticia ya debería estar
+      // publicada (el disparador programado revisa cada minuto), así que
+      // la recarga pasa directamente a mostrarla sin que el lector tenga
+      // que hacer nada.
+      location.reload();
+      return;
+    }
+    const totalSeg = Math.floor(restante / 1000);
+    const dias = Math.floor(totalSeg / 86400);
+    const horas = Math.floor((totalSeg % 86400) / 3600);
+    const min = Math.floor((totalSeg % 3600) / 60);
+    const seg = totalSeg % 60;
+    document.getElementById("pc_dias").textContent = pad(dias);
+    document.getElementById("pc_horas").textContent = pad(horas);
+    document.getElementById("pc_min").textContent = pad(min);
+    document.getElementById("pc_seg").textContent = pad(seg);
+  }
+  actualizar();
+  _timerCuentaAtras = setInterval(actualizar, 1000);
+}
+
+function mostrarAvisoPreview() {
+  // Evita duplicar el aviso si se llama varias veces (p.ej. en cada
+  // actualización en vivo desde el panel de administración).
+  if (document.getElementById("avisoPreviewSticky")) return;
+  const aviso = document.createElement("div");
+  aviso.id = "avisoPreviewSticky";
+  aviso.textContent = "Vista previa \u00b7 esta noticia todavia no esta publicada";
+  aviso.style.cssText = "position:sticky;top:0;z-index:999;background:#222;color:#fff;text-align:center;padding:10px;font:600 14px/1.4 Inter,sans-serif;";
+  document.body.prepend(aviso);
+}
+
+// ---------- Traducciones de la noticia (solo contenido, no la interfaz) ----------
+// El selector de idioma de esta página es independiente del idioma de la
+// interfaz (que siempre está en castellano). Solo cambia el título, el
+// subtítulo y el cuerpo de la noticia, y solo entre los idiomas que el
+// redactor haya traducido al subirla; si un idioma no está disponible se
+// muestra en castellano con un aviso de "Disponible en...".
+const IDIOMAS_NOTICIA = [
+  { cod: "es", nombre: "Castellano" },
+  { cod: "eu", nombre: "Euskera" },
+  { cod: "ca", nombre: "Català" },
+  { cod: "gl", nombre: "Galego" },
+  { cod: "en", nombre: "English" },
+];
+let ARTICULO_ACTUAL = null;
+let IDIOMA_NOTICIA_ACTUAL = "es";
+let FOTOS_DE_TEXTO_ACTUAL = null;
+
+// Peu de foto con el crédito/cita de la fotografía (autor, agencia...),
+// cuando se ha indicado al subirla desde el panel. Se usa en todas las
+// fotos de la noticia: portada, intercaladas en el texto y de galería.
+function creditoFotoHTML(f) {
+  return f && f.credito ? `<span class="credito-foto">${escapeHtml(f.credito)}</span>` : "";
+}
+// Reparte las fotos "de posición" (inicio/medio/final) dentro de un texto
+// del cuerpo, intercalándolas entre sus bloques de nivel superior. Se usa
+// tanto al pintar la noticia por primera vez como al cambiar de idioma,
+// para que las fotos intercaladas en el texto nunca se pierdan aunque el
+// contenido de ese idioma sea distinto del castellano.
+// Deja funcionales los enlaces que vienen dentro del HTML del cuerpo de la
+// noticia: si a alguno le falta el "https://" (enlaces antiguos creados sin
+// protocolo) el navegador lo trataría como ruta relativa dentro de la propia
+// web y rompería el enlace; y los que sí son externos se abren en pestaña
+// nueva con rel="noopener noreferrer" para no perder al lector de la noticia
+// ni exponer la página de origen a la de destino.
+function arreglarEnlacesCuerpo(cuerpoEl) {
+  if (!cuerpoEl) return;
+  cuerpoEl.querySelectorAll("a[href]").forEach((a) => {
+    const href = a.getAttribute("href").trim();
+    if (!href) return;
+    const tieneEsquema = /^[a-z][a-z0-9+.-]*:/i.test(href);
+    const esInterna = href.startsWith("/") || href.startsWith("#") || href.startsWith("?");
+    if (!tieneEsquema && !esInterna) {
+      a.setAttribute("href", `https://${href}`);
+    }
+    const esExterna = !esInterna && (tieneEsquema ? /^https?:/i.test(href) : true);
+    if (esExterna) {
+      a.setAttribute("target", "_blank");
+      a.setAttribute("rel", "noopener noreferrer");
+    }
+  });
+}
+
+// Convierte los blockquote.twitter-tweet que haya en el cuerpo de la
+// noticia (insertados desde el panel con el botón "Tweet" del editor)
+// en la tarjeta visual real del tweet -texto, foto, likes, botón de
+// seguir...-. El HTML guardado es solo un enlace de respaldo (lo que ve
+// cualquiera sin JavaScript, o mientras carga); el script oficial de X
+// (widgets.js) es quien lo "hincha" al vuelo al detectar ese blockquote
+// en la página.
+// El script solo se pide la primera vez que hace falta (se reutiliza la
+// misma promesa en llamadas posteriores): si la noticia no tiene ningún
+// tweet incrustado, ni siquiera se llega a pedir, para no gastar una
+// petición de red de más en el resto de noticias.
+let SCRIPT_TWITTER_WIDGETS_CARGANDO = null;
+let SCRIPT_INSTAGRAM_EMBED_CARGANDO = null;
+function cargarWidgetsTwitterSiHaceFalta(cuerpoEl) {
+  if (!cuerpoEl || !cuerpoEl.querySelector("blockquote.twitter-tweet")) return;
+  if (window.twttr && window.twttr.widgets) {
+    // El script ya está cargado (p.ej. se cambió de idioma y el nuevo
+    // cuerpo también trae tweets): solo hay que pedirle que revise la
+    // página de nuevo, no volver a insertarlo.
+    window.twttr.widgets.load(cuerpoEl);
+    return;
+  }
+  if (!SCRIPT_TWITTER_WIDGETS_CARGANDO) {
+    SCRIPT_TWITTER_WIDGETS_CARGANDO = new Promise((resolve) => {
+      const script = document.createElement("script");
+      script.src = "https://platform.twitter.com/widgets.js";
+      script.async = true;
+      script.charset = "utf-8";
+      script.onload = resolve;
+      script.onerror = resolve; // si falla (p.ej. sin red), el enlace de respaldo se queda tal cual
+      document.body.appendChild(script);
+    });
+  }
+  SCRIPT_TWITTER_WIDGETS_CARGANDO.then(() => window.twttr?.widgets?.load(cuerpoEl));
+}
+
+// Igual que cargarWidgetsTwitterSiHaceFalta pero para los posts (o
+// reels) de Instagram incrustados desde el mismo botón "Añadir tweet o
+// post" del panel (ver admin.js, crearFilaTweet). Solo se pide el
+// script de Instagram si de verdad hay algún blockquote.instagram-media
+// en el cuerpo, para no gastar una petición de más en el resto de
+// noticias.
+function cargarWidgetsInstagramSiHaceFalta(cuerpoEl) {
+  if (!cuerpoEl || !cuerpoEl.querySelector("blockquote.instagram-media")) return;
+  if (window.instgrm && window.instgrm.Embeds) {
+    window.instgrm.Embeds.process(cuerpoEl);
+    return;
+  }
+  if (!SCRIPT_INSTAGRAM_EMBED_CARGANDO) {
+    SCRIPT_INSTAGRAM_EMBED_CARGANDO = new Promise((resolve) => {
+      const script = document.createElement("script");
+      script.src = "https://www.instagram.com/embed.js";
+      script.async = true;
+      script.onload = resolve;
+      script.onerror = resolve; // si falla (p.ej. sin red), el enlace de respaldo se queda tal cual
+      document.body.appendChild(script);
+    });
+  }
+  SCRIPT_INSTAGRAM_EMBED_CARGANDO.then(() => window.instgrm?.Embeds?.process(cuerpoEl));
+}
+
+function cargarEmbedsRedesSiHaceFalta(cuerpoEl) {
+  cargarWidgetsTwitterSiHaceFalta(cuerpoEl);
+  cargarWidgetsInstagramSiHaceFalta(cuerpoEl);
+}
+
+// Embed oficial de un tweet o post de Instagram incrustado en el cuerpo
+// de la noticia: mismo blockquote estándar de cada plataforma que
+// inserta el editor (ver crearFilaTweet en admin.js), envuelto en
+// .article-tweet para poder centrarlo y limitarle el ancho sin pelear
+// con el CSS que inyecta cada widget. cargarEmbedsRedesSiHaceFalta() se
+// encarga luego de convertir el blockquote en la tarjeta visual real.
+function tweetEmbedHTML(t) {
+  if (t.plataforma === "instagram") {
+    return `<div class="article-tweet"><blockquote class="instagram-media" data-instgrm-permalink="${escapeHtml(t.url)}" data-instgrm-version="14"></blockquote></div>`;
+  }
+  return `<div class="article-tweet"><blockquote class="twitter-tweet"><a href="${escapeHtml(t.url)}">${escapeHtml(t.url)}</a></blockquote></div>`;
+}
+
+// Distintos números de fotos por foto en una plantilla de collage (debe
+// coincidir con las clases .collage-<plantilla> de css/style.css).
+const FOTOS_POR_PLANTILLA_COLLAGE = { "2-horizontal": 2, "2-vertical": 2, "3-una-grande": 3, "3-fila": 3, "4-cuadricula": 4 };
+
+function collageHTML(fotos) {
+  const plantilla = fotos[0].plantilla || "2-horizontal";
+  return `
+    <div class="article-collage collage-${plantilla}">
+      ${fotos.slice(0, FOTOS_POR_PLANTILLA_COLLAGE[plantilla] || fotos.length).map((f) => `
+        <div class="article-collage-foto"><img src="${cloudinaryOptimizada(f.url, 700)}" alt="" loading="lazy" style="object-position:${f.foco || "50% 50%"}">${creditoFotoHTML(f)}</div>`).join("")}
+    </div>`;
+}
+
+// Agrupa las fotos de posición "collage" por su id de "grupo" (varias
+// fotos, mismo grupo = un único collage) y las convierte en un único
+// bloque, en el punto del texto marcado por la primera foto del grupo
+// (todas las de un mismo grupo comparten "trasParrafo" en la práctica,
+// ya que se eligen juntas en el editor).
+function agruparEnCollages(fotos) {
+  const grupos = new Map();
+  const orden = [];
+  fotos.forEach((f) => {
+    const clave = f.grupo || "collage-1";
+    if (!grupos.has(clave)) { grupos.set(clave, []); orden.push(clave); }
+    grupos.get(clave).push(f);
+  });
+  return orden.map((clave) => {
+    const fotosGrupo = grupos.get(clave);
+    return { trasParrafo: fotosGrupo[0].trasParrafo || 1, html: collageHTML(fotosGrupo) };
+  });
+}
+
+function construirCuerpoConFotos(deTexto, cuerpoOriginal) {
+  const personalizadas = deTexto.personalizada || [];
+  const collages = deTexto.collage || [];
+  const inicioSueltas = (deTexto.inicio || []).filter((f) => !f.grupo);
+  const inicioCollages = agruparEnCollages((deTexto.inicio || []).filter((f) => f.grupo));
+  const hayFotosEnTexto = inicioSueltas.length || inicioCollages.length || personalizadas.length || collages.length;
+  if (!hayFotosEnTexto) return cuerpoOriginal;
+
+  const fotoHTML = (f) =>
+    f.esTweet
+      ? tweetEmbedHTML(f)
+      : `<div class="article-img"><img src="${cloudinaryOptimizada(f.url, 780)}" alt="" loading="lazy" style="object-position:${f.foco || "50% 50%"}">${creditoFotoHTML(f)}</div>`;
+  const collagesAgrupados = agruparEnCollages(collages);
+  // Bloque a insertar al principio de todo: primero las fotos sueltas de
+  // "inicio" (comportamiento clásico), luego los collages marcados como
+  // "inicio" (un collage entero, no fotos sueltas).
+  const bloqueInicio = inicioSueltas.map(fotoHTML).join("") + inicioCollages.map((c) => c.html).join("");
+
+  const wrapTmp = document.createElement("div");
+  wrapTmp.innerHTML = cuerpoOriginal;
+  const bloques = [...wrapTmp.children].map((n) => n.outerHTML);
+  // Si el contenido no está hecho de bloques normales (caso raro: texto
+  // suelto sin párrafos), no se puede partir con garantías sin arriesgarse
+  // a perder texto; en ese caso las fotos "de texto" se colocan igualmente,
+  // pero antes/después de todo el cuerpo en vez de intercaladas, para no
+  // perder ni una palabra de la noticia.
+  if (bloques.join("").length < cuerpoOriginal.length * 0.9) {
+    const despues = personalizadas.map(fotoHTML).join("") + collagesAgrupados.map((c) => c.html).join("");
+    return bloqueInicio + cuerpoOriginal + despues;
+  }
+  // Las fotos con posición personalizada (y los collages) se insertan
+  // tras el número de párrafo elegido por quien escribe la noticia (1 =
+  // tras el primer bloque). Se agrupan por índice y se insertan de más
+  // al fondo hacia el principio para que los índices de las demás no se
+  // descuadren al ir añadiendo bloques.
+  const porIndice = new Map();
+  const anadirAIndice = (indice, html) => {
+    indice = Math.min(bloques.length, Math.max(1, indice));
+    if (!porIndice.has(indice)) porIndice.set(indice, []);
+    porIndice.get(indice).push(html);
+  };
+  personalizadas.forEach((f) => anadirAIndice(f.trasParrafo || 1, fotoHTML(f)));
+  collagesAgrupados.forEach((c) => anadirAIndice(c.trasParrafo, c.html));
+  [...porIndice.keys()].sort((a, b) => b - a).forEach((indice) => {
+    bloques.splice(indice, 0, porIndice.get(indice).join(""));
+  });
+  if (bloqueInicio) {
+    bloques.splice(0, 0, bloqueInicio);
+  }
+  return bloques.join("");
+}
+
+function textoArticuloEnIdioma(article, idioma) {
+  if (idioma === "es") {
+    return { titulo: article.titulo, subtitulo: article.subtitulo, contenido: article.contenido };
+  }
+  return {
+    titulo: article[`titulo_${idioma}`] || article.titulo,
+    subtitulo: article[`subtitulo_${idioma}`] || article.subtitulo,
+    contenido: article[`contenido_${idioma}`] || article.contenido,
+  };
+}
+
+function selectorIdiomaHTML(article) {
+  // En previsualización no hay "idiomas_disponibles" (no viene de la API
+  // tal cual), así que se calcula igual aquí a partir de los campos.
+  const disponibles = article.idiomas_disponibles || IDIOMAS_NOTICIA
+    .map((i) => i.cod)
+    .filter((cod) => cod === "es" || (article[`titulo_${cod}`] && article[`contenido_${cod}`]));
+
+  const botones = IDIOMAS_NOTICIA.map(({ cod, nombre }) => {
+    const disponible = disponibles.includes(cod);
+    return `<button type="button" class="idioma-noticia-btn${cod === IDIOMA_NOTICIA_ACTUAL ? " activo" : ""}" data-idioma="${cod}" ${disponible ? "" : "disabled"} title="${disponible ? nombre : nombre + ": disponible solo en castellano"}">${nombre}</button>`;
+  }).join("");
+
+  return `
+    <div class="selector-idioma-noticia">
+      ${botones}
+    </div>
+    <p class="aviso-idioma-noticia" style="display:none;"></p>
+  `;
+}
+
+function disponiblesDeArticulo(article) {
+  return article.idiomas_disponibles || IDIOMAS_NOTICIA
+    .map((i) => i.cod)
+    .filter((cod) => cod === "es" || (article[`titulo_${cod}`] && article[`contenido_${cod}`]));
+}
+
+function aplicarIdiomaNoticia(idioma, { actualizarUrl = true } = {}) {
+  if (!ARTICULO_ACTUAL) return;
+  IDIOMA_NOTICIA_ACTUAL = idioma;
+  const disponibles = disponiblesDeArticulo(ARTICULO_ACTUAL);
+  const disponible = disponibles.includes(idioma);
+  const idiomaAMostrar = disponible ? idioma : "es";
+  // Idioma REALMENTE mostrado (con el fallback a "es" ya aplicado si el
+  // pedido no estaba disponible), para el tracking de "idiomas más
+  // usados al leer una noticia" del panel de analíticas -- distinto de
+  // IDIOMA_NOTICIA_ACTUAL, que guarda el pedido tal cual (para que el
+  // selector marque el botón correcto aunque muestre el aviso de "no
+  // disponible, se muestra en castellano").
+  window.IDIOMA_NOTICIA_MOSTRADO = idiomaAMostrar;
+  if (typeof window.actualizarIdiomaTrackingLectura === "function") {
+    window.actualizarIdiomaTrackingLectura(idiomaAMostrar);
+  }
+  const textos = textoArticuloEnIdioma(ARTICULO_ACTUAL, idiomaAMostrar);
+
+  const tituloEl = document.querySelector(".article-header h1");
+  if (tituloEl) tituloEl.textContent = textos.titulo;
+  const subtituloEl = document.querySelector(".article-header .subtitulo");
+  if (subtituloEl) subtituloEl.textContent = textos.subtitulo || "";
+  const cuerpoEl = document.querySelector(".article-body");
+  if (cuerpoEl) {
+    // Las fotos de posición (inicio/personalizada) son las mismas en todos
+    // los idiomas -- solo cambia el texto -- así que se recalculan aquí
+    // igual que en el pintado inicial, para que no desaparezcan al
+    // cambiar de idioma.
+    const deTexto = FOTOS_DE_TEXTO_ACTUAL || { inicio: [], personalizada: [] };
+    cuerpoEl.innerHTML = construirCuerpoConFotos(deTexto, textos.contenido || "");
+    arreglarEnlacesCuerpo(cuerpoEl);
+    cargarEmbedsRedesSiHaceFalta(cuerpoEl);
+  }
+
+  document.querySelectorAll(".idioma-noticia-btn").forEach((b) => {
+    b.classList.toggle("activo", b.dataset.idioma === idioma);
+  });
+
+  const aviso = document.querySelector(".aviso-idioma-noticia");
+  if (aviso) {
+    if (!disponible) {
+      const nombreIdioma = (IDIOMAS_NOTICIA.find((i) => i.cod === idioma) || {}).nombre || idioma;
+      const nombresDisponibles = disponibles
+        .map((cod) => (IDIOMAS_NOTICIA.find((i) => i.cod === cod) || {}).nombre)
+        .filter(Boolean)
+        .join(", ");
+      aviso.textContent = `Esta noticia no está disponible en ${nombreIdioma}. Se muestra en castellano. Disponible en: ${nombresDisponibles}.`;
+      aviso.style.display = "block";
+    } else {
+      aviso.textContent = "";
+      aviso.style.display = "none";
+    }
+  }
+
+  // <html lang>, title, meta description, canonical, hreflang, og:locale
+  // y JSON-LD se recalculan enteros cada vez que cambia el idioma
+  // mostrado, no solo el título como antes.
+  if (!ES_PREVIEW) {
+    fijarSeoNoticia({
+      article: ARTICULO_ACTUAL,
+      idiomaActual: idiomaAMostrar,
+      disponibles,
+      textos,
+    });
+
+    // Refleja el idioma elegido en la URL (?lang=xx) para que la etiqueta
+    // hreflang de esa variante y la URL visible coincidan, sin recargar
+    // la página ni añadir una entrada nueva al historial por cada clic.
+    if (actualizarUrl) {
+      const params = new URLSearchParams(location.search);
+      if (idioma === "es") params.delete("lang");
+      else params.set("lang", idioma);
+      const nuevaUrl = `${location.pathname}?${params.toString()}`.replace(/\?$/, "");
+      history.replaceState(null, "", nuevaUrl);
+    }
+  }
+}
+
+// Pinta "· Editado el ..." junto a la fecha de publicación cuando la
+// noticia se ha actualizado después de publicarse. Se compara contra un
+// margen de 2 minutos (no una simple desigualdad de string) porque el
+// propio guardado inicial de la noticia en el backend puede dejar
+// updated_at unos segundos por delante de fecha_publicacion sin que
+// haya habido ninguna edición real después de publicar; sin ese margen,
+// toda noticia mostraría "editado" desde el mismo momento de publicarse.
+function fechaUltimaEdicionHTML(article) {
+  if (!article.updated_at || !article.fecha_publicacion) return "";
+  const publicada = new Date(String(article.fecha_publicacion).replace(" ", "T") + (/Z$|[+-]\d\d:\d\d$/.test(article.fecha_publicacion) ? "" : "Z"));
+  const editada = new Date(String(article.updated_at).replace(" ", "T") + (/Z$|[+-]\d\d:\d\d$/.test(article.updated_at) ? "" : "Z"));
+  if (isNaN(publicada) || isNaN(editada)) return "";
+  if (editada.getTime() - publicada.getTime() < 2 * 60 * 1000) return "";
+  return ` · <span class="fecha-editado">Editado el ${formatFechaConHora(article.updated_at)}</span>`;
+}
+
+// ---------- Noticias similares ----------
+// Sección al final de la noticia con otras noticias relacionadas, para
+// dar continuidad de lectura. "Relacionada" se define primero por club
+// (si la noticia tiene uno asignado, es el criterio más específico:
+// otras noticias del mismo equipo) y si no hay suficientes, se completa
+// con noticias de la misma categoría. Se piden de más (NOTICIAS_SIMILARES_POOL)
+// y se guardan en NOTICIAS_SIMILARES_POOL para poder "barajar" un
+// subconjunto distinto cada vez que el lector pulsa "Ver otras" sin
+// tener que volver a pedir nada al servidor.
+let NOTICIAS_SIMILARES_POOL = [];
+let NOTICIAS_SIMILARES_MOSTRADAS = [];
+
+async function cargarNoticiasSimilares(article) {
+  const cont = document.getElementById("noticiasSimilares");
+  if (!cont) return;
+  try {
+    const peticiones = [];
+    if (article.club) {
+      // "club" puede tener 1 o 2 nombres (ver parsearClubArticulo en
+      // config.js); se pide un lote de relacionadas por cada club para
+      // que una crónica con 2 equipos también traiga noticias del
+      // segundo, no solo del primero.
+      parsearClubArticulo(article.club).forEach((club) => {
+        peticiones.push(apiFetch(`/api/articles?club=${encodeURIComponent(club)}&limit=10`).then(r => r.json()).catch(() => ({ articles: [] })));
+      });
+    }
+    peticiones.push(apiFetch(`/api/articles?categoria=${encodeURIComponent(article.categoria)}&limit=10`).then(r => r.json()).catch(() => ({ articles: [] })));
+    const resultados = await Promise.all(peticiones);
+
+    // Se juntan ambas listas (club primero, más específica) quitando
+    // duplicados y la propia noticia que se está leyendo.
+    const vistos = new Set([article.id]);
+    const pool = [];
+    resultados.forEach((r) => {
+      (r.articles || []).forEach((a) => {
+        if (vistos.has(a.id)) return;
+        vistos.add(a.id);
+        pool.push(a);
+      });
+    });
+
+    if (!pool.length) { cont.innerHTML = ""; return; }
+    NOTICIAS_SIMILARES_POOL = pool;
+    pintarNoticiasSimilares();
+    // ItemList con las relacionadas ayuda a Google a entender el enlazado
+    // interno alrededor de esta noticia (no es tan crítico como el
+    // NewsArticle/BreadcrumbList, pero es gratis tenerlo ya con los datos
+    // que se acaban de pedir). Se limita a las primeras 6 del pool, no
+    // solo a las 3 que se ven ahora mismo, para no tener que
+    // reconstruirlo cada vez que se pulsa "Ver otras".
+    _seoInsertarJsonLd("seo-jsonld-relacionadas", {
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      "name": "Noticias relacionadas",
+      "itemListElement": pool.slice(0, 6).map((a, i) => ({
+        "@type": "ListItem",
+        "position": i + 1,
+        "url": _seoUrlAbsoluta(urlNoticia(a.categoria, a.slug)),
+      })),
+    });
+  } catch (err) {
+    cont.innerHTML = "";
+  }
+}
+
+// Elige hasta 3 noticias al azar del pool (sin repetir las que ya se
+// estén mostrando, mientras el pool dé para ello) y las pinta. Se llama
+// tanto al cargar la página como cada vez que se pulsa "Ver otras".
+function pintarNoticiasSimilares() {
+  const cont = document.getElementById("noticiasSimilares");
+  if (!cont || !NOTICIAS_SIMILARES_POOL.length) return;
+
+  const disponibles = NOTICIAS_SIMILARES_POOL.filter((a) => !NOTICIAS_SIMILARES_MOSTRADAS.includes(a.id));
+  const candidatas = disponibles.length >= 3 ? disponibles : NOTICIAS_SIMILARES_POOL;
+  const elegidas = [...candidatas].sort(() => Math.random() - 0.5).slice(0, 3);
+  NOTICIAS_SIMILARES_MOSTRADAS = elegidas.map((a) => a.id);
+
+  const hayMasDeTres = NOTICIAS_SIMILARES_POOL.length > 3;
+  cont.innerHTML = `
+    <div class="similares-cabecera">
+      <h2 class="section-title" style="margin:0;">Noticias similares</h2>
+      ${hayMasDeTres ? `<button type="button" class="btn-ver-otras-similares" onclick="pintarNoticiasSimilares()">Ver otras ↻</button>` : ""}
+    </div>
+    <div class="grid-noticias grid-similares">
+      ${elegidas.map(cardSimilarHTML).join("")}
+    </div>`;
+}
+
+// Igual que el fallback de main.js: si un artículo solo tiene collage
+// (sin ninguna imagen "normal" marcada como portada), imagen_url puede
+// venir vacío. Para no mostrar el placeholder por defecto en "Noticias
+// similares" habiendo fotos reales, se usa la primera foto del primer
+// collage guardado en "imagenes".
+function imagenPreviewCollage(a) {
+  try {
+    const imagenes = typeof a.imagenes === "string" ? JSON.parse(a.imagenes) : (a.imagenes || []);
+    // Cada foto de collage es una entrada suelta dentro del array
+    // "imagenes" (no van anidadas), identificable por tener "grupo" sea
+    // cual sea su posición (inicio/collage/galería) — ver
+    // collagesArticuloAImagenes() en admin.js.
+    const fotoCollage = imagenes.find((v) => v && typeof v === "object" && v.grupo && v.url);
+    return fotoCollage ? fotoCollage.url : "";
+  } catch {
+    return "";
+  }
+}
+
+function cardSimilarHTML(a) {
+  const urlImagen = a.imagen_url || imagenPreviewCollage(a);
+  const img = urlImagen || "img/default.jpg";
+  const foco = a.imagen_foco || "50% 50%";
+  return `
+    <a class="card" href="${urlNoticia(a.categoria, a.slug)}">
+      <img src="${img}" alt="${escapeHtml(a.titulo)}" loading="lazy" style="object-position:${foco}" onerror="this.src='img/default.jpg'">
+      <div class="cbody">
+        <span class="cat">${categoriaLabel(a.categoria)}${clubArticuloLegible(a.club) ? " · " + escapeHtml(clubArticuloLegible(a.club)) : ""}</span>
+        <h3>${escapeHtml(a.titulo)}</h3>
+        <p>${escapeHtml(resumText(a.subtitulo || a.contenido, 100))}</p>
+        <span class="meta">${formatFecha(a.fecha_publicacion)}</span>
+      </div>
+    </a>`;
+}
+
+// Activa/inicializa la barra de progreso de lectura una sola vez (aunque
+// renderizaArticulo() se llame varias veces, p. ej. al recibir una
+// actualización en vivo por BroadcastChannel en modo preview). Calcula el
+// % en base al propio <main id="contenidoArticulo">, no a la página
+// entera, para que el progreso llegue a 100% justo al terminar el
+// artículo y no se quede corto por el footer/comentarios de debajo.
+function iniciarBarraProgresoLectura() {
+  const barra = document.getElementById("barraProgresoLectura");
+  const relleno = document.getElementById("barraProgresoLecturaRelleno");
+  // Solo el cuerpo de texto del artículo (".article-body"): ni la
+  // cabecera (foto/título/meta) ni lo que va después (galería final,
+  // tweets sueltos, encuesta, comentarios, "más noticias"...) cuentan
+  // para el progreso -- la barra debe llegar al 100% justo al acabar de
+  // leer el texto, no al llegar al final de toda la página.
+  const cuerpo = document.querySelector(".article-body");
+  if (!barra || !relleno || !cuerpo) return;
+  barra.classList.add("activa");
+
+  let actualizarProgramado = false;
+  function actualizar() {
+    actualizarProgramado = false;
+    const inicio = cuerpo.offsetTop;
+    const alturaCuerpo = cuerpo.offsetHeight;
+    const finLectura = inicio + alturaCuerpo - window.innerHeight;
+    const recorrido = window.scrollY - inicio;
+    let porcentaje = finLectura > inicio ? (recorrido / (finLectura - inicio)) * 100 : 100;
+    porcentaje = Math.max(0, Math.min(100, Math.round(porcentaje)));
+    relleno.style.width = porcentaje + "%";
+  }
+  function pedirActualizacion() {
+    if (actualizarProgramado) return;
+    actualizarProgramado = true;
+    requestAnimationFrame(actualizar);
+  }
+
+  // Evita reenganchar los listeners globales si ya se había iniciado
+  // antes (caso preview con varias actualizaciones por BroadcastChannel).
+  if (!window._barraProgresoLecturaListo) {
+    window.addEventListener("scroll", pedirActualizacion, { passive: true });
+    window.addEventListener("resize", pedirActualizacion, { passive: true });
+    window._barraProgresoLecturaListo = true;
+  }
+
+  // Las fotos DENTRO del cuerpo cargan en lazy y pueden cambiar su altura
+  // real bastante después del primer cálculo: se recalcula al ir
+  // terminando de cargar cada una para que la barra no se quede corta o
+  // llegue al 100% antes de tiempo. Las fotos de la galería final quedan
+  // fuera a propósito (no forman parte de ".article-body").
+  cuerpo.querySelectorAll("img").forEach((img) => {
+    if (img.complete) return;
+    img.addEventListener("load", pedirActualizacion, { once: true });
+  });
+
+  actualizar();
+}
+
+function renderizaArticulo(article) {
+  const cont = document.getElementById("contenidoArticulo");
+  ARTICULO_ACTUAL = article;
+  // El resto de páginas del sitio marcan en el <body> a qué sección del
+  // menú superior pertenecen (data-page="calendario", "inicio"...) y
+  // renderHeader() usa justo ese atributo para resaltar el ítem activo
+  // (fondo celeste + borde inferior). noticia.html es la única página
+  // que no lo llevaba fijo en el HTML porque su sección depende de la
+  // categoría del artículo, que no se conoce hasta que llega de la API:
+  // por eso el menú se veía "plano", sin nada resaltado, a diferencia
+  // del resto de la web. Se fija aquí en cuanto se conoce la categoría
+  // y se repinta el header para que el resaltado se aplique.
+  if (article.categoria) {
+    document.body.dataset.page = article.categoria;
+    const headerEl = document.getElementById("site-header");
+    if (headerEl && typeof renderHeader === "function") {
+      headerEl.innerHTML = renderHeader();
+      if (typeof pintarFechaHoy === "function") pintarFechaHoy();
+      if (typeof reengancharMenu === "function") reengancharMenu();
+      if (typeof inicializarBusquedaEnVivo === "function") inicializarBusquedaEnVivo();
+    }
+  }
+  // Si se entra con ?lang=xx (por ejemplo desde un resultado de búsqueda
+  // que apuntaba a la variante hreflang de ese idioma), se respeta como
+  // idioma inicial; si no está disponible, aplicarIdiomaNoticia hará el
+  // fallback a castellano igualmente.
+  const idiomaUrl = new URLSearchParams(location.search).get("lang");
+  IDIOMA_NOTICIA_ACTUAL = (idiomaUrl && IDIOMAS_NOTICIA.some((i) => i.cod === idiomaUrl)) ? idiomaUrl : "es";
+  try {
+
+    // Fotos: cada una (salvo la portada, que siempre se muestra arriba del
+    // todo) lleva guardada la posición donde debe aparecer dentro de la
+    // noticia ("inicio"/"medio"/"final" del texto, o "galeria" al final)
+    // y el punto que no se debe recortar nunca ("foco"). Se admite también
+    // el formato antiguo (solo URLs, sin posición ni foco) para las
+    // noticias guardadas antes de tener este control.
+    const normalizarImagen = (img) =>
+      typeof img === "string" ? { url: img, posicion: "galeria", foco: "50% 50%" } : img;
+    const imagenesArticulo = (Array.isArray(article.imagenes) ? article.imagenes : []).map(normalizarImagen);
+    // Los tweets incrustados viven en el mismo array que las fotos (ver
+    // normalizarImagenes en el worker), marcados con tipo:"tweet"; se
+    // separan aquí para no tratarlos como una foto más (no tienen foco,
+    // no entran en collages ni en la galería visual de fotos).
+    const tweetsArticulo = imagenesArticulo.filter((v) => v && v.tipo === "tweet");
+    const galeria = imagenesArticulo.filter((v) => !(v && v.tipo === "tweet"));
+    const portadaUrl = article.imagen_url || (galeria[0] && galeria[0].url) || "";
+
+    // La portada siempre existe como foto (tarjetas, hero por defecto...) y
+    // debe mostrarse siempre como la foto grande de cabecera, arriba del
+    // todo. Si no aparece ya en el array con una posición propia, se añade
+    // como "cabecera" para no perderla (fallback antiguo). Pero si SÍ
+    // aparece en el array y su posición es "galeria" (el valor por defecto
+    // al subir una foto, o el que arrastran noticias/collages antiguos),
+    // antes se dejaba tal cual: como esa foto ya "estaba en el array", no
+    // se la marcaba como cabecera, así que fotoHTML.posicion seguía siendo
+    // "galeria" y la portada acababa mezclada dentro de la galería inferior
+    // (posiblemente MÁS DE UNA vez si además de portada era la primera
+    // galeria[0]) en vez de destacada arriba, y la cabecera se quedaba
+    // vacía -aunque la noticia sí tuviera fotos guardadas, arriba no se
+    // veía ninguna-. Se reescribe aquí su posición a "cabecera" (sin
+    // moverla de sitio en el array, solo cambiar cómo se clasifica más
+    // abajo) para que la portada sea SIEMPRE la foto de cabecera, tenga la
+    // posición que tenga guardada, salvo que el redactor la haya puesto a
+    // propósito dentro del texto ("inicio"/"personalizada"), caso en el
+    // que ya tiene sentido propio ahí y no se toca.
+    let fotos = galeria.map((f) => {
+      if (f.url === portadaUrl && f.posicion !== "inicio" && f.posicion !== "personalizada") {
+        return { ...f, posicion: "cabecera" };
+      }
+      return f;
+    });
+    if (portadaUrl && !fotos.some((f) => f.url === portadaUrl)) {
+      fotos = [{ url: portadaUrl, posicion: "cabecera", foco: "50% 50%" }, ...fotos];
+    }
+
+    const fotoHTML = (f) =>
+      `<div class="article-img"><img src="${f.url}" alt="${escapeHtml(article.titulo)}" loading="lazy" style="object-position:${f.foco || "50% 50%"}"></div>`;
+
+    const cabecera = fotos.filter((f) => f.posicion === "cabecera");
+    const deTexto = { inicio: [], personalizada: [], collage: [] };
+    fotos.forEach((f) => {
+      // Las noticias antiguas guardadas con "medio" o "final" se siguen
+      // mostrando dentro del texto, tratándolas como personalizadas.
+      const posicion = (f.posicion === "medio" || f.posicion === "final") ? "personalizada" : f.posicion;
+      if (deTexto[posicion]) deTexto[posicion].push(f);
+    });
+    const deGaleriaTodas = fotos.filter((f) => f.posicion === "galeria");
+    const deGaleriaCollages = agruparEnCollages(deGaleriaTodas.filter((f) => f.grupo));
+    const deGaleria = deGaleriaTodas.filter((f) => !f.grupo);
+
+    // Tweets: mismo esquema de posición que las fotos ("inicio"/
+    // "personalizada" se intercalan en el texto; "galeria" para un tweet
+    // no significa carrusel de fotos, sino "al final del cuerpo", justo
+    // antes de la galería de imágenes si la hay.
+    const tweetsDeTexto = { inicio: [], personalizada: [] };
+    const tweetsAlFinal = [];
+    tweetsArticulo.forEach((t) => {
+      if (tweetsDeTexto[t.posicion]) tweetsDeTexto[t.posicion].push(t);
+      else tweetsAlFinal.push(t);
+    });
+    deTexto.inicio = (deTexto.inicio || []).concat(tweetsDeTexto.inicio.map((t) => ({ ...t, esTweet: true })));
+    deTexto.personalizada = (deTexto.personalizada || []).concat(tweetsDeTexto.personalizada.map((t) => ({ ...t, esTweet: true })));
+
+    // Se guarda para poder recalcular el cuerpo al cambiar de idioma (las
+    // fotos y tweets de posición son los mismos en todos los idiomas,
+    // solo cambia el texto que se intercala entre ellos).
+    FOTOS_DE_TEXTO_ACTUAL = deTexto;
+
+    const cuerpoOriginal = article.contenido || "";
+    const cuerpoConFotos = construirCuerpoConFotos(deTexto, cuerpoOriginal);
+    const tweetsAlFinalHTML = tweetsAlFinal.map(tweetEmbedHTML).join("");
+
+    cont.innerHTML = `
+      <div class="article-header">
+        <span class="cat">${categoriaLabel(article.categoria)}${clubArticuloLegible(article.club) ? " · " + escapeHtml(clubArticuloLegible(article.club)) : ""}</span>
+        ${Array.isArray(article.categorias_adicionales) && article.categorias_adicionales.length ? `
+        <div class="cats-adicionales">
+          ${article.categorias_adicionales.map((c) => `<span class="cat-adicional">${categoriaLabel(c)}</span>`).join("")}
+        </div>` : ""}
+        <h1>${escapeHtml(article.titulo)}</h1>
+        ${article.subtitulo ? `<p class="subtitulo">${escapeHtml(article.subtitulo)}</p>` : ""}
+        <p class="meta">${formatFecha(article.fecha_publicacion)}${fechaUltimaEdicionHTML(article)}${article.autor_nombre ? " · Por " + (article.autor_id ? `<a class="autor-link" href="autor.html?id=${article.autor_id}">${escapeHtml(article.autor_nombre)}</a>` : escapeHtml(article.autor_nombre)) + (article.coautor_nombre ? " y " + (article.coautor_id ? `<a class="autor-link" href="autor.html?id=${article.coautor_id}">${escapeHtml(article.coautor_nombre)}</a>` : escapeHtml(article.coautor_nombre)) : "") : ""}</p>
+      </div>
+      ${selectorIdiomaHTML(article)}
+      ${cabecera.length ? `
+        <div class="article-img">
+          <img id="fotoPrincipal" src="${cloudinaryOptimizada(cabecera[0].url, 900)}" alt="${escapeHtml(article.titulo)}" style="object-position:${cabecera[0].foco || "50% 50%"}">
+          ${creditoFotoHTML(cabecera[0])}
+        </div>` : ""}
+      ${article.resultado ? marcadorArticuloHTML({ ...article.resultado, alineaciones: article.alineaciones }) : ""}
+      <div class="article-body">${cuerpoConFotos}</div>
+      ${tweetsAlFinalHTML}
+      ${deGaleriaCollages.length ? `
+        <div class="article-galeria-collages">
+          ${deGaleriaCollages.map((c) => c.html).join("")}
+        </div>` : ""}
+      ${deGaleria.length ? `
+        <div class="article-galeria">
+          <p class="article-galeria-titulo">Galería<span class="contador-galeria" id="galeriaContadorTitulo">1 / ${deGaleria.length}</span></p>
+          <div class="article-galeria-principal">
+            ${deGaleria.length > 1 ? `<button type="button" class="article-galeria-flecha prev" id="galeriaPrev" aria-label="Foto anterior">&#10094;</button>` : ""}
+            <img id="fotoGaleriaPrincipal" src="${cloudinaryOptimizada(deGaleria[0].url, 900)}" alt="Foto 1" style="object-position:${deGaleria[0].foco || "50% 50%"}" onload="this.classList.add('cargada')">
+            ${deGaleria.length > 1 ? `<button type="button" class="article-galeria-flecha next" id="galeriaNext" aria-label="Foto siguiente">&#10095;</button>` : ""}
+            ${deGaleria.length > 1 ? `<span class="article-galeria-contador-flotante" id="galeriaContadorFlotante">1 / ${deGaleria.length}</span>` : ""}
+          </div>
+          <span id="galeriaCreditoActual" class="credito-foto credito-foto-galeria">${deGaleria[0].credito ? escapeHtml(deGaleria[0].credito) : ""}</span>
+          <div class="miniaturas" id="miniaturasGaleria">
+            ${deGaleria.map((f, i) => `<img src="${cloudinaryOptimizada(f.url, 140)}" alt="Foto ${i + 1}" loading="lazy" class="${i === 0 ? "activa" : ""}" data-src="${cloudinaryOptimizada(f.url, 900)}" data-foco="${f.foco || "50% 50%"}" data-credito="${f.credito ? escapeHtml(f.credito) : ""}">`).join("")}
+          </div>
+        </div>` : ""}
+      ${article.tipo === "cronica" ? fichaTecnicaArticuloHTML(article.ficha_tecnica) : ""}
+      <div id="ad-final-noticia">${adSlot("noticia_final")}</div>
+      ${compartirArticuloHTML(article)}
+      ${article.id ? `<div id="encuestaArticuloWrap"></div>` : ""}
+      ${!ES_PREVIEW && article.id ? seccionComentariosHTML() : ""}
+      <section id="noticiasSimilares" class="noticias-similares"></section>
+    `;
+
+    // "cont" entero, no solo ".article-body": los tweets/posts con
+    // posición "galería final" se insertan justo después del cuerpo, como
+    // hermanos de .article-body, no dentro.
+    cargarEmbedsRedesSiHaceFalta(cont);
+    cargarNoticiasSimilares(article);
+    if (article.id) cargarEncuestaNoticia(article.id);
+    if (typeof initAds === "function") initAds();
+    if (!ES_PREVIEW && article.id) iniciarComentarios(article.id);
+    revelarBotonCompartirNativo();
+
+    const selectorIdioma = document.querySelector(".selector-idioma-noticia");
+    if (selectorIdioma) {
+      selectorIdioma.addEventListener("click", (e) => {
+        const btn = e.target.closest(".idioma-noticia-btn");
+        if (!btn || btn.disabled) return;
+        aplicarIdiomaNoticia(btn.dataset.idioma);
+      });
+    }
+
+    const fotoPrincipal = document.getElementById("fotoPrincipal");
+
+    // Galería final: foto grande con flechas prev/next, contador y tira de
+    // miniaturas sincronizada, en vez de solo un grid de miniaturas suelto.
+    const miniaturas = document.getElementById("miniaturasGaleria");
+    const fotoGaleria = document.getElementById("fotoGaleriaPrincipal");
+    if (miniaturas && fotoGaleria) {
+      const imgsMini = [...miniaturas.querySelectorAll("img[data-src]")];
+      const contadorTitulo = document.getElementById("galeriaContadorTitulo");
+      const contadorFlotante = document.getElementById("galeriaContadorFlotante");
+      let indiceGaleria = 0;
+
+      function mostrarFotoGaleria(i) {
+        indiceGaleria = (i + imgsMini.length) % imgsMini.length;
+        const img = imgsMini[indiceGaleria];
+        fotoGaleria.classList.remove("cargada");
+        fotoGaleria.src = img.dataset.src;
+        fotoGaleria.alt = img.alt;
+        fotoGaleria.style.objectPosition = img.dataset.foco || "50% 50%";
+        imgsMini.forEach((m) => m.classList.remove("activa"));
+        img.classList.add("activa");
+        img.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
+        const texto = `${indiceGaleria + 1} / ${imgsMini.length}`;
+        if (contadorTitulo) contadorTitulo.textContent = texto;
+        if (contadorFlotante) contadorFlotante.textContent = texto;
+        const creditoActual = document.getElementById("galeriaCreditoActual");
+        if (creditoActual) creditoActual.textContent = img.dataset.credito || "";
+      }
+
+      miniaturas.addEventListener("click", (e) => {
+        const img = e.target.closest("img[data-src]");
+        if (!img) return;
+        mostrarFotoGaleria(imgsMini.indexOf(img));
+      });
+
+      const btnPrev = document.getElementById("galeriaPrev");
+      const btnNext = document.getElementById("galeriaNext");
+      if (btnPrev) btnPrev.addEventListener("click", () => mostrarFotoGaleria(indiceGaleria - 1));
+      if (btnNext) btnNext.addEventListener("click", () => mostrarFotoGaleria(indiceGaleria + 1));
+    }
+
+    // Pinta el título/subtítulo/cuerpo en el idioma inicial (el pedido por
+    // ?lang= si estaba disponible, si no castellano) y con ello fija todo
+    // el SEO (lang, meta, hreflang, og:locale, JSON-LD). No se toca la URL
+    // aquí: si ya traía ?lang=xx se deja como está, y si no llevaba nada
+    // no hace falta añadir "?lang=es" por defecto.
+    aplicarIdiomaNoticia(IDIOMA_NOTICIA_ACTUAL, { actualizarUrl: false });
+
+    // Barra de % leído: se activa aquí, ya con el artículo pintado en el
+    // DOM (fotos/tweets incluidos), para que offsetHeight refleje la
+    // altura real del artículo y no la de "Cargando...".
+    iniciarBarraProgresoLectura();
+  } catch (err) {
+    cont.innerHTML = estadoHTML({
+      titulo: "No se ha podido cargar la noticia",
+      texto: "Puede que la noticia ya no exista o que haya un problema de conexión. Vuelve a la portada e inténtalo de nuevo.",
+      tipo: "error",
+      cta: `<a href="index.html" class="btn-volver">Ir a portada</a>`,
+    });
+  }
+}
+// ---------- Encuesta de la noticia (si tiene una vinculada) ----------
+async function cargarEncuestaNoticia(articleId) {
+  const wrap = document.getElementById("encuestaArticuloWrap");
+  if (!wrap) return;
+  try {
+    const res = await apiFetchLector(`/api/articles/${articleId}/poll`);
+    const { encuesta } = await res.json();
+    if (!encuesta) { wrap.remove(); return; }
+    pintarEncuesta(wrap, encuesta, "");
+  } catch (err) {
+    // Si falla, simplemente no se muestra la encuesta: no es contenido
+    // crítico de la noticia como para mostrar un aviso de error aparte.
+    wrap.remove();
+  }
+}
+
+// ---------- Comentarios de lectores ----------
+function seccionComentariosHTML() {
+  return `
+    <section class="comentarios-seccion" id="comentariosSeccion">
+      <p class="comentarios-titulo">Comentarios<span class="comentarios-contador" id="comentariosContador"></span></p>
+
+      <div id="accesoLectorWrap">${accesoLectorHTML()}</div>
+
+      <form id="formComentario" class="form-comentario">
+        <div class="form-comentario-fila" id="filaDatosComentario">
+          <div class="form-comentario-campo">
+            <label for="comentarioNombre">Nombre</label>
+            <input type="text" id="comentarioNombre" placeholder="Tu nombre" maxlength="80" required>
+          </div>
+          <div class="form-comentario-campo">
+            <label for="comentarioEmail">Email</label>
+            <input type="email" id="comentarioEmail" placeholder="No se publica" maxlength="160" required>
+          </div>
+        </div>
+        <div class="form-comentario-campo">
+          <label for="comentarioTexto">Comentario</label>
+          <textarea id="comentarioTexto" placeholder="Escribe tu comentario..." maxlength="2000" required></textarea>
+        </div>
+        <div class="form-comentario-pie">
+          <p class="comentario-ayuda">Se publicará en cuanto lo revise la redacción.</p>
+          <button type="submit" class="btn-enviar-comentario">Enviar comentario</button>
+        </div>
+        <p id="comentarioOk" class="comentario-msg comentario-msg-ok"></p>
+        <p id="comentarioError" class="comentario-msg comentario-msg-error"></p>
+      </form>
+
+      <div id="listaComentarios" class="lista-comentarios"><div class="spinner"></div></div>
+    </section>`;
+}
+
+// Identificador anónimo del visitante para votos/denuncias: no es una
+// cuenta, solo evita votar/denunciar dos veces el mismo comentario desde
+// el mismo navegador. Se genera una vez y se guarda en localStorage.
+function idVotanteComentarios() {
+  const CLAVE = "eof_votante_id";
+  let id = localStorage.getItem(CLAVE);
+  if (!id) {
+    id = (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    localStorage.setItem(CLAVE, id);
+  }
+  return id;
+}
+
+function votoActualComentario(id) {
+  try {
+    return JSON.parse(localStorage.getItem("eof_votos_comentarios") || "{}")[id] || 0;
+  } catch { return 0; }
+}
+function guardarVotoComentario(id, valor) {
+  let votos = {};
+  try { votos = JSON.parse(localStorage.getItem("eof_votos_comentarios") || "{}"); } catch {}
+  if (valor === 0) delete votos[id]; else votos[id] = valor;
+  localStorage.setItem("eof_votos_comentarios", JSON.stringify(votos));
+}
+function comentarioYaDenunciado(id) {
+  try {
+    return (JSON.parse(localStorage.getItem("eof_denuncias_comentarios") || "[]")).includes(id);
+  } catch { return false; }
+}
+function marcarComentarioDenunciado(id) {
+  let lista = [];
+  try { lista = JSON.parse(localStorage.getItem("eof_denuncias_comentarios") || "[]"); } catch {}
+  if (!lista.includes(id)) lista.push(id);
+  localStorage.setItem("eof_denuncias_comentarios", JSON.stringify(lista));
+}
+
+function comentarioItemHTML(c) {
+  const inicial = (c.nombre || "?").trim().charAt(0);
+  const votoActual = votoActualComentario(c.id);
+  const denunciado = comentarioYaDenunciado(c.id);
+  const insigniaVerificado = c.reader_id ? `<span class="comentario-verificado" title="Cuenta verificada"><svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M12 2l2.4 2.3 3.2-.6 1 3.1 3.1 1-.6 3.2L23.4 13l-2.3 2.4.6 3.2-3.1 1-1 3.1-3.2-.6L12 24l-2.4-2.3-3.2.6-1-3.1-3.1-1 .6-3.2L.6 13l2.3-2.4-.6-3.2 3.1-1 1-3.1 3.2.6z"/><path d="M8.5 12.3l2.4 2.4 4.6-4.7" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>` : "";
+  return `
+    <div class="comentario-item" data-comentario-id="${c.id}">
+      <div class="comentario-avatar">${escapeHtml(inicial)}</div>
+      <div class="comentario-cuerpo">
+        <div class="comentario-cabecera">
+          <span class="comentario-autor">${escapeHtml(c.nombre)}${insigniaVerificado}</span>
+          <span class="comentario-fecha">${formatFecha(c.created_at)}</span>
+        </div>
+        <p class="comentario-texto">${escapeHtml(c.texto)}</p>
+        <div class="comentario-acciones">
+          <button type="button" class="comentario-voto comentario-voto-like${votoActual === 1 ? " activo" : ""}" data-voto="1" title="Me gusta">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 22V11m0 11H4a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1h3m3 0h6.31a2 2 0 0 1 1.98 2.28l-.7 5a2 2 0 0 1-1.98 1.72H10m3-11V6a2 2 0 0 0-4 0v1a3 3 0 0 1-3 3"/></svg>
+            <span class="comentario-voto-num">${c.likes || 0}</span>
+          </button>
+          <button type="button" class="comentario-voto comentario-voto-dislike${votoActual === -1 ? " activo" : ""}" data-voto="-1" title="No me gusta">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 2v11m0-11h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-3m-3 0H7.69a2 2 0 0 1-1.98-2.28l.7-5a2 2 0 0 1 1.98-1.72H14v11z"/></svg>
+            <span class="comentario-voto-num">${c.dislikes || 0}</span>
+          </button>
+          <button type="button" class="comentario-denunciar${denunciado ? " activo" : ""}" ${denunciado ? "disabled" : ""}>
+            ${denunciado ? "Denunciado" : "Denunciar"}
+          </button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function iniciarComentarios(articleId) {
+  const lista = document.getElementById("listaComentarios");
+  const contador = document.getElementById("comentariosContador");
+
+  iniciarBotonCerrarSesionLector();
+
+  // Si hay sesión de lector, ya no hace falta pedir nombre/email a mano
+  // en cada comentario: se ocultan esos dos campos y se rellenan solos
+  // con los datos ya verificados de la cuenta.
+  const lector = sesionLectorActual();
+  if (lector) {
+    const fila = document.getElementById("filaDatosComentario");
+    if (fila) fila.style.display = "none";
+    const campoNombre = document.getElementById("comentarioNombre");
+    const campoEmail = document.getElementById("comentarioEmail");
+    if (campoNombre) { campoNombre.value = lector.nombre; campoNombre.required = false; }
+    if (campoEmail) { campoEmail.value = lector.email; campoEmail.required = false; }
+  }
+
+  async function cargarComentarios() {
+    try {
+      const res = await apiFetch(`/api/articles/${articleId}/comments`);
+      const { comentarios = [] } = await res.json();
+      contador.textContent = comentarios.length ? ` (${comentarios.length})` : "";
+      lista.innerHTML = comentarios.length
+        ? comentarios.map(comentarioItemHTML).join("")
+        : `<p class="comentarios-vacio">Sé el primero en comentar esta noticia.</p>`;
+    } catch (err) {
+      lista.innerHTML = `<p class="comentarios-vacio">No se han podido cargar los comentarios.</p>`;
+    }
+  }
+
+  lista.addEventListener("click", async (e) => {
+    const item = e.target.closest(".comentario-item");
+    if (!item) return;
+    const comentarioId = parseInt(item.dataset.comentarioId);
+
+    const btnVoto = e.target.closest(".comentario-voto");
+    if (btnVoto) {
+      const valorClic = parseInt(btnVoto.dataset.voto);
+      const valorPrevio = votoActualComentario(comentarioId);
+      const nuevoValor = valorPrevio === valorClic ? 0 : valorClic;
+      btnVoto.disabled = true;
+      try {
+        const res = await apiFetch(`/api/comments/${comentarioId}/vote`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ votanteId: idVotanteComentarios(), valor: nuevoValor }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "No se ha podido votar");
+        guardarVotoComentario(comentarioId, nuevoValor);
+        item.querySelector(".comentario-voto-like .comentario-voto-num").textContent = data.likes || 0;
+        item.querySelector(".comentario-voto-dislike .comentario-voto-num").textContent = data.dislikes || 0;
+        item.querySelector(".comentario-voto-like").classList.toggle("activo", nuevoValor === 1);
+        item.querySelector(".comentario-voto-dislike").classList.toggle("activo", nuevoValor === -1);
+      } catch (err) {
+        // silencioso: un fallo al votar no debe interrumpir la lectura
+      } finally {
+        btnVoto.disabled = false;
+      }
+      return;
+    }
+
+    const btnDenunciar = e.target.closest(".comentario-denunciar");
+    if (btnDenunciar && !btnDenunciar.disabled) {
+      if (!confirm("¿Denunciar este comentario para que la redacción lo revise?")) return;
+      btnDenunciar.disabled = true;
+      try {
+        const res = await apiFetch(`/api/comments/${comentarioId}/report`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ votanteId: idVotanteComentarios() }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "No se ha podido denunciar");
+        marcarComentarioDenunciado(comentarioId);
+        btnDenunciar.textContent = "Denunciado";
+        btnDenunciar.classList.add("activo");
+      } catch (err) {
+        btnDenunciar.disabled = false;
+        alert(err.message);
+      }
+    }
+  });
+
+  const form = document.getElementById("formComentario");
+  const msgOk = document.getElementById("comentarioOk");
+  const msgErr = document.getElementById("comentarioError");
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    msgOk.style.display = "none";
+    msgErr.style.display = "none";
+    const nombre = document.getElementById("comentarioNombre").value.trim();
+    const email = document.getElementById("comentarioEmail").value.trim();
+    const texto = document.getElementById("comentarioTexto").value.trim();
+    const btn = form.querySelector(".btn-enviar-comentario");
+    btn.disabled = true;
+    try {
+      const lectorActual = sesionLectorActual();
+      const headers = { "Content-Type": "application/json" };
+      if (lectorActual) headers.Authorization = `Bearer ${tokenLectorActual()}`;
+      const res = await apiFetch(`/api/articles/${articleId}/comments`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ nombre, email, texto }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "No se ha podido enviar el comentario");
+      msgOk.textContent = data.mensaje || "Comentario enviado. Gracias por participar.";
+      msgOk.style.display = "block";
+      form.reset();
+    } catch (err) {
+      msgErr.textContent = err.message;
+      msgErr.style.display = "block";
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  cargarComentarios();
+}
+
+document.addEventListener("DOMContentLoaded", cargaArticulo);
+</script>
+<style>
+  /* ---- Barra de porcentaje leído (en vivo) ---- */
+  /* Fija bajo el header, se rellena de 0 a 100% según cuánto se ha
+     scrolleado del artículo. Solo tiene sentido mientras se lee una
+     noticia real, así que se oculta en preview, en estados de error y en
+     la cuenta atrás de una noticia programada (ver JS: solo se activa
+     dentro de renderizaArticulo). */
+  .barra-progreso-lectura{
+    position:sticky;top:0;left:0;width:100%;height:3px;
+    background:transparent;z-index:500;pointer-events:none;
+    opacity:0;transition:opacity .25s ease;
+  }
+  .barra-progreso-lectura.activa{opacity:1;}
+  .barra-progreso-lectura-relleno{
+    height:100%;width:0%;
+    background:linear-gradient(90deg, var(--rojo), var(--rojo-oscuro));
+    transition:width .12s linear;
+  }
+
+  /* Mismo ancho que el cuerpo de la noticia, para que quede alineado */
+  .comentarios-seccion{max-width:780px;margin:44px auto 0;padding-top:30px;border-top:1px solid #e4e7ec;}
+  .comentarios-titulo{
+    font-family:var(--font-tit);text-transform:uppercase;font-size:1.05rem;letter-spacing:.4px;
+    color:var(--marino-texto);border-left:5px solid var(--rojo);padding-left:12px;
+    margin:0 0 20px;display:flex;align-items:baseline;gap:6px;
+  }
+  .comentarios-contador{color:#9aa0ab;font-weight:400;text-transform:none;font-family:var(--font-text);font-size:.85rem;}
+
+  /* ---- Acceso de lector (encima del formulario) ---- */
+  .acceso-lector{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
+    background:var(--gris-claro);border-radius:var(--radio);padding:12px 18px;margin-bottom:16px;
+    font-size:.85rem;color:var(--texto-suave);
+  }
+  .acceso-lector-activo{background:#eef7f0;}
+  [data-theme="dark"] .acceso-lector-activo{background:#123321;}
+  .acceso-lector-link{
+    background:none;border:none;color:var(--rojo);font-weight:700;cursor:pointer;
+    text-decoration:none;font-size:.85rem;padding:0;
+  }
+  .acceso-lector-link:hover{text-decoration:underline;}
+  .acceso-lector-avatar{width:26px;height:26px;border-radius:50%;object-fit:cover;flex-shrink:0;}
+  .comentario-verificado{
+    display:inline-flex;align-items:center;justify-content:center;
+    width:15px;height:15px;color:#1a9e4f;margin-left:4px;vertical-align:middle;
+  }
+
+  /* ---- Formulario ---- */
+  .form-comentario{
+    background:var(--gris-claro);border-radius:var(--radio);
+    padding:20px 22px;margin-bottom:28px;
+  }
+  .form-comentario-fila{display:flex;gap:12px;margin-bottom:12px;}
+  .form-comentario label{
+    display:block;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.3px;
+    color:var(--gris-texto);margin-bottom:5px;
+  }
+  .form-comentario-campo{flex:1;min-width:0;}
+  .form-comentario input, .form-comentario textarea{
+    width:100%;padding:11px 13px;border:1.5px solid var(--borde);border-radius:7px;
+    font-size:.92rem;font-family:var(--font-text);background:var(--fondo);color:var(--texto);
+    transition:border-color .15s, box-shadow .15s;
+  }
+  .form-comentario textarea{min-height:96px;resize:vertical;margin-bottom:2px;line-height:1.5;}
+  .form-comentario input::placeholder, .form-comentario textarea::placeholder{color:#aab0bb;}
+  .form-comentario input:focus, .form-comentario textarea:focus{
+    outline:none;border-color:var(--celeste);box-shadow:0 0 0 3px rgba(91,184,232,.18);
+  }
+  .form-comentario-pie{
+    display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-top:14px;
+  }
+  .comentario-ayuda{font-size:.78rem;color:#8891a0;margin:0;}
+  .btn-enviar-comentario{
+    background:linear-gradient(135deg, var(--rojo), var(--rojo-oscuro));color:#fff;border:none;
+    padding:11px 26px;border-radius:24px;font-family:var(--font-tit);text-transform:uppercase;
+    cursor:pointer;letter-spacing:.4px;font-size:.82rem;flex-shrink:0;
+    transition:transform .15s, box-shadow .15s;
+  }
+  .btn-enviar-comentario:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 4px 14px rgba(209,19,46,.28);}
+  .btn-enviar-comentario:disabled{opacity:.55;cursor:not-allowed;transform:none;box-shadow:none;}
+  .comentario-msg{display:none;padding:11px 14px;border-radius:7px;font-size:.86rem;margin-top:14px;}
+  .comentario-msg-ok{color:#166534;background:#dcfce7;}
+  .comentario-msg-error{color:#991b1b;background:#fee2e2;}
+
+  /* ---- Lista de comentarios ---- */
+  .lista-comentarios{display:flex;flex-direction:column;gap:16px;}
+  .comentario-item{display:flex;gap:12px;}
+  .comentario-avatar{
+    flex-shrink:0;width:38px;height:38px;border-radius:50%;
+    background:var(--marino);color:#fff;font-family:var(--font-tit);font-size:.95rem;
+    display:flex;align-items:center;justify-content:center;text-transform:uppercase;
+  }
+  .comentario-cuerpo{flex:1;min-width:0;background:var(--tarjeta);border:1px solid var(--borde);border-radius:10px;padding:13px 16px;}
+  .comentario-cabecera{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:5px;flex-wrap:wrap;}
+  .comentario-autor{font-weight:700;color:var(--marino-texto);font-size:.9rem;}
+  .comentario-fecha{font-size:.75rem;color:#9aa0ab;flex-shrink:0;}
+  .comentario-texto{font-size:.9rem;line-height:1.55;color:var(--texto);white-space:pre-wrap;word-break:break-word;margin:0;}
+  .comentarios-vacio{color:#9aa0ab;font-size:.88rem;padding:10px 0;}
+
+  /* ---- Votos y denuncia de comentarios ---- */
+  .comentario-acciones{display:flex;align-items:center;gap:6px;margin-top:10px;}
+  .comentario-voto{
+    display:flex;align-items:center;gap:5px;background:none;border:1px solid var(--borde);
+    border-radius:20px;padding:4px 10px;cursor:pointer;color:#8891a0;font-size:.8rem;
+    font-family:var(--font-text);transition:.15s;
+  }
+  .comentario-voto svg{width:14px;height:14px;}
+  .comentario-voto:hover:not(:disabled){border-color:#c3c9d3;color:var(--marino-texto);}
+  .comentario-voto:disabled{opacity:.6;cursor:default;}
+  .comentario-voto-like.activo{color:#166534;border-color:#86efac;background:#f0fdf4;}
+  .comentario-voto-dislike.activo{color:#991b1b;border-color:#fca5a5;background:#fef2f2;}
+  .comentario-denunciar{
+    margin-left:auto;background:none;border:none;color:#aab0bb;font-size:.76rem;
+    font-family:var(--font-text);cursor:pointer;text-decoration:underline;padding:4px 2px;
+  }
+  .comentario-denunciar:hover:not(:disabled){color:#991b1b;}
+  .comentario-denunciar.activo, .comentario-denunciar:disabled{color:#c94b4b;text-decoration:none;cursor:default;}
+  .comentarios-seccion .spinner{margin:20px auto;}
+
+  @media(max-width:600px){
+    .form-comentario{padding:16px 16px;}
+    .form-comentario-fila{flex-direction:column;gap:12px;}
+    .form-comentario-pie{flex-direction:column;align-items:stretch;}
+    .btn-enviar-comentario{width:100%;text-align:center;}
+    .comentario-avatar{width:32px;height:32px;font-size:.85rem;}
+  }
+</style>
+</body>
+</html>

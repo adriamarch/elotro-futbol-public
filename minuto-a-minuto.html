@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<script src="js/tema.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="pageTitle">Minuto a minuto — ELOTROFÚTBOLTV</title>
+<meta name="description" content="Sigue el partido al minuto, con goles, tarjetas y todos los eventos en directo.">
+<link rel="canonical" href="https://elotrofutbol.media/minuto-a-minuto.html">
+<link rel="icon" href="/favicon.ico?v=2" sizes="any">
+<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=2">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css?v=16">
+<style>
+  /* ---------- MINUTO A MINUTO: liveblog público ----------
+     Cabecera fija tipo marcador de retransmisión (fondo marino de
+     marca, escudos grandes, marcador enorme en Oswald) y, debajo, un
+     timeline real con una línea de tiempo continua en el centro: cada
+     evento "cuelga" de esa línea con un sello del minuto encima, y los
+     goles llevan el acento rojo de marca para que destaquen del resto
+     del relato. Reutiliza a propósito el mismo lenguaje visual que ya
+     usa el modal de partido en el resto del sitio (.en-vivo-punto,
+     var(--rojo), var(--marino)...), en vez de inventar uno nuevo. */
+
+  body[data-page="minuto-a-minuto"]{background:var(--fondo-alt);}
+
+  .mam-cabecera{
+    position:sticky;top:0;z-index:20;
+    background:linear-gradient(160deg, var(--marino) 0%, var(--marino2) 100%);
+    color:#fff;padding:18px 0 0;
+    box-shadow:0 6px 22px rgba(12,27,46,.22);
+  }
+  .mam-cabecera-inner{max-width:720px;margin:0 auto;padding:0 20px 16px;}
+  .mam-breadcrumb{
+    display:flex;align-items:center;gap:6px;font-size:.72rem;
+    color:var(--celeste-claro);text-decoration:none;font-weight:600;
+    letter-spacing:.03em;text-transform:uppercase;margin-bottom:14px;width:fit-content;
+  }
+  .mam-breadcrumb:hover{color:#fff;}
+  .mam-breadcrumb svg{width:13px;height:13px;transform:rotate(180deg);}
+
+  .mam-marcador-fila{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;}
+  .mam-equipo{display:flex;flex-direction:column;align-items:center;gap:8px;min-width:0;}
+  .mam-escudo{width:56px;height:56px;object-fit:contain;filter:drop-shadow(0 2px 6px rgba(0,0,0,.25));}
+  .mam-nombre{
+    font-family:var(--font-tit);font-weight:600;font-size:.86rem;text-align:center;
+    line-height:1.15;letter-spacing:.01em;
+  }
+  .mam-centro{display:flex;flex-direction:column;align-items:center;gap:8px;padding:0 6px;}
+  .mam-marcador{
+    font-family:var(--font-tit);font-size:2.3rem;font-weight:700;line-height:1;
+    letter-spacing:.01em;white-space:nowrap;
+    font-variant-numeric:tabular-nums;
+  }
+  .mam-estado{
+    font-size:.68rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+    color:var(--celeste-claro);display:flex;align-items:center;gap:6px;white-space:nowrap;
+  }
+  .mam-estado.mam-estado-en-vivo{
+    color:#fff;background:linear-gradient(135deg, var(--rojo), var(--rojo-oscuro));
+    padding:4px 12px;border-radius:20px;box-shadow:0 2px 10px rgba(209,19,46,.4);
+  }
+  .mam-estado .en-vivo-punto{background:#fff;}
+  .mam-estado:not(.mam-estado-en-vivo) .en-vivo-punto{display:none;}
+
+  .mam-subtitulo{
+    text-align:center;color:var(--celeste-claro);font-size:.74rem;font-weight:500;
+    margin:12px 0 0;padding-top:12px;border-top:1px solid rgba(255,255,255,.14);
+    letter-spacing:.01em;
+  }
+
+  .mam-wrap{max-width:720px;margin:0 auto;padding:0 20px;}
+  .mam-cuerpo{padding:28px 0 60px;}
+
+  .mam-mvp{
+    display:flex;align-items:center;justify-content:center;gap:10px;
+    background:var(--tarjeta);border:1px solid var(--borde);border-radius:var(--radio);
+    padding:10px 16px;margin-bottom:24px;font-size:.82rem;
+  }
+  .mam-mvp img{width:26px;height:26px;object-fit:contain;}
+  .mam-mvp-etiqueta{
+    font-family:var(--font-tit);font-size:.65rem;font-weight:700;letter-spacing:.06em;
+    color:var(--rojo);text-transform:uppercase;
+  }
+  .mam-mvp-nombre{font-weight:600;color:var(--marino-texto);}
+
+  /* Línea de tiempo: una línea vertical continua a la que cada evento
+     se "engancha" con un sello circular del minuto. Estructura de
+     liveblog de periódico deportivo, no una lista de tarjetas suelta. */
+  .mam-timeline{position:relative;}
+  .mam-timeline::before{
+    content:"";position:absolute;left:29px;top:6px;bottom:6px;width:2px;
+    background:var(--borde);
+  }
+  .mam-evento{position:relative;padding:0 0 22px 66px;min-height:1px;}
+  .mam-evento:last-child{padding-bottom:0;}
+  .mam-evento-sello{
+    position:absolute;left:0;top:0;width:60px;
+    display:flex;flex-direction:column;align-items:center;
+  }
+  .mam-evento-minuto{
+    position:relative;z-index:1;background:var(--fondo-alt);
+    width:40px;height:40px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-family:var(--font-tit);font-weight:700;font-size:.72rem;
+    color:var(--marino-texto);border:2px solid var(--borde);
+    font-variant-numeric:tabular-nums;
+  }
+  .mam-evento-gol .mam-evento-minuto{
+    background:linear-gradient(135deg, var(--rojo), var(--rojo-oscuro));
+    color:#fff;border-color:var(--rojo-oscuro);
+    box-shadow:0 2px 10px rgba(209,19,46,.35);
+  }
+  .mam-evento-contenido{
+    display:flex;align-items:flex-start;gap:10px;
+    background:var(--tarjeta);border:1px solid var(--borde);border-radius:var(--radio);
+    padding:12px 14px;font-size:.87rem;line-height:1.4;
+  }
+  .mam-evento-gol .mam-evento-contenido{border-color:rgba(209,19,46,.35);background:linear-gradient(180deg, rgba(209,19,46,.05), transparent 60%);}
+  .mam-evento-centro .mam-evento-contenido{
+    background:transparent;border:none;padding:6px 0 0;font-style:italic;
+    color:var(--gris-texto);font-size:.8rem;
+  }
+  .mam-evento-icono{width:19px;height:19px;flex-shrink:0;margin-top:1px;}
+  .mam-evento-equipo{
+    font-size:.7rem;font-weight:700;color:var(--gris-texto);text-transform:uppercase;
+    letter-spacing:.03em;display:block;margin-bottom:1px;
+  }
+  .mam-evento-texto{color:var(--texto);}
+  .mam-evento-texto strong{font-weight:600;}
+
+  .mam-tanda-titulo{
+    font-family:var(--font-tit);font-size:.85rem;font-weight:600;letter-spacing:.02em;
+    text-transform:uppercase;color:var(--marino-texto);margin:30px 0 14px;
+    padding-top:22px;border-top:2px dashed var(--borde);text-align:center;
+  }
+
+  .mam-estado-inicial{
+    text-align:center;color:var(--gris-texto);font-size:.9rem;padding:50px 20px;
+  }
+  .mam-estado-inicial svg{width:36px;height:36px;color:var(--borde);margin-bottom:10px;}
+
+  @media (max-width:560px){
+    .mam-escudo{width:44px;height:44px;}
+    .mam-nombre{font-size:.72rem;}
+    .mam-marcador{font-size:1.8rem;}
+    .mam-evento{padding-left:56px;}
+    .mam-timeline::before{left:23px;}
+    .mam-evento-minuto{width:34px;height:34px;font-size:.65rem;}
+    .mam-evento-sello{width:50px;}
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .mam-estado-en-vivo .en-vivo-punto{animation:none;}
+  }
+</style>
+</head>
+<body data-page="minuto-a-minuto">
+
+<div id="mamCabecera" class="mam-cabecera" hidden>
+  <div class="mam-cabecera-inner">
+    <a href="calendario.html" class="mam-breadcrumb">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+      Calendario
+    </a>
+    <div class="mam-marcador-fila">
+      <div class="mam-equipo">
+        <img id="mamEscudoLocal" class="mam-escudo" src="" alt="" onerror="manejarErrorEscudo(this);">
+        <span id="mamNombreLocal" class="mam-nombre"></span>
+      </div>
+      <div class="mam-centro">
+        <span id="mamMarcador" class="mam-marcador"></span>
+        <span id="mamEstado" class="mam-estado"></span>
+      </div>
+      <div class="mam-equipo">
+        <img id="mamEscudoVisitante" class="mam-escudo" src="" alt="" onerror="manejarErrorEscudo(this);">
+        <span id="mamNombreVisitante" class="mam-nombre"></span>
+      </div>
+    </div>
+    <p id="mamSubtitulo" class="mam-subtitulo"></p>
+  </div>
+</div>
+
+<main class="wrap mam-wrap">
+  <div class="mam-cuerpo">
+    <div id="mamMvp"></div>
+    <div id="mamContenido">
+      <div class="mam-estado-inicial">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        <p>Cargando partido…</p>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="js/ui-alertas.js?v=4"></script>
+<script src="js/config.js?v=15"></script>
+<script src="js/seo.js?v=4"></script>
+<script src="js/clubs.js?v=4"></script>
+<script src="js/lector-auth.js?v=13"></script>
+<script src="js/partidos.js?v=9"></script>
+<script>
+// Página pública para que cualquier lector (no solo el redactor que lo
+// está eventando desde el panel) pueda seguir un partido al minuto,
+// desde un enlace propio: minuto-a-minuto.html?id=<id del resultado>.
+// El pintado de eventos es propio de esta página (mamRenderTimeline),
+// pensado como un liveblog con línea de tiempo, pero reutiliza los
+// datos y las etiquetas/iconos ya definidos en config.js
+// (ETIQUETAS_EVENTO_PUBLICO, iconoEventoPublico) para no mantener dos
+// diccionarios de eventos distintos.
+
+const MAM_ID = new URLSearchParams(location.search).get("id");
+let mamPartido = null;
+let mamIntervaloEstado = null;
+let mamIntervaloMinuto = null;
+let mamFirmaEventos = "";
+
+async function mamCargarInicial() {
+  const cont = document.getElementById("mamContenido");
+  if (!MAM_ID || !/^\d+$/.test(MAM_ID)) {
+    cont.innerHTML = `<p class="mam-estado-inicial">Enlace de partido no válido.</p>`;
+    return;
+  }
+  try {
+    const res = await apiFetch(`/api/results/${MAM_ID}`, { cache: "no-store" });
+    if (!res.ok) throw new Error("no encontrado");
+    const { resultado } = await res.json();
+    if (!resultado) throw new Error("no encontrado");
+    mamPartido = resultado;
+    PARTIDOS_CACHE[resultado.id] = resultado;
+    mamPintarCabecera();
+    await mamCargarEventos();
+    // Tracking propio para "partidos más seguidos" en el panel de
+    // analíticas (ver public/js/analiticas-tracking.js para el mismo
+    // patrón en noticia.html). Sin bloquear el resto de la carga ni
+    // afectar a la página si falla -- best effort, igual que el resto
+    // del tracking del sitio.
+    fetch(`${(typeof PRIMARY_API !== "undefined" && PRIMARY_API) || ""}/api/track/result-view`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ result_id: resultado.id }),
+    }).catch(() => {});
+    fijarSeoBasico({
+      titulo: `${resultado.equipo_local} ${resultado.goles_local ?? ""}-${resultado.goles_visitante ?? ""} ${resultado.equipo_visitante} — Minuto a minuto — ELOTROFÚTBOLTV`,
+      descripcion: `Sigue en directo, minuto a minuto, el ${resultado.equipo_local} - ${resultado.equipo_visitante}.`,
+      urlPath: `/minuto-a-minuto.html?id=${resultado.id}`,
+    });
+    if (resultado.estado === "programado" || resultado.estado === "en_juego") {
+      mamIntervaloEstado = setInterval(mamRefrescarPartido, 15000);
+    }
+    if (resultado.estado === "en_juego") {
+      mamIntervaloMinuto = setInterval(mamPintarCabecera, 20000);
+    }
+  } catch (err) {
+    cont.innerHTML = `<p class="mam-estado-inicial">No se ha podido cargar este partido. Puede que el enlace ya no sea válido.</p>`;
+  }
+}
+
+function mamPintarCabecera() {
+  const p = mamPartido;
+  if (!p) return;
+  const enJuego = p.estado === "en_juego";
+  const enDescanso = enJuego && p.cronometro_pausado_en !== null && p.cronometro_pausado_en !== undefined;
+
+  document.getElementById("mamCabecera").hidden = false;
+  document.getElementById("mamEscudoLocal").src = getEscudoUrl(p.equipo_local, p.escudo_local_url);
+  document.getElementById("mamEscudoLocal").dataset.equipo = p.equipo_local;
+  document.getElementById("mamEscudoVisitante").src = getEscudoUrl(p.equipo_visitante, p.escudo_visitante_url);
+  document.getElementById("mamEscudoVisitante").dataset.equipo = p.equipo_visitante;
+  document.getElementById("mamNombreLocal").textContent = p.equipo_local;
+  document.getElementById("mamNombreVisitante").textContent = p.equipo_visitante;
+  document.getElementById("mamMarcador").innerHTML = marcadorConPenaltisHTML(p, { claseChica: "penaltis-marcador" });
+
+  const estadoEl = document.getElementById("mamEstado");
+  estadoEl.classList.toggle("mam-estado-en-vivo", enJuego);
+  estadoEl.innerHTML = enJuego
+    ? `<span class="en-vivo-punto"></span>${enDescanso ? "Descanso" : "En juego"} <span data-minuto-en-vivo="${p.id}">${minutoEnVivoTexto(p)}</span>`
+    : estadoLabel(p.estado);
+
+  const subtitulo =
+    (p.competicion === "amistoso" ? "Amistoso" : (p.jornada ? "Jornada " + (p.jornada_mostrar ?? p.jornada) : categoriaLabel(p.competicion))) +
+    (p.grupo ? " · " + p.grupo : "") +
+    (p.fecha_partido ? " · " + formatFecha(p.fecha_partido) : "");
+  document.getElementById("mamSubtitulo").textContent = subtitulo;
+
+  const contMvp = document.getElementById("mamMvp");
+  if (p.mvp_jugador) {
+    const escudoMvp = p.mvp_equipo === "local"
+      ? getEscudoUrl(p.equipo_local, p.escudo_local_url)
+      : getEscudoUrl(p.equipo_visitante, p.escudo_visitante_url);
+    contMvp.innerHTML = `
+      <div class="mam-mvp">
+        <img src="${escudoMvp}" alt="" onerror="manejarErrorEscudo(this);">
+        <span class="mam-mvp-etiqueta">MVP</span>
+        <span class="mam-mvp-nombre">${escapeHtml(p.mvp_jugador)}</span>
+      </div>`;
+  } else {
+    contMvp.innerHTML = "";
+  }
+}
+
+async function mamCargarEventos() {
+  const p = mamPartido;
+  const cont = document.getElementById("mamContenido");
+  if (p.estado === "programado") {
+    cont.innerHTML = `
+      <div class="mam-estado-inicial">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        <p>El partido todavía no ha empezado.<br>En cuanto arranque, los eventos irán apareciendo aquí solos.</p>
+      </div>`;
+    return;
+  }
+  try {
+    const res = await apiFetch(`/api/results/${p.id}/eventos`, { cache: "no-store" });
+    const { eventos } = await res.json();
+    mamFirmaEventos = firmaEventos(eventos || []);
+    mamRenderTimeline(eventos || []);
+  } catch (err) {
+    cont.innerHTML = `<p class="mam-estado-inicial">No se han podido cargar los eventos.</p>`;
+  }
+}
+
+// Pinta el timeline propio de esta página: una línea de tiempo continua
+// (ver .mam-timeline) con cada evento colgando de un sello del minuto.
+// Reutiliza ETIQUETAS_EVENTO_PUBLICO/iconoEventoPublico/TIPOS_EVENTO_TANDA_PENALTIS
+// (definidos en config.js/partidos.js) para no duplicar ese diccionario.
+function mamRenderTimeline(eventos) {
+  const cont = document.getElementById("mamContenido");
+  // Igual que en el modal de resultado (partidos.js/renderEventosModal,
+  // ver partidoNoCubierto): un partido finalizado sin ningún evento
+  // "real" -solo, como mucho, los hitos automáticos de inicio/fin- no
+  // es que "todavía" no tenga nada, es que nunca se cubrió al minuto.
+  if (mamPartido && partidoNoCubierto(mamPartido.estado, eventos)) {
+    cont.innerHTML = `
+      <div class="mam-estado-inicial">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/></svg>
+        <p>Este partido no ha sido cubierto minuto a minuto.</p>
+      </div>`;
+    return;
+  }
+  if (!eventos.length) {
+    cont.innerHTML = `
+      <div class="mam-estado-inicial">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        <p>Todavía no hay goles ni tarjetas registrados para este partido.</p>
+      </div>`;
+    return;
+  }
+  const eventosTanda = eventos.filter(ev => TIPOS_EVENTO_TANDA_PENALTIS.includes(ev.tipo));
+  const eventosPartido = eventos.filter(ev => !TIPOS_EVENTO_TANDA_PENALTIS.includes(ev.tipo));
+
+  const filaEvento = (ev) => {
+    const esGol = ev.tipo === "gol" || ev.tipo === "gol_pp" || (ev.tipo === "gol_var" && !ev.bajar_gol);
+    const esCentro = ev.equipo === "ninguno";
+    const claseEquipo = esCentro ? "mam-evento-centro" : "";
+    const nombreEquipo = ev.equipo === "local" ? mamPartido.equipo_local : (ev.equipo === "visitante" ? mamPartido.equipo_visitante : "");
+    return `
+      <div class="mam-evento${esGol ? " mam-evento-gol" : ""} ${claseEquipo}">
+        <div class="mam-evento-sello">
+          <span class="mam-evento-minuto">${formatMinutoEventoPublico(ev)}</span>
+        </div>
+        <div class="mam-evento-contenido">
+          ${iconoEventoPublico(ev.tipo)}
+          <span class="mam-evento-texto">
+            ${nombreEquipo ? `<span class="mam-evento-equipo">${escapeHtml(nombreEquipo)}</span>` : ""}
+            ${ev.tipo === "nota" ? escapeHtml(ev.jugador || "") : escapeHtml(ETIQUETAS_EVENTO_PUBLICO[ev.tipo] || ev.tipo) + detalleJugadorEventoPublico(ev)}
+          </span>
+        </div>
+      </div>`;
+  };
+
+  let html = `<div class="mam-timeline">${eventosPartido.map(filaEvento).join("")}</div>`;
+
+  if (eventosTanda.length) {
+    const ordenados = [...eventosTanda].sort((a, b) => a.minuto - b.minuto);
+    html += `<h3 class="mam-tanda-titulo">Tanda de penaltis</h3><div class="mam-timeline">${ordenados.map(filaEvento).join("")}</div>`;
+  }
+
+  cont.innerHTML = html;
+}
+
+async function mamRefrescarPartido() {
+  if (!mamPartido) return;
+  try {
+    const res = await apiFetch(`/api/results/${mamPartido.id}`, { cache: "no-store" });
+    if (!res.ok) return;
+    const { resultado } = await res.json();
+    if (!resultado) return;
+    const cambioEstado = resultado.estado !== mamPartido.estado;
+    const cambioMarcador = resultado.goles_local !== mamPartido.goles_local || resultado.goles_visitante !== mamPartido.goles_visitante;
+    mamPartido = resultado;
+    PARTIDOS_CACHE[resultado.id] = resultado;
+    if (cambioEstado || cambioMarcador) mamPintarCabecera();
+
+    // Si el partido acaba de arrancar (pasó de "programado" a "en_juego"
+    // mientras el lector ya tenía esta página abierta), hay que arrancar
+    // aquí el intervalo que refresca el minuto en vivo: antes solo se
+    // arrancaba en la carga inicial si el partido YA estaba en juego en
+    // ese momento, así que si alguien entraba antes del pitido inicial
+    // el minuto se quedaba congelado hasta recargar la página a mano.
+    if (cambioEstado && resultado.estado === "en_juego" && !mamIntervaloMinuto) {
+      mamIntervaloMinuto = setInterval(mamPintarCabecera, 20000);
+    }
+
+    if (resultado.estado === "programado") return;
+
+    const resEv = await apiFetch(`/api/results/${resultado.id}/eventos`, { cache: "no-store" });
+    const { eventos } = await resEv.json();
+    const firma = firmaEventos(eventos || []);
+    if (firma !== mamFirmaEventos) {
+      mamFirmaEventos = firma;
+      mamRenderTimeline(eventos || []);
+    }
+
+    if (resultado.estado === "finalizado" || resultado.estado === "anulado") {
+      clearInterval(mamIntervaloEstado);
+      clearInterval(mamIntervaloMinuto);
+    }
+  } catch (err) {
+    // Sin red o fallo puntual: se ignora y se reintenta en el siguiente ciclo.
+  }
+}
+
+mamCargarInicial();
+</script>
+</body>
+</html>

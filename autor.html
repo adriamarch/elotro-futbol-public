@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<script src="js/tema.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="pageTitle">Autor — ELOTROFÚTBOLTV</title>
+<link rel="icon" href="/favicon.ico?v=2" sizes="any">
+<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=2">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&family=Playfair+Display:wght@700;800&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css?v=16">
+</head>
+<body>
+
+<div id="site-header"></div>
+
+<main class="wrap">
+  <div id="perfilAutor">
+    <div class="estado-info"><div class="spinner"></div><p>Cargando...</p></div>
+  </div>
+  <div id="noticiasAutorWrap" style="display:none">
+    <h2 class="section-title">Sus últimas noticias</h2>
+    <div class="grid-noticias" id="gridAutor"></div>
+  </div>
+</main>
+
+<div id="site-footer"></div>
+
+<script src="js/ui-alertas.js?v=4"></script>
+<script src="js/config.js?v=15"></script>
+<script src="js/seo.js?v=4"></script>
+<script src="js/clubs.js?v=4"></script>
+<script src="js/lector-auth.js?v=13"></script>
+<script src="js/layout.js?v=6"></script>
+<script src="js/cookies.js?v=1"></script>
+<script src="js/ads.js?v=1"></script>
+<script src="js/main.js?v=10"></script>
+<script>
+async function cargaPerfilAutor() {
+  const id = new URLSearchParams(location.search).get("id");
+  const cont = document.getElementById("perfilAutor");
+  if (!id) {
+    _seoMeta("name", "robots", "noindex");
+    cont.innerHTML = estadoHTML({
+      titulo: "Autor no especificado",
+      texto: "El enlace al que has accedido no incluye ningún autor. Vuelve a la portada para seguir navegando.",
+      tipo: "error",
+      cta: `<a href="index.html" class="btn-volver">Ir a portada</a>`,
+    });
+    return;
+  }
+  try {
+    const { autor, articulos } = await conReintento(async () => {
+      const res = await apiFetch(`/api/autores/${encodeURIComponent(id)}`);
+      if (!res.ok) throw new Error("No encontrado");
+      return res.json();
+    });
+    fijarSeoBasico({
+      titulo: `${autor.nombre} — ELOTROFÚTBOLTV`,
+      descripcion: autor.bio || `Perfil de ${autor.nombre}, autor en ELOTROFÚTBOLTV.`,
+      urlPath: location.pathname + location.search,
+      imagen: autor.avatar_url || undefined,
+      migas: [{ nombre: autor.nombre }],
+    });
+
+    const redesHTML = Object.entries(autor.redes || {})
+      .filter(([, url]) => url)
+      .map(([key, url]) => `<a href="${url}" target="_blank" rel="noopener" title="${NOMBRES_REDES[key] || key}">${ICONOS_REDES[key] || ""}</a>`)
+      .join("");
+
+    cont.innerHTML = `
+      <div class="perfil-autor-cabecera">
+        ${autor.avatar_url
+          ? `<img class="perfil-autor-avatar" src="${cloudinaryOptimizada(autor.avatar_url, 160)}" alt="${escapeHtml(autor.nombre)}" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'), {className:'perfil-autor-avatar perfil-autor-avatar-iniciales', textContent: '${escapeHtml(iniciales(autor.nombre) || "?")}'}))">`
+          : `<span class="perfil-autor-avatar perfil-autor-avatar-iniciales">${escapeHtml(iniciales(autor.nombre) || "?")}</span>`}
+        <div>
+          <span class="perfil-autor-etiqueta">Autor</span>
+          <h1>${escapeHtml(autor.nombre)}</h1>
+          ${(() => {
+            const equipos = Array.isArray(autor.equipo) ? autor.equipo : (autor.equipo ? [autor.equipo] : []);
+            return equipos.length ? `<p class="perfil-autor-equipo">${escapeHtml(equipos.join(" · "))}</p>` : "";
+          })()}
+          ${autor.bio
+            ? `<p class="perfil-autor-bio">${escapeHtml(autor.bio)}</p>`
+            : `<p class="perfil-autor-bio perfil-autor-vacio">✍️ Este autor todavía no ha añadido una presentación.</p>`}
+          <div class="perfil-autor-experiencia">
+            <h2>Experiencia previa</h2>
+            ${autor.experiencia
+              ? `<p>${escapeHtml(autor.experiencia)}</p>`
+              : `<p class="perfil-autor-vacio">📋 No hay experiencias previas.</p>`}
+          </div>
+          ${redesHTML ? `<div class="perfil-autor-redes">${redesHTML}</div>` : ""}
+        </div>
+      </div>`;
+
+    const gridWrap = document.getElementById("noticiasAutorWrap");
+    const grid = document.getElementById("gridAutor");
+    if (articulos && articulos.length) {
+      gridWrap.style.display = "block";
+      grid.innerHTML = articulos.map(cardHTML).join("");
+    }
+  } catch (err) {
+    _seoMeta("name", "robots", "noindex");
+    cont.innerHTML = estadoHTML({
+      titulo: "No se ha podido cargar este perfil",
+      texto: "Puede que el autor ya no exista o que haya un problema de conexión. Vuelve a la portada e inténtalo de nuevo.",
+      tipo: "error",
+      cta: `<a href="index.html" class="btn-volver">Ir a portada</a>`,
+    });
+  }
+}
+document.addEventListener("DOMContentLoaded", cargaPerfilAutor);
+</script>
+</body>
+</html>

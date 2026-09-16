@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<script src="js/tema.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="pageTitle">Contacto de prensa — ELOTROFÚTBOLTV</title>
+<meta name="description" content="Contacta con ELOTROFÚTBOLTV para consultas de prensa, colaboraciones o comunicados de clubes de LaLiga Hypermotion, Primera y Segunda Federación.">
+<link rel="canonical" href="https://elotrofutbol.media/contacto.html">
+<link rel="icon" href="/favicon.ico?v=2" sizes="any">
+<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=2">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&family=Playfair+Display:wght@700;800&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css?v=16">
+</head>
+<body>
+
+<div id="site-header"></div>
+
+<main class="wrap pagina-info">
+  <h2 class="section-title">Contacto de prensa</h2>
+  <p class="section-subtitle">Consultas, colaboraciones y comunicados</p>
+
+  <div class="pagina-info-cuerpo">
+    <p>
+      ¿Eres periodista, representas a un club o quieres proponernos algo?
+      Escríbenos directamente a
+      <a href="mailto:contacto@elotrofutbol.media">contacto@elotrofutbol.media</a>
+      o rellena el formulario y te responderemos lo antes posible.
+    </p>
+  </div>
+
+  <form id="formContacto" class="form-contacto" novalidate>
+    <div class="campo-contacto">
+      <label for="ccNombre">Nombre *</label>
+      <input type="text" id="ccNombre" name="nombre" required autocomplete="name" maxlength="200">
+    </div>
+    <div class="campo-contacto">
+      <label for="ccEmail">Email *</label>
+      <input type="email" id="ccEmail" name="email" required autocomplete="email">
+    </div>
+    <div class="campo-contacto">
+      <label for="ccMedio">Medio / organización (opcional)</label>
+      <input type="text" id="ccMedio" name="medio" autocomplete="organization" maxlength="200">
+    </div>
+    <div class="campo-contacto">
+      <label for="ccMensaje">Mensaje *</label>
+      <textarea id="ccMensaje" name="mensaje" required maxlength="5000" rows="6"></textarea>
+    </div>
+    <button type="submit" id="ccEnviar">Enviar mensaje</button>
+    <p id="ccEstado" class="contacto-estado" role="status" aria-live="polite"></p>
+  </form>
+</main>
+
+<div id="site-footer"></div>
+
+<script src="js/ui-alertas.js?v=4"></script>
+<script src="js/config.js?v=15"></script>
+<script src="js/seo.js?v=4"></script>
+<script src="js/lector-auth.js?v=13"></script>
+<script src="js/layout.js?v=6"></script>
+<script src="js/cookies.js?v=1"></script>
+<script src="js/ads.js?v=1"></script>
+<script src="js/main.js?v=10"></script>
+<script>
+fijarSeoBasico({
+  titulo: "Contacto de prensa — ELOTROFÚTBOLTV",
+  descripcion: "Contacta con ELOTROFÚTBOLTV para consultas de prensa, colaboraciones o comunicados de clubes de LaLiga Hypermotion, Primera y Segunda Federación.",
+  urlPath: "/contacto.html",
+});
+
+document.getElementById("formContacto").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const boton = document.getElementById("ccEnviar");
+  const estado = document.getElementById("ccEstado");
+  const datos = {
+    nombre: document.getElementById("ccNombre").value.trim(),
+    email: document.getElementById("ccEmail").value.trim(),
+    medio: document.getElementById("ccMedio").value.trim(),
+    mensaje: document.getElementById("ccMensaje").value.trim(),
+  };
+
+  estado.textContent = "";
+  estado.className = "contacto-estado";
+  boton.disabled = true;
+  boton.textContent = "Enviando...";
+
+  try {
+    const res = await apiFetch("/api/contacto-prensa", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(datos),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "No se ha podido enviar el mensaje.");
+
+    estado.textContent = "Mensaje enviado. Te responderemos lo antes posible.";
+    estado.classList.add("contacto-estado-ok");
+    document.getElementById("formContacto").reset();
+  } catch (err) {
+    estado.textContent = err.message || "No se ha podido enviar el mensaje. Inténtalo de nuevo o escríbenos a contacto@elotrofutbol.media.";
+    estado.classList.add("contacto-estado-error");
+  } finally {
+    boton.disabled = false;
+    boton.textContent = "Enviar mensaje";
+  }
+});
+</script>
+</body>
+</html>

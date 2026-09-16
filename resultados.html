@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="pageTitle">Resultados — ELOTROFÚTBOLTV</title>
+<meta name="description" content="Resultados y clasificaciones de LaLiga Hypermotion, Primera y Segunda Federación.">
+<link rel="canonical" href="https://elotrofutbol.media/resultados.html">
+<link rel="icon" href="/favicon.ico?v=2" sizes="any">
+<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=2">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css?v=16">
+</head>
+<body data-page="resultados">
+
+<div id="site-header"></div>
+
+<main class="wrap">
+  <h2 class="section-title">Resultados</h2>
+  <div class="filtros">
+    <button class="activo" data-cat="hypermotion">LaLiga Hypermotion</button>
+    <button data-cat="primera_federacion">Primera Federación</button>
+    <button data-cat="segunda_federacion">Segunda Federación</button>
+    <button data-cat="amistoso">Amistosos</button>
+  </div>
+  <div id="jornadas"></div>
+</main>
+
+<!-- Modal de detalle del partido: goles, tarjetas y minutos. Se abre al
+     hacer clic en cualquier partido de la lista de arriba. -->
+<div id="modalPartido" class="modal-partido" aria-hidden="true">
+  <div class="modal-partido-fondo" onclick="cerrarModalPartido()"></div>
+  <div class="modal-partido-caja" role="dialog" aria-modal="true" aria-labelledby="modalPartidoTitulo">
+    <button type="button" class="modal-partido-cerrar" onclick="cerrarModalPartido()" aria-label="Cerrar">✕</button>
+    <div class="modal-partido-cabecera">
+      <div class="modal-partido-equipo">
+        <img id="modalEscudoLocal" class="modal-partido-escudo" src="" alt="" loading="lazy">
+        <span id="modalNombreLocal" class="modal-partido-nombre"></span>
+      </div>
+      <div class="modal-partido-marcador">
+        <span id="modalMarcador"></span>
+        <span id="modalEstado" class="modal-partido-estado"></span>
+      </div>
+      <div class="modal-partido-equipo">
+        <img id="modalEscudoVisitante" class="modal-partido-escudo" src="" alt="" loading="lazy">
+        <span id="modalNombreVisitante" class="modal-partido-nombre"></span>
+      </div>
+    </div>
+    <p id="modalPartidoTitulo" class="modal-partido-subtitulo"></p>
+    <a id="modalEnlaceFlashscore" class="enlace-flashscore" href="" target="_blank" rel="noopener noreferrer" hidden>Ver en Flashscore</a>
+    <div id="modalNoticiasVinculadas" class="modal-noticias-vinculadas" hidden></div>
+    <div id="modalPartidoAlineaciones" class="modal-partido-alineaciones"></div>
+    <div id="modalPartidoEventos" class="modal-partido-eventos"></div>
+  </div>
+</div>
+
+<div id="site-footer"></div>
+
+<script src="js/ui-alertas.js?v=4"></script>
+<script src="js/config.js?v=15"></script>
+<script src="js/seo.js?v=4"></script>
+<script src="js/clubs.js?v=4"></script>
+<script src="js/layout.js?v=6"></script>
+<script src="js/cookies.js?v=1"></script>
+<script src="js/ads.js?v=1"></script>
+<script src="js/partidos.js?v=9"></script>
+<script>
+fijarSeoBasico({
+  titulo: "Resultados — ELOTROFÚTBOLTV",
+  descripcion: "Resultados y clasificaciones de LaLiga Hypermotion, Primera y Segunda Federación.",
+  urlPath: "/resultados.html",
+});
+
+let competicionActual = "hypermotion";
+
+document.querySelectorAll(".filtros button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".filtros button").forEach(b => b.classList.remove("activo"));
+    btn.classList.add("activo");
+    competicionActual = btn.dataset.cat;
+    cargaResultados();
+  });
+});
+
+async function cargaResultados() {
+  const cont = document.getElementById("jornadas");
+  cont.innerHTML = spinnerHTML();
+  try {
+    const res = await fetch(`${API_URL}/api/results?competicion=${encodeURIComponent(competicionActual)}`);
+    const { results } = await res.json();
+    if (!results.length) {
+      cont.innerHTML = estadoHTML({
+        titulo: "Sin resultados todavía",
+        texto: "Aún no hemos publicado resultados para esta competición. Prueba con otra categoría o vuelve más tarde.",
+      });
+      return;
+    }
+
+    // Se agrupa por jornada Y por grupo (Segunda Federación tiene varios
+    // grupos regionales); así no se mezclan partidos de grupos distintos
+    // bajo la misma cabecera de jornada.
+    const grupos = {};
+    results.forEach(r => {
+      const clave = `${r.jornada}||${r.grupo || ""}`;
+      if (!grupos[clave]) grupos[clave] = { jornada: r.jornada, grupo: r.grupo || "", partidos: [] };
+      grupos[clave].partidos.push(r);
+    });
+
+    // Cada grupo de jornada se ordena cronológicamente por dentro
+    // (partidos más recientes arriba, por jugar abajo del más próximo al
+    // más lejano), y los propios grupos de jornada se ordenan entre sí
+    // por la fecha de su partido más representativo (el primero ya
+    // ordenado), para que arriba de la página salgan las jornadas más
+    // recientes/en juego y abajo las próximas, en vez de fiarse solo del
+    // número de jornada (que puede no coincidir con el calendario real,
+    // p.ej. partidos aplazados).
+    const gruposOrdenados = Object.values(grupos).map(g => ({
+      ...g,
+      partidos: ordenarPartidosCronologicamente(g.partidos),
+    }));
+
+    cont.innerHTML = gruposOrdenados
+      .sort((a, b) => {
+        const prioA = prioridadOrdenPartido(a.partidos[0]);
+        const prioB = prioridadOrdenPartido(b.partidos[0]);
+        if (prioA !== prioB) return prioA - prioB;
+        const ta = timestampFechaPartido(a.partidos[0]);
+        const tb = timestampFechaPartido(b.partidos[0]);
+        if (isNaN(ta) || isNaN(tb)) return b.jornada - a.jornada || a.grupo.localeCompare(b.grupo);
+        return prioA === 2 ? (ta - tb) : (tb - ta);
+      })
+      .map(g => `
+      <div class="tabla-jornada">
+        <h3>${competicionActual === "amistoso" ? "Amistosos" : "Jornada " + g.jornada}${g.grupo ? " · " + escapeHtml(g.grupo) : ""}</h3>
+        ${g.partidos.map(p => partidoHTML(p)).join("")}
+      </div>`).join("");
+
+    // Guardamos los resultados ya cargados (con nombre de equipo, escudo,
+    // etc.) para poder abrir el modal de detalle sin volver a pedirlos.
+    PARTIDOS_CACHE = {};
+    results.forEach(r => { PARTIDOS_CACHE[r.id] = r; });
+    inicializarClicsPartidos("jornadas");
+  } catch (err) {
+    cont.innerHTML = estadoHTML({
+      titulo: "No se ha podido conectar",
+      texto: "Ha habido un problema al cargar los resultados. Comprueba tu conexión e inténtalo de nuevo.",
+      tipo: "error",
+      cta: `<a href="javascript:location.reload()" class="btn-volver">Reintentar</a>`,
+    });
+  }
+}
+document.addEventListener("DOMContentLoaded", cargaResultados);
+</script>
+</body>
+</html>

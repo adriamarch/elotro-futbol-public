@@ -1,0 +1,46 @@
+{
+  "name": "elotrofutboltv",
+  "main": "src-worker.js",
+  "compatibility_date": "2026-08-01",
+  "assets": {
+    "directory": ".",
+    "binding": "ASSETS",
+    "run_worker_first": true,
+    "html_handling": "auto-trailing-slash"
+  },
+  "routes": [
+    {
+      "pattern": "elotrofutbol.media",
+      "zone_name": "elotrofutbol.media",
+      "custom_domain": true
+    }
+  ],
+  // MAINTENANCE_MODE: interruptor de mantenimiento del SITIO. "true"
+  // activa la pantalla de public/mantenimiento.html; "false" (o
+  // borrando la línea) sirve el sitio normal. Al estar aquí, en el
+  // repositorio, "wrangler deploy" ya no la borra ni pide confirmar
+  // sobrescribir lo que hay en el dashboard -- son la misma fuente.
+  //
+  // MAINTENANCE_DESDE: instante real (ISO 8601 UTC) en que se activó
+  // el mantenimiento -- la usa mantenimiento.html para calcular el %
+  // real de la barra de progreso.
+  //
+  // IMPORTANTE (aprendido a la fuerza): "wrangler deploy" trata este
+  // bloque "vars" como la ÚNICA fuente de verdad de las variables del
+  // Worker. Si una variable existe en el dashboard de Cloudflare pero
+  // NO está aquí, "wrangler deploy" la BORRA en cada despliegue sin
+  // preguntar más que con un aviso fácil de pasar por alto -- así es
+  // como MAINTENANCE_DESDE desaparecía cada vez que se desplegaba
+  // cualquier cambio, aunque no tuviera nada que ver con mantenimiento.
+  // Por eso MAINTENANCE_DESDE tiene que vivir AQUÍ, no solo en el
+  // dashboard. Para cambiar la hora de inicio del mantenimiento:
+  // edita este valor y haz "wrangler deploy" (o usa
+  // .github/scripts/set-mantenimiento.sh, que hace el cambio vía API
+  // DESPUÉS -- pero recuerda que el SIGUIENTE wrangler deploy manual
+  // volverá a imponer lo que haya escrito aquí, así que tras usar el
+  // script conviene reflejar el mismo valor en este archivo también).
+  "vars": {
+    "MAINTENANCE_MODE": "false",
+    "MAINTENANCE_DESDE": "2026-09-01T18:54:04Z"
+  }
+}

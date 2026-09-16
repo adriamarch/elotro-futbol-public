@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<script src="js/tema.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="pageTitle">Porras — ELOTROFÚTBOLTV</title>
+<meta name="description" content="Haz tu porra de cada jornada de LaLiga Hypermotion, Primera y Segunda Federación, y comparte tu predicción.">
+<link rel="canonical" href="https://elotrofutbol.media/predicciones.html">
+<link rel="icon" href="/favicon.ico?v=2" sizes="any">
+<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=2">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css?v=16">
+<link rel="stylesheet" href="css/porras.css?v=3">
+</head>
+<body data-page="predicciones">
+
+<div id="site-header"></div>
+
+<main class="wrap">
+  <h2 class="section-title">Porras</h2>
+  <p class="porras-intro">Elige categoría, grupo y jornada, y marca tu resultado para cada partido. Se guarda solo, en cuanto lo escribes.</p>
+
+  <div class="filtros">
+    <button class="activo" data-cat="hypermotion">LaLiga Hypermotion</button>
+    <button data-cat="primera_federacion">Primera Federación</button>
+    <button data-cat="segunda_federacion">Segunda Federación</button>
+  </div>
+  <div class="filtros-secundarios">
+    <select id="filtroGrupo" class="select-filtro" hidden></select>
+  </div>
+
+  <div id="porrasTemporadaCont"></div>
+
+  <div class="porras-tabs" role="tablist">
+    <button type="button" class="porras-tab activo" data-tab="jornada" role="tab" aria-selected="true">Mi jornada</button>
+    <button type="button" class="porras-tab" data-tab="ranking" role="tab" aria-selected="false">Ranking</button>
+  </div>
+
+  <div id="jornadasNav" class="porras-jornadas" role="tablist" aria-label="Jornadas"></div>
+  <!-- jornadasNav se comparte entre "Mi jornada" y "Ranking": en Ranking
+       sirve para elegir de qué jornada ya jugada quiere verse la
+       clasificación (ver cargarRanking() en porras.js). -->
+  <p id="porrasRankingAyuda" class="porras-ranking-ayuda" hidden>Elige arriba la jornada de la que quieres ver el ranking.</p>
+
+  <div id="porrasCont"></div>
+  <div id="porrasRankingCont" hidden></div>
+</main>
+
+<div id="site-footer"></div>
+
+<script src="js/ui-alertas.js?v=4"></script>
+<script src="js/config.js?v=15"></script>
+<script src="js/seo.js?v=4"></script>
+<script src="js/clubs.js?v=4"></script>
+<script src="js/lector-auth.js?v=13"></script>
+<script src="js/layout.js?v=6"></script>
+<script src="js/cookies.js?v=1"></script>
+<script src="js/ads.js?v=1"></script>
+<script src="js/porras.js?v=3"></script>
+<script>
+fijarSeoBasico({
+  titulo: "Porras — ELOTROFÚTBOLTV",
+  descripcion: "Haz tu porra de cada jornada de LaLiga Hypermotion, Primera y Segunda Federación, y comparte tu predicción.",
+  urlPath: "/predicciones.html",
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+  iniciarPaginaPorras();
+});
+</script>
+</body>
+</html>

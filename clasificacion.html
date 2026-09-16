@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<script src="js/tema.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="pageTitle">Clasificación — ELOTROFÚTBOLTV</title>
+<meta name="description" content="Clasificación y calendario de LaLiga Hypermotion, Primera y Segunda Federación, actualizados con cada resultado.">
+<link rel="canonical" href="https://elotrofutbol.media/clasificacion.html">
+<link rel="icon" href="/favicon.ico?v=2" sizes="any">
+<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=2">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css?v=16">
+</head>
+<body data-page="clasificacion">
+
+<div id="site-header"></div>
+
+<main class="wrap">
+  <h2 class="section-title">Clasificación</h2>
+  <div class="filtros">
+    <button class="activo" data-cat="hypermotion">LaLiga Hypermotion</button>
+    <button data-cat="primera_federacion">Primera Federación</button>
+    <button data-cat="segunda_federacion">Segunda Federación</button>
+  </div>
+  <div class="filtros-secundarios">
+    <select id="filtroGrupo" class="select-filtro" hidden></select>
+  </div>
+
+  <div id="clasificacionCont"></div>
+</main>
+
+<!-- Modal de detalle del partido: mismo componente que usa resultados.html -->
+<div id="modalPartido" class="modal-partido" aria-hidden="true">
+  <div class="modal-partido-fondo" onclick="cerrarModalPartido()"></div>
+  <div class="modal-partido-caja" role="dialog" aria-modal="true" aria-labelledby="modalPartidoTitulo">
+    <button type="button" class="modal-partido-cerrar" onclick="cerrarModalPartido()" aria-label="Cerrar">✕</button>
+    <div class="modal-partido-cabecera">
+      <div class="modal-partido-equipo">
+        <img id="modalEscudoLocal" class="modal-partido-escudo" src="" alt="" loading="lazy">
+        <span id="modalNombreLocal" class="modal-partido-nombre"></span>
+      </div>
+      <div class="modal-partido-marcador">
+        <span id="modalMarcador"></span>
+        <span id="modalEstado" class="modal-partido-estado"></span>
+      </div>
+      <div class="modal-partido-equipo">
+        <img id="modalEscudoVisitante" class="modal-partido-escudo" src="" alt="" loading="lazy">
+        <span id="modalNombreVisitante" class="modal-partido-nombre"></span>
+      </div>
+    </div>
+    <p id="modalPartidoTitulo" class="modal-partido-subtitulo"></p>
+    <a id="modalEnlaceFlashscore" class="enlace-flashscore" href="" target="_blank" rel="noopener noreferrer" hidden>Ver en Flashscore<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></a>
+    <div id="modalNoticiasVinculadas" class="modal-noticias-vinculadas" hidden></div>
+    <div id="modalPartidoMvp" class="modal-partido-mvp" hidden></div>
+    <div id="modalPartidoAlineaciones" class="modal-partido-alineaciones"></div>
+    <div id="modalPartidoEventos" class="modal-partido-eventos"></div>
+  </div>
+</div>
+
+<div id="site-footer"></div>
+
+<script src="js/ui-alertas.js?v=4"></script>
+<script src="js/config.js?v=15"></script>
+<script src="js/seo.js?v=4"></script>
+<script src="js/clubs.js?v=4"></script>
+<script src="js/lector-auth.js?v=13"></script>
+<script src="js/layout.js?v=6"></script>
+<script src="js/cookies.js?v=1"></script>
+<script src="js/ads.js?v=1"></script>
+<script src="js/partidos.js?v=9"></script>
+<script>
+fijarSeoBasico({
+  titulo: "Clasificación — ELOTROFÚTBOLTV",
+  descripcion: "Clasificación y calendario de LaLiga Hypermotion, Primera y Segunda Federación, actualizados con cada resultado.",
+  urlPath: "/clasificacion.html",
+});
+
+let competicionActual = "hypermotion";
+let grupoActual = "";
+
+// Todos los resultados de la competición/grupo elegidos, cargados una
+// vez y reutilizados para calcular la clasificación.
+let RESULTADOS_COMPETICION = [];
+
+// Si hay algún partido "en_juego" en CUALQUIER grupo de la competición
+// actual, no solo en el grupo seleccionado en el desplegable. Antes el
+// ritmo de refresco (15s/60s) y el punto verde de "en vivo" dependían
+// solo de RESULTADOS_COMPETICION, que está filtrado por grupoActual: si
+// el partido en vivo real estaba en G2 pero tenías G1 seleccionado, la
+// petición nunca traía ese partido y el refresco se quedaba a 60s aunque
+// hubiera partidos en juego en ese mismo momento en otro grupo. Esta
+// variable se calcula aparte, a partir de TODOS los grupos de la
+// competición, para que el ritmo de refresco y el aviso de "en vivo" no
+// dependan de qué grupo tengas abierto en la tabla.
+let HAY_PARTIDO_EN_VIVO_COMPETICION = false;
+
+document.querySelectorAll(".filtros button[data-cat]").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".filtros button[data-cat]").forEach(b => b.classList.remove("activo"));
+    btn.classList.add("activo");
+    competicionActual = btn.dataset.cat;
+    grupoActual = "";
+    cargarTodo();
+  });
+});
+
+const selectGrupo = document.getElementById("filtroGrupo");
+selectGrupo.addEventListener("change", () => {
+  grupoActual = selectGrupo.value;
+  cargarTodo();
+});
+
+function poblarFiltroGrupo(results) {
+  const grupos = [...new Set(results.map(r => r.grupo).filter(Boolean))].sort((a, b) => a.localeCompare(b, "es"));
+  if (!grupos.length) {
+    selectGrupo.hidden = true;
+    selectGrupo.innerHTML = "";
+    if (grupoActual) grupoActual = "";
+    return;
+  }
+  selectGrupo.innerHTML = grupos.map(g => `<option value="${escapeHtml(g)}">${escapeHtml(g)}</option>`).join("");
+  // A diferencia de Resultados, aquí no tiene sentido un "Todos los
+  // grupos" para la clasificación (mezclaría tablas de grupos distintos
+  // como si fueran una sola liga), así que se selecciona siempre el
+  // primero si no había ninguno elegido todavía.
+  if (!grupoActual || !grupos.includes(grupoActual)) grupoActual = grupos[0];
+  selectGrupo.value = grupoActual;
+  selectGrupo.hidden = false;
+}
+
+// Fecha de inicio de la temporada de fútbol en curso, en formato
+// "YYYY-MM-DD", para usarla como filtro "desde_fecha" al pedir partidos.
+//
+// Por qué hace falta esto: la base de datos acumula TODOS los partidos de
+// TODAS las temporadas jugadas de cada grupo (no existe ningún campo
+// "temporada" en el esquema), y antes la clasificación se calculaba a
+// partir de "los últimos 500 partidos por fecha" (?limit=500). En cuanto
+// un grupo llevaba ya varias temporadas acumuladas y superaba esos 500
+// partidos, el límite recortaba los más antiguos -- y si el corte caía
+// dentro de la temporada ACTUAL (p.ej. sus primeras jornadas), esos
+// partidos desaparecían de la clasificación calculada en el cliente,
+// dándola incompleta. El fallo era intermitente porque dependía de
+// cuántos partidos históricos tuviera acumulados cada grupo en cada
+// momento, no de nada que cambiase en el código.
+//
+// La temporada europea de fútbol arranca en verano y termina la
+// primavera/verano siguiente, así que:
+//   - Si estamos entre julio y diciembre, la temporada empezó el 1 de
+//     julio de ESTE año.
+//   - Si estamos entre enero y junio, la temporada empezó el 1 de julio
+//     del año ANTERIOR (seguimos en la temporada que arrancó el verano
+//     pasado).
+function inicioTemporadaActual() {
+  const ahora = new Date();
+  const mes = ahora.getMonth(); // 0 = enero ... 11 = diciembre
+  const anioInicio = mes >= 6 ? ahora.getFullYear() : ahora.getFullYear() - 1;
+  return `${anioInicio}-07-01`;
+}
+
+function hayPartidoEnJuego(partidos) {
+  return partidos.some(p => p.estado === "en_juego");
+}
+
+// ---------- Carga de datos ----------
+async function cargarTodo() {
+  const contClas = document.getElementById("clasificacionCont");
+  contClas.innerHTML = spinnerHTML();
+  try {
+    const desdeFecha = inicioTemporadaActual();
+
+    // Primero se pide (sin filtrar por grupo) solo para saber qué
+    // grupos existen en esta competición y poblar el desplegable. Se
+    // acota también por "desde_fecha" (temporada actual): sin este
+    // filtro, con competiciones de varios grupos y muchas temporadas
+    // acumuladas (p.ej. Segunda Federación, con 5 grupos) el
+    // "limit=500" podía llenarse con partidos de un único grupo/
+    // temporada antigua y dejar fuera nombres de grupo que sí existen
+    // en la temporada actual.
+    const paramsSinGrupo = new URLSearchParams({ competicion: competicionActual, desde_fecha: desdeFecha, limit: "500" });
+    const { results: paraDescubrirGrupos } = await conReintento(() => apiFetch(`/api/results?${paramsSinGrupo.toString()}`).then(r => r.json()));
+    poblarFiltroGrupo(paraDescubrirGrupos);
+    // Esta petición ya trae TODOS los grupos de la competición, así que
+    // se aprovecha para saber si hay partidos en vivo en cualquiera de
+    // ellos (no solo en el que se vaya a mostrar en la tabla).
+    HAY_PARTIDO_EN_VIVO_COMPETICION = hayPartidoEnJuego(paraDescubrirGrupos);
+
+    // Para la clasificación en sí, se vuelve a pedir ya filtrando por
+    // "grupo" (o por la competición entera si no tiene grupos, como
+    // LaLiga Hypermotion) Y por "desde_fecha": así el "limit=500" del
+    // backend ya no tiene que cubrir el histórico completo de
+    // temporadas de ese grupo, solo la temporada en curso, que nunca
+    // llega a acercarse a 500 partidos. El límite queda como red de
+    // seguridad, no como mecanismo principal para acotar la temporada.
+    if (grupoActual) {
+      const paramsConGrupo = new URLSearchParams({ competicion: competicionActual, grupo: grupoActual, desde_fecha: desdeFecha, limit: "500" });
+      const { results: delGrupo } = await conReintento(() => apiFetch(`/api/results?${paramsConGrupo.toString()}`).then(r => r.json()));
+      RESULTADOS_COMPETICION = delGrupo;
+    } else {
+      RESULTADOS_COMPETICION = paraDescubrirGrupos;
+    }
+
+    PARTIDOS_CACHE = {};
+    RESULTADOS_COMPETICION.forEach(r => { PARTIDOS_CACHE[r.id] = r; });
+
+    pintarClasificacion();
+    // Se (re)programa el intervalo aquí también, no solo al final del
+    // DOMContentLoaded: al cambiar de competición/grupo cambian los
+    // datos, y puede que la nueva competición sí tenga partidos en
+    // juego (o deje de tenerlos), así que el ritmo de refresco debe
+    // recalcularse en cada carga, no solo una vez al entrar en la página.
+    iniciarAutoActualizacion();
+  } catch (err) {
+    contClas.innerHTML = estadoHTML({
+      titulo: "No se ha podido conectar",
+      texto: "Ha habido un problema al cargar la clasificación. Comprueba tu conexión e inténtalo de nuevo.",
+      tipo: "error",
+      cta: `<a href="javascript:location.reload()" class="btn-volver">Reintentar</a>`,
+    });
+  }
+}
+
+// ---------- Cálculo de la clasificación ----------
+// Se calcula siempre en el cliente a partir de los partidos "finalizado"
+// (3 puntos por victoria, 1 por empate), en vez de depender de una tabla
+// aparte en la base de datos: así la clasificación nunca se puede
+// desincronizar de los resultados que ya gestiona la redacción, y
+// cualquier corrección de un marcador se refleja sola.
+//
+// Los partidos "en_juego" también se incluyen, como puntos PROVISIONALES
+// calculados con el marcador actual (igual que ya se usa en el modal para
+// el marcador en vivo): así un equipo que está ganando en ese momento ya
+// aparece arriba, y sus puntos van cambiando solos si el marcador cambia.
+// Se marcan aparte (fila.enVivo) para poder resaltarlos visualmente y
+// dejar claro que esos puntos todavía pueden variar hasta el pitido final.
+function calcularClasificacion(partidos) {
+  const tabla = {};
+  function fila(equipo) {
+    if (!tabla[equipo]) {
+      tabla[equipo] = { equipo, pj: 0, pg: 0, pe: 0, pp: 0, gf: 0, gc: 0, pts: 0, escudoUrl: null, enVivo: false };
+    }
+    return tabla[equipo];
+  }
+  partidos.forEach(p => {
+    const contable = p.estado === "finalizado" || p.estado === "en_juego";
+    if (!contable) return;
+    if (p.goles_local === null || p.goles_local === undefined || p.goles_visitante === null || p.goles_visitante === undefined) return;
+    const local = fila(p.equipo_local);
+    const visitante = fila(p.equipo_visitante);
+    if (!local.escudoUrl && p.escudo_local_url) local.escudoUrl = p.escudo_local_url;
+    if (!visitante.escudoUrl && p.escudo_visitante_url) visitante.escudoUrl = p.escudo_visitante_url;
+    if (p.estado === "en_juego") { local.enVivo = true; visitante.enVivo = true; }
+    local.pj++; visitante.pj++;
+    local.gf += p.goles_local; local.gc += p.goles_visitante;
+    visitante.gf += p.goles_visitante; visitante.gc += p.goles_local;
+    if (p.goles_local > p.goles_visitante) {
+      local.pg++; local.pts += 3;
+      visitante.pp++;
+    } else if (p.goles_local < p.goles_visitante) {
+      visitante.pg++; visitante.pts += 3;
+      local.pp++;
+    } else {
+      local.pe++; visitante.pe++;
+      local.pts++; visitante.pts++;
+    }
+  });
+  return Object.values(tabla).sort((a, b) => {
+    if (b.pts !== a.pts) return b.pts - a.pts;
+    const dgA = a.gf - a.gc, dgB = b.gf - b.gc;
+    if (dgB !== dgA) return dgB - dgA;
+    if (b.gf !== a.gf) return b.gf - a.gf;
+    return a.equipo.localeCompare(b.equipo, "es");
+  });
+}
+
+// Zonas de ascenso/playoff/descenso orientativas: se marcan por
+// posición, no por reglamento exacto de cada categoría (que puede
+// cambiar de temporada en temporada), simplemente para dar una
+// referencia visual rápida.
+function zonaParaPosicion(pos, total) {
+  if (competicionActual === "hypermotion") {
+    if (pos <= 2) return "ascenso";
+    if (pos <= 6) return "playoff";
+    if (pos > total - 4) return "descenso";
+  } else {
+    if (pos === 1) return "ascenso";
+    if (pos <= 5) return "playoff";
+    if (pos > total - 4) return "descenso";
+  }
+  return "";
+}
+
+function pintarClasificacion() {
+  const cont = document.getElementById("clasificacionCont");
+  const tabla = calcularClasificacion(RESULTADOS_COMPETICION);
+  if (!tabla.length) {
+    cont.innerHTML = estadoHTML({
+      titulo: "Todavía no hay clasificación",
+      texto: "Aún no se ha disputado ningún partido finalizado en esta competición/grupo.",
+    });
+    return;
+  }
+  const filas = tabla.map((f, i) => {
+    const pos = i + 1;
+    const dg = f.gf - f.gc;
+    const zona = zonaParaPosicion(pos, tabla.length);
+    return `
+      <tr${zona ? ` data-zona="${zona}"` : ""}${f.enVivo ? ` class="fila-en-vivo"` : ""}>
+        <td class="col-pos"><span class="clas-pos">${pos}</span></td>
+        <td class="col-equipo">
+          <a class="equipo-enlace" href="${enlaceEquipoHref(f.equipo, competicionActual)}">
+            <img class="clas-escudo" src="${getEscudoUrl(f.equipo, f.escudoUrl)}" alt="" loading="lazy" onerror="manejarErrorEscudo(this);">
+            <span>${escapeHtml(f.equipo)}</span>
+            ${f.enVivo ? `<span class="en-vivo-punto" title="Partido en juego: puntos provisionales"></span>` : ""}
+          </a>
+        </td>
+        <td>${f.pj}</td>
+        <td>${f.pg}</td>
+        <td>${f.pe}</td>
+        <td>${f.pp}</td>
+        <td>${f.gf}</td>
+        <td>${f.gc}</td>
+        <td>${dg > 0 ? "+" + dg : dg}</td>
+        <td class="col-puntos${f.enVivo ? " col-puntos-en-vivo" : ""}">${f.pts}</td>
+      </tr>`;
+  }).join("");
+
+  cont.innerHTML = `
+    <div class="clasificacion-tabla-wrap">
+      <table class="clasificacion-tabla">
+        <thead>
+          <tr>
+            <th title="Posición">#</th>
+            <th class="col-equipo">Equipo</th>
+            <th title="Partidos jugados">PJ</th>
+            <th title="Partidos ganados">PG</th>
+            <th title="Partidos empatados">PE</th>
+            <th title="Partidos perdidos">PP</th>
+            <th title="Goles a favor">GF</th>
+            <th title="Goles en contra">GC</th>
+            <th title="Diferencia de goles">DG</th>
+            <th title="Puntos">Pts</th>
+          </tr>
+        </thead>
+        <tbody>${filas}</tbody>
+      </table>
+    </div>
+    <div class="clasificacion-leyenda">
+      <span><i class="i-ascenso"></i> Ascenso directo</span>
+      <span><i class="i-playoff"></i> Zona de playoff</span>
+      <span><i class="i-descenso"></i> Descenso</span>
+      ${tabla.some(f => f.enVivo) ? `<span><span class="en-vivo-punto"></span> Partido en juego: puntos provisionales</span>` : ""}
+    </div>`;
+}
+
+// ---------- Auto-actualización ----------
+// Mientras la pestaña esté visible, se vuelve a pedir todo periódicamente
+// (la clasificación y el calendario cambian solo cuando cambia un
+// resultado). El intervalo es DINÁMICO: 60s en condiciones normales, pero
+// si hay algún partido "en_juego" entre los datos ya cargados, se acelera
+// a 15s (igual que el auto-refresco en vivo de partidos.js) para que los
+// puntos provisionales de los equipos que están jugando ahora mismo se
+// mantengan al día sin que quien esté mirando la tabla tenga que recargar.
+const REFRESCO_CLASIFICACION_NORMAL_MS = 60000;
+const REFRESCO_CLASIFICACION_EN_VIVO_MS = 15000;
+let INTERVALO_REFRESCO_CLASIFICACION = null;
+let msIntervaloActualClasificacion = null;
+
+function iniciarAutoActualizacion() {
+  // Se elige el intervalo según si hay partidos en juego AHORA MISMO en
+  // CUALQUIER grupo de la competición (HAY_PARTIDO_EN_VIVO_COMPETICION),
+  // no solo en el grupo seleccionado: así el refresco se acelera a 15s
+  // aunque el partido en vivo esté en otro grupo distinto al que se está
+  // viendo, y no hace falta cambiar de grupo para que se acelere.
+  const ms = HAY_PARTIDO_EN_VIVO_COMPETICION ? REFRESCO_CLASIFICACION_EN_VIVO_MS : REFRESCO_CLASIFICACION_NORMAL_MS;
+  if (INTERVALO_REFRESCO_CLASIFICACION && msIntervaloActualClasificacion === ms) return;
+  if (INTERVALO_REFRESCO_CLASIFICACION) clearInterval(INTERVALO_REFRESCO_CLASIFICACION);
+  msIntervaloActualClasificacion = ms;
+  INTERVALO_REFRESCO_CLASIFICACION = setInterval(async () => {
+    if (document.visibilityState !== "visible") return;
+    try {
+      // Mismo criterio que en cargarTodo(): si hay grupo elegido, se
+      // filtra ya en la propia petición (no en el cliente sobre una
+      // lista de "toda la competición" que puede venir truncada por el
+      // límite del backend cuando hay varios grupos con muchos
+      // partidos). Y, exactamente igual que en cargarTodo(), se manda
+      // también "desde_fecha" (temporada actual): SIN esto, este tic
+      // periódico volvía a depender solo del "limit=500" para acotar la
+      // temporada, y como el volumen histórico acumulado varía de un
+      // grupo a otro, el refresco en vivo podía fallar en un grupo
+      // concreto y funcionar bien en otro -- o funcionar en la carga
+      // inicial de la página y dejar de traer partidos completos en
+      // cuanto pasaba el primer tic de este intervalo. Era la causa de
+      // que la clasificación en vivo pareciera funcionar "solo en un
+      // grupo/categoría a la vez" de forma intermitente: no es que solo
+      // se vigilara uno, es que este tic (el único que de verdad
+      // mantiene los puntos en vivo al día) perdía partidos según el
+      // grupo, mientras la carga inicial (ya con el fix) sí los traía
+      // bien.
+      const desdeFecha = inicioTemporadaActual();
+      const params = grupoActual
+        ? new URLSearchParams({ competicion: competicionActual, grupo: grupoActual, desde_fecha: desdeFecha, limit: "500" })
+        : new URLSearchParams({ competicion: competicionActual, desde_fecha: desdeFecha, limit: "500" });
+      const { results: nuevos } = await apiFetch(`/api/results?${params.toString()}`).then(r => r.json());
+
+      // Además de los resultados del grupo activo (para la tabla), se
+      // pide aparte TODA la competición (todos los grupos) para poder
+      // saber si hay partidos en vivo en cualquiera de ellos. Si ya
+      // no hay grupo (competición sin grupos), es la misma petición que
+      // "nuevos" y no hace falta repetirla.
+      let todosLosGrupos = nuevos;
+      if (grupoActual) {
+        const paramsTodos = new URLSearchParams({ competicion: competicionActual, desde_fecha: desdeFecha, limit: "500" });
+        ({ results: todosLosGrupos } = await apiFetch(`/api/results?${paramsTodos.toString()}`).then(r => r.json()));
+      }
+      HAY_PARTIDO_EN_VIVO_COMPETICION = hayPartidoEnJuego(todosLosGrupos);
+
+      // Solo se repinta si algo realmente ha cambiado (evita parpadeos
+      // y reordenar la tabla sin motivo en cada tic del intervalo). El
+      // estado también entra en la firma para detectar el paso de
+      // "programado" a "en_juego" (y de "en_juego" a "finalizado"),
+      // aunque el marcador todavía no haya cambiado en ese instante.
+      const firmaAntes = JSON.stringify(RESULTADOS_COMPETICION.map(r => [r.id, r.estado, r.goles_local, r.goles_visitante]));
+      const firmaAhora = JSON.stringify(nuevos.map(r => [r.id, r.estado, r.goles_local, r.goles_visitante]));
+      if (firmaAntes !== firmaAhora) {
+        RESULTADOS_COMPETICION = nuevos;
+        PARTIDOS_CACHE = {};
+        RESULTADOS_COMPETICION.forEach(r => { PARTIDOS_CACHE[r.id] = r; });
+        pintarClasificacion();
+      }
+      // Se reevalúa el intervalo en cada tic por si ha empezado o
+      // terminado algún partido: así se acelera/desacelera solo, sin
+      // esperar a que quien esté mirando la tabla recargue la página.
+      iniciarAutoActualizacion();
+    } catch (err) {
+      // Fallo de red puntual: se ignora, se reintenta en el siguiente tic.
+    }
+  }, ms);
+}
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") cargarTodo();
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+  cargarTodo(); // ya se encarga de arrancar iniciarAutoActualizacion() al terminar
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,2784 @@
+:root{
+  --marino:#0c1b2e;
+  --marino2:#152b46;
+  --rojo:#d1132e;
+  --rojo-oscuro:#9c0e23;
+  --celeste:#5bb8e8;
+  --celeste-claro:#a8dcf5;
+  --gris-claro:#eef1f5;
+  --gris-texto:#5a6270;
+  --blanco:#ffffff;
+  --font-tit:'Oswald', 'Arial Narrow', sans-serif;
+  --font-text:'Inter', Arial, sans-serif;
+  /* Tipografía "periodística" para noticias, crónicas y demás artículos:
+     titulares en serif elegante (estilo cabecera de periódico) y cuerpo
+     de texto en una serif de lectura cómoda, como en la prensa clásica. */
+  --font-headline:'Playfair Display', Georgia, 'Times New Roman', serif;
+  --font-body:'Lora', Georgia, 'Times New Roman', serif;
+  --radio:8px;
+  --sombra: 0 4px 18px rgba(12,27,46,.12);
+
+  /* ---------- Modo claro/oscuro ----------
+     Variables "semánticas" que sí cambian entre temas (a diferencia de
+     las de marca de arriba, que son las mismas en los dos modos). El
+     resto de la hoja de estilos las usa en vez de blancos/negros fijos
+     para fondo, texto y tarjetas, así que basta con redefinirlas aquí
+     abajo (ver [data-theme="dark"]) para que todo el sitio cambie de
+     tema sin tocar cada regla una a una. */
+  --fondo:#ffffff;
+  --fondo-alt:#f7f8fa;
+  --tarjeta:#ffffff;
+  --texto:#1a1c22;
+  --texto-suave:#5a6270;
+  --borde:#e7e9ee;
+  /* --marino se sigue usando tal cual como FONDO (cabecera, botones de
+     marca) en los dos modos, pero como COLOR DE TEXTO (títulos de
+     noticias, nombres...) necesita aclararse en oscuro o sería
+     ilegible sobre un fondo oscuro -- por eso los títulos usan esta
+     variable aparte en vez de --marino directamente. */
+  --marino-texto:var(--marino);
+}
+
+/* Modo oscuro: se activa poniendo data-theme="dark" en <html> (ver
+   public/js/tema.js). Solo redefine las variables semánticas de arriba;
+   los colores de marca (--marino, --rojo, --celeste...) se mantienen
+   iguales en ambos modos porque son parte de la identidad visual y ya
+   funcionan bien sobre fondo oscuro (la cabecera y el pie ya son
+   --marino en modo claro). */
+[data-theme="dark"]{
+  --fondo:#11161f;
+  --fondo-alt:#171d29;
+  --tarjeta:#1a2130;
+  --texto:#e7eaf0;
+  --texto-suave:#9aa4b8;
+  --borde:#2a3242;
+  --gris-claro:#171d29;
+  --gris-texto:#9aa4b8;
+  --sombra: 0 4px 18px rgba(0,0,0,.35);
+  --marino-texto:#e7eaf0;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;}
+body{
+  font-family:var(--font-text);
+  color:var(--texto);
+  background:var(--fondo);
+  line-height:1.55;
+  overflow-x:hidden;
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+}
+body > main{flex:1 0 auto;}
+body > #site-footer{flex-shrink:0;}
+a{color:inherit;text-decoration:none;}
+img{max-width:100%;display:block;}
+button{font-family:inherit;}
+::selection{background:var(--celeste);color:#fff;}
+:focus-visible{outline:2px solid var(--celeste);outline-offset:2px;}
+
+/* ---------- BARRA SUPERIOR ---------- */
+.top-bar{
+  background:var(--marino);
+  color:var(--celeste-claro);
+  font-size:.75rem;
+  padding:7px 0;
+}
+.top-bar .wrap{display:flex;justify-content:space-between;align-items:center;max-width:1240px;margin:0 auto;padding:0 20px;}
+.top-bar .redes-mini{display:flex;gap:14px;}
+.top-bar .redes-mini a{color:var(--celeste-claro);display:inline-flex;align-items:center;transition:color .15s;}
+.top-bar .redes-mini a:hover{color:var(--blanco);}
+
+/* ---------- CABECERA ---------- */
+.main-header{
+  background:var(--fondo);
+  border-bottom:4px solid var(--rojo);
+  padding:14px 0;
+  position:sticky;top:0;z-index:50;
+  box-shadow:0 2px 10px rgba(0,0,0,.05);
+}
+.main-header .wrap{
+  max-width:1240px;margin:0 auto;padding:0 20px;
+  display:flex;align-items:center;justify-content:flex-start;
+  gap:16px;
+}
+.brand{display:flex;align-items:center;gap:10px;}
+.brand img{height:52px;width:auto;}
+.brand .brand-text{
+  font-family:var(--font-tit);
+  font-weight:700;
+  font-size:1.35rem;
+  letter-spacing:.3px;
+  text-transform:uppercase;
+  color:var(--marino-texto);
+  line-height:1.1;
+}
+.brand .brand-text .brand-rojo{color:var(--rojo);}
+
+/* .search-box vive en el HTML entre .brand y .header-right, pero en
+   escritorio se agrupa visualmente junto a .header-right (pegada al
+   botón de acceso, como estaba en el diseño original) empujándola con
+   auto a la derecha del logo; .header-right ya no necesita separación
+   propia porque queda inmediatamente después. */
+.search-box{margin-left:auto;}
+
+.header-right{display:flex;align-items:center;gap:14px;}
+.nav-toggle{display:none;background:none;border:none;font-size:1.7rem;cursor:pointer;color:var(--marino-texto);}
+
+/* ---------- Botón de modo oscuro/claro ---------- */
+.theme-toggle{
+  background:none;border:1px solid var(--borde);border-radius:50%;width:36px;height:36px;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--texto);
+  transition:background .15s,border-color .15s;flex-shrink:0;
+}
+.theme-toggle:hover{background:var(--fondo-alt);}
+.theme-toggle svg{width:18px;height:18px;}
+.theme-toggle .theme-icon-sol{display:none;}
+[data-theme="dark"] .theme-toggle .theme-icon-luna{display:none;}
+[data-theme="dark"] .theme-toggle .theme-icon-sol{display:block;color:var(--celeste-claro);}
+
+.btn-login{
+  display:inline-flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg, var(--rojo), var(--rojo-oscuro));
+  color:#fff;
+  width:40px;height:40px;
+  border-radius:50%;
+  box-shadow:0 3px 10px rgba(209,19,46,.35);
+  transition:transform .15s, box-shadow .15s;
+  flex-shrink:0;
+  position:relative;
+}
+.btn-login svg{width:18px;height:18px;}
+.btn-login:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(209,19,46,.45);}
+.btn-login::after{
+  content:"Acceso";
+  position:absolute;top:calc(100% + 8px);right:0;
+  background:var(--marino);color:#fff;
+  font-family:var(--font-text);font-size:.72rem;font-weight:500;
+  padding:5px 10px;border-radius:6px;white-space:nowrap;
+  opacity:0;visibility:hidden;transform:translateY(-4px);
+  transition:opacity .15s, transform .15s, visibility .15s;
+  pointer-events:none;
+}
+.btn-login:hover::after{opacity:1;visibility:visible;transform:translateY(0);}
+
+/* ---------- SESIÓN INICIADA (cabecera pública) ---------- */
+.user-menu{position:relative;flex-shrink:0;}
+.btn-usuario{
+  display:inline-flex;align-items:center;gap:8px;
+  background:var(--marino);border:1.5px solid var(--marino2);
+  padding:5px 12px 5px 5px;border-radius:20px;
+  cursor:pointer;transition:border-color .15s, box-shadow .15s;
+  font-family:var(--font-text);
+}
+.btn-usuario:hover{border-color:var(--rojo);box-shadow:0 3px 10px rgba(209,19,46,.25);}
+.user-avatar{
+  width:28px;height:28px;border-radius:50%;
+  background:linear-gradient(135deg, var(--rojo), var(--rojo-oscuro));
+  border:2px solid #fff;
+  color:#fff;font-size:.72rem;font-weight:700;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.user-avatar.user-avatar-foto{background-color:transparent;}
+.user-nombre{font-size:.82rem;font-weight:600;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.35);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.user-dropdown{
+  position:absolute;top:calc(100% + 10px);right:0;
+  background:var(--tarjeta);color:var(--texto);border-radius:10px;
+  box-shadow:0 10px 30px rgba(12,27,46,.16);
+  min-width:190px;padding:8px;
+  opacity:0;visibility:hidden;pointer-events:none;transform:translateY(-6px);
+  transition:opacity .15s, transform .15s, visibility .15s;
+  z-index:200;
+}
+.user-dropdown.abierto{opacity:1;visibility:visible;pointer-events:auto;transform:translateY(0);}
+.user-dropdown-info{padding:8px 10px 10px;border-bottom:1px solid var(--borde);margin-bottom:6px;display:flex;align-items:center;gap:10px;}
+.user-dropdown-info strong{display:block;font-size:.85rem;color:var(--marino-texto);}
+.user-dropdown-info span{font-size:.72rem;color:#9aa0ab;text-transform:uppercase;letter-spacing:.4px;}
+.user-avatar-grande{width:38px;height:38px;font-size:.95rem;flex-shrink:0;}
+.user-dropdown-textos{display:flex;flex-direction:column;min-width:0;}
+.user-dropdown a,.user-dropdown button{
+  display:block;width:100%;text-align:left;
+  padding:8px 10px;border-radius:6px;border:none;background:none;
+  font-family:var(--font-text);font-size:.85rem;color:var(--marino-texto);
+  cursor:pointer;text-decoration:none;
+}
+.user-dropdown a:hover,.user-dropdown button:hover{background:var(--fondo-alt);}
+.user-dropdown button{color:var(--rojo);}
+.user-dropdown-proximamente{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding:8px 10px;border-radius:6px;
+  font-family:var(--font-text);font-size:.85rem;color:#9aa0ab;
+  cursor:default;
+}
+.user-dropdown-proximamente span.etiqueta-proximamente{
+  font-size:.62rem;text-transform:uppercase;letter-spacing:.3px;
+  background:var(--fondo-alt);color:#9aa0ab;border-radius:20px;padding:2px 8px;
+  flex-shrink:0;
+}
+@media (max-width:600px){
+  .user-nombre{display:none;}
+}
+
+/* ---------- NAVEGACIÓN ---------- */
+nav.main-nav{
+  background:linear-gradient(90deg, var(--marino), var(--marino2));
+}
+nav.main-nav ul{
+  list-style:none;
+  display:flex;
+  max-width:1240px;margin:0 auto;padding:0 20px;
+  flex-wrap:wrap;
+}
+nav.main-nav a{
+  display:block;
+  padding:13px 18px;
+  color:#eef3f8;
+  font-family:var(--font-tit);
+  font-size:.88rem;
+  letter-spacing:.4px;
+  text-transform:uppercase;
+  transition:background .15s, color .15s;
+  border-bottom:3px solid transparent;
+}
+nav.main-nav a:hover{background:rgba(91,184,232,.15);}
+nav.main-nav a.activo{
+  color:var(--celeste-claro);
+  border-color:var(--celeste);
+  background:rgba(91,184,232,.12);
+}
+
+/* ---------- SUBMENÚ DE CLUBES ---------- */
+nav.main-nav li.tiene-submenu{position:relative;display:flex;align-items:center;}
+.submenu-toggle{
+  display:none;background:none;border:none;color:#eef3f8;cursor:pointer;
+  font-size:.65rem;padding:13px 12px 13px 2px;line-height:1;
+}
+nav.main-nav .submenu{
+  display:none;list-style:none;position:absolute;top:100%;left:0;
+  min-width:240px;max-height:360px;overflow-y:auto;
+  background:var(--marino2);border-top:3px solid var(--celeste);
+  border-radius:0 0 8px 8px;box-shadow:var(--sombra);z-index:60;
+}
+li.tiene-submenu.abierto .submenu{display:block;}
+.submenu li a{
+  display:block;padding:9px 16px;font-family:var(--font-text);
+  text-transform:none;letter-spacing:0;font-size:.85rem;
+  color:#eef3f8;border-bottom:1px solid rgba(255,255,255,.06);
+}
+.submenu li:last-child a{border-bottom:none;}
+.submenu li a:hover{background:rgba(91,184,232,.18);color:var(--celeste-claro);}
+
+@media(max-width:900px){
+  .submenu-toggle{display:inline-block;}
+  nav.main-nav li.tiene-submenu{flex-wrap:wrap;}
+  nav.main-nav .submenu{
+    position:static;width:100%;box-shadow:none;border-radius:0;
+    max-height:none;background:rgba(0,0,0,.15);
+  }
+  li.tiene-submenu.abierto .submenu-toggle{transform:rotate(180deg);}
+}
+
+.search-box{position:relative;}
+.search-box input{
+  border:1px solid var(--borde);border-radius:20px;padding:8px 16px;font-size:.85rem;width:190px;
+  background:var(--fondo);color:var(--texto);
+  transition:border-color .15s,width .2s;
+}
+.search-box input:focus{outline:none;border-color:var(--celeste);width:220px;}
+
+/* ---------- Búsqueda en vivo (resultados automáticos al escribir) ---------- */
+.search-resultados{
+  display:none;position:absolute;top:calc(100% + 10px);right:0;width:320px;max-height:420px;
+  overflow-y:auto;background:var(--tarjeta);border-radius:var(--radio);box-shadow:var(--sombra);
+  border:1px solid var(--borde);z-index:150;
+}
+.search-resultados.visible{display:block;}
+.search-item{
+  display:flex;flex-direction:column;gap:2px;padding:10px 16px;text-decoration:none;
+  color:inherit;border-bottom:1px solid var(--borde);transition:background .15s;
+}
+.search-item:hover{background:var(--fondo-alt);}
+.search-item-cat{font-size:.66rem;color:var(--rojo);font-weight:700;text-transform:uppercase;font-family:var(--font-tit);letter-spacing:.4px;}
+.search-item-titulo{font-size:.86rem;color:var(--marino-texto);font-weight:600;line-height:1.3;}
+.search-vermas{
+  display:block;text-align:center;padding:10px 16px;font-size:.78rem;font-weight:700;
+  color:var(--marino-texto);text-decoration:none;text-transform:uppercase;font-family:var(--font-tit);letter-spacing:.4px;
+}
+.search-vermas:hover{color:var(--rojo);}
+.search-cargando, .search-vacio{padding:16px;text-align:center;color:var(--gris-texto);font-size:.83rem;}
+
+@media(max-width:600px){
+  .search-item{padding:12px 16px;}
+  .search-vermas{padding:13px 16px;}
+}
+
+/* ---------- Equipos coincidentes en buscar.html (varios clubes a la vez) ---------- */
+.grid-clubes-busqueda{
+  display:flex;flex-wrap:wrap;gap:10px;margin:8px 0 24px;
+}
+.grid-clubes-busqueda .search-item{
+  flex:0 1 220px;border:1px solid var(--borde);border-radius:var(--radio);border-bottom:1px solid var(--borde);
+}
+
+/* Nota: por debajo de 900px la barra de búsqueda ya se gestiona en el
+   bloque @media(max-width:900px) de la sección RESPONSIVE, más abajo,
+   donde pasa a ocupar el 100% del ancho en su propia línea. */
+
+/* ---------- CONTENIDOR ---------- */
+.wrap{max-width:1240px;margin:0 auto;padding:0 20px;width:100%;}
+main.wrap{padding-top:28px;padding-bottom:60px;}
+@media(max-width:600px){
+  .wrap{padding:0 16px;}
+  main.wrap{padding-top:20px;padding-bottom:44px;}
+}
+
+/* ---------- HERO / DESTACADAS ---------- */
+.hero{
+  display:grid;grid-template-columns:2fr 1fr;gap:22px;margin-bottom:36px;
+}
+.hero-principal{position:relative;border-radius:var(--radio);overflow:hidden;min-height:440px;background:var(--marino);color:#fff;}
+.hero-principal img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;opacity:.85;}
+.hero-principal .overlay{
+  position:relative;z-index:1;
+  background:linear-gradient(to top, rgba(12,27,46,.95), rgba(12,27,46,.1));
+  height:100%;display:flex;align-items:flex-end;padding:28px;
+}
+.hero-principal .badge{
+  background:var(--rojo);color:#fff;font-family:var(--font-tit);font-size:.75rem;
+  padding:5px 12px;border-radius:20px;text-transform:uppercase;display:inline-block;margin-bottom:10px;
+  letter-spacing:.5px;
+}
+.hero-principal h1, .hero-principal h2{font-family:var(--font-headline);font-weight:700;font-size:clamp(1.5rem,4vw,2.1rem);line-height:1.15;margin-bottom:10px;}
+.hero-principal p{font-family:var(--font-body);font-size:.95rem;color:var(--celeste-claro);}
+
+.hero-secundarias{display:flex;flex-direction:column;gap:14px;}
+.mini-card{display:flex;gap:12px;align-items:flex-start;padding:8px;border-radius:var(--radio);transition:background .15s;}
+.mini-card:hover{background:var(--gris-claro);}
+.mini-card img{width:92px;height:66px;object-fit:cover;border-radius:6px;flex-shrink:0;background:var(--gris-claro);}
+.mini-card .cat{font-size:.7rem;color:var(--rojo);font-weight:700;text-transform:uppercase;font-family:var(--font-tit);letter-spacing:.4px;}
+.mini-card h3{font-family:var(--font-headline);font-weight:700;font-size:1rem;line-height:1.3;margin-top:3px;color:var(--marino-texto);}
+
+/* ---------- CUADRÍCULA DE NOTICIAS ---------- */
+.section-title-row{
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;
+  margin:40px 0 20px;
+}
+.section-title-row .section-title{margin:0;}
+.filtros-categoria-home{margin-bottom:0;}
+.resultados-home{margin-top:6px;}
+.resultados-home .tabla-jornada{margin-bottom:0;}
+.resultados-home .estado-info{padding:36px 18px;}
+.section-title-en-vivo{border-left-color:var(--rojo);color:var(--rojo);}
+
+/* ---- Encuestas destacadas en portada ---- */
+.encuestas-portada-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px;
+}
+.encuestas-portada-grid .encuesta-widget{margin:0;max-width:none;}
+
+/* ---- Widget de encuesta (portada y noticia) ---- */
+.encuesta-widget{max-width:780px;margin:32px auto 0;background:var(--tarjeta);border:1px solid var(--borde);border-radius:12px;padding:18px 20px;}
+.encuesta-pregunta{font-family:var(--font-tit);font-weight:700;font-size:1.05rem;color:var(--marino-texto);margin:0 0 14px;}
+.encuesta-form{display:flex;flex-direction:column;gap:9px;}
+.encuesta-opcion{display:flex;align-items:center;gap:9px;font-size:.92rem;color:var(--texto);cursor:pointer;padding:8px 10px;border:1px solid var(--borde);border-radius:8px;transition:.15s;}
+.encuesta-opcion:hover{border-color:#c3c9d3;}
+.encuesta-opcion input{width:auto;margin:0;accent-color:var(--marino);}
+.btn-votar-encuesta{align-self:flex-start;margin-top:6px;background:var(--marino);color:#fff;border:none;border-radius:8px;padding:9px 18px;font-family:var(--font-text);font-weight:600;font-size:.88rem;cursor:pointer;transition:.15s;}
+.btn-votar-encuesta:hover:not(:disabled){opacity:.9;}
+.btn-votar-encuesta:disabled{opacity:.6;cursor:default;}
+.encuesta-msg-error{color:#c94b4b;font-size:.82rem;margin:4px 0 0;}
+.encuesta-resultados{display:flex;flex-direction:column;gap:12px;}
+.encuesta-resultado-cabecera{display:flex;justify-content:space-between;font-size:.9rem;color:var(--texto);margin-bottom:4px;}
+.encuesta-mi-voto .encuesta-resultado-cabecera{font-weight:700;color:var(--marino-texto);}
+.encuesta-barra{background:var(--gris-claro);border-radius:5px;height:8px;overflow:hidden;}
+.encuesta-barra-relleno{background:var(--marino);height:100%;border-radius:5px;transition:width .3s;}
+.encuesta-total{font-size:.78rem;color:#9aa0ab;margin:12px 0 0;}
+.encuesta-aviso{font-size:.86rem;color:#8891a0;margin:10px 0 0;padding-top:10px;border-top:1px dashed var(--borde);}
+.encuesta-aviso a{color:var(--marino-texto);font-weight:600;text-decoration:underline;}
+@media(max-width:600px){
+  .encuesta-widget{margin:26px 16px 0;padding:15px 16px;}
+  .encuestas-portada-grid .encuesta-widget{margin:0;}
+}
+.ver-resultados-link{
+  display:inline-block;margin:16px 0 6px;font-family:var(--font-tit);text-transform:uppercase;
+  font-size:.8rem;color:var(--rojo);font-weight:600;letter-spacing:.4px;
+}
+.ver-resultados-link:hover{text-decoration:underline;}
+.section-title{
+  font-family:var(--font-tit);text-transform:uppercase;font-size:1.35rem;
+  color:var(--marino-texto);
+  border-left:6px solid var(--rojo);padding-left:12px;margin:40px 0 20px;
+  display:flex;align-items:center;gap:10px;
+}
+.section-subtitle{
+  font-size:.85rem;color:var(--gris-texto);margin:-14px 0 20px 18px;
+  text-transform:uppercase;letter-spacing:.4px;font-family:var(--font-tit);
+}
+.grid-noticias{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:24px;
+  align-items:stretch;
+}
+.card{
+  border:1px solid var(--borde);border-radius:var(--radio);overflow:hidden;background:var(--tarjeta);
+  transition:transform .18s, box-shadow .18s;display:flex;flex-direction:column;
+  height:100%;
+}
+.card:hover{transform:translateY(-4px);box-shadow:var(--sombra);}
+.card img{width:100%;height:170px;object-fit:cover;background:var(--gris-claro);flex-shrink:0;}
+.card .cbody{padding:16px;display:flex;flex-direction:column;gap:7px;flex:1;}
+.card .cat{font-size:.7rem;color:var(--rojo);font-weight:700;text-transform:uppercase;font-family:var(--font-tit);letter-spacing:.4px;}
+.card h3{font-family:var(--font-headline);font-weight:700;font-size:1.12rem;line-height:1.32;color:var(--marino-texto);}
+.card p{font-family:var(--font-body);font-size:.88rem;color:var(--gris-texto);}
+.card .meta{font-size:.75rem;color:#9aa0ab;margin-top:auto;padding-top:6px;}
+
+/* ---------- ARTÍCULO ---------- */
+.article-header{max-width:780px;margin:0 auto 22px;}
+.article-header .cat{color:var(--rojo);font-family:var(--font-tit);text-transform:uppercase;font-size:.8rem;letter-spacing:.5px;}
+/* Categoría(s) adicional(es) de la noticia (ver worker/schema.sql,
+   columna "categorias_adicionales"): simples etiquetas informativas
+   aparte de la principal, en gris para no competir visualmente con
+   ".cat" (rojo), que es la única que forma el link de la noticia. */
+.article-header .cats-adicionales{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+.article-header .cat-adicional{font-size:.68rem;color:var(--gris-texto);background:var(--gris-claro);font-family:var(--font-tit);text-transform:uppercase;letter-spacing:.4px;padding:2px 8px;border-radius:10px;}
+.article-header h1{font-family:var(--font-headline);font-weight:700;font-size:2.3rem;line-height:1.2;margin:10px 0;color:var(--marino-texto);}
+.article-header .subtitulo{font-family:var(--font-body);font-style:italic;font-size:1.14rem;color:var(--gris-texto);}
+.article-header .meta{font-size:.85rem;color:#9aa0ab;margin-top:12px;}
+/* "Editado el ..." junto a la fecha de publicación (ver
+   fechaUltimaEdicionHTML en noticia.html): en cursiva y algo más
+   apagado que el resto de la meta, para que se lea como una nota
+   aparte y no compita con la fecha de publicación, que es el dato
+   principal de esa línea. */
+.fecha-editado{font-style:italic;opacity:.85;}
+.selector-idioma-noticia{
+  max-width:780px;margin:14px auto;
+  display:flex;flex-wrap:wrap;justify-content:center;gap:8px;align-items:center;
+}
+.idioma-noticia-btn{
+  font-family:var(--font-body);font-size:.82rem;font-weight:600;
+  padding:6px 12px;border-radius:20px;border:1px solid var(--borde);
+  background:var(--tarjeta);color:var(--marino-texto);cursor:pointer;
+}
+.idioma-noticia-btn:hover:not(:disabled){border-color:var(--celeste);}
+.idioma-noticia-btn.activo{background:var(--marino);border-color:var(--marino);color:#fff;}
+.idioma-noticia-btn:disabled{opacity:.4;cursor:not-allowed;}
+.aviso-idioma-noticia{
+  max-width:780px;margin:0 auto 14px;
+  font-style:italic;font-size:.85rem;color:var(--gris-texto,#666);
+}
+
+/* ---------- Foto(s) del artículo ---------- */
+/* Las fotos (la de cabecera, las insertadas dentro del texto y la
+   principal de la galería) siempre ocupan el mismo ancho que el propio
+   texto de la noticia (los 780px de .article-body), para que todo quede
+   alineado. Se muestran con una proporción fija (16:9) y "object-fit:cover"
+   para que, si la foto original no encaja exactamente, se recorte de forma
+   controlada; el punto que no debe recortarse nunca (el "foco") se marca
+   desde el panel de redacción y llega aquí como "object-position" en línea. */
+.article-img, .article-body .foto-articulo{
+  max-width:780px;margin:0 auto 22px;border-radius:var(--radio);overflow:hidden;box-shadow:var(--sombra);
+}
+.article-img img, .article-body .foto-articulo img{
+  width:100%;aspect-ratio:16/9;object-fit:cover;display:block;background:var(--gris-claro);
+}
+.article-body .foto-articulo{margin:26px auto;}
+.article-body .foto-articulo figcaption{
+  font-size:.82rem;color:var(--gris-texto);text-align:center;padding:8px 10px 0;font-style:italic;
+}
+/* ---------- Crédito/cita de la fotografía (autor, agencia...) ---------- */
+.credito-foto{
+  display:block;font-size:.76rem;color:var(--gris-texto);text-align:right;
+  padding:6px 12px;font-style:italic;background:var(--gris-claro);
+}
+.credito-foto:empty{display:none;}
+.article-galeria .credito-foto-galeria{
+  color:var(--celeste-claro);background:transparent;text-align:right;
+  padding:8px 16px 0;
+}
+/* ---------- Tweet incrustado dentro (o al final) del cuerpo ----------
+   El propio widgets.js de Twitter ya centra y limita el ancho de la
+   tarjeta que genera (hasta ~550px), así que aquí solo se centra el
+   contenedor; antes de que cargue el widget (o si falla), el blockquote
+   de respaldo hereda el ancho del texto para no verse roto. */
+.article-tweet{max-width:550px;margin:0 auto 22px;}
+.article-tweet blockquote.twitter-tweet,
+.article-tweet blockquote.instagram-media{max-width:100% !important;}
+/* ---------- Galería final ---------- */
+.article-galeria{
+  max-width:780px;margin:36px auto 26px;background:var(--marino);
+  border-radius:calc(var(--radio) + 4px);overflow:hidden;box-shadow:var(--sombra);
+}
+.article-galeria-titulo{
+  display:flex;align-items:center;gap:10px;padding:16px 20px 0;
+  font:700 .82rem/1 var(--font-tit);letter-spacing:.08em;text-transform:uppercase;color:#fff;
+}
+.article-galeria-titulo::before{
+  content:"";width:26px;height:3px;border-radius:2px;background:var(--rojo);display:inline-block;
+}
+.article-galeria-titulo .contador-galeria{
+  margin-left:auto;font:600 .78rem/1 var(--font-text);letter-spacing:0;color:var(--celeste-claro);text-transform:none;
+}
+.article-galeria-principal{
+  position:relative;margin:14px 16px 0;border-radius:var(--radio);overflow:hidden;
+  background:#000;aspect-ratio:16/9;
+}
+.article-galeria-principal img{
+  width:100%;height:100%;object-fit:cover;display:block;cursor:zoom-in;
+  opacity:0;transition:opacity .35s ease;
+}
+.article-galeria-principal img.cargada{opacity:1;}
+.article-galeria-flecha{
+  position:absolute;top:50%;transform:translateY(-50%);z-index:2;
+  width:38px;height:38px;border-radius:50%;border:none;cursor:pointer;
+  background:rgba(12,27,46,.55);color:#fff;font-size:1.1rem;line-height:1;
+  display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px);
+  transition:background .15s,transform .15s;
+}
+.article-galeria-flecha:hover{background:var(--rojo);transform:translateY(-50%) scale(1.06);}
+.article-galeria-flecha.prev{left:12px;}
+.article-galeria-flecha.next{right:12px;}
+.article-galeria-contador-flotante{
+  position:absolute;bottom:10px;right:12px;z-index:2;
+  background:rgba(12,27,46,.65);color:#fff;font:600 .72rem/1 var(--font-text);
+  padding:5px 10px;border-radius:20px;letter-spacing:.02em;
+}
+.article-galeria .miniaturas{
+  display:flex;gap:8px;padding:12px 16px 16px;overflow-x:auto;scrollbar-width:thin;
+}
+.article-galeria .miniaturas::-webkit-scrollbar{height:5px;}
+.article-galeria .miniaturas::-webkit-scrollbar-thumb{background:rgba(255,255,255,.25);border-radius:5px;}
+.article-galeria .miniaturas img{
+  width:78px;height:56px;min-width:78px;object-fit:cover;border-radius:6px;cursor:pointer;
+  opacity:.5;transition:opacity .18s,outline-color .18s,transform .18s;
+  outline:2px solid transparent;outline-offset:2px;
+}
+.article-galeria .miniaturas img:hover{opacity:.85;transform:translateY(-2px);}
+.article-galeria .miniaturas img.activa{opacity:1;outline-color:var(--rojo);}
+
+@media(max-width:640px){
+  .article-galeria{margin:28px 12px 22px;}
+  .article-galeria-flecha{width:32px;height:32px;font-size:.95rem;}
+  .article-galeria-titulo{padding:14px 14px 0;}
+  .article-galeria .miniaturas{padding:10px 12px 14px;}
+}
+
+/* ---------- Noticias similares (pie de la noticia) ---------- */
+/* Reutiliza .grid-noticias/.card (portada, categoría...) para que las
+   tarjetas se vean igual en todo el sitio; aquí solo se acota el ancho
+   a 3 columnas fijas (en vez del auto-fill del resto de listados, que
+   con solo 3 tarjetas podría dejarlas de más ancho de la cuenta en
+   pantallas grandes) y se añade la cabecera con el botón de refrescar.
+   El título "Noticias similares" reutiliza directamente .section-title
+   -mismo aspecto que el resto de cabeceras de sección del sitio- así
+   que aquí no hace falta redefinir su tipografía. */
+.noticias-similares{max-width:1100px;margin:44px auto 0;padding:0 4px;}
+.similares-cabecera{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  border-left:6px solid var(--rojo);padding-left:12px;margin:0 0 20px;
+}
+.similares-cabecera .section-title{border:none;padding:0;margin:0;}
+.btn-ver-otras-similares{
+  display:flex;align-items:center;gap:6px;flex-shrink:0;
+  background:rgba(91,184,232,.14);border:1.5px solid rgba(91,184,232,.35);
+  border-radius:20px;cursor:pointer;padding:7px 14px;
+  font-family:var(--font-tit);text-transform:uppercase;font-size:.7rem;letter-spacing:.4px;
+  color:var(--marino-texto);transition:background .15s,border-color .15s;
+}
+.btn-ver-otras-similares:hover{background:rgba(91,184,232,.24);border-color:var(--celeste);}
+.grid-similares{grid-template-columns:repeat(3,1fr);}
+@media(max-width:900px){
+  .grid-similares{grid-template-columns:repeat(2,1fr);}
+}
+@media(max-width:640px){
+  .noticias-similares{margin-top:32px;padding:0 12px;}
+  .grid-similares{grid-template-columns:1fr;}
+  .similares-cabecera{flex-wrap:wrap;}
+}
+
+/* ---------- Marcador de partido vinculado a la noticia/crónica ---------- */
+.marcador-articulo{
+  max-width:780px;margin:0 auto 26px;background:var(--marino);color:#fff;
+  border-radius:var(--radio);padding:16px 20px;box-shadow:var(--sombra);
+}
+.marcador-articulo .comp{
+  font-family:var(--font-tit);text-transform:uppercase;font-size:.72rem;
+  letter-spacing:.5px;color:var(--celeste-claro);text-align:center;margin-bottom:10px;
+}
+.marcador-articulo .equipos{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;}
+.marcador-articulo .equipo{
+  display:flex;flex-direction:column;align-items:center;gap:8px;
+  font-family:var(--font-text);font-weight:600;font-size:.92rem;text-align:center;
+}
+.escudo-articulo{width:44px;height:44px;object-fit:contain;}
+.nombre-equipo-articulo{line-height:1.2;}
+.marcador-articulo .goles{
+  font-family:var(--font-tit);font-weight:700;font-size:1.4rem;
+  background:rgba(255,255,255,.12);padding:6px 14px;border-radius:6px;
+}
+.marcador-articulo .estado-badge{text-align:center;font-size:.72rem;color:var(--celeste-claro);margin-top:8px;}
+
+/* =========================================================
+   FICHA TÉCNICA DE LA CRÓNICA
+   Tarjeta con los datos del partido que el redactor rellena a mano
+   desde el panel (ver public/admin/js/admin.js), pintada al final del
+   cuerpo de la crónica (ver noticia.html, fichaTecnicaArticuloHTML en
+   config.js). Reutiliza los mismos colores de marca que el resto de
+   bloques de partido (marcador-articulo, eventos-articulo) para que no
+   desentone dentro de la crónica.
+   ========================================================= */
+.ficha-tecnica-articulo{
+  max-width:780px;margin:32px auto 26px;
+  border-radius:var(--radio);overflow:hidden;box-shadow:var(--sombra);
+  border:1px solid var(--borde);
+}
+.ficha-tecnica-articulo .ficha-tecnica-cabecera{
+  background:var(--marino);color:#fff;padding:14px 22px;
+  display:flex;align-items:center;gap:10px;
+}
+.ficha-tecnica-articulo .ficha-tecnica-cabecera svg{width:19px;height:19px;flex-shrink:0;stroke:var(--celeste-claro);}
+.ficha-tecnica-articulo .ficha-tecnica-titulo{
+  font-family:var(--font-tit);font-weight:700;letter-spacing:.5px;
+  text-transform:uppercase;font-size:.85rem;
+}
+.ficha-tecnica-articulo .ficha-tecnica-cuerpo{
+  background:var(--fondo-alt);padding:20px 22px 22px;
+}
+.ficha-tecnica-articulo .ficha-tecnica-datos{
+  display:grid;grid-template-columns:repeat(auto-fit, minmax(160px, 1fr));
+  gap:16px 24px;margin-bottom:4px;
+}
+.ficha-tecnica-articulo .ficha-dato{display:flex;flex-direction:column;gap:3px;}
+.ficha-tecnica-articulo .ficha-dato-etiqueta{
+  font-family:var(--font-tit);text-transform:uppercase;font-size:.68rem;
+  letter-spacing:.5px;color:var(--gris-texto);font-weight:600;
+}
+.ficha-tecnica-articulo .ficha-dato-valor{
+  font-family:var(--font-text);font-size:.95rem;font-weight:600;color:var(--texto);
+}
+.ficha-tecnica-articulo .ficha-tecnica-listas{
+  display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));
+  gap:18px;margin-top:14px;padding-top:14px;border-top:1px solid var(--borde);
+}
+.ficha-tecnica-articulo .ficha-lista-titulo{
+  font-family:var(--font-tit);text-transform:uppercase;font-size:.72rem;
+  letter-spacing:.5px;color:var(--rojo);font-weight:700;margin:0 0 8px;
+}
+.ficha-tecnica-articulo .ficha-lista-items{list-style:none;margin:0;padding:0;}
+.ficha-tecnica-articulo .ficha-lista-items li{
+  font-family:var(--font-text);font-size:.9rem;color:var(--texto);
+  padding:4px 0;border-bottom:1px dashed var(--borde);
+}
+.ficha-tecnica-articulo .ficha-lista-items li:last-child{border-bottom:none;}
+.ficha-tecnica-articulo .ficha-tecnica-notas{
+  margin-top:14px;padding-top:14px;border-top:1px solid var(--borde);
+  font-family:var(--font-text);font-size:.9rem;color:var(--gris-texto);
+  font-style:italic;white-space:pre-line;
+}
+@media (max-width:600px){
+  .ficha-tecnica-articulo .ficha-tecnica-cabecera{padding:12px 16px;}
+  .ficha-tecnica-articulo .ficha-tecnica-cuerpo{padding:16px;}
+  .ficha-tecnica-articulo .ficha-tecnica-datos{grid-template-columns:1fr 1fr;}
+}
+
+
+/* ---------- Tanda de penaltis: resultado del tiempo reglamentario en
+   grande y, debajo/al lado, el de la tanda más pequeño y entre
+   paréntesis. Se reutiliza en tarjetas de partido, modal de detalle y
+   marcador dentro de una noticia (ver marcadorConPenaltisHTML). ---------- */
+.penaltis-marcador{
+  display:block;font-family:var(--font-text);font-weight:600;font-size:.68rem;
+  opacity:.85;margin-top:2px;text-align:center;
+}
+.penaltis-marcador-articulo{color:var(--celeste-claro);}
+.penaltis-marcador-modal{color:var(--gris-texto);font-size:.72rem;}
+
+/* El bloque de goles/tarjetas dentro de una noticia reutiliza los
+   iconos y colores del modal de detalle de partido, pero con su propio
+   diseño en una sola columna (en vez del grid a 3 columnas del modal,
+   pensado para un modal ancho): dentro del cuerpo de una noticia el
+   espacio disponible es mucho más estrecho, así que un grid con texto
+   largo (p.ej. "Tarjeta amarilla · Nombre del jugador") quedaba
+   apretado o se salía. Aquí cada evento es una fila propia, con el
+   escudo del equipo indicando de quién es la jugada. */
+.eventos-articulo{
+  display:flex;flex-direction:column;gap:8px;margin-top:14px;
+}
+/* El atributo [hidden] necesita ganarle a ".eventos-articulo{display:flex}"
+   en especificidad (si no, el navegador lo ignora y el bloque de eventos
+   se ve siempre, colapsado o no). */
+.eventos-articulo[hidden]{display:none;}
+.evento-articulo-item{
+  display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:10px;
+  /* Antes fondo/texto fijos (blanco casi puro + gris muy oscuro): en
+     modo oscuro quedaba una tarjeta blanca resaltando sobre el
+     marcador oscuro, con el texto casi invisible por el poco
+     contraste. Usa las variables semánticas del tema (ver
+     [data-theme="dark"] arriba) para que se adapte solo. */
+  background:var(--tarjeta);color:var(--texto);font-size:.85rem;line-height:1.3;
+}
+.evento-articulo-item .mev-icono{width:18px;height:18px;flex-shrink:0;}
+.evento-articulo-item .mev-minuto{font-weight:700;color:var(--marino-texto);margin-right:6px;flex-shrink:0;}
+.evento-articulo-item .ea-equipo-tag{
+  margin-left:auto;flex-shrink:0;font-family:var(--font-tit);text-transform:uppercase;
+  font-size:.66rem;letter-spacing:.4px;color:#fff;background:var(--marino);
+  padding:3px 8px;border-radius:20px;
+}
+
+/* Botón "Ver goles y tarjetas" que despliega/oculta el bloque de
+   eventos (.eventos-articulo, arriba). Va colapsado por defecto: si no,
+   un partido con muchos goles/tarjetas puede alargar la noticia (o su
+   tarjeta de preview) mucho más que el propio texto. */
+/* Fila de pestañas "Ver alineaciones" / "Ver goles y tarjetas": antes
+   eran dos botones sueltos, cada uno al 100% de ancho y con su propio
+   borde superior, apilados uno debajo del otro. Ahora conviven en la
+   misma fila, repartiéndose el ancho a partes iguales.
+   El botón lleva su propio fondo tipo "píldora" (en vez de solo texto
+   de color sobre el fondo del contenedor) porque este mismo componente
+   se usa tanto sobre fondo oscuro (marcador de la noticia, --marino)
+   como sobre fondo blanco (modal de resultados): un solo color de texto
+   no podía verse bien en los dos sitios a la vez. */
+.toggles-articulo-fila{
+  display:flex;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.15);
+}
+.toggle-eventos-articulo{
+  display:flex;align-items:center;justify-content:center;gap:6px;flex:1;
+  background:rgba(91,184,232,.14);border:1.5px solid rgba(91,184,232,.35);
+  border-radius:20px;cursor:pointer;padding:9px 14px;
+  font-family:var(--font-tit);text-transform:uppercase;font-size:.72rem;letter-spacing:.4px;
+  color:var(--celeste);transition:background .15s,border-color .15s,color .15s;
+}
+.toggle-eventos-articulo:hover{background:rgba(91,184,232,.24);border-color:var(--celeste);}
+.toggle-eventos-flecha{width:14px;height:14px;flex-shrink:0;transition:transform .18s ease;}
+.toggle-eventos-articulo.toggle-eventos-abierto{
+  background:var(--celeste);border-color:var(--celeste);color:#fff;
+}
+.toggle-eventos-articulo.toggle-eventos-abierto .toggle-eventos-flecha{transform:rotate(180deg);}
+.toggles-articulo-fila:has(.toggle-eventos-abierto){margin-bottom:2px;}
+
+.article-body{max-width:780px;margin:0 auto;font-family:var(--font-body);font-size:1.06rem;line-height:1.7;color:var(--texto);}
+.article-body p{margin-bottom:17px;}
+.article-body p.entradilla{
+  font-weight:700;font-size:1.18rem;line-height:1.55;color:var(--marino-texto);
+  margin-bottom:22px;
+}
+.article-body h2{
+  font-family:var(--font-tit);text-transform:uppercase;color:var(--marino-texto);
+  font-size:1.4rem;margin:30px 0 14px;line-height:1.25;
+}
+.article-body h3{
+  font-family:var(--font-tit);text-transform:uppercase;color:var(--marino-texto);
+  font-size:1.15rem;margin:26px 0 12px;line-height:1.25;
+}
+.article-body strong, .article-body b{color:var(--marino-texto);font-weight:700;}
+.article-body em, .article-body i{font-style:italic;}
+.article-body blockquote{
+  margin:22px 0;padding:12px 22px;border-left:4px solid var(--rojo);
+  background:var(--gris-claro);color:var(--gris-texto);font-style:italic;font-size:1.05rem;
+}
+.article-body ul, .article-body ol{margin:0 0 17px 22px;}
+.article-body li{margin-bottom:8px;}
+.article-body a{color:var(--celeste);text-decoration:underline;text-underline-offset:2px;}
+.article-body a:hover{color:var(--rojo);}
+.article-body hr{border:none;border-top:1px solid #e2e5ea;margin:26px 0;}
+.article-body img{max-width:100%;height:auto;border-radius:var(--radio);margin:6px 0;}
+.article-body iframe,.article-body video{max-width:100%;}
+.article-body table{width:100%;border-collapse:collapse;margin-bottom:17px;font-size:.95rem;display:block;overflow-x:auto;}
+.article-body table th,.article-body table td{padding:8px 10px;border:1px solid var(--borde);text-align:left;}
+
+@media(max-width:820px){
+  .article-header, .article-img, .article-body .foto-articulo,
+  .selector-idioma-noticia, .aviso-idioma-noticia, .marcador-articulo,
+  .article-body, .article-galeria{
+    max-width:100%;
+  }
+}
+@media(max-width:600px){
+  .article-body{font-size:1rem;}
+  .article-body p.entradilla{font-size:1.08rem;}
+  .article-body h2{font-size:1.22rem;margin:24px 0 12px;}
+  .article-body h3{font-size:1.05rem;margin:20px 0 10px;}
+  .marcador-articulo{padding:14px 14px;}
+  .marcador-articulo .goles{font-size:1.15rem;padding:5px 10px;}
+  .escudo-articulo{width:34px;height:34px;}
+  .nombre-equipo-articulo{font-size:.8rem;}
+  .evento-articulo-item{font-size:.78rem;padding:7px 10px;gap:8px;}
+  .evento-articulo-item .mev-icono{width:15px;height:15px;}
+}
+
+/* ---------- RESULTADOS ---------- */
+.filtros{display:flex;gap:10px;margin-bottom:22px;flex-wrap:wrap;}
+.filtros button{
+  border:1px solid var(--borde);background:var(--tarjeta);padding:9px 16px;border-radius:22px;cursor:pointer;font-size:.85rem;
+  transition:all .15s;color:var(--marino-texto);font-weight:500;white-space:nowrap;
+}
+.filtros button.activo{background:var(--marino);color:#fff;border-color:var(--marino);}
+.filtros button:hover:not(.activo){border-color:var(--celeste);}
+@media(max-width:600px){
+  .filtros{
+    flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;
+    margin:0 -16px 20px;padding:0 16px 4px;scrollbar-width:thin;
+  }
+  .filtros button{padding:8px 14px;font-size:.82rem;flex-shrink:0;}
+}
+.filtros-secundarios{display:flex;gap:10px;margin-bottom:22px;flex-wrap:wrap;}
+.select-filtro{
+  border:1px solid var(--borde);background:var(--tarjeta);padding:9px 14px;border-radius:22px;cursor:pointer;
+  font-size:.85rem;color:var(--marino-texto);font-weight:500;max-width:100%;
+}
+@media(max-width:600px){
+  .select-filtro{flex:1 1 auto;min-width:0;}
+}
+.tabla-jornada{margin-bottom:30px;}
+.tabla-jornada h3{font-family:var(--font-tit);text-transform:uppercase;margin-bottom:10px;color:var(--marino-texto);border-bottom:2px solid var(--gris-claro);padding-bottom:6px;}
+
+/* ---------- Tabla de clasificación ---------- */
+.clasificacion-tabla-wrap{overflow-x:auto;margin-bottom:30px;border:1px solid var(--borde);border-radius:var(--radio);}
+.clasificacion-tabla{width:100%;border-collapse:collapse;font-size:.88rem;min-width:560px;}
+.clasificacion-tabla thead th{
+  background:var(--marino);color:#fff;font-family:var(--font-tit);text-transform:uppercase;font-size:.72rem;
+  padding:10px 8px;text-align:center;white-space:nowrap;letter-spacing:.4px;
+}
+.clasificacion-tabla thead th.col-equipo{text-align:left;padding-left:14px;}
+.clasificacion-tabla tbody td{padding:9px 8px;text-align:center;border-bottom:1px solid var(--borde);color:var(--texto);}
+.clasificacion-tabla tbody tr:last-child td{border-bottom:none;}
+.clasificacion-tabla tbody tr:hover{background:var(--fondo-alt);}
+.clasificacion-tabla td.col-equipo{
+  text-align:left;padding-left:8px;font-weight:500;white-space:nowrap;
+}
+/* El contenido de la celda ahora es un <a> (enlace a la ficha del
+   equipo), no directamente el escudo+nombre sueltos: se le pasa el
+   display:flex que antes llevaba la propia celda, para que escudo y
+   nombre sigan alineados en fila igual que antes. */
+.clasificacion-tabla .equipo-enlace{
+  display:flex;align-items:center;gap:8px;color:inherit;
+}
+.clasificacion-tabla .equipo-enlace:hover{color:var(--celeste);}
+.clasificacion-tabla td.col-puntos{font-weight:700;color:var(--marino-texto);}
+.clasificacion-tabla .clas-escudo{width:22px;height:22px;object-fit:contain;flex-shrink:0;}
+.clasificacion-tabla .clas-pos{
+  font-family:var(--font-tit);font-weight:700;width:26px;display:inline-flex;align-items:center;justify-content:center;
+  border-radius:4px;
+}
+/* Franjas de color a la izquierda de la posición: ascenso/playoff arriba, descenso abajo.
+   Los cortes concretos varían según competición y temporada, así que se
+   marcan con atributos data- en vez de :nth-child fijo. */
+.clasificacion-tabla tr[data-zona="ascenso"] td.col-pos{border-left:4px solid #2e9e57;}
+.clasificacion-tabla tr[data-zona="playoff"] td.col-pos{border-left:4px solid var(--celeste);}
+.clasificacion-tabla tr[data-zona="descenso"] td.col-pos{border-left:4px solid var(--rojo);}
+.clasificacion-tabla td.col-pos{padding-left:10px;}
+.clasificacion-leyenda{display:flex;gap:16px;flex-wrap:wrap;font-size:.78rem;color:var(--texto-suave);margin:-14px 0 26px;}
+.clasificacion-leyenda span{display:inline-flex;align-items:center;gap:6px;}
+.clasificacion-leyenda i{width:10px;height:10px;border-radius:2px;display:inline-block;}
+.clasificacion-leyenda .i-ascenso{background:#2e9e57;}
+.clasificacion-leyenda .i-playoff{background:var(--celeste);}
+.clasificacion-leyenda .i-descenso{background:var(--rojo);}
+/* Fila de un equipo con partido "en_juego" ahora mismo: reutiliza el
+   punto animado (.en-vivo-punto) ya usado en las tarjetas de partido, y
+   resalta ligeramente la fila para dejar claro que esos puntos son
+   provisionales y pueden cambiar en cualquier momento. */
+/* Fila de un equipo con partido "en_juego" ahora mismo: reutiliza el
+   punto animado (.en-vivo-punto) ya usado en las tarjetas de partido, y
+   además la FILA ENTERA parpadea con un fondo rojo intermitente para que
+   destaque de verdad de un vistazo, dejando claro que esos puntos son
+   provisionales y pueden cambiar en cualquier momento.
+   El punto en sí NO cambia de tamaño ni de animación: solo se añade el
+   parpadeo de fondo a la fila. */
+@keyframes filaEnVivoParpadeo{
+  0%,100%{background:rgba(209,19,46,.09);}
+  50%{background:rgba(209,19,46,.22);}
+}
+.clasificacion-tabla tr.fila-en-vivo{
+  animation:filaEnVivoParpadeo 1.4s ease-in-out infinite;
+  box-shadow:inset 3px 0 0 var(--rojo);
+}
+.clasificacion-tabla tr.fila-en-vivo:hover{background:rgba(209,19,46,.28);}
+.clasificacion-tabla .equipo-enlace .en-vivo-punto{margin-left:2px;}
+.clasificacion-tabla td.col-puntos-en-vivo{color:var(--rojo);font-weight:800;}
+@media (prefers-reduced-motion: reduce){
+  .clasificacion-tabla tr.fila-en-vivo{animation:none;background:rgba(209,19,46,.15);}
+}
+@media(max-width:600px){
+  .clasificacion-tabla{font-size:.78rem;}
+  .clasificacion-tabla .clas-escudo{width:18px;height:18px;}
+}
+
+/* ---------- Calendario navegable por jornada ---------- */
+.calendario-nav{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:18px;
+  background:var(--tarjeta);border:1px solid var(--borde);border-radius:var(--radio);padding:10px 14px;
+}
+/* En Amistosos se oculta este bloque (no hay jornadas que navegar): el
+   display:flex de arriba tiene más especificidad que el UA stylesheet
+   del atributo "hidden", así que hace falta esta regla explícita para
+   que "hidden" gane. */
+.calendario-nav[hidden]{display:none;}
+.calendario-nav button{
+  background:var(--marino);color:#fff;border:none;border-radius:6px;padding:9px 16px;font-weight:600;
+  cursor:pointer;font-size:.85rem;transition:opacity .15s;
+}
+.calendario-nav button:disabled{opacity:.35;cursor:not-allowed;}
+.calendario-nav button:hover:not(:disabled){background:var(--marino2);}
+.calendario-nav .calendario-nav-titulo{font-family:var(--font-tit);text-transform:uppercase;text-align:center;color:var(--marino-texto);font-size:1rem;}
+.calendario-nav .calendario-nav-titulo small{display:block;font-family:var(--font-text);text-transform:none;color:var(--texto-suave);font-size:.72rem;font-weight:400;margin-top:2px;}
+.partido{
+  display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;
+  padding:13px;border-bottom:1px solid var(--borde);font-size:.95rem;
+  transition:background .15s;cursor:pointer;
+}
+.partido:hover{background:var(--fondo-alt);}
+.partido .equipo{display:flex;align-items:center;gap:10px;min-width:0;}
+/* .equipo es un <span> (no un enlace): en la tarjeta de la lista de
+   partidos/resultados, el nombre y escudo del equipo NO llevan a su
+   ficha (categoria.html); todo el clic en la tarjeta abre el modal de
+   detalle del partido, y es dentro de ese modal donde el nombre del
+   equipo sí enlaza a su ficha (ver mostrarModalPartido en partidos.js). */
+.partido .equipo-local{justify-content:flex-end;text-align:right;}
+.partido .equipo-visitante{justify-content:flex-start;text-align:left;}
+.partido .nombre-equipo{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.partido .escudo{
+  width:30px;height:30px;object-fit:contain;flex-shrink:0;
+}
+.partido .marcador{
+  font-family:var(--font-tit);font-weight:700;background:var(--marino);color:#fff;padding:7px 14px;border-radius:6px;min-width:74px;text-align:center;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.2;
+}
+.partido .marcador .penaltis-marcador{color:rgba(255,255,255,.75);margin-top:1px;}
+.partido .estado-badge{font-size:.72rem;color:#9aa0ab;text-align:center;grid-column:1/-1;margin-top:4px;}
+.partido-fuente-auto{
+  grid-column:1/-1;text-align:center;font-size:.66rem;color:var(--texto-suave);
+  text-transform:uppercase;letter-spacing:.4px;margin-top:2px;opacity:.75;
+}
+/* Enlace "Ver en Flashscore": misma forma de píldora que "Minuto a
+   minuto" (mismo tamaño, mismo icono de flecha) para que ambos botones
+   de acción del modal luzcan como un conjunto coherente, pero en
+   "outline" celeste en vez de relleno marino sólido -así queda claro
+   que uno lleva a una web externa (Flashscore) y el otro a contenido
+   propio del sitio (minuto a minuto en directo)-. */
+.modal-partido-caja .enlace-flashscore{
+  grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:8px;
+  margin:10px 0 0;padding:9px 20px;border-radius:999px;
+  background:transparent;border:1.5px solid var(--celeste);
+  color:var(--marino-texto);font-family:var(--font-tit);font-size:.82rem;font-weight:600;
+  letter-spacing:.03em;text-transform:uppercase;text-decoration:none;
+  transition:background .15s, transform .15s, box-shadow .15s;
+}
+.modal-partido-caja .enlace-flashscore:hover{
+  background:var(--celeste-claro);transform:translateY(-1px);
+  box-shadow:0 4px 14px rgba(91,184,232,.35);text-decoration:none;
+}
+.modal-partido-caja .enlace-flashscore:active{transform:translateY(0);}
+.modal-partido-caja .enlace-flashscore svg{width:14px;height:14px;flex-shrink:0;transition:transform .15s;}
+.modal-partido-caja .enlace-flashscore:hover svg{transform:translateX(2px);}
+.modal-partido-caja .enlace-flashscore[hidden]{display:none;}
+
+/* Enlace a la página pública de minuto a minuto: se distingue a
+   propósito del texto plano de "Ver en Flashscore" con una píldora
+   sólida en el marino de marca, el mismo punto rojo pulsante que ya se
+   usa para señalar "en directo" en el resto del sitio (.en-vivo-punto),
+   y una flechita que insinúa que lleva a otra página. */
+.modal-partido-caja .enlace-minuto-a-minuto{
+  grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:8px;
+  margin:10px 0 0;padding:10px 20px;border-radius:999px;
+  background:linear-gradient(135deg, var(--marino), var(--marino2));
+  color:#fff;font-family:var(--font-tit);font-size:.82rem;font-weight:600;
+  letter-spacing:.03em;text-transform:uppercase;text-decoration:none;
+  box-shadow:0 4px 14px rgba(12,27,46,.28);
+  transition:transform .15s, box-shadow .15s;
+}
+.modal-partido-caja .enlace-minuto-a-minuto:hover{
+  transform:translateY(-1px);box-shadow:0 6px 18px rgba(12,27,46,.36);
+}
+.modal-partido-caja .enlace-minuto-a-minuto:active{transform:translateY(0);}
+.modal-partido-caja .enlace-minuto-a-minuto .en-vivo-punto{background:var(--rojo);}
+.modal-partido-caja .enlace-minuto-a-minuto svg{width:14px;height:14px;flex-shrink:0;transition:transform .15s;}
+.modal-partido-caja .enlace-minuto-a-minuto:hover svg{transform:translateX(2px);}
+.modal-partido-caja .enlace-minuto-a-minuto[hidden]{display:none;}
+
+/* Noticias vinculadas al partido (crónica, previa...) dentro del modal
+   de resultado: una tarjetita por noticia, a modo de enlace destacado,
+   colocada justo debajo de la cabecera con el marcador -antes de
+   alineaciones/eventos-, porque suele ser lo que más interesa entrar a
+   leer nada más abrir el modal. */
+.modal-noticias-vinculadas{
+  display:flex;flex-direction:column;gap:8px;margin:14px 0;
+}
+.modal-noticias-vinculadas[hidden]{display:none;}
+
+/* MVP (jugador destacado) del partido dentro del modal de resultado:
+   una franja compacta con el escudo del equipo, la etiqueta "MVP" y el
+   nombre del jugador, colocada junto a las noticias vinculadas -antes
+   de alineaciones/eventos-. */
+.modal-partido-mvp{
+  display:flex;align-items:center;gap:10px;margin:14px 0;
+  background:linear-gradient(135deg,#fff7e0,#ffe9b3);
+  border:1px solid #f0d68a;border-radius:12px;padding:10px 14px;
+}
+.modal-partido-mvp[hidden]{display:none;}
+.modal-partido-mvp-escudo{width:32px;height:32px;object-fit:contain;flex-shrink:0;}
+.modal-partido-mvp-etiqueta{
+  font-weight:800;font-size:.75rem;letter-spacing:.04em;color:#8a6d1a;
+  background:#fff;border-radius:6px;padding:2px 6px;flex-shrink:0;
+}
+.modal-partido-mvp-nombre{font-weight:600;color:#3a2e05;}
+.modal-noticia-vinculada{
+  display:flex;align-items:center;gap:10px;
+  background:linear-gradient(135deg, var(--marino), #16324f);color:#fff;
+  border-radius:12px;padding:12px 14px;text-decoration:none;
+  transition:transform .15s, box-shadow .15s;
+}
+.modal-noticia-vinculada:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(12,27,46,.25);}
+.modal-noticia-vinculada-tipo{
+  flex-shrink:0;font-family:var(--font-tit);text-transform:uppercase;font-size:.62rem;
+  letter-spacing:.4px;color:var(--celeste-claro);border:1px solid rgba(255,255,255,.3);
+  border-radius:20px;padding:2px 9px;
+}
+.modal-noticia-vinculada-titulo{
+  flex:1;font-size:.84rem;font-weight:600;line-height:1.3;
+  overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+}
+.modal-noticia-vinculada svg{flex-shrink:0;width:16px;height:16px;opacity:.75;}
+
+/* ---------- Partido anulado: cinta grande encima de la tarjeta ---------- */
+/* Antes "Anulado" solo se veía como texto pequeño en gris dentro del
+   badge de estado, poco visible para algo tan importante. Ahora es un
+   texto grande que ocupa todo el ancho de la tarjeta, justo encima del
+   partido. */
+.partido-anulado-cinta{
+  grid-column:1/-1;order:-1;
+  text-align:center;
+  margin:-13px -13px 10px;padding:10px;
+  background:#1a1c22;
+  font-family:var(--font-tit);font-weight:800;letter-spacing:2px;
+  font-size:1rem;color:#fff;text-transform:uppercase;
+}
+.partido-anulado{background:var(--fondo-alt);}
+.partido-anulado:hover{background:var(--borde);}
+@media (max-width:560px){
+  .partido-anulado-cinta{margin:-11px -8px 8px;font-size:.85rem;letter-spacing:1.2px;padding:8px;}
+}
+
+/* ---------- Partido "en juego": punto animado + resaltado llamativo ---------- */
+@keyframes enVivoPulso{
+  0%{box-shadow:0 0 0 0 rgba(209,19,46,.45);}
+  70%{box-shadow:0 0 0 6px rgba(209,19,46,0);}
+  100%{box-shadow:0 0 0 0 rgba(209,19,46,0);}
+}
+@keyframes enVivoParpadeo{
+  0%,100%{opacity:1;}
+  50%{opacity:.35;}
+}
+@keyframes enVivoBorde{
+  0%,100%{border-color:var(--rojo);}
+  50%{border-color:var(--rojo-oscuro);}
+}
+.en-vivo-punto{
+  display:inline-block;width:8px;height:8px;border-radius:50%;flex-shrink:0;
+  background:var(--rojo);vertical-align:middle;
+  animation:enVivoParpadeo 1.1s ease-in-out infinite;
+}
+.partido-en-vivo{
+  position:relative;background:linear-gradient(90deg, rgba(209,19,46,.05), rgba(209,19,46,0) 30%, rgba(209,19,46,0) 70%, rgba(209,19,46,.05));
+  border-left:3px solid var(--rojo);border-bottom-color:#eceef2;
+  padding-left:10px; /* 13px - 3px del borde, para que el contenido quede
+                         alineado con el de los partidos que no están en
+                         vivo (sin el borde no habría descuadre) */
+}
+.partido-en-vivo:hover{background:linear-gradient(90deg, rgba(209,19,46,.09), rgba(209,19,46,.02));}
+.estado-badge-en-vivo{
+  color:var(--rojo);font-weight:700;letter-spacing:.03em;
+}
+.estado-badge-en-vivo .en-vivo-punto{margin-right:5px;}
+.marcador-en-vivo{
+  background:linear-gradient(135deg, var(--rojo), var(--rojo-oscuro))!important;
+  box-shadow:0 0 0 0 rgba(209,19,46,.45);
+  animation:enVivoPulso 1.8s ease-out infinite;
+  position:relative;z-index:1;
+}
+.modal-partido-caja-en-vivo{
+  border-top:3px solid var(--rojo);
+  animation:enVivoBorde 2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce){
+  .en-vivo-punto,.marcador-en-vivo,.modal-partido-caja-en-vivo{animation:none;}
+}
+
+@media (max-width:560px){
+  .partido{grid-template-columns:1fr auto 1fr;gap:6px;padding:11px 8px;font-size:.82rem;}
+  .partido-en-vivo{padding-left:5px;}
+  .partido .equipo{gap:6px;}
+  .partido .escudo{width:24px;height:24px;}
+  .partido .nombre-equipo{
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+    overflow:hidden;white-space:normal;line-height:1.15;
+  }
+  .partido .marcador{padding:6px 9px;min-width:54px;font-size:.85rem;}
+}
+
+/* ---------- MODAL DE DETALLE DEL PARTIDO ---------- */
+.modal-partido{
+  position:fixed;inset:0;z-index:1000;
+  display:none;align-items:center;justify-content:center;
+  padding:24px;
+}
+.modal-partido.abierto{display:flex;}
+.modal-partido-fondo{
+  position:absolute;inset:0;background:rgba(12,27,46,.6);backdrop-filter:blur(2px);
+  animation:modalFadeIn .18s ease;
+}
+.modal-partido-caja{
+  position:relative;background:var(--tarjeta);color:var(--texto);border-radius:18px;max-width:520px;width:100%;
+  max-height:86vh;overflow-y:auto;padding:28px 26px 30px;
+  box-shadow:0 20px 60px rgba(12,27,46,.35);
+  animation:modalPopIn .2s cubic-bezier(.2,.9,.3,1.2);
+  border-top:3px solid transparent;
+  transition:border-color .25s;
+}
+@keyframes modalFadeIn{from{opacity:0}to{opacity:1}}
+@keyframes modalPopIn{from{opacity:0;transform:translateY(14px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+
+.modal-partido-cerrar{
+  position:absolute;top:14px;right:14px;border:none;background:var(--gris-claro);color:var(--marino-texto);
+  width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:1rem;line-height:1;
+  display:flex;align-items:center;justify-content:center;transition:background .15s,transform .15s;
+}
+.modal-partido-cerrar:hover{background:var(--borde);transform:rotate(90deg);}
+
+.modal-partido-cabecera{
+  display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;
+  padding-bottom:16px;margin-bottom:6px;border-bottom:2px solid var(--gris-claro);
+  transition:border-color .25s;
+}
+.modal-partido-equipo{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;}
+.modal-partido-escudo{width:52px;height:52px;object-fit:contain;}
+.modal-partido-nombre{font-weight:700;font-size:.9rem;color:var(--marino-texto);line-height:1.2;}
+/* El nombre del equipo dentro del modal de detalle SÍ es clicable (a
+   diferencia de la tarjeta de la lista): enlaza a la ficha del equipo.
+   El <a> hereda tamaño/peso de .modal-partido-nombre y se resalta al
+   pasar el ratón para dejar claro que es un enlace propio. */
+.modal-partido-nombre-link{color:inherit;font:inherit;text-decoration:none;}
+.modal-partido-nombre-link:hover{color:var(--celeste);text-decoration:underline;}
+.modal-partido-marcador{display:flex;flex-direction:column;align-items:center;gap:12px;}
+.modal-partido-marcador span:first-child{
+  font-family:var(--font-tit);font-size:1.7rem;font-weight:700;color:var(--marino-texto);
+  background:var(--gris-claro);padding:6px 16px;border-radius:8px;
+  transition:background .25s,color .25s,box-shadow .25s;
+}
+.modal-partido-estado{
+  font-size:.7rem;color:#9aa0ab;text-transform:uppercase;letter-spacing:.4px;
+  display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;
+}
+
+/* Estado "En juego" dentro del modal: mismo lenguaje visual que el punto
+   rojo animado del listado (.en-vivo-punto), pero con más presencia aquí
+   porque es el foco principal de la ventana: badge en píldora rellena
+   (no solo texto en rojo), marcador con resplandor sutil y un acento en
+   la cabecera para que se note "en directo" de un vistazo, incluso con
+   el modal a medio hacer scroll. */
+.modal-estado-en-vivo{
+  color:#fff!important;font-weight:700;letter-spacing:.4px;font-size:.72rem;
+  background:linear-gradient(135deg, var(--rojo), var(--rojo-oscuro));
+  padding:5px 14px;border-radius:20px;
+  box-shadow:0 2px 10px rgba(209,19,46,.35);
+}
+.modal-estado-en-vivo .en-vivo-punto{
+  background:#fff;
+  box-shadow:0 0 0 0 rgba(255,255,255,.55);
+  animation:enVivoParpadeo 1.1s ease-in-out infinite, enVivoPuntoBlanco 1.8s ease-out infinite;
+}
+@keyframes enVivoPuntoBlanco{
+  0%{box-shadow:0 0 0 0 rgba(255,255,255,.5);}
+  70%{box-shadow:0 0 0 5px rgba(255,255,255,0);}
+  100%{box-shadow:0 0 0 0 rgba(255,255,255,0);}
+}
+.modal-partido-caja-en-vivo{
+  border-top-color:var(--rojo);
+  animation:enVivoBorde 2s ease-in-out infinite;
+}
+.modal-partido-caja-en-vivo .modal-partido-cabecera{
+  border-bottom-color:rgba(209,19,46,.18);
+}
+.modal-partido-caja .marcador-en-vivo span:first-child{
+  background:linear-gradient(135deg, var(--rojo), var(--rojo-oscuro))!important;
+  color:#fff;
+  box-shadow:0 0 0 0 rgba(209,19,46,.4);
+  animation:enVivoPulso 1.8s ease-out infinite;
+}
+.modal-partido-subtitulo{text-align:center;font-size:.78rem;color:var(--gris-texto);margin:14px 0 18px;}
+
+.modal-partido-eventos{display:flex;flex-direction:column;gap:10px;min-height:60px;}
+.modal-partido-sin-eventos{text-align:center;color:var(--gris-texto);font-size:.88rem;font-style:italic;padding:20px 0;}
+
+.modal-evento{
+  display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;
+}
+.modal-evento-contenido{
+  display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--gris-claro);border-radius:10px;
+  font-size:.85rem;
+}
+.modal-evento-local .modal-evento-contenido{grid-column:1;justify-self:end;flex-direction:row-reverse;text-align:right;}
+.modal-evento-visitante .modal-evento-contenido{grid-column:3;justify-self:start;text-align:left;}
+.modal-evento-centro{grid-template-columns:1fr;}
+.modal-evento-centro .modal-evento-contenido{justify-self:center;background:transparent;color:var(--gris-texto);font-style:italic;font-size:.78rem;padding:4px;}
+.mev-hueco{grid-column:span 1;}
+.mev-icono{width:18px;height:18px;flex-shrink:0;}
+.mev-texto{line-height:1.3;}
+
+.modal-tanda-penaltis{
+  margin-top:16px;padding-top:14px;border-top:2px dashed var(--gris-claro);
+  display:flex;flex-direction:column;gap:10px;
+}
+.modal-tanda-titulo{
+  grid-column:1/-1;text-align:center;font-family:var(--font-tit);font-size:.8rem;
+  text-transform:uppercase;letter-spacing:.4px;color:var(--marino-texto);margin:0 0 4px;
+}
+.modal-evento-tanda-marcado .modal-evento-contenido{border-left:3px solid #1a9e4f;}
+.modal-evento-tanda-fallado .modal-evento-contenido{border-left:3px solid var(--rojo);opacity:.85;}
+.mev-minuto{font-weight:700;color:var(--marino-texto);margin-right:4px;}
+
+@media (max-width:560px){
+  .modal-partido{padding:0;align-items:flex-end;}
+  .modal-partido-caja{
+    max-width:none;border-radius:18px 18px 0 0;max-height:92vh;
+    padding:22px 16px 26px;
+  }
+  .modal-partido-escudo{width:42px;height:42px;}
+  .modal-partido-nombre{font-size:.78rem;}
+  .modal-partido-marcador span:first-child{font-size:1.4rem;padding:5px 12px;}
+  .modal-evento-contenido{font-size:.78rem;padding:7px 9px;}
+  .mev-icono{width:15px;height:15px;}
+}
+
+
+/* ---------- ESTADOS VACÍOS / CARGA / ERROR ---------- */
+.estado-info{
+  grid-column:1/-1;
+  display:flex;flex-direction:column;align-items:center;text-align:center;
+  gap:14px;
+  padding:60px 24px;
+  background:var(--gris-claro);
+  border-radius:var(--radio);
+  color:var(--gris-texto);
+}
+.estado-info svg{width:52px;height:52px;color:var(--celeste);flex-shrink:0;}
+.estado-info h3{
+  font-family:var(--font-tit);text-transform:uppercase;color:var(--marino-texto);
+  font-size:1.15rem;letter-spacing:.3px;
+}
+.estado-info p{max-width:420px;font-size:.95rem;}
+.estado-info.estado-error svg{color:var(--rojo);}
+.estado-info .btn-volver{
+  margin-top:6px;
+  display:inline-flex;align-items:center;gap:8px;
+  background:var(--marino);color:#fff;
+  font-family:var(--font-tit);text-transform:uppercase;font-size:.82rem;letter-spacing:.4px;
+  padding:11px 22px;border-radius:26px;
+  transition:background .15s, transform .15s;
+}
+.estado-info .btn-volver:hover{background:var(--rojo);transform:translateY(-2px);}
+
+/* ---------- Compartir noticia/crónica ---------- */
+.compartir-botones{
+  display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-top:6px;
+}
+.btn-compartir{
+  display:inline-flex;align-items:center;gap:9px;
+  background:var(--tarjeta);border:1px solid var(--borde);color:var(--texto);
+  font-family:var(--font-text);font-weight:600;font-size:.83rem;
+  padding:7px 18px 7px 7px;border-radius:30px;cursor:pointer;
+  box-shadow:0 2px 8px rgba(12,27,46,.06);
+  transition:background .18s, color .18s, border-color .18s, transform .18s, box-shadow .18s;
+}
+.btn-compartir-icono{
+  width:30px;height:30px;border-radius:50%;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  background:#111;color:#fff;
+  transition:transform .18s;
+}
+.btn-compartir-icono svg{width:16px;height:16px;}
+.btn-compartir:hover{
+  transform:translateY(-3px);
+  border-color:var(--texto);
+  color:var(--texto);
+  box-shadow:0 10px 20px rgba(12,27,46,.12);
+}
+.btn-compartir:hover .btn-compartir-icono{
+  transform:scale(1.1);
+}
+.btn-compartir.btn-copiar{
+  /* Evita que el botón cambie de ancho al pasar de "Copiar enlace" a
+     "¡Copiado!" (textos de distinta longitud). */
+  min-width:150px;justify-content:center;
+}
+.btn-compartir.btn-copiar.copiado{
+  border-color:var(--rojo);color:var(--rojo);
+}
+.btn-compartir.btn-copiar.copiado .btn-compartir-icono{
+  background:var(--rojo);
+}
+/* El icono de "Copiar enlace" (un eslabón) se ve más pequeño que el
+   resto a igual tamaño de svg, así que se agranda un poco aparte. */
+.btn-compartir.btn-copiar .btn-compartir-icono svg{width:24px;height:24px;}
+
+/* Botón de compartir nativo (navigator.share): se pinta primero y con el
+   color de acento del sitio para que quede claro que es la opción
+   recomendada/más rápida en el móvil, antes que los botones sueltos por
+   red social de debajo. Se queda oculto (ver botonesCompartirHTML) en
+   cualquier navegador sin soporte, así en desktop no se ve nunca. */
+.btn-compartir.btn-compartir-nativo{
+  order:-1;border-color:var(--rojo);color:var(--rojo);
+}
+.btn-compartir.btn-compartir-nativo .btn-compartir-icono{background:var(--rojo);}
+
+@media(max-width:480px){
+  .compartir-botones{gap:9px;}
+  .btn-compartir{padding:6px 14px 6px 6px;font-size:.78rem;}
+  .btn-compartir-icono{width:26px;height:26px;}
+  .btn-compartir-icono svg{width:14px;height:14px;}
+  .btn-compartir.btn-copiar .btn-compartir-icono svg{width:20px;height:20px;}
+}
+
+.spinner{
+  width:34px;height:34px;border-radius:50%;
+  border:3px solid rgba(12,27,46,.12);border-top-color:var(--rojo);
+  animation:girar .7s linear infinite;
+}
+@keyframes girar{to{transform:rotate(360deg);}}
+
+/* ---------- PÁGINA 404 ---------- */
+.pagina-404{
+  display:flex;flex-direction:column;align-items:center;text-align:center;
+  padding:70px 20px 90px;gap:18px;
+}
+.pagina-404 .codigo-404{
+  font-family:var(--font-tit);font-weight:700;font-size:7rem;line-height:1;
+  background:linear-gradient(135deg, var(--marino), var(--celeste));
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  letter-spacing:2px;
+}
+.pagina-404 .balon-404{width:96px;height:96px;margin-bottom:-6px;}
+.pagina-404 h1{
+  font-family:var(--font-tit);text-transform:uppercase;color:var(--marino-texto);
+  font-size:1.6rem;letter-spacing:.4px;
+}
+.pagina-404 p{max-width:460px;color:var(--gris-texto);font-size:1rem;}
+.pagina-404 .acciones-404{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin-top:10px;}
+.pagina-404 .btn-primario, .pagina-404 .btn-secundario{
+  font-family:var(--font-tit);text-transform:uppercase;font-size:.85rem;letter-spacing:.4px;
+  padding:12px 26px;border-radius:26px;transition:transform .15s, box-shadow .15s, background .15s;
+}
+.pagina-404 .btn-primario{
+  background:linear-gradient(135deg, var(--rojo), var(--rojo-oscuro));color:#fff;
+  box-shadow:0 3px 10px rgba(209,19,46,.35);
+}
+.pagina-404 .btn-primario:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(209,19,46,.45);}
+.pagina-404 .btn-secundario{
+  background:var(--gris-claro);color:var(--marino-texto);border:1px solid #dcdfe4;
+}
+.pagina-404 .btn-secundario:hover{border-color:var(--celeste);transform:translateY(-2px);}
+.pagina-404 .sugerencias{margin-top:24px;padding-top:24px;border-top:1px solid #eceef2;width:100%;max-width:520px;}
+.pagina-404 .sugerencias h4{
+  font-family:var(--font-tit);text-transform:uppercase;color:var(--marino-texto);
+  font-size:.85rem;letter-spacing:.4px;margin-bottom:12px;
+}
+.pagina-404 .sugerencias ul{list-style:none;display:flex;flex-wrap:wrap;gap:10px;justify-content:center;}
+.pagina-404 .sugerencias a{
+  font-size:.85rem;color:var(--celeste);background:var(--gris-claro);
+  padding:7px 14px;border-radius:16px;transition:background .15s, color .15s;
+}
+.pagina-404 .sugerencias a:hover{background:var(--marino);color:#fff;}
+
+/* ---------- SÍGUENOS ---------- */
+.redes-section{
+  background:var(--gris-claro);
+  border-radius:var(--radio);
+  padding:26px;
+  margin-top:44px;
+  text-align:center;
+}
+.redes-section h3{font-family:var(--font-tit);text-transform:uppercase;color:var(--marino-texto);margin-bottom:14px;letter-spacing:.4px;}
+.redes-icons{display:flex;justify-content:center;gap:14px;flex-wrap:wrap;}
+.redes-icons a{
+  display:flex;align-items:center;justify-content:center;
+  width:46px;height:46px;border-radius:50%;
+  background:var(--marino);color:#fff;
+  transition:background .15s, transform .15s, box-shadow .15s;
+}
+.redes-icons a svg{width:20px;height:20px;}
+.redes-icons a:hover{background:var(--rojo);transform:translateY(-3px);}
+
+@keyframes carrusel-desliza{
+  from{transform:translateX(0);}
+  to{transform:translateX(-50%);}
+}
+
+/* ---------- PATROCINADORES (franja compacta en el pie, todas las páginas) ---------- */
+.patrocinadores-footer{
+  border-top:1px solid rgba(255,255,255,.12);
+  border-bottom:1px solid rgba(255,255,255,.12);
+  padding:28px 0;margin-bottom:32px;
+  display:flex;align-items:center;gap:20px;
+}
+.patrocinadores-footer-label{
+  font-family:var(--font-tit);text-transform:uppercase;font-size:.75rem;
+  letter-spacing:.6px;color:#8b96a5;flex-shrink:0;white-space:nowrap;
+}
+.patrocinadores-footer-carrusel{
+  position:relative;overflow:hidden;flex:1;min-width:0;
+}
+.patrocinadores-footer-carrusel::before,
+.patrocinadores-footer-carrusel::after{
+  content:"";position:absolute;top:0;bottom:0;width:60px;z-index:2;pointer-events:none;
+}
+.patrocinadores-footer-carrusel::before{left:0;background:linear-gradient(90deg, var(--marino2) 0%, transparent 100%);}
+.patrocinadores-footer-carrusel::after{right:0;background:linear-gradient(270deg, var(--marino2) 0%, transparent 100%);}
+.patrocinadores-footer-track{
+  display:flex;align-items:center;gap:48px;width:max-content;
+  animation:carrusel-desliza 22s linear infinite;
+}
+.patrocinadores-footer-carrusel:hover .patrocinadores-footer-track{animation-play-state:paused;}
+.patrocinadores-footer-track a{display:flex;align-items:center;flex-shrink:0;}
+.patrocinadores-footer-track img{
+  height:38px;max-width:160px;object-fit:contain;
+  filter:brightness(0) invert(1) opacity(.65);
+  transition:opacity .2s ease,transform .2s ease,filter .2s ease;
+}
+.patrocinadores-footer-track a:hover img{opacity:1;filter:brightness(0) invert(1) opacity(1);transform:translateY(-2px) scale(1.05);}
+@media (prefers-reduced-motion: reduce){
+  .patrocinadores-footer-track{animation:none;}
+}
+@media(max-width:640px){
+  .patrocinadores-footer{flex-direction:column;gap:14px;align-items:stretch;}
+  .patrocinadores-footer-label{text-align:center;}
+  .patrocinadores-footer-track img{height:30px;max-width:120px;}
+}
+
+/* ---------- PIE DE PÁGINA ---------- */
+footer{
+  background:linear-gradient(180deg, var(--marino) 0%, var(--marino2) 100%);
+  color:#c9d3de;padding:48px 0 22px;margin-top:70px;font-size:.87rem;
+  border-top:4px solid var(--rojo);
+}
+
+/* ---------- Bloque de suscripción al boletín (arriba del todo del pie) ---------- */
+.newsletter-bloque{
+  display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:12px;
+  padding:22px 26px;margin-bottom:36px;
+}
+.newsletter-texto h4{margin-bottom:4px;padding-bottom:0;}
+.newsletter-texto h4::after{display:none;}
+.newsletter-texto p{color:#a9b4c2;font-size:.85rem;max-width:360px;}
+.newsletter-form{display:flex;gap:10px;flex-wrap:wrap;flex-shrink:0;}
+.newsletter-form input{
+  padding:11px 14px;border-radius:22px;border:1px solid rgba(255,255,255,.25);
+  background:rgba(255,255,255,.08);color:#fff;font-family:var(--font-text);font-size:.87rem;
+  min-width:230px;
+}
+.newsletter-form input::placeholder{color:#a9b4c2;}
+.newsletter-form input:focus{outline:2px solid var(--celeste);outline-offset:1px;}
+.newsletter-form button{
+  padding:11px 22px;border-radius:22px;border:none;background:var(--rojo);color:#fff;
+  font-family:var(--font-tit);font-size:.8rem;text-transform:uppercase;letter-spacing:.4px;
+  cursor:pointer;transition:background .15s;
+}
+.newsletter-form button:hover{background:var(--rojo-oscuro);}
+.newsletter-form button:disabled{opacity:.7;cursor:default;}
+.newsletter-bloque-suscrito{
+  justify-content:flex-start;
+  border-color:rgba(127,224,163,.3);background:rgba(127,224,163,.08);
+}
+.newsletter-bloque-suscrito .newsletter-texto p{color:#c9d3de;}
+.newsletter-olvidar-suscripcion{
+  display:inline-block;margin-top:10px;padding:0;border:none;background:none;
+  color:#a9b4c2;font-family:var(--font-text);font-size:.78rem;text-decoration:underline;
+  cursor:pointer;
+}
+.newsletter-olvidar-suscripcion:hover{color:#fff;}
+@media (max-width:640px){
+  .newsletter-bloque{flex-direction:column;align-items:stretch;text-align:center;}
+  .newsletter-form{justify-content:center;}
+  .newsletter-form input{min-width:0;flex:1;}
+}
+footer .footer-grid{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr 1fr;gap:36px;margin-bottom:32px;}
+footer .footer-link-boton{
+  background:none;border:none;padding:0;font:inherit;color:#c9d3de;cursor:pointer;
+  text-align:inherit;transition:color .15s,padding-left .15s;display:inline-block;
+}
+footer .footer-link-boton:hover{color:#fff;padding-left:4px;}
+footer .footer-col-brand p{color:#a9b4c2;line-height:1.55;max-width:320px;}
+footer .footer-brand{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+footer .footer-brand img{height:44px;}
+footer .footer-brand span{font-family:var(--font-tit);font-size:1.15rem;text-transform:uppercase;color:#fff;}
+footer .footer-brand span .brand-rojo{color:var(--rojo);}
+footer h4{
+  font-family:var(--font-tit);text-transform:uppercase;font-size:.8rem;color:var(--celeste-claro);
+  margin-bottom:14px;letter-spacing:.6px;position:relative;padding-bottom:8px;
+}
+footer h4::after{content:"";position:absolute;left:0;bottom:0;width:26px;height:2px;background:var(--rojo);}
+footer ul{list-style:none;}
+footer ul li{margin-bottom:10px;}
+footer ul li a{color:#c9d3de;transition:color .15s,padding-left .15s;display:inline-block;}
+footer ul li a:hover{color:#fff;padding-left:4px;}
+footer a:hover{color:#fff;}
+footer .redes-footer{display:flex;gap:10px;margin-top:8px;}
+footer .redes-footer a{
+  width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.08);
+  display:flex;align-items:center;justify-content:center;
+  transition:background .15s,transform .15s;
+}
+footer .redes-footer a svg{width:17px;height:17px;}
+footer .redes-footer a:hover{background:var(--rojo);transform:translateY(-3px);}
+footer .footer-bottom{
+  border-top:1px solid rgba(255,255,255,.12);padding-top:20px;
+  display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;
+}
+footer .copy{font-size:.78rem;color:#8b96a5;}
+footer .footer-arriba{
+  display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.08);border:none;
+  color:#c9d3de;padding:8px 16px;border-radius:20px;font-size:.78rem;font-weight:600;cursor:pointer;
+  transition:background .15s,color .15s;
+}
+footer .footer-arriba svg{width:14px;height:14px;}
+footer .footer-arriba:hover{background:var(--rojo);color:#fff;}
+
+@media(max-width:640px){
+  footer .footer-bottom{flex-direction:column;text-align:center;}
+}
+
+/* ---------- RESPONSIVE ---------- */
+
+/* Tablet: la cuadrícula de noticias y el hero ya se adaptan solos por ser
+   grids fluidos, pero afinamos espaciados y el propio menú antes de
+   llegar al breakpoint de móvil. */
+@media(max-width:1024px){
+  .wrap{padding:0 18px;}
+  .hero{gap:18px;}
+  .hero-principal{min-height:380px;}
+}
+
+@media(max-width:900px){
+  .hero{grid-template-columns:1fr;}
+  .hero-principal{min-height:320px;}
+  .nav-toggle{display:block;}
+  nav.main-nav ul{display:none;flex-direction:column;}
+  nav.main-nav ul.abierta{display:flex;}
+
+  /* ---------- Cabecera móvil ----------
+     Fila 1: logo + botón de acceso + hamburguesa.
+     Fila 2: barra de búsqueda a ancho completo, propia línea.
+     .search-box es hijo directo de .main-header .wrap (hermano de
+     .brand y .header-right), así que aquí basta con permitir wrap en
+     el wrap y forzar a la búsqueda a su propia línea a ancho
+     completo: sin position:absolute (frágil ante cambios de altura)
+     ni depender del ancho interno de .header-right. */
+  .main-header .wrap{flex-wrap:wrap;row-gap:12px;}
+  .brand{flex:1 1 auto;min-width:0;}
+  .brand .brand-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .search-box{
+    order:3;flex:1 1 100%;width:100%;margin-left:0;
+  }
+  .search-box input{
+    width:100%;box-sizing:border-box;font-size:16px;padding:11px 16px;
+  }
+  .search-box input:focus{width:100%;}
+  .search-resultados{
+    width:100%;left:0;right:0;max-height:min(420px,60vh);
+  }
+  footer .footer-grid{grid-template-columns:1fr 1fr 1fr;gap:28px;}
+}
+@media(max-width:600px){
+  .top-bar .wrap{flex-wrap:wrap;gap:6px;}
+  .top-bar #fecha-hoy{font-size:.7rem;}
+  .brand .brand-text{font-size:1.02rem;}
+  .brand img{height:38px;}
+  .main-header{padding:11px 0;}
+  .btn-login{width:36px;height:36px;}
+  .hero-principal{min-height:280px;}
+  .hero-principal .overlay{padding:20px;}
+  .hero-principal h1{font-size:1.4rem;}
+  .mini-card img{width:78px;height:56px;}
+  .mini-card h3{font-size:.92rem;}
+  .section-title{font-size:1.15rem;margin:30px 0 16px;padding-left:10px;border-left-width:5px;}
+  .section-title-row{margin:30px 0 16px;}
+  .article-header h1{font-size:1.6rem;}
+  footer{padding:36px 0 18px;margin-top:50px;}
+  footer .footer-grid{grid-template-columns:1fr;gap:26px;text-align:center;}
+  footer .footer-brand{justify-content:center;}
+  footer .footer-col-brand p{margin:0 auto;}
+  footer .redes-footer{justify-content:center;}
+  footer h4::after{left:50%;transform:translateX(-50%);}
+  footer ul{padding:0;}
+  .grid-noticias{grid-template-columns:1fr;gap:18px;}
+  .card img{height:190px;}
+  .pagina-404 .codigo-404{font-size:4.5rem;}
+  .pagina-404 .balon-404{width:72px;height:72px;}
+  .estado-info{padding:40px 18px;}
+}
+
+/* Móviles muy estrechos (iPhone SE y similares) */
+@media(max-width:360px){
+  .brand .brand-text{font-size:.9rem;}
+  .brand img{height:32px;}
+  nav.main-nav a{padding:12px 14px;font-size:.82rem;}
+  .hero-principal h1{font-size:1.25rem;}
+  .article-header h1{font-size:1.4rem;}
+}
+
+/* ---------- PERFIL PÚBLICO DE AUTOR ---------- */
+.perfil-autor-cabecera{
+  display:flex;gap:26px;align-items:flex-start;
+  max-width:820px;margin:0 auto 40px;padding-bottom:32px;
+  border-bottom:1px solid #e5e5e5;
+}
+.perfil-autor-avatar{
+  width:110px;height:110px;border-radius:50%;object-fit:cover;
+  background:var(--gris-claro);flex-shrink:0;border:3px solid var(--blanco);box-shadow:var(--sombra);
+}
+.perfil-autor-avatar-iniciales{
+  display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg, var(--rojo), var(--rojo-oscuro));
+  color:#fff;font-weight:700;font-size:2.1rem;font-family:var(--font-tit);
+}
+.perfil-autor-etiqueta{
+  font-family:var(--font-tit);text-transform:uppercase;font-size:.75rem;letter-spacing:.5px;
+  color:var(--rojo);font-weight:700;
+}
+.perfil-autor-cabecera h1{
+  font-family:var(--font-headline);font-weight:700;font-size:1.9rem;color:var(--marino-texto);margin:4px 0 10px;
+}
+.perfil-autor-equipo{
+  font-family:var(--font-tit);text-transform:uppercase;font-size:.8rem;letter-spacing:.4px;
+  color:var(--gris-texto);font-weight:600;margin:-4px 0 10px;
+}
+.perfil-autor-bio{font-family:var(--font-body);color:var(--gris-texto);font-size:1rem;line-height:1.6;max-width:600px;}
+.perfil-autor-experiencia{max-width:600px;margin-top:16px;}
+.perfil-autor-experiencia h2{
+  font-family:var(--font-tit);text-transform:uppercase;font-size:.78rem;letter-spacing:.5px;
+  color:var(--marino-texto);margin:0 0 6px;
+}
+.perfil-autor-experiencia p{font-family:var(--font-body);color:var(--gris-texto);font-size:.95rem;line-height:1.6;white-space:pre-line;}
+.perfil-autor-redes{display:flex;gap:10px;margin-top:14px;}
+.perfil-autor-redes a{
+  width:36px;height:36px;border-radius:50%;background:var(--gris-claro);color:var(--marino-texto);
+  display:flex;align-items:center;justify-content:center;transition:background .15s,color .15s,transform .15s;
+}
+.perfil-autor-redes a:hover{background:var(--rojo);color:var(--blanco);transform:translateY(-2px);}
+.perfil-autor-redes a[title^="Instagram"]{
+  background:radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%);
+  color:#fff;
+}
+.perfil-autor-redes a[title^="Instagram"]:hover{
+  background:radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%);
+  transform:translateY(-2px);box-shadow:0 6px 16px rgba(214,36,159,.35);
+}
+.perfil-autor-vacio{
+  font-style:italic;color:#9aa0ab !important;
+  background:var(--gris-claro);border-radius:10px;
+  padding:10px 14px;display:inline-block;
+}
+@media(max-width:600px){
+  .perfil-autor-cabecera{flex-direction:column;align-items:center;text-align:center;}
+  .perfil-autor-redes{justify-content:center;}
+}
+
+/* Enlace del nombre del autor bajo el título de la noticia y en las
+   tarjetas de portada/categoría/búsqueda: mismo color que el resto del
+   texto de la fecha, mostrando el subrayado solo al pasar el ratón para
+   no ser demasiado llamativo entre las metas. */
+.meta a.autor-link{color:inherit;text-decoration:none;}
+.meta a.autor-link:hover{text-decoration:underline;}
+
+/* ---------- Campos de contraseña: botón de ver/ocultar ---------- */
+
+/* ---------- Panel: id de usuario junto al username (tabla Usuarios) ---------- */
+.id-usuario-panel{font-size:.72rem;color:#9aa0ab;font-weight:400;}
+
+/* ---------- Noticia programada: cuenta atrás pública ---------- */
+/* Se muestra en noticia.html cuando alguien entra con el enlace de una
+   noticia que ya se ha compartido con antelación pero todavía no ha
+   llegado su hora de publicación (ver worker: GET /api/articles/:slug
+   devolviendo "programado" en vez de "article"). */
+.programada-caja{
+  grid-column:1/-1;
+  display:flex;flex-direction:column;align-items:center;text-align:center;
+  gap:22px;
+  padding:64px 24px 56px;
+  margin:0 auto;
+  max-width:640px;
+  background:linear-gradient(160deg, var(--marino) 0%, var(--marino2) 100%);
+  border-radius:16px;
+  color:#fff;
+  box-shadow:var(--sombra);
+  position:relative;
+  overflow:hidden;
+}
+.programada-caja::before{
+  content:"";
+  position:absolute;inset:0;
+  background:radial-gradient(circle at 15% 0%, rgba(91,184,232,.25), transparent 55%),
+             radial-gradient(circle at 85% 100%, rgba(209,19,46,.22), transparent 55%);
+  pointer-events:none;
+}
+.programada-caja > *{position:relative;}
+.programada-etiqueta{
+  display:inline-flex;align-items:center;gap:8px;
+  font-family:var(--font-tit);text-transform:uppercase;
+  font-size:.78rem;letter-spacing:1.5px;
+  color:var(--celeste-claro);
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(168,220,245,.35);
+  padding:7px 16px;border-radius:999px;
+}
+.programada-etiqueta .punto-vivo{
+  width:8px;height:8px;border-radius:50%;background:var(--rojo);
+  box-shadow:0 0 0 0 rgba(209,19,46,.6);
+  animation:programada-pulso 1.6s infinite;
+}
+@keyframes programada-pulso{
+  0%{box-shadow:0 0 0 0 rgba(209,19,46,.55);}
+  70%{box-shadow:0 0 0 9px rgba(209,19,46,0);}
+  100%{box-shadow:0 0 0 0 rgba(209,19,46,0);}
+}
+.programada-titulo{
+  font-family:var(--font-headline);
+  font-size:clamp(1.4rem, 3vw, 2rem);
+  line-height:1.25;
+  max-width:540px;
+}
+.programada-contador{
+  display:flex;gap:14px;flex-wrap:wrap;justify-content:center;
+}
+.programada-contador .unidad{
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  min-width:74px;
+  background:rgba(255,255,255,.07);
+  border:1px solid rgba(255,255,255,.14);
+  border-radius:12px;
+  padding:14px 10px 10px;
+}
+.programada-contador .numero{
+  font-family:var(--font-tit);
+  font-size:2.1rem;font-weight:700;
+  font-variant-numeric:tabular-nums;
+  line-height:1;
+}
+.programada-contador .etiqueta-unidad{
+  font-size:.68rem;text-transform:uppercase;letter-spacing:1px;
+  color:var(--celeste-claro);
+}
+.programada-fecha{
+  font-size:.9rem;color:var(--celeste-claro);
+}
+.programada-ayuda{
+  font-size:.85rem;color:rgba(255,255,255,.7);
+  max-width:420px;
+}
+.programada-lista-recarga{
+  font-size:.8rem;color:rgba(255,255,255,.55);
+}
+.programada-caja .btn-volver{
+  margin-top:4px;
+  display:inline-flex;align-items:center;gap:8px;
+  background:rgba(255,255,255,.1);color:#fff;
+  border:1px solid rgba(255,255,255,.25);
+  font-family:var(--font-tit);text-transform:uppercase;font-size:.82rem;letter-spacing:.4px;
+  padding:11px 22px;border-radius:26px;
+  transition:background .15s, transform .15s;
+}
+.programada-caja .btn-volver:hover{background:var(--rojo);border-color:var(--rojo);transform:translateY(-2px);}
+@media (max-width:520px){
+  .programada-caja{padding:48px 18px 40px;border-radius:0;}
+  .programada-contador .unidad{min-width:64px;padding:12px 6px 8px;}
+  .programada-contador .numero{font-size:1.7rem;}
+}
+
+/* ---------- Alineaciones ---------- */
+/* Antes este panel vivía suelto en la página (de ahí el max-width/
+   margin:auto para autocentrarse); ahora siempre cuelga dentro de un
+   contenedor que ya controla su propio ancho (.marcador-articulo en la
+   noticia, .modal-partido-alineaciones en el modal de resultados), así
+   que aquí solo hace falta el espaciado interno, sin fijar ancho propio. */
+.alineaciones-wrap{display:flex;flex-direction:column;gap:22px;margin-top:14px;}
+.alineaciones-wrap[hidden]{display:none;}
+.alineacion-bloque{
+  background:var(--marino);color:#fff;border-radius:var(--radio);
+  padding:16px 16px 18px;box-shadow:var(--sombra);
+}
+/* Dentro de la noticia, el marcador que lo envuelve ya es --marino: sin
+   distinguir el bloque, se fundía visualmente con su fondo. Un tono algo
+   más claro lo separa del contenedor. */
+.marcador-articulo .alineacion-bloque{background:rgba(255,255,255,.08);box-shadow:none;}
+.alineacion-cabecera{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.alineacion-escudo{width:30px;height:30px;object-fit:contain;}
+.alineacion-equipo{font-family:var(--font-tit);font-weight:700;font-size:.95rem;flex:1;}
+.alineacion-formacion{
+  font-size:.72rem;color:var(--celeste-claro);
+  border:1px solid rgba(255,255,255,.25);border-radius:20px;padding:3px 10px;
+}
+.alineacion-campo, .alineacion-editor-campo{
+  position:relative;width:100%;aspect-ratio:3/4;max-width:420px;margin:0 auto;
+  background:
+    radial-gradient(ellipse at 50% 8%,rgba(255,255,255,.05),transparent 60%),
+    repeating-linear-gradient(180deg,#2a9147 0,#2a9147 11.11%,#268a42 11.11%,#268a42 22.22%);
+  border-radius:8px;overflow:hidden;
+  /* Viñeta de estadio: oscurece un poco las esquinas para dar profundidad,
+     igual en los tres campos (noticia, modal y editor de admin). */
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.08),
+    inset 0 0 0 1.5px rgba(255,255,255,.32),
+    inset 0 0 40px rgba(0,0,0,.28);
+}
+/* Áreas grande arriba y abajo, generadas con pseudo-elementos propios
+   del campo -sin depender de marcado extra que el JS no pinta- para que
+   el campo se lea como un campo real y no solo círculo + línea central.
+   Se aplican también al campo del editor de alineaciones del panel
+   admin (misma estructura HTML, .alineacion-editor-campo), que hasta
+   ahora se quedaba sin césped ni áreas por no compartir selector con
+   el campo público. Proporciones ajustadas a un campo real (más
+   estrechas que el ancho de portería a portería, no medio campo). */
+.alineacion-campo::before, .alineacion-campo::after,
+.alineacion-editor-campo::before, .alineacion-editor-campo::after{
+  content:"";position:absolute;left:50%;width:44%;height:13%;
+  transform:translateX(-50%);border:1.5px solid rgba(255,255,255,.4);
+}
+.alineacion-campo::before, .alineacion-editor-campo::before{top:0;border-top:none;}
+.alineacion-campo::after, .alineacion-editor-campo::after{bottom:0;border-bottom:none;}
+/* Dentro de una noticia el bloque va algo más compacto que en el modal
+   de detalle de partido (resultados.html), donde hay más espacio. */
+.marcador-articulo .alineacion-campo{max-width:300px;}
+.marcador-articulo .alineacion-jugador{width:42px;}
+.marcador-articulo .alineacion-jugador .alineacion-dorsal{width:22px;height:22px;font-size:.66rem;}
+.marcador-articulo .alineacion-jugador .alineacion-nombre{font-size:.56rem;}
+.alineacion-campo-lineas{position:absolute;inset:0;}
+.alineacion-campo-lineas::before, .alineacion-campo-lineas::after{
+  content:"";position:absolute;border:1.5px solid rgba(255,255,255,.4);
+}
+.alineacion-campo-lineas::before{ /* línea de medio campo */
+  left:0;right:0;top:50%;height:0;border-bottom-width:1.5px;border-top:none;border-left:none;border-right:none;
+}
+.alineacion-campo-lineas::after{ /* círculo central */
+  left:50%;top:50%;width:62px;height:62px;border-radius:50%;transform:translate(-50%,-50%);
+}
+/* ---------- Detalles extra del campo ----------
+   Área pequeña (portería), punto de penalti, semicírculo del área
+   grande ("D") y cuartos de círculo de córner en las cuatro esquinas,
+   igual que en un campo real visto en planta. */
+.area-pequena-arriba, .area-pequena-abajo{
+  position:absolute;left:50%;width:20%;height:5.5%;
+  border:1.5px solid rgba(255,255,255,.4);transform:translateX(-50%);
+}
+.area-pequena-arriba{top:0;border-top:none;}
+.area-pequena-abajo{bottom:0;border-bottom:none;}
+.punto-penalti-arriba, .punto-penalti-abajo{
+  position:absolute;left:50%;width:5px;height:5px;border-radius:50%;
+  background:rgba(255,255,255,.55);transform:translate(-50%,-50%);
+}
+.punto-penalti-arriba{top:15.5%;}
+.punto-penalti-abajo{top:84.5%;}
+/* Semicírculo del área ("la D"): arco ancho y aplanado que nace pegado
+   a la línea del área grande (13%/87%) y sobresale hacia el centro del
+   campo, igual que en un campo real -no un semicírculo alto de medio
+   círculo entero, que quedaba flotando y desproporcionado-. */
+.semicirculo-area-arriba, .semicirculo-area-abajo{
+  position:absolute;left:50%;width:88px;height:26px;
+  border:1.5px solid rgba(255,255,255,.4);
+  transform:translateX(-50%);
+}
+.semicirculo-area-arriba{
+  top:13%;border-top:none;border-radius:0 0 100px 100px;
+}
+.semicirculo-area-abajo{
+  top:calc(87% - 26px);border-bottom:none;border-radius:100px 100px 0 0;
+}
+/* Arcos de córner: cuarto de círculo pegado a cada esquina, dibujado
+   solo con borde (sin relleno) y recortado a un cuadrante para que se
+   vea como una curva fina, no como una mancha redondeada de fondo. */
+.corner-arco{
+  position:absolute;width:20px;height:20px;
+  border:1.5px solid rgba(255,255,255,.4);border-radius:50%;
+  background:transparent;
+}
+.corner-arco--tl{top:-10px;left:-10px;clip-path:inset(50% 0 0 50%);}
+.corner-arco--tr{top:-10px;right:-10px;clip-path:inset(50% 50% 0 0);}
+.corner-arco--bl{bottom:-10px;left:-10px;clip-path:inset(0 0 50% 50%);}
+.corner-arco--br{bottom:-10px;right:-10px;clip-path:inset(0 50% 50% 0);}
+.alineacion-jugador{
+  position:absolute;transform:translate(-50%,-50%);
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  width:52px;text-align:center;
+}
+.alineacion-jugador .alineacion-dorsal{
+  width:27px;height:27px;border-radius:50%;
+  background:var(--marino);color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-tit);font-weight:700;font-size:.75rem;
+  box-shadow:0 2px 5px rgba(0,0,0,.3),inset 0 0 0 1.5px rgba(255,255,255,.9);
+}
+.alineacion-jugador .alineacion-nombre{
+  font-size:.62rem;line-height:1.15;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.6);
+  word-break:break-word;
+}
+/* ---------- Editor de alineaciones (panel admin) ----------
+   Contenedor del campo: se centra y respeta el mismo ancho máximo que
+   el campo público, en vez de estirarse a todo lo ancho del panel. */
+.alineacion-editor-campo-wrap{max-width:420px;margin:0 auto 18px;}
+/* Cada jugador del editor se puede arrastrar: cursor de "mano" en reposo
+   y "agarrando" mientras se arrastra, para que quede claro que no es solo
+   decorativo. z-index de sobra para no quedar tapado por las líneas. */
+.alineacion-jugador-editor{cursor:grab;z-index:2;touch-action:none;}
+.alineacion-jugador-editor:active{cursor:grabbing;}
+/* Jugador actualmente seleccionado (el que se está editando en el panel
+   de datos de abajo): aro celeste + ligero zoom para distinguirlo del
+   resto de un vistazo sobre el césped. */
+.alineacion-jugador-editor.seleccionado .alineacion-dorsal{
+  box-shadow:
+    0 0 0 2px var(--celeste-claro),
+    0 0 0 4px rgba(255,255,255,.9),
+    0 3px 8px rgba(0,0,0,.4);
+  transform:scale(1.12);
+}
+.alineacion-suplentes{margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.14);}
+.alineacion-suplentes-titulo{font-size:.72rem;text-transform:uppercase;letter-spacing:.5px;color:var(--celeste-claro);margin:0 0 8px;}
+.alineacion-suplentes ul{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:8px 16px;}
+.alineacion-suplentes li{font-size:.8rem;display:flex;align-items:center;gap:6px;}
+.alineacion-suplentes .alineacion-dorsal{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,.14);
+  font-size:.68rem;font-weight:700;
+}
+/* Marca discreta para distinguir, dentro de la alineación "en vivo" (ver
+   alineacionesConCambiosAplicados en config.js), quién entró por un
+   cambio (borde verde en el campo) y quién ya fue sustituido y ahora
+   aparece en Suplentes (etiqueta roja pequeña junto a su nombre). No es
+   más que un matiz visual: la posición en la lista ya lo deja bastante
+   claro por sí sola. */
+.alineacion-jugador-cambio .alineacion-dorsal{box-shadow:0 0 0 2px #1a9e4f,0 2px 6px rgba(0,0,0,.35);}
+
+/* ---------- Capitán ----------
+   Insignia de brazalete dorado, a juego con el panel de admin (mismo
+   lenguaje que .al-jug-capitan-label/.sup-capitan-label): dorado
+   metálico con relieve real (luz arriba, sombra abajo) en vez de un
+   simple círculo plano, más un halo suave para que se note incluso en
+   miniatura. Dos piezas trabajan juntas para señalarlo sin tocar el JS
+   (que solo pinta un <span class="alineacion-capitan-marca">(C)</span>
+   como hermano del nombre dentro de .alineacion-nombre):
+   1) el dorsal del capitán, seleccionado vía :has() -ya usado en el
+      proyecto para el botón del modal-, gana un aro dorado de marca;
+   2) la propia marca "(C)" se convierte en una insignia real: una
+      medalla dorada compacta con relieve, en vez de texto suelto entre
+      paréntesis. */
+.alineacion-jugador:has(.alineacion-capitan-marca) .alineacion-dorsal{
+  background:var(--marino);
+  box-shadow:
+    0 0 0 1.5px #fff,
+    0 0 0 3px #f2c04a,
+    0 0 9px 1px rgba(242,192,74,.55),
+    0 2px 6px rgba(0,0,0,.35);
+}
+.alineacion-capitan-marca{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:14px;height:14px;padding:0;margin-left:3px;flex:none;
+  border-radius:50%;vertical-align:middle;position:relative;top:-1px;
+  background:linear-gradient(155deg,#fbe08a,#f2c04a 45%,#c8931e);
+  color:#3d2b02;font-weight:800;line-height:1;
+  font-family:var(--font-tit);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.75),
+    inset 0 -1px 1px rgba(61,43,2,.35),
+    0 0 0 1.5px rgba(255,255,255,.9),
+    0 1px 3px rgba(0,0,0,.4);
+  font-size:0; /* oculta el texto literal "(C)" del span; se sustituye por ::after */
+}
+.alineacion-capitan-marca::after{content:"C";font-size:.56rem;font-family:var(--font-tit);text-shadow:0 1px 0 rgba(255,255,255,.3);}
+/* Versión compacta (marcador de noticia): la medalla se reduce a un
+   círculo dorado liso sin la "C" -misma idea, sin el texto- para no
+   romper la línea a ese tamaño de fuente tan pequeño, pero conserva el
+   relieve para no perder el acabado premium. */
+.marcador-articulo .alineacion-capitan-marca{
+  width:8px;height:8px;top:0;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.7),
+    0 0 0 1px rgba(255,255,255,.9),
+    0 0 5px rgba(242,192,74,.6);
+}
+.marcador-articulo .alineacion-capitan-marca::after{display:none;}
+/* La marca en Suplentes no necesita el aro del dorsal (no hay campo
+   verde de fondo con el que contrastar), solo la insignia. */
+.alineacion-suplentes .alineacion-capitan-marca{top:-1px;}
+.alineacion-sale-tag{
+  font-size:.6rem;text-transform:uppercase;letter-spacing:.3px;font-weight:700;
+  color:var(--rojo);border:1px solid rgba(209,19,46,.4);border-radius:20px;padding:1px 7px;
+}
+.modal-partido-alineaciones .alineacion-sale-tag{background:rgba(209,19,46,.06);}
+.modal-partido-alineaciones{margin-top:8px;}
+/* El botón "Ver alineación" del modal (fondo blanco) usa un borde gris
+   claro en vez del rgba blanco pensado para el fondo oscuro del
+   marcador de la noticia -donde ese rgba casi no se vería-.
+   IMPORTANTE: el botón y el panel desplegable (.alineaciones-wrap) son
+   hermanos dentro de este mismo contenedor (ver alineacionesHTML en
+   config.js), así que display:flex NO puede ir aquí: pondría también
+   el panel en la fila y, con flex:1 en el botón, este se estira a lo
+   bruto ocupando toda la fila junto al panel (el bug del botón
+   gigante al desplegar). El flex va en su propio wrapper de una sola
+   línea, target-eado por :has() para no tocar el marcado. */
+.modal-partido-alineaciones:has(.toggle-eventos-articulo){
+  border-top:1px solid #e4e7ec;padding-top:14px;
+}
+.modal-partido-alineaciones .toggle-eventos-articulo{
+  display:flex;width:100%;margin-bottom:16px;
+}
+/* El panel desplegable en sí, cuando cuelga del botón de arriba, lleva
+   su propio margen inferior + una línea divisoria antes de los eventos:
+   así el bloque de alineaciones queda claramente cerrado sobre sí mismo
+   y no se confunde visualmente con ".modal-partido-eventos" justo
+   debajo (antes ambos flotaban pegados, sin ningún corte entre uno y
+   otro). */
+.modal-partido-alineaciones .alineaciones-wrap{
+  margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid #e4e7ec;
+}
+.modal-partido-alineaciones .alineaciones-wrap[hidden]{
+  margin-bottom:0;padding-bottom:0;border-bottom:none;
+}
+/* Rediseño del bloque de alineación específico para este modal: el
+   resto del sitio usa fondo --marino (oscuro) porque cuelga de
+   contenedores ya oscuros (marcador de la noticia, cabecera del modal
+   "en vivo"), pero aquí el modal es blanco de principio a fin, así que
+   una tarjeta azul marino desentonaba con todo lo demás. Esta versión
+   usa un fondo claro con acento en el título del equipo, a juego con
+   el resto de tarjetas del modal (.modal-evento-contenido). */
+.modal-partido-alineaciones .alineacion-bloque{
+  background:linear-gradient(180deg,#fbfcfe,#f3f5f8);
+  color:var(--marino-texto);
+  border:1px solid #e4e7ec;
+  box-shadow:0 1px 2px rgba(12,27,46,.04);
+  padding:14px 14px 16px;
+}
+.modal-partido-alineaciones .alineacion-bloque + .alineacion-bloque{margin-top:14px;}
+.modal-partido-alineaciones .alineacion-cabecera{
+  padding-bottom:10px;margin-bottom:12px;border-bottom:1px solid #e4e7ec;
+}
+.modal-partido-alineaciones .alineacion-equipo{color:var(--marino-texto);}
+.modal-partido-alineaciones .alineacion-formacion{
+  color:var(--marino-texto);border-color:rgba(12,27,46,.15);background:rgba(12,27,46,.05);
+}
+/* El campo sigue en verde césped (siempre acierta, sea cual sea el
+   fondo de alrededor) pero con un marco propio para que no parezca
+   recortado directamente sobre la tarjeta clara. Se usa el mismo
+   tamaño compacto que en la noticia (antes se quedaba con las medidas
+   grandes por defecto, pensadas para un contenedor ancho: en el modal,
+   de solo ~468px útiles, los nombres de los jugadores se amontonaban
+   y se solapaban entre sí). */
+.modal-partido-alineaciones .alineacion-campo{
+  max-width:300px;box-shadow:0 2px 10px rgba(12,27,46,.18),inset 0 0 0 1px rgba(255,255,255,.08);
+}
+.modal-partido-alineaciones .alineacion-jugador{width:44px;}
+.modal-partido-alineaciones .alineacion-jugador .alineacion-dorsal{width:23px;height:23px;font-size:.68rem;}
+.modal-partido-alineaciones .alineacion-jugador .alineacion-nombre{font-size:.58rem;}
+.modal-partido-alineaciones .alineacion-jugador .alineacion-capitan-marca{
+  width:8px;height:8px;padding:0;border-radius:50%;top:0;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.7),
+    0 0 0 1px rgba(255,255,255,.9),
+    0 0 5px rgba(242,192,74,.55);
+}
+.modal-partido-alineaciones .alineacion-jugador .alineacion-capitan-marca::after{display:none;}
+.modal-partido-alineaciones .alineacion-suplentes{border-top-color:#e4e7ec;}
+.modal-partido-alineaciones .alineacion-suplentes-titulo{color:var(--marino-texto);opacity:.65;}
+.modal-partido-alineaciones .alineacion-suplentes li{color:var(--marino-texto);}
+.modal-partido-alineaciones .alineacion-suplentes .alineacion-dorsal{
+  background:rgba(12,27,46,.08);color:var(--marino-texto);
+}
+/* Modo oscuro: el rediseño de arriba fija un fondo/bordes claros pensados
+   para el modal en modo claro (#fbfcfe/#e4e7ec), así que en oscuro se
+   sobreescriben con las variables semánticas del tema (--tarjeta, --borde)
+   para que la tarjeta de alineación se integre con el resto del modal en
+   vez de quedar siempre clara encima de un modal ya oscurecido. */
+[data-theme="dark"] .modal-partido-alineaciones .alineacion-bloque{
+  background:var(--tarjeta);
+  border-color:var(--borde);
+  box-shadow:none;
+}
+[data-theme="dark"] .modal-partido-alineaciones .alineacion-cabecera{
+  border-bottom-color:var(--borde);
+}
+[data-theme="dark"] .modal-partido-alineaciones .alineacion-formacion{
+  border-color:var(--borde);background:rgba(255,255,255,.05);
+}
+[data-theme="dark"] .modal-partido-alineaciones .alineacion-suplentes{
+  border-top-color:var(--borde);
+}
+[data-theme="dark"] .modal-partido-alineaciones .alineacion-suplentes .alineacion-dorsal{
+  background:rgba(255,255,255,.1);color:var(--marino-texto);
+}
+[data-theme="dark"] .modal-partido-alineaciones:has(.toggle-eventos-articulo){
+  border-top-color:var(--borde);
+}
+[data-theme="dark"] .modal-partido-alineaciones .alineaciones-wrap{
+  border-bottom-color:var(--borde);
+}
+/* En móvil el modal (.modal-partido-caja) pasa a su versión compacta a
+   partir de 560px (ver breakpoint más arriba), no de 520px: con este
+   desfase, entre 521px y 560px el campo de alineaciones seguía fijado a
+   max-width:300px dentro de un modal ya con menos padding lateral, y
+   -al ser .modal-partido-caja overflow-y:auto, lo que el spec de CSS
+   obliga a tratar el otro eje como overflow-x:auto en vez de visible-
+   cualquier mínimo desbordamiento horizontal generaba scroll lateral
+   sin ninguna barra visible en muchos navegadores móviles: el campo
+   quedaba cortado sin ningún indicio de que había que arrastrar para
+   verlo entero. Se iguala el breakpoint a 560px y, además, se fuerza
+   min-width:0 en toda la cadena de contenedores flex/columna del panel
+   para que puedan encogerse por debajo de su ancho de contenido en vez
+   de forzar ese desbordamiento. */
+@media (max-width:560px){
+  .modal-partido-alineaciones .alineacion-campo{max-width:none;}
+  .alineacion-jugador{width:44px;}
+  .alineacion-jugador .alineacion-nombre{font-size:.58rem;}
+}
+.modal-partido-caja, .modal-partido-alineaciones, .alineaciones-wrap,
+.alineacion-bloque, .alineacion-campo{
+  min-width:0;
+}
+
+/* ---------- Collage de fotos en una noticia ---------- */
+.article-collage{
+  display:grid;gap:6px;max-width:780px;margin:0 auto 26px;border-radius:var(--radio);overflow:hidden;
+}
+.article-collage-foto{position:relative;overflow:hidden;background:#e9ecef;}
+.article-collage-foto img{width:100%;height:100%;object-fit:cover;display:block;}
+.collage-2-horizontal{grid-template-columns:1fr 1fr;aspect-ratio:16/7;}
+.collage-2-vertical{grid-template-columns:1fr;aspect-ratio:3/4;}
+.collage-3-una-grande{grid-template-columns:2fr 1fr;grid-template-rows:1fr 1fr;aspect-ratio:16/9;}
+.collage-3-una-grande .article-collage-foto:first-child{grid-row:1/3;}
+.collage-3-fila{grid-template-columns:1fr 1fr 1fr;aspect-ratio:21/8;}
+.collage-4-cuadricula{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;aspect-ratio:1/1;}
+@media (max-width:520px){
+  .collage-3-una-grande{aspect-ratio:4/5;}
+  .collage-3-fila{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;aspect-ratio:1/1;}
+  .collage-3-fila .article-collage-foto:first-child{grid-column:1/3;}
+}
+/* Collages marcados como "en la galería final": el mismo bloque de
+   .article-collage, solo que colocado justo antes del carrusel de
+   galería en vez de dentro del texto. */
+.article-galeria-collages{max-width:780px;margin:0 auto;}
+.article-galeria-collages .article-collage{margin-bottom:18px;}
+
+/* ---------- Páginas de contenido estático (quiénes somos, línea
+   editorial, contacto...) ---------- */
+.pagina-info{max-width:760px;}
+.pagina-info-cuerpo{color:var(--marino-texto); line-height:1.7; font-size:.98rem;}
+.pagina-info-cuerpo p{margin:0 0 16px;}
+.pagina-info-cuerpo h3{
+  font-family:var(--font-tit); text-transform:uppercase; font-size:.95rem;
+  letter-spacing:.4px; color:var(--rojo); font-weight:700; margin:28px 0 10px;
+}
+.pagina-info-cuerpo a{color:var(--celeste); text-decoration:underline;}
+.pagina-info-cuerpo .lista-valores{margin:0 0 16px; padding-left:20px;}
+.pagina-info-cuerpo .lista-valores li{margin-bottom:8px;}
+
+/* ---------- Portal de transparencia ---------- */
+.pagina-transparencia{max-width:920px;}
+.transp-intro{color:var(--marino-texto); line-height:1.7; font-size:.98rem; max-width:760px; margin:0 0 32px;}
+.transp-intro p{margin:0 0 14px;}
+.transp-intro p:last-child{margin-bottom:0;}
+.transp-actualizado{
+  display:inline-flex; align-items:center; gap:8px; font-size:.8rem; font-weight:600;
+  color:var(--texto-suave); background:var(--fondo-alt); border:1px solid var(--borde);
+  border-radius:20px; padding:6px 14px; margin-bottom:28px;
+}
+.transp-actualizado .punto-verde{width:8px; height:8px; border-radius:50%; background:#1b8a4a; flex-shrink:0;}
+
+.transp-seccion{margin:0 0 40px;}
+.transp-seccion-titulo{
+  font-family:var(--font-tit); text-transform:uppercase; font-size:1rem;
+  letter-spacing:.4px; color:var(--rojo); font-weight:700; margin:0 0 4px;
+  padding-left:12px; border-left:4px solid var(--rojo);
+}
+.transp-seccion-desc{font-size:.88rem; color:var(--texto-suave); margin:6px 0 18px 12px;}
+
+/* KPIs */
+.transp-kpi-grid{
+  display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin:0 0 6px;
+}
+.transp-kpi{
+  background:var(--tarjeta); border:1px solid var(--borde); border-radius:var(--radio);
+  padding:18px 16px; display:flex; flex-direction:column; gap:4px; box-shadow:var(--sombra);
+}
+.transp-kpi-valor{font-family:var(--font-tit); font-size:1.7rem; font-weight:700; color:var(--marino-texto); line-height:1.1;}
+.transp-kpi-valor .transp-kpi-signo{color:var(--celeste); font-size:1.1rem;}
+.transp-kpi-label{font-size:.78rem; color:var(--texto-suave); font-weight:600;}
+
+/* Barra de ingresos (financiación) */
+.transp-barra-ingresos{
+  display:flex; width:100%; height:34px; border-radius:8px; overflow:hidden;
+  border:1px solid var(--borde); margin:4px 0 16px;
+}
+.transp-barra-tramo{height:100%;}
+.transp-leyenda-ingresos{display:flex; flex-wrap:wrap; gap:10px 22px; margin:0 0 8px;}
+.transp-leyenda-item{display:flex; align-items:center; gap:8px; font-size:.85rem; color:var(--marino-texto);}
+.transp-leyenda-punto{width:11px; height:11px; border-radius:3px; flex-shrink:0;}
+.transp-leyenda-item strong{color:var(--texto-suave); font-weight:600; margin-left:2px;}
+
+/* Tabla simple de cuentas */
+.transp-tabla{width:100%; border-collapse:collapse; font-size:.9rem; margin-top:6px;}
+.transp-tabla th, .transp-tabla td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--borde);}
+.transp-tabla th{font-size:.75rem; text-transform:uppercase; letter-spacing:.3px; color:var(--texto-suave); font-weight:700;}
+.transp-tabla td{color:var(--marino-texto);}
+.transp-tabla tr:last-child td{border-bottom:none;}
+.transp-tabla td.transp-num, .transp-tabla th.transp-num{text-align:right; font-variant-numeric:tabular-nums;}
+.transp-tabla tr.transp-fila-total td{font-weight:700; border-top:2px solid var(--borde); border-bottom:none;}
+.transp-tabla-wrap{overflow-x:auto; background:var(--tarjeta); border:1px solid var(--borde); border-radius:var(--radio); padding:4px 14px;}
+
+/* Equipo */
+.transp-equipo-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:14px;}
+.transp-equipo-card{
+  background:var(--tarjeta); border:1px solid var(--borde); border-radius:var(--radio);
+  padding:16px; display:flex; flex-direction:column; gap:2px;
+}
+.transp-equipo-nombre{font-weight:700; color:var(--marino-texto); font-size:.95rem;}
+.transp-equipo-rol{font-size:.8rem; color:var(--rojo); font-weight:600;}
+.transp-equipo-desc{font-size:.82rem; color:var(--texto-suave); margin-top:6px; line-height:1.5;}
+
+/* Compromisos / checklist */
+.transp-lista-compromisos{list-style:none; display:flex; flex-direction:column; gap:10px;}
+.transp-lista-compromisos li{
+  display:flex; gap:10px; align-items:flex-start; font-size:.9rem; color:var(--marino-texto);
+  background:var(--tarjeta); border:1px solid var(--borde); border-radius:var(--radio); padding:12px 14px;
+}
+.transp-lista-compromisos .transp-check{
+  flex-shrink:0; width:20px; height:20px; border-radius:50%; background:#1b8a4a1a; color:#1b8a4a;
+  display:flex; align-items:center; justify-content:center; font-size:.75rem; font-weight:700; margin-top:1px;
+}
+
+/* Correcciones publicadas */
+.transp-correccion{
+  border-left:3px solid var(--celeste); background:var(--fondo-alt); border-radius:0 var(--radio) var(--radio) 0;
+  padding:12px 16px; margin-bottom:12px;
+}
+.transp-correccion-meta{font-size:.75rem; color:var(--texto-suave); font-weight:600; margin-bottom:4px; text-transform:uppercase; letter-spacing:.3px;}
+.transp-correccion p{font-size:.87rem; color:var(--marino-texto); margin:0;}
+
+.transp-contacto-caja{
+  background:var(--tarjeta); border:1px solid var(--borde); border-radius:var(--radio);
+  padding:20px 22px; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:16px;
+}
+.transp-contacto-caja p{font-size:.9rem; color:var(--marino-texto); margin:0; max-width:480px;}
+.transp-contacto-boton{
+  white-space:nowrap; background:var(--marino); color:#fff; border:none; text-decoration:none;
+  border-radius:22px; padding:11px 24px; font-size:.88rem; font-weight:600; display:inline-block;
+  transition:opacity .15s;
+}
+.transp-contacto-boton:hover{opacity:.88;}
+
+@media(max-width:900px){
+  .transp-kpi-grid{grid-template-columns:repeat(2,1fr);}
+  .transp-equipo-grid{grid-template-columns:1fr 1fr;}
+}
+@media(max-width:600px){
+  .transp-kpi-grid{grid-template-columns:1fr 1fr;}
+  .transp-equipo-grid{grid-template-columns:1fr;}
+  .transp-contacto-caja{flex-direction:column; align-items:flex-start;}
+}
+
+/* ---------- Formulario de contacto ---------- */
+.form-contacto{
+  display:flex; flex-direction:column; gap:16px; max-width:520px; margin-top:8px;
+}
+.campo-contacto{display:flex; flex-direction:column; gap:6px;}
+.campo-contacto label{font-size:.82rem; font-weight:600; color:var(--marino-texto);}
+.campo-contacto input, .campo-contacto textarea{
+  border:1px solid var(--borde); background:var(--tarjeta); border-radius:10px;
+  padding:10px 12px; font-size:.95rem; color:var(--marino-texto); font-family:inherit;
+  resize:vertical;
+}
+.campo-contacto input:focus, .campo-contacto textarea:focus{outline:2px solid var(--celeste); outline-offset:1px;}
+.form-contacto button{
+  align-self:flex-start; background:var(--marino); color:#fff; border:none;
+  border-radius:22px; padding:11px 26px; font-size:.9rem; font-weight:600;
+  cursor:pointer; transition:opacity .15s;
+}
+.form-contacto button:disabled{opacity:.6; cursor:default;}
+.form-contacto button:hover:not(:disabled){opacity:.9;}
+.contacto-estado{font-size:.88rem; margin:0;}
+.contacto-estado-ok{color:#1b8a4a;}
+.contacto-estado-error{color:var(--rojo);}
+
+/* ---------- Página pública de estado ----------
+   Ritmo vertical unificado: todos los bloques de esta página (grid de
+   estado, nota, acciones, y cada .estado-detalle) usan el mismo margen
+   inferior (28px) en vez de la mezcla anterior de 18/20/32px, así que
+   la separación entre secciones es constante de arriba a abajo. El
+   título y subtítulo de la página los pone .section-title/.section-
+   subtitle (compartidos con el resto del sitio) y no se tocan aquí. */
+.estado-grid{display:flex; flex-direction:column; gap:12px; margin:0 0 20px;}
+.estado-item{
+  display:flex; align-items:center; gap:14px; background:var(--tarjeta);
+  border:1px solid var(--borde); border-radius:var(--radio); padding:16px 18px;
+}
+.estado-punto{
+  flex-shrink:0; width:12px; height:12px; border-radius:50%; background:#c8c8c8;
+}
+.estado-item.estado-ok .estado-punto{background:#1b8a4a;}
+.estado-item.estado-mal .estado-punto{background:var(--rojo);}
+.estado-item-texto{display:flex; flex-direction:column; gap:2px;}
+.estado-item-nombre{font-weight:700; color:var(--marino-texto); font-size:.95rem;}
+.estado-item-detalle{font-size:.85rem; color:var(--texto-suave);}
+/* Antes solo tenía margen inferior cuando llevaba texto (la nota del
+   servidor de respaldo), así que si estaba vacía dejaba un hueco
+   irregular entre el grid y las acciones. Con min-height se reserva el
+   mismo espacio esté vacía o no, y así el bloque de abajo (acciones)
+   siempre cae al mismo sitio. */
+.estado-nota{font-size:.85rem; color:var(--texto-suave); margin:0 0 20px; min-height:1.2em;}
+#estadoRecomprobar{
+  border:1px solid var(--borde); background:var(--tarjeta); color:var(--marino-texto);
+  border-radius:22px; padding:9px 20px; font-size:.85rem; font-weight:600; cursor:pointer;
+}
+#estadoRecomprobar:hover{border-color:var(--celeste);}
+
+.estado-acciones{
+  display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin:0 0 28px;
+}
+.estado-autorefresco{font-size:.78rem; color:var(--texto-suave);}
+
+.estado-seccion-titulo{
+  font-family:var(--font-tit); text-transform:uppercase; font-size:1rem; letter-spacing:.3px;
+  color:var(--marino-texto); margin:0 0 10px; padding-left:12px; border-left:4px solid var(--rojo);
+}
+.estado-seccion-ayuda{font-size:.85rem; color:var(--texto-suave); line-height:1.5; margin:0 0 12px;}
+.estado-detalle{margin:0 0 28px;}
+.estado-detalle:last-child{margin-bottom:0;}
+
+.estado-detalle-grid{
+  display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px;
+}
+.estado-detalle-item{
+  background:var(--tarjeta); border:1px solid var(--borde); border-radius:var(--radio);
+  padding:14px 16px; display:flex; flex-direction:column; gap:4px;
+}
+.estado-detalle-label{font-size:.72rem; text-transform:uppercase; letter-spacing:.3px; color:var(--texto-suave);}
+.estado-detalle-valor{font-family:var(--font-tit); font-size:1.05rem; color:var(--marino-texto);}
+
+.estado-historial{display:flex; flex-direction:column; gap:6px;}
+.estado-historial-vacio{font-size:.85rem; color:var(--texto-suave); font-style:italic;}
+.estado-historial-fila{
+  display:flex; align-items:center; gap:10px;
+  background:var(--tarjeta); border:1px solid var(--borde); border-radius:8px;
+  padding:9px 14px; font-size:.85rem;
+}
+.estado-historial-fila .estado-punto{flex-shrink:0; width:9px; height:9px;}
+.estado-historial-hora{
+  font-family:var(--font-tit); font-variant-numeric:tabular-nums; color:var(--texto-suave);
+  flex-shrink:0; min-width:72px;
+}
+.estado-historial-texto{color:var(--marino-texto);}
+
+.estado-leyenda{list-style:none; display:flex; flex-direction:column; gap:8px; margin:0 0 14px; font-size:.88rem; color:var(--marino-texto);}
+.estado-leyenda li{display:flex; align-items:center; gap:10px;}
+.estado-leyenda-punto{flex-shrink:0;}
+
+.estado-contacto{font-size:.85rem; color:var(--texto-suave); margin:0;}
+.estado-contacto a{color:var(--celeste); text-decoration:underline;}
+
+@media(max-width:560px){
+  .estado-detalle-grid{grid-template-columns:1fr 1fr;}
+  .estado-historial-fila{flex-wrap:wrap;}
+}
+
+/* ---------- Modal de suscripción al boletín (lectores) ---------- */
+/* Aparece hasta dos veces por visitante (ver inicializarModalNewsletter en
+   layout.js): la primera al poco de entrar, la segunda pasado un rato en
+   una visita posterior. Reutiliza el mismo endpoint y la misma clase
+   .newsletter-form que el formulario del pie de página, pero con sus
+   propios estilos de input/botón porque aquí el fondo es claro
+   (--tarjeta) y no el oscuro del footer. */
+.modal-newsletter{
+  position:fixed;inset:0;z-index:1100;
+  display:none;align-items:center;justify-content:center;
+  padding:20px;
+}
+.modal-newsletter.abierto{display:flex;}
+.modal-newsletter-fondo{
+  position:absolute;inset:0;background:rgba(12,27,46,.65);backdrop-filter:blur(3px);
+  animation:modalFadeIn .2s ease;
+}
+.modal-newsletter-caja{
+  position:relative;background:var(--tarjeta);color:var(--texto);border-radius:20px;
+  max-width:440px;width:100%;max-height:90vh;overflow-y:auto;
+  padding:38px 32px 30px;text-align:center;
+  box-shadow:0 24px 70px rgba(12,27,46,.4);
+  animation:modalPopIn .25s cubic-bezier(.2,.9,.3,1.2);
+  border-top:5px solid var(--rojo);
+}
+.modal-newsletter-cerrar{
+  position:absolute;top:14px;right:14px;border:none;background:var(--gris-claro);color:var(--marino-texto);
+  width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:1rem;line-height:1;
+  display:flex;align-items:center;justify-content:center;transition:background .15s,transform .15s;
+}
+.modal-newsletter-cerrar:hover{background:var(--borde);transform:rotate(90deg);}
+.modal-newsletter-icono{font-size:2.4rem;margin-bottom:10px;line-height:1;}
+.modal-newsletter-caja h3{
+  font-family:var(--font-tit);text-transform:uppercase;font-size:1.3rem;
+  color:var(--marino-texto);margin-bottom:10px;letter-spacing:.3px;
+}
+.modal-newsletter-caja p{
+  color:var(--gris-texto);font-size:.9rem;line-height:1.5;margin-bottom:24px;
+}
+.modal-newsletter-form.newsletter-form{
+  display:flex;flex-direction:column;gap:12px;flex-wrap:nowrap;margin-bottom:14px;
+}
+.modal-newsletter-form.newsletter-form input{
+  padding:13px 16px;border-radius:24px;border:1px solid var(--borde);
+  background:var(--fondo);color:var(--texto);font-family:var(--font-text);font-size:.92rem;
+  min-width:0;width:100%;text-align:center;
+}
+.modal-newsletter-form.newsletter-form input::placeholder{color:var(--gris-texto);}
+.modal-newsletter-form.newsletter-form input:focus{outline:2px solid var(--celeste);outline-offset:1px;}
+.modal-newsletter-form.newsletter-form button{
+  padding:13px 22px;border-radius:24px;border:none;
+  background:linear-gradient(135deg, var(--rojo), var(--rojo-oscuro));color:#fff;
+  font-family:var(--font-tit);font-size:.85rem;text-transform:uppercase;letter-spacing:.4px;
+  cursor:pointer;transition:transform .15s,box-shadow .15s;
+  box-shadow:0 6px 16px rgba(209,19,46,.3);
+}
+.modal-newsletter-form.newsletter-form button:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(209,19,46,.4);}
+.modal-newsletter-form.newsletter-form button:disabled{opacity:.7;cursor:default;transform:none;}
+.modal-newsletter-omitir{
+  background:none;border:none;color:var(--gris-texto);font-size:.8rem;
+  text-decoration:underline;cursor:pointer;padding:4px;
+}
+.modal-newsletter-omitir:hover{color:var(--texto);}
+@media (max-width:480px){
+  .modal-newsletter-caja{padding:30px 22px 26px;border-radius:16px;}
+}
+/* ---------- BANNER "ÚLTIMA HORA" ---------- */
+/* Fijo arriba del todo en cualquier página (lo inyecta layout.js, ver
+   cargarBannerUrgente()). .main-header es sticky top:0, así que cuando
+   el banner está presente hay que bajarle el "top" la misma altura del
+   banner para que no quede tapado por él al hacer scroll. */
+#banner-ultima-hora{
+  position:fixed;top:0;left:0;right:0;z-index:200;
+  background:linear-gradient(90deg, var(--rojo-oscuro,#9c0e23) 0%, var(--rojo,#d1132e) 45%, var(--rojo-oscuro,#9c0e23) 100%);
+  box-shadow:0 3px 14px rgba(0,0,0,.3);
+  animation:uh-entrada .35s ease-out;
+}
+@keyframes uh-entrada{from{transform:translateY(-100%);}to{transform:translateY(0);}}
+
+.uh-franja{
+  max-width:1240px;margin:0 auto;
+  display:flex;align-items:center;gap:14px;
+  height:42px;padding:0 20px;
+}
+
+/* Etiqueta "ÚLTIMA HORA": pastilla propia, tipografía de titular
+   condensada (misma familia que el resto de la marca) para que
+   destaque sin depender solo del color. */
+#banner-ultima-hora .uh-live{
+  flex-shrink:0;
+  display:flex;align-items:center;gap:7px;
+  font-family:var(--font-tit);
+  font-size:.72rem;font-weight:600;letter-spacing:1px;
+  color:#fff;
+  background:rgba(255,255,255,.16);
+  border:1px solid rgba(255,255,255,.35);
+  border-radius:20px;
+  padding:4px 12px 4px 9px;
+  text-transform:uppercase;
+}
+.uh-live-punto{
+  width:7px;height:7px;border-radius:50%;
+  background:#fff;
+  box-shadow:0 0 0 0 rgba(255,255,255,.7);
+  animation:uh-pulso 1.6s ease-out infinite;
+}
+@keyframes uh-pulso{
+  0%{box-shadow:0 0 0 0 rgba(255,255,255,.55);}
+  70%{box-shadow:0 0 0 7px rgba(255,255,255,0);}
+  100%{box-shadow:0 0 0 0 rgba(255,255,255,0);}
+}
+
+#banner-ultima-hora .uh-texto-wrap{flex:1;min-width:0;overflow:hidden;white-space:nowrap;-webkit-mask-image:linear-gradient(90deg,#000 92%,transparent 100%);mask-image:linear-gradient(90deg,#000 92%,transparent 100%);}
+#banner-ultima-hora .uh-texto{
+  color:#fff;text-decoration:none;
+  font-size:.92rem;font-weight:500;
+  letter-spacing:.1px;
+}
+#banner-ultima-hora .uh-texto:hover{text-decoration:underline;text-underline-offset:3px;}
+
+/* Solo se activa (vía JS, añadiendo esta clase) cuando el título no
+   cabe entero en el ancho disponible; si cabe, se queda fijo y quieto. */
+#banner-ultima-hora.uh-marquee .uh-texto-wrap{-webkit-mask-image:none;mask-image:none;}
+#banner-ultima-hora.uh-marquee .uh-texto{
+  display:inline-block;padding-left:100%;
+  animation:uh-scroll 16s linear infinite;
+}
+@keyframes uh-scroll{0%{transform:translateX(0);}100%{transform:translateX(-100%);}}
+
+/* Enlace "Leer →": visible solo en pantallas con hueco de sobra, para
+   no competir con el título en móvil (ver media query). */
+#banner-ultima-hora .uh-ver{
+  flex-shrink:0;
+  display:flex;align-items:center;gap:4px;
+  color:#fff;text-decoration:none;
+  font-size:.78rem;font-weight:700;
+  padding:5px 11px;
+  border-radius:16px;
+  background:rgba(255,255,255,.14);
+  transition:background .15s, transform .12s;
+}
+#banner-ultima-hora .uh-ver:hover{background:rgba(255,255,255,.26);transform:translateX(1px);}
+#banner-ultima-hora .uh-ver span{transition:transform .15s;}
+#banner-ultima-hora .uh-ver:hover span{transform:translateX(2px);}
+
+#banner-ultima-hora .uh-cerrar{
+  flex-shrink:0;
+  width:24px;height:24px;
+  display:flex;align-items:center;justify-content:center;
+  background:none;border:none;color:#fff;font-size:13px;
+  cursor:pointer;opacity:.75;border-radius:50%;
+  transition:opacity .15s, background .15s;
+}
+#banner-ultima-hora .uh-cerrar:hover{opacity:1;background:rgba(255,255,255,.16);}
+
+body.con-banner-ultima-hora{padding-top:42px;}
+body.con-banner-ultima-hora .main-header{top:42px;}
+
+@media (max-width:640px){
+  #banner-ultima-hora .uh-ver{display:none;}
+}
+@media (max-width:480px){
+  .uh-franja{height:auto;min-height:38px;padding:7px 14px;gap:10px;}
+  #banner-ultima-hora .uh-live{font-size:.64rem;padding:3px 9px 3px 7px;letter-spacing:.6px;}
+  #banner-ultima-hora .uh-texto{font-size:.82rem;}
+  body.con-banner-ultima-hora{padding-top:48px;}
+  body.con-banner-ultima-hora .main-header{top:48px;}
+}
+
+/* ---------- Banner de "verifica tu correo" (cuenta de lector) ---------- */
+/* Mismo patrón visual que #banner-ultima-hora de arriba (franja fija
+   arriba del todo, cerrable, empuja la cabecera hacia abajo), pero con
+   su propia paleta: celeste/informativo, no rojo de urgencia, para que
+   a simple vista se lea como "hay algo pendiente que hacer", no como
+   una alarma. Ver comprobarBannerVerificarEmail() en lector-auth.js. */
+#banner-verificar-email{
+  position:fixed;top:0;left:0;right:0;z-index:199;
+  background:linear-gradient(90deg, var(--marino2,#152b46) 0%, var(--celeste,#5bb8e8) 130%);
+  box-shadow:0 3px 14px rgba(0,0,0,.22);
+  animation:uh-entrada .35s ease-out;
+}
+/* Si por lo que sea coincide con el banner de última hora (caso raro:
+   alguien con el correo sin verificar entra justo cuando hay una
+   última hora activa), este se apila debajo del rojo en vez de
+   solaparse encima. */
+body.con-banner-ultima-hora #banner-verificar-email{top:42px;}
+@media (max-width:480px){
+  body.con-banner-ultima-hora #banner-verificar-email{top:48px;}
+}
+
+.bve-franja{
+  max-width:1240px;margin:0 auto;
+  display:flex;align-items:center;gap:14px;
+  min-height:42px;padding:8px 20px;
+  flex-wrap:wrap;
+}
+#banner-verificar-email .bve-icono{
+  flex-shrink:0;width:19px;height:19px;color:#fff;opacity:.9;
+}
+#banner-verificar-email .bve-icono svg{width:100%;height:100%;}
+#banner-verificar-email .bve-texto{
+  flex:1;min-width:180px;
+  color:#fff;font-size:.88rem;font-weight:500;line-height:1.35;
+}
+#banner-verificar-email .bve-texto strong{font-weight:700;}
+#banner-verificar-email .bve-reenviar{
+  flex-shrink:0;
+  display:flex;align-items:center;gap:5px;
+  color:#0c1b2e;text-decoration:none;
+  font-family:var(--font-tit);font-size:.76rem;font-weight:700;letter-spacing:.3px;text-transform:uppercase;
+  padding:7px 14px;border-radius:16px;border:none;
+  background:#fff;cursor:pointer;
+  transition:opacity .15s, transform .12s;
+}
+#banner-verificar-email .bve-reenviar:hover{opacity:.88;transform:translateX(1px);}
+#banner-verificar-email .bve-reenviar:disabled{opacity:.6;cursor:default;transform:none;}
+#banner-verificar-email .bve-cerrar{
+  flex-shrink:0;
+  width:24px;height:24px;
+  display:flex;align-items:center;justify-content:center;
+  background:none;border:none;color:#fff;font-size:13px;
+  cursor:pointer;opacity:.75;border-radius:50%;
+  transition:opacity .15s, background .15s;
+}
+#banner-verificar-email .bve-cerrar:hover{opacity:1;background:rgba(255,255,255,.16);}
+
+body.con-banner-verificar-email{padding-top:var(--bve-alto,42px);}
+body.con-banner-verificar-email .main-header{top:var(--bve-alto,42px);}
+body.con-banner-ultima-hora.con-banner-verificar-email{padding-top:calc(42px + var(--bve-alto,42px));}
+body.con-banner-ultima-hora.con-banner-verificar-email .main-header{top:calc(42px + var(--bve-alto,42px));}
+
+@media (max-width:480px){
+  .bve-franja{padding:8px 14px;gap:8px;}
+  #banner-verificar-email .bve-texto{font-size:.8rem;}
+  body.con-banner-ultima-hora.con-banner-verificar-email{padding-top:calc(48px + var(--bve-alto,42px));}
+  body.con-banner-ultima-hora.con-banner-verificar-email .main-header{top:calc(48px + var(--bve-alto,42px));}
+}
+
+/* ============================================================================
+   ELOTROFÚTBOLTV — Espacios publicitarios (ver public/js/ads.js)
+   ============================================================================ */
+.eof-ad-wrap{
+  display:flex; flex-direction:column; align-items:center; gap:6px;
+  margin:24px auto; width:100%; max-width:100%;
+}
+.eof-ad-etiqueta{
+  font-family:var(--font-tit); font-size:.62rem; letter-spacing:1px; text-transform:uppercase;
+  color:var(--texto-suave); opacity:.75;
+}
+.eof-ad-contenedor{
+  width:100%; max-width:100%; display:flex; align-items:center; justify-content:center;
+  overflow:hidden; background:var(--fondo-alt); border-radius:6px;
+}
+.eof-ad-contenedor:empty{border:1px dashed var(--borde);}
+.eof-ad-cabecera, .eof-ad-pie, .eof-ad-noticia_final{margin:24px auto;}
+.eof-ad-lateral{max-width:336px; margin-left:auto; margin-right:auto;}
+.eof-ad-grid-item{grid-column:1 / -1;}
+.grid-noticias .eof-ad-grid-item,
+#grid-categoria-home .eof-ad-grid-item{width:100%;}
+
+/* ============================================================================
+   Banner de consentimiento de cookies (ver public/js/cookies.js)
+   ============================================================================ */
+#eof-cookies-banner{
+  position:fixed; left:0; right:0; bottom:0; z-index:9999;
+  background:var(--marino); color:#fff;
+  box-shadow:0 -4px 24px rgba(0,0,0,.25);
+  display:flex; flex-wrap:wrap; gap:16px; align-items:center;
+  justify-content:space-between;
+  padding:18px 20px;
+  padding-bottom:calc(18px + env(safe-area-inset-bottom, 0px));
+  padding-left:calc(20px + env(safe-area-inset-left, 0px));
+  padding-right:calc(20px + env(safe-area-inset-right, 0px));
+  max-height:100vh; overflow-y:auto;
+  box-sizing:border-box;
+}
+#eof-cookies-banner[hidden]{display:none;}
+.eof-cookies-texto{flex:1 1 320px; font-size:.86rem; line-height:1.5; color:#e7eaf0;}
+.eof-cookies-texto a{color:var(--celeste-claro); text-decoration:underline;}
+.eof-cookies-botones{display:flex; flex-wrap:wrap; gap:10px; align-items:center;}
+.eof-cookies-botones button{
+  font-family:var(--font-tit); font-size:.78rem; letter-spacing:.4px; text-transform:uppercase;
+  border-radius:6px; padding:10px 16px; cursor:pointer; border:1px solid transparent;
+  transition:opacity .15s, transform .1s;
+  min-height:44px; white-space:nowrap;
+}
+.eof-cookies-botones button:active{transform:translateY(1px);}
+.eof-cookie-aceptar{background:var(--rojo); color:#fff;}
+.eof-cookie-aceptar:hover{opacity:.9;}
+.eof-cookie-rechazar{background:transparent; color:#fff; border-color:rgba(255,255,255,.4);}
+.eof-cookie-rechazar:hover{background:rgba(255,255,255,.1);}
+.eof-cookie-preferencias{background:transparent; color:var(--celeste-claro); border:none; text-decoration:underline; text-transform:none; font-family:var(--font-text); letter-spacing:0; min-height:auto; padding:4px 0;}
+
+.eof-cookies-modal{
+  position:fixed; inset:0; z-index:10000; display:none;
+  align-items:center; justify-content:center;
+  padding:20px;
+  padding-top:calc(20px + env(safe-area-inset-top, 0px));
+  padding-bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+  box-sizing:border-box;
+}
+.eof-cookies-modal.abierto{display:flex;}
+.eof-cookies-modal-fondo{position:absolute; inset:0; background:rgba(6,10,18,.6);}
+.eof-cookies-modal-caja{
+  position:relative; background:var(--fondo); color:var(--texto);
+  border-radius:var(--radio); max-width:520px; width:100%;
+  max-height:100%; overflow-y:auto; -webkit-overflow-scrolling:touch;
+  padding:26px 24px; box-shadow:var(--sombra); box-sizing:border-box;
+}
+.eof-cookies-modal-caja h3{font-family:var(--font-tit); margin-bottom:6px; padding-right:28px;}
+.eof-cookies-modal-caja > p{color:var(--texto-suave); font-size:.86rem; margin-bottom:18px; line-height:1.5;}
+.eof-cookies-cerrar{
+  position:absolute; top:10px; right:10px; background:none; border:none; cursor:pointer;
+  color:var(--texto-suave); font-size:1.1rem; line-height:1;
+  width:40px; height:40px; display:flex; align-items:center; justify-content:center;
+}
+.eof-cookie-categoria{
+  display:flex; align-items:flex-start; justify-content:space-between; gap:14px;
+  padding:14px 0; border-bottom:1px solid var(--borde);
+}
+.eof-cookie-categoria:last-of-type{border-bottom:none;}
+.eof-cookie-categoria-info h4{font-size:.92rem; margin-bottom:4px;}
+.eof-cookie-categoria-info p{font-size:.8rem; color:var(--texto-suave); line-height:1.5;}
+.eof-cookie-switch{position:relative; flex-shrink:0; width:42px; height:24px; margin-top:2px;}
+.eof-cookie-switch input{opacity:0; width:0; height:0;}
+.eof-cookie-switch .track{
+  position:absolute; inset:0; background:var(--borde); border-radius:20px; cursor:pointer; transition:background .15s;
+}
+.eof-cookie-switch .track::before{
+  content:""; position:absolute; left:3px; top:3px; width:18px; height:18px; border-radius:50%;
+  background:#fff; transition:transform .15s; box-shadow:0 1px 3px rgba(0,0,0,.3);
+}
+.eof-cookie-switch input:checked + .track{background:var(--rojo);}
+.eof-cookie-switch input:checked + .track::before{transform:translateX(18px);}
+.eof-cookie-switch input:disabled + .track{opacity:.55; cursor:not-allowed;}
+.eof-cookies-modal-acciones{display:flex; flex-wrap:wrap; gap:10px; margin-top:20px;}
+.eof-cookies-modal-acciones button{
+  font-family:var(--font-tit); font-size:.78rem; letter-spacing:.4px; text-transform:uppercase;
+  border-radius:6px; padding:10px 16px; cursor:pointer; border:1px solid var(--borde);
+  background:var(--fondo-alt); color:var(--texto);
+  min-height:44px; flex:1 1 auto;
+}
+.eof-cookies-modal-acciones .eof-cookie-guardar{background:var(--rojo); color:#fff; border-color:var(--rojo);}
+.eof-cookies-modal-acciones .eof-cookie-guardar:hover{opacity:.9;}
+.eof-cookies-modal-acciones button:hover{background:var(--borde);}
+
+.eof-cookies-config-link{
+  background:none; border:none; color:inherit; text-decoration:underline; cursor:pointer;
+  font-family:var(--font-text); font-size:inherit; padding:0;
+}
+
+/* --- Tablet: banner algo más compacto, botones ya no ocupan todo el ancho --- */
+@media (max-width:900px){
+  #eof-cookies-banner{padding:16px 18px; gap:14px;}
+  .eof-cookies-texto{flex-basis:280px;}
+  .eof-cookies-modal-caja{max-width:480px;}
+}
+
+/* --- Móvil: banner apilado, botones a ancho completo y con más tacto --- */
+@media (max-width:640px){
+  #eof-cookies-banner{
+    flex-direction:column; align-items:stretch;
+    padding:14px 16px;
+    padding-bottom:calc(14px + env(safe-area-inset-bottom, 0px));
+    gap:12px;
+  }
+  .eof-cookies-texto{flex-basis:auto; font-size:.83rem;}
+  .eof-cookies-botones{flex-direction:column; justify-content:stretch; gap:8px; width:100%;}
+  .eof-cookies-botones button{flex:1 1 auto; width:100%; padding:12px 16px;}
+  .eof-cookie-preferencias{order:3; padding-top:2px;}
+
+  .eof-cookies-modal{padding:0; align-items:flex-end;}
+  .eof-cookies-modal-caja{
+    max-width:100%; width:100%; border-radius:var(--radio) var(--radio) 0 0;
+    max-height:90vh; padding:22px 18px;
+    padding-bottom:calc(22px + env(safe-area-inset-bottom, 0px));
+  }
+  .eof-cookie-categoria{gap:10px;}
+  .eof-cookies-modal-acciones{flex-direction:column;}
+  .eof-cookies-modal-acciones button{width:100%;}
+}
+
+/* --- Móviles muy pequeños: aún menos padding y textos algo más pequeños --- */
+@media (max-width:360px){
+  #eof-cookies-banner{padding:12px 14px;}
+  .eof-cookies-texto{font-size:.8rem;}
+  .eof-cookies-modal-caja{padding:18px 14px;}
+  .eof-cookie-categoria-info h4{font-size:.88rem;}
+  .eof-cookie-categoria-info p{font-size:.76rem;}
+}
+
+/* --- Pantallas grandes: banner no ocupa todo el ancho, queda centrado y más cuidado --- */
+@media (min-width:1200px){
+  #eof-cookies-banner{
+    left:50%; right:auto; transform:translateX(-50%);
+    width:min(1100px, calc(100% - 48px));
+    bottom:16px; border-radius:var(--radio);
+    box-shadow:0 8px 32px rgba(0,0,0,.35);
+  }
+}

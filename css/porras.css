@@ -1,0 +1,405 @@
+/* ============================================================
+   Sistema de Porras
+   Reutiliza las variables de marca de style.css (--marino, --rojo,
+   --celeste, --font-tit, --font-text, --radio, --sombra...): esta hoja
+   solo añade los componentes NUEVOS de esta sección, sin redefinir
+   ningún color ni tipografía por su cuenta.
+   ============================================================ */
+
+.porras-intro{
+  color:var(--texto-suave);
+  font-size:.95rem;
+  max-width:640px;
+  margin:-10px 0 22px;
+}
+
+/* ---------- Fila de jornadas ---------- */
+/* Mismo lenguaje visual que .filtros (pastillas), pero en su propia fila
+   porque representa un eje distinto (jornada, no categoría/grupo) y
+   necesita poder desplazarse horizontalmente sin arrastrar los filtros
+   de arriba. Las jornadas ya jugadas o en curso se ven apagadas y con
+   un candado: no se puede ni hacer focus en ellas con teclado a pulsar
+   Intro y que 'funcione' -- son <button disabled> reales. */
+.porras-jornadas{
+  display:flex;
+  gap:8px;
+  overflow-x:auto;
+  -webkit-overflow-scrolling:touch;
+  padding:2px 2px 10px;
+  margin:0 0 22px;
+  scrollbar-width:thin;
+}
+.porras-jornada-btn{
+  flex-shrink:0;
+  min-width:42px;
+  height:42px;
+  padding:0 6px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+  border:1px solid var(--borde);
+  background:var(--tarjeta);
+  color:var(--marino-texto);
+  font-family:var(--font-tit);
+  font-weight:600;
+  font-size:.9rem;
+  border-radius:10px;
+  cursor:pointer;
+  transition:border-color .15s, background .15s, color .15s;
+}
+.porras-jornada-btn:hover:not(:disabled):not(.activo){border-color:var(--celeste);}
+.porras-jornada-btn.activo{background:var(--marino);color:#fff;border-color:var(--marino);}
+.porras-jornada-btn:disabled{
+  cursor:not-allowed;
+  color:var(--texto-suave);
+  opacity:.55;
+}
+.porras-jornada-btn .pj-candado{width:12px;height:12px;flex-shrink:0;}
+.porras-jornada-btn.jugada:not(:disabled){
+  /* Una jornada ya finalizada pero que SÍ se puede volver a abrir para
+     consultar cómo quedó tu porra: distinta de una jornada bloqueada
+     por no haber llegado todavía (esa sí es disabled=true). */
+  border-style:dashed;
+}
+
+/* ---------- Tarjeta de partido ---------- */
+.porras-lista{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  margin-bottom:10px;
+}
+
+/* ---------- Marca de agua visible en pantalla (para capturas) ---------- */
+.porras-marca-agua-pantalla{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:14px;
+  width:100%;
+  margin:4px 0 28px;
+  padding:18px 24px;
+  background:var(--marino);
+  border-radius:16px;
+  user-select:none;
+  box-shadow:var(--sombra);
+}
+.porras-marca-agua-pantalla img{
+  width:48px;
+  height:48px;
+  border-radius:50%;
+  object-fit:contain;
+  flex-shrink:0;
+}
+.porras-marca-agua-textos{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  line-height:1.2;
+}
+.porras-marca-agua-textos strong{
+  font-family:var(--font-tit);
+  font-size:1.05rem;
+  font-weight:700;
+  letter-spacing:.4px;
+  color:#fff;
+}
+.porras-marca-agua-textos span{
+  font-family:var(--font-text);
+  font-size:.8rem;
+  font-weight:500;
+  color:rgba(255,255,255,.75);
+}
+.porra-partido{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  background:var(--tarjeta);
+  border:1px solid var(--borde);
+  border-radius:var(--radio);
+  padding:14px 16px;
+  position:relative;
+  border-left:4px solid var(--borde);
+  transition:border-color .15s;
+}
+/* Estado del partido, comunicado por el color del borde izquierdo (igual
+   patrón que las franjas de zona en la tabla de clasificación), para no
+   necesitar una columna de texto aparte que solo repita lo que el resto
+   de la tarjeta ya deja claro. */
+.porra-partido[data-estado-porra="abierto"]{border-left-color:var(--celeste);}
+.porra-partido[data-estado-porra="bloqueado"]{border-left-color:var(--borde);}
+.porra-partido[data-estado-porra="exacto"]{border-left-color:#2e9e57;}
+.porra-partido[data-estado-porra="acierto"]{border-left-color:var(--celeste);}
+.porra-partido[data-estado-porra="fallo"]{border-left-color:var(--rojo);}
+
+/* Partido "en_juego": mismo lenguaje que la fila en vivo de la tabla de
+   clasificación (fondo rojo parpadeando muy suave + borde sólido), sin
+   ningún candado -- aquí no se trata de "bloqueado para siempre" como
+   una jornada ya pasada, sino de "en marcha ahora mismo". */
+@keyframes porraEnVivoParpadeo{
+  0%,100%{background:rgba(209,19,46,.05);}
+  50%{background:rgba(209,19,46,.14);}
+}
+.porra-partido[data-estado-porra="en_vivo"]{
+  border-left-color:var(--rojo);
+  animation:porraEnVivoParpadeo 1.4s ease-in-out infinite;
+}
+.porra-marcador-real-en-vivo{color:var(--rojo);}
+@media (prefers-reduced-motion: reduce){
+  .porra-partido[data-estado-porra="en_vivo"]{animation:none;background:rgba(209,19,46,.09);}
+}
+
+.porra-partido-fecha{
+  position:absolute;
+  top:-9px;
+  left:16px;
+  background:var(--fondo);
+  padding:0 6px;
+  font-size:.7rem;
+  color:var(--texto-suave);
+  font-weight:500;
+}
+
+.porra-equipo{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex:1 1 0;
+  min-width:0;
+}
+.porra-equipo--visitante{flex-direction:row-reverse;text-align:right;}
+.porra-escudo{width:26px;height:26px;object-fit:contain;flex-shrink:0;}
+.porra-nombre-equipo{
+  font-size:.86rem;
+  font-weight:600;
+  color:var(--marino-texto);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.porra-marcador{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex-shrink:0;
+}
+.porra-input-gol{
+  width:36px;
+  height:36px;
+  border:1.5px solid var(--borde);
+  border-radius:8px;
+  text-align:center;
+  font-family:var(--font-tit);
+  font-size:1rem;
+  font-weight:700;
+  color:var(--marino-texto);
+  background:var(--fondo-alt);
+  -moz-appearance:textfield;
+}
+.porra-input-gol::-webkit-outer-spin-button,
+.porra-input-gol::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+.porra-input-gol:focus{border-color:var(--celeste);outline:none;background:var(--tarjeta);}
+.porra-input-gol:disabled{opacity:.7;cursor:not-allowed;background:var(--fondo-alt);}
+.porra-marcador-separador{color:var(--texto-suave);font-weight:600;}
+
+/* Marcador real, mostrado en vez de los inputs cuando el partido ya no
+   está "programado" (en juego, finalizado, retrasado, anulado): no
+   tiene sentido dejar un input editable para algo que ya no se puede
+   cambiar, así que se sustituye por el resultado real. */
+.porra-marcador-real{
+  font-family:var(--font-tit);
+  font-weight:700;
+  font-size:1rem;
+  color:var(--marino-texto);
+  min-width:64px;
+  text-align:center;
+}
+
+.porra-estado-icono{
+  flex-shrink:0;
+  width:22px;
+  height:22px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.porra-estado-icono svg{width:18px;height:18px;}
+
+.porra-puntos-badge{
+  flex-shrink:0;
+  font-family:var(--font-tit);
+  font-size:.72rem;
+  font-weight:700;
+  padding:3px 8px;
+  border-radius:12px;
+  white-space:nowrap;
+}
+.porra-puntos-badge[data-tipo="exacto"]{background:rgba(46,158,87,.15);color:#2e9e57;}
+.porra-puntos-badge[data-tipo="acierto"]{background:rgba(91,184,232,.18);color:#2a80ab;}
+.porra-puntos-badge[data-tipo="fallo"]{background:rgba(209,19,46,.12);color:var(--rojo);}
+
+@media(max-width:600px){
+  .porra-partido{padding:12px 12px 12px 14px;gap:8px;}
+  .porra-nombre-equipo{font-size:.78rem;}
+  .porra-escudo{width:22px;height:22px;}
+  .porra-input-gol{width:30px;height:32px;font-size:.9rem;}
+  .porra-puntos-badge{display:none;}
+  .porra-partido[data-tiene-puntos]{padding-right:34px;}
+  .porra-partido[data-tiene-puntos] .porra-puntos-badge{
+    display:inline-block;
+    position:absolute;
+    right:10px;
+    top:50%;
+    transform:translateY(-50%);
+  }
+}
+
+/* ---------- Resumen de jornada ---------- */
+.porras-resumen{
+  display:flex;
+  gap:18px;
+  flex-wrap:wrap;
+  align-items:center;
+  background:var(--fondo-alt);
+  border:1px solid var(--borde);
+  border-radius:var(--radio);
+  padding:14px 18px;
+  margin-bottom:20px;
+}
+.porras-resumen-item{display:flex;flex-direction:column;gap:2px;}
+.porras-resumen-valor{font-family:var(--font-tit);font-size:1.3rem;font-weight:700;color:var(--marino-texto);}
+.porras-resumen-etiqueta{font-size:.72rem;color:var(--texto-suave);text-transform:uppercase;letter-spacing:.3px;}
+
+/* ---------- Botones "Descargar" / "Compartir mi porra" ---------- */
+.porras-btns-imagen{
+  display:flex;
+  gap:10px;
+  margin-bottom:16px;
+}
+.porras-btn-compartir{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  background:var(--marino);
+  color:#fff;
+  border:none;
+  padding:11px 20px;
+  border-radius:22px;
+  font-family:var(--font-tit);
+  font-size:.85rem;
+  font-weight:600;
+  letter-spacing:.2px;
+  cursor:pointer;
+  transition:background .15s, opacity .15s;
+}
+.porras-btn-compartir:hover:not(:disabled){background:var(--marino2);}
+.porras-btn-compartir:disabled{opacity:.7;cursor:wait;}
+.porras-btn-compartir svg{flex-shrink:0;}
+.porras-btn-compartir-solo{background:transparent;color:var(--marino-texto);border:1.5px solid var(--marino-texto);}
+.porras-btn-compartir-solo:hover:not(:disabled){background:rgba(12,27,46,.06);}
+[data-theme="dark"] .porras-btn-compartir-solo:hover:not(:disabled){background:rgba(231,234,240,.08);}
+@media(max-width:600px){
+  .porras-btns-imagen{width:100%;}
+  .porras-btn-compartir{flex:1;justify-content:center;}
+}
+
+/* ---------- Resumen de temporada (persistente) ---------- */
+.porras-temporada{
+  display:flex;
+  gap:24px;
+  flex-wrap:wrap;
+  margin-bottom:20px;
+}
+.porras-temporada-item{display:flex;flex-direction:column;gap:2px;}
+.porras-temporada-valor{font-family:var(--font-tit);font-size:1.6rem;font-weight:700;color:var(--rojo);}
+.porras-temporada-etiqueta{font-size:.74rem;color:var(--texto-suave);text-transform:uppercase;letter-spacing:.3px;}
+
+/* ---------- Pestañas Mi jornada / Ranking ---------- */
+.porras-tabs{
+  display:flex;
+  gap:4px;
+  border-bottom:2px solid var(--borde);
+  margin-bottom:20px;
+}
+.porras-tab{
+  border:none;
+  background:none;
+  padding:10px 4px;
+  margin-bottom:-2px;
+  font-family:var(--font-tit);
+  font-size:.9rem;
+  font-weight:600;
+  color:var(--texto-suave);
+  cursor:pointer;
+  border-bottom:2px solid transparent;
+  transition:color .15s, border-color .15s;
+}
+.porras-tab + .porras-tab{margin-left:14px;}
+.porras-tab:hover{color:var(--marino-texto);}
+.porras-tab.activo{color:var(--marino-texto);border-bottom-color:var(--rojo);}
+
+/* ---------- Ranking (por jornada) ---------- */
+.porras-ranking-ayuda{font-size:.85rem;color:var(--texto-suave);margin:-4px 0 14px;}
+.porras-ranking-jornada-titulo{font-family:var(--font-tit);font-size:1rem;font-weight:700;color:var(--marino-texto);margin:0 0 10px;text-transform:uppercase;letter-spacing:.3px;}
+.porras-ranking-provisional{
+  font-size:.82rem;color:var(--texto-suave);background:var(--fondo-alt);
+  border:1px solid var(--borde);border-left:3px solid var(--rojo);
+  border-radius:var(--radio);padding:8px 10px;margin:0 0 10px;line-height:1.45;
+}
+.porras-ranking-provisional strong{color:var(--marino-texto);}
+.porras-ranking-participantes{font-size:.82rem;color:var(--texto-suave);margin:-6px 0 10px;}
+.porras-ranking-tabla-wrap{overflow-x:auto;margin-bottom:14px;border:1px solid var(--borde);border-radius:var(--radio);}
+.porras-ranking-tabla{width:100%;border-collapse:collapse;font-size:.88rem;min-width:560px;}
+.porras-ranking-tabla thead th{
+  background:var(--marino);color:#fff;font-family:var(--font-tit);text-transform:uppercase;font-size:.72rem;
+  padding:10px 8px;text-align:center;white-space:nowrap;letter-spacing:.4px;
+}
+.porras-ranking-tabla thead th.col-nombre{text-align:left;padding-left:14px;}
+.porras-ranking-tabla tbody td{padding:9px 8px;text-align:center;border-bottom:1px solid var(--borde);color:var(--texto);}
+.porras-ranking-tabla tbody tr:last-child td{border-bottom:none;}
+.porras-ranking-tabla tbody tr:hover{background:var(--fondo-alt);}
+.porras-ranking-tabla td.col-nombre{text-align:left;padding-left:14px;font-weight:500;}
+.porras-ranking-tabla td.col-pos{font-family:var(--font-tit);font-weight:700;color:var(--marino-texto);}
+.porras-ranking-tabla td.col-puntos{font-weight:700;color:var(--rojo);}
+.porras-ranking-fila-propia td{background:rgba(91,184,232,.1);}
+.porras-ranking-fuera-top{
+  font-size:.85rem;
+  color:var(--texto-suave);
+  background:var(--fondo-alt);
+  border:1px dashed var(--borde);
+  border-radius:var(--radio);
+  padding:10px 14px;
+}
+.porras-ranking-fuera-top strong{color:var(--marino-texto);}
+@media(max-width:600px){
+  .porras-ranking-tabla{font-size:.8rem;}
+}
+
+/* ---------- Aviso de acceso de lector ---------- */
+.porras-acceso-aviso{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  flex-wrap:wrap;
+  background:var(--marino);
+  color:#fff;
+  border-radius:var(--radio);
+  padding:16px 20px;
+  margin-bottom:22px;
+}
+.porras-acceso-aviso p{font-size:.9rem;margin:0;}
+.porras-acceso-aviso strong{font-family:var(--font-tit);}
+.porras-acceso-aviso a{
+  background:#fff;
+  color:var(--marino);
+  font-weight:700;
+  font-size:.85rem;
+  padding:9px 16px;
+  border-radius:22px;
+  white-space:nowrap;
+  transition:opacity .15s;
+}
+.porras-acceso-aviso a:hover{opacity:.85;}

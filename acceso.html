@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<script src="js/tema.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="pageTitle">Acceso — ELOTROFÚTBOLTV</title>
+<meta name="robots" content="noindex, follow">
+<link rel="canonical" href="https://elotrofutbol.media/acceso.html">
+<link rel="icon" href="/favicon.ico?v=2" sizes="any">
+<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=2">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css?v=16">
+<style>
+  body{background:var(--marino);min-height:100vh;}
+  .acceso-fondo{
+    min-height:100vh;display:flex;align-items:center;justify-content:center;
+    padding:90px 20px 60px;position:relative;overflow:hidden;
+  }
+  /* Textura sutil de fondo, coherente con el marino de marca */
+  .acceso-fondo::before{
+    content:"";position:absolute;inset:0;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(91,184,232,.12), transparent 45%),
+      radial-gradient(circle at 85% 80%, rgba(209,19,46,.14), transparent 45%);
+    pointer-events:none;
+  }
+
+  .acceso-shell{
+    position:relative;z-index:1;width:100%;max-width:420px;
+  }
+
+  .acceso-logo-wrap{display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:22px;}
+  .acceso-logo-wrap img{height:64px;}
+  .acceso-logo-wrap span{font-family:var(--font-tit);font-size:1.15rem;text-transform:uppercase;color:#fff;letter-spacing:.3px;}
+  .acceso-logo-wrap span .brand-rojo{color:var(--rojo);}
+
+  /* ---------- Pestañitas superiores: discretas pero elegantes ---------- */
+  .modo-tabs{
+    display:flex;justify-content:center;gap:4px;margin:0 auto 16px;
+    width:fit-content;background:rgba(255,255,255,.08);
+    border:1px solid rgba(255,255,255,.14);
+    border-radius:999px;padding:4px;backdrop-filter:blur(6px);
+  }
+  .modo-tab{
+    border:none;background:none;cursor:pointer;
+    padding:7px 18px;border-radius:999px;
+    font-family:var(--font-tit);font-size:.72rem;letter-spacing:.6px;text-transform:uppercase;
+    color:rgba(255,255,255,.62);transition:background .18s,color .18s,box-shadow .18s;
+    display:flex;align-items:center;gap:6px;
+  }
+  .modo-tab svg{width:13px;height:13px;opacity:.85;}
+  .modo-tab:hover{color:#fff;}
+  .modo-tab.activa{
+    background:#fff;color:var(--marino);
+    box-shadow:0 2px 10px rgba(0,0,0,.25);
+  }
+  .modo-tab.activa svg{opacity:1;}
+
+  /* ---------- Tarjeta principal ---------- */
+  .acceso-box{
+    background:var(--tarjeta);padding:36px 34px;border-radius:16px;
+    box-shadow:0 24px 70px rgba(0,0,0,.4);
+    border:1px solid rgba(255,255,255,.06);
+    animation:accesoAparece .28s ease;
+  }
+  @keyframes accesoAparece{
+    from{opacity:0;transform:translateY(8px);}
+    to{opacity:1;transform:translateY(0);}
+  }
+
+  .acceso-box h2{margin:0 0 4px;font-family:var(--font-tit);font-size:1.32rem;color:var(--marino-texto);letter-spacing:.2px;}
+  .acceso-box p.sub{margin:0 0 22px;font-size:.85rem;color:var(--texto-suave);line-height:1.5;}
+
+  /* Sub-pestañas internas del modo Lector (Iniciar sesión / Crear cuenta) */
+  .lector-tabs{display:flex;gap:6px;margin-bottom:22px;background:var(--fondo-alt);border-radius:10px;padding:4px;}
+  .lector-tab{flex:1;text-align:center;padding:9px 0;border:none;background:none;border-radius:8px;font-family:var(--font-tit);font-size:.78rem;text-transform:uppercase;letter-spacing:.3px;color:var(--texto-suave);cursor:pointer;transition:background .15s,color .15s;}
+  .lector-tab.activa{background:var(--tarjeta);color:var(--marino-texto);box-shadow:0 1px 4px rgba(0,0,0,.08);}
+
+  .acceso-box label{display:block;font-size:.85rem;margin:14px 0 6px;font-weight:600;color:var(--marino-texto);}
+  .acceso-box input{width:100%;padding:11px 12px;border:1.5px solid var(--borde);border-radius:8px;font-size:.95rem;background:var(--tarjeta);color:var(--texto);transition:border-color .15s,box-shadow .15s;}
+  .acceso-box input:focus{outline:none;border-color:var(--celeste);box-shadow:0 0 0 3px rgba(91,184,232,.15);}
+
+  .acceso-box button[type="submit"]{
+    width:100%;margin-top:22px;padding:13px;
+    background:linear-gradient(135deg, var(--rojo), var(--rojo-oscuro));color:#fff;
+    border:none;border-radius:26px;font-family:var(--font-tit);text-transform:uppercase;
+    font-size:.95rem;cursor:pointer;letter-spacing:.4px;
+    box-shadow:0 4px 14px rgba(209,19,46,.3);transition:transform .15s,box-shadow .15s;
+  }
+  .acceso-box button[type="submit"]:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(209,19,46,.4);}
+  .acceso-box button[type="submit"]:disabled{opacity:.6;cursor:default;transform:none;box-shadow:none;}
+
+  .acceso-msg{font-size:.85rem;margin-top:14px;padding:10px 12px;border-radius:8px;display:none;}
+  .acceso-msg-error{color:#7a1c2b;background:#fdecef;display:block;}
+  .acceso-msg-ok{color:#166534;background:#dcfce7;display:block;}
+  [data-theme="dark"] .acceso-msg-error{background:#3a1a20;color:#f5a3ae;}
+  [data-theme="dark"] .acceso-msg-ok{background:#123321;color:#7fe0a3;}
+
+  /* ---------- Separador "o" entre Google y el formulario de correo ---------- */
+  .separador-o{display:flex;align-items:center;gap:12px;margin:20px 0;color:var(--texto-suave);font-size:.78rem;text-transform:uppercase;letter-spacing:.4px;}
+  .separador-o::before,.separador-o::after{content:"";flex:1;height:1px;background:var(--borde);}
+
+  /* ---------- Botón "Continuar con Google", diseño propio ----------
+     El widget oficial de Google (renderButton) tiene un ancho fijo en
+     píxeles y apenas se puede personalizar, así que aquí se pinta un
+     botón propio -- coherente con el resto de acceso.html (misma
+     tipografía, mismos radios, mismo comportamiento en modo oscuro) y
+     de verdad responsive (ocupa el 100% del ancho disponible) -- que al
+     pulsarlo dispara el flujo real de Google Identity Services por
+     detrás (ver iniciarBotonesGoogleLector en lector-auth.js: sigue
+     siendo la misma API oficial y el mismo id_token verificado en el
+     servidor, solo cambia quién dibuja el botón). */
+  .google-btn-wrap{width:100%;}
+  .btn-google{
+    width:100%;display:flex;align-items:center;justify-content:center;gap:10px;
+    padding:12px 18px;border-radius:26px;
+    background:var(--tarjeta);color:var(--texto);
+    border:1.5px solid var(--borde);
+    font-family:var(--font-tit);font-size:.88rem;letter-spacing:.2px;text-transform:uppercase;
+    cursor:pointer;transition:border-color .15s,box-shadow .15s,transform .15s,background .15s;
+  }
+  .btn-google svg{width:19px;height:19px;flex-shrink:0;}
+  .btn-google:hover{
+    border-color:#c8cdd6;box-shadow:0 4px 14px rgba(0,0,0,.08);transform:translateY(-1px);
+  }
+  [data-theme="dark"] .btn-google:hover{border-color:#3a4356;box-shadow:0 4px 14px rgba(0,0,0,.35);}
+  .btn-google:active{transform:translateY(0);box-shadow:none;}
+  .btn-google:disabled{opacity:.6;cursor:default;transform:none;box-shadow:none;}
+  .btn-google .btn-google-spinner{
+    width:16px;height:16px;border-radius:50%;
+    border:2px solid var(--borde);border-top-color:var(--celeste);
+    animation:girarSpinnerGoogle .7s linear infinite;display:none;
+  }
+  .btn-google.cargando .btn-google-spinner{display:inline-block;}
+  .btn-google.cargando .btn-google-logo,.btn-google.cargando .btn-google-texto{opacity:.5;}
+  @keyframes girarSpinnerGoogle{to{transform:rotate(360deg);}}
+
+  @media(max-width:360px){
+    .btn-google{font-size:.8rem;padding:11px 10px;gap:8px;}
+  }
+
+  /* ---------- Botón "Continuar con Microsoft" ----------
+     Mismo botón propio que .btn-google (misma forma, radios y
+     comportamiento en modo oscuro/responsive), solo cambia el logo y
+     el texto. Dispara el flujo de MSAL.js por detrás (ver
+     iniciarBotonesMicrosoftLector en lector-auth.js), que manda el
+     id_token resultante a /api/readers/microsoft para verificarlo en
+     el servidor -- mismo patrón que Google, solo cambia el proveedor. */
+  .microsoft-btn-wrap{width:100%;margin-top:10px;}
+  .btn-microsoft{
+    width:100%;display:flex;align-items:center;justify-content:center;gap:10px;
+    padding:12px 18px;border-radius:26px;
+    background:var(--tarjeta);color:var(--texto);
+    border:1.5px solid var(--borde);
+    font-family:var(--font-tit);font-size:.88rem;letter-spacing:.2px;text-transform:uppercase;
+    cursor:pointer;transition:border-color .15s,box-shadow .15s,transform .15s,background .15s;
+  }
+  .btn-microsoft svg{width:18px;height:18px;flex-shrink:0;}
+  .btn-microsoft:hover{
+    border-color:#c8cdd6;box-shadow:0 4px 14px rgba(0,0,0,.08);transform:translateY(-1px);
+  }
+  [data-theme="dark"] .btn-microsoft:hover{border-color:#3a4356;box-shadow:0 4px 14px rgba(0,0,0,.35);}
+  .btn-microsoft:active{transform:translateY(0);box-shadow:none;}
+  .btn-microsoft:disabled{opacity:.6;cursor:default;transform:none;box-shadow:none;}
+  .btn-microsoft .btn-microsoft-spinner{
+    width:16px;height:16px;border-radius:50%;
+    border:2px solid var(--borde);border-top-color:var(--celeste);
+    animation:girarSpinnerGoogle .7s linear infinite;display:none;
+  }
+  .btn-microsoft.cargando .btn-microsoft-spinner{display:inline-block;}
+  .btn-microsoft.cargando .btn-microsoft-logo,.btn-microsoft.cargando .btn-microsoft-texto{opacity:.5;}
+
+  @media(max-width:360px){
+    .btn-microsoft{font-size:.8rem;padding:11px 10px;gap:8px;}
+  }
+
+  /* ---------- Botón "Continuar con Discord" ----------
+     Mismo botón propio que .btn-google/.btn-microsoft, solo cambia el
+     logo, el texto y el color de fondo (el "blurple" de marca de
+     Discord, con texto blanco en vez del estilo neutro de los otros
+     dos). A diferencia de Google/Microsoft, este botón no abre un
+     popup: es un enlace disfrazado de botón que manda a
+     /api/readers/discord/iniciar y el navegador entero navega fuera
+     y vuelve (ver iniciarBotonesDiscordLector en lector-auth.js). */
+  .discord-btn-wrap{width:100%;margin-top:10px;}
+  .btn-discord{
+    width:100%;display:flex;align-items:center;justify-content:center;gap:10px;
+    padding:12px 18px;border-radius:26px;
+    background:#5865F2;color:#fff;
+    border:1.5px solid #5865F2;
+    font-family:var(--font-tit);font-size:.88rem;letter-spacing:.2px;text-transform:uppercase;
+    cursor:pointer;transition:filter .15s,box-shadow .15s,transform .15s;
+  }
+  .btn-discord svg{width:19px;height:19px;flex-shrink:0;fill:#fff;}
+  .btn-discord:hover{filter:brightness(1.08);box-shadow:0 4px 14px rgba(88,101,242,.35);transform:translateY(-1px);}
+  .btn-discord:active{transform:translateY(0);box-shadow:none;}
+  .btn-discord:disabled{opacity:.6;cursor:default;transform:none;box-shadow:none;}
+  .btn-discord .btn-discord-spinner{
+    width:16px;height:16px;border-radius:50%;
+    border:2px solid rgba(255,255,255,.4);border-top-color:#fff;
+    animation:girarSpinnerGoogle .7s linear infinite;display:none;
+  }
+  .btn-discord.cargando .btn-discord-spinner{display:inline-block;}
+  .btn-discord.cargando .btn-discord-logo,.btn-discord.cargando .btn-discord-texto{opacity:.5;}
+
+  @media(max-width:360px){
+    .btn-discord{font-size:.8rem;padding:11px 10px;gap:8px;}
+  }
+
+  /* ---------- Botón "Continuar con X" ----------
+     Mismo patrón que Discord: OAuth 2.0 con redirect completo (X no
+     tiene un flujo de id_token tipo Google/Microsoft), el clic manda
+     el navegador entero a /api/readers/x/iniciar y vuelve (ver
+     iniciarBotonesXLector en lector-auth.js). */
+  .x-btn-wrap{width:100%;margin-top:10px;}
+  .btn-x{
+    width:100%;display:flex;align-items:center;justify-content:center;gap:10px;
+    padding:12px 18px;border-radius:26px;
+    background:#000;color:#fff;
+    border:1.5px solid #000;
+    font-family:var(--font-tit);font-size:.88rem;letter-spacing:.2px;text-transform:uppercase;
+    cursor:pointer;transition:filter .15s,box-shadow .15s,transform .15s;
+  }
+  .btn-x svg{width:17px;height:17px;flex-shrink:0;fill:#fff;}
+  .btn-x:hover{filter:brightness(1.3);box-shadow:0 4px 14px rgba(0,0,0,.35);transform:translateY(-1px);}
+  [data-theme="dark"] .btn-x{background:#fff;color:#000;border-color:#fff;}
+  [data-theme="dark"] .btn-x svg{fill:#000;}
+  [data-theme="dark"] .btn-x:hover{box-shadow:0 4px 14px rgba(255,255,255,.2);}
+  .btn-x:active{transform:translateY(0);box-shadow:none;}
+  .btn-x:disabled{opacity:.6;cursor:default;transform:none;box-shadow:none;}
+  .btn-x .btn-x-spinner{
+    width:16px;height:16px;border-radius:50%;
+    border:2px solid rgba(255,255,255,.4);border-top-color:#fff;
+    animation:girarSpinnerGoogle .7s linear infinite;display:none;
+  }
+  [data-theme="dark"] .btn-x .btn-x-spinner{border-color:rgba(0,0,0,.3);border-top-color:#000;}
+  .btn-x.cargando .btn-x-spinner{display:inline-block;}
+  .btn-x.cargando .btn-x-logo,.btn-x.cargando .btn-x-texto{opacity:.5;}
+
+  @media(max-width:360px){
+    .btn-x{font-size:.8rem;padding:11px 10px;gap:8px;}
+  }
+
+  .enlace-olvido{display:block;text-align:center;margin-top:16px;font-size:.82rem;color:var(--celeste);background:none;border:none;cursor:pointer;text-decoration:underline;}
+  .volver-portada{display:block;text-align:center;margin-top:20px;font-size:.82rem;color:rgba(255,255,255,.65);text-decoration:none;}
+  .volver-portada:hover{color:#fff;}
+
+  .pantalla{display:none;}
+  .pantalla.activa{display:block;}
+  .ayuda-form{font-size:.8rem;color:var(--texto-suave);margin:0 0 4px;line-height:1.5;}
+
+  .overlay{display:none;position:fixed;inset:0;background:rgba(10,20,35,.6);align-items:center;justify-content:center;z-index:50;padding:20px;}
+  .overlay.activo{display:flex;}
+
+  /* ---------- Botón de modo oscuro/claro ---------- */
+  .theme-toggle-acceso{
+    position:fixed;top:18px;right:18px;
+    background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.25);border-radius:50%;
+    width:40px;height:40px;display:flex;align-items:center;justify-content:center;
+    cursor:pointer;color:#fff;transition:background .15s;z-index:60;
+  }
+  .theme-toggle-acceso:hover{background:rgba(255,255,255,.18);}
+  .theme-toggle-acceso svg{width:19px;height:19px;}
+  .theme-toggle-acceso .theme-icon-sol{display:none;}
+  [data-theme="dark"] .theme-toggle-acceso .theme-icon-luna{display:none;}
+  [data-theme="dark"] .theme-toggle-acceso .theme-icon-sol{display:block;color:var(--celeste-claro);}
+
+  @media(max-width:420px){
+    .acceso-fondo{padding:76px 14px 40px;}
+    .acceso-box{padding:28px 22px;}
+    .acceso-logo-wrap img{height:54px;}
+  }
+</style>
+</head>
+<body data-page="acceso">
+
+  <button type="button" class="theme-toggle-acceso" id="themeToggleAcceso" aria-label="Cambiar a modo oscuro" title="Modo oscuro/claro">
+    <svg class="theme-icon-luna" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+    <svg class="theme-icon-sol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2.4M12 19.1v2.4M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M2.5 12h2.4M19.1 12h2.4M4.9 19.1l1.7-1.7M17.4 6.6l1.7-1.7"/></svg>
+  </button>
+
+  <div class="acceso-fondo">
+    <div class="acceso-shell">
+
+      <div class="acceso-logo-wrap">
+        <img src="img/logo.png" alt="ELOTROFÚTBOLTV - logo oficial">
+        <span>EL<span class="brand-rojo">OTROFÚTBOL</span>TV</span>
+      </div>
+
+      <!-- Pestañitas de modo: Lector (por defecto) / Redactor -->
+      <div class="modo-tabs" id="modoTabs">
+        <button type="button" class="modo-tab activa" id="modoTabLector" data-modo="lector">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5V6a2 2 0 0 1 2-2h11.5v15.5H6a2 2 0 0 0 0 4h13"/></svg>
+          Lector
+        </button>
+        <button type="button" class="modo-tab" id="modoTabRedactor" data-modo="redactor">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+          Redactor
+        </button>
+      </div>
+
+      <!-- ============ MODO LECTOR ============ -->
+      <div class="acceso-box" id="cajaLector">
+
+        <div class="pantalla activa" id="pantallaLectorAcceso">
+          <div class="lector-tabs">
+            <button type="button" class="lector-tab activa" id="tabLogin">Iniciar sesión</button>
+            <button type="button" class="lector-tab" id="tabRegistro">Crear cuenta</button>
+          </div>
+
+          <div id="bloqueLogin">
+            <h2>Iniciar sesión</h2>
+            <p class="sub">Accede a tu cuenta de lector: comenta las noticias con tu nombre, vota en las encuestas, guarda tu porra de cada jornada, entra en el ranking y disfruta de todo lo que iremos añadiendo próximamente.</p>
+
+            <div class="google-btn-wrap">
+              <button type="button" class="btn-google" id="googleBtnLogin">
+                <svg class="btn-google-logo" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l6-6C34.5 5.1 29.5 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21 21-9.4 21-21c0-1.4-.1-2.7-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.8 1.1 8 3l6-6C34.5 6.1 29.5 4 24 4c-7.7 0-14.3 4.3-17.7 10.7z"/><path fill="#4CAF50" d="M24 44c5.4 0 10.3-2.1 14-5.5l-6.5-5.4c-2 1.5-4.6 2.5-7.5 2.5-5.3 0-9.7-3.3-11.3-8l-6.5 5C9.6 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.2 5.6l6.5 5.4C40.9 36.6 44 30.9 44 24c0-1.4-.1-2.7-.4-3.5z"/></svg>
+                <span class="btn-google-texto">Continuar con Google</span>
+                <span class="btn-google-spinner"></span>
+              </button>
+            </div>
+            <div class="microsoft-btn-wrap">
+              <button type="button" class="btn-microsoft" id="microsoftBtnLogin">
+                <svg class="btn-microsoft-logo" viewBox="0 0 23 23" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="1" width="10" height="10" fill="#F25022"/><rect x="12" y="1" width="10" height="10" fill="#7FBA00"/><rect x="1" y="12" width="10" height="10" fill="#00A4EF"/><rect x="12" y="12" width="10" height="10" fill="#FFB900"/></svg>
+                <span class="btn-microsoft-texto">Continuar con Microsoft</span>
+                <span class="btn-microsoft-spinner"></span>
+              </button>
+            </div>
+            <div class="discord-btn-wrap">
+              <button type="button" class="btn-discord" id="discordBtnLogin">
+                <svg class="btn-discord-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20.3 4.4A19.7 19.7 0 0 0 15.4 3c-.2.4-.5.9-.7 1.4a18.3 18.3 0 0 0-5.4 0A9.8 9.8 0 0 0 8.6 3a19.7 19.7 0 0 0-4.9 1.5C1 9 .3 13.5.6 18a19.8 19.8 0 0 0 6 3c.5-.6.9-1.3 1.3-2a12.8 12.8 0 0 1-2-1c.2-.1.3-.3.5-.4a14.1 14.1 0 0 0 12 0l.5.4a12.8 12.8 0 0 1-2 1c.4.7.8 1.4 1.3 2a19.7 19.7 0 0 0 6-3c.4-5.2-1-9.7-3.9-13.6ZM8.7 15.3c-1.1 0-2-1-2-2.3 0-1.2.9-2.3 2-2.3s2 1 2 2.3c0 1.3-.9 2.3-2 2.3Zm6.6 0c-1.1 0-2-1-2-2.3 0-1.2.9-2.3 2-2.3s2 1 2 2.3c0 1.3-.9 2.3-2 2.3Z"/></svg>
+                <span class="btn-discord-texto">Continuar con Discord</span>
+                <span class="btn-discord-spinner"></span>
+              </button>
+            </div>
+            <div class="x-btn-wrap">
+              <button type="button" class="btn-x" id="xBtnLogin">
+                <svg class="btn-x-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M18.9 2.4h3.2l-7 8 8.2 10.8h-6.4l-5-6.6-5.8 6.6H2.9l7.5-8.6L2.5 2.4h6.6l4.6 6.1 5.2-6.1Zm-1.1 17h1.8L7.3 4.2H5.4l12.4 15.2Z"/></svg>
+                <span class="btn-x-texto">Continuar con X</span>
+                <span class="btn-x-spinner"></span>
+              </button>
+            </div>
+            <div class="separador-o">o con tu correo</div>
+
+            <form id="formLogin" novalidate>
+              <label for="loginEmail">Correo electrónico</label>
+              <input type="email" id="loginEmail" required autocomplete="email">
+              <label for="loginPassword">Contraseña</label>
+              <input type="password" id="loginPassword" required autocomplete="current-password">
+              <button type="submit" id="btnLogin">Entrar</button>
+            </form>
+            <p id="loginMsg" class="acceso-msg"></p>
+            <button type="button" class="enlace-olvido" id="btnIrOlvido">He olvidado mi contraseña</button>
+          </div>
+
+          <div id="bloqueRegistro" style="display:none">
+            <h2>Crear cuenta</h2>
+            <p class="sub">Crea tu cuenta de lector: firma tus comentarios con tu nombre, vota en las encuestas, guarda tu porra de cada jornada, aparece en el ranking y aprovecha todas las funciones que iremos añadiendo.</p>
+
+            <div class="google-btn-wrap">
+              <button type="button" class="btn-google" id="googleBtnRegistro">
+                <svg class="btn-google-logo" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l6-6C34.5 5.1 29.5 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21 21-9.4 21-21c0-1.4-.1-2.7-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.8 1.1 8 3l6-6C34.5 6.1 29.5 4 24 4c-7.7 0-14.3 4.3-17.7 10.7z"/><path fill="#4CAF50" d="M24 44c5.4 0 10.3-2.1 14-5.5l-6.5-5.4c-2 1.5-4.6 2.5-7.5 2.5-5.3 0-9.7-3.3-11.3-8l-6.5 5C9.6 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.2 5.6l6.5 5.4C40.9 36.6 44 30.9 44 24c0-1.4-.1-2.7-.4-3.5z"/></svg>
+                <span class="btn-google-texto">Registrarme con Google</span>
+                <span class="btn-google-spinner"></span>
+              </button>
+            </div>
+            <div class="microsoft-btn-wrap">
+              <button type="button" class="btn-microsoft" id="microsoftBtnRegistro">
+                <svg class="btn-microsoft-logo" viewBox="0 0 23 23" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="1" width="10" height="10" fill="#F25022"/><rect x="12" y="1" width="10" height="10" fill="#7FBA00"/><rect x="1" y="12" width="10" height="10" fill="#00A4EF"/><rect x="12" y="12" width="10" height="10" fill="#FFB900"/></svg>
+                <span class="btn-microsoft-texto">Registrarme con Microsoft</span>
+                <span class="btn-microsoft-spinner"></span>
+              </button>
+            </div>
+            <div class="discord-btn-wrap">
+              <button type="button" class="btn-discord" id="discordBtnRegistro">
+                <svg class="btn-discord-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20.3 4.4A19.7 19.7 0 0 0 15.4 3c-.2.4-.5.9-.7 1.4a18.3 18.3 0 0 0-5.4 0A9.8 9.8 0 0 0 8.6 3a19.7 19.7 0 0 0-4.9 1.5C1 9 .3 13.5.6 18a19.8 19.8 0 0 0 6 3c.5-.6.9-1.3 1.3-2a12.8 12.8 0 0 1-2-1c.2-.1.3-.3.5-.4a14.1 14.1 0 0 0 12 0l.5.4a12.8 12.8 0 0 1-2 1c.4.7.8 1.4 1.3 2a19.7 19.7 0 0 0 6-3c.4-5.2-1-9.7-3.9-13.6ZM8.7 15.3c-1.1 0-2-1-2-2.3 0-1.2.9-2.3 2-2.3s2 1 2 2.3c0 1.3-.9 2.3-2 2.3Zm6.6 0c-1.1 0-2-1-2-2.3 0-1.2.9-2.3 2-2.3s2 1 2 2.3c0 1.3-.9 2.3-2 2.3Z"/></svg>
+                <span class="btn-discord-texto">Registrarme con Discord</span>
+                <span class="btn-discord-spinner"></span>
+              </button>
+            </div>
+            <div class="x-btn-wrap">
+              <button type="button" class="btn-x" id="xBtnRegistro">
+                <svg class="btn-x-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M18.9 2.4h3.2l-7 8 8.2 10.8h-6.4l-5-6.6-5.8 6.6H2.9l7.5-8.6L2.5 2.4h6.6l4.6 6.1 5.2-6.1Zm-1.1 17h1.8L7.3 4.2H5.4l12.4 15.2Z"/></svg>
+                <span class="btn-x-texto">Registrarme con X</span>
+                <span class="btn-x-spinner"></span>
+              </button>
+            </div>
+            <div class="separador-o">o con tu correo</div>
+
+            <form id="formRegistro" novalidate>
+              <label for="regNombre">Nombre</label>
+              <input type="text" id="regNombre" required maxlength="80" autocomplete="name">
+              <label for="regEmail">Correo electrónico</label>
+              <input type="email" id="regEmail" required autocomplete="email">
+              <label for="regPassword">Contraseña</label>
+              <input type="password" id="regPassword" required minlength="8" autocomplete="new-password">
+              <button type="submit" id="btnRegistro">Crear cuenta</button>
+            </form>
+            <p id="registroMsg" class="acceso-msg"></p>
+          </div>
+        </div>
+
+        <div class="pantalla" id="pantallaLectorOlvido">
+          <h2>Recuperar contraseña</h2>
+          <p class="sub">Introduce tu correo. Si tienes una cuenta, te enviaremos un enlace para poner una contraseña nueva (caduca en 30 minutos).</p>
+          <form id="formOlvidoLector" novalidate>
+            <label for="olvidoEmailLector">Correo electrónico</label>
+            <input type="email" id="olvidoEmailLector" required autocomplete="email">
+            <button type="submit" id="btnOlvidoLector">Enviar enlace</button>
+          </form>
+          <p id="olvidoMsgLector" class="acceso-msg"></p>
+          <button type="button" class="enlace-olvido" id="btnVolverAccesoLector">← Volver</button>
+        </div>
+
+        <!-- CAMBIAR CONTRASEÑA (lector ya con sesión iniciada) -->
+        <div class="pantalla" id="pantallaLectorCambiarPassword">
+          <h2>Cambiar contraseña</h2>
+          <p class="sub">Cambia la contraseña de tu cuenta de lector.</p>
+          <form id="formCambiarPasswordLector" novalidate>
+            <label for="lectorPassActual">Contraseña actual</label>
+            <input type="password" id="lectorPassActual" required autocomplete="current-password">
+            <label for="lectorPassNueva">Nueva contraseña</label>
+            <input type="password" id="lectorPassNueva" required minlength="8" autocomplete="new-password">
+            <label for="lectorPassNueva2">Repite la nueva contraseña</label>
+            <input type="password" id="lectorPassNueva2" required minlength="8" autocomplete="new-password">
+            <button type="submit" id="btnCambiarPasswordLector">Cambiar contraseña</button>
+          </form>
+          <p id="cambiarPasswordLectorMsg" class="acceso-msg"></p>
+        </div>
+
+      </div>
+
+      <!-- ============ MODO REDACTOR ============ -->
+      <div class="acceso-box" id="cajaRedactor" style="display:none">
+
+        <div class="pantalla activa" id="cajaLogin">
+          <h2>Acceso de redactor</h2>
+          <p class="sub">Panel interno para el equipo editorial.</p>
+          <form id="loginFormRedactor">
+            <label for="username">Usuario</label>
+            <input type="text" id="username" required autocomplete="username">
+            <label for="password">Contraseña</label>
+            <input type="password" id="password" required autocomplete="current-password">
+            <button type="submit">Entrar</button>
+            <p id="errorMsg" class="acceso-msg acceso-msg-error" style="display:none"></p>
+          </form>
+          <button type="button" class="enlace-olvido" id="btnOlvido">He olvidado mi contraseña</button>
+        </div>
+
+        <!-- RECUPERAR CONTRASEÑA REDACTOR: PASO 1 -->
+        <div class="pantalla" id="cajaOlvido">
+          <h2>Recuperar contraseña</h2>
+          <p class="ayuda-form">Introduce tu usuario y el correo electrónico asociado a tu cuenta. Si coinciden, te enviaremos un enlace para poner una contraseña nueva (caduca en 30 minutos).</p>
+          <form id="formOlvido">
+            <label for="ol_username">Usuario</label>
+            <input type="text" id="ol_username" required autocomplete="username">
+            <label for="ol_email">Correo electrónico</label>
+            <input type="email" id="ol_email" required autocomplete="email">
+            <button type="submit">Enviar enlace</button>
+            <p id="errorOlvido" class="acceso-msg acceso-msg-error" style="display:none"></p>
+            <p id="okMsg" class="acceso-msg acceso-msg-ok" style="display:none"></p>
+          </form>
+          <button type="button" class="enlace-olvido" id="btnVolverLogin">← Volver al inicio de sesión</button>
+        </div>
+
+        <!-- RECUPERAR CONTRASEÑA REDACTOR: PASO 2 (?reset=token) -->
+        <div class="pantalla" id="cajaResetConfirmar">
+          <h2>Nueva contraseña</h2>
+          <p class="ayuda-form">Elige tu nueva contraseña.</p>
+          <form id="formResetConfirmar">
+            <label for="reset_nueva">Nueva contraseña</label>
+            <input type="password" id="reset_nueva" required minlength="8" autocomplete="new-password">
+            <label for="reset_nueva2">Repite la nueva contraseña</label>
+            <input type="password" id="reset_nueva2" required minlength="8" autocomplete="new-password">
+            <button type="submit">Guardar contraseña</button>
+            <p id="errorResetConfirmar" class="acceso-msg acceso-msg-error" style="display:none"></p>
+            <p id="okResetConfirmar" class="acceso-msg acceso-msg-ok" style="display:none"></p>
+          </form>
+        </div>
+
+      </div>
+
+      <a href="index.html" class="volver-portada">← Volver a la portada</a>
+    </div>
+  </div>
+
+  <!-- PRIMER INICIO DE SESIÓN DE REDACTOR: PEDIR CORREO ELECTRÓNICO -->
+  <div class="overlay" id="overlayEmail">
+    <div class="acceso-box" style="max-width:380px">
+      <div class="acceso-logo-wrap" style="margin-bottom:18px">
+        <img src="img/logo.png" alt="ELOTROFÚTBOLTV - logo oficial">
+        <span style="color:var(--marino-texto)">EL<span class="brand-rojo">OTROFÚTBOL</span>TV</span>
+      </div>
+      <p class="ayuda-form">Es tu primer inicio de sesión. Indica tu correo electrónico para poder recuperar tu contraseña más adelante si la olvidas.</p>
+      <form id="formEmailInicial">
+        <label for="emailInicial">Correo electrónico</label>
+        <input type="email" id="emailInicial" required autocomplete="email">
+        <button type="submit">Continuar</button>
+        <p id="errorEmailInicial" class="acceso-msg acceso-msg-error" style="display:none"></p>
+      </form>
+    </div>
+  </div>
+
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="js/vendor/msal-browser.min.js" defer></script>
+<script src="js/ui-alertas.js?v=4"></script>
+<script src="js/config.js?v=15"></script>
+<script src="js/seo.js?v=4"></script>
+<script src="js/lector-auth.js?v=13"></script>
+<script src="js/layout.js?v=6"></script>
+<script src="js/cookies.js?v=1"></script>
+<script src="js/ads.js?v=1"></script>
+<script src="js/main.js?v=10"></script>
+<script>
+fijarSeoBasico({
+  titulo: "Acceso — ELOTROFÚTBOLTV",
+  descripcion: "Inicia sesión o regístrate en ELOTROFÚTBOLTV, como lector o como redactor.",
+  urlPath: "/acceso.html",
+});
+
+// ---------- Modo oscuro (mismo comportamiento que el resto del sitio) ----------
+document.getElementById("themeToggleAcceso").addEventListener("click", () => {
+  const esOscuroAhora = document.documentElement.getAttribute("data-theme") === "dark";
+  const nuevo = esOscuroAhora ? "light" : "dark";
+  if (nuevo === "dark") {
+    document.documentElement.setAttribute("data-theme", "dark");
+  } else {
+    document.documentElement.removeAttribute("data-theme");
+  }
+  try { localStorage.setItem("eof_tema", nuevo); } catch {}
+});
+
+// =====================================================================
+// Selector de modo: Lector (por defecto) / Redactor
+// =====================================================================
+function activarModo(modo) {
+  const esRedactor = modo === "redactor";
+  document.getElementById("modoTabLector").classList.toggle("activa", !esRedactor);
+  document.getElementById("modoTabRedactor").classList.toggle("activa", esRedactor);
+  document.getElementById("cajaLector").style.display = esRedactor ? "none" : "block";
+  document.getElementById("cajaRedactor").style.display = esRedactor ? "block" : "none";
+  try {
+    const url = new URL(location.href);
+    if (esRedactor) url.searchParams.set("modo", "redactor");
+    else url.searchParams.delete("modo");
+    history.replaceState(null, "", url);
+  } catch {}
+}
+document.getElementById("modoTabLector").addEventListener("click", () => activarModo("lector"));
+document.getElementById("modoTabRedactor").addEventListener("click", () => activarModo("redactor"));
+
+// Si ya hay sesión de alguno de los dos tipos, o se llega con ?reset=
+// (paso 2 de recuperación de redactor) o ?modo=redactor, se decide el
+// estado inicial antes de que nadie vea el parpadeo entre pestañas.
+(function estadoInicial() {
+  const params = new URLSearchParams(location.search);
+
+  if (sesionActual()) {
+    // Igual que con el lector unas líneas más abajo: si se llegó aquí
+    // porque el guard de sesión de admin.js (panel.html) redirigió con
+    // ?volver=<url original> (p. ej. panel.html?minuto_a_minuto=<id>
+    // abierto en pestaña nueva sin sesión activa todavía), se vuelve
+    // ahí en vez de siempre al dashboard general.
+    location.href = params.get("volver") || "admin/panel.html";
+    return;
+  }
+  if (sesionLectorActual() && params.get("cuenta") === "password") {
+    document.getElementById("modoTabs").style.display = "none";
+    mostrarPantallaLector("pantallaLectorCambiarPassword");
+    return;
+  }
+  if (sesionLectorActual() && !params.get("modo")) {
+    const volver = params.get("volver");
+    location.href = volver || "index.html";
+    return;
+  }
+  if (params.get("reset") || params.get("modo") === "redactor") {
+    activarModo("redactor");
+  }
+})();
+
+// =====================================================================
+// MODO LECTOR: login / registro / recuperar contraseña
+// =====================================================================
+function mostrarPantallaLector(id) {
+  document.querySelectorAll("#cajaLector .pantalla").forEach((p) => p.classList.remove("activa"));
+  document.getElementById(id).classList.add("activa");
+}
+
+iniciarBotonesGoogleLector(["googleBtnLogin", "googleBtnRegistro"]);
+iniciarBotonesMicrosoftLector(["microsoftBtnLogin", "microsoftBtnRegistro"]);
+iniciarBotonesDiscordLector(["discordBtnLogin", "discordBtnRegistro"]);
+iniciarBotonesXLector(["xBtnLogin", "xBtnRegistro"]);
+
+document.getElementById("tabLogin").addEventListener("click", () => {
+  document.getElementById("tabLogin").classList.add("activa");
+  document.getElementById("tabRegistro").classList.remove("activa");
+  document.getElementById("bloqueLogin").style.display = "block";
+  document.getElementById("bloqueRegistro").style.display = "none";
+});
+document.getElementById("tabRegistro").addEventListener("click", () => {
+  document.getElementById("tabRegistro").classList.add("activa");
+  document.getElementById("tabLogin").classList.remove("activa");
+  document.getElementById("bloqueRegistro").style.display = "block";
+  document.getElementById("bloqueLogin").style.display = "none";
+});
+document.getElementById("btnIrOlvido").addEventListener("click", () => mostrarPantallaLector("pantallaLectorOlvido"));
+document.getElementById("btnVolverAccesoLector").addEventListener("click", () => mostrarPantallaLector("pantallaLectorAcceso"));
+
+function mostrarMsg(elId, texto, ok) {
+  const el = document.getElementById(elId);
+  el.textContent = texto;
+  el.className = "acceso-msg " + (ok ? "acceso-msg-ok" : "acceso-msg-error");
+  // El "display:none" inline que se pone al ocultar el mensaje antes de
+  // cada envío (ver los handlers de abajo) tiene más especificidad que
+  // la clase CSS y, si no se limpia aquí, el mensaje se queda invisible
+  // para siempre aunque la clase ya diga "display:block".
+  el.style.display = "";
+}
+
+document.getElementById("formLogin").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById("btnLogin");
+  const email = document.getElementById("loginEmail").value.trim();
+  const password = document.getElementById("loginPassword").value;
+  btn.disabled = true;
+  document.getElementById("loginMsg").style.display = "none";
+  try {
+    const res = await apiFetch("/api/readers/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "No se ha podido iniciar sesión");
+    guardarSesionLector(data.token, data.reader);
+    const volver = new URLSearchParams(location.search).get("volver");
+    location.href = volver || "index.html";
+  } catch (err) {
+    mostrarMsg("loginMsg", err.message, false);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+document.getElementById("formRegistro").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById("btnRegistro");
+  const nombre = document.getElementById("regNombre").value.trim();
+  const email = document.getElementById("regEmail").value.trim();
+  const password = document.getElementById("regPassword").value;
+  btn.disabled = true;
+  document.getElementById("registroMsg").style.display = "none";
+  try {
+    const res = await apiFetch("/api/readers/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nombre, email, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "No se ha podido crear la cuenta");
+    mostrarMsg("registroMsg", data.mensaje || "Cuenta creada. Revisa tu correo para confirmarla.", true);
+    document.getElementById("formRegistro").reset();
+  } catch (err) {
+    mostrarMsg("registroMsg", err.message, false);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+document.getElementById("formOlvidoLector").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById("btnOlvidoLector");
+  const email = document.getElementById("olvidoEmailLector").value.trim();
+  btn.disabled = true;
+  document.getElementById("olvidoMsgLector").style.display = "none";
+  try {
+    const res = await apiFetch("/api/readers/forgot-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "No se ha podido procesar la solicitud");
+    mostrarMsg("olvidoMsgLector", data.mensaje, true);
+  } catch (err) {
+    mostrarMsg("olvidoMsgLector", err.message, false);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+document.getElementById("formCambiarPasswordLector").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById("btnCambiarPasswordLector");
+  const actual = document.getElementById("lectorPassActual").value;
+  const nueva = document.getElementById("lectorPassNueva").value;
+  const nueva2 = document.getElementById("lectorPassNueva2").value;
+  document.getElementById("cambiarPasswordLectorMsg").style.display = "none";
+
+  if (nueva !== nueva2) {
+    mostrarMsg("cambiarPasswordLectorMsg", "Las contraseñas nuevas no coinciden.", false);
+    return;
+  }
+  if (nueva.length < 8) {
+    mostrarMsg("cambiarPasswordLectorMsg", "La nueva contraseña debe tener al menos 8 caracteres.", false);
+    return;
+  }
+
+  btn.disabled = true;
+  try {
+    const res = await apiFetchLector("/api/readers/me/password", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ actual, nueva }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "No se ha podido cambiar la contraseña");
+    mostrarMsg("cambiarPasswordLectorMsg", "Contraseña actualizada correctamente. Se han cerrado el resto de tus sesiones abiertas.", true);
+    document.getElementById("formCambiarPasswordLector").reset();
+  } catch (err) {
+    mostrarMsg("cambiarPasswordLectorMsg", err.message, false);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// =====================================================================
+// MODO REDACTOR: login / recuperar contraseña / primer inicio de sesión
+// =====================================================================
+function mostrarPantallaRedactor(id) {
+  document.querySelectorAll("#cajaRedactor .pantalla").forEach((p) => p.classList.remove("activa"));
+  document.getElementById(id).classList.add("activa");
+}
+
+document.getElementById("loginFormRedactor").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const username = document.getElementById("username").value.trim();
+  const password = document.getElementById("password").value;
+  const err = document.getElementById("errorMsg");
+  err.style.display = "none";
+  try {
+    const res = await apiFetch(`/api/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) { err.textContent = data.error || "Error de acceso"; err.style.display = "block"; return; }
+    localStorage.setItem("eof_token", data.token);
+    localStorage.setItem("eof_user", JSON.stringify(data.user));
+
+    // Primer inicio de sesión: si la cuenta todavía no tiene correo
+    // electrónico guardado, se pide antes de entrar al panel (así luego
+    // se puede usar "He olvidado mi contraseña").
+    if (!data.user.email) {
+      document.getElementById("overlayEmail").classList.add("activo");
+    } else {
+      const volver = new URLSearchParams(location.search).get("volver");
+      location.href = volver || "admin/panel.html";
+    }
+  } catch (err2) {
+    err.textContent = "No se ha podido conectar con el servidor.";
+    err.style.display = "block";
+  }
+});
+
+// ---------- Petición de correo electrónico (primer inicio de sesión) ----------
+document.getElementById("formEmailInicial").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const email = document.getElementById("emailInicial").value.trim();
+  const err = document.getElementById("errorEmailInicial");
+  err.style.display = "none";
+  const token = localStorage.getItem("eof_token");
+  try {
+    const res = await apiFetch(`/api/me/email`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ email }),
+    });
+    const data = await res.json();
+    if (!res.ok) { err.textContent = data.error || "Error al guardar el correo"; err.style.display = "block"; return; }
+    const user = JSON.parse(localStorage.getItem("eof_user") || "null");
+    if (user) { user.email = data.email; localStorage.setItem("eof_user", JSON.stringify(user)); }
+    const volver = new URLSearchParams(location.search).get("volver");
+    location.href = volver || "admin/panel.html";
+  } catch (err2) {
+    err.textContent = "No se ha podido conectar con el servidor.";
+    err.style.display = "block";
+  }
+});
+
+// ---------- He olvidado mi contraseña (redactor) ----------
+document.getElementById("btnOlvido").addEventListener("click", () => mostrarPantallaRedactor("cajaOlvido"));
+document.getElementById("btnVolverLogin").addEventListener("click", () => mostrarPantallaRedactor("cajaLogin"));
+
+document.getElementById("formOlvido").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const username = document.getElementById("ol_username").value.trim();
+  const email = document.getElementById("ol_email").value.trim();
+  const err = document.getElementById("errorOlvido");
+  const ok = document.getElementById("okMsg");
+  err.style.display = "none";
+  ok.style.display = "none";
+
+  try {
+    const res = await apiFetch(`/api/forgot-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, email }),
+    });
+    const data = await res.json();
+    if (!res.ok) { err.textContent = data.error || "No se ha podido procesar la solicitud"; err.style.display = "block"; return; }
+    ok.textContent = data.mensaje || "Si los datos son correctos, te hemos enviado un enlace a tu correo.";
+    ok.style.display = "block";
+    document.getElementById("formOlvido").reset();
+  } catch (err2) {
+    err.textContent = "No se ha podido conectar con el servidor.";
+    err.style.display = "block";
+  }
+});
+
+// Paso 2: si se llega desde el enlace del correo (?reset=token), se
+// muestra directamente el formulario para poner la contraseña nueva
+// (activarModo("redactor") ya se ha llamado en estadoInicial()).
+(function comprobarEnlaceReset() {
+  const params = new URLSearchParams(location.search);
+  const token = params.get("reset");
+  if (!token) return;
+  mostrarPantallaRedactor("cajaResetConfirmar");
+
+  document.getElementById("formResetConfirmar").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const nueva = document.getElementById("reset_nueva").value;
+    const nueva2 = document.getElementById("reset_nueva2").value;
+    const err = document.getElementById("errorResetConfirmar");
+    const ok = document.getElementById("okResetConfirmar");
+    err.style.display = "none";
+    ok.style.display = "none";
+
+    if (nueva !== nueva2) {
+      err.textContent = "Las contraseñas nuevas no coinciden.";
+      err.style.display = "block";
+      return;
+    }
+    if (nueva.length < 8) {
+      err.textContent = "La nueva contraseña debe tener al menos 8 caracteres.";
+      err.style.display = "block";
+      return;
+    }
+
+    try {
+      const res = await apiFetch(`/api/forgot-password/confirmar`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, nueva }),
+      });
+      const data = await res.json();
+      if (!res.ok) { err.textContent = data.error || "No se ha podido cambiar la contraseña"; err.style.display = "block"; return; }
+      ok.textContent = "Contraseña actualizada. Ya puedes iniciar sesión con ella.";
+      ok.style.display = "block";
+      document.getElementById("formResetConfirmar").reset();
+      setTimeout(() => {
+        location.href = "acceso.html?modo=redactor";
+      }, 2000);
+    } catch (err2) {
+      err.textContent = "No se ha podido conectar con el servidor.";
+      err.style.display = "block";
+    }
+  });
+})();
+</script>
+</body>
+</html>

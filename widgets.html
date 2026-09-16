@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<script src="js/tema.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="pageTitle">Widgets embebibles — ELOTROFÚTBOLTV</title>
+<meta name="description" content="Lleva la clasificación, resultados, calendario y noticias de ELOTROFÚTBOLTV a tu propia web con nuestros widgets embebibles gratuitos.">
+<link rel="canonical" href="https://elotrofutbol.media/widgets.html">
+<link rel="icon" href="/favicon.ico?v=2" sizes="any">
+<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=2">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css?v=16">
+<style>
+  /* ---------- Página de widgets embebibles ---------- */
+
+  /* Hero: paleta de marca del sitio (marino + rojo), igual que cabecera
+     y pie, en vez del celeste plano que usaba antes. Un fondo marino
+     oscuro con textura sutil de "campo" y el rojo como único acento
+     de color, en vez de un degradado azul claro que desentonaba con
+     la identidad del resto del sitio. */
+  .widgets-hero{
+    background:
+      radial-gradient(ellipse 900px 500px at 15% -10%, rgba(209,19,46,.22), transparent 60%),
+      radial-gradient(ellipse 700px 500px at 100% 110%, rgba(91,184,232,.12), transparent 55%),
+      linear-gradient(160deg, var(--marino2) 0%, var(--marino) 100%);
+    color:#fff; padding:60px 0 68px; margin-bottom:40px; position:relative; overflow:hidden;
+    border-bottom:3px solid var(--rojo);
+  }
+  .widgets-hero::before{
+    /* Líneas finas tipo "líneas de campo" — un guiño sutil al deporte
+       sin recurrir a iconografía literal ni a fotos de stock. */
+    content:""; position:absolute; inset:0; opacity:.05; pointer-events:none;
+    background-image:repeating-linear-gradient(90deg, #fff 0, #fff 1px, transparent 1px, transparent 64px);
+  }
+  .widgets-hero-inner{position:relative; max-width:720px;}
+  .widgets-hero-kicker{
+    display:inline-flex; align-items:center; gap:7px; font-family:var(--font-tit);
+    text-transform:uppercase; letter-spacing:.6px; font-size:.78rem; font-weight:700;
+    color:#fff; background:var(--rojo); padding:5px 12px; border-radius:20px; margin:0 0 16px;
+    box-shadow:0 4px 14px rgba(209,19,46,.35);
+  }
+  .widgets-hero-kicker svg{width:15px;height:15px;}
+  .widgets-hero h1{
+    font-family:var(--font-tit); text-transform:uppercase; letter-spacing:.3px;
+    font-size:clamp(1.8rem, 4.4vw, 2.75rem); font-weight:700; margin:0 0 14px; line-height:1.13;
+  }
+  .widgets-hero h1 span{color:var(--celeste-claro); -webkit-text-stroke:0;}
+  .widgets-hero p{
+    font-size:1.02rem; line-height:1.65; color:rgba(255,255,255,.85); margin:0 0 26px; max-width:600px;
+  }
+  .widgets-hero-stats{display:flex; flex-wrap:wrap; gap:0; border-top:1px solid rgba(255,255,255,.14); padding-top:22px;}
+  .widgets-hero-stat{display:flex; flex-direction:column; padding-right:32px; margin-right:32px; border-right:1px solid rgba(255,255,255,.14);}
+  .widgets-hero-stat:last-child{border-right:0; margin-right:0; padding-right:0;}
+  .widgets-hero-stat b{font-family:var(--font-tit); font-size:1.6rem; color:#fff; line-height:1;}
+  .widgets-hero-stat span{font-size:.74rem; text-transform:uppercase; letter-spacing:.4px; color:rgba(255,255,255,.6); margin-top:6px;}
+
+  .widgets-grid{
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(360px,1fr));
+    gap:26px; margin:0 0 48px;
+  }
+  .widget-card{
+    background:var(--tarjeta); border:1px solid var(--borde); border-radius:14px;
+    box-shadow:var(--sombra); overflow:hidden; display:flex; flex-direction:column;
+    transition:transform .18s ease, box-shadow .18s ease;
+  }
+  .widget-card:hover{transform:translateY(-3px); box-shadow:0 10px 28px rgba(12,27,46,.16);}
+
+  .widget-card-cab{
+    padding:20px 22px 16px; border-bottom:1px solid var(--borde);
+    display:flex; align-items:flex-start; gap:12px;
+  }
+  .widget-card-icono{
+    width:42px; height:42px; border-radius:11px;
+    background:linear-gradient(135deg, var(--rojo), var(--rojo-oscuro));
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+    color:#fff; font-size:19px; box-shadow:0 4px 12px rgba(209,19,46,.3);
+  }
+  .widget-card-cab h3{
+    font-family:var(--font-tit); text-transform:uppercase; letter-spacing:.3px;
+    font-size:1.05rem; margin:2px 0 0; color:var(--marino-texto);
+  }
+  .widget-card-cab p{margin:3px 0 0; font-size:.83rem; color:var(--texto-suave); line-height:1.4;}
+
+  .widget-card-opciones{
+    padding:15px 22px; display:flex; flex-wrap:wrap; gap:10px 14px;
+    border-bottom:1px solid var(--borde); background:var(--fondo-alt);
+  }
+  .widget-card-opciones label{
+    font-size:.7rem; text-transform:uppercase; letter-spacing:.3px; font-weight:600;
+    color:var(--texto-suave); display:flex; flex-direction:column; gap:5px; flex:1; min-width:130px;
+  }
+  .widget-card-opciones select, .widget-card-opciones input{
+    font-family:var(--font-text); font-size:.85rem; padding:8px 10px;
+    border:1px solid var(--borde); border-radius:7px; background:var(--tarjeta); color:var(--texto);
+    transition:border-color .15s;
+  }
+  .widget-card-opciones select:focus, .widget-card-opciones input:focus{
+    outline:none; border-color:var(--rojo);
+  }
+
+  .widget-card-previa{
+    padding:18px 22px 6px; background:var(--fondo-alt);
+    display:flex; justify-content:center;
+  }
+  .widget-card-previa iframe{
+    width:100%; max-width:420px; border:1px solid var(--borde); border-radius:10px;
+    background:var(--tarjeta); display:block; box-shadow:0 2px 10px rgba(12,27,46,.08);
+  }
+
+  .widget-card-codigo{padding:16px 22px 22px; margin-top:auto;}
+  .widget-card-codigo pre{
+    background:var(--fondo-alt); border:1px solid var(--borde); border-radius:9px;
+    padding:11px 13px; font-size:.72rem; line-height:1.55; overflow-x:auto;
+    white-space:pre-wrap; word-break:break-all; margin:0 0 12px; color:var(--texto);
+    font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;
+  }
+  .widget-boton-copiar{
+    display:inline-flex; align-items:center; gap:7px;
+    font-family:var(--font-text); font-size:.82rem; font-weight:600; padding:9px 18px;
+    border-radius:22px; border:1.5px solid var(--marino); background:transparent; color:var(--marino-texto);
+    cursor:pointer; transition:background .15s,color .15s,border-color .15s;
+  }
+  .widget-boton-copiar svg{width:15px;height:15px;}
+  .widget-boton-copiar:hover{background:var(--marino); color:#fff;}
+  .widget-boton-copiar.widget-boton-copiado{background:var(--rojo); border-color:var(--rojo); color:#fff;}
+
+  /* ---------- Cómo funciona (3 pasos) ---------- */
+  .widgets-pasos{
+    display:grid; grid-template-columns:repeat(3, 1fr); gap:20px; margin:0 0 48px;
+  }
+  .widgets-paso{
+    background:var(--fondo-alt); border:1px solid var(--borde); border-radius:12px;
+    padding:20px; position:relative;
+  }
+  .widgets-paso-num{
+    font-family:var(--font-tit); font-size:2rem; font-weight:700;
+    color:var(--celeste); opacity:1; line-height:1; margin:0 0 8px;
+  }
+  .widgets-paso h4{
+    font-family:var(--font-tit); text-transform:uppercase; letter-spacing:.3px;
+    font-size:.92rem; margin:0 0 6px; color:var(--marino-texto);
+  }
+  .widgets-paso p{margin:0; font-size:.85rem; color:var(--texto-suave); line-height:1.55;}
+
+  .widgets-nota{
+    padding:18px 20px; border-radius:12px; margin-bottom:48px;
+    background:var(--fondo-alt); border:1px solid var(--borde); font-size:.86rem;
+    color:var(--texto-suave); line-height:1.65; display:flex; gap:12px; align-items:flex-start;
+  }
+  .widgets-nota svg{width:19px; height:19px; flex-shrink:0; color:var(--celeste); margin-top:1px;}
+  .widgets-nota strong{color:var(--marino-texto);}
+
+  /* ---------- Enlaces cruzados ---------- */
+  .widgets-relacionados h3{
+    font-family:var(--font-tit); text-transform:uppercase; letter-spacing:.3px;
+    font-size:1.1rem; margin:0 0 4px; color:var(--marino-texto);
+  }
+  .widgets-relacionados > p{margin:0 0 20px; font-size:.88rem; color:var(--texto-suave);}
+  .widgets-relacionados-grid{
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; margin-bottom:48px;
+  }
+  .widgets-relacionados-link{
+    display:flex; align-items:center; gap:12px; padding:15px 16px;
+    background:var(--tarjeta); border:1px solid var(--borde); border-radius:11px;
+    text-decoration:none; color:var(--marino-texto); transition:border-color .15s, transform .15s;
+  }
+  .widgets-relacionados-link:hover{border-color:var(--rojo); transform:translateX(3px);}
+  .widgets-relacionados-icono{
+    width:36px; height:36px; border-radius:9px; background:var(--fondo-alt);
+    display:flex; align-items:center; justify-content:center; font-size:17px; flex-shrink:0;
+  }
+  .widgets-relacionados-texto b{display:block; font-size:.88rem; font-weight:700;}
+  .widgets-relacionados-texto span{display:block; font-size:.76rem; color:var(--texto-suave); margin-top:1px;}
+
+  /* ---------- Responsive ---------- */
+  @media(max-width:900px){
+    .widgets-pasos{grid-template-columns:1fr;}
+    .widgets-hero{padding:44px 0 52px;}
+  }
+  @media(max-width:600px){
+    .widgets-hero{padding:36px 0 44px; margin-bottom:28px;}
+    .widgets-hero-stats{gap:18px;}
+    .widget-card-cab{padding:16px 16px 14px;}
+    .widget-card-opciones{padding:13px 16px;}
+    .widget-card-opciones label{min-width:100%;}
+    .widget-card-previa{padding:14px 16px 4px;}
+    .widget-card-codigo{padding:14px 16px 18px;}
+    .widgets-grid{gap:20px; margin-bottom:36px;}
+    .widgets-nota{flex-direction:column; margin-bottom:36px;}
+    .widgets-relacionados-grid{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<div id="site-header"></div>
+
+<section class="widgets-hero">
+  <div class="wrap widgets-hero-inner">
+    <div class="widgets-hero-kicker">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 16.58A5 5 0 0018 7h-1.26A8 8 0 104 15.25"/><path d="M12 12v9M9 15l3-3 3 3"/></svg>
+      Herramientas para webmasters
+    </div>
+    <h1>Widgets <span>embebibles</span></h1>
+    <p>Lleva la clasificación, los resultados, el calendario y las últimas noticias del fútbol no profesional español directamente a tu web, blog o foro. Copia un código y listo: se actualizan solos.</p>
+    <div class="widgets-hero-stats">
+      <div class="widgets-hero-stat"><b>4</b><span>Widgets disponibles</span></div>
+      <div class="widgets-hero-stat"><b>0€</b><span>Coste, sin registro</span></div>
+      <div class="widgets-hero-stat"><b>60s</b><span>Actualización</span></div>
+    </div>
+  </div>
+</section>
+
+<main class="wrap">
+
+  <div class="widgets-grid">
+
+    <div class="widget-card" data-widget="clasificacion">
+      <div class="widget-card-cab">
+        <div class="widget-card-icono">🏆</div>
+        <div>
+          <h3>Clasificación</h3>
+          <p>Tabla de la liga, con escudos y puntos</p>
+        </div>
+      </div>
+      <div class="widget-card-opciones">
+        <label>Competición
+          <select data-param="competicion">
+            <option value="hypermotion">LaLiga Hypermotion</option>
+            <option value="primera_federacion">Primera Federación</option>
+            <option value="segunda_federacion">Segunda Federación</option>
+          </select>
+        </label>
+        <label>Grupo (opcional)
+          <input type="text" data-param="grupo" placeholder="ej: Grupo 1">
+        </label>
+        <label>Tema
+          <select data-param="tema">
+            <option value="claro">Claro</option>
+            <option value="oscuro">Oscuro</option>
+          </select>
+        </label>
+        <label>Alto (px)
+          <input type="text" data-altura value="420">
+        </label>
+      </div>
+      <div class="widget-card-previa"><iframe loading="lazy" title="Vista previa"></iframe></div>
+      <div class="widget-card-codigo">
+        <pre data-codigo></pre>
+        <button type="button" class="widget-boton-copiar" data-copiar>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+          Copiar código
+        </button>
+      </div>
+    </div>
+
+    <div class="widget-card" data-widget="resultados">
+      <div class="widget-card-cab">
+        <div class="widget-card-icono">⚽</div>
+        <div>
+          <h3>Últimos resultados</h3>
+          <p>Marcadores, incluido el partido en vivo</p>
+        </div>
+      </div>
+      <div class="widget-card-opciones">
+        <label>Competición (opcional)
+          <select data-param="competicion">
+            <option value="">Todas</option>
+            <option value="hypermotion">LaLiga Hypermotion</option>
+            <option value="primera_federacion">Primera Federación</option>
+            <option value="segunda_federacion">Segunda Federación</option>
+          </select>
+        </label>
+        <label>Club (opcional)
+          <input type="text" data-param="club" placeholder="ej: Real Zaragoza">
+        </label>
+        <label>Tema
+          <select data-param="tema">
+            <option value="claro">Claro</option>
+            <option value="oscuro">Oscuro</option>
+          </select>
+        </label>
+        <label>Alto (px)
+          <input type="text" data-altura value="360">
+        </label>
+      </div>
+      <div class="widget-card-previa"><iframe loading="lazy" title="Vista previa"></iframe></div>
+      <div class="widget-card-codigo">
+        <pre data-codigo></pre>
+        <button type="button" class="widget-boton-copiar" data-copiar>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+          Copiar código
+        </button>
+      </div>
+    </div>
+
+    <div class="widget-card" data-widget="calendario">
+      <div class="widget-card-cab">
+        <div class="widget-card-icono">📅</div>
+        <div>
+          <h3>Próximos partidos</h3>
+          <p>Calendario con fecha y hora de cada partido</p>
+        </div>
+      </div>
+      <div class="widget-card-opciones">
+        <label>Competición (opcional)
+          <select data-param="competicion">
+            <option value="">Todas</option>
+            <option value="hypermotion">LaLiga Hypermotion</option>
+            <option value="primera_federacion">Primera Federación</option>
+            <option value="segunda_federacion">Segunda Federación</option>
+          </select>
+        </label>
+        <label>Club (opcional)
+          <input type="text" data-param="club" placeholder="ej: Real Zaragoza">
+        </label>
+        <label>Tema
+          <select data-param="tema">
+            <option value="claro">Claro</option>
+            <option value="oscuro">Oscuro</option>
+          </select>
+        </label>
+        <label>Alto (px)
+          <input type="text" data-altura value="360">
+        </label>
+      </div>
+      <div class="widget-card-previa"><iframe loading="lazy" title="Vista previa"></iframe></div>
+      <div class="widget-card-codigo">
+        <pre data-codigo></pre>
+        <button type="button" class="widget-boton-copiar" data-copiar>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+          Copiar código
+        </button>
+      </div>
+    </div>
+
+    <div class="widget-card" data-widget="noticia">
+      <div class="widget-card-cab">
+        <div class="widget-card-icono">📰</div>
+        <div>
+          <h3>Última noticia</h3>
+          <p>La crónica o noticia más reciente, con imagen</p>
+        </div>
+      </div>
+      <div class="widget-card-opciones">
+        <label>Categoría (opcional)
+          <input type="text" data-param="categoria" placeholder="ej: cronicas">
+        </label>
+        <label>Club (opcional)
+          <input type="text" data-param="club" placeholder="ej: Real Zaragoza">
+        </label>
+        <label>Tema
+          <select data-param="tema">
+            <option value="claro">Claro</option>
+            <option value="oscuro">Oscuro</option>
+          </select>
+        </label>
+        <label>Alto (px)
+          <input type="text" data-altura value="280">
+        </label>
+      </div>
+      <div class="widget-card-previa"><iframe loading="lazy" title="Vista previa"></iframe></div>
+      <div class="widget-card-codigo">
+        <pre data-codigo></pre>
+        <button type="button" class="widget-boton-copiar" data-copiar>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+          Copiar código
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <h2 class="section-title">Cómo funciona</h2>
+  <div class="widgets-pasos">
+    <div class="widgets-paso">
+      <div class="widgets-paso-num">1</div>
+      <h4>Elige y personaliza</h4>
+      <p>Selecciona el widget que quieras, ajusta la competición, el club o el tema (claro/oscuro) según tu web.</p>
+    </div>
+    <div class="widgets-paso">
+      <div class="widgets-paso-num">2</div>
+      <h4>Copia el código</h4>
+      <p>Pulsa "Copiar código" y pega el <code>&lt;iframe&gt;</code> donde quieras que aparezca en tu web, blog o foro.</p>
+    </div>
+    <div class="widgets-paso">
+      <div class="widgets-paso-num">3</div>
+      <h4>Se actualiza solo</h4>
+      <p>No tienes que hacer nada más: el contenido se refresca automáticamente, incluidos los marcadores en vivo.</p>
+    </div>
+  </div>
+
+  <div class="widgets-nota">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+    <div><strong>Detalle técnico:</strong> cada widget se cachea 60 segundos, así que un gol puede tardar hasta un minuto en reflejarse en el marcador en vivo. Se ajustan automáticamente al ancho de tu web; si tu página escucha mensajes <code>postMessage</code> también pueden ajustar su alto sobre la marcha.</div>
+  </div>
+
+  <div class="widgets-relacionados">
+    <h3>Más de ELOTROFÚTBOLTV</h3>
+    <p>Estos widgets tiran de los mismos datos que puedes consultar directamente en el sitio:</p>
+    <div class="widgets-relacionados-grid">
+      <a class="widgets-relacionados-link" href="clasificacion.html">
+        <div class="widgets-relacionados-icono">🏆</div>
+        <div class="widgets-relacionados-texto"><b>Clasificación completa</b><span>Todas las jornadas y grupos</span></div>
+      </a>
+      <a class="widgets-relacionados-link" href="calendario.html">
+        <div class="widgets-relacionados-icono">📅</div>
+        <div class="widgets-relacionados-texto"><b>Calendario</b><span>Próximos partidos y jornadas</span></div>
+      </a>
+      <a class="widgets-relacionados-link" href="predicciones.html">
+        <div class="widgets-relacionados-icono">🔮</div>
+        <div class="widgets-relacionados-texto"><b>Porras</b><span>Predice resultados con la comunidad</span></div>
+      </a>
+      <a class="widgets-relacionados-link" href="buscar.html">
+        <div class="widgets-relacionados-icono">🔎</div>
+        <div class="widgets-relacionados-texto"><b>Buscar noticias</b><span>Crónicas, análisis y entrevistas</span></div>
+      </a>
+      <a class="widgets-relacionados-link" href="quienes-somos.html">
+        <div class="widgets-relacionados-icono">📣</div>
+        <div class="widgets-relacionados-texto"><b>Quiénes somos</b><span>Nuestra misión y el equipo</span></div>
+      </a>
+      <a class="widgets-relacionados-link" href="contacto.html">
+        <div class="widgets-relacionados-icono">✉️</div>
+        <div class="widgets-relacionados-texto"><b>Contacto de prensa</b><span>¿Dudas sobre los widgets? Escríbenos</span></div>
+      </a>
+    </div>
+  </div>
+
+</main>
+
+<div id="site-footer"></div>
+
+<script src="js/ui-alertas.js?v=4"></script>
+<script src="js/config.js?v=15"></script>
+<script src="js/seo.js?v=4"></script>
+<script src="js/lector-auth.js?v=13"></script>
+<script src="js/layout.js?v=6"></script>
+<script src="js/cookies.js?v=1"></script>
+<script src="js/ads.js?v=1"></script>
+<script src="js/main.js?v=10"></script>
+<script>
+// Las rutas /widgets/* viven en el worker de la API
+// (worker/src/index.js), desplegado en api.elotrofutbol.media (ver
+// API_URL en public/js/config.js) -- NO en elotrofutbol.media, que es
+// un despliegue de Cloudflare Pages totalmente distinto (src-worker.js
+// / public/_worker.js) donde esa ruta no existe.
+const ORIGEN_WIDGETS = "https://api.elotrofutbol.media";
+
+function construirUrlWidget(card) {
+  const tipo = card.dataset.widget;
+  const params = new URLSearchParams();
+  card.querySelectorAll("[data-param]").forEach((el) => {
+    const valor = el.value.trim();
+    if (valor) params.set(el.dataset.param, valor);
+  });
+  const qs = params.toString();
+  return `${ORIGEN_WIDGETS}/widgets/${tipo}${qs ? "?" + qs : ""}`;
+}
+
+function actualizarWidgetCard(card) {
+  const url = construirUrlWidget(card);
+  const altura = card.querySelector("[data-altura]").value.trim() || "360";
+  const codigo = `<iframe src="${url}" style="width:100%;max-width:420px;height:${altura}px;border:0;" loading="lazy" title="Widget ELOTROFÚTBOLTV"></iframe>`;
+  card.querySelector("[data-codigo]").textContent = codigo;
+  const previa = card.querySelector(".widget-card-previa iframe");
+  previa.src = url;
+  previa.style.height = altura + "px";
+}
+
+document.querySelectorAll(".widget-card").forEach((card) => {
+  card.querySelectorAll("input, select").forEach((el) => {
+    el.addEventListener("input", () => actualizarWidgetCard(card));
+    el.addEventListener("change", () => actualizarWidgetCard(card));
+  });
+  card.querySelector("[data-copiar]").addEventListener("click", (e) => {
+    const btn = e.currentTarget;
+    const texto = card.querySelector("[data-codigo]").textContent;
+    navigator.clipboard.writeText(texto).then(() => {
+      const textoOriginal = btn.innerHTML;
+      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> ¡Copiado!';
+      btn.classList.add("widget-boton-copiado");
+      setTimeout(() => {
+        btn.innerHTML = textoOriginal;
+        btn.classList.remove("widget-boton-copiado");
+      }, 1500);
+    });
+  });
+  actualizarWidgetCard(card);
+});
+
+// Ajuste automático de las previews si el widget notifica su altura real
+// vía postMessage (ver widgetBaseHtml() en worker/src/index.js).
+window.addEventListener("message", (ev) => {
+  if (!ev.data || !ev.data.eofWidget) return;
+  document.querySelectorAll(".widget-card-previa iframe").forEach((f) => {
+    if (f.contentWindow === ev.source) f.style.height = ev.data.altura + "px";
+  });
+});
+</script>
+</body>
+</html>

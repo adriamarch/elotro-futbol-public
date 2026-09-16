@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<script src="js/tema.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Confirmar cuenta — ELOTROFÚTBOLTV</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="/favicon.ico?v=2" sizes="any">
+<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=2">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css?v=16">
+<style>
+  .cuenta-wrap{max-width:420px;margin:80px auto;padding:0 16px;text-align:center;}
+  .cuenta-box{background:var(--tarjeta);padding:36px 30px;border-radius:12px;box-shadow:0 4px 24px rgba(12,27,46,.08);border:1px solid var(--borde);}
+  .cuenta-box h2{margin:0 0 10px;font-family:var(--font-tit);font-size:1.25rem;color:var(--marino-texto);}
+  .cuenta-box p{margin:0 0 6px;font-size:.92rem;color:var(--texto-suave);}
+  .cuenta-box a.btn-volver{display:inline-block;margin-top:20px;padding:11px 26px;background:linear-gradient(135deg, var(--rojo), var(--rojo-oscuro));color:#fff;border-radius:26px;text-decoration:none;font-family:var(--font-tit);text-transform:uppercase;font-size:.9rem;}
+  .icono-estado{font-size:2.4rem;margin-bottom:6px;}
+</style>
+</head>
+<body>
+
+<div id="site-header"></div>
+
+<main class="wrap cuenta-wrap">
+  <div class="cuenta-box" id="cajaVerificar">
+    <div class="icono-estado">⏳</div>
+    <h2>Confirmando tu cuenta…</h2>
+    <p>Un momento, por favor.</p>
+  </div>
+</main>
+
+<div id="site-footer"></div>
+
+<script src="js/ui-alertas.js?v=4"></script>
+<script src="js/config.js?v=15"></script>
+<script src="js/lector-auth.js?v=13"></script>
+<script src="js/layout.js?v=6"></script>
+<script src="js/cookies.js?v=1"></script>
+<script src="js/ads.js?v=1"></script>
+<script src="js/main.js?v=10"></script>
+<script>
+async function confirmarCuenta() {
+  const caja = document.getElementById("cajaVerificar");
+  const token = new URLSearchParams(location.search).get("token");
+  if (!token) {
+    caja.innerHTML = `<div class="icono-estado">⚠️</div><h2>Enlace incompleto</h2><p>Falta el código de confirmación en el enlace.</p><a class="btn-volver" href="acceso.html">Ir a mi cuenta</a>`;
+    return;
+  }
+  try {
+    const res = await apiFetch("/api/readers/verificar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "No se ha podido confirmar la cuenta");
+    guardarSesionLector(data.token, data.reader);
+    caja.innerHTML = `<div class="icono-estado">✅</div><h2>¡Cuenta confirmada!</h2><p>Ya puedes comentar las noticias con tu nombre. Iremos añadiendo más funciones para lectores registrados, así que esta cuenta te servirá para mucho más muy pronto.</p><a class="btn-volver" href="index.html">Ir a la portada</a>`;
+  } catch (err) {
+    caja.innerHTML = `<div class="icono-estado">⚠️</div><h2>No se ha podido confirmar</h2><p>${err.message}</p><a class="btn-volver" href="acceso.html">Ir a mi cuenta</a>`;
+  }
+}
+confirmarCuenta();
+</script>
+</body>
+</html>

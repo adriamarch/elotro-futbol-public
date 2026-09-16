@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<script src="js/tema.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="pageTitle">Calendario — ELOTROFÚTBOLTV</title>
+<meta name="description" content="Calendario de partidos de LaLiga Hypermotion, Primera y Segunda Federación, jornada a jornada.">
+<link rel="canonical" href="https://elotrofutbol.media/calendario.html">
+<link rel="icon" href="/favicon.ico?v=2" sizes="any">
+<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=2">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css?v=16">
+</head>
+<body data-page="calendario">
+
+<div id="site-header"></div>
+
+<main class="wrap">
+  <h2 class="section-title">Calendario</h2>
+  <div class="filtros">
+    <button class="activo" data-cat="hypermotion">LaLiga Hypermotion</button>
+    <button data-cat="primera_federacion">Primera Federación</button>
+    <button data-cat="segunda_federacion">Segunda Federación</button>
+    <button data-cat="amistoso">Amistosos</button>
+  </div>
+  <div class="filtros-secundarios">
+    <select id="filtroGrupo" class="select-filtro" hidden></select>
+  </div>
+
+  <div class="calendario-nav">
+    <button id="btnJornadaAnterior" type="button" aria-label="Jornada anterior">&larr; Anterior</button>
+    <div class="calendario-nav-titulo">
+      <span id="calendarioJornadaTitulo">Jornada —</span>
+      <small id="calendarioJornadaSubtitulo"></small>
+    </div>
+    <button id="btnJornadaSiguiente" type="button" aria-label="Jornada siguiente">Siguiente &rarr;</button>
+  </div>
+  <div id="calendarioCont"></div>
+</main>
+
+<!-- Modal de detalle del partido: goles, tarjetas y minutos. Se abre al
+     hacer clic en cualquier partido de la lista de arriba. -->
+<div id="modalPartido" class="modal-partido" aria-hidden="true">
+  <div class="modal-partido-fondo" onclick="cerrarModalPartido()"></div>
+  <div class="modal-partido-caja" role="dialog" aria-modal="true" aria-labelledby="modalPartidoTitulo">
+    <button type="button" class="modal-partido-cerrar" onclick="cerrarModalPartido()" aria-label="Cerrar">✕</button>
+    <div class="modal-partido-cabecera">
+      <div class="modal-partido-equipo">
+        <img id="modalEscudoLocal" class="modal-partido-escudo" src="" alt="" loading="lazy">
+        <span id="modalNombreLocal" class="modal-partido-nombre"></span>
+      </div>
+      <div class="modal-partido-marcador">
+        <span id="modalMarcador"></span>
+        <span id="modalEstado" class="modal-partido-estado"></span>
+      </div>
+      <div class="modal-partido-equipo">
+        <img id="modalEscudoVisitante" class="modal-partido-escudo" src="" alt="" loading="lazy">
+        <span id="modalNombreVisitante" class="modal-partido-nombre"></span>
+      </div>
+    </div>
+    <p id="modalPartidoTitulo" class="modal-partido-subtitulo"></p>
+    <a id="modalEnlaceFlashscore" class="enlace-flashscore" href="" target="_blank" rel="noopener noreferrer" hidden>Ver en Flashscore<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></a>
+    <a id="modalEnlaceMinutoAMinuto" class="enlace-minuto-a-minuto" href="" hidden><span class="en-vivo-punto"></span>Minuto a minuto<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></a>
+    <div id="modalNoticiasVinculadas" class="modal-noticias-vinculadas" hidden></div>
+    <div id="modalPartidoMvp" class="modal-partido-mvp" hidden></div>
+    <div id="modalPartidoAlineaciones" class="modal-partido-alineaciones"></div>
+    <div id="modalPartidoEventos" class="modal-partido-eventos"></div>
+  </div>
+</div>
+
+<div id="site-footer"></div>
+
+<script src="js/ui-alertas.js?v=4"></script>
+<script src="js/config.js?v=15"></script>
+<script src="js/seo.js?v=4"></script>
+<script src="js/clubs.js?v=4"></script>
+<script src="js/lector-auth.js?v=13"></script>
+<script src="js/layout.js?v=6"></script>
+<script src="js/cookies.js?v=1"></script>
+<script src="js/ads.js?v=1"></script>
+<script src="js/partidos.js?v=9"></script>
+<script>
+fijarSeoBasico({
+  titulo: "Calendario — ELOTROFÚTBOLTV",
+  descripcion: "Calendario de partidos de LaLiga Hypermotion, Primera y Segunda Federación, jornada a jornada.",
+  urlPath: "/calendario.html",
+});
+
+let competicionActual = "hypermotion";
+let grupoActual = "";
+
+// Todos los resultados de la competición/grupo elegidos, cargados
+// una vez y reutilizados para construir el calendario por jornada (evita
+// pedirlos de nuevo cada vez que se cambia de jornada).
+let RESULTADOS_COMPETICION = [];
+let jornadaSeleccionada = null; // se fija tras la primera carga
+
+document.querySelectorAll(".filtros button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".filtros button").forEach(b => b.classList.remove("activo"));
+    btn.classList.add("activo");
+    competicionActual = btn.dataset.cat;
+    // Al cambiar de competición, el filtro de grupo de la competición
+    // anterior ya no tiene sentido (un grupo es propio de una única
+    // competición), así que se resetea.
+    grupoActual = "";
+    jornadaSeleccionada = null;
+    cargarTodo();
+  });
+});
+
+const selectGrupo = document.getElementById("filtroGrupo");
+
+selectGrupo.addEventListener("change", () => {
+  grupoActual = selectGrupo.value;
+  jornadaSeleccionada = null;
+  cargarTodo();
+});
+
+// Segunda Federación tiene 5 grupos regionales. A diferencia de la
+// portada (ver filtrarParaPortada en config.js/main.js), aquí en
+// Calendario SÍ deben salir los partidos de TODOS los equipos de los 5
+// grupos, los cubramos editorialmente o no: el calendario es un listado
+// de referencia de la competición completa, no solo de las noticias que
+// publicamos. Por eso ya no se filtra por "equipos soportados" como
+// antes (esa limitación era solo temporal, mientras la base de datos
+// tenía cargados partidos de unos pocos equipos).
+//
+// El desplegable de grupo se rellena a partir de los grupos que
+// realmente aparecen en los resultados ya cargados de esta competición
+// (no hay una lista fija de grupos en el frontend, y así tampoco se
+// muestra un desplegable vacío o con grupos que no existen todavía).
+// En Segunda Federación no tiene sentido un "Todos los grupos": son
+// calendarios y numeraciones de jornada independientes entre grupos
+// regionales, así que mezclarlos hace que la navegación "Jornada X"
+// salte de un grupo a otro sin ningún criterio claro. Por eso, igual
+// que en Clasificación, aquí se obliga a elegir siempre un grupo
+// concreto (el primero, si no había ninguno seleccionado todavía).
+function poblarFiltroGrupo(results) {
+  let grupos = [...new Set(results.map(r => r.grupo).filter(Boolean))].sort((a, b) => a.localeCompare(b, "es"));
+  if (!grupos.length) {
+    selectGrupo.hidden = true;
+    selectGrupo.innerHTML = "";
+    if (grupoActual) { grupoActual = ""; }
+    return;
+  }
+  const obligatorio = competicionActual === "segunda_federacion";
+  selectGrupo.innerHTML = (obligatorio ? "" : `<option value="">Todos los grupos</option>`) +
+    grupos.map(g => `<option value="${escapeHtml(g)}">${escapeHtml(g)}</option>`).join("");
+  if (obligatorio) {
+    if (!grupoActual || !grupos.includes(grupoActual)) grupoActual = grupos[0];
+  } else if (grupoActual && !grupos.includes(grupoActual)) {
+    // Si el grupo seleccionado ya no existe en esta competición, se
+    // resetea a "todos" en vez de dejar el desplegable en un valor fantasma.
+    grupoActual = "";
+  }
+  selectGrupo.value = grupoActual;
+  selectGrupo.hidden = false;
+}
+
+// Fecha de inicio de la temporada de fútbol en curso ("YYYY-MM-DD"), para
+// usarla como "desde_fecha" al pedir partidos y no depender solo del
+// "limit=500" para acotar la temporada. Ver la explicación completa en la
+// función gemela de clasificacion.html (mismo bug: la base de datos
+// acumula todas las temporadas jugadas de cada grupo sin ningún campo
+// "temporada", así que un grupo con varias temporadas acumuladas podía
+// superar los 500 partidos y perder jornadas bajas de la temporada
+// ACTUAL de forma intermitente, según cuánto histórico tuviera
+// acumulado en cada momento).
+function inicioTemporadaActual() {
+  const ahora = new Date();
+  const mes = ahora.getMonth(); // 0 = enero ... 11 = diciembre
+  const anioInicio = mes >= 6 ? ahora.getFullYear() : ahora.getFullYear() - 1;
+  return `${anioInicio}-07-01`;
+}
+
+// ---------- Carga de datos ----------
+async function cargarTodo() {
+  const cont = document.getElementById("calendarioCont");
+  cont.innerHTML = spinnerHTML();
+  try {
+    const desdeFecha = inicioTemporadaActual();
+
+    // El grupo se filtra en el propio backend (para no traer de más),
+    // pero para poblar el desplegable de grupos hace falta ver todos los
+    // grupos de la competición, así que esa consulta de "qué grupos
+    // existen" se hace sin filtrar por grupo aunque haya uno seleccionado.
+    // Se acota también por "desde_fecha" (temporada actual): así el
+    // "limit=500" ya no tiene que cubrir el histórico completo de todas
+    // las temporadas jugadas, solo la actual, y no se pierden nombres de
+    // grupo ni jornadas bajas por culpa de partidos antiguos.
+    const paramsBase = new URLSearchParams({ competicion: competicionActual, desde_fecha: desdeFecha, limit: "500" });
+    const paramsSinGrupo = paramsBase.toString();
+    const { results: resultsParaGrupos } = await conReintento(() =>
+      apiFetch(`/api/results?${paramsSinGrupo}`).then(r => r.json())
+    );
+    poblarFiltroGrupo(resultsParaGrupos);
+
+    // Con el grupo ya decidido (fijado por poblarFiltroGrupo si hacía
+    // falta, p.ej. en Segunda Federación), se piden los partidos DE ESE
+    // GRUPO filtrados en el propio backend: así el LIMIT 500 aplica solo
+    // dentro del grupo elegido y de la temporada actual, y no se pierde
+    // ninguna jornada baja por culpa de partidos de otros grupos con
+    // jornada más alta ni de temporadas anteriores acumuladas.
+    const paramsFinal = new URLSearchParams({ competicion: competicionActual, desde_fecha: desdeFecha, limit: "500" });
+    if (grupoActual) paramsFinal.set("grupo", grupoActual);
+    const { results: todos } = grupoActual
+      ? await conReintento(() => apiFetch(`/api/results?${paramsFinal.toString()}`).then(r => r.json()))
+      : { results: resultsParaGrupos };
+
+    RESULTADOS_COMPETICION = todos;
+
+    // La jornada que guarda la base de datos no siempre arranca en 1
+    // dentro de un grupo (ver jornadasDisponibles/pintarCalendario más
+    // abajo), así que a cada partido se le anota también la posición
+    // relativa de su jornada dentro de las disponibles en este
+    // grupo/competición (1ª, 2ª, 3ª...). partidoHTML y el modal de
+    // detalle (abrirModalPartido, en partidos.js) usan jornada_mostrar
+    // si está presente, así la tarjeta y el modal muestran la misma
+    // jornada "correcta" que el navegador de arriba.
+    const jornadasOrdenadas = [...new Set(RESULTADOS_COMPETICION.map(r => r.jornada))].sort((a, b) => a - b);
+    RESULTADOS_COMPETICION.forEach(r => { r.jornada_mostrar = jornadasOrdenadas.indexOf(r.jornada) + 1; });
+
+    PARTIDOS_CACHE = {};
+    RESULTADOS_COMPETICION.forEach(r => { PARTIDOS_CACHE[r.id] = r; });
+
+    pintarCalendario();
+  } catch (err) {
+    cont.innerHTML = estadoHTML({
+      titulo: "No se ha podido conectar",
+      texto: "Ha habido un problema al cargar el calendario. Comprueba tu conexión e inténtalo de nuevo.",
+      tipo: "error",
+      cta: `<a href="javascript:location.reload()" class="btn-volver">Reintentar</a>`,
+    });
+  }
+}
+
+// ---------- Calendario navegable por jornada ----------
+function jornadasDisponibles() {
+  return [...new Set(RESULTADOS_COMPETICION.map(r => r.jornada))].sort((a, b) => a - b);
+}
+
+// La primera vez que se entra se selecciona la jornada "actual": la
+// jornada del primer partido pendiente por fecha (el próximo a jugarse
+// cronológicamente). Si un partido pendiente no tiene fecha todavía
+// asignada, ordenarPartidosCronologicamente no puede distinguirlo de
+// otro sin fecha (los dos comparan como NaN) y los deja en el orden en
+// que los devolvió el backend -que es por jornada DESCENDENTE-, así que
+// aquí SIEMPRE se desempata por número de jornada ascendente antes de
+// mirar la fecha; así un partido sin fecha de la jornada 41 nunca puede
+// colarse por delante de uno con o sin fecha de una jornada anterior.
+function elegirJornadaPorDefecto() {
+  const jornadas = jornadasDisponibles();
+  if (!jornadas.length) return null;
+  const pendientes = RESULTADOS_COMPETICION
+    .filter(r => r.estado === "programado" || r.estado === "en_juego");
+  if (pendientes.length) {
+    const ordenados = [...pendientes].sort((a, b) => {
+      if (a.jornada !== b.jornada) return a.jornada - b.jornada;
+      const ta = timestampFechaPartido(a);
+      const tb = timestampFechaPartido(b);
+      if (isNaN(ta) && isNaN(tb)) return 0;
+      if (isNaN(ta)) return 1;
+      if (isNaN(tb)) return -1;
+      return ta - tb;
+    });
+    return ordenados[0].jornada;
+  }
+  const disputados = ordenarPartidosCronologicamente(
+    RESULTADOS_COMPETICION.filter(r => r.estado !== "programado")
+  );
+  return disputados.length ? disputados[0].jornada : jornadas[jornadas.length - 1];
+}
+
+// En Amistosos no hay jornadas reales (todos comparten jornada=0, ver
+// admin.js), así que no tiene sentido navegar "Jornada anterior/
+// siguiente": siempre habría una única jornada y los botones quedarían
+// siempre deshabilitados sin más función que confundir. Por eso esta
+// pestaña oculta del todo el bloque de navegación y, dentro de ella, se
+// muestran TODOS los amistosos juntos (no solo los de "la jornada
+// actual").
+function esPestanaAmistosos() {
+  return competicionActual === "amistoso";
+}
+
+function pintarCalendario() {
+  const cont = document.getElementById("calendarioCont");
+  const navEl = document.querySelector(".calendario-nav");
+  const jornadas = jornadasDisponibles();
+
+  if (esPestanaAmistosos()) {
+    navEl.hidden = true;
+    if (!jornadas.length) {
+      cont.innerHTML = estadoHTML({
+        titulo: "Sin amistosos todavía",
+        texto: grupoActual
+          ? "No hay partidos con los filtros seleccionados. Prueba a quitar algún filtro."
+          : "Aún no se han publicado partidos para esta competición. Prueba con otra categoría o vuelve más tarde.",
+      });
+      return;
+    }
+    // Dentro de Amistosos, los partidos programados (por jugar) van
+    // arriba del todo y los ya disputados debajo: al contrario que el
+    // orden habitual del resto de competiciones (que destaca primero lo
+    // ya jugado), aquí interesa ver antes lo que queda por venir.
+    const programados = ordenarPartidosCronologicamente(
+      RESULTADOS_COMPETICION.filter(r => r.estado === "programado" || r.estado === "en_juego")
+    );
+    const disputados = ordenarPartidosCronologicamente(
+      RESULTADOS_COMPETICION.filter(r => r.estado !== "programado" && r.estado !== "en_juego")
+    );
+    const partidos = [...programados, ...disputados];
+    document.getElementById("calendarioJornadaTitulo").textContent = "Amistosos";
+    document.getElementById("calendarioJornadaSubtitulo").textContent =
+      `${categoriaLabel(competicionActual)}${grupoActual ? " · " + grupoActual : ""}`;
+    cont.innerHTML = `<div class="tabla-jornada">${partidos.map(p => partidoHTML(p)).join("")}</div>`;
+    inicializarClicsPartidos("calendarioCont");
+    return;
+  }
+
+  navEl.hidden = false;
+  if (!jornadas.length) {
+    document.getElementById("calendarioJornadaTitulo").textContent = "Sin calendario";
+    document.getElementById("calendarioJornadaSubtitulo").textContent = "";
+    document.getElementById("btnJornadaAnterior").disabled = true;
+    document.getElementById("btnJornadaSiguiente").disabled = true;
+    cont.innerHTML = estadoHTML({
+      titulo: "Todavía no hay calendario",
+      texto: grupoActual
+        ? "No hay partidos con los filtros seleccionados. Prueba a quitar algún filtro."
+        : "Aún no se han publicado partidos para esta competición. Prueba con otra categoría o vuelve más tarde.",
+    });
+    return;
+  }
+  if (jornadaSeleccionada === null || !jornadas.includes(jornadaSeleccionada)) {
+    jornadaSeleccionada = elegirJornadaPorDefecto();
+  }
+  const idx = jornadas.indexOf(jornadaSeleccionada);
+  document.getElementById("btnJornadaAnterior").disabled = idx <= 0;
+  document.getElementById("btnJornadaSiguiente").disabled = idx >= jornadas.length - 1;
+
+  const partidosJornada = ordenarPartidosCronologicamente(
+    RESULTADOS_COMPETICION.filter(r => r.jornada === jornadaSeleccionada)
+  );
+
+  // El número de "jornada" que guarda la base de datos no siempre
+  // arranca en 1 dentro de un grupo (varios grupos regionales de
+  // Segunda Federación usan rangos de jornada distintos entre sí, p.ej.
+  // el Grupo 4 empieza en la 41 y el Grupo 1 en la 1), así que mostrar
+  // ese número crudo confunde. Aquí se muestra la posición real de la
+  // jornada seleccionada dentro de las jornadas disponibles de este
+  // grupo/competición (1ª, 2ª, 3ª...), no el número interno de la BD.
+  document.getElementById("calendarioJornadaTitulo").textContent = `Jornada ${idx + 1}`;
+  document.getElementById("calendarioJornadaSubtitulo").textContent =
+    `${categoriaLabel(competicionActual)}${grupoActual ? " · " + grupoActual : ""}`;
+
+  cont.innerHTML = `<div class="tabla-jornada">${partidosJornada.map(p => partidoHTML(p)).join("")}</div>`;
+  inicializarClicsPartidos("calendarioCont");
+}
+
+// Nota: antes había aquí una función que anulaba por JS el enlace de
+// .equipo a la ficha del club (para que en calendario.html el clic
+// siempre abriera el modal del partido). Ya no hace falta: .equipo es
+// un <span> en la tarjeta de la lista (ver partidos.js), así que el
+// clic en el nombre/escudo del equipo ya cae de forma natural en el
+// clic de toda la tarjeta y abre el modal, igual que en las demás
+// páginas.
+
+document.getElementById("btnJornadaAnterior").addEventListener("click", () => {
+  const jornadas = jornadasDisponibles();
+  const idx = jornadas.indexOf(jornadaSeleccionada);
+  if (idx > 0) { jornadaSeleccionada = jornadas[idx - 1]; pintarCalendario(); }
+});
+document.getElementById("btnJornadaSiguiente").addEventListener("click", () => {
+  const jornadas = jornadasDisponibles();
+  const idx = jornadas.indexOf(jornadaSeleccionada);
+  if (idx < jornadas.length - 1) { jornadaSeleccionada = jornadas[idx + 1]; pintarCalendario(); }
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+  cargarTodo();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<script src="js/tema.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Subir contenido — ELOTROFÚTBOLTV</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="/favicon.ico?v=2" sizes="any">
+<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=2">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css?v=16">
+<style>
+  .contenido-wrap{max-width:820px;margin:0 auto;}
+  .contenido-intro{
+    background:var(--gris-claro);border-radius:var(--radio);padding:20px 24px;margin-bottom:26px;
+    display:flex;gap:16px;align-items:flex-start;
+  }
+  .contenido-intro svg{width:30px;height:30px;color:var(--celeste);flex-shrink:0;margin-top:2px;}
+  .contenido-intro p{font-size:.92rem;color:var(--gris-texto);}
+  .contenido-intro strong{color:var(--marino-texto);}
+
+  .form-subida{background:var(--tarjeta);border:1px solid var(--borde);border-radius:var(--radio);box-shadow:var(--sombra);padding:28px;}
+  .form-subida label{display:block;font-size:.85rem;font-weight:600;margin:16px 0 6px;color:var(--marino-texto);}
+  .form-subida label:first-of-type{margin-top:0;}
+  .form-subida input[type="text"], .form-subida select, .form-subida textarea{
+    width:100%;padding:11px;border:1px solid var(--borde);border-radius:6px;font-size:.92rem;font-family:inherit;
+    background:var(--fondo);color:var(--texto);
+  }
+  .form-subida input:focus, .form-subida select:focus, .form-subida textarea:focus{outline:none;border-color:var(--celeste);}
+  .form-subida textarea{min-height:90px;resize:vertical;}
+  .ayuda-campo{font-size:.78rem;color:#9aa0ab;margin-top:4px;}
+
+  /* ---------- Zona de arrastrar y soltar: MUY vistosa ---------- */
+  .dropzone{
+    position:relative;isolation:isolate;overflow:hidden;
+    border:2.5px dashed #cfd5de;border-radius:calc(var(--radio) + 4px);
+    padding:44px 20px;text-align:center;cursor:pointer;
+    background:var(--gris-claro);
+    transition:transform .28s cubic-bezier(.34,1.56,.64,1), box-shadow .28s ease, border-color .2s ease;
+  }
+  /* Icono, texto: encima de todos los efectos de fondo */
+  .dropzone svg, .dropzone p, .dropzone span{position:relative;z-index:2;}
+  .dropzone svg{
+    width:46px;height:46px;color:var(--celeste);margin-bottom:12px;
+    transition:transform .3s cubic-bezier(.34,1.56,.64,1), color .2s ease, filter .2s ease;
+  }
+  .dropzone p{font-size:1rem;color:var(--marino-texto);font-weight:700;transition:color .2s ease, transform .25s ease;}
+  .dropzone span{font-size:.82rem;color:var(--gris-texto);display:block;margin-top:5px;transition:opacity .2s ease;}
+  .dropzone input[type="file"]{display:none;}
+
+  /* Halo de color de fondo, siempre presente pero invisible: se hace
+     visible y gira suavemente cuando se arrastra un archivo encima,
+     dando la sensación de "energía" detrás de la caja. */
+  .dropzone::before{
+    content:"";position:absolute;z-index:0;inset:-60%;
+    background:conic-gradient(from 0deg, var(--celeste), #7ee8fa, var(--rojo), var(--celeste));
+    opacity:0;filter:blur(38px);
+    transition:opacity .35s ease;
+    animation:dropzone-girar 5s linear infinite;
+    animation-play-state:paused;
+  }
+  /* Ligero degradado de "brillo" que recorre la caja de forma sutil
+     incluso en reposo, para que la zona ya llame la atención de por sí. */
+  .dropzone:hover:not(.arrastrando){
+    border-color:var(--celeste);
+    transform:translateY(-2px);
+    box-shadow:0 10px 26px rgba(30,150,220,.14);
+  }
+  .dropzone:hover:not(.arrastrando) svg{transform:translateY(-3px) scale(1.06);}
+
+  /* Cuando el usuario empieza a arrastrar un archivo desde CUALQUIER
+     punto de la página (no solo justo encima de la caja), la dropzone
+     ya se marca con un halo suave para que sea fácil de localizar de un
+     vistazo antes incluso de soltar el archivo encima. */
+  .dropzone.pagina-arrastrando:not(.arrastrando){
+    border-color:var(--celeste);border-style:dashed;
+    box-shadow:0 0 0 6px rgba(30,150,220,.1), 0 14px 34px rgba(30,150,220,.16);
+    animation:dropzone-invitacion 1.4s ease-in-out infinite;
+  }
+  .dropzone.pagina-arrastrando:not(.arrastrando) svg{color:var(--celeste);}
+
+  /* EL GRAN MOMENTO: archivo justo encima de la caja. Crece de verdad,
+     el borde estalla en gradiente animado, el icono rebota y hay un
+     resplandor detrás girando. */
+  .dropzone.arrastrando{
+    border-color:transparent;
+    background:
+      linear-gradient(var(--gris-claro), var(--gris-claro)) padding-box,
+      conic-gradient(from var(--angulo-borde,0deg), var(--celeste), #7ee8fa, #4fd1a5, var(--rojo), var(--celeste)) border-box;
+    border-width:3px;border-style:solid;
+    transform:scale(1.06) translateY(-6px);
+    box-shadow:0 26px 60px -10px rgba(30,150,220,.4), 0 0 0 8px rgba(30,150,220,.08);
+    animation:dropzone-girar-borde 2.2s linear infinite;
+  }
+  [data-theme="dark"] .dropzone.arrastrando{
+    background:
+      linear-gradient(rgba(30,150,220,.14), rgba(30,150,220,.14)) padding-box,
+      conic-gradient(from var(--angulo-borde,0deg), var(--celeste), #7ee8fa, #4fd1a5, var(--rojo), var(--celeste)) border-box;
+  }
+  .dropzone.arrastrando::before{opacity:.55;animation-play-state:running;}
+  .dropzone.arrastrando svg{
+    color:var(--celeste);
+    transform:translateY(-10px) scale(1.35) rotate(-6deg);
+    filter:drop-shadow(0 6px 14px rgba(30,150,220,.5));
+    animation:dropzone-icono-rebote 1s cubic-bezier(.34,1.56,.64,1) infinite;
+  }
+  .dropzone.arrastrando p{
+    color:var(--celeste);transform:scale(1.05);
+  }
+  .dropzone.arrastrando span{opacity:.85;}
+
+  /* Confeti/chispas: puntitos de color que aparecen y flotan hacia
+     arriba mientras se arrastra encima, para darle vidilla extra. */
+  .dropzone .chispas{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden;border-radius:inherit;}
+  .dropzone .chispas i{
+    position:absolute;bottom:-10px;border-radius:50%;
+    opacity:0;
+  }
+  .dropzone.arrastrando .chispas i{animation:dropzone-chispa 1.6s ease-in infinite;}
+  .dropzone .chispas i:nth-child(1){left:8%; width:7px;height:7px;background:var(--celeste);animation-delay:.0s;}
+  .dropzone .chispas i:nth-child(2){left:20%;width:5px;height:5px;background:var(--rojo);animation-delay:.25s;}
+  .dropzone .chispas i:nth-child(3){left:34%;width:8px;height:8px;background:#7ee8fa;animation-delay:.5s;}
+  .dropzone .chispas i:nth-child(4){left:50%;width:6px;height:6px;background:#4fd1a5;animation-delay:.15s;}
+  .dropzone .chispas i:nth-child(5){left:64%;width:7px;height:7px;background:var(--celeste);animation-delay:.4s;}
+  .dropzone .chispas i:nth-child(6){left:78%;width:5px;height:5px;background:var(--rojo);animation-delay:.65s;}
+  .dropzone .chispas i:nth-child(7){left:90%;width:8px;height:8px;background:#7ee8fa;animation-delay:.3s;}
+  .dropzone .chispas i:nth-child(8){left:44%;width:5px;height:5px;background:#4fd1a5;animation-delay:.8s;}
+
+  @keyframes dropzone-girar{to{transform:rotate(360deg);}}
+  @keyframes dropzone-girar-borde{
+    0%{--angulo-borde:0deg;}
+    100%{--angulo-borde:360deg;}
+  }
+  @property --angulo-borde{syntax:"<angle>";inherits:false;initial-value:0deg;}
+  @keyframes dropzone-icono-rebote{
+    0%,100%{transform:translateY(-10px) scale(1.35) rotate(-6deg);}
+    50%{transform:translateY(-18px) scale(1.42) rotate(6deg);}
+  }
+  @keyframes dropzone-invitacion{
+    0%,100%{box-shadow:0 0 0 6px rgba(30,150,220,.1), 0 14px 34px rgba(30,150,220,.16);}
+    50%{box-shadow:0 0 0 10px rgba(30,150,220,.18), 0 18px 42px rgba(30,150,220,.24);}
+  }
+  @keyframes dropzone-chispa{
+    0%{opacity:0;transform:translateY(0) scale(.6);}
+    15%{opacity:1;}
+    100%{opacity:0;transform:translateY(-130px) scale(1.1);}
+  }
+  @media (prefers-reduced-motion: reduce){
+    .dropzone, .dropzone svg, .dropzone p, .dropzone::before{transition:none;animation:none !important;}
+    .dropzone.arrastrando{transform:scale(1.02);}
+  }
+
+  /* Lista de archivos seleccionados/subiendo */
+  .lista-archivos{margin-top:18px;display:flex;flex-direction:column;gap:10px;}
+  .item-archivo{
+    display:flex;align-items:center;gap:12px;padding:12px 14px;
+    background:var(--gris-claro);border-radius:8px;font-size:.88rem;
+  }
+  .item-archivo .icono-tipo{
+    width:34px;height:34px;border-radius:8px;background:var(--marino);color:#fff;
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .item-archivo .icono-tipo svg{width:18px;height:18px;}
+  .item-archivo .info{flex:1;min-width:0;}
+  .item-archivo .nombre{font-weight:600;color:var(--marino-texto);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .item-archivo .peso{color:#9aa0ab;font-size:.78rem;}
+  .item-archivo .barra-progreso{
+    height:6px;background:#dde2e8;border-radius:4px;overflow:hidden;margin-top:6px;
+  }
+  .item-archivo .barra-progreso i{
+    display:block;height:100%;width:0%;background:var(--celeste);transition:width .15s;
+  }
+  .item-archivo.completado .barra-progreso i{background:#22c55e;}
+  .item-archivo.error .barra-progreso i{background:var(--rojo);width:100% !important;}
+  .item-archivo .estado-txt{font-size:.78rem;color:var(--gris-texto);margin-top:3px;}
+  .item-archivo.error .estado-txt{color:var(--rojo);}
+  .item-archivo .quitar{
+    background:none;border:none;color:#9aa0ab;cursor:pointer;font-size:1.1rem;line-height:1;flex-shrink:0;
+  }
+  .item-archivo .quitar:hover{color:var(--rojo);}
+
+  .btn-primari{background:linear-gradient(135deg, var(--rojo), var(--rojo-oscuro));color:#fff;border:none;padding:13px 28px;border-radius:6px;font-family:var(--font-tit);text-transform:uppercase;cursor:pointer;letter-spacing:.4px;font-size:.9rem;margin-top:22px;}
+  .btn-primari:disabled{opacity:.55;cursor:not-allowed;}
+  #msgOkSubida{color:#166534;background:#dcfce7;padding:12px 14px;border-radius:6px;display:none;margin-top:16px;font-size:.9rem;}
+  #errSubida{color:var(--rojo);background:#fee2e2;padding:12px 14px;border-radius:6px;display:none;margin-top:16px;font-size:.9rem;}
+
+  /* Aviso de que hace falta iniciar sesión */
+  .aviso-login{
+    max-width:520px;margin:40px auto;text-align:center;
+    background:var(--gris-claro);border-radius:var(--radio);padding:40px 28px;
+  }
+  .aviso-login svg{width:44px;height:44px;color:var(--celeste);margin-bottom:14px;}
+  .aviso-login h2{font-family:var(--font-tit);text-transform:uppercase;color:var(--marino-texto);margin-bottom:10px;font-size:1.2rem;}
+  .aviso-login p{color:var(--gris-texto);font-size:.92rem;margin-bottom:18px;}
+  .aviso-login a.btn-primari{display:inline-block;text-decoration:none;}
+
+  @media(max-width:600px){
+    .contenido-intro{flex-direction:column;padding:16px 18px;gap:10px;}
+    .form-subida{padding:18px;}
+    .dropzone{padding:26px 14px;}
+    .btn-primari{width:100%;}
+    .item-archivo{flex-wrap:wrap;}
+    .aviso-login{padding:32px 20px;margin:24px auto;}
+  }
+</style>
+</head>
+<body data-page="contenido">
+
+<div id="site-header"></div>
+
+<main class="wrap contenido-wrap">
+
+  <h2 class="section-title">Subir contenido</h2>
+
+  <div id="zonaNoLogueado" style="display:none">
+    <div class="aviso-login">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <h2>Zona exclusiva para redactores</h2>
+      <p>Esta sección es solo para el equipo de redacción de ELOTROFÚTBOLTV. Inicia sesión con tu usuario para poder subir fotos y vídeos.</p>
+      <a href="acceso.html?modo=redactor&volver=contenido" class="btn-primari">Iniciar sesión</a>
+    </div>
+  </div>
+
+  <div id="zonaLogueado" style="display:none">
+    <div class="contenido-intro">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <p>Hola <strong id="nombreRedactor"></strong>. Sube aquí las fotos y vídeos del partido o la noticia: se guardan en su calidad original, sin comprimir, y los recibe directamente el equipo de administración para poder descargarlos.</p>
+    </div>
+
+    <div class="form-subida">
+      <form id="formSubida">
+        <label for="tituloSubida">Título *</label>
+        <input type="text" id="tituloSubida" placeholder="Ej: Gol de la victoria — Jornada 12" required>
+
+        <label for="clubSubida">Club (opcional)</label>
+        <select id="clubSubida">
+          <option value="">— Sin especificar —</option>
+        </select>
+
+        <label for="descripcionSubida">Descripción (opcional)</label>
+        <textarea id="descripcionSubida" placeholder="Contexto del partido, nombres de jugadores, minuto de la jugada, créditos de autoría, etc."></textarea>
+
+        <label>Archivos *</label>
+        <div class="dropzone" id="dropzone">
+          <div class="chispas"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M12 4l-4.5 4.5M12 4l4.5 4.5"/><path d="M4 16v2.5A2.5 2.5 0 0 0 6.5 21h11a2.5 2.5 0 0 0 2.5-2.5V16"/></svg>
+          <p id="dropzoneTexto">Arrastra aquí tus fotos y vídeos</p>
+          <span id="dropzoneSubtexto">o haz clic para seleccionarlos — puedes subir varios a la vez, en la calidad original</span>
+          <input type="file" id="inputArchivos" multiple accept="image/*,video/*">
+        </div>
+
+        <div class="lista-archivos" id="listaArchivos"></div>
+
+        <button type="submit" class="btn-primari" id="btnSubir" disabled>Subir contenido</button>
+        <p id="msgOkSubida"></p>
+        <p id="errSubida"></p>
+      </form>
+    </div>
+  </div>
+
+</main>
+
+<div id="site-footer"></div>
+
+<script src="js/ui-alertas.js?v=4"></script>
+<script src="js/config.js?v=15"></script>
+<script src="js/clubs.js?v=4"></script>
+<script src="js/layout.js?v=6"></script>
+<script src="js/cookies.js?v=1"></script>
+<script src="js/ads.js?v=1"></script>
+<script>
+// ---------- Comprobación de sesión (mismo login que el panel de redacción) ----------
+const TOKEN = localStorage.getItem("eof_token");
+const USER = JSON.parse(localStorage.getItem("eof_user") || "null");
+
+document.addEventListener("DOMContentLoaded", async () => {
+  if (!TOKEN || !USER) {
+    document.getElementById("zonaNoLogueado").style.display = "block";
+    return;
+  }
+  document.getElementById("zonaLogueado").style.display = "block";
+  document.getElementById("nombreRedactor").textContent = USER.nombre;
+
+  // Clubes "personalizados" (añadidos desde "Otro equipo"), para que el
+  // desplegable de abajo ya los incluya junto a los fijos de clubs.js.
+  await cargarCustomClubs();
+
+  // Rellena el desplegable de clubes con todos los clubes de todas las
+  // categorías, ya que el contenido subido no está atado a una sola liga.
+  const selectClub = document.getElementById("clubSubida");
+  const todos = [
+    ...getClubsForCategoria("hypermotion"),
+    ...getClubsForCategoria("primera_federacion"),
+    ...getClubsForCategoria("segunda_federacion"),
+  ].sort((a, b) => a.localeCompare(b));
+  todos.forEach((club) => {
+    const opt = document.createElement("option");
+    opt.value = club;
+    opt.textContent = club;
+    selectClub.appendChild(opt);
+  });
+
+  iniciarSubida();
+});
+
+function iconoTipoArchivo(esFoto) {
+  return esFoto
+    ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="9" r="1.5"/><path d="M21 15l-5-5-9 9"/></svg>'
+    : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2.5" y="5" width="14" height="14" rx="2"/><path d="M16.5 10.5l5-3v9l-5-3z"/></svg>';
+}
+
+function formatoTamano(bytes) {
+  if (bytes < 1024) return bytes + " B";
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+  if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+  return (bytes / (1024 * 1024 * 1024)).toFixed(2) + " GB";
+}
+
+function iniciarSubida() {
+  const dropzone = document.getElementById("dropzone");
+  const inputArchivos = document.getElementById("inputArchivos");
+  const listaArchivos = document.getElementById("listaArchivos");
+  const btnSubir = document.getElementById("btnSubir");
+  const form = document.getElementById("formSubida");
+  const msgOk = document.getElementById("msgOkSubida");
+  const errMsg = document.getElementById("errSubida");
+
+  // Cada archivo seleccionado se guarda con un id propio para poder
+  // encontrar su fila en la lista y actualizar su barra de progreso.
+  let archivos = []; // [{ id, file }]
+  let idSeq = 0;
+
+  function actualizarBotonSubir() {
+    btnSubir.disabled = archivos.length === 0;
+  }
+
+  function pintarLista() {
+    listaArchivos.innerHTML = archivos.map(({ id, file }) => {
+      const esFoto = file.type.startsWith("image/");
+      return `
+        <div class="item-archivo" data-id="${id}">
+          <div class="icono-tipo">${iconoTipoArchivo(esFoto)}</div>
+          <div class="info">
+            <div class="nombre">${file.name}</div>
+            <div class="peso">${formatoTamano(file.size)}</div>
+            <div class="barra-progreso"><i style="width:0%"></i></div>
+            <div class="estado-txt">Pendiente de subir</div>
+          </div>
+          <button type="button" class="quitar" data-quitar="${id}" title="Quitar">✕</button>
+        </div>`;
+    }).join("");
+  }
+
+  function agregarArchivos(fileList) {
+    [...fileList].forEach((file) => {
+      if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) return;
+      archivos.push({ id: ++idSeq, file });
+    });
+    pintarLista();
+    actualizarBotonSubir();
+  }
+
+  dropzone.addEventListener("click", () => inputArchivos.click());
+  inputArchivos.addEventListener("change", () => {
+    agregarArchivos(inputArchivos.files);
+    inputArchivos.value = "";
+  });
+
+  // El texto de la caja cambia mientras se arrastra encima, para que el
+  // "MUCHISIMO MAS BONITO" no sea solo el marco: hasta el mensaje reacciona.
+  const dropzoneTexto = document.getElementById("dropzoneTexto");
+  const dropzoneSubtexto = document.getElementById("dropzoneSubtexto");
+  const TEXTO_REPOSO = dropzoneTexto.textContent;
+  const SUBTEXTO_REPOSO = dropzoneSubtexto.textContent;
+
+  function textoSegunCantidad(n) {
+    if (n <= 0) return "¡Suéltalo aquí!";
+    if (n === 1) return "¡Suelta el archivo aquí!";
+    return `¡Suelta los ${n} archivos aquí!`;
+  }
+
+  // Contador de entradas/salidas para que el efecto no parpadee al pasar
+  // el ratón entre el icono, el texto, etc. dentro de la propia caja.
+  let entradasDropzone = 0;
+  dropzone.addEventListener("dragenter", (e) => {
+    if (!Array.from(e.dataTransfer?.types || []).includes("Files")) return;
+    e.preventDefault();
+    entradasDropzone++;
+    dropzone.classList.add("arrastrando");
+    const n = e.dataTransfer?.items?.length || 0;
+    dropzoneTexto.textContent = textoSegunCantidad(n);
+    dropzoneSubtexto.textContent = "Suéltalo para añadirlo a la lista de subida";
+  });
+  dropzone.addEventListener("dragover", (e) => {
+    if (!Array.from(e.dataTransfer?.types || []).includes("Files")) return;
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
+  });
+  dropzone.addEventListener("dragleave", (e) => {
+    if (!Array.from(e.dataTransfer?.types || []).includes("Files")) return;
+    entradasDropzone = Math.max(0, entradasDropzone - 1);
+    if (entradasDropzone === 0) {
+      dropzone.classList.remove("arrastrando");
+      dropzoneTexto.textContent = TEXTO_REPOSO;
+      dropzoneSubtexto.textContent = SUBTEXTO_REPOSO;
+    }
+  });
+  dropzone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    entradasDropzone = 0;
+    dropzone.classList.remove("arrastrando");
+    dropzoneTexto.textContent = TEXTO_REPOSO;
+    dropzoneSubtexto.textContent = SUBTEXTO_REPOSO;
+    if (e.dataTransfer.files.length) agregarArchivos(e.dataTransfer.files);
+  });
+
+  // Resalta la dropzone en cuanto se empieza a arrastrar un archivo por
+  // CUALQUIER parte de la página, para que se vea a dónde hay que
+  // soltarlo aunque el ratón todavía no esté justo encima.
+  let entradasPagina = 0;
+  window.addEventListener("dragenter", (e) => {
+    if (!Array.from(e.dataTransfer?.types || []).includes("Files")) return;
+    entradasPagina++;
+    dropzone.classList.add("pagina-arrastrando");
+  });
+  window.addEventListener("dragleave", () => {
+    entradasPagina = Math.max(0, entradasPagina - 1);
+    if (entradasPagina === 0) dropzone.classList.remove("pagina-arrastrando");
+  });
+  window.addEventListener("drop", () => {
+    entradasPagina = 0;
+    dropzone.classList.remove("pagina-arrastrando");
+  });
+  window.addEventListener("dragover", (e) => e.preventDefault());
+
+  listaArchivos.addEventListener("click", (e) => {
+    const id = e.target.dataset.quitar;
+    if (!id) return;
+    archivos = archivos.filter((a) => a.id != id);
+    pintarLista();
+    actualizarBotonSubir();
+  });
+
+  // Sube un único archivo con XMLHttpRequest (en vez de fetch) porque es
+  // lo único que permite mostrar el progreso real de la subida, algo
+  // importante para vídeos pesados en su calidad original.
+  function subirArchivo({ id, file }, titulo, descripcion, club) {
+    return new Promise((resolve, reject) => {
+      const fila = listaArchivos.querySelector(`.item-archivo[data-id="${id}"]`);
+      const barra = fila.querySelector(".barra-progreso i");
+      const estadoTxt = fila.querySelector(".estado-txt");
+
+      const formData = new FormData();
+      formData.append("archivo", file, file.name);
+      formData.append("titulo", titulo);
+      formData.append("descripcion", descripcion);
+      formData.append("club", club);
+
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", `${API_URL}/api/media`);
+      xhr.setRequestHeader("Authorization", `Bearer ${TOKEN}`);
+
+      xhr.upload.addEventListener("progress", (e) => {
+        if (e.lengthComputable) {
+          const pct = Math.round((e.loaded / e.total) * 100);
+          barra.style.width = pct + "%";
+          estadoTxt.textContent = pct < 100 ? `Subiendo... ${pct}%` : "Procesando...";
+        }
+      });
+
+      xhr.addEventListener("load", () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          fila.classList.add("completado");
+          estadoTxt.textContent = "Subido correctamente";
+          resolve();
+        } else {
+          fila.classList.add("error");
+          let mensaje = "Error al subir";
+          try { mensaje = JSON.parse(xhr.responseText).error || mensaje; } catch {}
+          estadoTxt.textContent = mensaje;
+          reject(new Error(mensaje));
+        }
+      });
+      xhr.addEventListener("error", () => {
+        fila.classList.add("error");
+        estadoTxt.textContent = "No se ha podido conectar con el servidor";
+        reject(new Error("Error de red"));
+      });
+
+      xhr.send(formData);
+    });
+  }
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    msgOk.style.display = "none";
+    errMsg.style.display = "none";
+
+    if (!archivos.length) return;
+
+    const titulo = document.getElementById("tituloSubida").value.trim();
+    const descripcion = document.getElementById("descripcionSubida").value.trim();
+    const club = document.getElementById("clubSubida").value;
+
+    btnSubir.disabled = true;
+    btnSubir.textContent = "Subiendo...";
+
+    // Se suben de uno en uno (no en paralelo) para no saturar la subida
+    // cuando hay varios vídeos pesados a la vez.
+    let subidos = 0;
+    let fallidos = 0;
+    for (const item of archivos) {
+      try {
+        // Si hay varios archivos, se numera el título para diferenciarlos
+        // sin que el redactor tenga que repetirlo campo a campo.
+        const tituloArchivo = archivos.length > 1 ? `${titulo} (${subidos + fallidos + 1}/${archivos.length})` : titulo;
+        await subirArchivo(item, tituloArchivo, descripcion, club);
+        subidos++;
+      } catch (err) {
+        fallidos++;
+      }
+    }
+
+    btnSubir.textContent = "Subir contenido";
+    if (fallidos === 0) {
+      msgOk.textContent = `Se ${subidos === 1 ? "ha" : "han"} subido ${subidos} archivo${subidos === 1 ? "" : "s"} correctamente. Gracias por la aportación.`;
+      msgOk.style.display = "block";
+      form.reset();
+      archivos = [];
+      pintarLista();
+    } else {
+      errMsg.textContent = `${subidos} archivo(s) subido(s) correctamente, ${fallidos} con error. Revisa la lista de arriba.`;
+      errMsg.style.display = "block";
+    }
+    actualizarBotonSubir();
+  });
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Acceso — ELOTROFÚTBOLTV</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="/favicon.ico?v=2" sizes="any">
+<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=2">
+</head>
+<body>
+<script>
+// El acceso de redactor ahora vive en el hub unificado /acceso.html
+// (pestaña "Redactor"). Esta página se mantiene solo para no romper
+// marcadores y los enlaces de "olvidé mi contraseña" ya enviados por
+// correo (que incluyen ?reset=token), así que se conserva TODO el
+// querystring tal cual y se fuerza el modo redactor.
+const params = new URLSearchParams(location.search);
+params.set("modo", "redactor");
+location.replace("../acceso.html?" + params.toString());
+</script>
+<noscript><meta http-equiv="refresh" content="0; url=../acceso.html?modo=redactor"></noscript>
+<p>Redirigiendo a <a href="../acceso.html?modo=redactor">acceso.html</a>…</p>
+</body>
+</html>

@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>ELOTROFÚTBOLTV — Volvemos enseguida</title>
+<script>
+  // ============================================================
+  //  ESTE ARCHIVO YA NO SE ABRE NUNCA A MANO.
+  //  Lo sirve automáticamente _worker.js (raíz del sitio) SOLO
+  //  cuando la variable de entorno MAINTENANCE_MODE del proyecto
+  //  de Cloudflare Pages vale "true" -- ver ese archivo. El
+  //  interruptor único de mantenimiento es esa variable, no nada
+  //  de este HTML. Se deja este <script> vacío a propósito (antes
+  //  redirigía a un "index-real.html" que ya no existe).
+  //
+  //  window.__MAINTENANCE_DESDE__: marca de tiempo ISO (UTC) del
+  //  momento REAL en que se activó el mantenimiento. _worker.js
+  //  sustituye el placeholder de la línea de abajo justo antes de
+  //  servir este archivo, leyéndola de la variable de entorno
+  //  MAINTENANCE_DESDE (que set-mantenimiento.sh escribe automáticamente
+  //  en el instante en que activas el mantenimiento).
+  //  Gracias a esto la barra de progreso puede calcular el % real
+  //  transcurrido (desde -> hasta) en vez de inventar un ciclo fijo de
+  //  24h -- y es la MISMA marca de inicio para cualquiera que la mire,
+  //  la recargue cuando la recargue.
+  //
+  //  OJO al editar este bloque: el placeholder de la línea siguiente
+  //  debe aparecer UNA SOLA VEZ en todo este archivo. _worker.js lo
+  //  sustituye con String.replace() SIN flag global, así que si ese
+  //  mismo texto apareciera en dos sitios (por ejemplo, mencionado
+  //  también en un comentario), replace() sustituiría solo la
+  //  PRIMERA aparición -- que podría ser la del comentario, dejando la
+  //  línea de código real sin sustituir. Por eso este comentario ya no
+  //  repite ese texto literal en ningún sitio (ni siquiera para
+  //  explicarlo).
+  window.__MAINTENANCE_DESDE__ = "__MAINTENANCE_DESDE_ISO__";
+</script>
+<style>
+  :root {
+    --verde-1: #0b3d24;
+    --verde-2: #0f4d2d;
+    --verde-3: #124f2c;
+    --linea: rgba(255,255,255,0.85);
+    --crema: #f4f1e8;
+    --naranja: #ff6a2b;
+    --naranja-2: #ffa057;
+    --texto-tenue: rgba(244,241,232,0.62);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    min-height: 100%;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    color: var(--crema);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    background:
+      radial-gradient(ellipse 900px 500px at 50% -10%, rgba(255,255,255,0.06), transparent 60%),
+      linear-gradient(180deg, var(--verde-1) 0%, var(--verde-2) 55%, var(--verde-3) 100%);
+  }
+
+  .campo { position: absolute; inset: 0; z-index: 0; opacity: 0.9; }
+  .franjas {
+    position: absolute; inset: 0;
+    background-image: repeating-linear-gradient(90deg,
+      rgba(255,255,255,0.025) 0px, rgba(255,255,255,0.025) 90px,
+      transparent 90px, transparent 180px);
+  }
+  .linea-medio {
+    position: absolute; top: 0; bottom: 0; left: 50%; width: 1.5px;
+    background: var(--linea); opacity: 0.16; transform: translateX(-50%);
+  }
+  .circulo-centro {
+    position: absolute; top: 50%; left: 50%; width: 340px; height: 340px;
+    border: 1.5px solid var(--linea); opacity: 0.14; border-radius: 50%;
+    transform: translate(-50%, -50%);
+  }
+  .banda { position: absolute; inset: 28px; border: 1.5px solid var(--linea); opacity: 0.12; }
+  .arco {
+    position: absolute; width: 380px; height: 190px;
+    border: 1.5px solid var(--linea); opacity: 0.12;
+    border-radius: 0 0 999px 999px / 0 0 100px 100px;
+  }
+  .arco.izq { top: -95px; left: 50%; transform: translateX(-50%) rotate(180deg); }
+  .arco.der { bottom: -95px; left: 50%; transform: translateX(-50%); }
+
+  /* Focos de estadio: dos haces de luz cónicos que barren muy despacio,
+     como los focos reales de un campo por la noche. Sutiles a propósito
+     -- son ambiente, no protagonismo. */
+  .foco {
+    position: absolute;
+    top: -10%;
+    width: 220px;
+    height: 160%;
+    background: linear-gradient(180deg, rgba(255,255,255,0.09), transparent 70%);
+    transform-origin: top center;
+    filter: blur(6px);
+    opacity: 0.5;
+  }
+  .foco.a { left: 8%; animation: barrer-foco 14s ease-in-out infinite; }
+  .foco.b { right: 8%; animation: barrer-foco 14s ease-in-out infinite reverse; animation-delay: -7s; }
+  @keyframes barrer-foco {
+    0%, 100% { transform: rotate(-8deg); }
+    50%      { transform: rotate(8deg); }
+  }
+
+  .envoltorio {
+    position: relative; z-index: 2; width: 100%; max-width: 620px;
+    margin: 32px; text-align: center;
+  }
+
+  .marcador-superior {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 7px 16px 7px 12px; border-radius: 999px;
+    background: rgba(0,0,0,0.22); border: 1px solid rgba(255,255,255,0.14);
+    margin-bottom: 36px;
+  }
+  .punto-vivo {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--naranja);
+    animation: pulso-punto 1.8s ease-out infinite; flex-shrink: 0;
+  }
+  @keyframes pulso-punto {
+    0%   { box-shadow: 0 0 0 0 rgba(255,106,43,0.55); }
+    70%  { box-shadow: 0 0 0 9px rgba(255,106,43,0); }
+    100% { box-shadow: 0 0 0 0 rgba(255,106,43,0); }
+  }
+  .marcador-superior span.texto { font-size: 12.5px; font-weight: 600; letter-spacing: 0.02em; color: var(--crema); }
+
+  h1 {
+    margin: 0 0 14px; font-family: Georgia, 'Times New Roman', serif;
+    font-size: clamp(32px, 5.4vw, 48px); font-weight: 400; line-height: 1.12;
+    color: #ffffff; letter-spacing: -0.01em;
+  }
+  h1 em { font-style: italic; color: var(--naranja-2); }
+
+  .subtexto {
+    margin: 0 auto 44px; max-width: 440px; font-size: 16.5px;
+    line-height: 1.65; color: var(--texto-tenue);
+  }
+
+  .contador { display: flex; justify-content: center; gap: 10px; margin-bottom: 40px; }
+  .unidad {
+    width: 84px; padding: 16px 0 12px; background: rgba(0,0,0,0.24);
+    border: 1px solid rgba(255,255,255,0.12); border-radius: 14px; position: relative;
+  }
+  .unidad .numero {
+    display: block; font-family: 'Courier New', ui-monospace, monospace;
+    font-variant-numeric: tabular-nums; font-weight: 700; font-size: 34px;
+    letter-spacing: 0.01em; color: #ffffff;
+  }
+  .unidad .etiqueta { display: block; margin-top: 6px; font-size: 10.5px; letter-spacing: 0.08em; color: var(--texto-tenue); }
+  .separador-contador {
+    display: flex; align-items: center; font-family: 'Courier New', monospace;
+    font-size: 28px; font-weight: 700; color: rgba(255,255,255,0.25); padding-bottom: 20px;
+  }
+
+  .progreso-envoltorio { max-width: 380px; margin: 0 auto 40px; }
+  .progreso-pista { height: 4px; border-radius: 999px; background: rgba(255,255,255,0.1); overflow: hidden; }
+  .progreso-relleno {
+    height: 100%; border-radius: 999px;
+    background: linear-gradient(90deg, var(--naranja) 0%, var(--naranja-2) 100%);
+    width: 0%; transition: width 1s linear;
+  }
+  .progreso-textos { display: flex; justify-content: space-between; margin-top: 8px; font-size: 11.5px; color: var(--texto-tenue); letter-spacing: 0.02em; }
+
+  .tareas {
+    display: inline-flex; flex-direction: column; gap: 10px; text-align: left;
+    margin: 0 auto 40px; padding: 18px 22px; background: rgba(0,0,0,0.18);
+    border: 1px solid rgba(255,255,255,0.1); border-radius: 14px;
+  }
+  .tarea { display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: var(--texto-tenue); }
+  .tarea .marca {
+    width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; flex-shrink: 0; font-size: 10px;
+  }
+  .tarea.hecho .marca { background: rgba(120, 200, 150, 0.18); color: #7fd99a; }
+  .tarea.curso .marca { background: rgba(255,106,43,0.18); color: var(--naranja-2); animation: pulso-punto 1.8s ease-out infinite; }
+  .tarea.hecho span.txt { color: rgba(244,241,232,0.4); text-decoration: line-through; text-decoration-color: rgba(244,241,232,0.25); }
+  .tarea.curso span.txt { color: var(--crema); font-weight: 500; }
+
+  .escudo-envoltorio {
+    position: relative;
+    width: 116px;
+    height: 116px;
+    margin: 0 auto 26px;
+  }
+
+  .escudo-envoltorio img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    filter: drop-shadow(0 10px 24px rgba(0,0,0,0.45));
+  }
+
+  /* Aro que gira alrededor del escudo, como el círculo de carga de un
+     marcador de estadio -- un único trazo que da la vuelta, no un
+     spinner genérico completo. */
+  .aro-carga {
+    position: absolute;
+    inset: -10px;
+    border-radius: 50%;
+  }
+
+  .aro-carga svg {
+    width: 100%;
+    height: 100%;
+    animation: girar-aro 3.2s linear infinite;
+  }
+
+  @keyframes girar-aro {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+
+  /* -------- Ticker de última hora -------- */
+  .ticker-envoltorio {
+    margin-top: 44px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    padding-top: 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    text-align: left;
+    overflow: hidden;
+  }
+
+  .ticker-etiqueta {
+    flex-shrink: 0;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--naranja-2);
+    background: rgba(255,106,43,0.14);
+    border: 1px solid rgba(255,106,43,0.3);
+    padding: 4px 9px;
+    border-radius: 5px;
+  }
+
+  .ticker-pista {
+    flex: 1;
+    overflow: hidden;
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+  }
+
+  .ticker-cinta {
+    display: flex;
+    gap: 40px;
+    white-space: nowrap;
+    width: max-content;
+    animation: desplazar-ticker 26s linear infinite;
+  }
+
+  .ticker-cinta span {
+    font-size: 13px;
+    color: var(--texto-tenue);
+  }
+
+  .ticker-cinta span b { color: var(--crema); font-weight: 600; }
+
+  @keyframes desplazar-ticker {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ticker-cinta { animation: none; }
+    .foco { animation: none; }
+  }
+
+  .pie { font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(244,241,232,0.35); }
+  .pie b { color: rgba(244,241,232,0.6); font-weight: 700; }
+
+  @media (max-width: 480px) {
+    .unidad { width: 66px; padding: 12px 0 10px; }
+    .unidad .numero { font-size: 26px; }
+    .separador-contador { font-size: 22px; padding-bottom: 16px; }
+    .tareas { width: 100%; }
+    .escudo-envoltorio { width: 92px; height: 92px; }
+    .ticker-etiqueta { display: none; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .aro-carga svg, .punto-vivo, .tarea.curso .marca { animation: none; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="campo" aria-hidden="true">
+    <div class="franjas"></div>
+    <div class="banda"></div>
+    <div class="linea-medio"></div>
+    <div class="circulo-centro"></div>
+    <div class="arco izq"></div>
+    <div class="arco der"></div>
+    <div class="foco a"></div>
+    <div class="foco b"></div>
+  </div>
+
+  <main class="envoltorio">
+
+    <div class="escudo-envoltorio">
+      <div class="aro-carga" aria-hidden="true">
+        <svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="60" cy="60" r="56" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="2"/>
+          <circle cx="60" cy="60" r="56" fill="none" stroke="#ff6a2b" stroke-width="2.5"
+                  stroke-linecap="round" stroke-dasharray="90 260"/>
+        </svg>
+      </div>
+      <img src="https://elotrofutbol.media/img/logo.png" alt="El Otro Fútbol TV" width="116" height="116">
+    </div>
+
+    <div class="marcador-superior">
+      <span class="punto-vivo"></span>
+      <span class="texto">Mantenimiento en directo</span>
+    </div>
+
+    <h1>Estamos <em>a punto</em><br>de volver a saltar al césped</h1>
+    <p class="subtexto">
+      Estamos haciendo un ajuste rápido en ELOTROFÚTBOLTV para que todo
+      vuelva a funcionar como debe. No hace falta que hagas nada —
+      cuando el marcador llegue a cero, la web se reabrirá sola.
+    </p>
+
+    <div class="contador" id="contador">
+      <div class="unidad">
+        <span class="numero" id="num-horas">00</span>
+        <span class="etiqueta">HORAS</span>
+      </div>
+      <div class="separador-contador">:</div>
+      <div class="unidad">
+        <span class="numero" id="num-minutos">00</span>
+        <span class="etiqueta">MIN</span>
+      </div>
+      <div class="separador-contador">:</div>
+      <div class="unidad">
+        <span class="numero" id="num-segundos">00</span>
+        <span class="etiqueta">SEG</span>
+      </div>
+    </div>
+
+    <div class="progreso-envoltorio">
+      <div class="progreso-pista">
+        <div class="progreso-relleno" id="progreso-relleno"></div>
+      </div>
+      <div class="progreso-textos">
+        <span>Inicio</span>
+        <span id="texto-hora-vuelta">Vuelta sobre las 02:00</span>
+      </div>
+    </div>
+
+    <div class="tareas">
+      <div class="tarea hecho">
+        <span class="marca">✓</span>
+        <span class="txt">Detectado el problema de origen</span>
+      </div>
+      <div class="tarea hecho">
+        <span class="marca">✓</span>
+        <span class="txt">Corregida la sincronización de datos</span>
+      </div>
+      <div class="tarea curso">
+        <span class="marca">●</span>
+        <span class="txt">Esperando a que se libere la cuota del servidor</span>
+      </div>
+    </div>
+
+    <div class="ticker-envoltorio">
+      <span class="ticker-etiqueta">EN DIRECTO</span>
+      <div class="ticker-pista">
+        <div class="ticker-cinta">
+          <span><b>Segunda Federación</b> — jornada en marcha</span>
+          <span><b>Cobertura Minuto a Minuto</b> — vuelve con el sitio</span>
+          <span><b>Crónicas y entrevistas</b> — de vuelta en breve</span>
+          <span><b>Segunda Federación</b> — jornada en marcha</span>
+          <span><b>Cobertura Minuto a Minuto</b> — vuelve con el sitio</span>
+          <span><b>Crónicas y entrevistas</b> — de vuelta en breve</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="pie">EL<b>OTRO</b>FÚTBOLTV</div>
+
+  </main>
+
+  <script>
+    // Segundos que faltan hasta las 00:00 UTC (que es cuando Cloudflare
+    // D1 resetea su cuota diaria de lecturas -- ver el workflow de
+    // GitHub Actions, que se dispara justo un minuto después de esta
+    // misma hora). NO es medianoche hora española: en verano son las
+    // 02:00, en invierno la 01:00 -- por eso se calcula en UTC directo,
+    // sin pasar por ninguna zona horaria concreta.
+    function msHastaResetCuotaD1() {
+      const ahora = new Date();
+      const horaUTC = ahora.getUTCHours();
+      const minutoUTC = ahora.getUTCMinutes();
+      const segundoUTC = ahora.getUTCSeconds();
+
+      const segundosDesdeMedianocheUTC = horaUTC * 3600 + minutoUTC * 60 + segundoUTC;
+      const segundosHastaMedianocheUTC = 86400 - segundosDesdeMedianocheUTC;
+      return segundosHastaMedianocheUTC * 1000;
+    }
+
+    // IMPORTANTE: el "total" de la barra de progreso NO puede calcularse
+    // como "lo que falta desde que YO cargué la página", porque entonces
+    // cada persona que entra ve un total distinto según el momento exacto
+    // en que recargó, y el mismo usuario vería la barra "saltar" cada vez
+    // que recarga.
+    //
+    // Tampoco puede asumirse un ciclo fijo de 24h: el mantenimiento se
+    // activa a mano en un instante cualquiera (puede durar 10 minutos o
+    // 20 horas) y siempre termina a la misma hora (reset de cuota D1,
+    // ~medianoche UTC). Si se asume un ciclo fijo de 24h, cuando el
+    // mantenimiento se activa tarde (p.ej. a las 22h) la barra aparece
+    // casi llena desde el primer segundo, aunque en tiempo real quede
+    // más de una hora -- confuso y falso.
+    //
+    // La solución correcta: usar el instante REAL de activación
+    // (window.__MAINTENANCE_DESDE__, fijado por el servidor -- ver
+    // set-mantenimiento.sh / _worker.js) como inicio del progreso.
+    // Así el % siempre es (ahora - desde) / (hasta - desde), igual para
+    // cualquiera que mire la página en cualquier momento, sin depender
+    // de cuándo cargó ni de asumir una duración inventada.
+    const desdeISO = window.__MAINTENANCE_DESDE__;
+    const desdeMs = (desdeISO && !desdeISO.includes('__MAINTENANCE_DESDE'))
+      ? new Date(desdeISO).getTime()
+      : null;
+    const hastaMs = Date.now() + msHastaResetCuotaD1();
+
+    // Fallback si por lo que sea no llega la marca de inicio real (p.ej.
+    // fallo de red al pedirla, o una versión vieja en caché): se usa un
+    // ciclo fijo de 24h como aproximación, igual que antes. No es exacto
+    // pero es mejor que una barra rota o en blanco.
+    const totalFallbackMs = 24 * 60 * 60 * 1000;
+
+    function actualizarContador() {
+      const restanteMs = msHastaResetCuotaD1();
+      const totalSegundos = Math.max(0, Math.floor(restanteMs / 1000));
+
+      const horas = Math.floor(totalSegundos / 3600);
+      const minutos = Math.floor((totalSegundos % 3600) / 60);
+      const segundos = totalSegundos % 60;
+
+      document.getElementById('num-horas').textContent = String(horas).padStart(2, '0');
+      document.getElementById('num-minutos').textContent = String(minutos).padStart(2, '0');
+      document.getElementById('num-segundos').textContent = String(segundos).padStart(2, '0');
+
+      let porcentaje;
+      if (desdeMs !== null && hastaMs > desdeMs) {
+        const totalMs = hastaMs - desdeMs;
+        const transcurridoMs = Date.now() - desdeMs;
+        porcentaje = Math.min(100, Math.max(0, (transcurridoMs / totalMs) * 100));
+      } else {
+        const transcurridoMs = totalFallbackMs - restanteMs;
+        porcentaje = Math.min(100, Math.max(0, (transcurridoMs / totalFallbackMs) * 100));
+      }
+      document.getElementById('progreso-relleno').style.width = porcentaje + '%';
+
+      if (totalSegundos <= 0) {
+        document.getElementById('texto-hora-vuelta').textContent = 'Ya debería estar volviendo…';
+        clearInterval(intervalo);
+        setInterval(() => window.location.reload(), 30000);
+      }
+    }
+
+    actualizarContador();
+    const intervalo = setInterval(actualizarContador, 1000);
+  </script>
+</body>
+</html>

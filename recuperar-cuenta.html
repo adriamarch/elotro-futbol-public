@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<script src="js/tema.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recuperar contraseña — ELOTROFÚTBOLTV</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="/favicon.ico?v=2" sizes="any">
+<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=2">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css?v=16">
+<style>
+  .cuenta-wrap{max-width:420px;margin:70px auto;padding:0 16px;}
+  .cuenta-box{background:var(--tarjeta);padding:34px 30px;border-radius:12px;box-shadow:0 4px 24px rgba(12,27,46,.08);border:1px solid var(--borde);text-align:center;}
+  .cuenta-box h2{margin:0 0 4px;font-family:var(--font-tit);font-size:1.25rem;color:var(--marino-texto);}
+  .cuenta-box p.sub{margin:0 0 20px;font-size:.85rem;color:var(--texto-suave);}
+  .cuenta-box label{display:block;font-size:.85rem;margin:14px 0 6px;font-weight:600;color:var(--marino-texto);text-align:left;}
+  .cuenta-box input{width:100%;padding:11px 12px;border:1.5px solid var(--borde);border-radius:8px;font-size:.95rem;background:var(--tarjeta);color:var(--texto);}
+  .cuenta-box input:focus{outline:none;border-color:var(--celeste);box-shadow:0 0 0 3px rgba(91,184,232,.15);}
+  .cuenta-box button[type="submit"]{width:100%;margin-top:22px;padding:13px;background:linear-gradient(135deg, var(--rojo), var(--rojo-oscuro));color:#fff;border:none;border-radius:26px;font-family:var(--font-tit);text-transform:uppercase;font-size:.95rem;cursor:pointer;letter-spacing:.4px;}
+  .cuenta-box button[type="submit"]:disabled{opacity:.6;cursor:default;}
+  .cuenta-msg{font-size:.85rem;margin-top:14px;padding:10px 12px;border-radius:8px;display:none;}
+  .cuenta-msg-error{color:#7a1c2b;background:#fdecef;display:block;}
+  .cuenta-msg-ok{color:#166534;background:#dcfce7;display:block;}
+  [data-theme="dark"] .cuenta-msg-error{background:#3a1a20;color:#f5a3ae;}
+  [data-theme="dark"] .cuenta-msg-ok{background:#123321;color:#7fe0a3;}
+  .icono-estado{font-size:2.4rem;margin-bottom:6px;}
+  a.btn-volver{display:inline-block;margin-top:20px;padding:11px 26px;background:linear-gradient(135deg, var(--rojo), var(--rojo-oscuro));color:#fff;border-radius:26px;text-decoration:none;font-family:var(--font-tit);text-transform:uppercase;font-size:.9rem;}
+</style>
+</head>
+<body>
+
+<div id="site-header"></div>
+
+<main class="wrap cuenta-wrap">
+  <div class="cuenta-box" id="cajaRecuperar">
+    <h2>Pon una contraseña nueva</h2>
+    <p class="sub">Elige una contraseña de al menos 8 caracteres.</p>
+    <form id="formNueva" novalidate>
+      <label for="nuevaPassword">Nueva contraseña</label>
+      <input type="password" id="nuevaPassword" required minlength="8" autocomplete="new-password">
+      <button type="submit" id="btnNueva">Guardar contraseña</button>
+    </form>
+    <p id="msgNueva" class="cuenta-msg"></p>
+  </div>
+</main>
+
+<div id="site-footer"></div>
+
+<script src="js/ui-alertas.js?v=4"></script>
+<script src="js/config.js?v=15"></script>
+<script src="js/lector-auth.js?v=13"></script>
+<script src="js/layout.js?v=6"></script>
+<script src="js/cookies.js?v=1"></script>
+<script src="js/ads.js?v=1"></script>
+<script src="js/main.js?v=10"></script>
+<script>
+const TOKEN_RECUPERAR = new URLSearchParams(location.search).get("token");
+if (!TOKEN_RECUPERAR) {
+  document.getElementById("cajaRecuperar").innerHTML = `<div class="icono-estado">⚠️</div><h2>Enlace incompleto</h2><p class="sub">Falta el código en el enlace. Pide uno nuevo desde "He olvidado mi contraseña".</p><a class="btn-volver" href="acceso.html">Ir a mi cuenta</a>`;
+}
+
+document.getElementById("formNueva")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById("btnNueva");
+  const nueva = document.getElementById("nuevaPassword").value;
+  const msg = document.getElementById("msgNueva");
+  msg.style.display = "none";
+  btn.disabled = true;
+  try {
+    const res = await apiFetch("/api/readers/forgot-password/confirmar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: TOKEN_RECUPERAR, nueva }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "No se ha podido cambiar la contraseña");
+    document.getElementById("cajaRecuperar").innerHTML = `<div class="icono-estado">✅</div><h2>Contraseña actualizada</h2><p class="sub">Ya puedes iniciar sesión con tu nueva contraseña.</p><a class="btn-volver" href="acceso.html">Iniciar sesión</a>`;
+  } catch (err) {
+    msg.textContent = err.message;
+    msg.className = "cuenta-msg cuenta-msg-error";
+    btn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>

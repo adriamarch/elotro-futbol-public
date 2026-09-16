@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<script src="js/tema.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="pageTitle">ELOTROFÚTBOLTV — Noticias del fútbol no profesional</title>
+<meta name="description" content="Crónicas, noticias y resultados de LaLiga Hypermotion, Primera y Segunda Federación.">
+<link rel="canonical" href="https://elotrofutbol.media/">
+<link rel="icon" href="/favicon.ico?v=2" sizes="any">
+<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=2">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&family=Playfair+Display:wght@700;800&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css?v=16">
+</head>
+<body data-page="inicio">
+
+<div id="site-header"></div>
+
+<main class="wrap">
+
+  <div id="ad-cabecera-home"></div>
+
+  <section class="hero" id="hero">
+    <div class="estado-info"><div class="spinner"></div><p>Cargando lo último...</p></div>
+  </section>
+
+  <div class="section-title-row">
+    <h2 class="section-title">Noticias recientes</h2>
+  </div>
+  <div id="grid-categoria-home"></div>
+
+  <section class="encuestas-portada" id="seccion-encuestas-portada" hidden></section>
+
+  <section class="resultados-home" id="seccion-en-vivo-home" hidden>
+    <h2 class="section-title section-title-en-vivo"><span class="en-vivo-punto"></span>Partidos en vivo</h2>
+    <div id="en-vivo-home"></div>
+  </section>
+
+  <section class="resultados-home" id="seccion-proximos-home">
+    <h2 class="section-title">Próximos partidos</h2>
+    <div id="proximos-home"></div>
+    <a href="calendario.html" class="ver-resultados-link">Ver todo el calendario →</a>
+  </section>
+
+  <section class="resultados-home" id="seccion-resultados-home">
+    <h2 class="section-title">Últimos resultados</h2>
+    <div id="resultados-home"></div>
+    <a href="calendario.html" class="ver-resultados-link">Ver todos los resultados →</a>
+  </section>
+
+  <section class="redes-section" id="seccion-redes">
+    <h3>Síguenos</h3>
+    <div class="redes-icons" id="redes-icons-portada"></div>
+  </section>
+
+  <div id="ad-pie-home"></div>
+
+</main>
+
+<!-- Modal de detalle del partido: goles, tarjetas y minutos. Se abre al
+     hacer clic en cualquier partido de "Últimos resultados". -->
+<div id="modalPartido" class="modal-partido" aria-hidden="true">
+  <div class="modal-partido-fondo" onclick="cerrarModalPartido()"></div>
+  <div class="modal-partido-caja" role="dialog" aria-modal="true" aria-labelledby="modalPartidoTitulo">
+    <button type="button" class="modal-partido-cerrar" onclick="cerrarModalPartido()" aria-label="Cerrar">✕</button>
+    <div class="modal-partido-cabecera">
+      <div class="modal-partido-equipo">
+        <img id="modalEscudoLocal" class="modal-partido-escudo" src="" alt="" loading="lazy">
+        <span id="modalNombreLocal" class="modal-partido-nombre"></span>
+      </div>
+      <div class="modal-partido-marcador">
+        <span id="modalMarcador"></span>
+        <span id="modalEstado" class="modal-partido-estado"></span>
+      </div>
+      <div class="modal-partido-equipo">
+        <img id="modalEscudoVisitante" class="modal-partido-escudo" src="" alt="" loading="lazy">
+        <span id="modalNombreVisitante" class="modal-partido-nombre"></span>
+      </div>
+    </div>
+    <p id="modalPartidoTitulo" class="modal-partido-subtitulo"></p>
+    <a id="modalEnlaceFlashscore" class="enlace-flashscore" href="" target="_blank" rel="noopener noreferrer" hidden>Ver en Flashscore<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></a>
+    <a id="modalEnlaceMinutoAMinuto" class="enlace-minuto-a-minuto" href="" hidden><span class="en-vivo-punto"></span>Minuto a minuto<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></a>
+    <div id="modalNoticiasVinculadas" class="modal-noticias-vinculadas" hidden></div>
+    <div id="modalPartidoMvp" class="modal-partido-mvp" hidden></div>
+    <div id="modalPartidoAlineaciones" class="modal-partido-alineaciones"></div>
+    <div id="modalPartidoEventos" class="modal-partido-eventos"></div>
+  </div>
+</div>
+
+<div id="site-footer"></div>
+
+<script src="js/ui-alertas.js?v=4"></script>
+<script src="js/config.js?v=15"></script>
+<script src="js/seo.js?v=4"></script>
+<script src="js/clubs.js?v=4"></script>
+<script src="js/lector-auth.js?v=13"></script>
+<script src="js/encuestas.js?v=2"></script>
+<script src="js/layout.js?v=6"></script>
+<script src="js/partidos.js?v=9"></script>
+<script src="js/main.js?v=10"></script>
+<script src="js/cookies.js?v=1"></script>
+<script src="js/ads.js?v=1"></script>
+<script>
+fijarSeoBasico({
+  titulo: "ELOTROFÚTBOLTV — Noticias del fútbol no profesional",
+  descripcion: "Crónicas, noticias y resultados de LaLiga Hypermotion, Primera y Segunda Federación.",
+  urlPath: "/",
+  tipo: "website",
+});
+document.getElementById("ad-cabecera-home").innerHTML = adSlot("cabecera");
+document.getElementById("ad-pie-home").innerHTML = adSlot("pie");
+</script>
+</body>
+</html>
