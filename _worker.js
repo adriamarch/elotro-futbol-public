@@ -544,11 +544,28 @@ async function servirNoticiaConSeo(noticiaRequest, env, slug, idiomaQuery, esBot
     obtenerArticuloParaSeo(slug),
   ]);
 
-  // Sin artículo (no existe, todavía programada, o la API no respondió a
-  // tiempo): se sirve el HTML normal, tal cual, para que la lógica de
-  // cliente (mensaje de error, cuenta atrás de programada, o el propio
-  // seo.js como respaldo) siga funcionando exactamente igual que antes.
-  if (!article || respuestaAssets.status !== 200) return respuestaAssets;
+  // Sin artículo: puede ser que no exista, que la API no haya respondido
+  // a tiempo (timeout de 3s en obtenerArticuloParaSeo), o que esté
+  // programada para publicarse más tarde. Antes, en TODOS estos casos se
+  // servía noticia.html tal cual con status 200 -- incluyendo el caso de
+  // slug inexistente, donde el HTML quedaba con el placeholder
+  // "Cargando..." sin datos, sin JS del lado servidor que lo rellenara,
+  // ni un status 404 real. Eso hacía que Google, otros bots, y cualquier
+  // comprobación automática de enlaces rotos vieran un 200 "vacío" en
+  // vez de un 404, y que el 404.html personalizado del sitio NUNCA se
+  // sirviera para noticias inexistentes.
+  //
+  // No se puede distinguir aquí "no existe" de "timeout de la API" (la
+  // función obtenerArticuloParaSeo colapsa ambos casos a `null` a
+  // propósito, ver su comentario), así que en caso de duda se deja pasar
+  // sin togar SOLO si la respuesta de assets ya no fue 200 (por ejemplo
+  // si noticia.html no existiera). Si assets sí dio 200 pero no hay
+  // artículo, se entiende que el slug no es válido y se sirve el 404
+  // real del sitio en vez de la plantilla vacía.
+  if (respuestaAssets.status !== 200) return respuestaAssets;
+  if (!article) {
+    return servir404Real(env, noticiaRequest.url);
+  }
 
   const contentType = respuestaAssets.headers.get("Content-Type") || "";
   if (!contentType.includes("text/html")) return respuestaAssets;
@@ -572,6 +589,63 @@ async function servirNoticiaConSeo(noticiaRequest, env, slug, idiomaQuery, esBot
   // fuera genérico.
   headers.set("Cache-Control", "no-store");
   return new Response(htmlFinal, { status: respuestaAssets.status, headers });
+}
+
+// Sirve la plantilla real 404.html con status 404 real, de forma
+// robusta ante los dos fallos observados en producción al pedirla vía
+// env.ASSETS.fetch() desde DENTRO de un worker con run_worker_first:
+//   1) A veces env.ASSETS.fetch() no lanza excepción, pero devuelve un
+//      body VACÍO (0 bytes) con status 404 y una cabecera "Location"
+//      colgada (redirección interna de Cloudflare a la ruta canónica
+//      "/404" que nunca llega a resolverse en contenido real). Un 404
+//      con body vacío es justo lo que hace que el navegador muestre SU
+//      PROPIA pantalla de error genérica en vez de nuestra página.
+//   2) A veces env.ASSETS.fetch() lanza directamente (promesa
+//      rechazada), lo que sin captura reventaría el propio Worker.
+// Por eso aquí se lee el body como texto y se comprueba que tenga
+// contenido real antes de darlo por bueno; si está vacío o falla, se
+// genera un 404 de emergencia en el propio worker (mismo patrón que
+// paginaMantenimientoSitio) para no depender en absoluto de que
+// ASSETS.fetch se comporte bien con la ruta /404.html.
+async function servir404Real(env, baseUrlComoTexto) {
+  try {
+    const notFoundUrl = new URL("/404.html", baseUrlComoTexto);
+    // Petición GET limpia y nueva, sin heredar cabeceras/método de la
+    // request original (mismo motivo que en el modo mantenimiento: no
+    // arriesgarse a que ASSETS.fetch se confunda con algo de la
+    // petición real, p.ej. condicionales If-None-Match que devuelvan
+    // un 304 sin body).
+    const respuesta404 = await env.ASSETS.fetch(notFoundUrl.toString());
+    const texto = await respuesta404.text();
+    if (texto && texto.trim().length > 0) {
+      const headers = new Headers(respuesta404.headers);
+      // Quitamos cualquier "Location" que ASSETS.fetch pudiera haber
+      // colado (visto en producción: 404 con Location: /404 colgada) —
+      // en una respuesta 404 esa cabecera no pinta nada y algunos
+      // clientes/proxies pueden comportarse de forma rara con ella.
+      headers.delete("Location");
+      headers.set("Content-Type", "text/html; charset=utf-8");
+      headers.set("Cache-Control", "no-store");
+      return new Response(texto, { status: 404, headers });
+    }
+  } catch {
+    // Sigue abajo al fallback de emergencia.
+  }
+  // Fallback de emergencia: si ni siquiera se pudo leer un 404.html con
+  // contenido real, se genera aquí mismo un HTML mínimo pero con marca
+  // del sitio, en vez de dejar que el navegador muestre su propia
+  // pantalla de error genérica sobre un body vacío.
+  return new Response(
+    `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+<title>Página no encontrada — ELOTROFÚTBOLTV</title>
+<meta name="robots" content="noindex"></head>
+<body style="font-family:sans-serif;text-align:center;padding:60px 20px">
+<h1>404 — Fuera de juego</h1>
+<p>La página que buscas no existe, se ha movido o el enlace es incorrecto.</p>
+<p><a href="/index.html">Ir a portada</a></p>
+</body></html>`,
+    { status: 404, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } }
+  );
 }
 
 export default {
@@ -663,6 +737,25 @@ export default {
       return servirNoticiaConSeo(noticiaRequest, env, slug, noticiaUrl.searchParams.get("lang"), esBot);
     }
 
+    // --- URL bonita: /galeria/{slug} -> sirve galeria.html ---
+    // Mismo patrón que /futbol/{categoria}/{slug} de arriba: se reescribe
+    // internamente hacia "/galeria" (sin extensión, mismo motivo de la
+    // ruta canónica de Pages explicado arriba) con el slug como query
+    // param, sin redirigir el navegador. galeria.html lee el slug de la
+    // URL real que le llega (searchParams o, si faltara, del propio
+    // pathname) así que no hace falta tocarlo aquí. A diferencia de la
+    // noticia, esta ruta no lleva SEO renderizado en servidor (Fase 2 no
+    // lo pedía): el título/descripción se fijan por JS con fijarSeoBasico
+    // una vez cargados los datos del partido, igual que en resultados.html.
+    const matchGaleria = path.match(/^\/galeria\/([^/]+)\/?$/);
+    if (matchGaleria && request.method === "GET") {
+      const slug = decodeURIComponent(matchGaleria[1]);
+      const galeriaUrl = new URL("/galeria", url);
+      galeriaUrl.searchParams.set("slug", slug);
+      const galeriaRequest = new Request(galeriaUrl.toString(), request);
+      return env.ASSETS.fetch(galeriaRequest);
+    }
+
     // --- Formato antiguo /noticia.html?slug=... o /noticia?slug=...,
     // servido tal cual (SIN redirigir a la URL bonita): igual que en el
     // caso anterior, se le inyecta el SEO en servidor antes de servirlo.
@@ -697,6 +790,14 @@ export default {
     // env.ASSETS.fetch() con el _headers "global" (el que NO tiene
     // api.elotrofutbol.media en frame-src). Por eso hay que cubrir las
     // dos variantes de la ruta.
+    //
+    // OJO 2: el dominio que hay que permitir en frame-src es
+    // "elotrofutbol.media" (el sitio en sí, que se auto-embebe para la
+    // vista previa), NO "api.elotrofutbol.media" (el backend de la
+    // API) — ese último no sirve ningún HTML embebible. Se había
+    // escrito el subdominio equivocado, así que el navegador seguía
+    // bloqueando el iframe con ERR_BLOCKED_BY_CSP aun después de
+    // "arreglar" esta ruta.
     if ((path === "/widgets.html" || path === "/widgets") && request.method === "GET") {
       const respuesta = await env.ASSETS.fetch(request);
       const nuevas = new Headers(respuesta.headers);
@@ -709,8 +810,64 @@ export default {
       nuevas.delete("Content-Security-Policy");
       nuevas.set(
         "Content-Security-Policy",
-        "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://accounts.google.com https://alcdn.msauth.net https://platform.twitter.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://api.elotrofutbol.media https://elotro-futbol-api-production.up.railway.app https://accounts.google.com https://login.microsoftonline.com; frame-src https://accounts.google.com https://api.elotrofutbol.media https://platform.twitter.com https://syndication.twitter.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests"
+        "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://accounts.google.com https://alcdn.msauth.net https://platform.twitter.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://api.elotrofutbol.media https://elotro-futbol-api-production.up.railway.app https://accounts.google.com https://login.microsoftonline.com; frame-src https://accounts.google.com https://elotrofutbol.media https://platform.twitter.com https://syndication.twitter.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests"
       );
+      return new Response(respuesta.body, { status: respuesta.status, headers: nuevas });
+    }
+
+    // --- /workspace.html: mismo problema y mismo motivo que
+    // /widgets.html justo arriba (public/_headers no se aplica en
+    // rutas que pasan por este Worker), pero aquí el iframe que se
+    // auto-embebe es panel.html dentro del propio workspace (una
+    // pestaña de trabajo por panel abierto), no una vista previa de
+    // widget. Sin esto, workspace.html salía por env.ASSETS.fetch()
+    // más abajo con la CSP "global" de _headers (sin el propio dominio
+    // en frame-src) y el navegador bloqueaba esos iframes con
+    // ERR_BLOCKED_BY_CSP.
+    if ((path === "/workspace.html" || path === "/workspace") && request.method === "GET") {
+      const respuesta = await env.ASSETS.fetch(request);
+      const nuevas = new Headers(respuesta.headers);
+      nuevas.delete("Content-Security-Policy");
+      nuevas.set(
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://accounts.google.com https://alcdn.msauth.net https://platform.twitter.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://api.elotrofutbol.media https://elotro-futbol-api-production.up.railway.app https://accounts.google.com https://login.microsoftonline.com; frame-src 'self' https://accounts.google.com https://platform.twitter.com https://syndication.twitter.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests"
+      );
+      return new Response(respuesta.body, { status: respuesta.status, headers: nuevas });
+    }
+
+    // --- /admin/workspace.html y /admin/panel.html: existe TAMBIÉN una
+    // copia real del workspace y del panel bajo /admin/ en el servidor
+    // (descubierto porque el enlace "Abrir workspace" de /panel.html
+    // llevaba en producción a esta copia, no a /workspace.html en la
+    // raíz). Su iframe.src relativo ("panel.html") sí resuelve bien
+    // AQUÍ, a /admin/panel.html -- pero como ninguna regla de arriba
+    // cubría el prefijo /admin/, ambas rutas seguían saliendo con la
+    // CSP/X-Frame-Options restrictivas de "/*" y el navegador bloqueaba
+    // el framing. Mismo tratamiento que /workspace.html y /widgets.html
+    // arriba, con frame-ancestors 'self' para panel.html (que es el
+    // que se deja embeber) y frame-src 'self' para workspace.html (que
+    // es el que embebe).
+    if ((path === "/admin/workspace.html" || path === "/admin/workspace") && request.method === "GET") {
+      const respuesta = await env.ASSETS.fetch(request);
+      const nuevas = new Headers(respuesta.headers);
+      nuevas.delete("Content-Security-Policy");
+      nuevas.set(
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://accounts.google.com https://alcdn.msauth.net https://platform.twitter.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://api.elotrofutbol.media https://elotro-futbol-api-production.up.railway.app https://accounts.google.com https://login.microsoftonline.com; frame-src 'self' https://accounts.google.com https://platform.twitter.com https://syndication.twitter.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests"
+      );
+      return new Response(respuesta.body, { status: respuesta.status, headers: nuevas });
+    }
+
+    if ((path === "/admin/panel.html" || path === "/admin/panel") && request.method === "GET") {
+      const respuesta = await env.ASSETS.fetch(request);
+      const nuevas = new Headers(respuesta.headers);
+      nuevas.delete("Content-Security-Policy");
+      nuevas.delete("X-Frame-Options");
+      nuevas.set(
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://accounts.google.com https://alcdn.msauth.net https://platform.twitter.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://api.elotrofutbol.media https://elotro-futbol-api-production.up.railway.app https://accounts.google.com https://login.microsoftonline.com; frame-src https://accounts.google.com https://platform.twitter.com https://syndication.twitter.com; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'; upgrade-insecure-requests"
+      );
+      nuevas.set("X-Frame-Options", "SAMEORIGIN");
       return new Response(respuesta.body, { status: respuesta.status, headers: nuevas });
     }
 
@@ -720,6 +877,29 @@ export default {
     // bucle) hacia la versión sin extensión, que es normal y esperado
     // bajo "auto-trailing-slash": no es cosa nuestra ni hay que evitarlo
     // aquí. ---
-    return env.ASSETS.fetch(request);
+    // IMPORTANTE: env.ASSETS.fetch() puede LANZAR (rechazar la promesa)
+    // o devolver un 404 con body VACÍO (0 bytes) en vez de servir
+    // realmente 404.html -- ambos comportamientos han sido observados
+    // en producción con run_worker_first + not_found_handling:
+    // "404-page" llamado desde dentro del propio Worker. Un 404 con
+    // body vacío es indistinguible para el navegador de "no hay
+    // contenido", y ahí es donde Chrome/el navegador mete su PROPIA
+    // pantalla de error genérica en vez de la nuestra -- eso era
+    // exactamente lo que se estaba viendo. Por eso ya no se confía en
+    // que este fetch, si da 404, traiga ya el body bueno: se comprueba
+    // explícitamente y, si no, se fuerza servir404Real() (que sí lee el
+    // body y tiene su propio fallback de emergencia).
+    let respuestaFinal;
+    try {
+      respuestaFinal = await env.ASSETS.fetch(request);
+    } catch {
+      respuestaFinal = new Response(null, { status: 404 });
+    }
+
+    if (respuestaFinal.status === 404) {
+      return servir404Real(env, url.toString());
+    }
+
+    return respuestaFinal;
   },
 };

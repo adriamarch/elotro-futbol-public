@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<!-- <base href="/"> tiene que ir aquí, antes que cualquier recurso con
+     ruta relativa (incluido el <script> de justo debajo). Es necesario
+     porque public/_worker.js sirve este mismo archivo bajo la URL
+     bonita /galeria/{slug} (un nivel bajo la raíz): sin esto,
+     "js/tema.js", "css/style.css", etc. se resolverían contra
+     /galeria/ en vez de contra la raíz del sitio, y todo el CSS/JS de
+     la página daría 404 (mismo problema ya resuelto así en
+     noticia.html, que se sirve igual bajo /futbol/categoria/slug). Con
+     <base href="/"> toda ruta relativa de esta página se resuelve
+     siempre contra la raíz, se sirva la página desde donde se sirva. -->
+<base href="/">
+<script src="js/tema.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="pageTitle">Galería del partido — ELOTROFÚTBOLTV</title>
+<meta name="description" content="Fotos del partido, organizadas por equipo.">
+<link rel="canonical" id="canonicalGaleria" href="https://elotrofutbol.media/galeria.html">
+<link rel="icon" href="/favicon.ico?v=2" sizes="any">
+<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=2">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css?v=16">
+<style>
+  /* ---------- GALERÍA DE PARTIDO PÚBLICA ----------
+     Mismo lenguaje visual que minuto-a-minuto.html: cabecera tipo
+     marcador de retransmisión (fondo marino de marca, escudos, marcador
+     en Oswald) para que quien llegue por el enlace compartido reconozca
+     enseguida de qué partido es la galería, y debajo, pestañas por
+     equipo + grid de fotos con lightbox. */
+
+  body[data-page="galeria"]{background:var(--fondo-alt);}
+
+  .gal-cabecera{
+    background:linear-gradient(160deg, var(--marino) 0%, var(--marino2) 100%);
+    color:#fff;padding:20px 0 26px;position:relative;overflow:hidden;
+    box-shadow:0 6px 22px rgba(12,27,46,.22);
+  }
+  /* Textura sutil de fondo (líneas de campo estilizadas), solo
+     decorativa, para que la cabecera no quede como un bloque de color
+     plano; muy tenue para no competir con escudos/marcador. */
+  .gal-cabecera::before{
+    content:"";position:absolute;inset:0;pointer-events:none;opacity:.05;
+    background-image:radial-gradient(circle at 15% 20%, #fff 0, transparent 45%),
+      radial-gradient(circle at 85% 80%, #fff 0, transparent 45%);
+  }
+  .gal-cabecera-inner{max-width:760px;margin:0 auto;padding:0 20px;position:relative;}
+  .gal-breadcrumb{
+    display:flex;align-items:center;gap:6px;font-size:.72rem;
+    color:var(--celeste-claro);text-decoration:none;font-weight:600;
+    letter-spacing:.03em;text-transform:uppercase;margin-bottom:18px;width:fit-content;
+    transition:gap .15s ease;
+  }
+  .gal-breadcrumb:hover{color:#fff;gap:9px;}
+  .gal-breadcrumb svg{width:13px;height:13px;transform:rotate(180deg);flex-shrink:0;}
+
+  .gal-marcador-fila{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;}
+  .gal-equipo{display:flex;flex-direction:column;align-items:center;gap:9px;min-width:0;}
+  .gal-escudo{width:54px;height:54px;object-fit:contain;filter:drop-shadow(0 3px 8px rgba(0,0,0,.3));}
+  .gal-nombre{
+    font-family:var(--font-tit);font-weight:600;font-size:.85rem;text-align:center;
+    line-height:1.2;letter-spacing:.01em;max-width:140px;
+  }
+  .gal-centro{display:flex;flex-direction:column;align-items:center;gap:8px;padding:0 8px;}
+  .gal-marcador{
+    font-family:var(--font-tit);font-size:2.1rem;font-weight:700;line-height:1;
+    letter-spacing:.02em;white-space:nowrap;font-variant-numeric:tabular-nums;
+  }
+  .gal-marcador small{font-size:.62rem;font-weight:500;color:var(--celeste-claro);letter-spacing:.02em;}
+  .gal-meta{
+    font-size:.68rem;font-weight:600;letter-spacing:.04em;color:var(--celeste-claro);
+    text-align:center;text-transform:uppercase;display:flex;align-items:center;justify-content:center;gap:8px;
+  }
+  .gal-meta-punto{width:3px;height:3px;border-radius:50%;background:currentColor;opacity:.6;flex-shrink:0;}
+  .gal-titulo-pagina{
+    font-family:var(--font-tit);font-size:1.05rem;font-weight:600;margin:18px 0 0;
+    text-align:center;color:#fff;display:flex;align-items:center;justify-content:center;gap:9px;
+  }
+  .gal-titulo-pagina svg{width:18px;height:18px;color:var(--celeste-claro);flex-shrink:0;}
+
+  .gal-wrap{max-width:760px;margin:0 auto;padding:26px 20px 60px;}
+
+  .gal-pestanas{
+    display:flex;gap:4px;flex-wrap:wrap;margin-bottom:22px;
+    background:var(--tarjeta);padding:5px;border-radius:14px;border:1px solid var(--borde);box-shadow:var(--sombra);
+    transition:background .2s ease, border-color .2s ease;
+  }
+  .gal-pestana{
+    appearance:none;border:none;background:transparent;cursor:pointer;flex:1;
+    padding:9px 14px;font-family:var(--font-text);font-weight:600;font-size:.83rem;
+    color:var(--texto-suave);border-radius:10px;
+    display:flex;align-items:center;justify-content:center;gap:7px;transition:color .15s ease,background .15s ease;
+  }
+  .gal-pestana:hover{color:var(--marino-texto);background:var(--fondo-alt);}
+  .gal-pestana.activa{color:#fff;background:linear-gradient(135deg, var(--marino), var(--marino2));box-shadow:0 3px 10px rgba(12,27,46,.28);}
+  .gal-pestana .gal-pestana-escudo{width:17px;height:17px;object-fit:contain;flex-shrink:0;}
+  .gal-pestana .gal-contador{
+    background:var(--gris-claro);color:var(--texto-suave);font-size:.7rem;font-weight:700;
+    border-radius:999px;padding:2px 8px;min-width:20px;text-align:center;
+  }
+  .gal-pestana.activa .gal-contador{background:rgba(255,255,255,.22);color:#fff;}
+
+  .gal-grid{
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px;
+  }
+  .gal-item{
+    position:relative;aspect-ratio:4/3;border-radius:14px;overflow:hidden;
+    cursor:pointer;background:linear-gradient(135deg,var(--marino),var(--marino2));
+    border:1px solid var(--borde);box-shadow:0 2px 10px rgba(12,27,46,.08);
+    transition:transform .22s cubic-bezier(.2,.8,.2,1), box-shadow .22s ease, border-color .22s ease;
+    animation:apareceGalItem .3s ease both;
+  }
+  @keyframes apareceGalItem{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+  .gal-item:hover{transform:translateY(-3px);box-shadow:0 14px 28px rgba(12,27,46,.22);border-color:rgba(91,184,232,.45);}
+  [data-theme="dark"] .gal-item{box-shadow:0 2px 10px rgba(0,0,0,.35);}
+  [data-theme="dark"] .gal-item:hover{box-shadow:0 16px 32px rgba(0,0,0,.55);}
+  .gal-item img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .5s cubic-bezier(.2,.8,.2,1);}
+  .gal-item video{width:100%;height:100%;object-fit:cover;display:block;transition:transform .5s cubic-bezier(.2,.8,.2,1);}
+  .gal-item:hover img{transform:scale(1.07);}
+  .gal-item:hover video{transform:scale(1.07);}
+  .gal-item::after{
+    content:"";position:absolute;left:0;right:0;bottom:0;height:52%;
+    background:linear-gradient(to top, rgba(6,16,28,.68), rgba(6,16,28,0));
+    pointer-events:none;
+  }
+  .gal-item .gal-badge-tipo{
+    position:absolute;top:9px;left:9px;z-index:1;width:26px;height:26px;border-radius:50%;
+    background:rgba(6,16,28,.55);backdrop-filter:blur(3px);border:1px solid rgba(255,255,255,.16);
+    display:flex;align-items:center;justify-content:center;
+  }
+  .gal-item .gal-badge-tipo svg{width:13px;height:13px;stroke:#fff;fill:none;stroke-width:2;}
+  .gal-item .gal-play{
+    position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:1;
+    width:46px;height:46px;border-radius:50%;background:rgba(6,16,28,.4);
+    display:flex;align-items:center;justify-content:center;
+    border:1.5px solid rgba(255,255,255,.55);backdrop-filter:blur(4px);
+    box-shadow:0 6px 18px rgba(0,0,0,.35);
+    transition:background .2s ease, transform .2s ease, border-color .2s ease;
+  }
+  .gal-item:hover .gal-play{background:var(--rojo);border-color:var(--rojo);transform:translate(-50%,-50%) scale(1.1);}
+  .gal-item .gal-play svg{width:17px;height:17px;fill:#fff;margin-left:2px;}
+  .gal-item .gal-credito{
+    position:absolute;left:0;right:0;bottom:0;padding:8px 10px;font-size:.7rem;font-weight:600;
+    color:#fff;z-index:1;letter-spacing:.01em;
+    opacity:0;transform:translateY(4px);transition:opacity .2s ease,transform .2s ease;
+  }
+  .gal-item:hover .gal-credito{opacity:1;transform:translateY(0);}
+
+  .gal-vacio{
+    text-align:center;color:var(--texto-suave);padding:60px 20px;font-size:.92rem;
+    background:var(--tarjeta);border:1px solid var(--borde);border-radius:16px;
+  }
+  .gal-vacio svg{width:40px;height:40px;color:var(--borde);margin-bottom:14px;}
+  [data-theme="dark"] .gal-vacio svg{color:var(--borde);}
+
+  /* Skeleton de carga: siluetas animadas en vez de un simple texto, para
+     que la página no parezca "vacía" el instante antes de recibir los
+     datos de la API. */
+  .gal-skeleton-cabecera{display:flex;flex-direction:column;align-items:center;gap:14px;}
+  .gal-skel{background:rgba(255,255,255,.14);border-radius:10px;position:relative;overflow:hidden;}
+  .gal-skel::after{
+    content:"";position:absolute;inset:0;transform:translateX(-100%);
+    background:linear-gradient(90deg, transparent, rgba(255,255,255,.18), transparent);
+    animation:galSkelBrillo 1.4s ease-in-out infinite;
+  }
+  @keyframes galSkelBrillo{100%{transform:translateX(100%);}}
+  .gal-grid-skeleton{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px;}
+  .gal-grid-skeleton .gal-skel{aspect-ratio:4/3;border-radius:14px;background:var(--gris-claro);border:1px solid var(--borde);}
+  .gal-grid-skeleton .gal-skel::after{background:linear-gradient(90deg, transparent, rgba(0,0,0,.05), transparent);}
+  [data-theme="dark"] .gal-grid-skeleton .gal-skel::after{background:linear-gradient(90deg, transparent, rgba(255,255,255,.06), transparent);}
+
+  /* Lightbox */
+  .gal-lightbox{
+    position:fixed;inset:0;z-index:80;display:none;align-items:center;justify-content:center;
+    background:rgba(6,12,20,.94);padding:20px;backdrop-filter:blur(6px);
+  }
+  .gal-lightbox.abierto{display:flex;animation:galLightboxFade .18s ease both;}
+  @keyframes galLightboxFade{from{opacity:0;}to{opacity:1;}}
+  .gal-lightbox-media{max-width:min(92vw,920px);max-height:80vh;display:flex;flex-direction:column;gap:12px;align-items:center;}
+  .gal-lightbox-media img, .gal-lightbox-media video{
+    max-width:100%;max-height:72vh;border-radius:10px;object-fit:contain;
+    box-shadow:0 20px 60px rgba(0,0,0,.5);animation:galLightboxMediaIn .2s ease both;
+  }
+  @keyframes galLightboxMediaIn{from{opacity:0;transform:scale(.97);}to{opacity:1;transform:scale(1);}}
+  .gal-lightbox-info{display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;}
+  .gal-lightbox-credito{color:#e7eaf0;font-size:.84rem;font-weight:600;}
+  .gal-lightbox-contador{color:#8a96a8;font-size:.72rem;font-weight:600;letter-spacing:.03em;}
+  .gal-lightbox-cerrar, .gal-lightbox-nav{
+    position:absolute;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);
+    color:#fff;border-radius:50%;width:42px;height:42px;display:flex;align-items:center;
+    justify-content:center;cursor:pointer;transition:background .15s ease,transform .15s ease,border-color .15s ease;
+  }
+  .gal-lightbox-cerrar:hover, .gal-lightbox-nav:hover{background:var(--celeste);border-color:var(--celeste);transform:scale(1.06);}
+  .gal-lightbox-cerrar{top:18px;right:18px;}
+  .gal-lightbox-nav svg, .gal-lightbox-cerrar svg{width:19px;height:19px;stroke:#fff;fill:none;stroke-width:2;}
+  .gal-lightbox-prev{left:14px;top:50%;transform:translateY(-50%);}
+  .gal-lightbox-next{right:14px;top:50%;transform:translateY(-50%);}
+  .gal-lightbox-prev:hover, .gal-lightbox-next:hover{transform:translateY(-50%) scale(1.06);}
+
+  @media (max-width:640px){
+    .gal-pestana{padding:8px 10px;font-size:.78rem;}
+  }
+  @media (max-width:520px){
+    .gal-marcador{font-size:1.7rem;}
+    .gal-escudo{width:44px;height:44px;}
+    .gal-nombre{font-size:.76rem;max-width:100px;}
+    .gal-lightbox-nav{width:36px;height:36px;}
+    .gal-lightbox-cerrar{width:36px;height:36px;top:12px;right:12px;}
+    .gal-lightbox-prev{left:8px;}
+    .gal-lightbox-next{right:8px;}
+    .gal-grid, .gal-grid-skeleton{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;}
+  }
+</style>
+</head>
+<body data-page="galeria">
+
+<div id="site-header"></div>
+
+<header class="gal-cabecera">
+  <div class="gal-cabecera-inner">
+    <a href="galerias.html" class="gal-breadcrumb">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+      Ver todas las fotos
+    </a>
+    <div id="galCabeceraDatos">
+      <div class="gal-skeleton-cabecera">
+        <div class="gal-skel" style="width:70%;height:54px;border-radius:12px;"></div>
+        <div class="gal-skel" style="width:40%;height:14px;"></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="gal-wrap">
+  <div id="galContenido">
+    <div class="gal-grid-skeleton">
+      <div class="gal-skel"></div>
+      <div class="gal-skel"></div>
+      <div class="gal-skel"></div>
+      <div class="gal-skel"></div>
+      <div class="gal-skel"></div>
+      <div class="gal-skel"></div>
+    </div>
+  </div>
+</main>
+
+<div id="site-footer"></div>
+
+<div class="gal-lightbox" id="galLightbox">
+  <button type="button" class="gal-lightbox-cerrar" onclick="cerrarLightbox()" aria-label="Cerrar">
+    <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+  </button>
+  <button type="button" class="gal-lightbox-nav gal-lightbox-prev" onclick="moverLightbox(-1)" aria-label="Anterior">
+    <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+  </button>
+  <button type="button" class="gal-lightbox-nav gal-lightbox-next" onclick="moverLightbox(1)" aria-label="Siguiente">
+    <svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+  </button>
+  <div class="gal-lightbox-media" id="galLightboxMedia"></div>
+</div>
+
+<script src="js/ui-alertas.js?v=4"></script>
+<script src="js/config.js?v=15"></script>
+<script src="js/seo.js?v=4"></script>
+<script src="js/clubs.js?v=4"></script>
+<script src="js/layout.js?v=6"></script>
+<script src="js/cookies.js?v=1"></script>
+<script src="js/ads.js?v=1"></script>
+<script>
+function escapeHtml(str) {
+  return String(str ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+const slugGaleria = new URLSearchParams(location.search).get("slug") || location.pathname.split("/galeria/")[1];
+
+let GRUPOS_GALERIA = {};
+let ORDEN_PESTANAS = [];
+let PESTANA_ACTIVA = null;
+let LIGHTBOX_INDICE = -1;
+
+function marcadorTexto(p) {
+  if (p.estado === "programado") return "vs";
+  const local = p.goles_local ?? "-";
+  const visitante = p.goles_visitante ?? "-";
+  let texto = `${local} - ${visitante}`;
+  if (p.penaltis_local !== null && p.penaltis_local !== undefined) {
+    texto += ` <small>(${p.penaltis_local}-${p.penaltis_visitante} p.)</small>`;
+  }
+  return texto;
+}
+
+async function cargaGaleria() {
+  const cont = document.getElementById("galContenido");
+  if (!slugGaleria) {
+    cont.innerHTML = estadoVacioHTML("Galería no encontrada", "El enlace no parece válido.");
+    return;
+  }
+  try {
+    const res = await apiFetch(`/api/results/galeria/${encodeURIComponent(slugGaleria)}`);
+    if (!res.ok) {
+      cont.innerHTML = estadoVacioHTML("Galería no encontrada", "Puede que el enlace sea antiguo o que la galería ya no exista.");
+      return;
+    }
+    const { partido, grupos } = await res.json();
+    GRUPOS_GALERIA = grupos || {};
+    pintarCabecera(partido);
+    pintarPestanas();
+  } catch (err) {
+    cont.innerHTML = estadoVacioHTML("No se ha podido cargar", "Ha habido un problema de conexión. Inténtalo de nuevo.");
+  }
+}
+
+function pintarCabecera(p) {
+  const cont = document.getElementById("galCabeceraDatos");
+  const urlLocal = getEscudoUrl(p.equipo_local, p.escudo_local_url);
+  const urlVisitante = getEscudoUrl(p.equipo_visitante, p.escudo_visitante_url);
+  const meta = [
+    p.jornada ? "Jornada " + p.jornada : null,
+    p.fecha_partido ? new Date(p.fecha_partido).toLocaleDateString("es-ES", { day: "2-digit", month: "long", year: "numeric" }) : null,
+  ].filter(Boolean);
+
+  cont.innerHTML = `
+    <div class="gal-marcador-fila">
+      <div class="gal-equipo">
+        <img class="gal-escudo" data-equipo="${escapeHtml(p.equipo_local || "")}" src="${urlLocal}" alt="" loading="lazy" onerror="manejarErrorEscudo(this);">
+        <span class="gal-nombre">${escapeHtml(p.equipo_local || "")}</span>
+      </div>
+      <div class="gal-centro">
+        <span class="gal-marcador">${marcadorTexto(p)}</span>
+      </div>
+      <div class="gal-equipo">
+        <img class="gal-escudo" data-equipo="${escapeHtml(p.equipo_visitante || "")}" src="${urlVisitante}" alt="" loading="lazy" onerror="manejarErrorEscudo(this);">
+        <span class="gal-nombre">${escapeHtml(p.equipo_visitante || "")}</span>
+      </div>
+    </div>
+    ${meta.length ? `<p class="gal-meta">${meta.map(escapeHtml).join('<span class="gal-meta-punto"></span>')}</p>` : ""}
+    <p class="gal-titulo-pagina">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5" fill="currentColor" stroke="none"/><path d="m4 17 4.5-4.5a2 2 0 0 1 2.8 0L15 16"/><path d="m13.5 14.5 1-1a2 2 0 0 1 2.8 0L20 16.5"/></svg>
+      Galería de contenido
+    </p>`;
+
+  const titulo = `Galería: ${p.equipo_local} ${p.goles_local ?? ""}-${p.goles_visitante ?? ""} ${p.equipo_visitante} — ELOTROFÚTBOLTV`;
+  document.getElementById("pageTitle").textContent = titulo;
+  document.getElementById("canonicalGaleria").href = `https://elotrofutbol.media/galeria/${p.slug}`;
+  if (typeof fijarSeoBasico === "function") {
+    fijarSeoBasico({
+      titulo,
+      descripcion: `Fotos del partido ${p.equipo_local} vs ${p.equipo_visitante}.`,
+      urlPath: `/galeria/${p.slug}`,
+    });
+  }
+}
+
+function pintarPestanas() {
+  const cont = document.getElementById("galContenido");
+  ORDEN_PESTANAS = ["local", "visitante", "general"].filter((k) => GRUPOS_GALERIA[k]);
+
+  if (!ORDEN_PESTANAS.length) {
+    cont.innerHTML = estadoVacioHTML("Todavía no hay fotos", "Vuelve más tarde: puede que la galería se publique después del partido.");
+    return;
+  }
+
+  PESTANA_ACTIVA = ORDEN_PESTANAS[0];
+
+  // Si solo hay un grupo, se muestran las fotos directamente, sin
+  // pestañas (igual criterio que pedía la Fase 2: sin sub-agrupación
+  // real no tiene sentido mostrar una única pestaña).
+  const necesitaPestanas = ORDEN_PESTANAS.length > 1;
+
+  cont.innerHTML = `
+    ${necesitaPestanas ? `<div class="gal-pestanas" id="galPestanas"></div>` : ""}
+    <div class="gal-grid" id="galGrid"></div>`;
+
+  if (necesitaPestanas) pintarBarraPestanas();
+  pintarGrid();
+}
+
+function pintarBarraPestanas() {
+  const barra = document.getElementById("galPestanas");
+  if (!barra) return;
+  barra.innerHTML = ORDEN_PESTANAS.map((clave) => {
+    const grupo = GRUPOS_GALERIA[clave];
+    const escudo = clave !== "general" ? getEscudoUrl(grupo.nombre) : null;
+    return `
+      <button type="button" class="gal-pestana${clave === PESTANA_ACTIVA ? " activa" : ""}" onclick="cambiarPestana('${clave}')">
+        ${escudo ? `<img class="gal-pestana-escudo" src="${escudo}" alt="" onerror="this.remove();">` : ""}
+        ${escapeHtml(grupo.nombre)}
+        <span class="gal-contador">${grupo.fotos.length}</span>
+      </button>`;
+  }).join("");
+}
+
+function cambiarPestana(clave) {
+  PESTANA_ACTIVA = clave;
+  pintarBarraPestanas();
+  pintarGrid();
+}
+
+function pintarGrid() {
+  const grid = document.getElementById("galGrid");
+  if (!grid) return;
+  const fotos = GRUPOS_GALERIA[PESTANA_ACTIVA]?.fotos || [];
+  const iconoFoto = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5" fill="currentColor" stroke="none"/><path d="m4 17 4.5-4.5a2 2 0 0 1 2.8 0L15 16"/><path d="m13.5 14.5 1-1a2 2 0 0 1 2.8 0L20 16.5"/></svg>`;
+  const iconoVideo = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="14" height="12" rx="2"/><path d="m16.5 10.5 5-3v9l-5-3Z"/></svg>`;
+  grid.innerHTML = fotos.map((f, i) => {
+    const esFoto = f.tipo === "foto";
+    return `
+      <div class="gal-item" onclick="abrirLightbox(${i})">
+        <span class="gal-badge-tipo">${esFoto ? iconoFoto : iconoVideo}</span>
+        ${esFoto
+          ? `<img src="${f.cloudinary_url}" alt="${escapeHtml(f.titulo || "")}" loading="lazy">`
+          : `<video src="${f.cloudinary_url}" preload="metadata" muted></video><div class="gal-play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>`}
+        ${f.autor_nombre ? `<span class="gal-credito">© ${escapeHtml(f.autor_nombre)}</span>` : ""}
+      </div>`;
+  }).join("");
+}
+
+function estadoVacioHTML(titulo, texto) {
+  return `<div class="gal-vacio">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5" fill="currentColor" stroke="none"/><path d="m4 17 4.5-4.5a2 2 0 0 1 2.8 0L15 16"/><path d="m13.5 14.5 1-1a2 2 0 0 1 2.8 0L20 16.5"/></svg>
+    <strong style="display:block;margin-bottom:6px;color:var(--marino-texto);">${escapeHtml(titulo)}</strong>${escapeHtml(texto)}</div>`;
+}
+
+function abrirLightbox(indice) {
+  LIGHTBOX_INDICE = indice;
+  pintarLightbox();
+  document.getElementById("galLightbox").classList.add("abierto");
+  document.body.style.overflow = "hidden";
+}
+
+function cerrarLightbox() {
+  document.getElementById("galLightbox").classList.remove("abierto");
+  document.body.style.overflow = "";
+  document.getElementById("galLightboxMedia").innerHTML = "";
+}
+
+function moverLightbox(delta) {
+  const fotos = GRUPOS_GALERIA[PESTANA_ACTIVA]?.fotos || [];
+  if (!fotos.length) return;
+  LIGHTBOX_INDICE = (LIGHTBOX_INDICE + delta + fotos.length) % fotos.length;
+  pintarLightbox();
+}
+
+function pintarLightbox() {
+  const fotos = GRUPOS_GALERIA[PESTANA_ACTIVA]?.fotos || [];
+  const f = fotos[LIGHTBOX_INDICE];
+  if (!f) return;
+  const esFoto = f.tipo === "foto";
+  const credito = (f.titulo || f.autor_nombre)
+    ? `${escapeHtml(f.titulo || "")}${f.titulo && f.autor_nombre ? " — " : ""}${f.autor_nombre ? "© " + escapeHtml(f.autor_nombre) : ""}`
+    : "";
+  document.getElementById("galLightboxMedia").innerHTML = `
+    ${esFoto ? `<img src="${f.cloudinary_url}" alt="${escapeHtml(f.titulo || "")}">` : `<video src="${f.cloudinary_url}" controls autoplay></video>`}
+    <div class="gal-lightbox-info">
+      ${credito ? `<p class="gal-lightbox-credito">${credito}</p>` : ""}
+      ${fotos.length > 1 ? `<p class="gal-lightbox-contador">${LIGHTBOX_INDICE + 1} / ${fotos.length}</p>` : ""}
+    </div>`;
+}
+
+document.getElementById("galLightbox").addEventListener("click", (e) => {
+  if (e.target.id === "galLightbox") cerrarLightbox();
+});
+document.addEventListener("keydown", (e) => {
+  if (!document.getElementById("galLightbox").classList.contains("abierto")) return;
+  if (e.key === "Escape") cerrarLightbox();
+  if (e.key === "ArrowLeft") moverLightbox(-1);
+  if (e.key === "ArrowRight") moverLightbox(1);
+});
+
+document.addEventListener("DOMContentLoaded", cargaGaleria);
+</script>
+</body>
+</html>

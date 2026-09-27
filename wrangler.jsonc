@@ -6,7 +6,17 @@
     "directory": ".",
     "binding": "ASSETS",
     "run_worker_first": true,
-    "html_handling": "auto-trailing-slash"
+    "html_handling": "auto-trailing-slash",
+    // Sin esto, Cloudflare Pages/Workers Assets no garantiza servir
+    // SIEMPRE 404.html con status 404 real para una ruta desconocida:
+    // según la config previa (sin este campo) el comportamiento por
+    // defecto podía variar y a veces devolvía un 200 genérico o el
+    // index.html en vez del 404 personalizado. "single-page-application"
+    // serviría siempre index.html (no aplica, este no es un SPA);
+    // "404-page" busca el 404.html más cercano en el árbol de carpetas y
+    // lo sirve SIEMPRE con status 404 real para cualquier ruta que no
+    // coincida con un asset existente.
+    "not_found_handling": "404-page"
   },
   "routes": [
     {

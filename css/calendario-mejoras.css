@@ -1,0 +1,218 @@
+/* =========================================================================
+   Mejoras de estilo y responsive — calendario.html
+   Hoja de estilos adicional, cargada DESPUÉS de style.css y limitada a
+   body[data-page="calendario"], para no afectar a ninguna otra página del
+   sitio. Solo retoca presentación (espaciados, jerarquía visual,
+   comportamiento responsive, estados de foco/hover); no cambia HTML ni JS.
+   ========================================================================= */
+
+body[data-page="calendario"] .wrap{
+  padding-top: 4px;
+}
+
+/* ---------- Cabecera de sección ---------- */
+body[data-page="calendario"] .section-title{
+  margin-bottom: 18px;
+}
+
+/* ---------- Filtros principales (competición) ---------- */
+body[data-page="calendario"] .filtros{
+  margin-bottom: 16px;
+}
+body[data-page="calendario"] .filtros button{
+  font-family: var(--font-tit);
+  letter-spacing: .3px;
+  box-shadow: 0 1px 2px rgba(12,27,46,.05);
+}
+body[data-page="calendario"] .filtros button:focus-visible,
+body[data-page="calendario"] .select-filtro:focus-visible,
+body[data-page="calendario"] .calendario-nav button:focus-visible{
+  outline: 2px solid var(--celeste);
+  outline-offset: 2px;
+}
+body[data-page="calendario"] .filtros button.activo{
+  box-shadow: 0 2px 8px rgba(12,27,46,.25);
+}
+
+/* ---------- Filtro secundario (grupo) ---------- */
+body[data-page="calendario"] .filtros-secundarios{
+  margin-bottom: 18px;
+}
+body[data-page="calendario"] .select-filtro{
+  transition: border-color .15s;
+}
+body[data-page="calendario"] .select-filtro:hover{
+  border-color: var(--celeste);
+}
+
+/* ---------- Barra de navegación de jornada ---------- */
+/* Se fija bajo la cabecera al hacer scroll, para poder cambiar de jornada
+   sin tener que volver arriba en listados largos. */
+body[data-page="calendario"] .calendario-nav{
+  position: sticky;
+  top: 8px;
+  z-index: 5;
+  box-shadow: 0 2px 10px rgba(12,27,46,.08);
+  margin-bottom: 22px;
+}
+body[data-page="calendario"] .calendario-nav button{
+  min-width: 108px;
+  box-shadow: 0 1px 3px rgba(12,27,46,.18);
+}
+body[data-page="calendario"] .calendario-nav-titulo{
+  letter-spacing: .5px;
+}
+
+/* ---------- Filas de partido: más aire y mejor jerarquía ---------- */
+body[data-page="calendario"] #calendarioCont{
+  background: var(--tarjeta);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  overflow: hidden;
+  box-shadow: var(--sombra);
+}
+body[data-page="calendario"] .partido{
+  padding: 16px 18px;
+}
+body[data-page="calendario"] .partido:last-child{
+  border-bottom: none;
+}
+body[data-page="calendario"] .partido:hover{
+  background: var(--fondo-alt);
+}
+body[data-page="calendario"] .partido:focus-visible{
+  outline: 2px solid var(--celeste);
+  outline-offset: -2px;
+}
+body[data-page="calendario"] .partido .escudo{
+  width: 34px;
+  height: 34px;
+  transition: transform .15s;
+}
+body[data-page="calendario"] .partido:hover .escudo{
+  transform: scale(1.06);
+}
+body[data-page="calendario"] .partido .nombre-equipo{
+  font-size: .96rem;
+}
+body[data-page="calendario"] .partido .marcador{
+  min-width: 80px;
+  font-size: 1.02rem;
+}
+
+/* Cabeceras de día/agrupación dentro del calendario, si las inserta el
+   JS (p. ej. un separador de fecha entre bloques de partidos). */
+body[data-page="calendario"] #calendarioCont > .calendario-dia-titulo,
+body[data-page="calendario"] #calendarioCont > [class*="dia-titulo"],
+body[data-page="calendario"] #calendarioCont > [class*="grupo-titulo"]{
+  font-family: var(--font-tit);
+  text-transform: uppercase;
+  font-size: .78rem;
+  letter-spacing: .6px;
+  color: var(--texto-suave);
+  padding: 12px 18px 6px;
+  background: var(--fondo-alt);
+  border-bottom: 1px solid var(--borde);
+}
+
+/* ---------- Modal de detalle: pulido visual ---------- */
+body[data-page="calendario"] .modal-partido-caja{
+  box-shadow: 0 20px 50px rgba(12,27,46,.35);
+}
+body[data-page="calendario"] .modal-partido-escudo{
+  transition: transform .2s;
+}
+body[data-page="calendario"] .modal-partido-cerrar:focus-visible{
+  outline: 2px solid var(--celeste);
+  outline-offset: 2px;
+}
+
+/* =========================================================================
+   RESPONSIVE
+   ========================================================================= */
+
+/* Tablet */
+@media (max-width: 860px){
+  body[data-page="calendario"] .calendario-nav{
+    top: 4px;
+  }
+}
+
+/* Móvil grande */
+@media (max-width: 600px){
+  body[data-page="calendario"] .section-title{
+    margin-bottom: 14px;
+  }
+  body[data-page="calendario"] .calendario-nav{
+    padding: 8px 10px;
+    gap: 6px;
+  }
+  body[data-page="calendario"] .calendario-nav button{
+    padding: 8px 10px;
+    font-size: .78rem;
+    min-width: 0;
+    flex: 0 0 auto;
+  }
+  body[data-page="calendario"] .calendario-nav-titulo{
+    font-size: .86rem;
+  }
+  body[data-page="calendario"] .calendario-nav-titulo small{
+    font-size: .66rem;
+  }
+  body[data-page="calendario"] .partido{
+    padding: 12px 10px;
+    gap: 6px;
+    font-size: .85rem;
+  }
+  body[data-page="calendario"] .partido .escudo{
+    width: 26px;
+    height: 26px;
+  }
+  body[data-page="calendario"] .partido .nombre-equipo{
+    font-size: .82rem;
+  }
+  body[data-page="calendario"] .partido .marcador{
+    min-width: 58px;
+    padding: 6px 8px;
+    font-size: .88rem;
+  }
+  body[data-page="calendario"] #calendarioCont{
+    border-radius: 6px;
+    margin: 0 -4px;
+    width: calc(100% + 8px);
+  }
+}
+
+/* Móvil pequeño: los nombres largos de equipo pueden desbordar el hueco
+   disponible junto al escudo; se reduce aún más y se permite salto en dos
+   líneas en vez de recortarse con puntos suspensivos ilegibles. */
+@media (max-width: 380px){
+  body[data-page="calendario"] .partido{
+    grid-template-columns: 1fr auto 1fr;
+    padding: 10px 6px;
+  }
+  body[data-page="calendario"] .partido .nombre-equipo{
+    font-size: .74rem;
+    white-space: normal;
+    line-height: 1.15;
+  }
+  body[data-page="calendario"] .partido .escudo{
+    width: 22px;
+    height: 22px;
+  }
+  body[data-page="calendario"] .partido .marcador{
+    min-width: 48px;
+    font-size: .8rem;
+    padding: 5px 6px;
+  }
+}
+
+/* Accesibilidad: respeta la preferencia de reducir movimiento */
+@media (prefers-reduced-motion: reduce){
+  body[data-page="calendario"] .partido,
+  body[data-page="calendario"] .partido .escudo,
+  body[data-page="calendario"] .select-filtro,
+  body[data-page="calendario"] .modal-partido-escudo{
+    transition: none;
+  }
+}

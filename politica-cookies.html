@@ -13,8 +13,9 @@
 <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&family=Playfair+Display:wght@700;800&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css?v=16">
+<link rel="stylesheet" href="css/politica-cookies-mejoras.css?v=1">
 </head>
-<body>
+<body data-page="politica-cookies">
 
 <div id="site-header"></div>
 
@@ -35,7 +36,7 @@
       Puedes cambiar tus preferencias en cualquier momento pulsando este
       botón:
     </p>
-    <p><button type="button" class="eof-cookies-config-link" onclick="eofAbrirPreferenciasCookies()" style="text-decoration:underline;cursor:pointer;background:none;border:none;color:var(--celeste);font-size:1rem;">Configurar mis preferencias de cookies</button></p>
+    <p><button type="button" class="eof-cookies-config-link" onclick="eofAbrirPreferenciasCookies()">Configurar mis preferencias de cookies</button></p>
 
     <h3>Necesarias (siempre activas)</h3>
     <p>
@@ -45,32 +46,34 @@
       pueden desactivar porque el sitio no funcionaría correctamente sin
       ellas.
     </p>
-    <table style="width:100%;border-collapse:collapse;margin-bottom:20px;font-size:.85rem;">
-      <thead>
-        <tr style="text-align:left;border-bottom:1px solid var(--borde);">
-          <th style="padding:8px 6px;">Nombre</th>
-          <th style="padding:8px 6px;">Finalidad</th>
-          <th style="padding:8px 6px;">Duración</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr style="border-bottom:1px solid var(--borde);">
-          <td style="padding:8px 6px;">eof_consentimiento_cookies</td>
-          <td style="padding:8px 6px;">Guarda tus preferencias de cookies</td>
-          <td style="padding:8px 6px;">Hasta que las cambies</td>
-        </tr>
-        <tr style="border-bottom:1px solid var(--borde);">
-          <td style="padding:8px 6px;">tema</td>
-          <td style="padding:8px 6px;">Recuerda si prefieres el modo claro u oscuro</td>
-          <td style="padding:8px 6px;">Hasta que borres los datos del navegador</td>
-        </tr>
-        <tr>
-          <td style="padding:8px 6px;">Sesión de lector/panel</td>
-          <td style="padding:8px 6px;">Mantiene la sesión iniciada tras acceder</td>
-          <td style="padding:8px 6px;">Sesión / según "recordarme"</td>
-        </tr>
-      </tbody>
-    </table>
+    <div class="tabla-cookies-scroll">
+      <table class="tabla-cookies">
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Finalidad</th>
+            <th>Duración</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td data-th="Nombre"><code>eof_consentimiento_cookies</code></td>
+            <td data-th="Finalidad">Guarda tus preferencias de cookies</td>
+            <td data-th="Duración">Hasta que las cambies</td>
+          </tr>
+          <tr>
+            <td data-th="Nombre"><code>tema</code></td>
+            <td data-th="Finalidad">Recuerda si prefieres el modo claro u oscuro</td>
+            <td data-th="Duración">Hasta que borres los datos del navegador</td>
+          </tr>
+          <tr>
+            <td data-th="Nombre">Sesión de lector/panel</td>
+            <td data-th="Finalidad">Mantiene la sesión iniciada tras acceder</td>
+            <td data-th="Duración">Sesión / según "recordarme"</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
     <h3>Analíticas (opcionales)</h3>
     <p>

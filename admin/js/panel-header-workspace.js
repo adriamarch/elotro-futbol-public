@@ -1,34 +1,36 @@
 // ---------------------------------------------------------------------
-// CABECERA COMPARTIDA CON EL PANEL DE ADMINISTRACIÓN
+// CABECERA COMPARTIDA CON EL PANEL DE ADMINISTRACIÓN (versión workspace)
 // ---------------------------------------------------------------------
-// El HTML de esta cabecera (public/panel-analiticas.html, bloque
-// .admin-header) es una copia literal del de public/admin/panel.html,
-// y este archivo es la parte de public/admin/js/admin.js que la hace
-// funcionar (sesión, avatar, tema, notificaciones y menú de cuenta),
-// extraída aparte para no tener que cargar aquí las más de 7000 líneas
-// del resto de admin.js (formularios de noticias/resultados, etc. que
-// no existen en esta página). Si se cambia algo de la cabecera en un
-// sitio, hay que replicarlo en el otro: son el mismo componente en dos
-// páginas, no un componente compartido de verdad (el proyecto no tiene
-// un sistema de includes), así que conviene revisarlos juntos.
+// Copia adaptada de public/js/panel-header.js para que la cabecera de
+// public/admin/workspace.html (bloque .admin-header) sea ID por ID igual
+// que la de public/admin/panel.html y se comporte exactamente igual:
+// sesión, avatar, tema, notificaciones y menú de cuenta. No se reutiliza
+// el mismo archivo tal cual porque panel-header.js fuerza el logout/
+// redirección a admin/login.html y admin/panel.html con rutas relativas
+// pensadas para vivir en la raíz del sitio (public/panel-analiticas.html),
+// mientras que workspace.html ya vive dentro de /admin/, y aquí el
+// workspace es la página principal (no hay "volver al panel" al que
+// mandar a alguien que no sea admin). Si se cambia algo de la cabecera
+// en un sitio, hay que replicarlo en los otros dos.
 //
 // Requiere que la página haya cargado antes, en este orden:
-//   js/config.js   (apiFetch de failover, escapeHtml)
+//   js/config.js     (apiFetch de failover, escapeHtml)
 //   js/ui-alertas.js (window.EOF.toast/confirmar/alertaModal)
 // y que el HTML tenga los mismos ids que public/admin/panel.html.
 
 // ---------- Auth guard ----------
-// Misma sesión que el resto del panel: el token/usuario se guardan en
-// localStorage bajo el mismo dominio, así que ya están disponibles aquí
-// aunque esta página viva fuera de public/admin/.
+// El guard "de verdad" (sin sesión -> login.html) ya lo hace el propio
+// workspace.html antes de pintar nada; aquí solo se lee lo que ya se
+// sabe que existe.
 const TOKEN = localStorage.getItem("eof_token");
 const USER = JSON.parse(localStorage.getItem("eof_user") || "null");
+// USER se expone también en window (además de como variable local) para
+// que otros scripts cargados después, como el bloque de arranque de
+// workspace.html, puedan decidir la sección inicial según el rol sin
+// tener que volver a leer y parsear localStorage.
+window.USER = USER;
 const NOTIF_CLAVE = `eof_notif_visto_${USER ? USER.username : ""}`;
 let ultimaVisitaNotifServidor = null;
-
-if (!TOKEN || !USER) {
-  location.href = "admin/login.html";
-}
 
 function authHeaders() {
   return { "Content-Type": "application/json", Authorization: `Bearer ${TOKEN}` };
@@ -56,7 +58,7 @@ async function apiFetch(path, options = {}) {
 function logout() {
   localStorage.removeItem("eof_token");
   localStorage.removeItem("eof_user");
-  location.href = "admin/login.html";
+  location.href = "login.html";
 }
 
 // Iniciales para el círculo de avatar, p. ej. "Ana Pérez" -> "AP".
@@ -87,14 +89,13 @@ if (USER) {
   document.getElementById("userNombre").textContent = USER.nombre;
   document.getElementById("cuentaNombreCompleto").textContent = USER.nombre;
   document.getElementById("cuentaRolEtiqueta").textContent =
-    USER.rol === "admin" ? "Administrador" : (USER.rol === "fotografo" ? "Fotógrafo" : "Colaborador");
+    USER.rol === "admin" ? "Administrador" : (USER.rol === "fotografo" ? "Fotógrafo" : "Redactor");
 
-  // El panel de analíticas solo admite administradores en el Worker
-  // (ver /api/admin/analiticas/*), así que un redactor ni debería haber
-  // llegado hasta aquí (el enlace ya se le oculta en admin/panel.html),
-  // pero por si acaso entra con la URL directa se le devuelve al panel.
-  if (USER.rol !== "admin") {
-    location.href = "admin/workspace.html";
+  // El enlace "Analíticas" del menú de cuenta, igual que en panel.html,
+  // solo tiene sentido para administradores.
+  const enlaceAnaliticas = document.getElementById("enlaceAnaliticas");
+  if (enlaceAnaliticas && USER.rol !== "admin") {
+    enlaceAnaliticas.style.display = "none";
   }
 
   // ---------- Cierre de sesión por inactividad (15 minutos) ----------
@@ -129,17 +130,21 @@ if (USER) {
   }
 }
 
+// Los "Ajustes de cuenta" viven como pestaña dentro del propio panel
+// (panel.html?ajustes=perfil|password|progreso|sesiones), así que aquí
+// se abren como una pestaña más del workspace en vez de navegar fuera:
+// window.abrirPestanaAjustes la define workspace.html (ver ese archivo),
+// que sabe pasar la subsección concreta al iframe de panel.html.
 function irAAjustesCuenta(seccion) {
-  // Los "Ajustes de cuenta" viven como pestaña del panel de redacción,
-  // no de esta página; se manda allí con el destino en la URL para que
-  // admin.js pueda abrir directamente la subpestaña correspondiente.
-  location.href = `admin/workspace.html?ajustes=${encodeURIComponent(seccion)}`;
+  document.getElementById("cuentaMenu")?.classList.remove("abierto");
+  if (typeof window.abrirPestanaAjustes === "function") {
+    window.abrirPestanaAjustes(seccion);
+  } else {
+    location.href = `panel.html?ajustes=${encodeURIComponent(seccion)}`;
+  }
 }
 
 // ---------- Notificaciones (contenido subido / crónicas publicadas) ----------
-// Misma lógica que admin.js: se guarda tanto en localStorage (para
-// pintar algo al instante) como en el servidor (para que sobreviva a
-// perder la sesión o borrar datos del navegador); el servidor manda.
 function ultimaVisitaNotif() {
   return ultimaVisitaNotifServidor || localStorage.getItem(NOTIF_CLAVE) || "1970-01-01T00:00:00";
 }
@@ -222,7 +227,7 @@ async function cargarNotificaciones() {
 
     lista.innerHTML = novedades.length
       ? novedades.map((n) => `
-        <a href="javascript:void(0)" class="notif-item ${esNoLeida(n) ? "no-leida" : ""}" onclick='irANotificacionDesdeAnaliticas(${escapeHtml(JSON.stringify(n)).replace(/'/g, "&#39;")})'>
+        <a href="javascript:void(0)" class="notif-item ${esNoLeida(n) ? "no-leida" : ""}" onclick='irANotificacionDesdeWorkspace(${escapeHtml(JSON.stringify(n)).replace(/'/g, "&#39;")})'>
           <div class="notif-tipo">${n.tipo}</div>
           <div class="notif-titulo">${escapeHtml(n.titulo)}</div>
           <div class="notif-meta">${escapeHtml(n.autor || "")} · ${formatFechaNotif(n.fecha)}</div>
@@ -238,17 +243,19 @@ function formatFechaNotif(fechaStr) {
   return d.toLocaleDateString("es-ES", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Madrid" });
 }
 
-// Esta página no tiene las pestañas del panel de redacción, así que
-// pulsar una notificación siempre lleva allí (con la noticia publicada
-// abierta directamente si aplica), en vez de intentar activar una
-// pestaña que no existe aquí.
-function irANotificacionDesdeAnaliticas(n) {
+// Al pulsar una notificación desde el workspace: si es una noticia ya
+// publicada se abre la web en una pestaña nueva del navegador (no tiene
+// sentido como pestaña de workspace); si no, se abre/activa la pestaña
+// de "Ver noticias" del propio workspace para que la persona la encuentre.
+function irANotificacionDesdeWorkspace(n) {
   document.getElementById("notifWrap").classList.remove("abierto");
   if (n.slug && n.publicado) {
     window.open(urlNoticia(n.categoria, n.slug), "_blank");
     return;
   }
-  location.href = "admin/workspace.html";
+  if (typeof window.abrirPestanaPorId === "function") {
+    window.abrirPestanaPorId("noticias.lista");
+  }
 }
 
 function marcarNotificacionesVistas() {

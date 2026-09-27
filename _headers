@@ -31,6 +31,17 @@
 # /api/readers/discord/* en worker/src/index.js), así que no hace falta
 # añadir nada de Discord aquí.
 #
+# media-src https://res.cloudinary.com hace falta para los vídeos de la
+# mediateca del panel de admin ("Contenido" → "Ver contenido subido"):
+# tanto la previsualización en bucle al pasar el ratón como el
+# reproductor del modal usan un <video> apuntando directamente a
+# Cloudinary. Sin este origen en media-src (que si no se especifica cae
+# en default-src 'self'), el navegador bloqueaba esos <video> en
+# silencio -- la miniatura de imagen (img-src, que sí incluía https:)
+# funcionaba bien, pero cualquier <video> con src de Cloudinary se
+# quedaba con la pantalla en negro y sin cargar, tanto en el hover-preview
+# como en el modal a pantalla completa.
+#
 # es.wikipedia.org (connect-src) hace falta porque la ficha de equipo de
 # categoria.html (ver ETIQUETAS_CON_WIKIPEDIA/buscaArticuloWikipedia)
 # hace fetch() directo desde el navegador a la API de búsqueda de
@@ -42,7 +53,7 @@
 # no solo en una, porque Cloudflare Pages no fusiona reglas de
 # _headers para una misma cabecera.
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://accounts.google.com https://alcdn.msauth.net https://platform.twitter.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://api.elotrofutbol.media https://elotro-futbol-api-production.up.railway.app https://accounts.google.com https://login.microsoftonline.com https://es.wikipedia.org; frame-src https://accounts.google.com https://platform.twitter.com https://syndication.twitter.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://accounts.google.com https://alcdn.msauth.net https://platform.twitter.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https://res.cloudinary.com; connect-src 'self' https://api.elotrofutbol.media https://elotro-futbol-api-production.up.railway.app https://accounts.google.com https://login.microsoftonline.com https://es.wikipedia.org; frame-src https://accounts.google.com https://platform.twitter.com https://syndication.twitter.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests
   Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
@@ -61,10 +72,128 @@
 # cabecera: la coincidencia más específica (esta ruta) sustituye
 # entera a la de "/*", no se combinan.
 /widgets.html
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://accounts.google.com https://alcdn.msauth.net https://platform.twitter.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://api.elotrofutbol.media https://elotro-futbol-api-production.up.railway.app https://accounts.google.com https://login.microsoftonline.com https://es.wikipedia.org; frame-src https://accounts.google.com https://api.elotrofutbol.media https://platform.twitter.com https://syndication.twitter.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://accounts.google.com https://alcdn.msauth.net https://platform.twitter.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https://res.cloudinary.com; connect-src 'self' https://api.elotrofutbol.media https://elotro-futbol-api-production.up.railway.app https://accounts.google.com https://login.microsoftonline.com https://es.wikipedia.org; frame-src https://accounts.google.com https://elotrofutbol.media https://platform.twitter.com https://syndication.twitter.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests
+  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+
+# /workspace.html carga panel.html (el panel de admin) dentro de
+# <iframe>s propios (uno por pestaña abierta), igual que /widgets.html
+# se auto-embebe para su vista previa. Sin esta regla específica,
+# workspace.html recibía la CSP global de "/*", cuyo frame-src NO
+# incluye el propio dominio -> el navegador bloqueaba esos iframes con
+# ERR_BLOCKED_BY_CSP ("La página elotrofutbol.media está bloqueada").
+# Se repite la CSP entera (no solo frame-src) por el mismo motivo que
+# en /widgets.html: Cloudflare Pages no fusiona reglas de _headers
+# para una misma cabecera entre "/*" y una ruta más específica.
+#
+# IMPORTANTE (ver historial de este mismo bug en /widgets.html): el
+# dominio a añadir en frame-src es "elotrofutbol.media" (el sitio en
+# sí), NO "api.elotrofutbol.media" (el backend), que no sirve HTML
+# embebible.
+/workspace.html
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://accounts.google.com https://alcdn.msauth.net https://platform.twitter.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https://res.cloudinary.com; connect-src 'self' https://api.elotrofutbol.media https://elotro-futbol-api-production.up.railway.app https://accounts.google.com https://login.microsoftonline.com https://es.wikipedia.org; frame-src 'self' https://accounts.google.com https://platform.twitter.com https://syndication.twitter.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests
+  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+
+# Misma razón que /panel vs /panel.html más abajo: Cloudflare Pages
+# redirige /workspace.html -> /workspace (clean URLs) antes de aplicar
+# _headers, así que hace falta la variante sin extensión también aquí.
+/workspace
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://accounts.google.com https://alcdn.msauth.net https://platform.twitter.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https://res.cloudinary.com; connect-src 'self' https://api.elotrofutbol.media https://elotro-futbol-api-production.up.railway.app https://accounts.google.com https://login.microsoftonline.com https://es.wikipedia.org; frame-src 'self' https://accounts.google.com https://platform.twitter.com https://syndication.twitter.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests
+  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+
+# IMPORTANTE: existe TAMBIÉN una copia real en /admin/workspace.html
+# (y /admin/panel.html) en el servidor -- descubierto porque el enlace
+# "Abrir workspace" de /panel.html llevaba a esta otra copia en /admin/,
+# no a /workspace.html en la raíz. Sus rutas relativas (iframe.src =
+# "panel.html") sí resuelven bien SIENDO esa copia (a /admin/panel.html,
+# que existe y funciona), pero como esta ruta con el prefijo /admin/ no
+# coincidía con ninguna regla de aquí, seguía heredando la CSP/X-Frame-
+# Options restrictivas de "/*" -- de ahí que el iframe siguiera
+# bloqueado (frame-src / frame-ancestors) aun con /workspace.html y
+# /panel.html ya arreglados en la raíz. Se repiten aquí las mismas
+# reglas con el prefijo /admin/.
+/admin/workspace.html
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://accounts.google.com https://alcdn.msauth.net https://platform.twitter.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https://res.cloudinary.com; connect-src 'self' https://api.elotrofutbol.media https://elotro-futbol-api-production.up.railway.app https://accounts.google.com https://login.microsoftonline.com https://es.wikipedia.org; frame-src 'self' https://accounts.google.com https://platform.twitter.com https://syndication.twitter.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests
+  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+
+/admin/workspace
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://accounts.google.com https://alcdn.msauth.net https://platform.twitter.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https://res.cloudinary.com; connect-src 'self' https://api.elotrofutbol.media https://elotro-futbol-api-production.up.railway.app https://accounts.google.com https://login.microsoftonline.com https://es.wikipedia.org; frame-src 'self' https://accounts.google.com https://platform.twitter.com https://syndication.twitter.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests
   Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
 
 /admin/js/admin.js
   Cache-Control: no-cache, must-revalidate
+
+# panel.html cambia con cierta frecuencia (nuevos campos de formulario,
+# modales, etc., como admin.js) y, a diferencia de admin.js, no tenía
+# hasta ahora ninguna regla de caché propia: Cloudflare Pages podía
+# servir una copia vieja del HTML aunque admin.js sí se revalidase, así
+# que un cambio nuevo en el panel (p.ej. un campo añadido a un modal)
+# podía tardar en verse, o directamente no verse hasta un hard refresh.
+#
+# Además: /workspace.html mete panel.html dentro de un <iframe> propio
+# (una pestaña de trabajo por panel abierto). Arreglar frame-src en la
+# CSP de /workspace.html no bastaba, porque panel.html en sí seguía
+# heredando de la regla global "/*" la cabecera "X-Frame-Options: DENY"
+# (esta ruta, al no repetirla, no la sustituye -- a diferencia de CSP,
+# que si aparece en ambas gana la más específica, X-Frame-Options SÍ se
+# hereda de "/*" cuando la ruta específica no la define). DENY prohíbe
+# a CUALQUIER página, incluida la propia elotrofutbol.media, embeber
+# panel.html en un iframe -- de ahí el ERR_BLOCKED_BY_RESPONSE ("la
+# página ha rechazado la conexión") al abrir el workspace, distinto del
+# ERR_BLOCKED_BY_CSP de antes. Se añade aquí una CSP propia con
+# frame-ancestors 'self' (equivalente moderno de X-Frame-Options, y con
+# prioridad sobre ella cuando el navegador soporta CSP) y se fija
+# X-Frame-Options a SAMEORIGIN en vez de DENY, para permitir que solo el
+# propio dominio pueda embeberlo.
+#
+# Se define TANTO "/panel.html" COMO "/panel": Cloudflare Pages hace su
+# propio 307 de "clean URLs" de /panel.html -> /panel antes de que
+# _headers decida qué cabeceras poner, así que la petición que el
+# navegador ve de verdad (y a la que hay que hacer coincidir la regla)
+# es a /panel sin extensión -- exactamente el mismo problema, ya
+# documentado, que hubo con /widgets.html en el propio _worker.js. Si
+# solo se define "/panel.html" aquí, esa regla nunca llega a aplicarse
+# de verdad y panel.html sigue heredando el X-Frame-Options: DENY de
+# "/*".
+/panel.html
+  Cache-Control: no-cache, must-revalidate
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://accounts.google.com https://alcdn.msauth.net https://platform.twitter.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https://res.cloudinary.com; connect-src 'self' https://api.elotrofutbol.media https://elotro-futbol-api-production.up.railway.app https://accounts.google.com https://login.microsoftonline.com https://es.wikipedia.org; frame-src https://accounts.google.com https://platform.twitter.com https://syndication.twitter.com; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'; upgrade-insecure-requests
+  X-Frame-Options: SAMEORIGIN
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+
+/panel
+  Cache-Control: no-cache, must-revalidate
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://accounts.google.com https://alcdn.msauth.net https://platform.twitter.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https://res.cloudinary.com; connect-src 'self' https://api.elotrofutbol.media https://elotro-futbol-api-production.up.railway.app https://accounts.google.com https://login.microsoftonline.com https://es.wikipedia.org; frame-src https://accounts.google.com https://platform.twitter.com https://syndication.twitter.com; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'; upgrade-insecure-requests
+  X-Frame-Options: SAMEORIGIN
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+
+# La copia real de siempre del panel vive en /admin/panel.html (y su
+# variante sin extensión /admin/panel tras el 307 de clean URLs de
+# Cloudflare Pages) -- es la que /admin/workspace.html mete en su
+# <iframe>. Mismo arreglo que /panel.html arriba: CSP propia con
+# frame-ancestors 'self' y X-Frame-Options: SAMEORIGIN en vez del DENY
+# heredado de "/*", para que pueda auto-embeberse.
+/admin/panel.html
+  Cache-Control: no-cache, must-revalidate
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://accounts.google.com https://alcdn.msauth.net https://platform.twitter.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https://res.cloudinary.com; connect-src 'self' https://api.elotrofutbol.media https://elotro-futbol-api-production.up.railway.app https://accounts.google.com https://login.microsoftonline.com https://es.wikipedia.org; frame-src https://accounts.google.com https://platform.twitter.com https://syndication.twitter.com; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'; upgrade-insecure-requests
+  X-Frame-Options: SAMEORIGIN
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+
+/admin/panel
+  Cache-Control: no-cache, must-revalidate
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://accounts.google.com https://alcdn.msauth.net https://platform.twitter.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https://res.cloudinary.com; connect-src 'self' https://api.elotrofutbol.media https://elotro-futbol-api-production.up.railway.app https://accounts.google.com https://login.microsoftonline.com https://es.wikipedia.org; frame-src https://accounts.google.com https://platform.twitter.com https://syndication.twitter.com; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'; upgrade-insecure-requests
+  X-Frame-Options: SAMEORIGIN
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin

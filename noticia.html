@@ -855,7 +855,14 @@ function renderizaArticulo(article) {
     });
     const deGaleriaTodas = fotos.filter((f) => f.posicion === "galeria");
     const deGaleriaCollages = agruparEnCollages(deGaleriaTodas.filter((f) => f.grupo));
-    const deGaleria = deGaleriaTodas.filter((f) => !f.grupo);
+    // Fase 14: además de las fotos subidas junto con la noticia, se añaden
+    // aquí (al final) las fotos del fotógrafo vinculadas vía galería de
+    // partido o banco de media (article_media, ver Fase 12/13). Llevan su
+    // propio crédito (el autor real de la foto en la tabla media), así
+    // que se muestran en el mismo carrusel de galería en vez de crear un
+    // bloque visual aparte.
+    const galeriaFotografo = Array.isArray(article.galeria_fotografo) ? article.galeria_fotografo : [];
+    const deGaleria = deGaleriaTodas.filter((f) => !f.grupo).concat(galeriaFotografo);
 
     // Tweets: mismo esquema de posición que las fotos ("inicio"/
     // "personalizada" se intercalan en el texto; "galeria" para un tweet

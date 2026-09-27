@@ -1,0 +1,170 @@
+/* =========================================================================
+   Mejoras de estilo y responsive — politica-cookies.html
+   Hoja adicional cargada tras style.css, limitada a
+   body[data-page="politica-cookies"]. Sustituye la tabla con estilos
+   inline (que desbordaba en móvil) por una tabla con clases propias y
+   scroll horizontal controlado, y pule la tipografía de lectura y el
+   botón de preferencias. No cambia el comportamiento JS.
+   ========================================================================= */
+
+body[data-page="politica-cookies"] .pagina-info{
+  max-width: 740px;
+}
+
+body[data-page="politica-cookies"] .pagina-info-cuerpo{
+  font-size: 1rem;
+  line-height: 1.72;
+}
+
+/* ---------- Botón de preferencias, destacado como acción real ---------- */
+body[data-page="politica-cookies"] .eof-cookies-config-link{
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--fondo-alt) !important;
+  border: 1px solid var(--borde) !important;
+  color: var(--marino-texto) !important;
+  text-decoration: none !important;
+  border-radius: 22px;
+  padding: 10px 18px !important;
+  font-weight: 600;
+  font-size: .88rem !important;
+  transition: border-color .15s, background .15s;
+}
+body[data-page="politica-cookies"] .eof-cookies-config-link::before{
+  content: "⚙";
+  font-size: .95rem;
+}
+body[data-page="politica-cookies"] .eof-cookies-config-link:hover{
+  border-color: var(--celeste);
+  background: var(--tarjeta) !important;
+}
+body[data-page="politica-cookies"] .eof-cookies-config-link:focus-visible{
+  outline: 2px solid var(--celeste);
+  outline-offset: 2px;
+}
+
+/* ---------- Tabla de cookies necesarias ---------- */
+body[data-page="politica-cookies"] .tabla-cookies-scroll{
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 4px 0 22px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+}
+body[data-page="politica-cookies"] .tabla-cookies{
+  width: 100%;
+  min-width: 480px;
+  border-collapse: collapse;
+  font-size: .86rem;
+  background: var(--tarjeta);
+}
+body[data-page="politica-cookies"] .tabla-cookies thead tr{
+  background: var(--fondo-alt);
+}
+body[data-page="politica-cookies"] .tabla-cookies th{
+  text-align: left;
+  font-family: var(--font-tit);
+  text-transform: uppercase;
+  font-size: .72rem;
+  letter-spacing: .4px;
+  color: var(--texto-suave);
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--borde);
+}
+body[data-page="politica-cookies"] .tabla-cookies td{
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--borde);
+  color: var(--marino-texto);
+  vertical-align: top;
+}
+body[data-page="politica-cookies"] .tabla-cookies tbody tr:last-child td{
+  border-bottom: none;
+}
+body[data-page="politica-cookies"] .tabla-cookies tbody tr:hover{
+  background: var(--fondo-alt);
+}
+body[data-page="politica-cookies"] .tabla-cookies code{
+  font-family: monospace;
+  font-size: .82rem;
+  background: var(--fondo-alt);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--rojo);
+}
+
+body[data-page="politica-cookies"] .pagina-info-cuerpo a{
+  font-weight: 600;
+  text-underline-offset: 2px;
+}
+body[data-page="politica-cookies"] .pagina-info-cuerpo a:hover{
+  color: var(--rojo);
+}
+body[data-page="politica-cookies"] .pagina-info-cuerpo a:focus-visible{
+  outline: 2px solid var(--celeste);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* =========================================================================
+   RESPONSIVE
+   ========================================================================= */
+
+@media (max-width: 600px){
+  body[data-page="politica-cookies"] .pagina-info-cuerpo{
+    font-size: .94rem;
+  }
+  body[data-page="politica-cookies"] .eof-cookies-config-link{
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* La tabla pasa de filas horizontales a "tarjetas" apiladas: cada <td>
+     muestra su etiqueta (data-th) delante del valor, en vez de exigir
+     scroll horizontal para leer una tabla de 3 columnas en una pantalla
+     estrecha. */
+  body[data-page="politica-cookies"] .tabla-cookies-scroll{
+    overflow-x: visible;
+    border: none;
+  }
+  body[data-page="politica-cookies"] .tabla-cookies{
+    min-width: 0;
+    display: block;
+  }
+  body[data-page="politica-cookies"] .tabla-cookies thead{
+    display: none;
+  }
+  body[data-page="politica-cookies"] .tabla-cookies tbody{
+    display: block;
+  }
+  body[data-page="politica-cookies"] .tabla-cookies tr{
+    display: block;
+    background: var(--tarjeta);
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+    padding: 10px 12px;
+    margin-bottom: 10px;
+  }
+  body[data-page="politica-cookies"] .tabla-cookies td{
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 6px 2px;
+    border-bottom: 1px dashed var(--borde);
+    text-align: right;
+  }
+  body[data-page="politica-cookies"] .tabla-cookies td:last-child{
+    border-bottom: none;
+  }
+  body[data-page="politica-cookies"] .tabla-cookies td::before{
+    content: attr(data-th);
+    font-family: var(--font-tit);
+    text-transform: uppercase;
+    font-size: .68rem;
+    letter-spacing: .3px;
+    color: var(--texto-suave);
+    text-align: left;
+    flex-shrink: 0;
+  }
+}

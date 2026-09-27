@@ -34,9 +34,64 @@
   //  - tab / subtab -> a qué pestaña/subpestaña cambiar antes de mostrar
   //    el paso, para que el elemento a resaltar esté visible.
   //  - soloAdmin -> el paso solo se incluye si USER.rol === "admin".
+  //  - soloNoFotografo -> el paso se excluye si USER.rol === "fotografo"
+  //    (pasos sobre noticias/resultados/solicitudes, que un fotógrafo ni
+  //    siquiera ve en el menú — ver admin.js, bloque "Fase 6").
   function construirPasos() {
     const user = usuarioActual() || {};
     const esAdmin = user.rol === "admin";
+    const esFotografo = user.rol === "fotografo";
+
+    // Un fotógrafo tiene un recorrido propio y corto: no ve nada de
+    // noticias/resultados/solicitudes (esas pestañas ni siquiera están
+    // en su menú, ver admin.js), así que su tutorial no las menciona y
+    // se centra en subir contenido y en la galería de partido, que es
+    // su trabajo real en el panel.
+    if (esFotografo) {
+      return [
+        {
+          centrado: true,
+          emoji: "👋",
+          titulo: `¡Bienvenido/a, ${(user.nombre || "").split(" ")[0] || "fotógrafo"}!`,
+          texto: "Esto es la Redacción de ELOTROFÚTBOLTV. Como fotógrafo, aquí subes tus fotos y vídeos y los vinculas a la galería de cada partido. Te lo enseñamos en medio minuto — puedes saltarlo cuando quieras."
+        },
+        {
+          tab: "contenido", subtab: "subir",
+          selector: "#subtabsContenido",
+          titulo: "Subir contenido",
+          texto: "Desde aquí subes tus fotos y vídeos del partido. Puedes arrastrar varios archivos a la vez."
+        },
+        {
+          tab: "contenido", subtab: "ver",
+          selector: "#subtabVerContenido",
+          titulo: "Tu contenido subido",
+          texto: "Aquí ves todo lo que has subido tú: puedes revisarlo, editar el título/descripción o eliminarlo."
+        },
+        {
+          tab: "contenido", subtab: "galeriaPartido",
+          selector: "#subtabGaleriaPartido",
+          titulo: "Galería de partido",
+          texto: "El paso clave: elige un partido y marca qué fotos tuyas forman su galería. Así el redactor podrá usarlas directamente al escribir la noticia, con tu crédito de autor."
+        },
+        {
+          selector: "#cuentaBtn",
+          titulo: "Tu cuenta",
+          texto: "Desde aquí cambias tu contraseña, tu foto de perfil y ves \"Mi progreso\"."
+        },
+        {
+          selector: "#themeToggle",
+          titulo: "Modo oscuro",
+          texto: "Y si prefieres trabajar con la pantalla en oscuro de noche, este botón cambia el tema al instante."
+        },
+        {
+          centrado: true,
+          emoji: "🎉",
+          titulo: "¡Listo para empezar!",
+          texto: "Eso es todo lo esencial. ¡Mucho ánimo con tu primera sesión de fotos!"
+        }
+      ];
+    }
+
     const pasos = [
       {
         centrado: true,
@@ -125,6 +180,15 @@
   let reintentoEsFrame = false;
   let objetivoActual = null;
   let datosPasoActual = null; // { paso, i, progresoPct, esUltimo, esPrimero }
+  // Tab/subtab en la que estaba la persona justo antes de arrancar el
+  // tutorial, para poder devolverla ahí si lo salta a mitad de camino
+  // (ver saltar()/cerrarUI() más abajo): un paso puede haber navegado a
+  // "Contenido > Galería de partido" o a cualquier otra pantalla para
+  // resaltar algo, y si se cierra justo ahí sin terminar, la persona se
+  // queda "colgada" en una pantalla a medio configurar (p. ej. sin
+  // partido elegido) en vez de donde realmente estaba trabajando.
+  let tabAlIniciar = null;
+  let subtabAlIniciar = null;
 
   function cancelarReintento() {
     if (reintentoEsFrame) cancelAnimationFrame(reintentoObjetivo);
@@ -400,12 +464,38 @@
     elOverlay.classList.remove("tut-activo");
     elCentroWrap.classList.remove("tut-activo");
     elCard.style.display = "none";
+    // Se restaura SIEMPRE la pantalla en la que estaba la persona antes
+    // de arrancar el tutorial, tanto si lo salta a medias como si lo
+    // completa entero. Antes solo se restauraba al saltar, partiendo de
+    // que terminarlo del todo dejaba en un sitio "razonable" — pero el
+    // último paso navegable de más de un recorrido (p. ej. el del
+    // fotógrafo, ver tutorial-construirPasos) es una pantalla de trabajo
+    // a medio rellenar (aquí, "Galería de partido" sin partido elegido),
+    // no un buen sitio para aterrizar solo por haber visto el tutorial
+    // completo. Restaurar siempre es más predecible y evita este caso.
+    if (tabAlIniciar) {
+      irATab(tabAlIniciar);
+      // Da tiempo a que cambiar de tab pinte el DOM de esa pestaña antes
+      // de intentar activar la subtab original (mismo margen que usa
+      // mostrarPaso al cambiar de tab).
+      setTimeout(() => { if (subtabAlIniciar) irASubtab(subtabAlIniciar); }, 160);
+    }
   }
 
   function iniciar(forzado) {
     crearDOM();
     pasos = construirPasos();
     indice = 0;
+    // Recuerda dónde estaba la persona antes de este arranque, para
+    // poder restaurarlo si el tutorial se salta a medias (ver
+    // cerrarUI()). El primer paso siempre es "centrado" (bienvenida) y
+    // no navega a ningún sitio, así que el estado justo antes de
+    // mostrarPaso(0) es el real punto de partida.
+    const tabActiva = document.querySelector(".tabs button.activo");
+    tabAlIniciar = tabActiva ? tabActiva.dataset.tab : null;
+    const panelActivo = tabAlIniciar ? document.getElementById("panel-" + tabAlIniciar) : null;
+    const subtabActiva = panelActivo ? panelActivo.querySelector(".subtabs button.activo") : null;
+    subtabAlIniciar = subtabActiva ? subtabActiva.dataset.subtab : null;
     elOverlay.classList.add("tut-activo");
     mostrarPaso(0);
   }

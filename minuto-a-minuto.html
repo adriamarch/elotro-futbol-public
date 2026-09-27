@@ -14,86 +14,135 @@
 <link rel="stylesheet" href="css/style.css?v=16">
 <style>
   /* ---------- MINUTO A MINUTO: liveblog público ----------
-     Cabecera fija tipo marcador de retransmisión (fondo marino de
-     marca, escudos grandes, marcador enorme en Oswald) y, debajo, un
-     timeline real con una línea de tiempo continua en el centro: cada
-     evento "cuelga" de esa línea con un sello del minuto encima, y los
-     goles llevan el acento rojo de marca para que destaquen del resto
-     del relato. Reutiliza a propósito el mismo lenguaje visual que ya
-     usa el modal de partido en el resto del sitio (.en-vivo-punto,
-     var(--rojo), var(--marino)...), en vez de inventar uno nuevo. */
+     Rediseño completo del liveblog en tres fases visuales claramente
+     diferenciadas -antes / durante / después del partido-, pero sin
+     abandonar el lenguaje visual de marca que ya usa el resto del
+     sitio (.en-vivo-punto, var(--rojo), var(--marino), Oswald/Inter):
+
+     - PREVIA (.mam-cabecera-programado): cabecera en tono marino más
+       sobrio, sin animaciones de "en vivo", con una tarjeta de previa
+       centrada y una cuenta atrás textual a la hora del partido.
+     - EN VIVO (.mam-cabecera-en-vivo): cabecera con una textura sutil
+       de foco de estadio y un borde inferior rojo pulsante; el chip de
+       estado tiene el punto animado y el marcador respira ligeramente.
+     - FINAL (.mam-cabecera-finalizado): cabecera atenuada (sin verde
+       "en juego" ni rojo "en vivo"), con un remate visual de resultado
+       definitivo y, si lo hay, el MVP destacado con más peso.
+
+     Debajo, un timeline real con línea de tiempo continua en el centro:
+     cada evento "cuelga" de esa línea con un sello del minuto encima.
+     Los goles llevan el acento rojo de marca; tarjetas, cambios y VAR
+     tienen ahora su propio color de sello para que el relato se lea de
+     un vistazo sin tener que leer cada línea entera. */
 
   body[data-page="minuto-a-minuto"]{background:var(--fondo-alt);}
 
+  /* ===== Cabecera ===== */
   .mam-cabecera{
     position:sticky;top:0;z-index:20;
-    background:linear-gradient(160deg, var(--marino) 0%, var(--marino2) 100%);
-    color:#fff;padding:18px 0 0;
-    box-shadow:0 6px 22px rgba(12,27,46,.22);
+    background:
+      radial-gradient(120% 140% at 15% 0%, rgba(91,184,232,.16), transparent 55%),
+      linear-gradient(160deg, var(--marino) 0%, var(--marino2) 100%);
+    color:#fff;padding:16px 0 0;
+    box-shadow:0 6px 24px rgba(12,27,46,.28);
+    border-bottom:3px solid transparent;
+    transition:border-color .4s ease, box-shadow .4s ease;
   }
-  .mam-cabecera-inner{max-width:720px;margin:0 auto;padding:0 20px 16px;}
+  .mam-cabecera-en-vivo{
+    border-bottom-color:var(--rojo);
+    box-shadow:0 6px 24px rgba(12,27,46,.3), 0 3px 14px rgba(209,19,46,.25);
+  }
+  .mam-cabecera-finalizado{
+    background:linear-gradient(160deg, #16283f 0%, var(--marino) 100%);
+  }
+  .mam-cabecera-inner{max-width:760px;margin:0 auto;padding:0 20px 16px;position:relative;}
   .mam-breadcrumb{
     display:flex;align-items:center;gap:6px;font-size:.72rem;
     color:var(--celeste-claro);text-decoration:none;font-weight:600;
-    letter-spacing:.03em;text-transform:uppercase;margin-bottom:14px;width:fit-content;
+    letter-spacing:.03em;text-transform:uppercase;margin-bottom:16px;width:fit-content;
+    transition:color .15s ease, transform .15s ease;
   }
-  .mam-breadcrumb:hover{color:#fff;}
+  .mam-breadcrumb:hover{color:#fff;transform:translateX(-2px);}
   .mam-breadcrumb svg{width:13px;height:13px;transform:rotate(180deg);}
 
-  .mam-marcador-fila{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;}
-  .mam-equipo{display:flex;flex-direction:column;align-items:center;gap:8px;min-width:0;}
-  .mam-escudo{width:56px;height:56px;object-fit:contain;filter:drop-shadow(0 2px 6px rgba(0,0,0,.25));}
+  .mam-marcador-fila{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;}
+  .mam-equipo{display:flex;flex-direction:column;align-items:center;gap:9px;min-width:0;}
+  .mam-escudo{
+    width:58px;height:58px;object-fit:contain;
+    filter:drop-shadow(0 3px 8px rgba(0,0,0,.3));
+    transition:filter .3s ease;
+  }
   .mam-nombre{
     font-family:var(--font-tit);font-weight:600;font-size:.86rem;text-align:center;
-    line-height:1.15;letter-spacing:.01em;
+    line-height:1.2;letter-spacing:.01em;
+    max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   }
-  .mam-centro{display:flex;flex-direction:column;align-items:center;gap:8px;padding:0 6px;}
+  .mam-centro{display:flex;flex-direction:column;align-items:center;gap:9px;padding:0 8px;min-width:96px;}
   .mam-marcador{
-    font-family:var(--font-tit);font-size:2.3rem;font-weight:700;line-height:1;
+    font-family:var(--font-tit);font-size:2.5rem;font-weight:700;line-height:1;
     letter-spacing:.01em;white-space:nowrap;
     font-variant-numeric:tabular-nums;
+    text-shadow:0 2px 10px rgba(0,0,0,.2);
   }
+  .mam-cabecera-en-vivo .mam-marcador{animation:mamRespiroMarcador 2.6s ease-in-out infinite;}
+  .mam-cabecera-programado .mam-marcador{opacity:.5;font-size:1.5rem;}
+
   .mam-estado{
     font-size:.68rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
     color:var(--celeste-claro);display:flex;align-items:center;gap:6px;white-space:nowrap;
+    transition:all .25s ease;
   }
   .mam-estado.mam-estado-en-vivo{
     color:#fff;background:linear-gradient(135deg, var(--rojo), var(--rojo-oscuro));
-    padding:4px 12px;border-radius:20px;box-shadow:0 2px 10px rgba(209,19,46,.4);
+    padding:5px 14px;border-radius:20px;
+    box-shadow:0 2px 12px rgba(209,19,46,.45), inset 0 1px 0 rgba(255,255,255,.15);
   }
   .mam-estado .en-vivo-punto{background:#fff;}
   .mam-estado:not(.mam-estado-en-vivo) .en-vivo-punto{display:none;}
 
   .mam-subtitulo{
     text-align:center;color:var(--celeste-claro);font-size:.74rem;font-weight:500;
-    margin:12px 0 0;padding-top:12px;border-top:1px solid rgba(255,255,255,.14);
+    margin:14px 0 0;padding-top:13px;border-top:1px solid rgba(255,255,255,.14);
     letter-spacing:.01em;
   }
 
-  .mam-wrap{max-width:720px;margin:0 auto;padding:0 20px;}
-  .mam-cuerpo{padding:28px 0 60px;}
+  @keyframes mamRespiroMarcador{
+    0%,100%{opacity:1;} 50%{opacity:.88;}
+  }
+
+  /* ===== Cuerpo ===== */
+  .mam-wrap{max-width:760px;margin:0 auto;padding:0 20px;}
+  .mam-cuerpo{padding:30px 0 64px;}
 
   .mam-mvp{
-    display:flex;align-items:center;justify-content:center;gap:10px;
-    background:var(--tarjeta);border:1px solid var(--borde);border-radius:var(--radio);
-    padding:10px 16px;margin-bottom:24px;font-size:.82rem;
+    display:flex;align-items:center;justify-content:center;gap:12px;
+    background:linear-gradient(180deg, var(--tarjeta), rgba(209,19,46,.04));
+    border:1px solid var(--borde);border-radius:var(--radio-md, var(--radio));
+    padding:12px 18px;margin-bottom:26px;font-size:.82rem;
+    box-shadow:var(--sombra-sm, none);
+    animation:mamAparecer .4s ease both;
   }
-  .mam-mvp img{width:26px;height:26px;object-fit:contain;}
+  .mam-mvp img{width:28px;height:28px;object-fit:contain;filter:drop-shadow(0 1px 3px rgba(0,0,0,.15));}
   .mam-mvp-etiqueta{
-    font-family:var(--font-tit);font-size:.65rem;font-weight:700;letter-spacing:.06em;
+    font-family:var(--font-tit);font-size:.65rem;font-weight:700;letter-spacing:.08em;
     color:var(--rojo);text-transform:uppercase;
+    background:rgba(209,19,46,.1);padding:3px 8px;border-radius:5px;
   }
   .mam-mvp-nombre{font-weight:600;color:var(--marino-texto);}
 
-  /* Línea de tiempo: una línea vertical continua a la que cada evento
-     se "engancha" con un sello circular del minuto. Estructura de
-     liveblog de periódico deportivo, no una lista de tarjetas suelta. */
+  /* ----- Línea de tiempo -----
+     Una línea vertical continua a la que cada evento se "engancha" con
+     un sello circular del minuto: estructura de liveblog de periódico
+     deportivo, no una lista de tarjetas suelta. Cada tipo de evento
+     tiene su propio color de sello y un leve tinte de fondo en la
+     tarjeta, para que el ojo distinga goles/tarjetas/cambios/VAR sin
+     leer el texto entero. */
   .mam-timeline{position:relative;}
   .mam-timeline::before{
     content:"";position:absolute;left:29px;top:6px;bottom:6px;width:2px;
-    background:var(--borde);
+    background:linear-gradient(var(--borde), var(--borde));
   }
-  .mam-evento{position:relative;padding:0 0 22px 66px;min-height:1px;}
+  .mam-evento{position:relative;padding:0 0 22px 66px;min-height:1px;animation:mamAparecer .35s ease both;}
   .mam-evento:last-child{padding-bottom:0;}
   .mam-evento-sello{
     position:absolute;left:0;top:0;width:60px;
@@ -106,53 +155,117 @@
     font-family:var(--font-tit);font-weight:700;font-size:.72rem;
     color:var(--marino-texto);border:2px solid var(--borde);
     font-variant-numeric:tabular-nums;
+    box-shadow:0 1px 4px rgba(12,27,46,.08);
   }
+
   .mam-evento-gol .mam-evento-minuto{
     background:linear-gradient(135deg, var(--rojo), var(--rojo-oscuro));
     color:#fff;border-color:var(--rojo-oscuro);
-    box-shadow:0 2px 10px rgba(209,19,46,.35);
+    box-shadow:0 2px 12px rgba(209,19,46,.4);
   }
+  .mam-evento-gol .mam-evento-contenido{
+    border-color:rgba(209,19,46,.35);
+    background:linear-gradient(180deg, rgba(209,19,46,.07), transparent 65%);
+  }
+  .mam-evento-roja .mam-evento-minuto{
+    background:linear-gradient(135deg, var(--rojo), var(--rojo-oscuro));
+    color:#fff;border-color:var(--rojo-oscuro);
+  }
+  .mam-evento-roja .mam-evento-contenido{border-color:rgba(209,19,46,.28);}
+  .mam-evento-amarilla .mam-evento-minuto{
+    background:#fdf2d0;color:#8a6a04;border-color:#e8b923;
+  }
+  .mam-evento-amarilla .mam-evento-contenido{border-color:rgba(232,185,35,.4);}
+  .mam-evento-cambio .mam-evento-minuto{
+    background:#e8f6ee;color:#1a7a41;border-color:#8fd6ac;
+  }
+  .mam-evento-var .mam-evento-minuto{
+    background:var(--marino);color:#fff;border-color:var(--marino2);
+  }
+
   .mam-evento-contenido{
     display:flex;align-items:flex-start;gap:10px;
-    background:var(--tarjeta);border:1px solid var(--borde);border-radius:var(--radio);
-    padding:12px 14px;font-size:.87rem;line-height:1.4;
+    background:var(--tarjeta);border:1px solid var(--borde);border-radius:var(--radio-sm, var(--radio));
+    padding:12px 14px;font-size:.87rem;line-height:1.45;
+    box-shadow:var(--sombra-sm, none);
+    transition:box-shadow .2s ease, transform .2s ease;
   }
-  .mam-evento-gol .mam-evento-contenido{border-color:rgba(209,19,46,.35);background:linear-gradient(180deg, rgba(209,19,46,.05), transparent 60%);}
+  .mam-evento-contenido:hover{box-shadow:var(--sombra-md, var(--sombra-sm));}
   .mam-evento-centro .mam-evento-contenido{
-    background:transparent;border:none;padding:6px 0 0;font-style:italic;
+    background:transparent;border:none;box-shadow:none;padding:6px 0 0;font-style:italic;
     color:var(--gris-texto);font-size:.8rem;
   }
-  .mam-evento-icono{width:19px;height:19px;flex-shrink:0;margin-top:1px;}
+  .mam-evento-icono,.mev-icono{width:19px;height:19px;flex-shrink:0;margin-top:1px;color:var(--marino-texto);}
+  .mam-evento-gol .mev-icono{color:var(--rojo);}
   .mam-evento-equipo{
     font-size:.7rem;font-weight:700;color:var(--gris-texto);text-transform:uppercase;
-    letter-spacing:.03em;display:block;margin-bottom:1px;
+    letter-spacing:.03em;display:block;margin-bottom:2px;
   }
   .mam-evento-texto{color:var(--texto);}
   .mam-evento-texto strong{font-weight:600;}
 
   .mam-tanda-titulo{
     font-family:var(--font-tit);font-size:.85rem;font-weight:600;letter-spacing:.02em;
-    text-transform:uppercase;color:var(--marino-texto);margin:30px 0 14px;
-    padding-top:22px;border-top:2px dashed var(--borde);text-align:center;
+    text-transform:uppercase;color:var(--marino-texto);margin:32px 0 16px;
+    padding-top:24px;border-top:2px dashed var(--borde);text-align:center;
   }
 
+  @keyframes mamAparecer{
+    from{opacity:0;transform:translateY(6px);}
+    to{opacity:1;transform:translateY(0);}
+  }
+
+  /* ===== Estados vacíos: previa / sin eventos / no cubierto ===== */
   .mam-estado-inicial{
     text-align:center;color:var(--gris-texto);font-size:.9rem;padding:50px 20px;
   }
   .mam-estado-inicial svg{width:36px;height:36px;color:var(--borde);margin-bottom:10px;}
 
+  .mam-estado-previa{
+    background:var(--tarjeta);border:1px solid var(--borde);border-radius:var(--radio-md, var(--radio));
+    padding:44px 24px;box-shadow:var(--sombra-sm, none);
+  }
+  .mam-previa-reloj{
+    width:56px;height:56px;border-radius:50%;margin:0 auto 16px;
+    display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(135deg, var(--celeste), var(--marino2));
+  }
+  .mam-previa-reloj svg{width:26px;height:26px;color:#fff;margin:0;}
+  .mam-previa-titulo{
+    font-family:var(--font-tit);font-weight:600;font-size:1.02rem;
+    color:var(--marino-texto);margin:0 0 6px;
+  }
+  .mam-previa-hora{
+    font-size:.86rem;font-weight:600;color:var(--rojo);margin:0 0 12px;
+    text-transform:capitalize;
+  }
+  .mam-previa-nota{font-size:.82rem;color:var(--gris-texto);max-width:360px;margin:0 auto;line-height:1.5;}
+
+  /* ===== Post-partido: remate de "resultado definitivo" ===== */
+  .mam-final-remate{
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    text-align:center;color:var(--gris-texto);font-size:.78rem;font-weight:600;
+    letter-spacing:.04em;text-transform:uppercase;margin:24px 0 0;padding-top:20px;
+    border-top:1px solid var(--borde);
+  }
+  .mam-final-remate svg{width:15px;height:15px;color:var(--marino-texto);}
+
   @media (max-width:560px){
-    .mam-escudo{width:44px;height:44px;}
-    .mam-nombre{font-size:.72rem;}
-    .mam-marcador{font-size:1.8rem;}
+    .mam-escudo{width:46px;height:46px;}
+    .mam-nombre{font-size:.72rem;max-width:88px;}
+    .mam-marcador{font-size:1.9rem;}
+    .mam-cabecera-programado .mam-marcador{font-size:1.3rem;}
     .mam-evento{padding-left:56px;}
     .mam-timeline::before{left:23px;}
     .mam-evento-minuto{width:34px;height:34px;font-size:.65rem;}
     .mam-evento-sello{width:50px;}
+    .mam-estado-previa{padding:36px 18px;}
   }
 
   @media (prefers-reduced-motion: reduce){
-    .mam-estado-en-vivo .en-vivo-punto{animation:none;}
+    .mam-estado-en-vivo .en-vivo-punto,
+    .mam-cabecera-en-vivo .mam-marcador,
+    .mam-evento{animation:none;}
   }
 </style>
 </head>
@@ -263,7 +376,11 @@ function mamPintarCabecera() {
   const enJuego = p.estado === "en_juego";
   const enDescanso = enJuego && p.cronometro_pausado_en !== null && p.cronometro_pausado_en !== undefined;
 
-  document.getElementById("mamCabecera").hidden = false;
+  const cabecera = document.getElementById("mamCabecera");
+  cabecera.hidden = false;
+  cabecera.classList.toggle("mam-cabecera-en-vivo", enJuego);
+  cabecera.classList.toggle("mam-cabecera-finalizado", p.estado === "finalizado" || p.estado === "anulado");
+  cabecera.classList.toggle("mam-cabecera-programado", p.estado === "programado");
   document.getElementById("mamEscudoLocal").src = getEscudoUrl(p.equipo_local, p.escudo_local_url);
   document.getElementById("mamEscudoLocal").dataset.equipo = p.equipo_local;
   document.getElementById("mamEscudoVisitante").src = getEscudoUrl(p.equipo_visitante, p.escudo_visitante_url);
@@ -304,10 +421,17 @@ async function mamCargarEventos() {
   const p = mamPartido;
   const cont = document.getElementById("mamContenido");
   if (p.estado === "programado") {
+    const horaTexto = p.fecha_partido
+      ? new Date(p.fecha_partido).toLocaleString("es-ES", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })
+      : "";
     cont.innerHTML = `
-      <div class="mam-estado-inicial">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-        <p>El partido todavía no ha empezado.<br>En cuanto arranque, los eventos irán apareciendo aquí solos.</p>
+      <div class="mam-estado-inicial mam-estado-previa">
+        <div class="mam-previa-reloj">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        </div>
+        <p class="mam-previa-titulo">El partido todavía no ha empezado</p>
+        ${horaTexto ? `<p class="mam-previa-hora">Comienza el ${horaTexto}</p>` : ""}
+        <p class="mam-previa-nota">En cuanto arranque, los goles, tarjetas y demás eventos irán apareciendo aquí solos.</p>
       </div>`;
     return;
   }
@@ -355,8 +479,17 @@ function mamRenderTimeline(eventos) {
     const esCentro = ev.equipo === "ninguno";
     const claseEquipo = esCentro ? "mam-evento-centro" : "";
     const nombreEquipo = ev.equipo === "local" ? mamPartido.equipo_local : (ev.equipo === "visitante" ? mamPartido.equipo_visitante : "");
+    const esTarjetaRoja = ev.tipo === "roja" || ev.tipo === "doble_amarilla";
+    const esTarjetaAmarilla = ev.tipo === "amarilla";
+    const esCambio = ev.tipo === "cambio";
+    const esVar = ev.tipo === "var";
+    let claseTipo = "";
+    if (esTarjetaRoja) claseTipo = " mam-evento-roja";
+    else if (esTarjetaAmarilla) claseTipo = " mam-evento-amarilla";
+    else if (esCambio) claseTipo = " mam-evento-cambio";
+    else if (esVar) claseTipo = " mam-evento-var";
     return `
-      <div class="mam-evento${esGol ? " mam-evento-gol" : ""} ${claseEquipo}">
+      <div class="mam-evento${esGol ? " mam-evento-gol" : ""}${claseTipo} ${claseEquipo}" data-tipo="${escapeHtml(ev.tipo)}">
         <div class="mam-evento-sello">
           <span class="mam-evento-minuto">${formatMinutoEventoPublico(ev)}</span>
         </div>
@@ -375,6 +508,14 @@ function mamRenderTimeline(eventos) {
   if (eventosTanda.length) {
     const ordenados = [...eventosTanda].sort((a, b) => a.minuto - b.minuto);
     html += `<h3 class="mam-tanda-titulo">Tanda de penaltis</h3><div class="mam-timeline">${ordenados.map(filaEvento).join("")}</div>`;
+  }
+
+  if (mamPartido && (mamPartido.estado === "finalizado" || mamPartido.estado === "anulado")) {
+    html += `
+      <p class="mam-final-remate">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
+        ${mamPartido.estado === "anulado" ? "Partido anulado" : "Resultado definitivo"}
+      </p>`;
   }
 
   cont.innerHTML = html;

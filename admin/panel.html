@@ -1,33 +1,59 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<script src="../js/tema.js"></script>
+<meta name="color-scheme" content="light dark">
+<script>
+  // ---------------------------------------------------------------------
+  // El workspace es ahora el sistema principal: si alguien llega aquí
+  // directamente (marcador guardado, enlace antiguo, escribir la URL a
+  // mano...) como página de nivel superior, se le manda sin preguntar a
+  // workspace.html, que es quien decide qué abrir según su rol y sesión
+  // (ver el bloque de arranque al final de workspace.html). Nada de
+  // panel "secundario": esto YA NO es una opción entre panel y
+  // workspace, es la única entrada.
+  //
+  // OJO: panel.html se sigue usando tal cual dentro de los iframes del
+  // propio workspace (ver workspace.html, iframe.src = "panel.html...")
+  // -- ahí NO hay que redirigir, o cada pestaña abierta volvería a crear
+  // un workspace nuevo dentro de sí misma sin parar. window.self !==
+  // window.top es la forma estándar de saber si esta página vive dentro
+  // de un iframe.
+  (function () {
+    if (window.self !== window.top) return; // vive en un iframe del workspace: no redirigir
+    try {
+      const qs = location.search; // conserva ?ir=, ?ajustes=, ?minuto_a_minuto=, etc.
+      location.replace("workspace.html" + qs);
+    } catch (e) {}
+  })();
+</script>
+<script src="/js/tema.js"></script>
+<script src="/admin/js/rol-inicial.js?v=4"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Redacción — ELOTROFÚTBOLTV</title>
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="/favicon.ico?v=2" sizes="any">
 <link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=2">
-<link rel="apple-touch-icon" href="../img/apple-touch-icon.png">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&family=Playfair+Display:wght@700;800&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../css/style.css?v=10">
+<link rel="stylesheet" href="/css/style.css?v=10">
 <!-- CSS específico del panel de administración: tablas, formularios,
      media, y el overlay del panel de Minuto a Minuto (.mam-*). Antes no
      estaba enlazado aquí, así que ese overlay se activaba (la clase
      "mam-abierto" sí se añadía) pero sin ningún estilo aplicado: sin
      position:fixed, sin z-index, sin fondo... por eso el clic parecía
      "no hacer nada" (solo el salto del overflow:hidden del body). -->
-<link rel="stylesheet" href="css/admin.css?v=10">
+<link rel="stylesheet" href="/admin/css/admin.css?v=13">
 <!-- Tutorial guiado interactivo para nuevos redactores (overlay con
      flechas/spotlight sobre el propio panel, ver js/tutorial.js). -->
-<link rel="stylesheet" href="css/tutorial.css?v=1">
+<link rel="stylesheet" href="/admin/css/tutorial.css?v=1">
 </head>
 <body>
 
 <div class="admin-header">
   <div class="wrap">
     <div class="brand-admin">
-      <img src="../img/logo.png" alt="ELOTROFÚTBOLTV - logo oficial">
+      <img src="/img/logo.png" alt="ELOTROFÚTBOLTV - logo oficial">
       <div class="brand-textos">
         <span>EL<span class="brand-rojo">OTROFÚTBOL</span>TV</span>
         <span class="brand-seccion"><span class="brand-sep"> · </span><span id="tituloSeccion">Redacción</span></span>
@@ -66,8 +92,8 @@
           <a href="javascript:void(0)" onclick="irAAjustesCuenta('password')">Cambiar contraseña</a>
           <a href="javascript:void(0)" onclick="irAAjustesCuenta('progreso')">Mi progreso</a>
           <a href="javascript:void(0)" onclick="irAAjustesCuenta('sesiones')">Dispositivos</a>
-          <a href="../index.html">Ver la web</a>
-          <a href="../panel-analiticas.html" id="enlaceAnaliticas">Analíticas</a>
+          <a href="/index.html" target="_blank" rel="noopener">Ver la web</a>
+          <a href="/panel-analiticas.html" id="enlaceAnaliticas" target="_blank" rel="noopener">Analíticas</a>
           <button type="button" onclick="logout()">Cerrar sesión</button>
         </div>
       </div>
@@ -102,6 +128,8 @@
           <input type="hidden" id="articlePublicadoOriginal">
           <input type="hidden" id="articleEstadoBorradorOriginal">
           <input type="hidden" id="articleProgramadoParaOriginal">
+          <input type="hidden" id="articleFechaPreferenciaDesdeOriginal">
+          <input type="hidden" id="articleFechaPreferenciaHastaOriginal">
           <label>Título *</label>
           <input type="text" id="titulo" required>
 
@@ -164,13 +192,25 @@
 
           <label>Fotos</label>
           <div id="imagenesLista"></div>
-          <button type="button" class="btn-secundari" id="btnAddImagen" style="margin-top:8px;">+ Añadir otra foto</button>
-          <p class="ayuda-editor">Selecciona las fotografías, marca con "Portada" la que quieres que se vea en las tarjetas y elige dónde aparece dentro de la noticia con el desplegable de posición. Todas las fotos se muestran con el mismo ancho que el texto; si una foto no encaja en esa proporción, usa el botón ✂ para marcar qué parte no quieres que se recorte.</p>
+          <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
+            <button type="button" class="btn-secundari" id="btnAddImagen">+ Añadir otra foto</button>
+            <button type="button" class="btn-secundari" id="btnImportarGaleriaAFotos">+ Importar de la galería del partido</button>
+          </div>
+          <p class="ayuda-editor">Selecciona las fotografías, marca con "Portada" la que quieres que se vea en las tarjetas y elige dónde aparece dentro de la noticia con el desplegable de posición. Todas las fotos se muestran con el mismo ancho que el texto; si una foto no encaja en esa proporción, usa el botón ✂ para marcar qué parte no quieres que se recorte. "Importar de la galería del partido" trae fotos ya subidas a la galería del encuentro para tratarlas igual que el resto: elegir su posición, marcarlas como portada o ajustar su foco, y así se ven también en la vista previa.</p>
 
           <label>Collages de fotos (opcional)</label>
           <div id="listaCollages"></div>
           <button type="button" class="btn-secundari" id="btnAnadirCollage" style="margin-top:8px;">+ Añadir collage</button>
           <p class="ayuda-editor">Combina 2, 3 o 4 fotos en una sola cuadrícula dentro del texto de la noticia, con la disposición que elijas.</p>
+
+          <!-- Fase 13: el bloque de "Galería de fotos del partido (opcional)"
+               (carrusel aparte al final, tabla article_media) se ha quitado
+               de este formulario: ahora todo pasa por "Importar de la
+               galería del partido", arriba junto a "Fotos", que trata esas
+               imágenes igual que el resto (portada, foco y posición). El
+               HTML se quita pero el JS (galeriaArticuloVinculadaLista,
+               resetGaleriaArticulo, media_ids al guardar) se deja intacto
+               para no romper noticias ya publicadas que usaban el carrusel. -->
 
           <label>Tweets y posts de Instagram incrustados (opcional)</label>
           <div id="tweetsLista"></div>
@@ -349,6 +389,38 @@
                 La noticia se guardará sin publicar y se publicará ella sola en la fecha y hora que elijas (puede tardar hasta un minuto en aparecer justo a esa hora).
               </p>
             </div>
+
+            <div id="bloqueFechaPreferencia">
+              <label class="opcion-toggle" for="fechaPreferenciaActiva">
+                <input type="checkbox" id="fechaPreferenciaActiva">
+                <span class="opcion-toggle-caja"></span>
+                <span class="opcion-toggle-texto">
+                  <span class="opcion-toggle-titulo">Fecha de preferencia</span>
+                  <span class="opcion-toggle-sub">Sugiere cuándo publicarla (no programa nada)</span>
+                </span>
+              </label>
+              <div id="campoFechaPreferencia" style="display:none;">
+                <p class="ayuda-editor" style="margin:0 0 6px;">
+                  La hora es opcional (si no la pones, se entiende "todo el día"). Es solo una sugerencia para quien la revise.
+                </p>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                  <div style="flex:1;min-width:170px;">
+                    <span class="ayuda-editor" style="display:block;margin:0 0 4px;">Desde</span>
+                    <div style="display:flex;gap:6px;">
+                      <input type="date" id="prefFechaDesde" style="flex:1;min-width:0;">
+                      <input type="time" id="prefHoraDesde" title="Hora (opcional)" style="width:90px;">
+                    </div>
+                  </div>
+                  <div style="flex:1;min-width:170px;">
+                    <span class="ayuda-editor" style="display:block;margin:0 0 4px;">Hasta (opcional)</span>
+                    <div style="display:flex;gap:6px;">
+                      <input type="date" id="prefFechaHasta" style="flex:1;min-width:0;">
+                      <input type="time" id="prefHoraHasta" title="Hora (opcional)" style="width:90px;">
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
           <p class="ayuda-editor" id="avisoPublicadoRedactorNivel2" style="display:none;"></p>
 
@@ -464,7 +536,7 @@
       <div class="form-card form-card-resultado" id="formCardResultado">
         <div class="resultado-cabecera" id="resultadoCabecera">
           <div class="resultado-cabecera-liga">
-            <img id="resultadoCabeceraLogo" class="resultado-cabecera-logo resultado-cabecera-logo-hypermotion" src="../img/competiciones/hypermotion.png" alt="" onerror="this.style.display='none'">
+            <img id="resultadoCabeceraLogo" class="resultado-cabecera-logo resultado-cabecera-logo-hypermotion" src="/img/competiciones/hypermotion.png" alt="" onerror="this.style.display='none'">
             <div>
               <span class="resultado-cabecera-eyebrow" id="resultadoCabeceraEyebrow">Nuevo partido</span>
               <h3 class="resultado-cabecera-titulo" id="resultadoCabeceraTitulo">LaLiga Hypermotion</h3>
@@ -1277,11 +1349,17 @@
     </div>
   </div>
 
-  <!-- CONTENIDO: subir fotos/vídeos (cualquier redactor) + gestionarlos (solo admins) -->
+  <!-- CONTENIDO: subir fotos/vídeos (cualquier colaborador) + gestionarlos (solo admins) -->
   <div class="panel" id="panel-contenido">
     <div class="subtabs" id="subtabsContenido">
       <button class="activo" data-subtab="subir">Subir contenido</button>
       <button data-subtab="ver" id="subtabVerContenido">Ver contenido subido</button>
+      <!-- Fase 11: pantalla para vincular fotos ya subidas (tabla media)
+           a la galería de un partido concreto. Visible para admin y
+           fotógrafo (ver admin.js); un redactor no la ve porque solo
+           puede consultar la galería desde el editor de noticia
+           (Fase 12/13), no gestionarla aquí. -->
+      <button data-subtab="galeriaPartido" id="subtabGaleriaPartido">Galería de partido</button>
     </div>
 
     <div class="subpanel activo" id="subpanel-subir">
@@ -1291,13 +1369,53 @@
           <label for="tituloSubida">Título *</label>
           <input type="text" id="tituloSubida" placeholder="Ej: Gol de la victoria — Jornada 12" required>
 
-          <label for="clubSubida">Club (opcional)</label>
-          <select id="clubSubida">
-            <option value="">— Sin especificar —</option>
-          </select>
+          <label for="partidoSubida_buscador">¿De qué partido es este contenido? (opcional)</label>
+          <div class="autocompletar-resultado" id="partidoSubidaWrap" style="position:relative;">
+            <input type="text" id="partidoSubida_buscador" placeholder="Escribe un equipo, competición o jornada… o deja vacío para ver todos" autocomplete="off">
+            <div id="partidoSubida_sugerencias" class="autocompletar-resultado-lista" style="display:none;"></div>
+          </div>
+          <input type="hidden" id="partidoSubida">
+          <p class="ayuda-editor" style="margin:4px 0 0;">Si eliges un partido, esta foto/vídeo se añade automáticamente a la galería pública de ese partido.</p>
+
+          <div id="equipoSubidaWrap" style="display:none;">
+            <label for="equipoSubida">¿De qué equipo es? (opcional)</label>
+            <select id="equipoSubida">
+              <option value="">— Foto/vídeo general del partido —</option>
+            </select>
+          </div>
+
+          <div id="clubSubidaWrap">
+            <label for="clubSubida">Club (opcional)</label>
+            <select id="clubSubida">
+              <option value="">— Sin especificar —</option>
+            </select>
+          </div>
 
           <label for="descripcionSubida">Descripción (opcional)</label>
           <textarea id="descripcionSubida" placeholder="Contexto del partido, nombres de jugadores, minuto de la jugada, créditos de autoría, etc."></textarea>
+
+          <label>Visibilidad</label>
+          <div class="selector-visibilidad" id="selectorVisibilidad" role="radiogroup" aria-label="Visibilidad del contenido">
+            <button type="button" class="opcion-visibilidad activo" data-visibilidad="publico" role="radio" aria-checked="true">
+              <span class="opcion-visibilidad-icono">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+              </span>
+              <span class="opcion-visibilidad-texto">
+                <b>Público</b>
+                <small>Aparece en la galería del sitio, visible para cualquiera</small>
+              </span>
+            </button>
+            <button type="button" class="opcion-visibilidad" data-visibilidad="privado" role="radio" aria-checked="false">
+              <span class="opcion-visibilidad-icono">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+              </span>
+              <span class="opcion-visibilidad-texto">
+                <b>Privado</b>
+                <small>Solo lo ven los administradores en el panel</small>
+              </span>
+            </button>
+          </div>
+          <input type="hidden" id="visibilidadSubida" value="publico">
 
           <label>Archivos *</label>
           <div class="dropzone" id="dropzone">
@@ -1320,6 +1438,7 @@
           <button type="submit" class="btn-primari" id="btnSubir" disabled>Subir contenido</button>
           <p id="msgOkSubida"></p>
           <p id="errSubida"></p>
+          <div class="tarjeta-link-galeria" id="linkGaleriaPartidoSubida" style="display:none;"></div>
         </form>
       </div>
     </div>
@@ -1337,12 +1456,34 @@
         <div class="galeria-contenido" id="galeriaContenido"></div>
       </div>
     </div>
+
+    <div class="subpanel" id="subpanel-galeriaPartido">
+      <div class="form-card" style="max-width:820px;">
+        <p class="ayuda-editor" style="margin:0 0 14px;">Elige un partido para ver su galería y gestionarla: quitar fotos o cambiar de qué equipo es cada una. Para añadir fotos nuevas, vincúlalas al partido desde "Subir contenido".</p>
+        <label for="selectPartidoGaleria_buscador">Partido *</label>
+        <div class="autocompletar-resultado" id="selectPartidoGaleriaWrap" style="position:relative;">
+          <input type="text" id="selectPartidoGaleria_buscador" placeholder="Escribe un equipo, competición o jornada…" autocomplete="off">
+          <div id="selectPartidoGaleria_sugerencias" class="autocompletar-resultado-lista" style="display:none;"></div>
+        </div>
+        <input type="hidden" id="selectPartidoGaleria">
+        <p id="errGaleriaPartido"></p>
+      </div>
+
+      <div id="galeriaPartidoWrap" style="display:none;">
+        <div class="tarjeta-link-galeria" id="linkGaleriaPartidoPanel" style="display:none;"></div>
+        <div class="contenido-toolbar">
+          <p class="ayuda-editor" id="ayudaGaleriaPartidoActual" style="margin:0;">Fotos ya vinculadas a este partido. Puedes quitarlas de aquí (la imagen sigue en tu contenido subido).</p>
+          <span class="contador-total-galeria" id="contadorTotalGaleria"></span>
+        </div>
+        <div class="galeria-contenido" id="galeriaPartidoActual"></div>
+      </div>
+    </div>
   </div>
 
   <!-- USUARIOS (solo admins) -->
   <div class="panel" id="panel-usuarios">
     <div class="subtabs" id="subtabsUsuarios">
-      <button class="activo" data-subtab="redactores">Redactores</button>
+      <button class="activo" data-subtab="redactores">Colaboradores</button>
       <button data-subtab="lectores">Lectores</button>
     </div>
 
@@ -1370,6 +1511,7 @@
               <label>Rol</label>
               <select id="nu_rol">
                 <option value="redactor">Redactor</option>
+                <option value="fotografo">Fotógrafo</option>
                 <option value="admin">Administrador</option>
               </select>
             </div>
@@ -1421,7 +1563,7 @@
     <div class="subpanel" id="subpanel-lectores">
       <h3 class="titulo-subseccion" style="margin-top:0;">Lectores registrados</h3>
       <p class="ayuda-editor" style="margin:0 0 20px;">
-        Personas que se han creado una cuenta pública desde "Acceso" (modo Lector). Estas cuentas son independientes de las de redactores/administradores y se gestionan solas desde la web: aquí solo se pueden consultar.
+        Personas que se han creado una cuenta pública desde "Acceso" (modo Lector). Estas cuentas son independientes de las de colaboradores/administradores y se gestionan solas desde la web: aquí solo se pueden consultar.
       </p>
       <div class="contador-usuarios" id="contadorLectores" style="display:none;">
         <span class="contador-usuarios-numero" id="contadorLectoresNumero">0 / 0</span>
@@ -1443,7 +1585,7 @@
     </div>
 
     <div class="subpanel activo" id="subpanel-solicitudesRecibidas">
-      <p class="ayuda-editor" style="margin:0 0 14px;">Solicitudes que otro redactor te ha enviado (o, si eres administrador, todas las pendientes) para editar una noticia, crónica o resultado que no es suyo.</p>
+      <p class="ayuda-editor" style="margin:0 0 14px;">Solicitudes que otro colaborador te ha enviado (o, si eres administrador, todas las pendientes) para editar una noticia, crónica o resultado que no es suyo.</p>
       <div id="listaSolicitudesRecibidas"><p class="solicitudes-vacio">Cargando...</p></div>
     </div>
 
@@ -1493,7 +1635,7 @@
 
     <!-- Gestión de pedidos (admin / gestor de tienda) -->
     <div class="subpanel" id="subpanel-tiendaGestion">
-      <p class="ayuda-editor" style="margin:0 0 14px;">Todos los pedidos de todos los redactores. Marca como "Pagado" cuando confirmes el Bizum, y como "Enviado" cuando se lo hagas llegar.</p>
+      <p class="ayuda-editor" style="margin:0 0 14px;">Todos los pedidos de todos los colaboradores. Marca como "Pagado" cuando confirmes el Bizum, y como "Enviado" cuando se lo hagas llegar.</p>
       <div class="tienda-gestion-contadores" id="tiendaGestionContadores"></div>
       <div class="tienda-gestion-barra">
         <div class="tienda-gestion-filtros" id="tiendaGestionFiltros">
@@ -1505,7 +1647,7 @@
         </div>
         <div class="tienda-buscador tienda-buscador-gestion">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-          <input type="text" id="tiendaGestionBuscador" placeholder="Buscar por redactor o producto...">
+          <input type="text" id="tiendaGestionBuscador" placeholder="Buscar por colaborador o producto...">
         </div>
       </div>
       <div id="tiendaGestionLista"><p class="solicitudes-vacio">Cargando...</p></div>
@@ -1514,7 +1656,7 @@
     <!-- Productos del catálogo (admin / gestor de tienda) -->
     <div class="subpanel" id="subpanel-tiendaProductos">
       <div class="tienda-productos-cabecera">
-        <p class="ayuda-editor" style="margin:0;">Los productos activos son los que ven los redactores en el catálogo. Desactiva uno en vez de borrarlo si quieres dejar de venderlo sin perder su historial de pedidos.</p>
+        <p class="ayuda-editor" style="margin:0;">Los productos activos son los que ven los colaboradores en el catálogo. Desactiva uno en vez de borrarlo si quieres dejar de venderlo sin perder su historial de pedidos.</p>
         <button type="button" class="btn-primari" onclick="abrirModalTiendaProducto()">+ Nuevo producto</button>
       </div>
       <div class="tienda-productos-barra">
@@ -1718,6 +1860,26 @@
 </div>
 
 <!-- Editar contenido subido (solo lo puede abrir la persona que lo subió) -->
+<!-- Fase 13: selector de galería de partido / mediateca para vincular a
+     una noticia (tabla article_media). -->
+<div class="modal-overlay" id="modalGaleriaArticulo">
+  <div class="modal-caja modal-caja-ancha">
+    <h3 class="titulo-subseccion" id="gaTitulo" style="margin-top:0;">Añadir imágenes a la noticia</h3>
+    <p class="ayuda-editor" id="gaAyudaModoFotos" style="display:none; margin:0 0 10px;">Las fotos que elijas aquí se añaden a "Fotos", arriba, donde podrás marcarlas como portada, ajustar su foco y elegir su posición dentro del texto (al principio, en un punto concreto o en la galería final).</p>
+    <div id="gaAvisoSinPartido" class="ayuda-editor" style="display:none;">Esta noticia no tiene un resultado vinculado, así que aquí solo puedes elegir imágenes sueltas de tu contenido subido. Vincula un partido en "Resultado vinculado" para ver también su galería completa.</div>
+    <div id="gaGaleriaPartidoWrap">
+      <p class="ayuda-editor" style="margin:0 0 10px;">Galería del partido vinculado a esta noticia:</p>
+      <div class="galeria-contenido galeria-contenido-seleccionable" id="gaGaleriaPartido"></div>
+    </div>
+    <p class="ayuda-editor" style="margin:18px 0 10px;">Tu contenido subido:</p>
+    <div class="galeria-contenido galeria-contenido-seleccionable" id="gaGaleriaMediateca"></div>
+    <div style="margin-top:16px;">
+      <button type="button" class="btn-primari" id="btnConfirmarGaleriaArticulo">Añadir seleccionadas (<span id="gaContadorSeleccion">0</span>)</button>
+      <button type="button" class="btn-secundari" onclick="cerrarModalGaleriaArticulo()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modalEditarMedia">
   <div class="modal-caja">
     <h3 class="titulo-subseccion" style="margin-top:0;">Editar contenido</h3>
@@ -1725,15 +1887,109 @@
       <input type="hidden" id="em_id">
       <label for="em_titulo">Título *</label>
       <input type="text" id="em_titulo" required>
-      <label for="em_club">Club (opcional)</label>
-      <select id="em_club"><option value="">— Sin especificar —</option></select>
+
+      <label for="em_partido_buscador">¿De qué partido es este contenido? (opcional)</label>
+      <div class="autocompletar-resultado" id="em_partidoWrap" style="position:relative;">
+        <input type="text" id="em_partido_buscador" placeholder="Escribe un equipo, competición o jornada… o deja vacío para ver todos" autocomplete="off">
+        <div id="em_partido_sugerencias" class="autocompletar-resultado-lista" style="display:none;"></div>
+      </div>
+      <input type="hidden" id="em_partido">
+      <p class="ayuda-editor" style="margin:4px 0 0;">Si eliges un partido, esta foto/vídeo se añade (o se mueve) a la galería pública de ese partido.</p>
+
+      <div id="em_equipoWrap" style="display:none;">
+        <label for="em_equipo">¿De qué equipo es? (opcional)</label>
+        <select id="em_equipo">
+          <option value="">— Foto/vídeo general del partido —</option>
+        </select>
+      </div>
+
+      <div id="em_clubWrap">
+        <label for="em_club">Club (opcional)</label>
+        <select id="em_club"><option value="">— Sin especificar —</option></select>
+      </div>
+
       <label for="em_descripcion">Descripción (opcional)</label>
       <textarea id="em_descripcion" placeholder="Contexto del partido, nombres de jugadores, minuto de la jugada, créditos de autoría, etc."></textarea>
+
+      <label>Visibilidad</label>
+      <div class="selector-visibilidad" id="em_selectorVisibilidad" role="radiogroup" aria-label="Visibilidad del contenido">
+        <button type="button" class="opcion-visibilidad activo" data-visibilidad="publico" role="radio" aria-checked="true">
+          <span class="opcion-visibilidad-icono">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+          </span>
+          <span class="opcion-visibilidad-texto">
+            <b>Público</b>
+            <small>Aparece en la galería del sitio, visible para cualquiera</small>
+          </span>
+        </button>
+        <button type="button" class="opcion-visibilidad" data-visibilidad="privado" role="radio" aria-checked="false">
+          <span class="opcion-visibilidad-icono">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+          </span>
+          <span class="opcion-visibilidad-texto">
+            <b>Privado</b>
+            <small>Solo lo ven los administradores en el panel</small>
+          </span>
+        </button>
+      </div>
+      <input type="hidden" id="em_visibilidad" value="publico">
+
+      <div id="em_bloque_portada" style="display:none;">
+        <label>Portada del vídeo</label>
+        <input type="hidden" id="em_portada_segundo">
+        <div class="fila-fotograma">
+          <button type="button" class="btn-usar-fotograma" onclick="usarInstanteActualComoPortada()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9.5v5l4-2.5-4-2.5z" fill="currentColor" stroke="none"/></svg><span>Usar el fotograma actual</span></button>
+        </div>
+        <p class="ayuda-editor" style="margin:6px 0 0;">Reproduce el vídeo abajo, pausa en el fotograma que quieras y pulsa el botón. Si no eliges ninguno se usará el segundo 1 por defecto.</p>
+        <video id="em_video_previo" controls playsinline style="width:100%;max-height:260px;background:#000;border-radius:8px;margin-top:10px;display:none;"></video>
+
+        <label style="margin-top:14px;">Punto de foco de esa miniatura</label>
+        <input type="hidden" id="em_portada_foco" value="50% 50%">
+        <div class="fila-imagen-controles-fila fila-acciones">
+          <button type="button" class="btn-foco" id="btnFocoPortadaVideo" title="Elegir qué parte del fotograma no se debe recortar nunca"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/></svg><span class="btn-foco-texto">Foco</span></button>
+        </div>
+        <div class="foco-panel oculto" id="focoPanelPortadaVideo">
+          <div class="foco-preview" id="focoPreviewPortadaVideo"><div class="foco-marcador" id="focoMarcadorPortadaVideo"></div></div>
+          <div class="foco-texto">
+            <p>La miniatura de este vídeo se recorta a un cuadrado o rectángulo; haz clic en el punto del fotograma que quieres que se vea siempre.</p>
+            <button type="button" id="btnFocoResetPortadaVideo">Centrar de nuevo</button>
+          </div>
+        </div>
+      </div>
+      <div id="em_bloque_foco_foto" style="display:none;">
+        <label style="margin-top:14px;">Punto de foco de la foto</label>
+        <input type="hidden" id="em_foto_foco" value="50% 50%">
+        <div class="fila-imagen-controles-fila fila-acciones">
+          <button type="button" class="btn-foco" id="btnFocoFoto" title="Elegir qué parte de la foto no se debe recortar nunca"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/></svg><span class="btn-foco-texto">Foco</span></button>
+        </div>
+        <div class="foco-panel oculto" id="focoPanelFoto">
+          <div class="foco-preview" id="focoPreviewFoto"><div class="foco-marcador" id="focoMarcadorFoto"></div></div>
+          <div class="foco-texto">
+            <p>La miniatura de esta foto se recorta a un cuadrado o rectángulo; haz clic en el punto de la imagen que quieres que se vea siempre.</p>
+            <button type="button" id="btnFocoResetFoto">Centrar de nuevo</button>
+          </div>
+        </div>
+      </div>
       <button type="submit" class="btn-primari">Guardar cambios</button>
       <button type="button" class="btn-secundari" onclick="cerrarModalEditarMedia()">Cancelar</button>
       <p id="msgOkEditarMedia">Guardado correctamente.</p>
       <p id="errEditarMedia"></p>
     </form>
+  </div>
+</div>
+
+<!-- Reproductor de vídeo a pantalla completa del modal (galería de contenido) -->
+<div class="modal-overlay" id="modalReproductorMedia">
+  <div class="modal-caja modal-caja-reproductor-media">
+    <button type="button" class="btn-cerrar-reproductor-media" onclick="cerrarModalReproductorMedia()" aria-label="Cerrar">&times;</button>
+    <div class="reproductor-media-lienzo">
+      <div class="reproductor-media-spinner" id="spinnerReproductorMedia"><span></span></div>
+      <p class="reproductor-media-error" id="errorReproductorMedia">No se ha podido cargar el archivo. Comprueba tu conexión e inténtalo de nuevo.</p>
+      <video id="videoReproductorMedia" controls playsinline></video>
+      <img id="imagenReproductorMedia" alt="">
+    </div>
+    <div class="titulo-reproductor-media" id="tituloReproductorMedia"></div>
+    <button type="button" id="btnUsarFotogramaSubida" class="btn-primari" style="display:none;margin:0 18px 16px;">Usar este fotograma como portada</button>
   </div>
 </div>
 
@@ -2118,15 +2374,15 @@
      abrirPanelMinutoAMinuto). Vacío por defecto. -->
 <div id="panelMinutoAMinuto"></div>
 
-<script src="../js/ui-alertas.js?v=3"></script>
-<script src="../js/config.js?v=12"></script>
-<script src="../js/clubs.js?v=2"></script>
-<script src="../js/corrector-formato.js?v=1"></script>
-<script src="js/admin.js?v=39"></script>
-<script src="js/dropzone-global.js?v=1"></script>
-<script src="js/minuto-a-minuto.js?v=5"></script>
-<script src="js/importacion-rapida.js?v=1"></script>
-<script src="js/importacion-rapida-eventos.js?v=1"></script>
-<script src="js/tutorial.js?v=1"></script>
+<script src="/js/ui-alertas.js?v=3"></script>
+<script src="/js/config.js?v=12"></script>
+<script src="/js/clubs.js?v=2"></script>
+<script src="/js/corrector-formato.js?v=1"></script>
+<script src="/admin/js/admin.js?v=42"></script>
+<script src="/admin/js/dropzone-global.js?v=1"></script>
+<script src="/admin/js/minuto-a-minuto.js?v=5"></script>
+<script src="/admin/js/importacion-rapida.js?v=1"></script>
+<script src="/admin/js/importacion-rapida-eventos.js?v=1"></script>
+<script src="/admin/js/tutorial.js?v=1"></script>
 </body>
 </html>

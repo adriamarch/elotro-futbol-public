@@ -304,7 +304,8 @@ if (USER) {
   }
   document.getElementById("userNombre").textContent = USER.nombre;
   document.getElementById("cuentaNombreCompleto").textContent = USER.nombre;
-  document.getElementById("cuentaRolEtiqueta").textContent = USER.rol === "admin" ? "Administrador" : "Redactor";
+  document.getElementById("cuentaRolEtiqueta").textContent =
+    USER.rol === "admin" ? "Administrador" : (USER.rol === "fotografo" ? "Fotógrafo" : "Redactor");
   // El panel de analíticas (public/panel-analiticas.html) solo admite
   // administradores en el Worker (ver /api/admin/analiticas/*), así que
   // ni se muestra el enlace a quien no lo sea.
@@ -347,6 +348,15 @@ if (USER) {
     if (subtabFuncHistorial) subtabFuncHistorial.style.display = "none";
     const subtabFuncComentarios = document.getElementById("subtabFuncComentarios_btn");
     if (subtabFuncComentarios) subtabFuncComentarios.style.display = "none";
+    // Fase 11: gestionar la galería de un partido (vincular/reordenar/
+    // quitar fotos) es cosa de admin o fotógrafo (ver
+    // puedeGestionarGaleria en el backend); un redactor solo consulta
+    // esa galería desde el propio editor de noticia (Fase 12/13), así
+    // que aquí no le hace falta esta subtab.
+    if (USER.rol !== "fotografo") {
+      const subtabGaleriaPartido = document.getElementById("subtabGaleriaPartido");
+      if (subtabGaleriaPartido) subtabGaleriaPartido.style.display = "none";
+    }
     // Un redactor normal también puede ver esta pestaña, pero solo le
     // muestra (y le deja editar) lo que ha subido él mismo.
     const subtabVerContenido = document.getElementById("subtabVerContenido");
@@ -384,6 +394,56 @@ if (USER) {
     // no hace falta además un párrafo aparte repitiéndolo.
   }
 
+  // Fase 6 — Un fotógrafo no tiene nada que hacer en el contenido
+  // editorial (el backend ya lo bloquea con 403 desde la Fase 3, esto
+  // es solo ocultar en el menú lo que de todos modos no puede usar).
+  // Se le deja visible únicamente "Contenido" (subir/ver galería),
+  // "Tienda" y "Ajustes de cuenta". Un redactor sigue viendo todo lo
+  // que veía hasta ahora (ninguno de estos "if" le afecta).
+  if (USER.rol === "fotografo") {
+    const tabNoticias = document.querySelector('.tabs button[data-tab="noticias"]');
+    if (tabNoticias) tabNoticias.style.display = "none";
+    const tabResultados = document.querySelector('.tabs button[data-tab="resultados"]');
+    if (tabResultados) tabResultados.style.display = "none";
+    // Las solicitudes de edición son sobre noticias/crónicas/resultados,
+    // que un fotógrafo no gestiona, así que tampoco tiene sentido que
+    // reciba ni envíe ninguna.
+    const tabSolicitudes = document.getElementById("tabSolicitudes");
+    if (tabSolicitudes) tabSolicitudes.style.display = "none";
+    // "Funcionalidades" para un colaborador no-admin ya solo da acceso
+    // a "Equipos" (ver más abajo, subtab "equipos"); a un fotógrafo
+    // tampoco le hace falta esto, así que se oculta entera.
+    const tabFuncionalidades = document.getElementById("tabFuncionalidades");
+    if (tabFuncionalidades) tabFuncionalidades.style.display = "none";
+    // "Noticias" viene marcada como pestaña activa por defecto en el
+    // HTML (ver panel.html): como se acaba de ocultar, se activa en su
+    // lugar "Contenido", que es donde el fotógrafo va a trabajar.
+    document.querySelector('.tabs button[data-tab="noticias"]').classList.remove("activo");
+    document.getElementById("panel-noticias").classList.remove("activo");
+    const tabContenidoInicial = document.getElementById("tabContenido");
+    if (tabContenidoInicial) tabContenidoInicial.click();
+    // "Subir contenido" es la pantalla de bienvenida real para un
+    // fotógrafo (así lo ve en el HTML por defecto, panel.html), pero si
+    // ya hay una subtab distinta marcada como activa en el DOM en el
+    // momento de este click (p. ej. porque el tutorial guiado se cerró a
+    // mitad del paso de "Galería de partido", que navega hasta ahí antes
+    // de pintar su tarjeta — ver tutorial.js, mostrarPaso/irASubtab), el
+    // fotógrafo aterrizaba en esa pantalla intermedia, sin partido
+    // elegido y mostrando de entrada el error de la galería. Se fuerza
+    // aquí, siempre, a "Subir contenido" para que la entrada al panel
+    // sea consistente pase lo que pase antes.
+    document.querySelectorAll("#subtabsContenido button").forEach((b) => b.classList.remove("activo"));
+    document.querySelectorAll("#panel-contenido > .subpanel").forEach((p) => p.classList.remove("activo"));
+    document.getElementById("subtabsContenido")?.querySelector('[data-subtab="subir"]')?.classList.add("activo");
+    document.getElementById("subpanel-subir")?.classList.add("activo");
+    // "Mi progreso" (Ajustes de cuenta) muestra el sistema de niveles de
+    // redactor (artículos publicados, audiencia, requisitos para
+    // ascender...), que no aplica a un fotógrafo — igual que ya no se le
+    // muestra ningún nivel en "Usuarios" (ver arriba, columna "Nivel").
+    const subtabProgreso = document.querySelector('#subtabsAjustes button[data-subtab="progreso"]');
+    if (subtabProgreso) subtabProgreso.style.display = "none";
+  }
+
   // ---------- Cierre de sesión por inactividad (15 minutos) ----------
   const INACTIVIDAD_LIMITE_MS = 15 * 60 * 1000;
   let temporizadorInactividad;
@@ -415,7 +475,16 @@ if (USER) {
   inicializarNotificaciones();
 
   // ---------- Aviso de solicitudes de edición pendientes de mi respuesta ----------
-  actualizarBadgeSolicitudesPendientes();
+  // Las solicitudes de edición son sobre contenido editorial (noticias,
+  // crónicas, resultados) que un fotógrafo no gestiona — su pestaña
+  // "Solicitudes" ni siquiera se muestra (ver bloque "Fase 6" más abajo)
+  // y el backend le devuelve 403 ante /api/edit-requests. Antes esta
+  // llamada se hacía igualmente al arrancar el panel para cualquier
+  // usuario, generando ese 403 de fondo en cada carga; ahora se salta
+  // directamente para un fotógrafo.
+  if (USER.rol !== "fotografo") {
+    actualizarBadgeSolicitudesPendientes();
+  }
 
   // ---------- Desplegable de cuenta ----------
   const cuentaWrap = document.getElementById("cuentaWrap");
@@ -486,10 +555,18 @@ async function cargarNotificaciones() {
   const contador = document.getElementById("notifContador");
   if (!lista) return;
   try {
+    // Un fotógrafo no gestiona nada editorial (noticias, artículos,
+    // resultados pendientes de actualizar): esas son notificaciones "de
+    // administrador/redactor" que no le corresponden y que, además, su
+    // rol ni siquiera tiene permiso para abrir (ver Fase 6 en admin.js,
+    // donde se le ocultan esas pestañas). Para él solo tiene sentido
+    // enterarse de sus propios pedidos en la tienda, así que ni se piden
+    // artículos/resultados: así tampoco arriesga un 403 de fondo cada 60s.
+    const ES_FOTOGRAFO_NOTIF = USER && USER.rol === "fotografo";
     const [{ media = [] }, { articles = [] }, { results: resultadosPendientes = [] }, misPedidosTienda, pedidosTiendaGestion] = await Promise.all([
-      apiFetch(`/api/media`),
-      apiFetch(`/api/articles?admin=1&limit=15`),
-      apiFetch(`/api/results?limit=200`),
+      ES_FOTOGRAFO_NOTIF ? Promise.resolve({ media: [] }) : apiFetch(`/api/media`),
+      ES_FOTOGRAFO_NOTIF ? Promise.resolve({ articles: [] }) : apiFetch(`/api/articles?admin=1&limit=15`),
+      ES_FOTOGRAFO_NOTIF ? Promise.resolve({ results: [] }) : apiFetch(`/api/results?limit=200`),
       apiFetch(`/api/tienda/mis-pedidos`).catch(() => ({ pedidos: [] })),
       // Solo quien gestiona la tienda puede ver todos los pedidos; para
       // el resto esta petición devolvería 403, así que directamente no
@@ -690,7 +767,34 @@ function authHeaders() {
 // recursión infinita), se llama explícitamente a window.eofApiFetch — el
 // motor de failover expuesto aparte en config.js para este caso.
 async function apiFetch(path, options = {}) {
-  const res = await window.eofApiFetch(path, { ...options, headers: authHeaders() });
+  let res = await window.eofApiFetch(path, { ...options, headers: authHeaders() });
+  if (res.status === 401) {
+    // Antes de dar la sesión por caducada de verdad, se reintenta UNA vez
+    // directamente contra la PRIMARIA (sin pasar por el failover a la
+    // secundaria de config.js). Motivo: en una lectura (GET), si el
+    // failover de config.js decide -por lo que sea, aunque sea un timeout
+    // puntual- servir la petición desde la secundaria (Railway/Postgres),
+    // la tabla "sessions" allí es una RÉPLICA que llega cada ~60s (ver
+    // sync/scheduler.mjs), no la misma fila en tiempo real. Si la sesión
+    // se creó hace más de TOLERANCIA_SESION_NO_REPLICADA_SEGUNDOS (5 min,
+    // ver requireAuth en el Worker) esa réplica puede no tenerla todavía
+    // aunque sea perfectamente válida en la primaria, y el 401 que llega
+    // aquí es un falso positivo -no la sesión real caducada-. Esto se
+    // notaba sobre todo en "Dispositivos" (/api/me/sesiones), donde
+    // bastaba abrir esa pestaña en el momento equivocado para acabar
+    // desconectado sin motivo real. El reintento fuerza la primaria
+    // (que sí tiene la sesión) y, si ESE también da 401, entonces sí es
+    // una sesión revocada/caducada de verdad y se cierra sesión.
+    try {
+      res = await eofFetchConTimeout(`${PRIMARY_API}${path}`, { ...options, headers: authHeaders() }, EOF_API_TIMEOUT_MS);
+    } catch {
+      // Si ni siquiera se puede contactar con la primaria, se mantiene el
+      // 401 original (no se puede confirmar si es un problema real de
+      // sesión o solo de conectividad) y se procede a cerrar sesión como
+      // antes: es preferible pedir que vuelva a iniciar sesión a dejar a
+      // la persona atascada sin saber qué pasa.
+    }
+  }
   if (res.status === 401) {
     logout();
     // logout() ya redirige a login.html; devolvemos un objeto vacío para
@@ -835,10 +939,10 @@ document.querySelectorAll(".tabs button").forEach(btn => {
     }
     // "Funcionalidades" y "Usuarios" son exclusivas (o casi) de
     // administrador, así que la cabecera pasa a decir "Administración".
-    // Para un redactor, "Funcionalidades" solo da acceso a Equipos, así
-    // que se queda como "Redacción".
+    // Para un colaborador (redactor o fotógrafo), "Funcionalidades" solo
+    // da acceso a Equipos, así que se queda como "Colaboración".
     const esFuncionalidadesSoloAdmin = btn.dataset.tab === "funcionalidades" && USER.rol === "admin";
-    if (tituloSeccion) tituloSeccion.textContent = (esFuncionalidadesSoloAdmin || btn.dataset.tab === "usuarios") ? "Administración" : (btn.dataset.tab === "ajustes" ? "Ajustes de cuenta" : "Redacción");
+    if (tituloSeccion) tituloSeccion.textContent = (esFuncionalidadesSoloAdmin || btn.dataset.tab === "usuarios") ? "Administración" : (btn.dataset.tab === "ajustes" ? "Ajustes de cuenta" : "Colaboración");
   });
 });
 
@@ -854,9 +958,9 @@ function cargaSubtabFuncionalidades(subtab) {
   if (subtab === "equipos") cargaEquiposInfo();
 }
 
-// Un redactor no tiene el subtab "Redes sociales" (ni Comentarios,
-// Newsletter, Historial), así que al entrar en "Funcionalidades" le
-// mostramos directamente Equipos.
+// Un colaborador (redactor o fotógrafo) no tiene el subtab "Redes
+// sociales" (ni Comentarios, Newsletter, Historial), así que al entrar
+// en "Funcionalidades" le mostramos directamente Equipos.
 document.getElementById("tabFuncionalidades")?.addEventListener("click", () => {
   if (USER.rol === "admin") return;
   document.querySelectorAll("#subtabsFuncionalidades button").forEach(b => b.classList.remove("activo"));
@@ -883,6 +987,7 @@ document.querySelectorAll(".subtabs button").forEach(btn => {
     btn.classList.add("activo");
     document.getElementById("subpanel-" + btn.dataset.subtab).classList.add("activo");
     if (btn.dataset.subtab === "ver") cargaContenido();
+    if (btn.dataset.subtab === "galeriaPartido") cargaSubtabGaleriaPartido();
     if (btn.dataset.subtab === "lista") cargaListaArticulos();
     if (btn.dataset.subtab === "listaResultados") cargaListaResultados();
     if (btn.dataset.subtab === "sesiones") cargaSesiones();
@@ -1135,6 +1240,10 @@ function sincronizarProgramarConPublicado() {
     campoFechaProgramada.style.display = "none";
     ayudaProgramarNoticia.style.display = "none";
   }
+  // El bloque entero de "Programar publicación" tampoco tiene sentido
+  // ver en una noticia ya publicada: solo aplica a algo que todavía no
+  // está publicado (se oculta el bloque, no solo se desmarca el check).
+  bloqueProgramarNoticia.style.display = (checkPublicado.checked || !puedeProgramarNoticia()) ? "none" : "";
 }
 checkPublicado?.addEventListener("change", sincronizarProgramarConPublicado);
 
@@ -1160,6 +1269,43 @@ inputProgramadoPara?.addEventListener("change", actualizarTextoBotonGuardar);
 sincronizarProgramarConPublicado();
 sincronizarCampoFechaProgramada();
 
+// ---------- FECHA DE PREFERENCIA (sugerencia para quien revise, no programa nada) ----------
+// Antes vivía solo dentro del modal "¿está terminada la noticia?"; ahora
+// es un toggle más junto a "Destacada" / "Publicada" / "Última hora" /
+// "Programar publicación", visible siempre mientras se edita, para que no
+// haga falta pasar por el modal para fijarla o cambiarla.
+const checkFechaPreferenciaActiva = document.getElementById("fechaPreferenciaActiva");
+const campoFechaPreferencia = document.getElementById("campoFechaPreferencia");
+const bloqueFechaPreferencia = document.getElementById("bloqueFechaPreferencia");
+function sincronizarCampoFechaPreferencia() {
+  if (!checkFechaPreferenciaActiva || !campoFechaPreferencia) return;
+  const activo = checkFechaPreferenciaActiva.checked;
+  campoFechaPreferencia.style.display = activo ? "" : "none";
+  if (!activo) {
+    rellenarFechaYHora(null, "prefFechaDesde", "prefHoraDesde");
+    rellenarFechaYHora(null, "prefFechaHasta", "prefHoraHasta");
+  }
+}
+checkFechaPreferenciaActiva?.addEventListener("change", sincronizarCampoFechaPreferencia);
+sincronizarCampoFechaPreferencia();
+
+// La "fecha de preferencia" es una sugerencia para quien todavía tiene
+// que revisar/publicar la noticia; en una noticia que ya está publicada
+// no pinta nada, así que el bloque entero se oculta (y se desmarca y
+// limpia, para no dejar un valor fantasma guardado si se vuelve a
+// desmarcar "Publicada" más tarde sin que el redactor se dé cuenta).
+function sincronizarFechaPreferenciaConPublicado() {
+  if (!bloqueFechaPreferencia) return;
+  const yaPublicada = Boolean(checkPublicado?.checked);
+  bloqueFechaPreferencia.style.display = yaPublicada ? "none" : "";
+  if (yaPublicada && checkFechaPreferenciaActiva?.checked) {
+    checkFechaPreferenciaActiva.checked = false;
+    sincronizarCampoFechaPreferencia();
+  }
+}
+checkPublicado?.addEventListener("change", sincronizarFechaPreferenciaConPublicado);
+sincronizarFechaPreferenciaConPublicado();
+
 // Convierte el valor del <input type="datetime-local"> a un ISO string en
 // UTC para mandarlo al backend. El valor del input ("YYYY-MM-DDTHH:MM") es
 // SIEMPRE la hora de Madrid tal y como la escribe quien programa la
@@ -1182,6 +1328,23 @@ function offsetMadridEnMinutos(instante) {
     partes.year, partes.month - 1, partes.day, partes.hour, partes.minute, partes.second
   );
   return Math.round((comoSiFueraUTC - instante.getTime()) / 60000);
+}
+
+// Formatea un valor de preferencia guardado ("YYYY-MM-DD" o
+// "YYYY-MM-DDTHH:MM", tal cual guarda fecha_preferencia_desde/hasta)
+// como "DD/MM/AAAA" o "DD/MM/AAAA HH:MM" para mostrarlo en el listado.
+// Se parsea a mano en vez de con "new Date(...)" porque un string sin
+// hora ("YYYY-MM-DD") se interpreta como medianoche UTC, y en el
+// navegador (hora local) eso puede mostrar el día anterior; al ser una
+// fecha simple sin componente horario, no tiene sentido pasar por
+// ninguna conversión de zona horaria (y la hora, cuando la hay, es la
+// hora local que escribió el redactor, no UTC: tampoco se convierte).
+function formatFechaSimple(valor) {
+  if (!valor) return "";
+  const [fechaSimple, hora] = valor.split("T");
+  const [anio, mes, dia] = fechaSimple.split("-");
+  if (!anio || !mes || !dia) return valor;
+  return hora ? `${dia}/${mes}/${anio} ${hora}` : `${dia}/${mes}/${anio}`;
 }
 
 function programadoParaISO() {
@@ -1516,7 +1679,8 @@ async function cargarAutoresSelect(autorSeleccionado, coautorSeleccionado) {
     if (selectCoautor) selectCoautor.innerHTML = `<option value="">— Sin segundo autor —</option>`;
   }
 }
-cargarAutoresSelect(USER.id);
+// (la llamada real está más abajo, junto a SNAPSHOT_ARTICULO_ORIGINAL,
+// para poder esperar a que termine antes de tomar el snapshot inicial)
 
 // ---------- ARTÍCULOS: varias fotos ----------
 // Cada noticia/crónica puede llevar varias fotos: la primera es la
@@ -3366,7 +3530,7 @@ let SNAPSHOT_ARTICULO_ORIGINAL = null;
 // Valida el formulario y, si es correcto, guarda la noticia. Si se pasa
 // un PIN de "Última hora" (redactor publicando directamente), se manda
 // junto al resto de campos para que el backend lo compruebe.
-async function guardarArticulo(ultimaHoraPin, estadoBorrador) {
+async function guardarArticulo(ultimaHoraPin, estadoBorrador, preferenciaFechas) {
   // Si se pulsa "Guardar" mientras alguna foto todavía se está subiendo a
   // Cloudinary (el botón de subir queda con la clase "subiendo" hasta que
   // termina), esa foto en concreto todavía no tiene URL en su campo
@@ -3474,6 +3638,11 @@ async function guardarArticulo(ultimaHoraPin, estadoBorrador) {
     coautor_id: selectCoautor ? (selectCoautor.value || null) : undefined,
     imagen_url: obtenerPortadaSeleccionada(),
     imagenes,
+    // Fase 13: galería de partido/mediateca vinculada aparte (tabla
+    // article_media, ver sincronizarArticleMedia en el worker). Se manda
+    // siempre (aunque esté vacía) para que quitar la última foto del
+    // selector también se refleje al guardar.
+    media_ids: idsGaleriaArticuloActual(),
     resultado_id: selectResultadoArticulo.value || null,
     contenido: contenidoEditor.innerHTML,
     destacado: document.getElementById("destacado").checked,
@@ -3498,6 +3667,13 @@ async function guardarArticulo(ultimaHoraPin, estadoBorrador) {
   // que se le muestra justo antes de llamar a esta función). El backend
   // solo avisa por email a la redacción cuando es "terminado".
   if (!body.publicado && estadoBorrador) body.estado_borrador = estadoBorrador;
+  // Preferencia de fechas del redactor (opcional, solo tiene sentido
+  // junto con "terminado", ver preferenciaFechasDelModal): se manda tal
+  // cual, el backend valida y descarta lo que no tenga sentido.
+  if (!body.publicado && estadoBorrador === "terminado" && preferenciaFechas) {
+    if (preferenciaFechas.fecha_preferencia_desde) body.fecha_preferencia_desde = preferenciaFechas.fecha_preferencia_desde;
+    if (preferenciaFechas.fecha_preferencia_hasta) body.fecha_preferencia_hasta = preferenciaFechas.fecha_preferencia_hasta;
+  }
   try {
     let slugResultado = null;
     let avisosTraduccion = [];
@@ -3611,7 +3787,13 @@ formArticle.addEventListener("submit", async (e) => {
     // cancelado la fecha de publicación automática- así que se manda
     // directamente a "en revisión" sin abrir el modal.
     if (estadoBorradorOriginal === "terminado" || programadoParaOriginal) {
-      await guardarArticulo(null, "terminado");
+      // Antes se conservaba aquí la preferencia de fechas "original" tal
+      // cual, porque solo se podía cambiar reabriendo el modal (que ya no
+      // se muestra en este flujo). Ahora el toggle "Fecha de preferencia"
+      // vive siempre visible en el formulario, así que hay que leer lo
+      // que haya en ese momento en los inputs (preferenciaFechasDelModal),
+      // no los campos ocultos con el valor con el que se cargó la noticia.
+      await guardarArticulo(null, "terminado", preferenciaFechasDelModal());
       return;
     }
     abrirModalEstadoBorrador();
@@ -3633,9 +3815,53 @@ if (modalEstadoBorradorEl) {
     if (e.target === modalEstadoBorradorEl) cerrarModalEstadoBorrador();
   });
 }
+// Combina un <input type="date"> y un <input type="time"> opcional en
+// el formato que espera el backend: "YYYY-MM-DD" si no se puso hora
+// (preferencia de "todo el día"), o "YYYY-MM-DDTHH:MM" si sí. Sin
+// fecha, da igual lo que haya en el campo de hora: no hay preferencia.
+function combinarFechaYHora(idFecha, idHora) {
+  const fecha = document.getElementById(idFecha)?.value || "";
+  if (!fecha) return null;
+  const hora = document.getElementById(idHora)?.value || "";
+  return hora ? `${fecha}T${hora}` : fecha;
+}
+
+// Lee el rango de fechas (y horas opcionales) de preferencia que el
+// redactor haya rellenado (opcional) con el toggle "Fecha de preferencia"
+// del formulario, para mandarlo junto con "terminado". Si se sigue
+// escribiendo ("en_proceso") no se manda: todavía no tiene sentido
+// sugerir cuándo publicarla. Si el toggle está desactivado, tampoco (los
+// campos se limpian solos al desactivarlo, ver sincronizarCampoFechaPreferencia).
+function preferenciaFechasDelModal() {
+  if (!checkFechaPreferenciaActiva?.checked) {
+    return { fecha_preferencia_desde: null, fecha_preferencia_hasta: null };
+  }
+  return {
+    fecha_preferencia_desde: combinarFechaYHora("prefFechaDesde", "prefHoraDesde"),
+    fecha_preferencia_hasta: combinarFechaYHora("prefFechaHasta", "prefHoraHasta"),
+  };
+}
+
+// Separa un valor guardado ("YYYY-MM-DD" o "YYYY-MM-DDTHH:MM") en sus
+// partes de fecha y hora, para rellenar el par de inputs date+time del
+// modal (ver rellenarFechaYHora, usado al reabrir un borrador ya
+// "terminado" con preferencia guardada).
+function rellenarFechaYHora(valor, idFecha, idHora) {
+  const inputFecha = document.getElementById(idFecha);
+  const inputHora = document.getElementById(idHora);
+  if (!valor) {
+    if (inputFecha) inputFecha.value = "";
+    if (inputHora) inputHora.value = "";
+    return;
+  }
+  const [fecha, hora] = valor.split("T");
+  if (inputFecha) inputFecha.value = fecha || "";
+  if (inputHora) inputHora.value = hora || "";
+}
 document.getElementById("btnBorradorTerminado")?.addEventListener("click", async () => {
+  const preferencia = preferenciaFechasDelModal();
   cerrarModalEstadoBorrador();
-  await guardarArticulo(null, "terminado");
+  await guardarArticulo(null, "terminado", preferencia);
 });
 document.getElementById("btnBorradorEnProceso")?.addEventListener("click", async () => {
   cerrarModalEstadoBorrador();
@@ -3858,6 +4084,18 @@ function cancelarEdicion() {
   document.getElementById("articlePublicadoOriginal").value = "";
   document.getElementById("articleEstadoBorradorOriginal").value = "";
   document.getElementById("articleProgramadoParaOriginal").value = "";
+  const campoPrefDesdeOriginal = document.getElementById("articleFechaPreferenciaDesdeOriginal");
+  const campoPrefHastaOriginal = document.getElementById("articleFechaPreferenciaHastaOriginal");
+  if (campoPrefDesdeOriginal) campoPrefDesdeOriginal.value = "";
+  if (campoPrefHastaOriginal) campoPrefHastaOriginal.value = "";
+  // El modal de "¿está terminada?" vive fuera de formArticle (es un
+  // modal-overlay aparte), así que formArticle.reset() no lo limpia: se
+  // hace a mano para que una noticia nueva no arrastre la preferencia de
+  // fechas de la edición anterior.
+  rellenarFechaYHora(null, "prefFechaDesde", "prefHoraDesde");
+  rellenarFechaYHora(null, "prefFechaHasta", "prefHoraHasta");
+  if (checkFechaPreferenciaActiva) checkFechaPreferenciaActiva.checked = false;
+  sincronizarCampoFechaPreferencia();
   // Un redactor de Nivel 1 no puede publicar directamente (el backend lo
   // guardaría como borrador salvo que use el PIN de "Última hora"): se le
   // deja el checkbox "Publicada" desmarcado por defecto al abrir una
@@ -3868,6 +4106,7 @@ function cancelarEdicion() {
   document.getElementById("publicado").checked = nivelParaPublicadoPorDefecto >= 2;
   sincronizarDestacadoConPublicado();
   sincronizarProgramarConPublicado();
+  sincronizarFechaPreferenciaConPublicado();
   sincronizarCampoFechaProgramada();
   actualizarTextoBotonGuardar();
   document.getElementById("btnCancelar").style.display = "none";
@@ -3878,6 +4117,7 @@ function cancelarEdicion() {
   resetTweets([]);
   COLLAGES_ARTICULO = [];
   pintarListaCollages();
+  resetGaleriaArticulo(null);
   cargarResultadosSelect("");
   insertarPlantilla(true);
   actualizarContadorCaracteres();
@@ -4028,6 +4268,116 @@ function articuloCoincideBusqueda(a, textoBusqueda) {
   return haystack.includes(normalizarBusquedaPanel(textoBusqueda));
 }
 
+// Convierte un valor de preferencia ("YYYY-MM-DD" o "YYYY-MM-DDTHH:MM")
+// al instante (ms, hora local del navegador) en el que empieza a
+// aplicar. Para "esComienzo=true" (fecha_preferencia_desde) una fecha
+// sin hora empieza a las 00:00 de ese día; para "esComienzo=false"
+// (fecha_preferencia_hasta) una fecha sin hora se entiende como límite
+// al FINAL de ese día (23:59:59.999), porque "hasta el día X" incluye
+// todo el día X completo.
+function instanteDePreferencia(valor, esComienzo) {
+  if (!valor) return null;
+  const [fecha, hora] = valor.split("T");
+  const [anio, mes, dia] = fecha.split("-").map(Number);
+  if (hora) {
+    const [h, min] = hora.split(":").map(Number);
+    return new Date(anio, mes - 1, dia, h, min).getTime();
+  }
+  return esComienzo
+    ? new Date(anio, mes - 1, dia, 0, 0, 0, 0).getTime()
+    : new Date(anio, mes - 1, dia, 23, 59, 59, 999).getTime();
+}
+
+// Fase del "semáforo" de preferencia de fechas de una noticia "en
+// revisión" (borrador terminado, sin programar), para mostrar en el
+// panel en vez de la fecha en crudo:
+//  - null           → no tiene preferencia de fechas guardada.
+//  - "pendiente"     → todavía no ha llegado "desde": aún no se puede
+//                       subir según lo que pidió el redactor.
+//  - "disponible"    → ya se puede subir: dentro del rango, o ya pasó
+//                       "desde" y no hay "hasta" (sin límite).
+//  - "caducada"      → ya pasó "hasta" sin publicarse.
+// Puramente informativo: no afecta a publicado/estado_borrador ni
+// bloquea ninguna acción del panel.
+function faseDePreferenciaFechas(a) {
+  if (a.publicado || a.programado_para || a.estado_borrador !== "terminado") return null;
+  if (!a.fecha_preferencia_desde) return null;
+  const ahora = Date.now();
+  const inicioDesde = instanteDePreferencia(a.fecha_preferencia_desde, true);
+  if (ahora < inicioDesde) return "pendiente";
+  const finHasta = a.fecha_preferencia_hasta ? instanteDePreferencia(a.fecha_preferencia_hasta, false) : null;
+  if (finHasta !== null && ahora > finHasta) return "caducada";
+  return "disponible";
+}
+
+// Umbral (en ms) por debajo del cual se muestra el temporizador urgente
+// junto al semáforo de preferencia de fechas: menos de 10 horas para que
+// expire la preferencia (fecha_preferencia_hasta) sin que la noticia se
+// haya publicado todavía.
+const UMBRAL_URGENCIA_PREFERENCIA_MS = 10 * 60 * 60 * 1000;
+
+// Milisegundos restantes hasta que expire la preferencia de fechas de
+// una noticia, o null si no aplica: solo tiene sentido mientras la fase
+// es "disponible" (ya se puede subir, pero queda poco para que deje de
+// tener sentido subirla con esa preferencia), solo si hay un límite
+// "hasta" fijado (sin "hasta" no hay nada que se acabe, así que no hay
+// urgencia que contar), y solo si quedan menos de 10h.
+function msRestantesPreferenciaFechas(a, faseFechas) {
+  if (faseFechas !== "disponible" || !a.fecha_preferencia_hasta) return null;
+  const restanteMs = instanteDePreferencia(a.fecha_preferencia_hasta, false) - Date.now();
+  if (restanteMs <= 0 || restanteMs >= UMBRAL_URGENCIA_PREFERENCIA_MS) return null;
+  return restanteMs;
+}
+
+// Formatea unos milisegundos como cronómetro HH:MM:SS (siempre con los
+// tres pares de dígitos, aunque las horas sean "0", para que se lea como
+// un temporizador de verdad y no como una duración suelta).
+function formatoCronometro(ms) {
+  const segundosTotales = Math.max(0, Math.floor(ms / 1000));
+  const horas = Math.floor(segundosTotales / 3600);
+  const minutos = Math.floor((segundosTotales % 3600) / 60);
+  const segundos = segundosTotales % 60;
+  const dosDigitos = (n) => String(n).padStart(2, "0");
+  return `${dosDigitos(horas)}:${dosDigitos(minutos)}:${dosDigitos(segundos)}`;
+}
+
+// Reordena ARTICULOS_LISTA_COMPLETA (ya venía de la API ordenada por
+// fecha_publicacion DESC) para que, dentro del bloque de noticias "en
+// revisión" (borrador terminado, sin programar), las que tienen fecha
+// de preferencia del redactor suban primero, más urgente arriba
+// (fecha_preferencia_hasta más próxima; si no tiene "hasta", se usa
+// "desde"; las caducadas cuentan como máxima urgencia, así se ven
+// arriba del todo dentro de ese bloque). El resto del listado
+// (publicadas, programadas, borradores en proceso, y las "en revisión"
+// sin preferencia) mantiene su orden relativo de siempre: es un sort
+// estable que solo reordena "en revisión" entre sí, sin sacarlas de su
+// hueco en la tabla ni tocar la posición de las demás filas.
+function ordenarPorPreferenciaFechas(articles) {
+  const enRevisionConPreferencia = (a) =>
+    !a.publicado && !a.programado_para && a.estado_borrador === "terminado"
+    && (a.fecha_preferencia_desde || a.fecha_preferencia_hasta);
+  const claveUrgencia = (a) => a.fecha_preferencia_hasta || a.fecha_preferencia_desde;
+
+  // Se separan los índices de las filas "en revisión con preferencia" y
+  // se ordenan solo esos huecos entre sí; el resto de la lista no se
+  // toca. Así el resultado sigue teniendo la misma longitud y las
+  // mismas filas en las mismas posiciones salvo ese subconjunto.
+  const indices = [];
+  articles.forEach((a, i) => { if (enRevisionConPreferencia(a)) indices.push(i); });
+  if (indices.length < 2) return articles;
+
+  const indicesOrdenados = [...indices].sort((iA, iB) => {
+    const a = articles[iA], b = articles[iB];
+    return claveUrgencia(a).localeCompare(claveUrgencia(b));
+  });
+
+  const resultado = articles.slice();
+  indices.forEach((posicionEnTabla, j) => {
+    resultado[posicionEnTabla] = articles[indicesOrdenados[j]];
+  });
+  return resultado;
+}
+
 async function cargaListaArticulos() {
   const cos = document.getElementById("tablaArticulos");
   cos.innerHTML = "<tr><td colspan='5'>Cargando...</td></tr>";
@@ -4043,7 +4393,7 @@ async function cargaListaArticulos() {
     const { articles = [] } = await apiFetch(`/api/articles?admin=1&limit=2000`);
     ARTICULOS_CACHE = {};
     articles.forEach((a) => { ARTICULOS_CACHE[a.id] = a; });
-    ARTICULOS_LISTA_COMPLETA = articles;
+    ARTICULOS_LISTA_COMPLETA = ordenarPorPreferenciaFechas(articles);
     ARTICULOS_PAGINA_ACTUAL = 1;
     pintarListaArticulos();
   } catch (err) {
@@ -4069,7 +4419,7 @@ function badgeBannerUrgente(a) {
   const horas = Math.floor(minutosTotales / 60);
   const minutos = minutosTotales % 60;
   const restanteLabel = horas > 0 ? `${horas}h ${minutos}min` : `${minutos}min`;
-  return ` <span class="badge-estado" style="background:#d1132e;color:#fff;" title="Banner activo en toda la web">🔴 ÚLTIMA HORA — quedan ${restanteLabel}</span>`;
+  return ` <span class="badge-estado badge-ultima-hora" title="Banner activo en toda la web">🔴 ÚLTIMA HORA — quedan ${restanteLabel}</span>`;
 }
 
 async function quitarBannerUrgente(a) {
@@ -4138,15 +4488,46 @@ function pintarListaArticulos() {
       } else {
         botonesAccion = `<button class="solicitar" data-accion="solicitar" data-id="${a.id}">Solicitar edición</button>`;
       }
+      // Preferencia de fechas del redactor (solo aplica a un borrador "en
+      // revisión", nunca a uno publicado, programado o "en proceso"): en
+      // vez de mostrar la fecha en crudo, se resume como un semáforo de
+      // 3 colores (punto + texto corto) para que quien vaya a publicar
+      // vea de un vistazo si ya toca subirla, sin tener que calcular
+      // fechas mentalmente. El rango exacto (con hora, si la hay) se ve
+      // al pasar el ratón por encima (title).
+      const faseFechas = faseDePreferenciaFechas(a);
+      const ETIQUETAS_FASE_FECHAS = {
+        pendiente: "Aún no se puede subir",
+        disponible: "Se puede subir",
+        caducada: "Fecha caducada",
+      };
+      const rangoLegible = a.fecha_preferencia_desde && a.fecha_preferencia_hasta
+        ? `${formatFechaSimple(a.fecha_preferencia_desde)} – ${formatFechaSimple(a.fecha_preferencia_hasta)}`
+        : `desde ${formatFechaSimple(a.fecha_preferencia_desde)}${a.fecha_preferencia_hasta ? "" : " (sin límite)"}`;
+      const badgePreferenciaFechas = faseFechas
+        ? `<span class="badge-preferencia-fechas fase-${faseFechas}" title="Preferencia del redactor: ${rangoLegible}. Solo orientativo, no programa ni bloquea nada.">
+            <span class="punto-fase"></span>${ETIQUETAS_FASE_FECHAS[faseFechas]}
+          </span>`
+        : "";
+      // Temporizador urgente: menos de 10h para que expire la preferencia
+      // sin que la noticia se haya publicado. Se suma aparte del semáforo
+      // de arriba (no lo sustituye). En vez de texto fijo, se guarda el
+      // instante exacto de expiración en un data-attribute y un pequeño
+      // reloj en JS (ver tickCronometrosUrgenciaPreferencia) lo actualiza
+      // cada segundo en formato HH:MM:SS, como un cronómetro de verdad.
+      const msRestantesFechas = msRestantesPreferenciaFechas(a, faseFechas);
+      const badgeUrgenciaPreferencia = msRestantesFechas !== null
+        ? `<span class="badge-estado badge-urgencia-preferencia" data-hasta-ms="${instanteDePreferencia(a.fecha_preferencia_hasta, false)}" title="Preferencia del redactor: ${rangoLegible}. Quedan menos de 10h para que expire sin publicarse.">${formatoCronometro(msRestantesFechas)}</span>`
+        : "";
       return `
       <tr class="${!esMio && USER.rol !== "admin" ? "fila-de-otro" : ""}">
         <td data-label="Título">${escapeHtml(a.titulo)} ${badgeAutoria}</td>
         <td data-label="Categoría">${categoriaLabel(a.categoria)}${(a.categorias_adicionales && a.categorias_adicionales.length) ? ` <span class="badge-cats-adicionales" title="${escapeHtml(a.categorias_adicionales.map(categoriaLabel).join(', '))}">+${a.categorias_adicionales.length}</span>` : ""}</td>
         <td data-label="Fecha">${formatFecha(a.fecha_publicacion)}</td>
-        <td data-label="Estado">${a.programado_para
+        <td data-label="Estado"><div class="celda-estado-noticia">${a.programado_para
             ? `<span class="badge-estado programado" title="Se publicará sola el ${formatFechaConHora(a.programado_para)}">Programada · ${formatFechaConHora(a.programado_para)}</span>`
             : `<span class="badge-estado ${a.publicado ? "publicado" : (a.estado_borrador === "terminado" ? "borrador-terminado" : "borrador-proceso")}">${a.publicado ? "Publicada" : (a.estado_borrador === "terminado" ? "En revisión" : "Borrador (en proceso)")}</span>`
-          }${badgeBannerUrgente(a)}</td>
+          }${badgePreferenciaFechas}${badgeUrgenciaPreferencia}${badgeBannerUrgente(a)}</div></td>
         <td class="acciones" data-label="">${botonesAccion}${(a.banner_urgente && puedeGestionar) ? `<button class="btn-quitar-uh" data-accion="quitar-banner-urgente" data-id="${a.id}" title="Quita el banner de última hora antes de que expire por sí solo">✕ Última hora</button>` : ""}</td>
       </tr>`;
     }).join("") || `<tr><td colspan='5'>${textoBusqueda ? "Ninguna noticia coincide con la búsqueda." : "Todavía no hay noticias."}</td></tr>`;
@@ -4164,6 +4545,32 @@ document.getElementById("buscadorArticulos")?.addEventListener("input", () => {
   ARTICULOS_PAGINA_ACTUAL = 1;
   pintarListaArticulos();
 });
+
+// Repinta el listado de noticias cada minuto (sin volver a pedirlo a la
+// API, solo recalcula el minutaje de "última hora" y hace aparecer o
+// desaparecer el temporizador de urgencia de preferencia cuando cruza el
+// umbral de 10h) para que no se quede congelado con los datos de cuando
+// se cargó la lista por última vez.
+setInterval(() => {
+  if (Array.isArray(ARTICULOS_LISTA_COMPLETA) && ARTICULOS_LISTA_COMPLETA.length
+      && document.getElementById("subpanel-lista")?.classList.contains("activo")) {
+    pintarListaArticulos();
+  }
+}, 60000);
+
+// Tick de cada segundo, solo para los temporizadores de urgencia de
+// preferencia de fechas (badge-urgencia-preferencia): actualiza el
+// HH:MM:SS de cada uno directamente en el DOM, sin volver a repintar
+// toda la tabla (eso lo sigue haciendo el intervalo de arriba, cada
+// minuto, para el resto de badges). Si el cronómetro llega a 00:00:00 se
+// deja así hasta el próximo repintado por minuto, que ya lo quitará (ha
+// expirado la preferencia, pasa a "caducada").
+setInterval(() => {
+  document.querySelectorAll(".badge-urgencia-preferencia[data-hasta-ms]").forEach((el) => {
+    const restanteMs = Number(el.dataset.hastaMs) - Date.now();
+    el.textContent = formatoCronometro(restanteMs);
+  });
+}, 1000);
 
 // Delegación de eventos para Editar/Compartir/Eliminar/Solicitar: al usar
 // data-id en vez de JSON inline en onclick, cualquier comilla, salto de
@@ -4251,6 +4658,25 @@ async function editarArticulo(a) {
   // borrador "en proceso" a medio escribir, para no preguntar de nuevo
   // "¿está terminada?" (ver submit del formulario más abajo).
   document.getElementById("articleProgramadoParaOriginal").value = (!a.publicado && a.programado_para) ? "1" : "";
+  // Preferencia de fechas del redactor: se guarda tal cual en los campos
+  // ocultos (para el re-guardado silencioso, ver submit del formulario
+  // más abajo) y se precarga también en los inputs del modal, por si se
+  // vuelve a abrir (p.ej. un admin devuelve el borrador a "en proceso" y
+  // el redactor, al terminarlo de nuevo, ve su preferencia anterior en
+  // vez de un campo vacío).
+  const campoPrefDesdeOrig = document.getElementById("articleFechaPreferenciaDesdeOriginal");
+  const campoPrefHastaOrig = document.getElementById("articleFechaPreferenciaHastaOriginal");
+  if (campoPrefDesdeOrig) campoPrefDesdeOrig.value = a.fecha_preferencia_desde || "";
+  if (campoPrefHastaOrig) campoPrefHastaOrig.value = a.fecha_preferencia_hasta || "";
+  rellenarFechaYHora(a.fecha_preferencia_desde, "prefFechaDesde", "prefHoraDesde");
+  rellenarFechaYHora(a.fecha_preferencia_hasta, "prefFechaHasta", "prefHoraHasta");
+  // Si la noticia ya traía una preferencia de fechas guardada, se activa
+  // el toggle solo para que se vean los campos rellenos (en vez de
+  // dejarlo desmarcado con fechas ocultas por debajo).
+  if (checkFechaPreferenciaActiva) {
+    checkFechaPreferenciaActiva.checked = Boolean(a.fecha_preferencia_desde || a.fecha_preferencia_hasta);
+  }
+  sincronizarCampoFechaPreferencia();
   document.getElementById("titulo").value = a.titulo;
   document.getElementById("subtitulo").value = a.subtitulo || "";
   document.getElementById("tipo").value = a.tipo;
@@ -4308,6 +4734,7 @@ async function editarArticulo(a) {
   resetTweets(tweetsGuardados);
   const imagenesSinCollage = imagenesGuardadas.filter((v) => !(v && typeof v === "object" && (v.tipo === "tweet" || (v.grupo && ["collage", "inicio", "galeria"].includes(v.posicion)))));
   resetImagenes(imagenesSinCollage, a.imagen_url || "");
+  resetGaleriaArticulo(a.id);
   cargarResultadosSelect(a.resultado_id || "");
   contenidoEditor.innerHTML = a.contenido || "";
   actualizarContadorCaracteres();
@@ -4343,6 +4770,7 @@ async function editarArticulo(a) {
   }
   sincronizarDestacadoConPublicado();
   sincronizarProgramarConPublicado();
+  sincronizarFechaPreferenciaConPublicado();
   sincronizarCampoFechaProgramada();
   actualizarTextoBotonGuardar();
   document.getElementById("btnCancelar").style.display = "inline-block";
@@ -7769,20 +8197,228 @@ const data = await apiFetch(`/api/me/perfil`, {
   });
 }
 
-// ---------- SUBIR CONTENIDO (fotos/vídeos, cualquier redactor logueado) ----------
+// ---------- Autocompletar genérico de partido ----------
+// Mismo patrón que el buscador "Resultado vinculado" del editor de
+// noticias (buscadorResultadoArticulo, más arriba): un <input type="text">
+// con lista de sugerencias propia en vez de un <select> nativo, para que
+// el redactor pueda escribir el equipo/competición/jornada y le vayan
+// saliendo los partidos que coinciden, sin tener que desplazarse por un
+// desplegable con cientos de partidos. Se generaliza aquí para
+// reutilizarlo en "Subir contenido" y "Galería de partido" (Fase 11),
+// que necesitan exactamente el mismo comportamiento pero sin la opción
+// "+ Nuevo resultado…" (esa solo tiene sentido en el editor de noticias).
+// Reutiliza RESULTADOS_ARTICULO_TODOS/etiquetaResultado/categoriaLabel/
+// normalizarBusquedaPanel, ya cargados por cargarResultadosSelect() para
+// el buscador de noticias.
+//
+// wrapperEl: contenedor (position:relative) del input + la lista, para
+//   saber cuándo un clic ha sido "fuera" y hay que cerrar la lista.
+// inputEl: el <input type="text"> visible.
+// sugerenciasEl: el <div> donde se pintan las sugerencias.
+// hiddenEl: el <input type="hidden"> (o <select>) que guarda el id real.
+// alElegir(valor): opcional, se llama cada vez que cambia la selección
+//   (incluido al vaciarla), con el id elegido o "" si se ha quitado.
+function crearAutocompletarPartido({ wrapperEl, inputEl, sugerenciasEl, hiddenEl, alElegir }) {
+  let indiceActivo = -1;
+
+  function fijar(valor, etiqueta) {
+    hiddenEl.value = valor || "";
+    inputEl.value = etiqueta || "";
+    hiddenEl.dispatchEvent(new Event("change"));
+    if (typeof alElegir === "function") alElegir(hiddenEl.value);
+  }
+
+  function cerrar() {
+    sugerenciasEl.style.display = "none";
+    sugerenciasEl.innerHTML = "";
+    indiceActivo = -1;
+  }
+
+  function pintar() {
+    const texto = normalizarBusquedaPanel(inputEl.value);
+    const filtrados = (texto
+      ? RESULTADOS_ARTICULO_TODOS.filter((r) => {
+          const jornada = r.jornada ? `j${r.jornada}` : "";
+          const haystack = normalizarBusquedaPanel(`${categoriaLabel(r.competicion) || ""} ${jornada} ${r.equipo_local || ""} ${r.equipo_visitante || ""}`);
+          return haystack.includes(texto);
+        })
+      : RESULTADOS_ARTICULO_TODOS
+    ).slice(0, 50); // limitado a 50 para no pintar cientos de filas de golpe
+
+    indiceActivo = -1;
+    if (!filtrados.length) {
+      sugerenciasEl.innerHTML = '<div class="autocompletar-resultado-vacio">Ningún partido coincide con esa búsqueda.</div>';
+      sugerenciasEl.style.display = "block";
+      return;
+    }
+    sugerenciasEl.innerHTML = filtrados.map((r) =>
+      `<div class="autocompletar-resultado-item" data-id="${r.id}">${escapeHtml(etiquetaResultado(r))}</div>`
+    ).join("");
+    sugerenciasEl.style.display = "block";
+  }
+
+  inputEl.addEventListener("input", () => {
+    // Si se borra el texto a mano, se desvincula (igual que "— Ninguno —").
+    if (!inputEl.value.trim() && hiddenEl.value) {
+      hiddenEl.value = "";
+      hiddenEl.dispatchEvent(new Event("change"));
+      if (typeof alElegir === "function") alElegir("");
+    }
+    pintar();
+  });
+  inputEl.addEventListener("focus", () => pintar());
+  inputEl.addEventListener("keydown", (e) => {
+    const items = sugerenciasEl.querySelectorAll(".autocompletar-resultado-item");
+    if (!items.length) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      indiceActivo = Math.min(indiceActivo + 1, items.length - 1);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      indiceActivo = Math.max(indiceActivo - 1, 0);
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      const elegido = items[indiceActivo] || items[0];
+      if (elegido) elegido.click();
+      return;
+    } else if (e.key === "Escape") {
+      cerrar();
+      return;
+    } else {
+      return;
+    }
+    items.forEach((it, i) => it.classList.toggle("activo", i === indiceActivo));
+    items[indiceActivo]?.scrollIntoView({ block: "nearest" });
+  });
+  // mousedown (no click) para que dispare ANTES del blur del input y no
+  // se cierre la lista justo antes de registrar la selección.
+  sugerenciasEl.addEventListener("mousedown", (e) => {
+    const item = e.target.closest(".autocompletar-resultado-item");
+    if (!item) return;
+    e.preventDefault();
+    const r = RESULTADOS_ARTICULO_TODOS.find((x) => String(x.id) === item.dataset.id);
+    if (r) fijar(String(r.id), etiquetaResultado(r));
+    cerrar();
+  });
+  document.addEventListener("click", (e) => {
+    if (!wrapperEl.contains(e.target)) cerrar();
+  });
+
+  return {
+    fijar,
+    // Reconstruye el texto visible a partir del id ya guardado en
+    // hiddenEl (usado al restaurar una selección previa sin disparar
+    // "change" de nuevo, p.ej. al volver a entrar en una pestaña).
+    reflejarValorActual() {
+      const r = RESULTADOS_ARTICULO_TODOS.find((x) => String(x.id) === String(hiddenEl.value));
+      inputEl.value = r ? etiquetaResultado(r) : "";
+    },
+  };
+}
+
+// ---------- SUBIR CONTENIDO (fotos/vídeos, cualquier colaborador logueado) ----------
+// Selector Público/Privado, reutilizable tanto en "Subir contenido" como
+// en el modal "Editar contenido": pinta el estado activo y deja el valor
+// elegido en el input oculto que se le indique. En ámbito global porque
+// lo usa tanto el bloque de subida (más abajo) como editarMedia().
+function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
+  if (!contenedor || !inputOculto) return;
+  const valor = valorInicial === "privado" ? "privado" : "publico";
+  inputOculto.value = valor;
+  contenedor.querySelectorAll(".opcion-visibilidad").forEach((b) => {
+    const activo = b.dataset.visibilidad === valor;
+    b.classList.toggle("activo", activo);
+    b.setAttribute("aria-checked", activo ? "true" : "false");
+  });
+}
+
 (function iniciarSubidaContenido() {
+  // Selector Público/Privado del formulario de subida: guarda el valor
+  // elegido en el input oculto #visibilidadSubida, que es lo que lee
+  // subirArchivo() para mandarlo al servidor.
+  const selectorVisibilidad = document.getElementById("selectorVisibilidad");
+  const inputVisibilidadSubida = document.getElementById("visibilidadSubida");
+  if (selectorVisibilidad && inputVisibilidadSubida) {
+    selectorVisibilidad.querySelectorAll(".opcion-visibilidad").forEach((boton) => {
+      boton.addEventListener("click", () => {
+        activarSelectorVisibilidad(selectorVisibilidad, inputVisibilidadSubida, boton.dataset.visibilidad);
+      });
+    });
+  }
+
+  // Mismo selector, pero dentro del modal "Editar contenido".
+  const emSelectorVisibilidad = document.getElementById("em_selectorVisibilidad");
+  const emInputVisibilidad = document.getElementById("em_visibilidad");
+  if (emSelectorVisibilidad && emInputVisibilidad) {
+    emSelectorVisibilidad.querySelectorAll(".opcion-visibilidad").forEach((boton) => {
+      boton.addEventListener("click", () => {
+        activarSelectorVisibilidad(emSelectorVisibilidad, emInputVisibilidad, boton.dataset.visibilidad);
+      });
+    });
+  }
   const form = document.getElementById("formSubidaContenido");
   if (!form) return;
 
   // Rellena el desplegable de clubes con todos los clubes de todas las
   // categorías, ya que el contenido subido no está atado a una sola liga.
   const selectClub = document.getElementById("clubSubida");
+  const clubSubidaWrap = document.getElementById("clubSubidaWrap");
   const todosLosClubes = listaTodosLosClubesFederativos().sort((a, b) => a.localeCompare(b));
   todosLosClubes.forEach((club) => {
     const opt = document.createElement("option");
     opt.value = club;
     opt.textContent = club;
     selectClub.appendChild(opt);
+  });
+
+  // ---------- Vincular a la galería de un partido al subir ----------
+  // Reutiliza el mismo listado de partidos que ya carga el editor de
+  // noticias (RESULTADOS_ARTICULO_TODOS / cargarResultadosSelect), para
+  // no repetir la llamada a la API si ya se había cargado antes.
+  const selectPartidoSubida = document.getElementById("partidoSubida"); // hidden: guarda el id real
+  const equipoSubidaWrap = document.getElementById("equipoSubidaWrap");
+  const selectEquipoSubida = document.getElementById("equipoSubida");
+  const linkGaleriaSubida = document.getElementById("linkGaleriaPartidoSubida");
+
+  async function asegurarPartidosCargadosParaSubida() {
+    if (RESULTADOS_ARTICULO_TODOS && RESULTADOS_ARTICULO_TODOS.length) return;
+    await cargarResultadosSelect("");
+  }
+  // Se cargan en cuanto se entra en la pestaña, en vez de esperar a que
+  // el usuario empiece a escribir, para que no haya un parpadeo vacío
+  // en la primera sugerencia.
+  asegurarPartidosCargadosParaSubida();
+
+  function actualizarEquipoSubidaSegunPartido(resultId) {
+    const r = resultId ? RESULTADOS_ARTICULO_TODOS.find((x) => String(x.id) === String(resultId)) : null;
+    // El campo "Club" solo tiene sentido cuando el contenido NO está
+    // vinculado a un partido: si hay partido, el club ya se deduce del
+    // equipo elegido justo debajo, así que no hace falta pedirlo aparte.
+    if (!r) {
+      equipoSubidaWrap.style.display = "none";
+      selectEquipoSubida.value = "";
+      if (clubSubidaWrap) clubSubidaWrap.style.display = "block";
+      return;
+    }
+    selectEquipoSubida.innerHTML = `
+      <option value="">— Foto/vídeo general del partido —</option>
+      <option value="local">${escapeHtml(r.equipo_local || "Equipo local")}</option>
+      <option value="visitante">${escapeHtml(r.equipo_visitante || "Equipo visitante")}</option>`;
+    equipoSubidaWrap.style.display = "block";
+    if (clubSubidaWrap) clubSubidaWrap.style.display = "none";
+    selectClub.value = "";
+  }
+
+  // Buscador de partido: escribes equipo/competición/jornada y salen las
+  // coincidencias, igual que "Resultado vinculado" en el editor de
+  // noticias (ver crearAutocompletarPartido más arriba), en vez de tener
+  // que buscar el partido dentro de un desplegable largo.
+  crearAutocompletarPartido({
+    wrapperEl: document.getElementById("partidoSubidaWrap"),
+    inputEl: document.getElementById("partidoSubida_buscador"),
+    sugerenciasEl: document.getElementById("partidoSubida_sugerencias"),
+    hiddenEl: selectPartidoSubida,
+    alElegir: actualizarEquipoSubidaSegunPartido,
   });
 
   const dropzone = document.getElementById("dropzone");
@@ -7834,7 +8470,7 @@ const data = await apiFetch(`/api/me/perfil`, {
   }
 
   function pintarLista() {
-    listaArchivos.innerHTML = archivos.map(({ id, file }) => {
+    listaArchivos.innerHTML = archivos.map(({ id, file, portadaSegundo }) => {
       const esFoto = file.type.startsWith("image/");
       return `
         <div class="item-archivo${esFoto ? "" : " es-video"}" data-id="${id}">
@@ -7845,11 +8481,62 @@ const data = await apiFetch(`/api/me/perfil`, {
             <div class="barra-progreso"><i style="width:0%"></i></div>
             <div class="estado-txt">Pendiente de subir</div>
           </div>
+          ${!esFoto ? `<button type="button" class="btn-portada-subida" data-portada="${id}" title="Elegir portada">${Number.isFinite(portadaSegundo) ? "Portada elegida ✓" : "Elegir portada"}</button>` : ""}
           <button type="button" class="quitar" data-quitar="${id}" title="Quitar">✕</button>
         </div>`;
     }).join("");
     actualizarResumen();
   }
+
+  // ---------- Elegir portada de un vídeo antes de subirlo ----------
+  // Reutiliza el mismo modal reproductor de la galería de "Ver contenido
+  // subido" (#modalReproductorMedia), pero apuntando a una URL local del
+  // propio archivo (object URL) en vez de a Cloudinary, ya que el vídeo
+  // todavía no se ha subido a ningún sitio.
+  listaArchivos.addEventListener("click", (e) => {
+    const idPortada = e.target.dataset.portada;
+    if (!idPortada) return;
+    const item = archivos.find((a) => a.id == idPortada);
+    if (!item) return;
+    const modal = document.getElementById("modalReproductorMedia");
+    const caja = document.querySelector(".modal-caja-reproductor-media");
+    const video = document.getElementById("videoReproductorMedia");
+    const imagen = document.getElementById("imagenReproductorMedia");
+    const titulo = document.getElementById("tituloReproductorMedia");
+    const lienzo = document.querySelector(".reproductor-media-lienzo");
+    const btnUsar = document.getElementById("btnUsarFotogramaSubida");
+    if (!modal || !video) return;
+    if (window.objectUrlPortadaSubida) URL.revokeObjectURL(window.objectUrlPortadaSubida);
+    window.objectUrlPortadaSubida = URL.createObjectURL(item.file);
+    if (lienzo) lienzo.classList.remove("cargado", "con-error");
+    caja?.classList.remove("es-foto");
+    imagen?.removeAttribute("src");
+    // Este vídeo es un archivo local (todavía no se ha subido a ningún
+    // sitio): si el navegador no consigue reproducirlo, no tiene nada que
+    // ver con la conexión a internet, así que se marca para mostrar un
+    // mensaje de error distinto (ver marcarReproductorMediaError).
+    reproductorMediaEsLocal = true;
+    ignorarProximoErrorReproductorMedia = false;
+    video.src = window.objectUrlPortadaSubida;
+    if (Number.isFinite(item.portadaSegundo)) {
+      video.addEventListener("loadedmetadata", function fijarInstante() {
+        video.currentTime = item.portadaSegundo;
+        video.removeEventListener("loadedmetadata", fijarInstante);
+      });
+    }
+    titulo.textContent = `Elige el fotograma de portada de "${item.file.name}"`;
+    if (btnUsar) {
+      btnUsar.style.display = "inline-block";
+      btnUsar.onclick = () => {
+        item.portadaSegundo = Math.max(0, video.currentTime);
+        pintarLista();
+        cerrarModalReproductorMedia();
+        EOF.toast("Portada elegida para este vídeo.", "info");
+      };
+    }
+    modal.classList.add("abierto");
+    video.pause();
+  });
 
   // Límite de tamaño para vídeos en el propio navegador: evita que el
   // usuario espere a que suba un vídeo pesado entero para enterarse en
@@ -7947,7 +8634,7 @@ const data = await apiFetch(`/api/me/perfil`, {
         return;
       }
 
-      archivos.push({ id: ++idSeq, file });
+      archivos.push({ id: ++idSeq, file, portadaSegundo: null });
     });
 
     pintarLista();
@@ -8025,7 +8712,7 @@ const data = await apiFetch(`/api/me/perfil`, {
   // Sube un único archivo con XMLHttpRequest (en vez de fetch) porque es
   // lo único que permite mostrar el progreso real de la subida, algo
   // importante para vídeos pesados en su calidad original.
-  function subirArchivo({ id, file }, titulo, descripcion, club) {
+  function subirArchivo({ id, file, portadaSegundo }, titulo, descripcion, club, resultId, equipo, visibilidad) {
     return new Promise((resolve, reject) => {
       const fila = listaArchivos.querySelector(`.item-archivo[data-id="${id}"]`);
       const barra = fila.querySelector(".barra-progreso i");
@@ -8036,6 +8723,10 @@ const data = await apiFetch(`/api/me/perfil`, {
       formData.append("titulo", titulo);
       formData.append("descripcion", descripcion);
       formData.append("club", club);
+      formData.append("visibilidad", visibilidad === "privado" ? "privado" : "publico");
+      if (resultId) formData.append("resultId", resultId);
+      if (equipo) formData.append("equipo", equipo);
+      if (Number.isFinite(portadaSegundo)) formData.append("portadaSegundo", portadaSegundo);
 
       const xhr = new XMLHttpRequest();
       xhr.open("POST", `${API_URL}/api/media`);
@@ -8053,7 +8744,9 @@ const data = await apiFetch(`/api/me/perfil`, {
         if (xhr.status >= 200 && xhr.status < 300) {
           fila.classList.add("completado");
           estadoTxt.textContent = "Subido correctamente";
-          resolve();
+          let galeriaPartidoSlug = null;
+          try { galeriaPartidoSlug = JSON.parse(xhr.responseText).galeriaPartidoSlug || null; } catch {}
+          resolve(galeriaPartidoSlug);
         } else {
           let mensaje = "Error al subir";
           let esDuplicado = false;
@@ -8108,6 +8801,7 @@ const data = await apiFetch(`/api/me/perfil`, {
     e.preventDefault();
     msgOk.style.display = "none";
     errMsg.style.display = "none";
+    linkGaleriaSubida.style.display = "none";
 
     if (!archivos.length) {
       errMsg.textContent = "Añade al menos un archivo antes de subir.";
@@ -8124,6 +8818,9 @@ const data = await apiFetch(`/api/me/perfil`, {
     }
     const descripcion = document.getElementById("descripcionSubida").value.trim();
     const club = selectClub.value;
+    const resultIdElegido = selectPartidoSubida.value || null;
+    const equipoElegido = resultIdElegido ? (selectEquipoSubida.value || null) : null;
+    const visibilidadElegida = inputVisibilidadSubida ? inputVisibilidadSubida.value : "publico";
 
     // Aviso extra por si, a pesar del filtro al añadirlos, dos archivos
     // idénticos han llegado a convivir en la cola (p. ej. arrastrando la
@@ -8147,13 +8844,15 @@ const data = await apiFetch(`/api/me/perfil`, {
     let subidos = 0;
     const fallidos = []; // [{ id, file, mensaje, esDuplicado }]
     let totalIntentado = 0;
+    let ultimoSlugGaleria = null;
     for (const item of archivos) {
       totalIntentado++;
       try {
         // Si hay varios archivos, se numera el título para diferenciarlos
         // sin que el redactor tenga que repetirlo campo a campo.
         const tituloArchivo = archivos.length > 1 ? `${titulo} (${totalIntentado}/${archivos.length})` : titulo;
-        await subirArchivo(item, tituloArchivo, descripcion, club);
+        const slug = await subirArchivo(item, tituloArchivo, descripcion, club, resultIdElegido, equipoElegido, visibilidadElegida);
+        if (slug) ultimoSlugGaleria = slug;
         subidos++;
       } catch (err) {
         fallidos.push({ ...item, mensaje: err.message, esDuplicado: !!err.esDuplicado });
@@ -8165,7 +8864,19 @@ const data = await apiFetch(`/api/me/perfil`, {
     if (fallidos.length === 0) {
       msgOk.textContent = `Se ${subidos === 1 ? "ha" : "han"} subido ${subidos} archivo${subidos === 1 ? "" : "s"} correctamente. Gracias por la aportación.`;
       msgOk.style.display = "block";
+      if (ultimoSlugGaleria) {
+        const urlGaleria = `https://elotrofutbol.media/galeria/${ultimoSlugGaleria}`;
+        linkGaleriaSubida.innerHTML = tarjetaLinkGaleriaHTML(urlGaleria);
+        linkGaleriaSubida.style.display = "flex";
+      } else {
+        linkGaleriaSubida.style.display = "none";
+      }
       form.reset();
+      equipoSubidaWrap.style.display = "none";
+      if (clubSubidaWrap) clubSubidaWrap.style.display = "block";
+      // form.reset() no toca los botones del selector Público/Privado
+      // (no son inputs nativos): se vuelve a dejar en "Público" a mano.
+      activarSelectorVisibilidad(selectorVisibilidad, inputVisibilidadSubida, "publico");
       archivos = [];
       pintarLista();
       // Si quien sube tiene la galería de abajo cargada (la suya propia,
@@ -8201,7 +8912,7 @@ const data = await apiFetch(`/api/me/perfil`, {
   });
 })();
 
-// ---------- CONTENIDO SUBIDO POR REDACTORES (solo admins) ----------
+// ---------- CONTENIDO SUBIDO POR COLABORADORES (solo admins) ----------
 let mediaActual = [];
 let filtroMediaActivo = "todos";
 
@@ -8212,12 +8923,48 @@ const iconoPlayAdmin = '<svg viewBox="0 0 24 24"><path d="M6 4l14 8-14 8V4z"/></
 // A partir de la URL de Cloudinary genera una miniatura ligera y recortada:
 // para fotos, la propia imagen redimensionada; para vídeos, un fotograma
 // real (Cloudinary lo extrae solo, sin necesidad de guardar nada aparte).
-function miniaturaCloudinary(url, tipo) {
+function miniaturaCloudinary(url, tipo, portadaSegundo, portadaFoco) {
   if (!url) return null;
   const marcador = tipo === "video" ? "/video/upload/" : "/image/upload/";
   const idx = url.indexOf(marcador);
   if (idx === -1) return null;
-  const transform = "c_fill,w_400,h_344,q_auto,f_auto" + (tipo === "video" ? ",so_1" : "");
+  // so_X extrae el fotograma del segundo X del vídeo como portada; si no
+  // se ha elegido ninguno se sigue usando el segundo 1 de siempre. Va en
+  // su PROPIO componente de transformación (separado por "/"), antes de
+  // cualquier recorte: así Cloudinary primero saca el fotograma del vídeo
+  // como imagen y LUEGO recorta esa imagen ya extraída.
+  const segundo = Number.isFinite(portadaSegundo) && portadaSegundo >= 0 ? portadaSegundo : 1;
+  // Punto de foco (qué parte de la miniatura no se debe recortar nunca):
+  // se guarda como "X% Y%". Aquí se traduce a un c_crop con un cuadrado de
+  // interés centrado en ese punto, usando coordenadas EN FRACCIÓN (0-1),
+  // que sí están documentadas y soportadas para x/y/w/h con c_crop (ver
+  // "Fixed coordinates cropping" en la documentación de Cloudinary: "You
+  // can also use percentage based numbers instead of the exact
+  // coordinates for x, y, w and h, e.g. 0.5 for 50%"). Se probó antes con
+  // la gravedad "g_xy_center" + "fl_relative"/"fl_region_relative", pero
+  // esa combinación (aunque cada parámetro por separado existe en la
+  // documentación) hacía que Cloudinary devolviera un 400/respuesta
+  // inválida al extraer un fotograma de vídeo; c_crop con coordenadas
+  // fraccionarias es el método oficial confirmado para "recortar hacia
+  // un punto concreto dado en porcentaje" y no depende de esa gravedad.
+  // El cuadrado de recorte usa el 60% del lado menor del original como
+  // margen alrededor del punto elegido, para dejar contexto suficiente
+  // antes de que c_fill ajuste al tamaño final de la miniatura.
+  let recorteFoco = "";
+  if (typeof portadaFoco === "string") {
+    const match = portadaFoco.trim().match(/^(\d{1,3})%\s(\d{1,3})%$/);
+    if (match) {
+      const cx = Math.max(0, Math.min(100, Number(match[1]))) / 100;
+      const cy = Math.max(0, Math.min(100, Number(match[2]))) / 100;
+      const lado = 0.6;
+      const mitad = lado / 2;
+      const x = Math.max(0, Math.min(1 - lado, cx - mitad)).toFixed(2);
+      const y = Math.max(0, Math.min(1 - lado, cy - mitad)).toFixed(2);
+      recorteFoco = `c_crop,x_${x},y_${y},w_${lado},h_${lado}/`;
+    }
+  }
+  const recorteFinal = "c_fill,w_400,h_344,q_auto,f_auto";
+  const transform = (tipo === "video" ? `so_${segundo}/` : "") + recorteFoco + recorteFinal;
   const base = url.slice(0, idx + marcador.length) + transform + "/" + url.slice(idx + marcador.length);
   return tipo === "video" ? base.replace(/\.[a-zA-Z0-9]+$/, ".jpg") : base;
 }
@@ -8248,13 +8995,50 @@ async function cargaContenido() {
   }
 }
 
+// Al pasar el ratón por la preview de un vídeo, se inserta un <video> que
+// reproduce en bucle y silenciado (así el navegador lo permite sin
+// interacción previa del usuario) para poder ver de un vistazo si el
+// contenido está bien sin tener que descargarlo. preload="metadata" evita
+// cargar el vídeo entero hasta que de verdad hay hover.
+function activarPreviewVideoMedia(previewEl) {
+  if (!previewEl || previewEl.querySelector("video") || previewEl._previewTimer) return;
+  const url = previewEl.dataset.videoPreviewUrl;
+  if (!url) return;
+  // Pequeño retraso antes de insertar el <video>: al recorrer la galería
+  // pasando el ratón rápido por varias tarjetas, evita lanzar (y luego
+  // cancelar de inmediato) una carga de vídeo por cada una.
+  previewEl._previewTimer = setTimeout(() => {
+    previewEl._previewTimer = null;
+    if (previewEl.querySelector("video")) return;
+    const video = document.createElement("video");
+    video.src = url;
+    video.className = "preview-video-media";
+    video.muted = true;
+    video.loop = true;
+    video.playsInline = true;
+    video.preload = "metadata";
+    video.addEventListener("error", () => video.remove());
+    previewEl.appendChild(video);
+    video.play().catch(() => {});
+  }, 150);
+}
+
+function desactivarPreviewVideoMedia(previewEl) {
+  if (previewEl?._previewTimer) {
+    clearTimeout(previewEl._previewTimer);
+    previewEl._previewTimer = null;
+  }
+  const video = previewEl?.querySelector("video");
+  if (video) video.remove();
+}
+
 function pintarGaleriaContenido() {
   const cont = document.getElementById("galeriaContenido");
   const lista = mediaActual.filter((m) => filtroMediaActivo === "todos" || m.tipo === filtroMediaActivo);
 
   if (!lista.length) {
     cont.innerHTML = USER.rol === "admin"
-      ? "<p>Todavía no hay contenido subido por los redactores.</p>"
+      ? "<p>Todavía no hay contenido subido por los colaboradores.</p>"
       : "<p>Todavía no has subido ningún contenido.</p>";
     return;
   }
@@ -8262,41 +9046,583 @@ function pintarGaleriaContenido() {
   cont.innerHTML = lista.map((m) => {
     const esFoto = m.tipo === "foto";
     const urlDescarga = `${API_URL}/api/media/${m.id}/descargar?token=${encodeURIComponent(TOKEN)}`;
-    const urlMiniatura = miniaturaCloudinary(m.cloudinary_url, esFoto ? "image" : "video");
+    const urlMiniatura = miniaturaCloudinary(m.cloudinary_url, esFoto ? "image" : "video", m.portada_segundo, m.portada_foco);
     const iconoRespaldo = esFoto ? iconoFotoAdmin : iconoVideoAdmin;
-    // Solo la persona que subió el archivo puede editarlo, sea admin o no.
+    // La persona que subió el archivo puede editarlo; un admin puede
+    // editar cualquier archivo, aunque sea de otra persona (coincide
+    // con lo que ya permite el backend).
     const esMio = m.autor_id === USER.id;
     const botones = [];
-    if (esMio) botones.push(`<button class="btn-editar-media" onclick="editarMedia(${m.id})">Editar</button>`);
+    if (esMio || USER.rol === "admin") botones.push(`<button class="btn-accion-media btn-editar-media" onclick="editarMedia(${m.id})" title="Editar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><span>Editar</span></button>`);
+    // Compartir enlaza a la galería PÚBLICA del partido: no tiene sentido
+    // (ni debe aparecer) si este contenido está marcado como privado,
+    // aunque esté vinculado a un partido.
+    if (m.galeria_url && m.visibilidad !== "privado") botones.push(`<button class="btn-accion-media btn-compartir-media" onclick="compartirMedia(${m.id})" title="Compartir"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5 15.4 17.5M15.4 6.5 8.6 10.5"/></svg><span>Compartir</span></button>`);
     if (USER.rol === "admin") {
-      botones.push(`<a href="${urlDescarga}" class="btn-descargar" download="${escapeHtml(m.nombre_archivo)}">Descargar</a>`);
-      botones.push(`<button class="btn-eliminar-media" onclick="eliminarMedia(${m.id})">Eliminar</button>`);
+      botones.push(`<a href="${urlDescarga}" class="btn-accion-media btn-descargar" download="${escapeHtml(m.nombre_archivo)}" title="Descargar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13"/><path d="m7 11 5 5 5-5"/><path d="M5 20h14"/></svg><span>Descargar</span></a>`);
+    }
+    // Eliminar: un admin puede borrar cualquier contenido; el resto solo
+    // el suyo propio (coincide con lo que ya permite el backend).
+    if (USER.rol === "admin" || esMio) {
+      botones.push(`<button class="btn-accion-media btn-eliminar-media" onclick="eliminarMedia(${m.id})" title="Eliminar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg><span>Eliminar</span></button>`);
     }
     return `
       <div class="tarjeta-media">
-        <div class="preview">
+        <div class="preview clicable-reproducir-media"${!esFoto ? ` data-video-preview-url="${escapeHtml(m.cloudinary_url || "")}" onmouseenter="activarPreviewVideoMedia(this)" onmouseleave="desactivarPreviewVideoMedia(this)"` : ""} onclick="abrirModalReproductorMedia(${m.id})">
           <span class="badge-tipo">${esFoto ? "Foto" : "Vídeo"}</span>
+          ${m.visibilidad === "privado" ? `<span class="badge-privado">Privado</span>` : ""}
           ${esMio ? `<span class="badge-mia">Tuyo</span>` : ""}
           ${
             urlMiniatura
-              ? `<img src="${urlMiniatura}" alt="" loading="lazy" onerror="const p=this.parentElement;this.remove();p.querySelector('.icono-generico')?.classList.remove('oculto');">`
+              ? `<img src="${urlMiniatura}" alt="" loading="lazy" class="preview-miniatura-media" onerror="const p=this.parentElement;this.remove();p.querySelector('.icono-generico')?.classList.remove('oculto');">`
               : ""
           }
           <span class="icono-generico ${urlMiniatura ? "oculto" : ""}">${iconoRespaldo}</span>
           ${!esFoto ? `<span class="play-overlay">${iconoPlayAdmin}</span>` : ""}
         </div>
         <div class="cuerpo">
-          <div class="titulo-media">${escapeHtml(m.titulo)}</div>
+          <div class="titulo-media titulo-media-clicable" onclick="abrirModalReproductorMedia(${m.id})">${escapeHtml(m.titulo)}</div>
           ${m.descripcion ? `<div class="desc-media">${escapeHtml(m.descripcion)}</div>` : ""}
           <div class="meta-media">
-            ${escapeHtml(m.autor_nombre || "—")}${m.club ? " · " + escapeHtml(m.club) : ""}<br>
-            ${formatoTamanoAdmin(m.tamano_bytes)} · ${formatFecha(m.created_at)}
+            <span class="meta-item meta-autor"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.9 3.1-7 7-7s7 3.1 7 7"/></svg><span>${escapeHtml(m.autor_nombre || "—")}</span></span>
+            ${m.resultado_id
+              ? `<span class="meta-item meta-partido"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/></svg><span>${escapeHtml(`${m.resultado_equipo_local || "?"} - ${m.resultado_equipo_visitante || "?"}${m.equipo_galeria ? ` (${m.equipo_galeria === "local" ? (m.resultado_equipo_local || "Local") : (m.resultado_equipo_visitante || "Visitante")})` : ""}`)}</span></span>`
+              : (m.club ? `<span class="meta-item meta-club"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/></svg><span>${escapeHtml(m.club)}</span></span>` : "")}
+            <span class="meta-item meta-fecha"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span>${formatFecha(m.created_at)}</span></span>
+            <span class="meta-item meta-peso"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 21h16"/></svg><span>${formatoTamanoAdmin(m.tamano_bytes)}</span></span>
           </div>
         </div>
         ${botones.length ? `<div class="acciones-media">${botones.join("")}</div>` : ""}
       </div>`;
   }).join("");
 }
+
+// ---------- CONTENIDO: Galería de partido (Fase 11) ----------
+// Pantalla para que admin/fotógrafo elijan un partido y vinculen a su
+// galería (tabla match_gallery) fotos que ya estén en "media" (subidas
+// desde "Subir contenido"). Reutiliza mediaActual/apiFetch/
+// miniaturaCloudinary/escapeHtml/formatFecha ya existentes para el resto
+// de la pestaña "Contenido".
+let PARTIDO_GALERIA_SELECCIONADO = "";
+let GALERIA_PARTIDO_ACTUAL = []; // filas de match_gallery del partido elegido
+let GALERIA_PARTIDO_EQUIPOS = { local: "Local", visitante: "Visitante" };
+
+// Buscador de partido de esta pantalla: mismo patrón que "Resultado
+// vinculado" del editor de noticias (ver crearAutocompletarPartido), en
+// vez de un desplegable con todos los partidos para recorrer a mano.
+let autocompletarPartidoGaleria = null;
+
+async function cargaSubtabGaleriaPartido() {
+  const hidden = document.getElementById("selectPartidoGaleria");
+  if (!hidden) return;
+  // Los partidos se cargan una sola vez (mismo límite que el resto del
+  // panel, ver cargarResultadosSelect): si ya están en
+  // RESULTADOS_ARTICULO_TODOS se reutilizan en vez de repetir la llamada.
+  if (!RESULTADOS_ARTICULO_TODOS || !RESULTADOS_ARTICULO_TODOS.length) {
+    await cargarResultadosSelect("");
+  }
+  if (!autocompletarPartidoGaleria) {
+    autocompletarPartidoGaleria = crearAutocompletarPartido({
+      wrapperEl: document.getElementById("selectPartidoGaleriaWrap"),
+      inputEl: document.getElementById("selectPartidoGaleria_buscador"),
+      sugerenciasEl: document.getElementById("selectPartidoGaleria_sugerencias"),
+      hiddenEl: hidden,
+      alElegir: (resultId) => cargarGaleriaDePartidoElegido(resultId),
+    });
+  }
+  if (PARTIDO_GALERIA_SELECCIONADO) {
+    hidden.value = PARTIDO_GALERIA_SELECCIONADO;
+    autocompletarPartidoGaleria.reflejarValorActual();
+    cargarGaleriaDePartidoElegido(PARTIDO_GALERIA_SELECCIONADO);
+  }
+}
+// Tarjeta compacta reutilizada en los dos sitios donde se muestra el
+// enlace público de la galería de un partido (pestaña "Subir contenido"
+// tras subir, y pestaña "Galería de partido" al elegir un partido): icono,
+// la URL y un botón para copiarla, en vez del <p> con texto plano de antes.
+function tarjetaLinkGaleriaHTML(urlGaleria) {
+  return `
+    <span class="tarjeta-link-galeria-icono">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+    </span>
+    <div class="tarjeta-link-galeria-cuerpo">
+      <span class="tarjeta-link-galeria-etiqueta">Enlace público de la galería</span>
+      <a href="${urlGaleria}" target="_blank" rel="noopener">${urlGaleria}</a>
+    </div>
+    <button type="button" class="btn-copiar-link-galeria" onclick="copiarLinkGaleria(this, '${urlGaleria}')" title="Copiar enlace">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+    </button>`;
+}
+
+function copiarLinkGaleria(boton, url) {
+  navigator.clipboard?.writeText(url).then(() => {
+    const original = boton.innerHTML;
+    boton.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+    setTimeout(() => { boton.innerHTML = original; }, 1500);
+  }).catch(() => {});
+}
+
+async function cargarGaleriaDePartidoElegido(resultId) {
+  PARTIDO_GALERIA_SELECCIONADO = resultId;
+  const wrap = document.getElementById("galeriaPartidoWrap");
+  const err = document.getElementById("errGaleriaPartido");
+  if (err) err.textContent = "";
+  if (!resultId) {
+    if (wrap) wrap.style.display = "none";
+    return;
+  }
+  if (wrap) wrap.style.display = "block";
+  const cont = document.getElementById("galeriaPartidoActual");
+  if (cont) cont.innerHTML = "<p>Cargando...</p>";
+  try {
+    const { galeria = [], equipoLocal, equipoVisitante, urlPublica } = await apiFetch(`/api/results/${resultId}/galeria`);
+    GALERIA_PARTIDO_ACTUAL = galeria;
+    GALERIA_PARTIDO_EQUIPOS = { local: equipoLocal || "Local", visitante: equipoVisitante || "Visitante" };
+    const linkPanel = document.getElementById("linkGaleriaPartidoPanel");
+    if (linkPanel) {
+      if (urlPublica) {
+        linkPanel.innerHTML = tarjetaLinkGaleriaHTML(urlPublica);
+        linkPanel.style.display = "flex";
+      } else {
+        linkPanel.style.display = "none";
+      }
+    }
+    const contadorTotal = document.getElementById("contadorTotalGaleria");
+    if (contadorTotal) {
+      contadorTotal.textContent = galeria.length
+        ? `${galeria.length} foto${galeria.length === 1 ? "" : "s"} en total`
+        : "";
+    }
+    pintarGaleriaPartidoActual();
+  } catch (e) {
+    if (err) err.textContent = "No se pudo cargar la galería de este partido: " + e.message;
+    if (cont) cont.innerHTML = "";
+  }
+}
+
+function pintarGaleriaPartidoActual() {
+  const cont = document.getElementById("galeriaPartidoActual");
+  if (!cont) return;
+  if (!GALERIA_PARTIDO_ACTUAL.length) {
+    cont.innerHTML = "<p>Todavía no hay fotos vinculadas a este partido.</p>";
+    return;
+  }
+  cont.innerHTML = GALERIA_PARTIDO_ACTUAL.map((g) => {
+    const esFoto = g.tipo === "foto";
+    const urlMiniatura = miniaturaCloudinary(g.cloudinary_url, esFoto ? "image" : "video");
+    const iconoRespaldo = esFoto ? iconoFotoAdmin : iconoVideoAdmin;
+    const etiquetaEquipo = g.equipo === "local" ? GALERIA_PARTIDO_EQUIPOS.local
+      : g.equipo === "visitante" ? GALERIA_PARTIDO_EQUIPOS.visitante
+      : null;
+    return `
+      <div class="tarjeta-media">
+        <div class="preview">
+          <span class="badge-tipo">${esFoto ? "Foto" : "Vídeo"}</span>
+          ${urlMiniatura
+            ? `<img src="${urlMiniatura}" alt="" loading="lazy" class="preview-miniatura-media" onerror="const p=this.parentElement;this.remove();p.querySelector('.icono-generico')?.classList.remove('oculto');">`
+            : ""}
+          <span class="icono-generico ${urlMiniatura ? "oculto" : ""}">${iconoRespaldo}</span>
+        </div>
+        <div class="cuerpo">
+          <div class="titulo-media">${escapeHtml(g.titulo || "")}</div>
+          <div class="meta-media">${escapeHtml(g.autor_nombre || "—")} · ${formatFecha(g.created_at)}${etiquetaEquipo ? ` · ${escapeHtml(etiquetaEquipo)}` : ""}</div>
+          <select class="select-equipo-galeria" onchange="cambiarEquipoGaleriaPartido(${g.id}, this.value)" title="Cambiar de qué equipo es esta foto">
+            <option value="" ${!g.equipo ? "selected" : ""}>General (sin equipo)</option>
+            <option value="local" ${g.equipo === "local" ? "selected" : ""}>${escapeHtml(GALERIA_PARTIDO_EQUIPOS.local)}</option>
+            <option value="visitante" ${g.equipo === "visitante" ? "selected" : ""}>${escapeHtml(GALERIA_PARTIDO_EQUIPOS.visitante)}</option>
+          </select>
+        </div>
+        <div class="acciones-media acciones-media-galeria-partido">
+          <button class="btn-quitar-galeria-partido" onclick="quitarDeGaleriaPartido(${g.id})" title="Quitar del partido">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+            <span>Quitar</span>
+          </button>
+        </div>
+      </div>`;
+  }).join("");
+}
+
+async function cambiarEquipoGaleriaPartido(idEnlace, equipo) {
+  const err = document.getElementById("errGaleriaPartido");
+  if (err) err.textContent = "";
+  try {
+    await apiFetch(`/api/match-gallery/${idEnlace}`, {
+      method: "PATCH",
+      body: JSON.stringify({ equipo: equipo || "" }),
+    });
+    await cargarGaleriaDePartidoElegido(PARTIDO_GALERIA_SELECCIONADO);
+  } catch (e) {
+    if (err) err.textContent = "No se pudo cambiar el equipo de esta foto: " + e.message;
+  }
+}
+
+async function quitarDeGaleriaPartido(idEnlace) {
+  const err = document.getElementById("errGaleriaPartido");
+  if (err) err.textContent = "";
+  try {
+    await apiFetch(`/api/match-gallery/${idEnlace}`, { method: "DELETE" });
+    await cargarGaleriaDePartidoElegido(PARTIDO_GALERIA_SELECCIONADO);
+  } catch (e) {
+    if (err) err.textContent = "No se pudo quitar la foto de la galería: " + e.message;
+  }
+}
+
+// ---------- ARTÍCULO: galería de partido / imágenes sueltas (Fase 13) ----------
+// Selector, dentro del editor de noticia, para vincular a la noticia (a)
+// la galería completa del partido que tenga vinculado el propio artículo
+// (selectResultadoArticulo) y/o (b) imágenes sueltas de la mediateca. Se
+// guarda como una lista de media_ids (article_media, ver Fase 12) aparte
+// de "imagenes" (las fotos dentro del propio texto). Es deliberadamente
+// una copia plana en el momento de añadir, no un enlace en vivo: si
+// luego se suben más fotos a la galería del partido, no aparecen solas
+// en noticias que ya se guardaron, hay que volver a abrir este selector.
+let GALERIA_ARTICULO_ACTUAL = []; // [{media_id, cloudinary_url, titulo, tipo, autor_nombre}, ...] en orden
+let GALERIA_ARTICULO_PARTIDO_CACHE = []; // galería del partido vinculado, para el modal
+let SELECCION_MODAL_GALERIA_ARTICULO = new Set();
+
+// El modal de selección de imágenes (#modalGaleriaArticulo) se reutiliza
+// para dos cosas distintas, según cómo se haya abierto:
+//   - "galeria-final": el comportamiento original, añade a
+//     GALERIA_ARTICULO_ACTUAL (carrusel de crédito al final de la
+//     noticia, sin posición propia).
+//   - "fotos": añade cada imagen elegida como una fila más en "Fotos"
+//     (imagenesLista), con crearFilaImagen(), para que se pueda tratar
+//     exactamente igual que una foto subida a mano: elegir portada,
+//     foco de recorte y posición dentro del texto (principio, punto
+//     personalizado o galería). Así lo importado desde la galería del
+//     partido se ve también en la vista previa de la noticia, no solo
+//     en el carrusel final.
+let MODO_MODAL_GALERIA_ARTICULO = "galeria-final";
+
+function idsGaleriaArticuloActual() {
+  return GALERIA_ARTICULO_ACTUAL.map((m) => m.media_id);
+}
+
+function pintarGaleriaArticuloVinculada() {
+  const cont = document.getElementById("galeriaArticuloVinculadaLista");
+  if (!cont) return;
+  cont.innerHTML = GALERIA_ARTICULO_ACTUAL.map((m, i) => {
+    const esFoto = m.tipo === "foto";
+    const urlMiniatura = miniaturaCloudinary(m.cloudinary_url, esFoto ? "image" : "video", m.portada_segundo, m.portada_foco);
+    return `
+      <div class="tarjeta-media">
+        <div class="preview">
+          <span class="badge-tipo">${esFoto ? "Foto" : "Vídeo"}</span>
+          ${urlMiniatura
+            ? `<img src="${urlMiniatura}" alt="" loading="lazy" class="preview-miniatura-media">`
+            : `<span class="icono-generico">${esFoto ? iconoFotoAdmin : iconoVideoAdmin}</span>`}
+        </div>
+        <div class="cuerpo">
+          <div class="titulo-media">${escapeHtml(m.titulo || "")}</div>
+          ${m.autor_nombre ? `<div class="meta-media">${escapeHtml(m.autor_nombre)}</div>` : ""}
+        </div>
+        <div class="acciones-media">
+          <button type="button" class="btn-eliminar-media" onclick="quitarDeGaleriaArticulo(${i})">Quitar</button>
+        </div>
+      </div>`;
+  }).join("");
+}
+
+function quitarDeGaleriaArticulo(indice) {
+  GALERIA_ARTICULO_ACTUAL.splice(indice, 1);
+  pintarGaleriaArticuloVinculada();
+}
+
+// Rellena GALERIA_ARTICULO_ACTUAL a partir de lo ya guardado en el
+// servidor (article_media): se llama al abrir una noticia existente
+// para editarla, igual que resetImagenes() para las fotos del texto.
+async function resetGaleriaArticulo(articleId) {
+  GALERIA_ARTICULO_ACTUAL = [];
+  if (articleId) {
+    try {
+      const { media = [] } = await apiFetch(`/api/articles/${articleId}/media`);
+      GALERIA_ARTICULO_ACTUAL = media.map((m) => ({
+        media_id: m.media_id, cloudinary_url: m.cloudinary_url, titulo: m.titulo, tipo: m.tipo, autor_nombre: m.autor_nombre,
+        portada_segundo: m.portada_segundo, portada_foco: m.portada_foco,
+      }));
+    } catch (err) {
+      console.error("No se pudo cargar la galería ya vinculada de la noticia:", err.message);
+    }
+  }
+  pintarGaleriaArticuloVinculada();
+}
+
+document.getElementById("btnAnadirGaleriaArticulo")?.addEventListener("click", () => abrirModalGaleriaArticulo("galeria-final"));
+document.getElementById("btnImportarGaleriaAFotos")?.addEventListener("click", () => abrirModalGaleriaArticulo("fotos"));
+
+async function abrirModalGaleriaArticulo(modo = "galeria-final") {
+  MODO_MODAL_GALERIA_ARTICULO = modo;
+  SELECCION_MODAL_GALERIA_ARTICULO = new Set();
+  const modal = document.getElementById("modalGaleriaArticulo");
+  const wrapPartido = document.getElementById("gaGaleriaPartidoWrap");
+  const aviso = document.getElementById("gaAvisoSinPartido");
+  const resultId = selectResultadoArticulo ? selectResultadoArticulo.value : "";
+
+  const titulo = document.getElementById("gaTitulo");
+  const ayudaModoFotos = document.getElementById("gaAyudaModoFotos");
+  if (titulo) titulo.textContent = modo === "fotos" ? "Importar fotos a la noticia" : "Añadir imágenes a la noticia";
+  if (ayudaModoFotos) ayudaModoFotos.style.display = modo === "fotos" ? "block" : "none";
+
+  if (resultId) {
+    if (wrapPartido) wrapPartido.style.display = "block";
+    if (aviso) aviso.style.display = "none";
+    const cont = document.getElementById("gaGaleriaPartido");
+    if (cont) cont.innerHTML = "<p>Cargando...</p>";
+    try {
+      const { galeria = [] } = await apiFetch(`/api/results/${resultId}/galeria`);
+      GALERIA_ARTICULO_PARTIDO_CACHE = galeria;
+    } catch (err) {
+      GALERIA_ARTICULO_PARTIDO_CACHE = [];
+      if (cont) cont.innerHTML = `<p>No se pudo cargar la galería del partido: ${err.message}</p>`;
+    }
+  } else {
+    if (wrapPartido) wrapPartido.style.display = "none";
+    if (aviso) aviso.style.display = "block";
+    GALERIA_ARTICULO_PARTIDO_CACHE = [];
+  }
+
+  // El banco general de media puede no estar cargado todavía si el
+  // redactor no ha pasado antes por "Ver contenido subido".
+  if (!mediaActual.length) {
+    try {
+      const { media = [] } = await apiFetch(`/api/media`);
+      mediaActual = media;
+    } catch (err) { /* se pinta vacío si falla */ }
+  }
+
+  pintarModalGaleriaArticulo();
+  modal.classList.add("abierto");
+}
+
+function cerrarModalGaleriaArticulo() {
+  document.getElementById("modalGaleriaArticulo")?.classList.remove("abierto");
+}
+
+// En modo "fotos" no hay media_id que comparar directamente (las filas
+// de imagenesLista solo guardan la URL), así que se descartan de la
+// lista de "disponibles" las que ya tengan esa misma URL puesta como
+// foto, para no poder importar dos veces la misma imagen sin darse
+// cuenta.
+function urlsYaEnFotos() {
+  return new Set(
+    [...imagenesLista.querySelectorAll(".imagen-url-input")]
+      .map((input) => input.value.trim())
+      .filter(Boolean)
+  );
+}
+
+function pintarModalGaleriaArticulo() {
+  const idsYaVinculados = MODO_MODAL_GALERIA_ARTICULO === "fotos"
+    ? new Set()
+    : new Set(idsGaleriaArticuloActual());
+  const urlsYaFotos = MODO_MODAL_GALERIA_ARTICULO === "fotos" ? urlsYaEnFotos() : null;
+
+  // En modo "fotos" solo tiene sentido importar fotos (una foto suelta
+  // dentro del texto, posicionable); los vídeos siguen reservados al
+  // carrusel final de la galería, así que en ese modo se filtran fuera.
+  const filtroTipoFoto = (item) => MODO_MODAL_GALERIA_ARTICULO !== "fotos" || item.tipo === "foto";
+
+  const contPartido = document.getElementById("gaGaleriaPartido");
+  if (contPartido) {
+    const disponiblesPartido = GALERIA_ARTICULO_PARTIDO_CACHE
+      .filter((g) => !idsYaVinculados.has(g.media_id))
+      .filter(filtroTipoFoto)
+      .filter((g) => !urlsYaFotos || !urlsYaFotos.has(g.cloudinary_url));
+    contPartido.innerHTML = !disponiblesPartido.length
+      ? "<p>No hay más fotos en la galería de este partido (o ya están todas añadidas).</p>"
+      : disponiblesPartido.map((g) => tarjetaSeleccionableGaleriaArticulo(g.media_id, g.cloudinary_url, g.titulo, g.tipo, g.autor_nombre)).join("");
+  }
+
+  const contMediateca = document.getElementById("gaGaleriaMediateca");
+  if (contMediateca) {
+    const disponiblesMediateca = mediaActual
+      .filter((m) => m.tipo === "foto" && !idsYaVinculados.has(m.id))
+      .filter((m) => !urlsYaFotos || !urlsYaFotos.has(m.cloudinary_url));
+    contMediateca.innerHTML = !disponiblesMediateca.length
+      ? "<p>No tienes fotos subidas pendientes de añadir.</p>"
+      : disponiblesMediateca.map((m) => tarjetaSeleccionableGaleriaArticulo(m.id, m.cloudinary_url, m.titulo, m.tipo, m.autor_nombre)).join("");
+  }
+
+  const contador = document.getElementById("gaContadorSeleccion");
+  if (contador) contador.textContent = SELECCION_MODAL_GALERIA_ARTICULO.size;
+}
+
+function tarjetaSeleccionableGaleriaArticulo(mediaId, cloudinaryUrl, titulo, tipo, autorNombre) {
+  const esFoto = tipo === "foto";
+  const urlMiniatura = miniaturaCloudinary(cloudinaryUrl, esFoto ? "image" : "video");
+  const seleccionada = SELECCION_MODAL_GALERIA_ARTICULO.has(mediaId);
+  return `
+    <div class="tarjeta-media${seleccionada ? " seleccionada" : ""}" onclick="alternarSeleccionModalGaleriaArticulo(${mediaId})">
+      <div class="preview">
+        <span class="badge-tipo">${esFoto ? "Foto" : "Vídeo"}</span>
+        <span class="check-seleccion"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>
+        ${urlMiniatura
+          ? `<img src="${urlMiniatura}" alt="" loading="lazy" class="preview-miniatura-media">`
+          : `<span class="icono-generico">${esFoto ? iconoFotoAdmin : iconoVideoAdmin}</span>`}
+      </div>
+      <div class="cuerpo">
+        <div class="titulo-media">${escapeHtml(titulo || "")}</div>
+        ${autorNombre ? `<div class="meta-media">${escapeHtml(autorNombre)}</div>` : ""}
+      </div>
+    </div>`;
+}
+
+function alternarSeleccionModalGaleriaArticulo(mediaId) {
+  if (SELECCION_MODAL_GALERIA_ARTICULO.has(mediaId)) SELECCION_MODAL_GALERIA_ARTICULO.delete(mediaId);
+  else SELECCION_MODAL_GALERIA_ARTICULO.add(mediaId);
+  pintarModalGaleriaArticulo();
+}
+
+document.getElementById("btnConfirmarGaleriaArticulo")?.addEventListener("click", () => {
+  if (!SELECCION_MODAL_GALERIA_ARTICULO.size) { cerrarModalGaleriaArticulo(); return; }
+  // Busca los datos de cada id elegido, primero en la galería del
+  // partido y si no en la mediateca, para poder pintar la miniatura sin
+  // tener que volver a pedir nada al servidor.
+  const elegidos = [];
+  for (const mediaId of SELECCION_MODAL_GALERIA_ARTICULO) {
+    const deGaleria = GALERIA_ARTICULO_PARTIDO_CACHE.find((g) => g.media_id === mediaId);
+    const deMediateca = mediaActual.find((m) => m.id === mediaId);
+    const origen = deGaleria
+      ? { media_id: deGaleria.media_id, cloudinary_url: deGaleria.cloudinary_url, titulo: deGaleria.titulo, tipo: deGaleria.tipo, autor_nombre: deGaleria.autor_nombre }
+      : (deMediateca ? { media_id: deMediateca.id, cloudinary_url: deMediateca.cloudinary_url, titulo: deMediateca.titulo, tipo: deMediateca.tipo, autor_nombre: deMediateca.autor_nombre } : null);
+    if (origen) elegidos.push(origen);
+  }
+
+  if (MODO_MODAL_GALERIA_ARTICULO === "fotos") {
+    // Cada imagen importada se convierte en una fila normal de "Fotos":
+    // a partir de aquí se trata exactamente igual que una foto subida a
+    // mano (se puede marcar como portada, ajustar su foco de recorte y
+    // elegir su posición dentro del texto), y por tanto se ve tanto en
+    // la noticia publicada como en su vista previa. El crédito ya
+    // guardado en la mediateca/galería (autor_nombre) se traslada al
+    // campo de crédito de la fila para no perderlo.
+    const totalActual = imagenesLista.querySelectorAll(".fila-imagen").length;
+    elegidos.forEach((origen, i) => {
+      crearFilaImagen(origen.cloudinary_url, false, posicionPorDefecto(totalActual + i), "50% 50%", 1, origen.autor_nombre || "");
+    });
+  } else {
+    GALERIA_ARTICULO_ACTUAL.push(...elegidos);
+    pintarGaleriaArticuloVinculada();
+  }
+  cerrarModalGaleriaArticulo();
+});
+
+// Reproductor de vídeo a pantalla completa (modal): al hacer clic en la
+// preview o en el título de un vídeo se abre este modal con controles
+// nativos (play/pausa, avanzar/retroceder, volumen, pantalla completa),
+// para poder revisar el vídeo entero sin tener que descargarlo.
+function abrirModalReproductorMedia(id) {
+  const m = mediaActual.find((x) => x.id === id);
+  if (!m || !m.cloudinary_url) return;
+  const esFoto = m.tipo === "foto";
+  const modal = document.getElementById("modalReproductorMedia");
+  const caja = document.querySelector(".modal-caja-reproductor-media");
+  const video = document.getElementById("videoReproductorMedia");
+  const imagen = document.getElementById("imagenReproductorMedia");
+  const titulo = document.getElementById("tituloReproductorMedia");
+  const lienzo = document.querySelector(".reproductor-media-lienzo");
+  if (!modal || !video || !imagen) return;
+  // Este archivo ya está en Cloudinary: si falla la carga, sí puede ser
+  // un problema de conexión (a diferencia del selector de portada antes
+  // de subir, que reproduce un archivo local).
+  reproductorMediaEsLocal = false;
+  ignorarProximoErrorReproductorMedia = false;
+  // Mientras carga se muestra el spinner; si el navegador tarda o falla
+  // en cargar el archivo (red lenta, formato no soportado, CSP, etc.)
+  // se avisa con un mensaje claro en vez de dejar la pantalla en negro
+  // sin ninguna explicación.
+  if (lienzo) lienzo.classList.remove("cargado", "con-error");
+  caja?.classList.toggle("es-foto", esFoto);
+  const btnUsarFotograma = document.getElementById("btnUsarFotogramaSubida");
+  if (btnUsarFotograma) btnUsarFotograma.style.display = "none";
+  if (esFoto) {
+    video.pause();
+    video.removeAttribute("src");
+    video.load();
+    imagen.src = m.cloudinary_url;
+  } else {
+    imagen.removeAttribute("src");
+    video.src = m.cloudinary_url;
+    video.play().catch(() => {});
+  }
+  titulo.textContent = m.titulo || "";
+  modal.classList.add("abierto");
+}
+
+// true mientras el reproductor muestra un archivo local (todavía sin
+// subir, elegido con un object URL) en vez de un archivo ya alojado en
+// Cloudinary; determina qué mensaje de error mostrar si falla la carga.
+let reproductorMediaEsLocal = false;
+
+// true justo después de cerrar el modal, para descartar el "error" que el
+// propio navegador dispara al vaciar el <video> (ver cerrarModalReproductorMedia).
+let ignorarProximoErrorReproductorMedia = false;
+
+function marcarReproductorMediaCargado() {
+  document.querySelector(".reproductor-media-lienzo")?.classList.add("cargado");
+}
+
+function marcarReproductorMediaError() {
+  if (ignorarProximoErrorReproductorMedia) {
+    ignorarProximoErrorReproductorMedia = false;
+    return;
+  }
+  const errorEl = document.getElementById("errorReproductorMedia");
+  if (errorEl) {
+    // Un archivo local (aún sin subir) que no se puede reproducir es casi
+    // siempre un problema de formato/códec del propio navegador, nunca de
+    // conexión a internet, así que el mensaje no debe hablar de "conexión".
+    errorEl.textContent = reproductorMediaEsLocal
+      ? "No se ha podido previsualizar este vídeo en el navegador. Puedes subirlo igualmente: la portada se puede elegir después desde \"Ver contenido subido\"."
+      : "No se ha podido cargar el archivo. Comprueba tu conexión e inténtalo de nuevo.";
+  }
+  document.querySelector(".reproductor-media-lienzo")?.classList.add("cargado", "con-error");
+}
+
+function cerrarModalReproductorMedia() {
+  const modal = document.getElementById("modalReproductorMedia");
+  const video = document.getElementById("videoReproductorMedia");
+  const imagen = document.getElementById("imagenReproductorMedia");
+  if (video) {
+    video.pause();
+    // Quitar el src y llamar a load() dispara un evento "error" del propio
+    // <video>, aunque no haya pasado nada malo (es solo el navegador
+    // notificando que ya no hay nada que reproducir). Sin este aviso, ese
+    // "error" podía llegar tarde y marcar como fallido el SIGUIENTE vídeo
+    // que se abriera justo después en el mismo reproductor.
+    ignorarProximoErrorReproductorMedia = true;
+    video.removeAttribute("src");
+    video.load();
+  }
+  if (imagen) imagen.removeAttribute("src");
+  const btnUsarFotograma = document.getElementById("btnUsarFotogramaSubida");
+  if (btnUsarFotograma) btnUsarFotograma.style.display = "none";
+  if (window.objectUrlPortadaSubida) {
+    URL.revokeObjectURL(window.objectUrlPortadaSubida);
+    window.objectUrlPortadaSubida = null;
+  }
+  if (modal) modal.classList.remove("abierto");
+}
+
+const modalReproductorMedia = document.getElementById("modalReproductorMedia");
+if (modalReproductorMedia) {
+  modalReproductorMedia.addEventListener("click", (e) => {
+    if (e.target === modalReproductorMedia) cerrarModalReproductorMedia();
+  });
+}
+const videoReproductorMediaEl = document.getElementById("videoReproductorMedia");
+if (videoReproductorMediaEl) {
+  videoReproductorMediaEl.addEventListener("canplay", marcarReproductorMediaCargado);
+  videoReproductorMediaEl.addEventListener("error", marcarReproductorMediaError);
+}
+const imagenReproductorMediaEl = document.getElementById("imagenReproductorMedia");
+if (imagenReproductorMediaEl) {
+  imagenReproductorMediaEl.addEventListener("load", marcarReproductorMediaCargado);
+  imagenReproductorMediaEl.addEventListener("error", marcarReproductorMediaError);
+}
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && modalReproductorMedia?.classList.contains("abierto")) cerrarModalReproductorMedia();
+});
 
 // ---------- Editar contenido subido (modal, solo el autor) ----------
 const modalEditarMedia = document.getElementById("modalEditarMedia");
@@ -8316,21 +9642,254 @@ function poblarSelectClubEdicion() {
   emClubPoblado = true;
 }
 
+// ---------- Editar contenido: partido vinculado (match_gallery) ----------
+// Mismo patrón que el buscador de partido de "Subir contenido"
+// (ver crearAutocompletarPartido / actualizarEquipoSubidaSegunPartido):
+// si se elige un partido, el campo "Club" (texto libre) se oculta porque
+// el equipo ya se deduce del propio partido; si no hay partido, vuelve a
+// aparecer "Club" para poder seguir usándolo como hasta ahora.
+const emSelectPartido = document.getElementById("em_partido");
+const emEquipoWrap = document.getElementById("em_equipoWrap");
+const emSelectEquipo = document.getElementById("em_equipo");
+const emClubWrap = document.getElementById("em_clubWrap");
+let autocompletarPartidoEditarMedia = null;
+
+function actualizarEquipoEdicionSegunPartido(resultId, equipoAConservar) {
+  const r = resultId ? RESULTADOS_ARTICULO_TODOS.find((x) => String(x.id) === String(resultId)) : null;
+  if (!r) {
+    if (emEquipoWrap) emEquipoWrap.style.display = "none";
+    if (emSelectEquipo) emSelectEquipo.value = "";
+    if (emClubWrap) emClubWrap.style.display = "block";
+    return;
+  }
+  if (emSelectEquipo) {
+    emSelectEquipo.innerHTML = `
+      <option value="">— Foto/vídeo general del partido —</option>
+      <option value="local">${escapeHtml(r.equipo_local || "Equipo local")}</option>
+      <option value="visitante">${escapeHtml(r.equipo_visitante || "Equipo visitante")}</option>`;
+    emSelectEquipo.value = equipoAConservar || "";
+  }
+  if (emEquipoWrap) emEquipoWrap.style.display = "block";
+  if (emClubWrap) emClubWrap.style.display = "none";
+  const selectClub = document.getElementById("em_club");
+  if (selectClub) selectClub.value = "";
+}
+
+async function prepararSelectorPartidoEdicionMedia() {
+  if (!RESULTADOS_ARTICULO_TODOS || !RESULTADOS_ARTICULO_TODOS.length) {
+    await cargarResultadosSelect("");
+  }
+  if (!autocompletarPartidoEditarMedia && emSelectPartido) {
+    autocompletarPartidoEditarMedia = crearAutocompletarPartido({
+      wrapperEl: document.getElementById("em_partidoWrap"),
+      inputEl: document.getElementById("em_partido_buscador"),
+      sugerenciasEl: document.getElementById("em_partido_sugerencias"),
+      hiddenEl: emSelectPartido,
+      alElegir: (resultId) => actualizarEquipoEdicionSegunPartido(resultId),
+    });
+  }
+}
+
 function editarMedia(id) {
   const m = mediaActual.find((x) => x.id === id);
   if (!m) return;
   poblarSelectClubEdicion();
   document.getElementById("em_id").value = m.id;
   document.getElementById("em_titulo").value = m.titulo || "";
-  document.getElementById("em_club").value = m.club || "";
   document.getElementById("em_descripcion").value = m.descripcion || "";
+  activarSelectorVisibilidad(document.getElementById("em_selectorVisibilidad"), document.getElementById("em_visibilidad"), m.visibilidad);
+
+  // Partido vinculado (si lo hay): se rellena el buscador con el partido
+  // ya vinculado y se oculta "Club" en su lugar; si no hay partido, se
+  // muestra "Club" con su valor de texto libre como hasta ahora.
+  prepararSelectorPartidoEdicionMedia().then(() => {
+    if (emSelectPartido) emSelectPartido.value = m.resultado_id ? String(m.resultado_id) : "";
+    if (m.resultado_id) {
+      autocompletarPartidoEditarMedia?.reflejarValorActual();
+      actualizarEquipoEdicionSegunPartido(m.resultado_id, m.equipo_galeria || "");
+    } else {
+      const buscador = document.getElementById("em_partido_buscador");
+      if (buscador) buscador.value = "";
+      actualizarEquipoEdicionSegunPartido("");
+      document.getElementById("em_club").value = m.club || "";
+    }
+  });
   document.getElementById("msgOkEditarMedia").style.display = "none";
   document.getElementById("errEditarMedia").style.display = "none";
+
+  // La portada (fotograma de miniatura) solo tiene sentido para vídeos:
+  // en fotos la propia imagen ya es su miniatura, pero el punto de foco
+  // (qué parte no recortar nunca) aplica a ambos tipos.
+  const bloquePortada = document.getElementById("em_bloque_portada");
+  const inputPortada = document.getElementById("em_portada_segundo");
+  const videoPrevio = document.getElementById("em_video_previo");
+  const esVideo = m.tipo === "video";
+  if (bloquePortada) bloquePortada.style.display = esVideo ? "block" : "none";
+  if (inputPortada) inputPortada.value = Number.isFinite(m.portada_segundo) ? m.portada_segundo : "";
+  if (videoPrevio) {
+    if (esVideo && m.cloudinary_url) {
+      videoPrevio.src = m.cloudinary_url;
+      videoPrevio.style.display = "block";
+    } else {
+      videoPrevio.removeAttribute("src");
+      videoPrevio.style.display = "none";
+    }
+  }
+
+  // Punto de foco de la miniatura del vídeo (qué parte del fotograma no
+  // se debe recortar nunca). Se guarda en un dataset del propio modal
+  // para poder leer luego la URL/segundo actuales al pintar la preview.
+  emMediaEnEdicion = m;
+  const inputFoco = document.getElementById("em_portada_foco");
+  if (inputFoco) inputFoco.value = (esVideo && m.portada_foco) || "50% 50%";
+  const focoPanelPortadaVideo = document.getElementById("focoPanelPortadaVideo");
+  const btnFocoPortadaVideo = document.getElementById("btnFocoPortadaVideo");
+  if (focoPanelPortadaVideo) focoPanelPortadaVideo.classList.add("oculto");
+  if (btnFocoPortadaVideo) btnFocoPortadaVideo.classList.remove("activo");
+  pintarFocoPortadaVideo();
+
+  // Punto de foco de la foto (mismo sistema, pero sobre la propia imagen
+  // en vez de un fotograma de vídeo).
+  const bloqueFocoFoto = document.getElementById("em_bloque_foco_foto");
+  const inputFocoFoto = document.getElementById("em_foto_foco");
+  if (bloqueFocoFoto) bloqueFocoFoto.style.display = esVideo ? "none" : "block";
+  if (inputFocoFoto) inputFocoFoto.value = (!esVideo && m.imagen_foco) || "50% 50%";
+  const focoPanelFoto = document.getElementById("focoPanelFoto");
+  const btnFocoFoto = document.getElementById("btnFocoFoto");
+  if (focoPanelFoto) focoPanelFoto.classList.add("oculto");
+  if (btnFocoFoto) btnFocoFoto.classList.remove("activo");
+  pintarFocoFoto();
+
   if (modalEditarMedia) modalEditarMedia.classList.add("abierto");
+}
+
+// Referencia al registro que se está editando en el modal "Editar
+// contenido", para poder recalcular la miniatura de portada (fotograma +
+// foco) cada vez que cambia el segundo o el punto de foco elegidos.
+let emMediaEnEdicion = null;
+
+// Punto de foco de la miniatura del vídeo: mismo sistema de clic sobre una
+// preview que ya usan las fotos de contenido y la foto de perfil, pero
+// aquí la preview muestra el fotograma real (extraído por Cloudinary en el
+// segundo de portada elegido) en vez de una imagen fija, para que se vea
+// exactamente lo que se va a recortar.
+function pintarFocoPortadaVideo() {
+  const preview = document.getElementById("focoPreviewPortadaVideo");
+  const marcador = document.getElementById("focoMarcadorPortadaVideo");
+  const inputFoco = document.getElementById("em_portada_foco");
+  if (!preview || !marcador || !inputFoco) return;
+  const [fx, fy] = (inputFoco.value || "50% 50%").split(" ");
+  marcador.style.left = fx;
+  marcador.style.top = fy;
+  if (emMediaEnEdicion && emMediaEnEdicion.cloudinary_url) {
+    const segundoActual = Number(document.getElementById("em_portada_segundo").value);
+    const urlFotograma = miniaturaCloudinary(
+      emMediaEnEdicion.cloudinary_url, "video",
+      Number.isFinite(segundoActual) && segundoActual >= 0 ? segundoActual : emMediaEnEdicion.portada_segundo
+    );
+    preview.style.backgroundImage = urlFotograma ? `url("${urlFotograma}")` : "none";
+  } else {
+    preview.style.backgroundImage = "none";
+  }
+}
+
+(function inicializarFocoPortadaVideo() {
+  const preview = document.getElementById("focoPreviewPortadaVideo");
+  const btnFoco = document.getElementById("btnFocoPortadaVideo");
+  const focoPanel = document.getElementById("focoPanelPortadaVideo");
+  const btnReset = document.getElementById("btnFocoResetPortadaVideo");
+  const inputFoco = document.getElementById("em_portada_foco");
+  const inputSegundo = document.getElementById("em_portada_segundo");
+  if (!preview || !btnFoco || !focoPanel || !btnReset || !inputFoco) return;
+
+  preview.addEventListener("click", (e) => {
+    const rect = preview.getBoundingClientRect();
+    const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
+    const y = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
+    inputFoco.value = `${Math.round(x)}% ${Math.round(y)}%`;
+    pintarFocoPortadaVideo();
+  });
+  btnFoco.addEventListener("click", () => {
+    focoPanel.classList.toggle("oculto");
+    btnFoco.classList.toggle("activo");
+    if (!focoPanel.classList.contains("oculto")) pintarFocoPortadaVideo();
+  });
+  btnReset.addEventListener("click", () => {
+    inputFoco.value = "50% 50%";
+    pintarFocoPortadaVideo();
+  });
+  // Al cambiar el segundo del fotograma (a mano o con "Usar el fotograma
+  // actual"), se refresca la preview del foco para que siga mostrando el
+  // instante correcto del vídeo.
+  if (inputSegundo) inputSegundo.addEventListener("input", pintarFocoPortadaVideo);
+})();
+
+// Punto de foco de la foto en el modal "Editar contenido": mismo sistema
+// de clic sobre una preview que el foco del fotograma de vídeo, pero
+// mostrando aquí directamente la propia imagen.
+function pintarFocoFoto() {
+  const preview = document.getElementById("focoPreviewFoto");
+  const marcador = document.getElementById("focoMarcadorFoto");
+  const inputFoco = document.getElementById("em_foto_foco");
+  if (!preview || !marcador || !inputFoco) return;
+  const [fx, fy] = (inputFoco.value || "50% 50%").split(" ");
+  marcador.style.left = fx;
+  marcador.style.top = fy;
+  preview.style.backgroundImage = (emMediaEnEdicion && emMediaEnEdicion.cloudinary_url)
+    ? `url("${emMediaEnEdicion.cloudinary_url}")`
+    : "none";
+}
+
+(function inicializarFocoFoto() {
+  const preview = document.getElementById("focoPreviewFoto");
+  const btnFoco = document.getElementById("btnFocoFoto");
+  const focoPanel = document.getElementById("focoPanelFoto");
+  const btnReset = document.getElementById("btnFocoResetFoto");
+  const inputFoco = document.getElementById("em_foto_foco");
+  if (!preview || !btnFoco || !focoPanel || !btnReset || !inputFoco) return;
+
+  preview.addEventListener("click", (e) => {
+    const rect = preview.getBoundingClientRect();
+    const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
+    const y = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
+    inputFoco.value = `${Math.round(x)}% ${Math.round(y)}%`;
+    pintarFocoFoto();
+  });
+  btnFoco.addEventListener("click", () => {
+    focoPanel.classList.toggle("oculto");
+    btnFoco.classList.toggle("activo");
+    if (!focoPanel.classList.contains("oculto")) pintarFocoFoto();
+  });
+  btnReset.addEventListener("click", () => {
+    inputFoco.value = "50% 50%";
+    pintarFocoFoto();
+  });
+})();
+
+// Toma el instante exacto en el que está pausado/reproduciéndose el vídeo
+// de previsualización del modal de edición y lo deja listo en el campo de
+// portada, para no tener que calcular el segundo a ojo.
+function usarInstanteActualComoPortada() {
+  const videoPrevio = document.getElementById("em_video_previo");
+  const inputPortada = document.getElementById("em_portada_segundo");
+  if (!videoPrevio || !inputPortada) return;
+  if (!videoPrevio.src) {
+    EOF.toast("Reproduce primero el vídeo para poder elegir un fotograma.", "error");
+    return;
+  }
+  inputPortada.value = Math.max(0, videoPrevio.currentTime).toFixed(1);
+  pintarFocoPortadaVideo();
+  EOF.toast("Fotograma actual guardado como portada. Pulsa \"Guardar cambios\" para confirmarlo.", "info");
 }
 
 function cerrarModalEditarMedia() {
   if (modalEditarMedia) modalEditarMedia.classList.remove("abierto");
+  const videoPrevio = document.getElementById("em_video_previo");
+  if (videoPrevio) {
+    videoPrevio.pause();
+    videoPrevio.removeAttribute("src");
+    videoPrevio.load();
+  }
 }
 
 if (modalEditarMedia) {
@@ -8348,10 +9907,19 @@ if (formEditarMedia) {
     errMsg.style.display = "none";
 
     const id = document.getElementById("em_id").value;
+    const portadaSegundoTxt = document.getElementById("em_portada_segundo").value.trim();
+    const resultIdElegido = emSelectPartido ? (emSelectPartido.value || null) : null;
+    const inputEmVisibilidad = document.getElementById("em_visibilidad");
     const body = {
       titulo: document.getElementById("em_titulo").value.trim(),
       club: document.getElementById("em_club").value,
       descripcion: document.getElementById("em_descripcion").value.trim(),
+      resultId: resultIdElegido,
+      equipo: resultIdElegido ? (emSelectEquipo?.value || null) : null,
+      portadaSegundo: portadaSegundoTxt === "" ? null : Number(portadaSegundoTxt),
+      portadaFoco: document.getElementById("em_portada_foco").value.trim() || "50% 50%",
+      imagenFoco: document.getElementById("em_foto_foco").value.trim() || "50% 50%",
+      visibilidad: inputEmVisibilidad ? inputEmVisibilidad.value : "publico",
     };
 
     try {
@@ -8374,6 +9942,23 @@ document.querySelectorAll(".filtros-contenido button").forEach((btn) => {
     pintarGaleriaContenido();
   });
 });
+
+// Comparte el enlace público de la galería del partido al que está
+// vinculado este contenido (solo tiene sentido si está vinculado; el
+// botón ni se pinta si m.galeria_url viene vacío desde el backend).
+async function compartirMedia(id) {
+  const m = mediaActual.find((x) => x.id === id);
+  if (!m || !m.galeria_url) return;
+  try {
+    await navigator.clipboard.writeText(m.galeria_url);
+    EOF.toast("Enlace de la galería copiado.", "exito");
+  } catch {
+    // Si el navegador bloquea el portapapeles (p. ej. sin HTTPS o sin
+    // permiso), se muestra el enlace para copiarlo a mano en vez de
+    // dejar al usuario sin ninguna forma de conseguirlo.
+    window.prompt("Copia este enlace:", m.galeria_url);
+  }
+}
 
 async function eliminarMedia(id) {
   if (!(await EOF.confirmar("¿Eliminar este archivo? Esta acción no se puede deshacer.", { peligroso: true, textoConfirmar: "Eliminar" }))) return;
@@ -8409,6 +9994,14 @@ async function cargaUsuarios() {
         ? `Categoría fija: ${escapeHtml(u.categorias_fijas.map(categoriaLabel).join(" / "))}`
         : (equipos.length ? escapeHtml(equipos.join(" / ")) : "— Sin especificar —");
       const nivelEsAdmin = u.rol === "admin";
+      const esFotografoFila = u.rol === "fotografo";
+      // El sistema de niveles (1-4, con sus requisitos de artículos/
+      // audiencia) es exclusivo de redactores: un fotógrafo no publica
+      // noticias, así que no tiene sentido asignarle ninguno. Antes se
+      // le mostraba igualmente "Nivel 1 — Novato" (solo con el botón
+      // deshabilitado), lo que sugería que sí tenía un nivel de
+      // redactor aunque no aplicara; ahora directamente no se le pinta
+      // ningún nivel.
       const nivelMostrado = nivelEsAdmin ? 4 : (u.nivel || 1);
       const nivelInfo = NIVELES_ETIQUETA[nivelMostrado] || NIVELES_ETIQUETA[1];
       // Igual que en la cabecera del panel: si no tiene foto, mostramos
@@ -8423,6 +10016,7 @@ async function cargaUsuarios() {
         <td data-label="Rol">
           <select class="select-rol rol-${u.rol}" onchange="this.className='select-rol rol-'+this.value; cambiarRolUsuario(${u.id}, this.value)" ${u.id === USER.id ? "disabled title='No puedes cambiar tu propio rol'" : ""}>
             <option value="redactor" ${u.rol === "redactor" ? "selected" : ""}>Redactor</option>
+            <option value="fotografo" ${u.rol === "fotografo" ? "selected" : ""}>Fotógrafo</option>
             <option value="admin" ${u.rol === "admin" ? "selected" : ""}>Administrador</option>
           </select>
         </td>
@@ -8431,7 +10025,9 @@ async function cargaUsuarios() {
           <button type="button" class="editar btn-equipos-usuario" onclick='abrirModalEquiposUsuario(${u.id}, ${JSON.stringify(u.nombre)}, ${JSON.stringify(equipos)}, ${JSON.stringify(u.categorias_fijas || [])})'>${etiquetaBoton}</button>
         </td>
         <td data-label="Nivel">
-          <button type="button" class="editar btn-nivel-usuario nivel-badge nivel-badge-${nivelMostrado}" ${nivelEsAdmin ? `disabled title="Los administradores están siempre en el nivel máximo y no se puede editar"` : `onclick='abrirModalNivelUsuario(${u.id}, ${JSON.stringify(u.nombre)})'`}>${nivelInfo.emoji} Nivel ${nivelMostrado} — ${nivelInfo.nombre}</button>
+          ${esFotografoFila
+            ? `<span class="nivel-badge nivel-badge-na" title="El sistema de niveles es solo para redactores; no aplica a un fotógrafo">— No aplica —</span>`
+            : `<button type="button" class="editar btn-nivel-usuario nivel-badge nivel-badge-${nivelMostrado}" ${nivelEsAdmin ? `disabled title="Los administradores están siempre en el nivel máximo y no se puede editar"` : `onclick='abrirModalNivelUsuario(${u.id}, ${JSON.stringify(u.nombre)})'`}>${nivelInfo.emoji} Nivel ${nivelMostrado} — ${nivelInfo.nombre}</button>`}
         </td>
         <td data-label="Estado"><span class="badge-estado ${u.activo ? "publicado" : "borrador"}">${u.activo ? "Activo" : "Inactivo"}</span></td>
         <td class="acciones acciones-usuario" data-label="">
@@ -9775,7 +11371,19 @@ document.getElementById("btnAbrirWhatsapp")?.addEventListener("click", () => {
 // Snapshot inicial del formulario de noticia en blanco, por si se pulsa
 // "Previsualizar" antes de tocar nada (sin haber pasado por
 // cancelarEdicion/editarArticulo, que ya lo actualizan en su momento).
-SNAPSHOT_ARTICULO_ORIGINAL = snapshotFormularioArticulo();
+//
+// OJO: cargarAutoresSelect(USER.id) (más arriba) rellena el <select> de
+// autor de forma ASÍNCRONA (pide /api/autores) y preselecciona al
+// usuario actual como autor por defecto. Si se toma el snapshot aquí
+// sin esperar a que esa promesa termine, se captura con autor_id
+// todavía vacío -- y en cuanto la petición completa y rellena el
+// autor, el formulario ya "difiere" del snapshot sin que la persona
+// haya tocado nada, disparando un falso "1 sin guardar" en el
+// Workspace nada más entrar. Se espera a que termine antes de tomar
+// el snapshot para evitar ese falso positivo.
+cargarAutoresSelect(USER.id).finally(() => {
+  SNAPSHOT_ARTICULO_ORIGINAL = snapshotFormularioArticulo();
+});
 
 // Si la sesión anterior se cerró por inactividad mientras se escribía
 // una noticia, se ofrece recuperar ese borrador guardado en local.
@@ -10679,20 +12287,47 @@ function collagesDesdeImagenes(imagenes) {
 // <head> de panel.html), y este botón es la única forma de cambiarlo,
 // recordando la elección en localStorage para las siguientes visitas
 // (compartido con el resto del sitio, incluida la pantalla de acceso).
+//
+// Cuando panel.html vive dentro de un iframe del Workspace (ver
+// workspace.html), cambiar aquí data-theme solo afecta al documento de
+// ESTE iframe: el Workspace (la ventana padre) y cualquier otra pestaña
+// abierta (otros iframes de panel.html) se quedan con el tema antiguo
+// hasta que se recargan. Por eso, además de aplicar el cambio local,
+// se avisa al padre por postMessage para que él lo propague; ver el
+// listener "eof-workspace-tema" en workspace.html.
+function aplicarTemaEnDocumento(nuevo) {
+  if (nuevo === "dark") {
+    document.documentElement.setAttribute("data-theme", "dark");
+    document.documentElement.style.colorScheme = "dark";
+  } else {
+    document.documentElement.removeAttribute("data-theme");
+    document.documentElement.style.colorScheme = "light";
+  }
+}
 (function inicializarToggleTemaAdmin() {
   const btn = document.getElementById("themeToggle");
   if (!btn) return;
   btn.addEventListener("click", () => {
     const esOscuroAhora = document.documentElement.getAttribute("data-theme") === "dark";
     const nuevo = esOscuroAhora ? "light" : "dark";
-    if (nuevo === "dark") {
-      document.documentElement.setAttribute("data-theme", "dark");
-    } else {
-      document.documentElement.removeAttribute("data-theme");
-    }
+    aplicarTemaEnDocumento(nuevo);
     try {
       localStorage.setItem("eof_tema", nuevo);
     } catch {}
+    if (window.parent !== window) {
+      try {
+        window.parent.postMessage({ tipo: "eof-workspace-tema", tema: nuevo }, location.origin);
+      } catch (e) {}
+    }
+  });
+  // Si el cambio de tema viene de OTRA pestaña del Workspace (otro
+  // iframe de panel.html) o del propio Workspace, el padre nos lo
+  // reenvía con este mismo mensaje: nos limitamos a aplicarlo, sin
+  // volver a avisar al padre (evita bucles de mensajes).
+  window.addEventListener("message", (ev) => {
+    if (ev.origin !== location.origin) return;
+    if (!ev.data || ev.data.tipo !== "eof-workspace-tema") return;
+    aplicarTemaEnDocumento(ev.data.tema);
   });
 })();
 
@@ -11611,7 +13246,7 @@ function pintarTiendaGestionContadores(pedidos) {
 }
 
 // Repinta la lista de gestión aplicando el buscador de texto (por
-// nombre de redactor, email o producto) sobre TIENDA_GESTION_LISTA,
+// nombre de colaborador, email o producto) sobre TIENDA_GESTION_LISTA,
 // sin volver a pedir nada a la API.
 function pintarTiendaGestionFiltrada() {
   const cont = document.getElementById("tiendaGestionLista");
@@ -11933,3 +13568,115 @@ async function actualizarBadgeTiendaGestionPendientes(numeroConocido) {
     }
   });
 }
+
+// ---------- Navegación directa por URL: ?ir=tab.subtab ----------
+// Usado por el Workspace (workspace.html), que carga panel.html dentro
+// de iframes y necesita poder abrir cada uno directamente en una
+// sección/subsección concreta (p. ej. "?ir=noticias.nueva" o
+// "?ir=resultados.lista") en vez de aterrizar siempre en la pestaña por
+// defecto. Reutiliza el mismo mecanismo de clicks programáticos que ya
+// usa irANotificacion() más arriba, así que no duplica lógica de pintado.
+(function irSegunQuerystring() {
+  const params = new URLSearchParams(location.search);
+  const ir = params.get("ir");
+  if (!ir) return;
+  const [tab, subtab] = ir.split(".");
+  const intentar = () => {
+    const btnTab = document.querySelector(`.tabs button[data-tab="${tab}"]`);
+    if (!btnTab) return false;
+    btnTab.click();
+    if (subtab) {
+      const btnSubtab = document.querySelector(`#panel-${tab} .subtabs button[data-subtab="${subtab}"]`);
+      if (btnSubtab) btnSubtab.click();
+    }
+    return true;
+  };
+  // El panel pinta sus pestañas de forma síncrona al cargar el script,
+  // pero por si algún dato (rol, nivel) llega async y reordena/oculta
+  // pestañas, se reintenta una vez tras un pequeño margen.
+  if (!intentar()) setTimeout(intentar, 300);
+})();
+
+// ---------- Título de pestaña dinámico para el Workspace ----------
+// Cuando panel.html vive dentro de un iframe del Workspace, la pestaña
+// visual del Workspace (no la del navegador) quiere reflejar en qué
+// sección está cada iframe, para que "Noticias · Nueva" y "Resultados"
+// se distingan aunque las dos sean panel.html. Se notifica al padre
+// (si existe y es el propio Workspace) cada vez que cambia de pestaña
+// o subpestaña, en vez de que el Workspace tenga que adivinarlo desde
+// fuera inspeccionando el DOM del iframe.
+function notificarWorkspaceSeccionActiva() {
+  if (window.parent === window) return; // no está dentro de un iframe
+  try {
+    const btnTab = document.querySelector(".tabs button.activo");
+    if (!btnTab) return;
+    const tab = btnTab.dataset.tab;
+    const subtabBtn = document.querySelector(`#panel-${tab} .subtabs button.activo`);
+    window.parent.postMessage({
+      tipo: "eof-workspace-seccion",
+      tab,
+      subtab: subtabBtn ? subtabBtn.dataset.subtab : null,
+      tituloTab: btnTab.textContent.trim().replace(/^\d+$/, "").trim(),
+    }, location.origin);
+  } catch (e) {
+    // Si el padre no es del mismo origen (no debería pasar aquí) o algo
+    // falla al serializar, simplemente no se avisa: el Workspace se
+    // queda con el título genérico "Panel".
+  }
+}
+document.querySelectorAll(".tabs button, .subtabs button").forEach(btn => {
+  btn.addEventListener("click", () => setTimeout(notificarWorkspaceSeccionActiva, 0));
+});
+setTimeout(notificarWorkspaceSeccionActiva, 300);
+
+// ---------- Fase 2 del Workspace: avisar de cambios sin guardar ----------
+// El Workspace quiere poder confirmar antes de cerrar una pestaña que
+// tiene trabajo sin guardar (p. ej. una noticia a medio escribir), en
+// vez de cerrarla sin más como con cualquier otra pestaña. Se reutiliza
+// la misma comparación de snapshot que ya usa el propio formulario de
+// noticias (ver snapshotFormularioArticulo/SNAPSHOT_ARTICULO_ORIGINAL
+// más arriba) en vez de duplicar lógica de detección de cambios; para
+// el formulario de resultados, que no tiene un snapshot equivalente,
+// se usa una comprobación más simple: si el formulario tiene algún
+// campo relleno y no se acaba de guardar/resetear.
+function hayCambiosSinGuardarEnEstaPestana() {
+  try {
+    if (typeof SNAPSHOT_ARTICULO_ORIGINAL !== "undefined" && SNAPSHOT_ARTICULO_ORIGINAL !== null
+        && document.getElementById("subpanel-nueva")?.classList.contains("activo")
+        && typeof snapshotFormularioArticulo === "function") {
+      if (snapshotFormularioArticulo() !== SNAPSHOT_ARTICULO_ORIGINAL) return true;
+    }
+  } catch (e) {}
+  try {
+    const subpanelResultado = document.getElementById("subpanel-resultado");
+    if (subpanelResultado && subpanelResultado.classList.contains("activo")) {
+      const golesLocal = document.getElementById("rGolesLocal")?.value;
+      const golesVisitante = document.getElementById("rGolesVisitante")?.value;
+      // Un resultado "nuevo" (sin id) con algún gol ya escrito cuenta
+      // como cambio sin guardar; uno ya guardado que se está reeditando
+      // se deja pasar sin avisar, para no ser demasiado pesado (ese caso
+      // ya tiene su propio autoguardado periódico).
+      const idResultado = document.getElementById("resultadoId")?.value;
+      if (!idResultado && (golesLocal || golesVisitante)) return true;
+    }
+  } catch (e) {}
+  return false;
+}
+function notificarWorkspaceCambiosSinGuardar() {
+  if (window.parent === window) return;
+  try {
+    window.parent.postMessage({
+      tipo: "eof-workspace-dirty",
+      dirty: hayCambiosSinGuardarEnEstaPestana(),
+    }, location.origin);
+  } catch (e) {}
+}
+// Se comprueba con un intervalo corto (no en cada tecla, para no
+// recorrer el DOM constantemente) y también al cambiar de pestaña o
+// subpestaña, que es cuando más probable es que el estado cambie de
+// "limpio" a "sucio" o viceversa (p. ej. al guardar con éxito).
+setInterval(notificarWorkspaceCambiosSinGuardar, 2000);
+document.querySelectorAll(".tabs button, .subtabs button").forEach(btn => {
+  btn.addEventListener("click", () => setTimeout(notificarWorkspaceCambiosSinGuardar, 50));
+});
+document.getElementById("formArticle")?.addEventListener("input", () => setTimeout(notificarWorkspaceCambiosSinGuardar, 0));

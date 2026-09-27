@@ -233,7 +233,16 @@ function actualizarPartidoEnPantalla(resultado, eventos) {
     }
   }
 
-  PARTIDOS_CACHE[resultado.id] = { ...anterior, ...resultado };
+  // url_galeria solo lo manda GET /api/results/:id (detalle), no la
+  // lista de la que viene "resultado" aquí: si no viene en este objeto,
+  // se conserva el que ya hubiera en caché en vez de perderlo con el
+  // spread (que lo pondría a "undefined" y ocultaría el enlace ya
+  // pintado en el modal la próxima vez que se abra).
+  PARTIDOS_CACHE[resultado.id] = {
+    ...anterior,
+    ...resultado,
+    url_galeria: resultado.url_galeria !== undefined ? resultado.url_galeria : anterior.url_galeria,
+  };
   if (!cambioRelevante) return;
 
   // Repinta la tarjeta de la lista, si existe en esta página.
@@ -449,6 +458,16 @@ async function abrirModalPartido(id, { forzarRefrescoRed = true } = {}) {
     const puedeFlashscore = p.estado === "finalizado" && p.flashscore_url && COMPETICIONES_CON_FLASHSCORE_PUBLICO.includes(p.competicion);
     enlaceFlashscore.hidden = !puedeFlashscore;
     if (puedeFlashscore) enlaceFlashscore.href = p.flashscore_url;
+  }
+
+  // Enlace a la galería de fotos del partido (galeria.html), solo si ya
+  // tiene alguna foto vinculada: el backend (GET /api/results/:id) no
+  // manda url_galeria si el partido todavía no tiene ninguna, así no hay
+  // que volver a comprobarlo aquí.
+  const enlaceGaleria = document.getElementById("modalEnlaceGaleria");
+  if (enlaceGaleria) {
+    enlaceGaleria.hidden = !p.url_galeria;
+    if (p.url_galeria) enlaceGaleria.href = p.url_galeria;
   }
 
   // Enlace a la página pública de minuto a minuto (minuto-a-minuto.html):

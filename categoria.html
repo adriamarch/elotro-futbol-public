@@ -18,8 +18,14 @@
 
 <main class="wrap">
   <div id="ad-cabecera-categoria"></div>
-  <div id="cabeceraClub" style="display:none; align-items:center; gap:12px; margin-bottom:8px;">
-    <img id="escudoClub" src="" alt="" style="max-width:120px; max-height:56px; width:auto; height:auto; object-fit:contain;">
+  <div id="cabeceraClub" class="cabecera-club" hidden>
+    <div class="cabecera-club-escudo-wrap">
+      <img id="escudoClub" class="cabecera-club-escudo" src="" alt="">
+    </div>
+    <button id="btnAbrirComparador" type="button" class="btn-comparar-equipo" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5M8 3H3v5M3 16v5h5M21 16v5h-5M4 4l7 7m2 2l7 7"/></svg>
+      Comparar con otro equipo
+    </button>
   </div>
   <h2 class="section-title" id="tituloCategoria">Categoría</h2>
   <p class="section-subtitle" id="subtituloCategoria" style="display:none"></p>
@@ -59,10 +65,108 @@
     </div>
     <p id="modalPartidoTitulo" class="modal-partido-subtitulo"></p>
     <a id="modalEnlaceFlashscore" class="enlace-flashscore" href="" target="_blank" rel="noopener noreferrer" hidden>Ver en Flashscore<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></a>
+    <a id="modalEnlaceGaleria" class="enlace-flashscore" href="" hidden>Ver galería de fotos<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></a>
     <div id="modalNoticiasVinculadas" class="modal-noticias-vinculadas" hidden></div>
     <div id="modalPartidoMvp" class="modal-partido-mvp" hidden></div>
     <div id="modalPartidoAlineaciones" class="modal-partido-alineaciones"></div>
     <div id="modalPartidoEventos" class="modal-partido-eventos"></div>
+  </div>
+</div>
+
+<!-- Modal del comparador de equipos: se abre desde el botón "Comparar"
+     de la cabecera del club, ya con este equipo fijado como equipo A. -->
+<div id="modalComparador" class="modal-comparador" aria-hidden="true" hidden>
+  <div class="modal-comparador-fondo" onclick="cerrarModalComparador()"></div>
+  <div class="modal-comparador-caja" role="dialog" aria-modal="true" aria-labelledby="modalComparadorTitulo">
+    <button type="button" class="modal-partido-cerrar comp-cerrar" onclick="cerrarModalComparador()" aria-label="Cerrar">✕</button>
+
+    <div class="comp-cabecera">
+      <h3 id="modalComparadorTitulo" class="modal-comparador-titulo">Comparador de equipos</h3>
+      <p class="comp-subtitulo">Estadísticas cara a cara de la temporada</p>
+    </div>
+
+    <div class="comp-cara-a-cara">
+      <div class="comp-equipo-tarjeta" id="compTarjetaFija">
+        <div class="comp-equipo-escudo-wrap">
+          <img id="compEscudoFijo" class="comp-equipo-escudo" src="" alt="" loading="lazy">
+        </div>
+        <span id="compNombreFijo" class="comp-equipo-nombre"></span>
+        <span id="compCategoriaFija" class="comp-equipo-categoria"></span>
+      </div>
+
+      <div class="comp-vs-col">
+        <span class="comp-vs-grande">VS</span>
+        <span id="compEstadoCarga" class="comp-estado-carga" hidden>Cargando…</span>
+      </div>
+
+      <div class="comp-equipo-tarjeta" id="compTarjetaRival">
+        <div class="comp-equipo-escudo-wrap comp-equipo-escudo-wrap--vacio" id="compEscudoRivalWrap">
+          <img id="compEscudoRival" class="comp-equipo-escudo" src="" alt="" loading="lazy" hidden>
+          <svg id="compIconoInterrogante" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="10"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2 1.8-2 3.5" stroke-linecap="round"/><circle cx="12" cy="17" r=".6" fill="currentColor" stroke="none"/></svg>
+        </div>
+        <select id="compSelectorRival" class="comp-selector-rival-select" aria-label="Elige el equipo rival">
+          <option value="">Elige un rival…</option>
+        </select>
+        <span id="compCategoriaRival" class="comp-equipo-categoria"></span>
+      </div>
+    </div>
+
+    <div id="compComparadorError" class="comp-error" hidden></div>
+
+    <div id="compComparadorResultado" class="comp-resultado">
+
+      <!-- Resumen rápido: forma reciente + racha de victorias -->
+      <div class="comp-resumen-rapido">
+        <div class="comp-resumen-col">
+          <span class="comp-resumen-label">Forma reciente</span>
+          <div id="compFormaA" class="comp-racha comp-racha--grande"></div>
+        </div>
+        <div class="comp-resumen-col comp-resumen-col--centro">
+          <span class="comp-resumen-label">Historial directo</span>
+          <div id="compResumenH2h" class="comp-resumen-h2h"></div>
+        </div>
+        <div class="comp-resumen-col">
+          <span class="comp-resumen-label">Forma reciente</span>
+          <div id="compFormaB" class="comp-racha comp-racha--grande"></div>
+        </div>
+      </div>
+
+      <!-- Filtro de categoría de estadísticas -->
+      <div class="comp-tabs" role="tablist" aria-label="Categorías de estadísticas">
+        <button type="button" class="comp-tab activa" data-tab="general" role="tab" aria-selected="true">General</button>
+        <button type="button" class="comp-tab" data-tab="ataque" role="tab" aria-selected="false">Ataque</button>
+        <button type="button" class="comp-tab" data-tab="defensa" role="tab" aria-selected="false">Defensa</button>
+        <button type="button" class="comp-tab" data-tab="local-visitante" role="tab" aria-selected="false">Local / Visitante</button>
+      </div>
+
+      <p class="comp-tabla-ayuda">Toca cualquier estadística para ver los partidos que la componen</p>
+
+      <div class="comp-tabla-wrap">
+        <table class="comp-tabla" id="compTablaComparativa">
+          <thead>
+            <tr><th id="compColA"></th><th>Estadística</th><th id="compColB"></th></tr>
+          </thead>
+          <tbody id="compCuerpoTabla"></tbody>
+        </table>
+      </div>
+
+      <h4 class="comp-h2h-titulo">Últimos enfrentamientos directos</h4>
+      <div id="compH2hLista" class="comp-h2h-lista"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Sub-modal de detalle de una estadística del comparador: se abre al
+     pulsar una fila de la tabla comparativa, y lista los partidos
+     concretos que forman ese dato (mismo patrón que modalPartido, pero
+     con z-index superior porque se abre encima del comparador). -->
+<div id="modalCompDetalle" class="modal-comp-detalle" aria-hidden="true" hidden>
+  <div class="modal-comp-detalle-fondo" onclick="cerrarModalCompDetalle()"></div>
+  <div class="modal-comp-detalle-caja" role="dialog" aria-modal="true" aria-labelledby="compDetalleTitulo">
+    <button type="button" class="modal-partido-cerrar" onclick="cerrarModalCompDetalle()" aria-label="Cerrar">✕</button>
+    <h4 id="compDetalleTitulo" class="modal-comp-detalle-titulo"></h4>
+    <p id="compDetalleSubtitulo" class="modal-comp-detalle-subtitulo"></p>
+    <div id="compDetalleLista" class="modal-comp-detalle-lista"></div>
   </div>
 </div>
 
@@ -117,9 +221,15 @@ async function cargaCategoria() {
         escudoImg.onerror = null;
       }
     };
-    cabecera.style.display = "flex";
+    cabecera.hidden = false;
     cargaInfoClub(club);
     cargaPartidosClub(club);
+
+    // Botón "Comparar": solo tiene sentido en la ficha de un club
+    // concreto (no en la vista general de la competición).
+    const btnComparar = document.getElementById("btnAbrirComparador");
+    btnComparar.hidden = false;
+    btnComparar.onclick = () => abrirModalComparador(club);
   } else {
     const logoCat = categoriaLogo(cat);
     if (logoCat) {
@@ -131,8 +241,8 @@ async function cargaCategoria() {
       escudoImg.classList.toggle("logo-competicion-cabecera", cat === "hypermotion");
       escudoImg.src = logoCat;
       escudoImg.alt = `Logo de ${titulo}`;
-      escudoImg.onerror = () => { cabecera.style.display = "none"; };
-      cabecera.style.display = "flex";
+      escudoImg.onerror = () => { cabecera.hidden = true; };
+      cabecera.hidden = false;
     }
   }
 
@@ -345,6 +455,463 @@ async function cargaPartidosClub(club) {
   }
 }
 
+/*
+ * ============================================================
+ * COMPARADOR DE EQUIPOS (desde la ficha del club)
+ * ============================================================
+ * Se abre con el club de esta ficha ya fijado como equipo A; el usuario
+ * solo elige el rival. Reutiliza el mismo endpoint público que ya usa
+ * el bloque de "Últimos resultados / Próximos partidos" de más arriba
+ * (GET /api/results?club=...&estado=finalizado), así que no hace falta
+ * tocar el Worker ni el esquema de la base de datos.
+ */
+let CLUB_COMPARADOR_FIJO = null;
+// Guarda los partidos ya descargados de cada equipo de la comparación
+// activa, para que las filas clickeables puedan abrir el detalle sin
+// volver a pedirlos al servidor.
+let COMP_PARTIDOS_A = [];
+let COMP_PARTIDOS_B = [];
+let COMP_NOMBRE_A = "";
+let COMP_NOMBRE_B = "";
+let COMP_TAB_ACTIVA = "general";
+
+// Devuelve la categoría (competición) en la que juega un equipo, a
+// partir de la misma tabla que ya usa el resto del sitio para pintar
+// las listas de clubes por competición.
+function categoriaDeEquipo(nombreEquipo) {
+  for (const [cat, equipos] of Object.entries(CLUBS_BY_CATEGORY)) {
+    if (equipos.includes(nombreEquipo)) return cat;
+  }
+  if (typeof CUSTOM_CLUBS_BY_CATEGORY !== "undefined") {
+    for (const [cat, equipos] of Object.entries(CUSTOM_CLUBS_BY_CATEGORY)) {
+      if (equipos.some(c => c.nombre === nombreEquipo)) return cat;
+    }
+  }
+  return null;
+}
+
+function listaEquiposParaComparador(excluir) {
+  const base = Object.values(CLUBS_BY_CATEGORY).flat();
+  const personalizados = typeof CUSTOM_CLUBS_BY_CATEGORY !== "undefined"
+    ? Object.values(CUSTOM_CLUBS_BY_CATEGORY).flat().map(c => c.nombre)
+    : [];
+  const todos = Array.from(new Set([...base, ...personalizados])).filter(n => n !== excluir);
+  todos.sort((a, b) => a.localeCompare(b, "es"));
+  return todos;
+}
+
+function pintarCategoriaBadge(elId, nombreEquipo) {
+  const el = document.getElementById(elId);
+  const cat = categoriaDeEquipo(nombreEquipo);
+  if (cat) {
+    el.textContent = categoriaLabel(cat);
+    el.hidden = false;
+  } else {
+    el.textContent = "";
+    el.hidden = true;
+  }
+}
+
+async function abrirModalComparador(club) {
+  CLUB_COMPARADOR_FIJO = club;
+  const modal = document.getElementById("modalComparador");
+  const escudoFijo = document.getElementById("compEscudoFijo");
+  escudoFijo.src = getEscudoUrl(club);
+  escudoFijo.alt = club;
+  escudoFijo.dataset.equipo = club;
+  escudoFijo.onerror = () => manejarErrorEscudo(escudoFijo);
+  document.getElementById("compNombreFijo").textContent = club;
+  pintarCategoriaBadge("compCategoriaFija", club);
+
+  const selectorRival = document.getElementById("compSelectorRival");
+  const opciones = listaEquiposParaComparador(club)
+    .map(nombre => `<option value="${nombre}">${nombre}</option>`).join("");
+  selectorRival.innerHTML = `<option value="">Elige un rival…</option>${opciones}`;
+  selectorRival.value = "";
+
+  // El hueco del rival empieza con el icono de interrogante (todavía no
+  // se ha elegido nadie); en cuanto se elige, se sustituye por su escudo
+  // real, igual de grande que el del equipo fijo, para que la tarjeta
+  // quede simétrica y "de enfrentamiento" en vez de un simple desplegable.
+  const escudoRivalImg = document.getElementById("compEscudoRival");
+  const iconoInterrogante = document.getElementById("compIconoInterrogante");
+  escudoRivalImg.hidden = true;
+  escudoRivalImg.src = "";
+  iconoInterrogante.hidden = false;
+  document.getElementById("compCategoriaRival").hidden = true;
+
+  // Vuelve siempre a la pestaña "General" al abrir una comparación nueva.
+  COMP_TAB_ACTIVA = "general";
+  document.querySelectorAll(".comp-tab").forEach(t => {
+    const activa = t.dataset.tab === "general";
+    t.classList.toggle("activa", activa);
+    t.setAttribute("aria-selected", activa ? "true" : "false");
+  });
+
+  selectorRival.onchange = () => {
+    const rival = selectorRival.value;
+    if (!rival) {
+      escudoRivalImg.hidden = true;
+      iconoInterrogante.hidden = false;
+      document.getElementById("compCategoriaRival").hidden = true;
+      document.getElementById("compComparadorResultado").classList.remove("visible");
+      return;
+    }
+    escudoRivalImg.src = getEscudoUrl(rival);
+    escudoRivalImg.alt = rival;
+    escudoRivalImg.dataset.equipo = rival;
+    escudoRivalImg.onerror = () => manejarErrorEscudo(escudoRivalImg);
+    escudoRivalImg.hidden = false;
+    iconoInterrogante.hidden = true;
+    pintarCategoriaBadge("compCategoriaRival", rival);
+    compararEquipos(club, rival);
+  };
+
+  document.getElementById("compComparadorResultado").classList.remove("visible");
+  document.getElementById("compComparadorError").hidden = true;
+
+  modal.hidden = false;
+  modal.setAttribute("aria-hidden", "false");
+  document.body.style.overflow = "hidden";
+  // Foco al botón de cerrar al abrir, como en el modal de partido: así
+  // el teclado/lector de pantalla entra directamente al diálogo en vez
+  // de quedarse "perdido" en el contenido de detrás.
+  const btnCerrar = modal.querySelector(".modal-partido-cerrar");
+  if (btnCerrar) btnCerrar.focus();
+}
+
+function cerrarModalComparador() {
+  const modal = document.getElementById("modalComparador");
+  // Si el botón "Cerrar" (u otro elemento dentro del modal) todavía tiene
+  // el foco, hay que quitárselo ANTES de marcar el modal como
+  // aria-hidden/oculto: si no, el navegador avisa (y algunos lectores de
+  // pantalla se confunden) de que se ha ocultado un elemento que sigue
+  // teniendo el foco. Se devuelve el foco al botón que abrió el
+  // comparador, que es donde tiene sentido que vuelva el usuario.
+  if (modal.contains(document.activeElement)) {
+    document.activeElement.blur();
+    const btnComparar = document.getElementById("btnAbrirComparador");
+    if (btnComparar && !btnComparar.hidden) btnComparar.focus();
+  }
+  modal.hidden = true;
+  modal.setAttribute("aria-hidden", "true");
+  document.body.style.overflow = "";
+  cerrarModalCompDetalle();
+}
+
+// Calcula estadísticas agregadas de un equipo a partir de sus partidos
+// finalizados: generales, de ataque/defensa, por condición (local o
+// visitante) y forma reciente (últimos 5, el más reciente primero).
+// Cada partido usado queda anotado en cada bloque de stats para poder
+// abrir el detalle clickeable sin recalcular nada.
+function calcularStatsComparador(equipo, partidos) {
+  const stats = {
+    jugados: 0, victorias: 0, empates: 0, derrotas: 0,
+    golesFavor: 0, golesContra: 0, forma: [],
+    porteriaCero: 0, sinMarcar: 0, mayorGoleada: null, partidoEncajaMas: null,
+    local: { jugados: 0, victorias: 0, empates: 0, derrotas: 0, golesFavor: 0, golesContra: 0 },
+    visitante: { jugados: 0, victorias: 0, empates: 0, derrotas: 0, golesFavor: 0, golesContra: 0 },
+    partidosPorFila: {},
+  };
+  const anota = (clave, partido) => {
+    if (!stats.partidosPorFila[clave]) stats.partidosPorFila[clave] = [];
+    stats.partidosPorFila[clave].push(partido);
+  };
+
+  const ordenados = [...partidos].sort((x, y) => (y.fecha_partido || "").localeCompare(x.fecha_partido || ""));
+  for (const p of ordenados) {
+    const esLocal = p.equipo_local === equipo;
+    const golesPropios = esLocal ? p.goles_local : p.goles_visitante;
+    const golesRival = esLocal ? p.goles_visitante : p.goles_local;
+    if (golesPropios === null || golesRival === null) continue;
+
+    stats.jugados++;
+    stats.golesFavor += golesPropios;
+    stats.golesContra += golesRival;
+    anota("jugados", p);
+    anota("goles-favor", p);
+    anota("goles-contra", p);
+
+    const bloque = esLocal ? stats.local : stats.visitante;
+    bloque.jugados++;
+    bloque.golesFavor += golesPropios;
+    bloque.golesContra += golesRival;
+    anota(esLocal ? "local-jugados" : "visitante-jugados", p);
+
+    if (golesPropios > golesRival) {
+      stats.victorias++; bloque.victorias++;
+      anota("victorias", p);
+      anota(esLocal ? "local-victorias" : "visitante-victorias", p);
+      if (stats.forma.length < 5) stats.forma.push("g");
+    } else if (golesPropios < golesRival) {
+      stats.derrotas++; bloque.derrotas++;
+      anota("derrotas", p);
+      anota(esLocal ? "local-derrotas" : "visitante-derrotas", p);
+      if (stats.forma.length < 5) stats.forma.push("p");
+    } else {
+      stats.empates++; bloque.empates++;
+      anota("empates", p);
+      anota(esLocal ? "local-empates" : "visitante-empates", p);
+      if (stats.forma.length < 5) stats.forma.push("e");
+    }
+
+    if (golesRival === 0) { stats.porteriaCero++; anota("porteria-cero", p); }
+    if (golesPropios === 0) { stats.sinMarcar++; anota("sin-marcar", p); }
+    if (!stats.mayorGoleada || golesPropios > stats.mayorGoleada.goles) {
+      stats.mayorGoleada = { goles: golesPropios, partido: p };
+    }
+    if (!stats.partidoEncajaMas || golesRival > stats.partidoEncajaMas.goles) {
+      stats.partidoEncajaMas = { goles: golesRival, partido: p };
+    }
+  }
+
+  stats.diferencia = stats.golesFavor - stats.golesContra;
+  stats.promedioFavor = stats.jugados ? (stats.golesFavor / stats.jugados).toFixed(1) : "0.0";
+  stats.promedioContra = stats.jugados ? (stats.golesContra / stats.jugados).toFixed(1) : "0.0";
+  stats.puntos = stats.victorias * 3 + stats.empates;
+  stats.porcentajeVictorias = stats.jugados ? Math.round((stats.victorias / stats.jugados) * 100) : 0;
+  return stats;
+}
+
+// Definición de cada fila de la tabla comparativa: a qué pestaña
+// pertenece, cómo se lee el valor de las stats calculadas, y qué clave
+// de "partidosPorFila" abrir al hacer click (null = fila no clickeable,
+// como la de forma que ya tiene su propio bloque visual).
+const COMP_FILAS = [
+  { tab: "general", etiqueta: "Partidos jugados", valor: s => s.jugados, clave: "jugados" },
+  { tab: "general", etiqueta: "Puntos (3V-1E)", valor: s => s.puntos, clave: null },
+  { tab: "general", etiqueta: "Victorias", valor: s => s.victorias, clave: "victorias" },
+  { tab: "general", etiqueta: "Empates", valor: s => s.empates, clave: "empates" },
+  { tab: "general", etiqueta: "Derrotas", valor: s => s.derrotas, clave: "derrotas" },
+  { tab: "general", etiqueta: "% de victorias", valor: s => s.porcentajeVictorias + "%", claveOrden: s => s.porcentajeVictorias, clave: null },
+  { tab: "general", etiqueta: "Diferencia de goles", valor: s => (s.diferencia > 0 ? "+" : "") + s.diferencia, claveOrden: s => s.diferencia, clave: null },
+
+  { tab: "ataque", etiqueta: "Goles a favor", valor: s => s.golesFavor, clave: "goles-favor" },
+  { tab: "ataque", etiqueta: "Media de goles a favor", valor: s => s.promedioFavor, claveOrden: s => Number(s.promedioFavor), clave: "goles-favor" },
+  { tab: "ataque", etiqueta: "Partidos sin marcar", valor: s => s.sinMarcar, claveOrden: s => -s.sinMarcar, clave: "sin-marcar" },
+  { tab: "ataque", etiqueta: "Mayor goleada a favor", valor: s => s.mayorGoleada ? s.mayorGoleada.goles : "—", claveOrden: s => s.mayorGoleada ? s.mayorGoleada.goles : -1, clave: null },
+
+  { tab: "defensa", etiqueta: "Goles en contra", valor: s => s.golesContra, claveOrden: s => -s.golesContra, clave: "goles-contra" },
+  { tab: "defensa", etiqueta: "Media de goles en contra", valor: s => s.promedioContra, claveOrden: s => -Number(s.promedioContra), clave: "goles-contra" },
+  { tab: "defensa", etiqueta: "Porterías a cero", valor: s => s.porteriaCero, clave: "porteria-cero" },
+  { tab: "defensa", etiqueta: "Peor partido encajando", valor: s => s.partidoEncajaMas ? s.partidoEncajaMas.goles : "—", claveOrden: s => s.partidoEncajaMas ? -s.partidoEncajaMas.goles : 1, clave: null },
+
+  { tab: "local-visitante", etiqueta: "Jugados como local", valor: s => s.local.jugados, clave: "local-jugados" },
+  { tab: "local-visitante", etiqueta: "Victorias como local", valor: s => s.local.victorias, clave: "local-victorias" },
+  { tab: "local-visitante", etiqueta: "Goles a favor (local)", valor: s => s.local.golesFavor, claveOrden: s => s.local.golesFavor, clave: "local-jugados" },
+  { tab: "local-visitante", etiqueta: "Jugados como visitante", valor: s => s.visitante.jugados, clave: "visitante-jugados" },
+  { tab: "local-visitante", etiqueta: "Victorias como visitante", valor: s => s.visitante.victorias, clave: "visitante-victorias" },
+  { tab: "local-visitante", etiqueta: "Goles a favor (visitante)", valor: s => s.visitante.golesFavor, claveOrden: s => s.visitante.golesFavor, clave: "visitante-jugados" },
+];
+
+function filaComparador(fila, statsA, statsB) {
+  const valorA = fila.valor(statsA);
+  const valorB = fila.valor(statsB);
+  const ordenA = fila.claveOrden ? fila.claveOrden(statsA) : Number(valorA);
+  const ordenB = fila.claveOrden ? fila.claveOrden(statsB) : Number(valorB);
+  const aGana = ordenA > ordenB;
+  const bGana = ordenB > ordenA;
+  const clickeable = !!fila.clave;
+  const attrs = clickeable
+    ? `class="comp-fila-clickeable" tabindex="0" role="button" data-clave="${fila.clave}" data-etiqueta="${fila.etiqueta}"`
+    : "";
+  return `<tr ${attrs}>
+    <td class="${aGana ? "comp-mejor" : ""}">${valorA}</td>
+    <td>${fila.etiqueta}${clickeable ? '<svg class="comp-icono-detalle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>' : ""}</td>
+    <td class="${bGana ? "comp-mejor" : ""}">${valorB}</td>
+  </tr>`;
+}
+
+function pintarFormaComparador(forma) {
+  if (!forma.length) return "—";
+  const iconos = { g: "V", e: "E", p: "D" };
+  return forma.map(r => `<span class="${r}">${iconos[r]}</span>`).join("");
+}
+
+function renderTablaComparador() {
+  const filasTab = COMP_FILAS.filter(f => f.tab === COMP_TAB_ACTIVA);
+  const statsA = COMP_STATS_A, statsB = COMP_STATS_B;
+  document.getElementById("compCuerpoTabla").innerHTML = filasTab
+    .map(fila => filaComparador(fila, statsA, statsB)).join("");
+
+  document.querySelectorAll(".comp-fila-clickeable").forEach(fila => {
+    const abrir = () => abrirModalCompDetalle(fila.dataset.clave, fila.dataset.etiqueta);
+    fila.addEventListener("click", abrir);
+    fila.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); abrir(); }
+    });
+  });
+}
+
+document.querySelectorAll(".comp-tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    COMP_TAB_ACTIVA = tab.dataset.tab;
+    document.querySelectorAll(".comp-tab").forEach(t => {
+      const activa = t === tab;
+      t.classList.toggle("activa", activa);
+      t.setAttribute("aria-selected", activa ? "true" : "false");
+    });
+    renderTablaComparador();
+  });
+});
+
+let COMP_STATS_A = null, COMP_STATS_B = null;
+
+async function compararEquipos(nombreA, nombreB) {
+  const errorBox = document.getElementById("compComparadorError");
+  const resultadoBox = document.getElementById("compComparadorResultado");
+  const estadoCarga = document.getElementById("compEstadoCarga");
+  errorBox.hidden = true;
+  resultadoBox.classList.remove("visible");
+  estadoCarga.hidden = false;
+
+  try {
+    const [resA, resB] = await Promise.all([
+      apiFetch(`/api/results?club=${encodeURIComponent(nombreA)}&estado=finalizado&limit=200`),
+      apiFetch(`/api/results?club=${encodeURIComponent(nombreB)}&estado=finalizado&limit=200`),
+    ]);
+    if (!resA.ok || !resB.ok) throw new Error("Respuesta no válida del servidor");
+    // El endpoint devuelve { results: [...] }, no un array directo (igual
+    // que lo consume cargaPartidosClub más arriba en este mismo archivo).
+    const { results: resultsA } = await resA.json();
+    const { results: resultsB } = await resB.json();
+
+    // Los amistosos no cuentan para el comparador: ni en las
+    // estadísticas generales/ataque/defensa/local-visitante ni en el
+    // historial de enfrentamientos directos, solo competición oficial.
+    const partidosA = resultsA.filter(p => p.competicion !== "amistoso");
+    const partidosB = resultsB.filter(p => p.competicion !== "amistoso");
+
+    COMP_NOMBRE_A = nombreA;
+    COMP_NOMBRE_B = nombreB;
+    COMP_PARTIDOS_A = partidosA;
+    COMP_PARTIDOS_B = partidosB;
+
+    const statsA = calcularStatsComparador(nombreA, partidosA);
+    const statsB = calcularStatsComparador(nombreB, partidosB);
+    COMP_STATS_A = statsA;
+    COMP_STATS_B = statsB;
+
+    document.getElementById("compColA").textContent = nombreA;
+    document.getElementById("compColB").textContent = nombreB;
+    renderTablaComparador();
+
+    document.getElementById("compFormaA").innerHTML = pintarFormaComparador(statsA.forma);
+    document.getElementById("compFormaB").innerHTML = pintarFormaComparador(statsB.forma);
+
+    const mapaPartidos = new Map();
+    [...partidosA, ...partidosB].forEach(p => mapaPartidos.set(p.id, p));
+    const directos = Array.from(mapaPartidos.values())
+      .filter(p =>
+        (p.equipo_local === nombreA && p.equipo_visitante === nombreB) ||
+        (p.equipo_local === nombreB && p.equipo_visitante === nombreA))
+      .filter(p => p.goles_local !== null && p.goles_visitante !== null)
+      .sort((x, y) => (y.fecha_partido || "").localeCompare(x.fecha_partido || ""));
+
+    // Resumen rápido del historial: victorias de cada uno + empates,
+    // sobre el total de enfrentamientos directos ya registrados.
+    let victoriasA = 0, victoriasB = 0, empatesDirectos = 0;
+    directos.forEach(p => {
+      const esALocal = p.equipo_local === nombreA;
+      const golesA = esALocal ? p.goles_local : p.goles_visitante;
+      const golesB = esALocal ? p.goles_visitante : p.goles_local;
+      if (golesA > golesB) victoriasA++;
+      else if (golesB > golesA) victoriasB++;
+      else empatesDirectos++;
+    });
+    document.getElementById("compResumenH2h").innerHTML = directos.length
+      ? `<span class="comp-h2h-mini comp-h2h-mini--a">${victoriasA}</span><span class="comp-h2h-mini-e">${empatesDirectos}</span><span class="comp-h2h-mini comp-h2h-mini--b">${victoriasB}</span>`
+      : `<span class="comp-h2h-mini-vacio">Sin datos</span>`;
+
+    const h2hCont = document.getElementById("compH2hLista");
+    h2hCont.innerHTML = directos.length
+      ? directos.slice(0, 6).map(p => {
+          const fecha = p.fecha_partido ? p.fecha_partido.slice(0, 10).split("-").reverse().join("/") : "";
+          return `<div class="comp-h2h-item">
+            <span>${p.equipo_local}</span>
+            <span class="comp-h2h-marcador">${p.goles_local} - ${p.goles_visitante}</span>
+            <span>${p.equipo_visitante}</span>
+            <span class="comp-h2h-fecha">${fecha}</span>
+          </div>`;
+        }).join("")
+      : `<div class="comp-vacio">No hay enfrentamientos directos registrados todavía.</div>`;
+
+    resultadoBox.classList.add("visible");
+  } catch (err) {
+    console.error("Error al comparar equipos:", err);
+    errorBox.textContent = "No se ha podido cargar la comparación. Inténtalo de nuevo en unos segundos.";
+    errorBox.hidden = false;
+  } finally {
+    estadoCarga.hidden = true;
+  }
+}
+
+/*
+ * ---------- Sub-modal de detalle de una estadística ----------
+ * Lista, uno a uno, los partidos que componen la fila pulsada en la
+ * tabla comparativa (p.ej. "Victorias": todos los partidos ganados por
+ * cada equipo). Se pintan dos columnas, una por equipo, reutilizando
+ * los partidos ya descargados por compararEquipos (sin más peticiones).
+ */
+function partidoComoTexto(p, equipo) {
+  const esLocal = p.equipo_local === equipo;
+  const rival = esLocal ? p.equipo_visitante : p.equipo_local;
+  const golesPropios = esLocal ? p.goles_local : p.goles_visitante;
+  const golesRival = esLocal ? p.goles_visitante : p.goles_local;
+  const fecha = p.fecha_partido ? p.fecha_partido.slice(0, 10).split("-").reverse().join("/") : "";
+  const resultado = golesPropios > golesRival ? "victoria" : golesPropios < golesRival ? "derrota" : "empate";
+  return { esLocal, rival, golesPropios, golesRival, fecha, resultado, jornada: p.jornada, competicion: p.competicion };
+}
+
+function abrirModalCompDetalle(clave, etiqueta) {
+  const modal = document.getElementById("modalCompDetalle");
+  document.getElementById("compDetalleTitulo").textContent = etiqueta;
+  document.getElementById("compDetalleSubtitulo").textContent = `${COMP_NOMBRE_A} vs ${COMP_NOMBRE_B}`;
+
+  const partidosA = (COMP_STATS_A.partidosPorFila[clave] || []);
+  const partidosB = (COMP_STATS_B.partidosPorFila[clave] || []);
+
+  const columna = (nombre, partidos) => {
+    if (!partidos.length) {
+      return `<div class="comp-detalle-col">
+        <h5>${nombre}</h5>
+        <div class="comp-vacio">Sin partidos en esta estadística.</div>
+      </div>`;
+    }
+    const items = partidos.map(p => {
+      const t = partidoComoTexto(p, nombre);
+      return `<div class="comp-detalle-item comp-detalle-item--${t.resultado}">
+        <span class="comp-detalle-rival">${t.esLocal ? "vs" : "@"} ${t.rival}</span>
+        <span class="comp-detalle-marcador">${t.golesPropios} - ${t.golesRival}</span>
+        <span class="comp-detalle-meta">${t.fecha || ""}${t.jornada ? ` · J${t.jornada}` : ""}</span>
+      </div>`;
+    }).join("");
+    return `<div class="comp-detalle-col"><h5>${nombre}</h5>${items}</div>`;
+  };
+
+  document.getElementById("compDetalleLista").innerHTML =
+    columna(COMP_NOMBRE_A, partidosA) + columna(COMP_NOMBRE_B, partidosB);
+
+  modal.hidden = false;
+  modal.setAttribute("aria-hidden", "false");
+  const btnCerrar = modal.querySelector(".modal-partido-cerrar");
+  if (btnCerrar) btnCerrar.focus();
+}
+
+function cerrarModalCompDetalle() {
+  const modal = document.getElementById("modalCompDetalle");
+  if (modal.contains(document.activeElement)) document.activeElement.blur();
+  modal.hidden = true;
+  modal.setAttribute("aria-hidden", "true");
+}
+
+document.addEventListener("keydown", (ev) => {
+  if (ev.key !== "Escape") return;
+  const detalle = document.getElementById("modalCompDetalle");
+  if (detalle && !detalle.hidden) { cerrarModalCompDetalle(); return; }
+  cerrarModalComparador();
+});
+
 document.addEventListener("DOMContentLoaded", cargaCategoria);
 </script>
 <style>
@@ -402,6 +969,244 @@ document.addEventListener("DOMContentLoaded", cargaCategoria);
   @media(max-width:700px){
     .partidos-club{grid-template-columns:1fr;}
   }
+
+  /* ---------- Cabecera del club (escudo + botón comparar) ---------- */
+  .cabecera-club{
+    display:flex; align-items:center; justify-content:space-between; gap:16px;
+    flex-wrap:wrap; margin-bottom:14px;
+  }
+  .cabecera-club-escudo-wrap{
+    display:flex; align-items:center; justify-content:center;
+    width:64px; height:64px; flex-shrink:0;
+  }
+  .cabecera-club-escudo{
+    max-width:100%; max-height:100%; width:auto; height:auto; object-fit:contain;
+  }
+  .btn-comparar-equipo{
+    display:inline-flex; align-items:center; gap:8px;
+    padding:9px 18px;
+    background:transparent; color:var(--rojo); border:1.5px solid var(--rojo); border-radius:24px;
+    font-family:var(--font-tit); font-weight:600; font-size:.82rem;
+    letter-spacing:.02em; cursor:pointer; white-space:nowrap;
+    transition:background-color .15s ease, color .15s ease;
+  }
+  .btn-comparar-equipo:hover{background:var(--rojo); color:#fff;}
+  .btn-comparar-equipo svg{width:15px; height:15px; flex-shrink:0;}
+  @media(max-width:480px){
+    .btn-comparar-equipo{font-size:.76rem; padding:8px 14px;}
+  }
+
+  /* ============================================================
+     MODAL COMPARADOR — rediseño profesional
+     ============================================================ */
+  .modal-comparador{position:fixed; inset:0; z-index:1000; display:flex; align-items:center; justify-content:center; padding:16px;}
+  .modal-comparador[hidden]{display:none !important;}
+  .modal-comparador-fondo{
+    position:absolute; inset:0;
+    background:radial-gradient(circle at 50% 20%, rgba(12,27,46,.72), rgba(6,14,26,.86));
+    backdrop-filter:blur(3px);
+  }
+  .modal-comparador-caja{
+    position:relative; background:var(--tarjeta); border-radius:18px;
+    box-shadow:0 24px 60px -12px rgba(0,0,0,.45), 0 0 0 1px var(--borde);
+    padding:0; max-width:720px; width:94%;
+    max-height:92vh; overflow-y:auto;
+    animation:compEntrada .22s cubic-bezier(.2,.8,.3,1);
+  }
+  @keyframes compEntrada{from{opacity:0; transform:translateY(10px) scale(.98);} to{opacity:1; transform:translateY(0) scale(1);}}
+  .comp-cerrar{position:absolute; top:14px; right:14px; z-index:2;}
+
+  .comp-cabecera{
+    background:linear-gradient(135deg, var(--marino) 0%, #142c4c 100%);
+    padding:26px 28px 20px; text-align:center; border-radius:18px 18px 0 0;
+  }
+  .modal-comparador-titulo{
+    font-family:var(--font-tit); font-weight:800; margin:0; text-align:center;
+    color:#fff; font-size:1.3rem; letter-spacing:.01em;
+  }
+  .comp-subtitulo{
+    margin:6px 0 0; text-align:center; color:rgba(255,255,255,.65);
+    font-size:.82rem; font-family:var(--font-text);
+  }
+
+  .comp-cara-a-cara{
+    display:grid;
+    grid-template-columns:1fr auto 1fr;
+    align-items:center;
+    gap:16px;
+    padding:22px 26px 6px;
+  }
+  .comp-equipo-tarjeta{
+    display:flex; flex-direction:column; align-items:center; gap:9px;
+    background:var(--fondo-alt); border:1px solid var(--borde); border-radius:16px;
+    padding:20px 14px 16px;
+    transition:border-color .15s ease, transform .15s ease;
+  }
+  .comp-equipo-tarjeta:hover{border-color:var(--rojo);}
+  .comp-equipo-escudo-wrap{
+    width:72px; height:72px; display:flex; align-items:center; justify-content:center;
+    flex-shrink:0; filter:drop-shadow(0 3px 6px rgba(0,0,0,.18));
+  }
+  .comp-equipo-escudo{max-width:100%; max-height:100%; width:auto; height:auto; object-fit:contain;}
+  .comp-equipo-escudo-wrap--vacio{color:var(--borde);}
+  .comp-equipo-escudo-wrap--vacio svg{width:40px; height:40px;}
+  .comp-equipo-nombre{
+    font-family:var(--font-tit); font-weight:700; font-size:.88rem; text-align:center;
+    color:var(--marino-texto); line-height:1.25; min-height:1.1em;
+  }
+  .comp-equipo-categoria{
+    font-family:var(--font-text); font-size:.68rem; font-weight:600; letter-spacing:.03em;
+    text-transform:uppercase; color:var(--rojo); background:rgba(199,43,43,.08);
+    border-radius:20px; padding:3px 10px;
+  }
+  .comp-selector-rival-select{
+    width:100%; padding:8px 10px; border-radius:8px; border:1px solid var(--borde);
+    background:var(--fondo); color:var(--texto); font-family:var(--font-text); font-size:.85rem;
+    text-align:center; cursor:pointer;
+  }
+  .comp-vs-col{display:flex; flex-direction:column; align-items:center; gap:6px;}
+  .comp-vs-grande{
+    font-family:var(--font-tit); font-weight:800; font-size:1.02rem;
+    color:#fff; background:linear-gradient(135deg, var(--rojo), #a51f1f);
+    border-radius:50%; width:44px; height:44px;
+    display:flex; align-items:center; justify-content:center;
+    letter-spacing:.02em; box-shadow:0 4px 12px rgba(199,43,43,.35);
+  }
+  .comp-estado-carga{
+    font-size:.68rem; color:var(--texto-suave); font-family:var(--font-text);
+    white-space:nowrap;
+  }
+  @media(max-width:480px){
+    .comp-cara-a-cara{grid-template-columns:1fr; justify-items:center;}
+    .comp-vs-col{order:2; flex-direction:row;}
+    .comp-equipo-tarjeta{width:100%; max-width:240px;}
+  }
+
+  .comp-resultado{display:none; padding:20px 26px 28px;}
+  .comp-resultado.visible{display:block;}
+
+  /* ---- Resumen rápido: forma + mini historial directo ---- */
+  .comp-resumen-rapido{
+    display:grid; grid-template-columns:1fr auto 1fr; align-items:center;
+    gap:12px; background:var(--fondo-alt); border:1px solid var(--borde);
+    border-radius:14px; padding:14px 18px; margin-bottom:20px;
+  }
+  .comp-resumen-col{display:flex; flex-direction:column; align-items:center; gap:8px;}
+  .comp-resumen-label{
+    font-family:var(--font-text); font-size:.66rem; font-weight:700; letter-spacing:.04em;
+    text-transform:uppercase; color:var(--texto-suave);
+  }
+  .comp-resumen-h2h{display:flex; align-items:center; gap:8px;}
+  .comp-h2h-mini{
+    font-family:var(--font-tit); font-weight:800; font-size:1.2rem;
+    width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    color:#fff;
+  }
+  .comp-h2h-mini--a{background:var(--marino);}
+  .comp-h2h-mini--b{background:var(--rojo);}
+  .comp-h2h-mini-e{font-family:var(--font-text); font-size:.78rem; color:var(--texto-suave); font-weight:600;}
+  .comp-h2h-mini-vacio{font-size:.76rem; color:var(--texto-suave);}
+
+  /* ---- Pestañas de categorías de estadísticas ---- */
+  .comp-tabs{
+    display:flex; gap:6px; overflow-x:auto; margin-bottom:6px; padding-bottom:2px;
+    scrollbar-width:none;
+  }
+  .comp-tabs::-webkit-scrollbar{display:none;}
+  .comp-tab{
+    flex-shrink:0; font-family:var(--font-tit); font-weight:600; font-size:.78rem;
+    letter-spacing:.02em; color:var(--texto-suave); background:transparent;
+    border:1px solid var(--borde); border-radius:20px; padding:7px 16px; cursor:pointer;
+    transition:all .15s ease; white-space:nowrap;
+  }
+  .comp-tab:hover{border-color:var(--rojo); color:var(--rojo);}
+  .comp-tab.activa{background:var(--rojo); border-color:var(--rojo); color:#fff;}
+  .comp-tabla-ayuda{
+    font-size:.72rem; color:var(--texto-suave); text-align:center; margin:8px 0 12px;
+    font-style:italic;
+  }
+
+  .comp-tabla-wrap{border-radius:10px; overflow:hidden; border:1px solid var(--borde); margin-bottom:22px;}
+  .comp-tabla{width:100%; border-collapse:collapse;}
+  .comp-tabla th, .comp-tabla td{
+    padding:10px 12px; text-align:center; border-bottom:1px solid var(--borde);
+    font-family:var(--font-text); font-size:.86rem;
+  }
+  .comp-tabla th{background:var(--marino); color:#fff; font-family:var(--font-tit); font-weight:500; font-size:.8rem;}
+  .comp-tabla td:nth-child(2){color:var(--texto-suave); text-align:left; display:flex; align-items:center; justify-content:space-between; gap:6px;}
+  .comp-tabla td.comp-mejor{font-weight:800; color:var(--rojo);}
+  .comp-tabla tbody tr:nth-child(even){background:var(--fondo-alt);}
+  .comp-tabla tr:last-child td{border-bottom:none;}
+  .comp-icono-detalle{width:13px; height:13px; opacity:.4; flex-shrink:0;}
+  .comp-fila-clickeable{cursor:pointer; transition:background-color .12s ease;}
+  .comp-fila-clickeable:hover{background:rgba(199,43,43,.07) !important;}
+  .comp-fila-clickeable:hover .comp-icono-detalle{opacity:1; color:var(--rojo);}
+  .comp-fila-clickeable:focus-visible{outline:2px solid var(--rojo); outline-offset:-2px;}
+
+  .comp-racha{display:flex; gap:4px; justify-content:center;}
+  .comp-racha span{
+    width:20px; height:20px; border-radius:50%; display:inline-flex;
+    align-items:center; justify-content:center; font-size:.68rem; font-weight:700; color:#fff;
+  }
+  .comp-racha--grande span{width:26px; height:26px; font-size:.74rem;}
+  .comp-racha .g{background:#2e9e4c;}
+  .comp-racha .e{background:#9aa4b8;}
+  .comp-racha .p{background:var(--rojo);}
+
+  .comp-h2h-titulo{font-family:var(--font-tit); font-weight:700; margin:0 0 10px; color:var(--marino-texto); font-size:.92rem;}
+  .comp-h2h-lista{display:flex; flex-direction:column; gap:6px;}
+  .comp-h2h-item{
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    background:var(--fondo-alt); border:1px solid var(--borde); border-radius:8px;
+    padding:9px 14px; font-size:.82rem; transition:border-color .15s ease;
+  }
+  .comp-h2h-item:hover{border-color:var(--rojo);}
+  .comp-h2h-marcador{font-family:var(--font-tit); font-weight:800; color:var(--rojo);}
+  .comp-h2h-fecha{color:var(--texto-suave); font-size:.75rem;}
+  .comp-vacio{text-align:center; color:var(--texto-suave); padding:16px; font-size:.88rem;}
+  .comp-error{text-align:center; color:var(--rojo); padding:12px 26px; font-size:.86rem;}
+  @media(max-width:500px){
+    .comp-tabla th, .comp-tabla td{padding:8px 6px; font-size:.75rem;}
+    .comp-resultado{padding:16px 16px 22px;}
+    .comp-resumen-rapido{padding:12px;}
+  }
+
+  /* ============================================================
+     SUB-MODAL: detalle de una estadística (lista de partidos)
+     ============================================================ */
+  .modal-comp-detalle{position:fixed; inset:0; z-index:1100; display:flex; align-items:center; justify-content:center; padding:16px;}
+  .modal-comp-detalle[hidden]{display:none !important;}
+  .modal-comp-detalle-fondo{position:absolute; inset:0; background:rgba(6,14,26,.72);}
+  .modal-comp-detalle-caja{
+    position:relative; background:var(--tarjeta); border-radius:16px;
+    box-shadow:0 20px 50px -10px rgba(0,0,0,.5); padding:26px 22px 22px; max-width:560px; width:92%;
+    max-height:80vh; overflow-y:auto;
+    animation:compEntrada .18s cubic-bezier(.2,.8,.3,1);
+  }
+  .modal-comp-detalle-titulo{
+    font-family:var(--font-tit); font-weight:800; margin:0 0 4px; text-align:center;
+    color:var(--marino-texto); font-size:1.05rem;
+  }
+  .modal-comp-detalle-subtitulo{
+    text-align:center; color:var(--texto-suave); font-size:.78rem; margin:0 0 18px;
+  }
+  .modal-comp-detalle-lista{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media(max-width:520px){.modal-comp-detalle-lista{grid-template-columns:1fr;}}
+  .comp-detalle-col h5{
+    font-family:var(--font-tit); font-weight:700; font-size:.82rem; color:var(--rojo);
+    margin:0 0 10px; text-align:center; text-transform:uppercase; letter-spacing:.02em;
+  }
+  .comp-detalle-item{
+    display:flex; flex-direction:column; gap:2px; align-items:center;
+    background:var(--fondo-alt); border-radius:8px; padding:8px 10px; margin-bottom:6px;
+    border-left:3px solid var(--borde); font-size:.78rem;
+  }
+  .comp-detalle-item--victoria{border-left-color:#2e9e4c;}
+  .comp-detalle-item--empate{border-left-color:#9aa4b8;}
+  .comp-detalle-item--derrota{border-left-color:var(--rojo);}
+  .comp-detalle-rival{font-weight:600; color:var(--marino-texto);}
+  .comp-detalle-marcador{font-family:var(--font-tit); font-weight:800; font-size:.92rem;}
+  .comp-detalle-meta{color:var(--texto-suave); font-size:.7rem;}
 </style>
 </body>
 </html>

@@ -13,7 +13,7 @@
    todo aqui para que solo haya un sitio donde tocar cada regla.
    ===================================================================== */
 
-body{background:var(--fondo-alt);color:var(--texto);overflow-x:hidden;}
+body{background:var(--fondo-alt);color:var(--texto);overflow-x:hidden;color-scheme:light;}
   /* Oculta visualmente las barras de scroll (el scroll sigue funcionando por gesto/rueda) */
   .tabs, .subtabs, #contenidoEditor, .notif-panel, .modal-caja,
   .galeria-contenido, .foco-preview{
@@ -40,8 +40,28 @@ body{background:var(--fondo-alt);color:var(--texto);overflow-x:hidden;}
   input:focus-visible, select:focus-visible, textarea:focus-visible{
     outline:2px solid var(--celeste);outline-offset:1px;
   }
-  .admin-header{background:linear-gradient(135deg, var(--marino), var(--marino2));color:#fff;padding:14px 0;box-shadow:0 2px 12px rgba(12,27,46,.2);}
-  .admin-header .wrap{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;}
+  .admin-header{
+    position:relative;background:linear-gradient(135deg, var(--marino), var(--marino2));color:#fff;padding:16px 0;box-shadow:var(--sombra-lg);
+  }
+  /* Capa de brillo sutil tipo "glass" sobre el gradiente del header: un
+     halo radial semitransparente arriba a la izquierda, más un velo
+     diagonal muy suave, para dar sensación de superficie con luz en vez
+     de un gradiente plano. z-index negativo respecto al contenido real
+     del header (que ya está en flujo normal) para no taparlo.
+     NOTA: el overflow:hidden que llevaba .admin-header se quitó de ahí
+     y se puso aquí, en el propio pseudo-elemento decorativo (que ya es
+     position:absolute;inset:0, así que no necesita desbordar nada). Con
+     overflow:hidden en .admin-header, el desplegable de notificaciones
+     y el de la cuenta (que son position:absolute y sobresalen por debajo
+     del header) quedaban recortados/invisibles al abrirse, aunque la
+     clase "abierto" sí se añadía correctamente. */
+  .admin-header::before{
+    content:"";position:absolute;inset:0;pointer-events:none;overflow:hidden;
+    background:
+      radial-gradient(ellipse 480px 220px at 12% -20%, rgba(255,255,255,.14), transparent 70%),
+      linear-gradient(120deg, rgba(255,255,255,.05) 0%, transparent 40%);
+  }
+  .admin-header .wrap{position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;}
   .admin-header .brand-admin{display:flex;align-items:center;gap:10px;}
   .admin-header .brand-admin img{height:40px;}
   .admin-header .brand-textos{display:flex;align-items:baseline;}
@@ -57,8 +77,9 @@ body{background:var(--fondo-alt);color:var(--texto);overflow-x:hidden;}
      lo estaba, así que el fondo rojo en píldora de aquí abajo le ganaba
      por especificidad al círculo transparente que le corresponde,
      dejándolo con la forma y el color equivocados). */
-  .admin-header button:not(.btn-usuario):not(.notif-campana):not(.user-dropdown button):not(.theme-toggle){background:linear-gradient(135deg, var(--rojo), var(--rojo-oscuro));border:none;color:#fff;padding:8px 16px;border-radius:20px;cursor:pointer;font-size:.82rem;font-weight:600;box-shadow:0 3px 10px rgba(209,19,46,.3);transition:transform .15s,box-shadow .15s;}
-  .admin-header button:not(.btn-usuario):not(.notif-campana):not(.user-dropdown button):not(.theme-toggle):hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(209,19,46,.4);}
+  .admin-header button:not(.btn-usuario):not(.notif-campana):not(.user-dropdown button):not(.theme-toggle){background:linear-gradient(135deg, var(--rojo), var(--rojo-oscuro));border:none;color:#fff;padding:9px 18px;border-radius:var(--radio-lg);cursor:pointer;font-size:.82rem;font-weight:600;box-shadow:var(--sombra-sm);transition:transform .18s cubic-bezier(.2,.8,.2,1),box-shadow .18s cubic-bezier(.2,.8,.2,1);}
+  .admin-header button:not(.btn-usuario):not(.notif-campana):not(.user-dropdown button):not(.theme-toggle):hover{transform:translateY(-2px);box-shadow:var(--sombra-hover);}
+  .admin-header button:not(.btn-usuario):not(.notif-campana):not(.user-dropdown button):not(.theme-toggle):active{transform:translateY(0);box-shadow:var(--sombra-sm);}
   /* El botón de tema hereda el estilo genérico de css/style.css, pensado
      para la cabecera pública (fondo claro). Aquí la cabecera del panel
      es siempre oscura (gradiente marino en los dos temas), así que se
@@ -73,30 +94,47 @@ body{background:var(--fondo-alt);color:var(--texto);overflow-x:hidden;}
   [data-theme="dark"] .admin-header .theme-toggle .theme-icon-luna{display:none;}
   [data-theme="dark"] .admin-header .theme-toggle .theme-icon-sol{display:block;color:var(--celeste-claro);}
 
-  .tabs{display:flex;gap:4px;margin:24px 0 0;border-bottom:2px solid #e2e5eb;overflow-x:auto;}
+  .tabs{
+    display:flex;gap:4px;margin:24px 0 0;border-bottom:2px solid var(--borde);
+    overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin;
+    position:relative;
+  }
   .tabs button{
     display:inline-flex;align-items:center;gap:7px;
-    padding:11px 18px;border:none;background:none;cursor:pointer;
+    padding:12px 20px;border:none;background:none;cursor:pointer;
     font-family:var(--font-tit);text-transform:uppercase;font-size:.86rem;color:var(--texto-suave);
-    border-bottom:3px solid transparent;white-space:nowrap;
-    transition:color .15s,background .15s;letter-spacing:.3px;border-radius:8px 8px 0 0;
+    border-bottom:3px solid transparent;white-space:nowrap;flex-shrink:0;
+    transition:color .18s cubic-bezier(.2,.8,.2,1),background .18s cubic-bezier(.2,.8,.2,1),border-color .18s cubic-bezier(.2,.8,.2,1);
+    letter-spacing:.3px;border-radius:var(--radio-sm) var(--radio-sm) 0 0;
   }
-  .tabs button svg{width:16px;height:16px;flex-shrink:0;opacity:.75;transition:opacity .15s;}
-  .tabs button:hover:not(.activo){color:var(--marino);background:rgba(12,27,46,.035);}
+  .tabs button svg{width:16px;height:16px;flex-shrink:0;opacity:.75;transition:opacity .18s;}
+  .tabs button:hover:not(.activo){color:var(--marino-texto);background:rgba(12,27,46,.045);}
   .tabs button:hover:not(.activo) svg{opacity:1;}
-  .tabs button.activo{color:var(--rojo);border-color:var(--rojo);background:rgba(209,19,46,.06);}
+  .tabs button.activo{border-color:var(--rojo);background:rgba(209,19,46,.07);}
   .tabs button.activo svg{opacity:1;}
+  /* Antes .tabs button:focus quedaba sin ningún indicador visible (el
+     outline:none de arriba se aplica a todos los estados de foco, no
+     solo al de ratón); se añade aquí un anillo propio para :focus-visible
+     -- navegación por teclado -- sin afectar al resto de estados. */
+  .tabs button:focus-visible{
+    outline:2px solid var(--celeste);outline-offset:-2px;
+    color:var(--marino);
+  }
+  .tab-badge-pendientes{
+    transition:transform .15s;
+  }
+  .tabs button:hover .tab-badge-pendientes{transform:scale(1.08);}
 
   .panel{display:none;padding:26px 0;}
   .panel.activo{display:block;}
 
   .subtabs{display:flex;gap:8px;margin-bottom:22px;flex-wrap:wrap;padding-bottom:2px;}
   .subtabs button{
-    padding:9px 18px;border:1.5px solid var(--borde);background:var(--gris-claro);border-radius:20px;cursor:pointer;
-    font-size:.82rem;font-weight:600;color:var(--marino);transition:all .18s;
+    padding:9px 20px;border:1.5px solid var(--borde);background:var(--gris-claro);border-radius:var(--radio-lg);cursor:pointer;
+    font-size:.82rem;font-weight:600;color:var(--marino-texto);transition:transform .18s cubic-bezier(.2,.8,.2,1),background .18s,border-color .18s,box-shadow .18s;
   }
-  .subtabs button.activo{background:linear-gradient(135deg, var(--marino), var(--marino2));color:#fff;border-color:var(--marino);box-shadow:0 3px 10px rgba(12,27,46,.2);}
-  .subtabs button:hover:not(.activo){border-color:var(--celeste);color:var(--celeste);background:var(--tarjeta);transform:translateY(-1px);}
+  .subtabs button.activo{background:linear-gradient(135deg, var(--marino), var(--marino2));color:#fff;border-color:var(--marino);box-shadow:var(--sombra-sm);}
+  .subtabs button:hover:not(.activo){border-color:var(--celeste);color:var(--celeste);background:var(--tarjeta);transform:translateY(-1px);box-shadow:var(--sombra-sm);}
 
   /* Subtabs de nivel 3 (p. ej. Pendientes/Aprobados/Rechazados/Denunciados
      dentro de "Comentarios", que a su vez es un subtab de nivel 2 dentro
@@ -121,10 +159,24 @@ body{background:var(--fondo-alt);color:var(--texto);overflow-x:hidden;}
 
   /* ---------- Contador "usuarios que han iniciado sesión / registrados" ---------- */
   .contador-usuarios{
-    display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;
+    display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;position:relative;overflow:hidden;
     background:linear-gradient(135deg, var(--marino), var(--marino2));
-    color:#fff;padding:14px 20px;border-radius:12px;margin:0 0 18px;
-    box-shadow:0 6px 20px rgba(12,27,46,.18);
+    color:#fff;padding:15px 22px;border-radius:var(--radio-md);margin:0 0 18px;
+    box-shadow:var(--sombra-md), inset 0 1px 0 rgba(255,255,255,.08);
+  }
+  /* Brillo diagonal fijo (sin animación por defecto, ver
+     prefers-reduced-motion más abajo) que recorre la tarjeta una vez al
+     cargar, dándole un toque "premium" sin ser una animación en bucle
+     molesta. */
+  .contador-usuarios::after{
+    content:"";position:absolute;inset:0;pointer-events:none;
+    background:linear-gradient(115deg, transparent 30%, rgba(255,255,255,.12) 48%, transparent 66%);
+    background-size:220% 100%;background-position:120% 0;
+    animation:contador-shimmer 2.2s ease-out .15s 1;
+  }
+  @keyframes contador-shimmer{from{background-position:120% 0;}to{background-position:-20% 0;}}
+  @media (prefers-reduced-motion: reduce){
+    .contador-usuarios::after{animation:none;display:none;}
   }
   .contador-usuarios-numero{
     font-family:var(--font-tit);font-size:1.4rem;font-weight:700;letter-spacing:.3px;
@@ -132,13 +184,23 @@ body{background:var(--fondo-alt);color:var(--texto);overflow-x:hidden;}
   }
   .contador-usuarios-etiqueta{font-size:.82rem;font-weight:600;color:#e7ecf3;text-transform:uppercase;letter-spacing:.3px;}
 
-  .form-card{background:var(--tarjeta);padding:28px;border-radius:14px;border:1px solid var(--borde);max-width:760px;box-shadow:0 6px 24px rgba(12,27,46,.08);}
-  .form-card label{display:block;font-size:.85rem;font-weight:600;margin:14px 0 6px;color:var(--marino);}
-  .form-card input, .form-card select, .form-card textarea{
-    width:100%;padding:10px 12px;border:1.5px solid var(--borde);border-radius:8px;font-size:.9rem;font-family:inherit;
-    transition:border-color .15s,box-shadow .15s;background:var(--tarjeta);
+  .form-card{
+    position:relative;background:var(--tarjeta);padding:30px;border-radius:var(--radio-md);border:1px solid var(--borde);
+    max-width:760px;box-shadow:var(--sombra-md);overflow:hidden;
   }
-  .form-card input:focus, .form-card select:focus, .form-card textarea:focus{outline:none;border-color:var(--celeste);box-shadow:0 0 0 3px rgba(91,184,232,.15);}
+  /* Filete superior con gradiente de marca: detalle sutil que ancla
+     visualmente la tarjeta a la identidad del sitio (marino -> celeste)
+     sin ser tan fuerte como un borde de color completo. */
+  .form-card::before{
+    content:"";position:absolute;top:0;left:0;right:0;height:3px;
+    background:linear-gradient(90deg, var(--marino), var(--celeste));
+  }
+  .form-card label{display:block;font-size:.85rem;font-weight:600;margin:14px 0 6px;color:var(--marino-texto);}
+  .form-card input, .form-card select, .form-card textarea{
+    width:100%;padding:11px 14px;border:1.5px solid var(--borde);border-radius:var(--radio-sm);font-size:.9rem;font-family:inherit;
+    transition:border-color .18s,box-shadow .18s;background:var(--tarjeta);color:var(--texto);
+  }
+  .form-card input:focus, .form-card select:focus, .form-card textarea:focus{outline:none;border-color:var(--celeste);box-shadow:0 0 0 3px rgba(91,184,232,.18);}
   .form-card select:disabled{background:var(--gris-claro);color:var(--texto-suave);cursor:not-allowed;}
   .form-card textarea{min-height:220px;resize:vertical;}
 
@@ -158,7 +220,7 @@ body{background:var(--fondo-alt);color:var(--texto);overflow-x:hidden;}
      etiquetas pulsables, con contador de seleccionados y aviso de
      mínimo/máximo. */
   .equipos-picker{
-    border:1px solid var(--borde);border-radius:10px;padding:14px;background:var(--gris-claro);
+    border:1px solid var(--borde);border-radius:var(--radio-md);padding:16px;background:var(--gris-claro);
   }
   .equipos-picker .equipos-picker-cabecera{
     display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;
@@ -183,7 +245,7 @@ body{background:var(--fondo-alt);color:var(--texto);overflow-x:hidden;}
     cursor:pointer;transition:background .15s,border-color .15s,color .15s;user-select:none;
   }
   .equipos-picker-chip:hover{border-color:var(--celeste);}
-  .equipos-picker-chip.seleccionado{background:var(--marino);border-color:var(--marino);color:#fff;}
+  .equipos-picker-chip.seleccionado{background:linear-gradient(135deg, var(--marino), var(--marino2));border-color:var(--marino);color:#fff;box-shadow:0 3px 10px rgba(12,27,46,.25), inset 0 1px 0 rgba(255,255,255,.15);}
   .equipos-picker-chip.deshabilitado{opacity:.4;cursor:not-allowed;}
   .equipos-picker-chip input{
     position:absolute;opacity:0;width:0;height:0;pointer-events:none;
@@ -206,21 +268,22 @@ body{background:var(--fondo-alt);color:var(--texto);overflow-x:hidden;}
   .btn-enviar-newsletter{
     display:inline-flex;align-items:center;gap:9px;flex-shrink:0;
     background:linear-gradient(135deg, var(--rojo), var(--rojo-oscuro));color:#fff;border:none;
-    padding:12px 24px;border-radius:26px;font-family:var(--font-tit);font-size:.92rem;
+    padding:13px 26px;border-radius:var(--radio-lg);font-family:var(--font-tit);font-size:.92rem;
     text-transform:uppercase;letter-spacing:.4px;cursor:pointer;
-    box-shadow:0 4px 14px rgba(209,19,46,.3);transition:transform .15s,box-shadow .15s;
+    box-shadow:var(--sombra-md);transition:transform .18s cubic-bezier(.2,.8,.2,1),box-shadow .18s;
   }
   .btn-enviar-newsletter svg{width:16px;height:16px;flex-shrink:0;}
-  .btn-enviar-newsletter:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(209,19,46,.4);}
-  .btn-enviar-newsletter:active{transform:translateY(0);}
+  .btn-enviar-newsletter:hover{transform:translateY(-2px);box-shadow:var(--sombra-hover);}
+  .btn-enviar-newsletter:active{transform:translateY(0);box-shadow:var(--sombra-sm);}
 
   .newsletter-envio-info{
     display:flex;gap:14px;flex-wrap:wrap;margin:0 0 20px;
   }
   .newsletter-envio-dato{
-    flex:1 1 220px;background:var(--tarjeta);border:1.5px solid var(--borde);border-radius:12px;
-    padding:14px 18px;display:flex;flex-direction:column;gap:4px;
+    flex:1 1 220px;background:var(--tarjeta);border:1.5px solid var(--borde);border-radius:var(--radio-md);
+    padding:15px 20px;display:flex;flex-direction:column;gap:4px;box-shadow:var(--sombra-sm);transition:box-shadow .18s,transform .18s cubic-bezier(.2,.8,.2,1);
   }
+  .newsletter-envio-dato:hover{box-shadow:var(--sombra-md);transform:translateY(-1px);}
   .newsletter-envio-etiqueta{
     font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--texto-suave);
   }
@@ -593,6 +656,47 @@ body{background:var(--fondo-alt);color:var(--texto);overflow-x:hidden;}
     font-family:inherit;transition:background .15s,border-color .15s;
   }
   .foco-panel .foco-texto button:hover{background:var(--gris-claro,#f0f1f3);border-color:var(--celeste);}
+
+  /* Botón "Foco" fuera del contexto de .fila-imagen (p. ej. la portada de
+     un vídeo o el foco de una foto en "Editar contenido"): mismo aspecto
+     que el de las fotos. */
+  #em_bloque_portada .btn-foco,
+  #em_bloque_foco_foto .btn-foco{
+    display:inline-flex;align-items:center;gap:6px;
+    border:1.5px solid var(--celeste);background:var(--tarjeta);color:var(--celeste);
+    padding:8px 14px;border-radius:20px;cursor:pointer;font-size:.78rem;font-weight:600;
+    font-family:inherit;transition:background .15s,border-color .15s;
+  }
+  #em_bloque_portada .btn-foco svg,
+  #em_bloque_foco_foto .btn-foco svg{width:16px;height:16px;pointer-events:none;flex-shrink:0;}
+  #em_bloque_portada .btn-foco .btn-foco-texto,
+  #em_bloque_foco_foto .btn-foco .btn-foco-texto{white-space:nowrap;}
+  #em_bloque_portada .btn-foco.activo,
+  #em_bloque_portada .btn-foco:hover,
+  #em_bloque_foco_foto .btn-foco.activo,
+  #em_bloque_foco_foto .btn-foco:hover{background:var(--celeste);color:#fff;border-color:var(--celeste);}
+  #em_bloque_portada .foco-panel,
+  #em_bloque_foco_foto .foco-panel{border-radius:8px;border-top:none;margin-top:10px;}
+
+  /* Botón "Usar el fotograma actual" (portada de vídeo, "Editar
+     contenido"): antes usaba la clase suelta .btn-secundari fuera de su
+     contexto habitual (una barra de acciones de formulario), por lo que
+     heredaba un margin-top/margin-left pensado para ir pegado a un
+     .btn-primari y quedaba descolocado. Aquí se le da su propio estilo,
+     en línea con el resto de botones de este bloque (misma píldora
+     celeste que .btn-foco) y sin depender de márgenes ajenos. */
+  #em_bloque_portada .btn-usar-fotograma{
+    display:inline-flex;align-items:center;gap:6px;
+    margin:0;
+    border:1.5px solid var(--celeste);background:var(--tarjeta);color:var(--celeste);
+    padding:8px 14px;border-radius:20px;cursor:pointer;font-size:.78rem;font-weight:600;
+    font-family:inherit;line-height:1.2;transition:background .15s,border-color .15s,transform .15s;
+  }
+  #em_bloque_portada .btn-usar-fotograma svg{width:16px;height:16px;pointer-events:none;flex-shrink:0;}
+  #em_bloque_portada .btn-usar-fotograma:hover{background:var(--celeste);color:#fff;transform:translateY(-1px);}
+  #em_bloque_portada .btn-usar-fotograma:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+  #em_bloque_portada .fila-fotograma{display:flex;align-items:center;gap:8px;margin-top:4px;}
+
   .row2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
   .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
 
@@ -759,14 +863,60 @@ body{background:var(--fondo-alt);color:var(--texto);overflow-x:hidden;}
   }
   .opcion-toggle-urgente input:checked ~ .opcion-toggle-texto .opcion-toggle-titulo{color:var(--rojo);}
 
-  #bloqueBannerUrgente, #bloqueProgramarNoticia{display:flex;flex-direction:column;gap:6px;}
-  #bloqueBannerUrgente .ayuda-editor, #bloqueProgramarNoticia .ayuda-editor{margin:0;font-size:.76rem;}
-  #campoFechaProgramada{
+  /* ---------- Selector de visibilidad (Público / Privado) al subir
+     contenido a la mediateca ---------- */
+  .selector-visibilidad{
+    display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:2px 0 14px;
+  }
+  @media (max-width:520px){ .selector-visibilidad{grid-template-columns:1fr;} }
+  .opcion-visibilidad{
+    display:flex;align-items:center;gap:11px;text-align:left;
+    padding:12px 13px;border:1.5px solid var(--borde);border-radius:13px;
+    background:var(--tarjeta);cursor:pointer;user-select:none;font:inherit;
+    transition:border-color .18s,box-shadow .2s,background .18s,transform .15s;
+  }
+  .opcion-visibilidad:hover{border-color:var(--celeste);box-shadow:0 3px 10px rgba(12,27,46,.08);transform:translateY(-1px);}
+  .opcion-visibilidad-icono{
+    flex-shrink:0;width:34px;height:34px;border-radius:10px;
+    display:flex;align-items:center;justify-content:center;
+    background:var(--fondo-alt);color:var(--texto-suave);
+    transition:background .2s,color .2s,box-shadow .25s;
+  }
+  .opcion-visibilidad-icono svg{width:18px;height:18px;}
+  .opcion-visibilidad-texto{display:flex;flex-direction:column;gap:1px;min-width:0;line-height:1.3;}
+  .opcion-visibilidad-texto b{font-size:.85rem;font-weight:700;color:var(--gris-texto);transition:color .18s;}
+  .opcion-visibilidad-texto small{font-size:.71rem;color:var(--texto-suave);}
+
+  .opcion-visibilidad.activo{border-color:var(--marino);background:linear-gradient(155deg, rgba(12,27,46,.05), rgba(12,27,46,.01));box-shadow:0 3px 10px rgba(12,27,46,.1);}
+  .opcion-visibilidad.activo .opcion-visibilidad-icono{
+    background:linear-gradient(155deg, var(--marino2), var(--marino));color:#fff;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.15), 0 0 0 3px rgba(12,27,46,.12);
+  }
+  .opcion-visibilidad.activo .opcion-visibilidad-texto b{color:var(--marino-texto);}
+  .opcion-visibilidad:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(91,184,232,.35);}
+
+  /* Variante "Privado" activo: mismo lenguaje de color que lo urgente/
+     restringido en el resto del panel (rojo), para que quede claro de
+     un vistazo que ese contenido no es público. */
+  .opcion-visibilidad[data-visibilidad="privado"].activo{
+    border-color:var(--rojo);background:linear-gradient(155deg, rgba(209,19,46,.08), rgba(209,19,46,.02));
+    box-shadow:0 3px 10px rgba(209,19,46,.14);
+  }
+  .opcion-visibilidad[data-visibilidad="privado"].activo .opcion-visibilidad-icono{
+    background:linear-gradient(155deg, #ef4444, var(--rojo-oscuro));
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.2), 0 0 0 3px rgba(209,19,46,.16), 0 0 8px 1px rgba(209,19,46,.25);
+  }
+  .opcion-visibilidad[data-visibilidad="privado"].activo .opcion-visibilidad-texto b{color:var(--rojo);}
+
+  #bloqueBannerUrgente, #bloqueProgramarNoticia, #bloqueFechaPreferencia{display:flex;flex-direction:column;gap:6px;}
+  #bloqueBannerUrgente .ayuda-editor, #bloqueProgramarNoticia .ayuda-editor, #bloqueFechaPreferencia .ayuda-editor{margin:0;font-size:.76rem;}
+  #campoFechaProgramada, #campoFechaPreferencia{
     margin-top:2px;padding:10px 12px;border:1.5px dashed var(--borde);border-radius:10px;
     background:var(--fondo-alt);display:flex;flex-direction:column;gap:5px;
   }
   #campoFechaProgramada label{font-size:.78rem;font-weight:600;color:var(--marino-texto);}
   #campoFechaProgramada input[type="datetime-local"]{width:100%;box-sizing:border-box;}
+  #campoFechaPreferencia input[type="date"], #campoFechaPreferencia input[type="time"]{box-sizing:border-box;}
 
   @media (max-width:720px){
     .opciones-noticia{grid-template-columns:1fr;}
@@ -848,20 +998,20 @@ body{background:var(--fondo-alt);color:var(--texto);overflow-x:hidden;}
   .pagina-btn:disabled{opacity:.4;cursor:not-allowed;}
   .pagina-puntos{color:var(--gris-texto);font-size:.82rem;padding:0 2px;}
 
-  table.lista{width:100%;border-collapse:collapse;background:var(--tarjeta);border-radius:14px;overflow:hidden;box-shadow:0 6px 24px rgba(12,27,46,.08);}
-  table.lista th, table.lista td{padding:12px 14px;text-align:left;font-size:.85rem;border-bottom:1px solid var(--borde);}
+  table.lista{width:100%;border-collapse:collapse;background:var(--tarjeta);border-radius:var(--radio-md);overflow:hidden;box-shadow:var(--sombra-md);}
+  table.lista th, table.lista td{padding:13px 16px;text-align:left;font-size:.85rem;border-bottom:1px solid var(--borde);}
   table.lista tbody tr:last-child td{border-bottom:none;}
   table.lista td[colspan]{
     text-align:center;padding:38px 20px;color:var(--gris-texto);font-size:.88rem;font-weight:500;
   }
-  table.lista tbody tr{transition:background .12s;}
+  table.lista tbody tr{transition:background .15s;}
   table.lista tbody tr:hover{background:var(--gris-claro);}
   table.lista th{background:linear-gradient(135deg, var(--marino), var(--marino2));color:#fff;font-family:var(--font-tit);text-transform:uppercase;font-size:.72rem;letter-spacing:.4px;}
   table.lista .acciones button{
     border:none;background:var(--gris-claro);cursor:pointer;font-size:.78rem;margin-right:6px;
-    font-weight:600;padding:6px 12px;border-radius:14px;transition:background .15s,color .15s,transform .12s;
+    font-weight:600;padding:6px 12px;border-radius:var(--radio-sm);transition:background .18s,color .18s,transform .18s cubic-bezier(.2,.8,.2,1),box-shadow .18s;
   }
-  table.lista .acciones button:hover{transform:translateY(-1px);}
+  table.lista .acciones button:hover{transform:translateY(-1px);box-shadow:var(--sombra-sm);}
   table.lista .acciones button:last-child{margin-right:0;}
 
   /* ---------- Aviso de datos faltantes en un partido (lista de resultados) ---------- */
@@ -944,19 +1094,127 @@ body{background:var(--fondo-alt);color:var(--texto);overflow-x:hidden;}
   .acciones .editar:hover{background:var(--celeste);color:#fff;}
   .acciones .eliminar{color:var(--rojo);background:#fee2e2;}
   .acciones .eliminar:hover{background:var(--rojo);color:#fff;}
-  .badge-estado{
+  /* ---------- Etiquetas de estado de la noticia (Publicada / En revisión /
+     Borrador / Programada / Última hora): antes eran una simple pastilla
+     plana con un punto de color. Ahora llevan icono + degradado + sombra
+     a juego con su color, para que se distingan de un vistazo en la
+     tabla sin tener que leer el texto. ---------- */
+  /* Contenedor de la celda "Estado": puede llevar hasta 3 badges a la vez
+     (estado principal + preferencia de fechas + última hora). Antes iban
+     sueltos uno detrás de otro con solo un margin-left en el segundo, así
+     que con dos o tres a la vez se apelmazaban o se cortaban raro en
+     celdas estrechas / al hacer wrap. Ahora cada badge es un bloque
+     independiente en una rejilla flexible con espacio fijo entre ellos,
+     y salta de línea limpiamente si no caben todos en el ancho de la celda. */
+  .celda-estado-noticia{
+    display:flex;flex-wrap:wrap;align-items:center;gap:8px;
+  }
+  .badge-estado, .badge-preferencia-fechas{
     display:inline-flex;align-items:center;gap:6px;
-    padding:4px 12px;border-radius:14px;font-size:.7rem;font-weight:700;
-    letter-spacing:.2px;white-space:nowrap;
+    height:26px;box-sizing:border-box;
+    padding:0 12px 0 10px;border-radius:20px;
+    font-size:.72rem;font-weight:800;line-height:1;
+    letter-spacing:.15px;white-space:nowrap;
+    box-shadow:0 2px 6px rgba(12,27,46,.08);
+    border:1px solid transparent;
   }
-  .badge-estado::before{
-    content:"";width:7px;height:7px;border-radius:50%;flex-shrink:0;background:currentColor;
+  .badge-estado::before, .badge-preferencia-fechas::before{
+    content:"●";font-size:.85em;line-height:1;flex-shrink:0;
+    display:inline-flex;align-items:center;justify-content:center;
+    width:1em;
   }
-  .badge-estado.publicado{background:#dcfce7;color:#166534;}
-  .badge-estado.borrador{background:#fee2e2;color:#991b1b;}
-  .badge-estado.borrador-proceso{background:#fef3da;color:#a3760f;}
-  .badge-estado.borrador-terminado{background:#fee2e2;color:#991b1b;}
-  .badge-estado.programado{background:#dbeafe;color:#1d4ed8;}
+  .badge-estado.publicado{
+    background:linear-gradient(135deg,#dcfce7,#bbf7d0);color:#116233;
+    border-color:#86e6ac;box-shadow:0 2px 8px rgba(22,163,74,.22);
+  }
+  .badge-estado.publicado::before{content:"✓";color:#16a34a;}
+  .badge-estado.borrador{
+    background:linear-gradient(135deg,#fee2e2,#fecdd3);color:#9f1239;
+    border-color:#fca5b8;box-shadow:0 2px 8px rgba(190,18,60,.18);
+  }
+  .badge-estado.borrador::before{content:"✕";color:#e11d48;}
+  .badge-estado.borrador-proceso{
+    background:linear-gradient(135deg,#fef3da,#fde3ad);color:#8a5d0a;
+    border-color:#f8cf7d;box-shadow:0 2px 8px rgba(217,140,10,.2);
+  }
+  .badge-estado.borrador-proceso::before{content:"✎";color:#d98c0a;}
+  .badge-estado.borrador-terminado{
+    background:linear-gradient(135deg,#ffe3d3,#ffc9a8);color:#9a4a10;
+    border-color:#ffb37e;box-shadow:0 2px 8px rgba(217,110,10,.22);
+  }
+  .badge-estado.borrador-terminado::before{content:"⏳";color:#c2660c;}
+  .badge-estado.programado{
+    background:linear-gradient(135deg,#dbeafe,#bfdbfe);color:#1d4ed8;
+    border-color:#93c5fd;box-shadow:0 2px 8px rgba(29,78,216,.2);
+  }
+  .badge-estado.programado::before{content:"🕒";}
+  /* Última hora: la más llamativa de todas a propósito (banner activo
+     en toda la web ahora mismo), con degradado rojo intenso y un pulso
+     sutil para que no pase desapercibida en la tabla. */
+  .badge-estado.badge-ultima-hora{
+    background:linear-gradient(135deg,#ff3355,#c9102e);color:#fff;
+    border-color:#ff6b84;box-shadow:0 3px 10px rgba(209,19,46,.45);
+    animation:pulso-ultima-hora 1.8s ease-in-out infinite;
+  }
+  .badge-estado.badge-ultima-hora::before{content:"";display:none;}
+  @keyframes pulso-ultima-hora{
+    0%,100%{box-shadow:0 3px 10px rgba(209,19,46,.45);}
+    50%{box-shadow:0 3px 16px rgba(209,19,46,.75);}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .badge-estado.badge-ultima-hora{animation:none;}
+  }
+  /* Temporizador urgente de la preferencia de fechas: menos de 10h para
+     que expire sin publicarse (ver msRestantesPreferenciaFechas en
+     admin.js), en formato de cronómetro HH:MM:SS que corre solo cada
+     segundo (ver tickCronometrosUrgenciaPreferencia). Ámbar muy saturado
+     + parpadeo (distinto del pulso rojo de "última hora", para no
+     confundir un aviso con el otro) porque, aunque sigue siendo
+     puramente informativo, aquí sí corre prisa que alguien la revise
+     antes de que se pase la ventana que pidió el redactor.
+     font-variant-numeric + una anchura mínima evitan que el badge
+     "tiemble" de ancho cada vez que cambia un dígito. */
+  .badge-estado.badge-urgencia-preferencia{
+    background:linear-gradient(135deg,#ffb020,#ff7a00);color:#fff;
+    border-color:#ffcf7a;box-shadow:0 3px 10px rgba(255,122,0,.5);
+    animation:parpadeo-urgencia-preferencia 1.1s ease-in-out infinite;
+    font-variant-numeric:tabular-nums;font-feature-settings:"tnum";
+    min-width:78px;justify-content:center;
+  }
+  .badge-estado.badge-urgencia-preferencia::before{content:"";display:none;}
+  @keyframes parpadeo-urgencia-preferencia{
+    0%,100%{opacity:1;box-shadow:0 3px 10px rgba(255,122,0,.5);}
+    50%{opacity:.62;box-shadow:0 3px 18px rgba(255,122,0,.85);}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .badge-estado.badge-urgencia-preferencia{animation:none;}
+  }
+  /* Semáforo de preferencia de fechas del redactor para publicar (solo
+     informativo, junto al badge "En revisión"; ver
+     estado_borrador === "terminado" y faseDePreferenciaFechas en
+     admin.js). Comparte altura, tipografía y forma con .badge-estado
+     (misma regla de arriba) para que, al ir pegados en la misma celda,
+     formen un conjunto ordenado en vez de dos pastillas de tamaños
+     distintos descuadradas entre sí; solo cambia en que lleva menos
+     peso visual (sin degradado ni sombra fuerte), porque es un dato
+     secundario, no el estado principal de la noticia. */
+  .badge-preferencia-fechas{
+    font-weight:700;box-shadow:none;
+    background:var(--gris-claro);color:var(--texto-suave,#6b7280);
+  }
+  .badge-preferencia-fechas .punto-fase{display:none;}
+  /* pendiente: todavía no ha llegado "desde" - gris neutro, no es una
+     alerta, es simplemente "todavía no". */
+  .badge-preferencia-fechas.fase-pendiente{background:var(--gris-claro);color:#6b7280;}
+  .badge-preferencia-fechas.fase-pendiente::before{content:"⏱";}
+  /* disponible: dentro del rango (o sin "hasta", ya pasó "desde") -
+     verde, ya se puede publicar según el redactor. */
+  .badge-preferencia-fechas.fase-disponible{background:#e8f9ee;color:#15803d;border-color:#bbedcc;}
+  .badge-preferencia-fechas.fase-disponible::before{content:"✅";}
+  /* caducada: ya pasó "hasta" sin publicarse - rojo de aviso, aunque
+     sigue siendo puramente informativa, no bloquea nada. */
+  .badge-preferencia-fechas.fase-caducada{background:#fdeaea;color:#dc2626;font-weight:800;border-color:#f6c6c6;}
+  .badge-preferencia-fechas.fase-caducada::before{content:"⚠️";}
 
   /* ---------- "Mío" vs "de otro" en los listados de noticias/resultados ---------- */
   .badge-autoria{padding:4px 10px;border-radius:14px;font-size:.68rem;font-weight:700;letter-spacing:.2px;white-space:nowrap;display:inline-block;}
@@ -964,16 +1222,13 @@ body{background:var(--fondo-alt);color:var(--texto);overflow-x:hidden;}
   .badge-autoria.otro{background:var(--gris-claro);color:var(--texto-suave);}
   tr.fila-de-otro{background:var(--gris-claro);}
   tr.fila-de-otro td{color:#7a8090;}
-  tr.fila-de-otro .badge-estado.publicado{background:#eef7f0;color:#4b7a5c;}
-  tr.fila-de-otro .badge-estado.borrador{background:#f6ebec;color:#8a5560;}
-  tr.fila-de-otro .badge-estado.borrador-proceso{background:#f7f0e0;color:#8a733f;}
-  tr.fila-de-otro .badge-estado.borrador-terminado{background:#f6ebec;color:#8a5560;}
-  tr.fila-de-otro .badge-estado.programado{background:#e9f1fa;color:#4a6a8a;}
+  tr.fila-de-otro .badge-estado.publicado{background:linear-gradient(135deg,#eef7f0,#e2f3e6);color:#4b7a5c;border-color:#cfe8d6;box-shadow:none;}
+  tr.fila-de-otro .badge-estado.borrador{background:linear-gradient(135deg,#f6ebec,#f2dfe1);color:#8a5560;border-color:#e6c9cd;box-shadow:none;}
+  tr.fila-de-otro .badge-estado.borrador-proceso{background:linear-gradient(135deg,#f7f0e0,#f2e3c7);color:#8a733f;border-color:#e8d6a8;box-shadow:none;}
+  tr.fila-de-otro .badge-estado.borrador-terminado{background:linear-gradient(135deg,#f6ebec,#f2dfe1);color:#8a5560;border-color:#e6c9cd;box-shadow:none;}
+  tr.fila-de-otro .badge-estado.programado{background:linear-gradient(135deg,#e9f1fa,#dde9f5);color:#4a6a8a;border-color:#c9dcee;box-shadow:none;}
   .aviso-bloqueado{display:inline-block;padding:6px 12px;border-radius:14px;font-size:.75rem;font-weight:700;background:var(--gris-claro);color:var(--texto-suave);white-space:nowrap;}
 
-  @media(max-width:720px){
-    .badge-estado{font-size:.72rem;padding:5px 13px;}
-  }
   .acciones .solicitar{color:#a3760f;}
   table.lista .acciones .solicitar{background:#fef3da;color:#a3760f;}
   .btn-pin{background:var(--tarjeta);border:1.5px solid var(--borde);color:var(--marino);padding:6px 12px;border-radius:16px;cursor:pointer;font-size:.78rem;font-weight:600;transition:border-color .15s,color .15s;}
@@ -986,7 +1241,7 @@ body{background:var(--fondo-alt);color:var(--texto);overflow-x:hidden;}
   .solicitud-card-cabecera{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;}
   .solicitud-card-titulo{font-weight:700;color:var(--marino);font-size:.92rem;margin:0 0 4px;}
   .solicitud-card-meta{font-size:.8rem;color:var(--texto-suave);margin:0;}
-  .solicitud-card-motivo{font-size:.85rem;color:#3a4150;margin:10px 0 0;font-style:italic;}
+  .solicitud-card-motivo{font-size:.85rem;color:var(--texto-suave);margin:10px 0 0;font-style:italic;}
   .solicitud-card-detalle{margin-top:12px;padding-top:12px;border-top:1px dashed var(--borde);display:flex;flex-direction:column;gap:6px;}
   .solicitud-card-fila{display:flex;gap:8px;font-size:.82rem;color:#3a4150;flex-wrap:wrap;}
   .solicitud-card-fila-etiqueta{font-weight:700;color:var(--marino);min-width:110px;flex-shrink:0;}
@@ -1009,6 +1264,13 @@ body{background:var(--fondo-alt);color:var(--texto);overflow-x:hidden;}
 
   /* ---------- Modal PIN "Última hora" ---------- */
   .modal-caja-pin{max-width:380px;text-align:center;}
+  /* Fase 13: modal selector de galería de partido/mediateca para una
+     noticia, y miniaturas de lo ya vinculado dentro del formulario. */
+  .modal-caja-ancha{max-width:920px;}
+  .galeria-articulo-mini{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;min-height:0;}
+  .galeria-articulo-mini:empty::after{content:"Todavía no has añadido ninguna imagen de galería.";color:var(--texto-suave);font-size:.85rem;grid-column:1/-1;}
+  .galeria-articulo-mini .tarjeta-media{font-size:.8rem;}
+  .galeria-articulo-mini .tarjeta-media .preview{aspect-ratio:4/3;}
   .pin-modal-icono{font-size:2rem;margin-bottom:6px;}
   .pin-modal-inputs{display:flex;gap:10px;justify-content:center;margin:18px 0 6px;}
   .pin-modal-inputs input{width:48px;height:56px;text-align:center;font-size:1.4rem;font-weight:700;border:1.5px solid var(--borde);border-radius:10px;font-family:inherit;}
@@ -1123,18 +1385,27 @@ body{background:var(--fondo-alt);color:var(--texto);overflow-x:hidden;}
 
   /* ---------- Subir contenido (dentro de la pestaña "Contenido") ---------- */
   .dropzone{
-    border:2.5px dashed #cfd5de;border-radius:14px;
+    border:2.5px dashed #cfd5de;border-radius:var(--radio-lg);
     padding:44px 20px;text-align:center;cursor:pointer;
-    transition:border-color .18s, background .18s, transform .18s;
-    background:linear-gradient(135deg,#f4f8fc 0%,#fff 100%);margin-top:6px;
+    transition:border-color .22s, background .22s, transform .18s, box-shadow .22s;
+    background:linear-gradient(135deg,#f4f8fc 0%,#fff 60%,#f4f8fc 100%);margin-top:6px;
     position:relative;
   }
-  .dropzone:hover{border-color:var(--celeste);background:linear-gradient(135deg,#eaf6fd 0%,#fff 100%);}
-  .dropzone.arrastrando{border-color:var(--celeste);background:#eaf6fd;transform:scale(1.008);}
+  .dropzone:hover{border-color:var(--celeste);background:linear-gradient(135deg,#eaf6fd 0%,#fff 55%,#eaf6fd 100%);box-shadow:0 0 0 6px rgba(91,184,232,.08);}
+  .dropzone.arrastrando{
+    border-color:var(--celeste);background:linear-gradient(135deg,#eaf6fd,#dcf0fb);
+    transform:scale(1.008);box-shadow:0 0 0 8px rgba(91,184,232,.14), var(--sombra-md);
+  }
+  [data-theme="dark"] .dropzone{
+    border-color:var(--borde);background:linear-gradient(135deg, rgba(91,184,232,.06) 0%, transparent 60%, rgba(91,184,232,.06) 100%);
+  }
+  [data-theme="dark"] .dropzone:hover, [data-theme="dark"] .dropzone.arrastrando{
+    background:linear-gradient(135deg, rgba(91,184,232,.12), rgba(91,184,232,.04));
+  }
   .dropzone .icono-drop{
     width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,var(--celeste),var(--marino));
     display:flex;align-items:center;justify-content:center;margin:0 auto 14px;
-    box-shadow:0 6px 16px rgba(91,184,232,.35);
+    box-shadow:0 6px 16px rgba(91,184,232,.35), inset 0 1px 0 rgba(255,255,255,.3);
   }
   .dropzone .icono-drop svg{width:28px;height:28px;color:#fff;}
   .dropzone p{font-size:1rem;color:var(--texto);font-weight:700;}
@@ -1198,99 +1469,308 @@ body{background:var(--fondo-alt);color:var(--texto);overflow-x:hidden;}
     border-radius:8px;cursor:pointer;font-size:1rem;line-height:1;transition:background .15s,color .15s;
   }
   .item-archivo .quitar:hover{background:var(--rojo);color:#fff;}
+  .btn-portada-subida{
+    flex-shrink:0;border:1px solid var(--borde);background:var(--tarjeta);color:var(--marino);
+    padding:7px 12px;border-radius:8px;cursor:pointer;font-size:.76rem;font-weight:700;white-space:nowrap;
+    transition:border-color .15s,color .15s;
+  }
+  .btn-portada-subida:hover{border-color:var(--celeste);color:var(--celeste);}
 
   /* ---------- Galería de contenido (fotos/vídeos de redactores) ---------- */
-  .contenido-toolbar{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:18px;}
-  .contenido-toolbar p{max-width:560px;}
-  .filtros-contenido{display:flex;gap:8px;flex-shrink:0;}
+  /* Tarjeta del enlace público de la galería de partido (Fase 2 galería):
+     reemplaza el <p> con texto plano de antes por un bloque con icono,
+     la URL y un botón de copiar, reutilizado tanto tras subir contenido
+     vinculado a un partido como en la pestaña "Galería de partido". */
+  .tarjeta-link-galeria{
+    display:none;align-items:center;gap:16px;margin:14px 0;padding:16px 20px;position:relative;
+    background:linear-gradient(135deg, rgba(91,184,232,.14), rgba(12,27,46,.05));
+    border:1px solid rgba(91,184,232,.55);border-radius:16px;overflow:hidden;
+    box-shadow:0 8px 24px rgba(12,27,46,.08);
+  }
+  /* Franja decorativa a la izquierda, en el color de acento (celeste),
+     para distinguir esta tarjeta a simple vista del resto de avisos
+     (.ayuda-editor) que comparten la misma pestaña. */
+  .tarjeta-link-galeria::before{
+    content:"";position:absolute;inset:0 auto 0 0;width:4px;
+    background:linear-gradient(180deg, var(--celeste), var(--marino2));
+  }
+  .tarjeta-link-galeria-icono{
+    flex-shrink:0;width:42px;height:42px;border-radius:12px;display:flex;align-items:center;
+    justify-content:center;background:linear-gradient(135deg, var(--marino), var(--marino2));color:#fff;
+    box-shadow:0 4px 12px rgba(12,27,46,.28);
+  }
+  .tarjeta-link-galeria-icono svg{width:20px;height:20px;}
+  .tarjeta-link-galeria-cuerpo{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1;}
+  .tarjeta-link-galeria-etiqueta{font-size:.7rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--texto-suave);}
+  .tarjeta-link-galeria-cuerpo a{
+    color:var(--marino-texto);font-weight:600;font-size:.92rem;text-decoration:none;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:color .15s ease;
+  }
+  .tarjeta-link-galeria-cuerpo a:hover{color:var(--celeste);text-decoration:underline;}
+  .btn-copiar-link-galeria{
+    flex-shrink:0;width:38px;height:38px;border-radius:11px;border:1px solid var(--borde);
+    background:var(--tarjeta);color:var(--marino-texto);cursor:pointer;display:flex;
+    align-items:center;justify-content:center;transition:all .18s ease;
+  }
+  .btn-copiar-link-galeria:hover{background:var(--celeste);color:#fff;border-color:var(--celeste);transform:translateY(-1px);box-shadow:0 4px 12px rgba(91,184,232,.35);}
+  .btn-copiar-link-galeria:active{transform:translateY(0);}
+  .btn-copiar-link-galeria svg{width:16px;height:16px;}
+
+  .contador-total-galeria{
+    flex-shrink:0;font-size:.78rem;font-weight:700;color:var(--marino-texto);
+    background:var(--gris-claro);padding:6px 14px;border-radius:999px;border:1px solid var(--borde);
+  }
+
+  .contenido-toolbar{
+    display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:20px;
+    padding:14px 18px;background:var(--tarjeta);border:1px solid var(--borde);border-radius:14px;box-shadow:var(--sombra);
+    transition:background .2s ease, border-color .2s ease;
+  }
+  .contenido-toolbar p{max-width:560px;margin:0;}
+  .filtros-contenido{display:flex;gap:6px;flex-shrink:0;background:var(--fondo-alt);padding:4px;border-radius:22px;border:1px solid var(--borde);}
   .filtros-contenido button{
-    border:1px solid var(--borde);background:var(--tarjeta);padding:8px 14px;border-radius:18px;cursor:pointer;font-size:.82rem;
-    color:var(--marino);font-weight:500;transition:all .15s;
+    border:none;background:transparent;padding:7px 16px;border-radius:18px;cursor:pointer;font-size:.82rem;
+    color:var(--gris-texto);font-weight:600;transition:all .18s ease;
   }
-  .filtros-contenido button.activo{background:linear-gradient(135deg, var(--marino), var(--marino2));color:#fff;border-color:var(--marino);box-shadow:0 3px 10px rgba(12,27,46,.2);}
-  .filtros-contenido button:hover:not(.activo){border-color:var(--celeste);color:var(--celeste);}
-  .galeria-contenido{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:18px;}
+  .filtros-contenido button.activo{background:linear-gradient(135deg, var(--marino), var(--marino2));color:#fff;box-shadow:0 3px 10px rgba(12,27,46,.25);}
+  .filtros-contenido button:hover:not(.activo){color:var(--celeste);}
+
+  .galeria-contenido{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:22px;}
+  .galeria-contenido > p{grid-column:1/-1;text-align:center;color:var(--texto-suave);padding:40px 20px;font-size:.92rem;}
   .tarjeta-media{
-    background:var(--tarjeta);border:1px solid var(--borde);border-radius:14px;overflow:hidden;
+    background:var(--tarjeta);border:1px solid var(--borde);border-radius:16px;overflow:hidden;
     box-shadow:var(--sombra);display:flex;flex-direction:column;
-    transition:transform .18s ease, box-shadow .18s ease;
+    transition:transform .22s cubic-bezier(.2,.8,.2,1), box-shadow .22s ease, border-color .22s ease;
+    animation:apareceTarjetaMedia .28s ease both;
   }
-  .tarjeta-media:hover{transform:translateY(-3px);box-shadow:0 10px 26px rgba(12,27,46,.18);}
+  @keyframes apareceTarjetaMedia{
+    from{opacity:0;transform:translateY(8px);}
+    to{opacity:1;transform:translateY(0);}
+  }
+  .tarjeta-media:hover{transform:translateY(-5px);box-shadow:0 18px 36px rgba(12,27,46,.22);border-color:rgba(91,184,232,.45);}
+  /* Fase 11: tarjetas seleccionables de la galería de partido (elegir
+     fotos ya subidas para vincularlas a un partido concreto). */
+  .galeria-contenido-seleccionable .tarjeta-media{cursor:pointer;}
+  .galeria-contenido-seleccionable .tarjeta-media.seleccionada{border-color:var(--celeste);box-shadow:0 0 0 2px var(--celeste);}
+  .galeria-contenido-seleccionable .tarjeta-media .check-seleccion{
+    position:absolute;top:8px;right:8px;width:22px;height:22px;border-radius:50%;
+    background:rgba(12,27,46,.55);border:2px solid #fff;z-index:2;display:flex;align-items:center;justify-content:center;
+  }
+  .galeria-contenido-seleccionable .tarjeta-media.seleccionada .check-seleccion{background:var(--celeste);border-color:var(--celeste);}
+  .galeria-contenido-seleccionable .tarjeta-media.seleccionada .check-seleccion svg{display:block;}
+  .galeria-contenido-seleccionable .tarjeta-media .check-seleccion svg{display:none;width:14px;height:14px;stroke:#fff;fill:none;stroke-width:3;}
   .tarjeta-media .preview{
-    height:172px;background:linear-gradient(135deg,var(--marino),var(--marino2));position:relative;overflow:hidden;
+    aspect-ratio:16/10;background:linear-gradient(135deg,var(--marino),var(--marino2));position:relative;overflow:hidden;
     display:flex;align-items:center;justify-content:center;
   }
   .tarjeta-media .preview img{
     width:100%;height:100%;object-fit:cover;display:block;
-    transition:transform .35s ease;
+    transition:transform .5s cubic-bezier(.2,.8,.2,1);
   }
-  .tarjeta-media:hover .preview img{transform:scale(1.06);}
+  .tarjeta-media .preview.clicable-reproducir-media{cursor:pointer;}
+  .tarjeta-media .titulo-media-clicable{cursor:pointer;transition:color .15s ease;}
+  .tarjeta-media .titulo-media-clicable:hover{color:var(--celeste);}
+  .tarjeta-media:hover .preview img{transform:scale(1.08);}
+  .tarjeta-media .preview .preview-video-media{
+    position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:1;
+    background:var(--marino);animation:fadeInPreviewVideo .25s ease both;
+  }
+  @keyframes fadeInPreviewVideo{from{opacity:0;}to{opacity:1;}}
+  .tarjeta-media .preview:has(.preview-video-media) .play-overlay,
+  .tarjeta-media .preview:has(.preview-video-media) .icono-generico{display:none;}
   .tarjeta-media .preview::after{
-    content:"";position:absolute;left:0;right:0;bottom:0;height:50%;
-    background:linear-gradient(to top, rgba(12,27,46,.55), rgba(12,27,46,0));
+    content:"";position:absolute;left:0;right:0;bottom:0;height:60%;
+    background:linear-gradient(to top, rgba(6,16,28,.78), rgba(6,16,28,0));
     pointer-events:none;
   }
-  .tarjeta-media .preview .icono-generico{width:38px;height:38px;color:rgba(255,255,255,.55);position:relative;z-index:1;display:flex;}
+  .tarjeta-media .preview .icono-generico{
+    width:52px;height:52px;color:rgba(255,255,255,.85);position:relative;z-index:1;display:flex;align-items:center;justify-content:center;
+    background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.18);border-radius:50%;padding:13px;
+    backdrop-filter:blur(2px);
+  }
   .tarjeta-media .preview .icono-generico.oculto{display:none;}
   .tarjeta-media .preview .icono-generico svg{width:100%;height:100%;}
   .tarjeta-media .preview .icono-generico .icono-video{width:100%;height:100%;color:inherit;opacity:1;}
   .tarjeta-media .preview .play-overlay{
     position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:2;
-    width:46px;height:46px;border-radius:50%;background:rgba(12,27,46,.55);
+    width:52px;height:52px;border-radius:50%;background:rgba(6,16,28,.35);
     display:flex;align-items:center;justify-content:center;
-    box-shadow:0 2px 10px rgba(0,0,0,.35);backdrop-filter:blur(1px);
-    transition:background .18s ease, transform .18s ease;
+    box-shadow:0 6px 20px rgba(0,0,0,.45);backdrop-filter:blur(5px);
+    border:1.5px solid rgba(255,255,255,.55);
+    transition:background .2s ease, transform .2s ease, border-color .2s ease;
   }
-  .tarjeta-media:hover .preview .play-overlay{background:var(--rojo);transform:translate(-50%,-50%) scale(1.08);}
-  .tarjeta-media .preview .play-overlay svg{width:18px;height:18px;fill:#fff;margin-left:2px;}
+  .tarjeta-media:hover .preview .play-overlay{background:var(--rojo);border-color:var(--rojo);transform:translate(-50%,-50%) scale(1.12);}
+  .tarjeta-media .preview .play-overlay svg{width:19px;height:19px;fill:#fff;margin-left:3px;}
   .tarjeta-media .badge-tipo{
-    position:absolute;top:9px;left:9px;z-index:1;background:rgba(12,27,46,.68);color:#fff;
-    font-size:.68rem;text-transform:uppercase;font-family:var(--font-tit);letter-spacing:.4px;
-    padding:3px 9px;border-radius:12px;backdrop-filter:blur(2px);
+    position:absolute;top:10px;left:10px;z-index:1;background:rgba(6,16,28,.62);color:#fff;
+    font-size:.66rem;text-transform:uppercase;font-family:var(--font-tit);letter-spacing:.6px;
+    padding:4px 11px;border-radius:12px;backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,.14);
   }
-  .tarjeta-media .cuerpo{padding:14px;display:flex;flex-direction:column;gap:5px;flex:1;}
-  .tarjeta-media .titulo-media{font-weight:600;color:var(--marino);font-size:.92rem;line-height:1.3;}
-  .tarjeta-media .desc-media{font-size:.8rem;color:var(--gris-texto);line-height:1.35;
+  .tarjeta-media .cuerpo{padding:16px;display:flex;flex-direction:column;gap:8px;flex:1;}
+  .tarjeta-media .titulo-media{font-weight:700;color:var(--marino);font-size:.95rem;line-height:1.32;}
+  .tarjeta-media .desc-media{font-size:.81rem;color:var(--gris-texto);line-height:1.45;
     display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
-  .tarjeta-media .meta-media{font-size:.74rem;color:var(--texto-suave);margin-top:auto;padding-top:6px;}
-  .tarjeta-media .acciones-media{display:flex;gap:8px;padding:0 14px 14px;}
-  .tarjeta-media .acciones-media a, .tarjeta-media .acciones-media button{
-    flex:1;text-align:center;font-size:.8rem;padding:8px;border-radius:6px;border:none;cursor:pointer;
-    font-weight:600;text-decoration:none;
+  .tarjeta-media .meta-media{
+    display:flex;flex-wrap:wrap;gap:5px 12px;margin-top:auto;padding-top:10px;border-top:1px solid var(--borde);
   }
-  .tarjeta-media .btn-descargar{background:var(--marino);color:#fff;}
-  .tarjeta-media .btn-descargar:hover{background:var(--celeste);}
+  .tarjeta-media .meta-item{
+    display:inline-flex;align-items:center;gap:4px;font-size:.72rem;color:var(--texto-suave);
+    max-width:100%;
+  }
+  .tarjeta-media .meta-item svg{width:12.5px;height:12.5px;flex-shrink:0;opacity:.75;}
+  .tarjeta-media .meta-item span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px;}
+  .tarjeta-media .meta-autor{font-weight:600;color:var(--gris-texto);}
+  .tarjeta-media .select-equipo-galeria{
+    margin-top:4px;font-size:.76rem;padding:6px 10px;border-radius:9px;
+    border:1px solid var(--borde);background:var(--tarjeta);color:var(--marino-texto);
+    font-family:inherit;cursor:pointer;transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  .tarjeta-media .select-equipo-galeria:hover{border-color:var(--celeste);}
+  .tarjeta-media .select-equipo-galeria:focus-visible{outline:none;border-color:var(--celeste);box-shadow:0 0 0 3px rgba(91,184,232,.18);}
+  .tarjeta-media .acciones-media{
+    display:flex;flex-wrap:wrap;gap:8px;padding:12px 16px 16px;
+    border-top:1px solid var(--borde);
+  }
+  /* Los botones de acción de una tarjeta (Editar/Compartir/Descargar/
+     Eliminar) van solo con icono: con hasta 4 acciones a la vez en una
+     tarjeta de 260px de ancho, mostrar el texto completo ("Compartir",
+     "Eliminar"...) desbordaba la tarjeta por mucho que se intentara
+     encajar con flex-wrap o texto más pequeño. El texto queda accesible
+     como title (tooltip) y para lectores de pantalla, sin ocupar sitio. */
+  .tarjeta-media .acciones-media .btn-accion-media{
+    flex:0 0 auto;width:36px;height:36px;padding:0;
+    display:inline-flex;align-items:center;justify-content:center;
+    border-radius:10px;border:none;cursor:pointer;text-decoration:none;transition:all .15s ease;
+  }
+  .tarjeta-media .acciones-media .btn-accion-media svg{width:16px;height:16px;flex-shrink:0;}
+  .tarjeta-media .acciones-media .btn-accion-media span{
+    position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+    clip:rect(0,0,0,0);white-space:nowrap;border:0;
+  }
+  .tarjeta-media .btn-descargar{background:var(--marino);color:#fff;margin-left:auto;}
+  .tarjeta-media .btn-descargar:hover{background:var(--celeste);transform:translateY(-1px);}
   .tarjeta-media .btn-eliminar-media{background:#fee2e2;color:var(--rojo);}
   .tarjeta-media .btn-eliminar-media:hover{background:var(--rojo);color:#fff;}
   .tarjeta-media .btn-editar-media{background:var(--gris-claro);color:var(--marino);}
   .tarjeta-media .btn-editar-media:hover{background:var(--celeste);color:#fff;}
-  .badge-mia{
-    position:absolute;top:9px;right:9px;z-index:1;background:var(--rojo);color:#fff;
-    font-size:.66rem;text-transform:uppercase;font-family:var(--font-tit);letter-spacing:.4px;
-    padding:3px 9px;border-radius:12px;
+  .tarjeta-media .btn-compartir-media{background:var(--gris-claro);color:var(--marino);}
+  .tarjeta-media .btn-compartir-media:hover{background:var(--celeste);color:#fff;}
+  /* Galería de partido (subpanel "Galería de partido"): a diferencia de
+     las tarjetas de "Ver contenido subido", aquí solo hay una acción
+     ("Quitar del partido"), así que el botón se muestra en ancho
+     completo con icono + texto, en vez del botón cuadrado solo-icono
+     usado cuando hay varias acciones a la vez en la tarjeta. */
+  .acciones-media-galeria-partido{padding:10px 16px 16px;}
+  .btn-quitar-galeria-partido{
+    width:100%;display:flex;align-items:center;justify-content:center;gap:7px;
+    padding:9px 12px;border-radius:10px;border:1px solid transparent;
+    background:#fee2e2;color:var(--rojo);font-family:inherit;font-size:.82rem;font-weight:600;
+    cursor:pointer;transition:all .15s ease;
   }
+  .btn-quitar-galeria-partido svg{width:15px;height:15px;flex-shrink:0;}
+  .btn-quitar-galeria-partido:hover{background:var(--rojo);color:#fff;}
+  .badge-mia{
+    position:absolute;top:10px;right:10px;z-index:1;background:linear-gradient(135deg,var(--rojo),#c0392b);color:#fff;
+    font-size:.64rem;text-transform:uppercase;font-family:var(--font-tit);letter-spacing:.5px;
+    padding:4px 10px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.25);
+  }
+  /* Si conviven "Tuyo" y "Privado" en la misma tarjeta, "Privado" se
+     coloca justo debajo para no solaparse. */
+  .badge-privado{
+    position:absolute;top:10px;right:10px;z-index:1;background:linear-gradient(135deg,#1f2937,#0c1b2e);color:#fff;
+    font-size:.64rem;text-transform:uppercase;font-family:var(--font-tit);letter-spacing:.5px;
+    padding:4px 10px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.25);
+    display:flex;align-items:center;gap:4px;
+  }
+  .badge-privado::before{content:"";width:8px;height:8px;border-radius:2px;border:1.5px solid #fff;flex-shrink:0;}
+  /* En el HTML, badge-privado se pinta antes que badge-mia: si ambos
+     conviven en la misma tarjeta, se baja "Privado" para no solaparse. */
+  .badge-privado:has(~ .badge-mia){top:38px;}
+
+  /* ---------- Reproductor de vídeo a pantalla completa (modal galería) ---------- */
+  .modal-overlay:has(.modal-caja-reproductor-media){background:rgba(4,10,18,.86);backdrop-filter:blur(6px);}
+  .modal-caja-reproductor-media{
+    background:#0a0e14;padding:0;max-width:min(960px,92vw);width:100%;border-radius:16px;overflow:hidden;position:relative;
+    box-shadow:0 30px 80px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.06);
+    animation:aparecePlayerMedia .28s cubic-bezier(.2,.8,.2,1) both;
+  }
+  @keyframes aparecePlayerMedia{
+    from{opacity:0;transform:scale(.94) translateY(10px);}
+    to{opacity:1;transform:scale(1) translateY(0);}
+  }
+  .reproductor-media-lienzo{position:relative;background:#000;}
+  .modal-caja-reproductor-media video{width:100%;max-height:78vh;min-height:200px;display:block;background:#000;}
+  .modal-caja-reproductor-media img{width:100%;max-height:78vh;min-height:200px;display:none;background:#000;object-fit:contain;}
+  .modal-caja-reproductor-media.es-foto img{display:block;}
+  .modal-caja-reproductor-media.es-foto video{display:none;}
+  .reproductor-media-spinner{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:1;pointer-events:none;
+  }
+  .reproductor-media-spinner span{
+    width:38px;height:38px;border-radius:50%;border:3px solid rgba(255,255,255,.18);border-top-color:#fff;
+    animation:girarSpinnerMedia .8s linear infinite;
+  }
+  @keyframes girarSpinnerMedia{to{transform:rotate(360deg);}}
+  .reproductor-media-lienzo.cargado .reproductor-media-spinner{display:none;}
+  .reproductor-media-error{
+    display:none;position:absolute;inset:0;z-index:1;margin:0;padding:0 30px;text-align:center;
+    color:#f3b4b4;font-size:.85rem;align-items:center;justify-content:center;background:#0a0e14;
+  }
+  .reproductor-media-lienzo.con-error .reproductor-media-error{display:flex;}
+  .reproductor-media-lienzo.con-error video,
+  .reproductor-media-lienzo.con-error img{display:none;}
+  .modal-caja-reproductor-media .titulo-reproductor-media{
+    color:#fff;font-family:var(--font-tit);font-size:.95rem;font-weight:600;
+    padding:14px 50px 16px 18px;background:linear-gradient(180deg,#0a0e14,#0d1420);
+    border-top:1px solid rgba(255,255,255,.06);
+  }
+  .btn-cerrar-reproductor-media{
+    position:absolute;top:10px;right:12px;z-index:3;background:rgba(6,16,28,.65);color:#fff;border:1px solid rgba(255,255,255,.15);
+    width:36px;height:36px;border-radius:50%;font-size:1.4rem;line-height:1;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;transition:background .18s ease, transform .18s ease;
+    backdrop-filter:blur(4px);
+  }
+  .btn-cerrar-reproductor-media:hover{background:var(--rojo);border-color:var(--rojo);transform:rotate(90deg);}
 
   /* ---------- Modal editar contenido subido ---------- */
   .modal-overlay{
-    display:none;position:fixed;inset:0;background:rgba(12,27,46,.6);z-index:500;
-    align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(2px);
+    display:none;position:fixed;inset:0;background:rgba(12,27,46,.55);z-index:500;
+    align-items:center;justify-content:center;padding:20px;
+    animation:modal-overlay-in .18s ease;
+  }
+  @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)){
+    .modal-overlay{
+      background:rgba(12,27,46,.42);
+      -webkit-backdrop-filter:blur(6px) saturate(140%);
+      backdrop-filter:blur(6px) saturate(140%);
+    }
   }
   .modal-overlay.abierto{display:flex;}
+  .modal-overlay .modal-caja{animation:modal-caja-in .22s cubic-bezier(.2,.8,.2,1);}
+  @keyframes modal-overlay-in{from{opacity:0;}to{opacity:1;}}
+  @keyframes modal-caja-in{from{opacity:0;transform:translateY(8px) scale(.98);}to{opacity:1;transform:translateY(0) scale(1);}}
+  @media (prefers-reduced-motion: reduce){
+    .modal-overlay, .modal-overlay .modal-caja{animation:none;}
+  }
   /* Este selector de párrafo se abre desde dentro de otros modales (el
      editor de foto suelta y también el de collage): necesita quedar
      POR ENCIMA del modal que lo abrió, no por debajo, así que sube su
      z-index por encima del de un .modal-overlay normal (500). */
   #modalSelectorParrafo{z-index:600;}
   .modal-caja{
-    background:var(--tarjeta);border-radius:16px;box-shadow:0 24px 60px rgba(12,27,46,.35);padding:28px;
+    position:relative;background:var(--tarjeta);border-radius:var(--radio-lg);box-shadow:var(--sombra-lg);padding:30px;
     width:100%;max-width:480px;max-height:90vh;overflow-y:auto;box-sizing:border-box;
   }
-  .modal-caja label{display:block;font-size:.85rem;font-weight:600;margin:14px 0 6px;color:var(--marino);}
-  .modal-caja input, .modal-caja select, .modal-caja textarea{
-    width:100%;padding:10px 12px;border:1.5px solid var(--borde);border-radius:8px;font-size:.9rem;font-family:inherit;
-    transition:border-color .15s,box-shadow .15s;
+  .modal-caja::before{
+    content:"";position:absolute;top:0;left:0;right:0;height:3px;border-radius:var(--radio-lg) var(--radio-lg) 0 0;
+    background:linear-gradient(90deg, var(--rojo), var(--celeste));
   }
-  .modal-caja input:focus, .modal-caja select:focus, .modal-caja textarea:focus{outline:none;border-color:var(--celeste);box-shadow:0 0 0 3px rgba(91,184,232,.15);}
+  .modal-caja label{display:block;font-size:.85rem;font-weight:600;margin:14px 0 6px;color:var(--marino-texto);}
+  .modal-caja input, .modal-caja select, .modal-caja textarea{
+    width:100%;padding:11px 14px;border:1.5px solid var(--borde);border-radius:var(--radio-sm);font-size:.9rem;font-family:inherit;
+    transition:border-color .18s,box-shadow .18s;background:var(--tarjeta);color:var(--texto);
+  }
+  .modal-caja input:focus, .modal-caja select:focus, .modal-caja textarea:focus{outline:none;border-color:var(--celeste);box-shadow:0 0 0 3px rgba(91,184,232,.18);}
   .modal-caja textarea{min-height:90px;resize:vertical;}
   #msgOkEditarMedia{color:#166534;background:#dcfce7;padding:11px 14px;border-radius:10px;display:none;margin-top:14px;font-weight:600;}
 
@@ -1433,25 +1913,45 @@ body{background:var(--fondo-alt);color:var(--texto);overflow-x:hidden;}
   .notif-campana{
     position:relative;background:linear-gradient(135deg, var(--rojo), var(--rojo-oscuro));border:none;color:#fff;
     width:34px;height:34px;border-radius:50%;cursor:pointer;font-size:.9rem;
-    display:flex;align-items:center;justify-content:center;transition:transform .15s,box-shadow .15s;
-    box-shadow:0 3px 10px rgba(209,19,46,.3);
+    display:flex;align-items:center;justify-content:center;transition:transform .18s cubic-bezier(.2,.8,.2,1),box-shadow .18s;
+    box-shadow:var(--sombra-sm), inset 0 1px 0 rgba(255,255,255,.25);
   }
   .notif-campana svg{width:18px;height:18px;}
-  .notif-campana:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(209,19,46,.4);}
+  .notif-campana:hover{transform:translateY(-2px);box-shadow:var(--sombra-hover), inset 0 1px 0 rgba(255,255,255,.3);}
   .notif-contador{
     position:absolute;top:-3px;right:-3px;background:#64748b;color:#fff;
     font-size:.6rem;font-weight:700;min-width:15px;height:15px;border-radius:8px;
     display:flex;align-items:center;justify-content:center;padding:0 4px;
     border:2px solid var(--marino);
   }
+  /* ---------- Panel de notificaciones: glassmorphism ----------
+     Fondo semitransparente + backdrop-filter para que se note un
+     desenfoque real del contenido de detrás (efecto "vidrio esmerilado"),
+     con un borde muy sutil que simula el filo de cristal iluminado.
+     Fallback: si el navegador no soporta backdrop-filter, @supports de
+     abajo vuelve a un fondo sólido opaco -- no se pierde legibilidad. */
   .notif-panel{
     display:none;position:absolute;top:calc(100% + 12px);right:0;width:320px;max-height:400px;
-    overflow-y:auto;background:var(--tarjeta);border-radius:14px;box-shadow:0 20px 50px rgba(12,27,46,.25);z-index:200;
+    overflow-y:auto;background:var(--tarjeta);border-radius:var(--radio-lg);box-shadow:var(--sombra-lg);z-index:200;
+    border:1px solid var(--borde);
   }
-  .notif-wrap.abierto .notif-panel{display:block;}
+  @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)){
+    .notif-panel{
+      background:rgba(255,255,255,.72);
+      -webkit-backdrop-filter:blur(18px) saturate(160%);
+      backdrop-filter:blur(18px) saturate(160%);
+      border:1px solid rgba(255,255,255,.4);
+    }
+    [data-theme="dark"] .notif-panel{
+      background:rgba(26,33,48,.68);
+      border:1px solid rgba(255,255,255,.08);
+    }
+  }
+  .notif-wrap.abierto .notif-panel{display:block;animation:modal-caja-in .2s cubic-bezier(.2,.8,.2,1);}
   .notif-panel-titulo{
     font-family:var(--font-tit);text-transform:uppercase;font-size:.78rem;letter-spacing:.4px;
-    color:var(--marino);padding:12px 16px;border-bottom:1px solid var(--borde);position:sticky;top:0;background:var(--tarjeta);
+    color:var(--marino-texto);padding:12px 16px;border-bottom:1px solid var(--borde);position:sticky;top:0;background:inherit;
+    backdrop-filter:inherit;-webkit-backdrop-filter:inherit;
   }
   .notif-item{
     display:block;padding:10px 16px;border-bottom:1px solid var(--borde);text-decoration:none;
@@ -1465,7 +1965,8 @@ body{background:var(--fondo-alt);color:var(--texto);overflow-x:hidden;}
   }
   .notif-item .notif-titulo{font-size:.85rem;color:var(--marino);font-weight:600;margin-top:2px;line-height:1.3;}
   .notif-item .notif-meta{font-size:.72rem;color:var(--texto-suave);margin-top:3px;}
-  .notif-item.no-leida{background:#eef6fc;}
+  .notif-item.no-leida{background:linear-gradient(135deg, rgba(91,184,232,.14), rgba(91,184,232,.05));border-left:3px solid var(--celeste);}
+  [data-theme="dark"] .notif-item.no-leida{background:linear-gradient(135deg, rgba(91,184,232,.16), rgba(91,184,232,.04));}
   .notif-vacio{padding:22px 16px;text-align:center;color:var(--gris-texto);font-size:.85rem;}
 
   /* ---------- Campo Rol (selección de usuarios) ---------- */
@@ -1482,6 +1983,7 @@ body{background:var(--fondo-alt);color:var(--texto);overflow-x:hidden;}
   .select-rol:disabled{opacity:.6;cursor:not-allowed;}
   .select-rol.rol-admin{background-color:var(--rojo);color:#fff;}
   .select-rol.rol-redactor{background-color:var(--celeste);color:#fff;}
+  .select-rol.rol-fotografo{background-color:var(--marino);color:#fff;}
 
   /* El desplegable de cuenta (avatar + nombre + menú) reutiliza los
      estilos .user-menu/.btn-usuario/.user-avatar/.user-dropdown ya
@@ -1539,8 +2041,17 @@ body{background:var(--fondo-alt);color:var(--texto);overflow-x:hidden;}
 
     /* ---------- Pestañas principales y subpestañas ---------- */
     .wrap{padding:0 12px;}
-    .tabs{margin:16px 0 0;gap:2px;-webkit-overflow-scrolling:touch;}
+    .tabs{margin:16px 0 0;gap:2px;-webkit-overflow-scrolling:touch;position:relative;}
     .tabs button{padding:9px 12px;font-size:.78rem;}
+    /* Aviso visual de que hay más pestañas fuera de la pantalla: al
+       haber 8 pestañas y poco ancho, sin esto no hay ninguna pista de
+       que la barra hace scroll horizontal. Se superpone al final de la
+       barra y no bloquea el scroll (pointer-events:none). */
+    .tabs::after{
+      content:"";position:sticky;top:0;right:0;flex-shrink:0;
+      width:22px;margin-left:-22px;height:100%;pointer-events:none;
+      background:linear-gradient(to right, transparent, var(--fondo) 85%);
+    }
     .subtabs{gap:6px;overflow-x:auto;padding-bottom:2px;-webkit-overflow-scrolling:touch;}
     .subtabs button{padding:7px 13px;font-size:.76rem;white-space:nowrap;flex-shrink:0;}
     .panel{padding:16px 0;}
@@ -1651,6 +2162,7 @@ body{background:var(--fondo-alt);color:var(--texto);overflow-x:hidden;}
       display:flex;justify-content:space-between;align-items:center;gap:14px;
       padding:10px 0;border-bottom:1px solid var(--borde);text-align:right;font-size:.85rem;
     }
+    table.lista td .celda-estado-noticia{justify-content:flex-end;}
     table.lista td:last-child{border-bottom:none;}
     table.lista td::before{
       content:attr(data-label);font-family:var(--font-tit);text-transform:uppercase;
@@ -1685,7 +2197,6 @@ body{background:var(--fondo-alt);color:var(--texto);overflow-x:hidden;}
     .filtros-contenido{width:100%;}
     .filtros-contenido button{flex:1;padding:8px 6px;}
     .galeria-contenido{grid-template-columns:1fr 1fr;gap:12px;}
-    .tarjeta-media .acciones-media{flex-direction:column;}
     .dropzone{padding:26px 14px;}
 
     /* ---------- Modal editar contenido ---------- */
@@ -1814,11 +2325,19 @@ table.lista .acciones button.btn-anular-partido,
 }
 .btn-anular-partido:hover{transform:translateY(-1px);box-shadow:0 5px 14px rgba(0,0,0,.4);}
 
-/* ---------- Overlay a pantalla completa ---------- */
+/* ---------- Overlay a pantalla completa ----------
+   Herramienta de trabajo del redactor mientras narra en directo, así
+   que prioriza legibilidad y feedback táctil por encima de florituras:
+   fondo con textura sutil de estadio nocturno (en vez de un marino
+   plano), separación clara entre cabecera / botonera / timeline, y
+   estados de foco/hover consistentes en todos los controles. */
 #panelMinutoAMinuto{position:relative;z-index:0;}
 #panelMinutoAMinuto.mam-abierto{position:fixed;inset:0;z-index:9000;}
 .mam-overlay{
-  position:fixed;inset:0;z-index:9000;background:var(--marino, #0c1b2e);
+  position:fixed;inset:0;z-index:9000;
+  background:
+    radial-gradient(120% 90% at 50% -10%, rgba(91,184,232,.10), transparent 55%),
+    linear-gradient(180deg, var(--marino, #0c1b2e) 0%, #081524 100%);
   display:flex;flex-direction:column;overflow:hidden;
   font-family:var(--font-text, Arial, sans-serif);
 }
@@ -1836,23 +2355,31 @@ body.mam-standalone .wrap > .tabs{display:none;}
 body.mam-standalone .wrap > .panel{display:none;}
 
 .mam-cabecera{
-  flex-shrink:0;background:var(--marino2, #152b46);color:#fff;
-  padding:14px 18px 10px;position:relative;
-  box-shadow:0 4px 14px rgba(0,0,0,.25);
+  flex-shrink:0;
+  background:linear-gradient(180deg, var(--marino2, #152b46), #10233a);
+  color:#fff;
+  padding:16px 20px 12px;position:relative;
+  box-shadow:0 4px 18px rgba(0,0,0,.3);
+  border-bottom:1px solid rgba(255,255,255,.06);
   z-index:9700; /* por encima del modal rápido de evento (9500): sin
                    esto, la cruz de cerrar quedaba tapada por ese modal
                    cuando estaba abierto por encima */
 }
+.mam-cerrar,.mam-abrir-pestana{
+  position:absolute;top:12px;background:rgba(255,255,255,.09);
+  border:1px solid rgba(255,255,255,.08);
+  color:#fff;width:34px;height:34px;border-radius:50%;
+  cursor:pointer;transition:background .15s ease, transform .15s ease, border-color .15s ease;
+  display:flex;align-items:center;justify-content:center;
+}
 .mam-cerrar{
-  position:absolute;top:12px;right:14px;background:rgba(255,255,255,.12);
-  border:none;color:#fff;width:34px;height:34px;border-radius:50%;
-  font-size:1.1rem;cursor:pointer;transition:background .15s;
+  right:14px;font-size:1.1rem;
   z-index:9600; /* por encima del modal rápido de evento (9500), para que
                     la cruz del panel siempre se pueda pulsar y cierre todo
                     de un clic aunque el modal de evento esté abierto por
                     encima */
 }
-.mam-cerrar:hover{background:rgba(255,255,255,.25);}
+.mam-cerrar:hover{background:rgba(209,19,46,.55);border-color:rgba(209,19,46,.7);transform:scale(1.05);}
 
 /* Botón "abrir en pestaña independiente" dentro del propio overlay
    (junto a la cruz de cerrar): permite sacar el minuto a minuto a su
@@ -1862,63 +2389,92 @@ body.mam-standalone .wrap > .panel{display:none;}
    arriba y renderPanelMinutoAMinuto en minuto-a-minuto.js), porque
    abrir en pestaña aparte no tiene sentido si ya se está viendo en una.*/
 .mam-abrir-pestana{
-  position:absolute;top:12px;right:56px;background:rgba(255,255,255,.12);
-  border:none;color:#fff;width:34px;height:34px;border-radius:50%;
-  font-size:1rem;cursor:pointer;transition:background .15s;
-  display:flex;align-items:center;justify-content:center;text-decoration:none;
+  right:56px;font-size:1rem;text-decoration:none;
   z-index:9600;
 }
-.mam-abrir-pestana:hover{background:rgba(255,255,255,.25);}
+.mam-abrir-pestana:hover{background:rgba(91,184,232,.3);border-color:rgba(91,184,232,.5);transform:scale(1.05);}
 
 .mam-cabecera-partido{
-  display:flex;align-items:center;justify-content:center;gap:22px;
+  display:flex;align-items:center;justify-content:center;gap:24px;
   max-width:720px;margin:0 auto;
 }
 .mam-equipo{
-  display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;min-width:0;
+  display:flex;flex-direction:column;align-items:center;gap:7px;flex:1;min-width:0;
 }
-.mam-equipo img{width:44px;height:44px;object-fit:contain;}
+.mam-equipo img{
+  width:46px;height:46px;object-fit:contain;
+  filter:drop-shadow(0 2px 6px rgba(0,0,0,.3));
+}
 .mam-equipo span{
-  font-size:.78rem;font-weight:600;text-align:center;
+  font-size:.78rem;font-weight:600;text-align:center;letter-spacing:.01em;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:120px;
 }
 .mam-marcador-central{
-  display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0;
+  display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0;
+  min-width:110px;
 }
 #mamMarcador{
-  font-family:var(--font-tit,'Oswald',sans-serif);font-size:2rem;font-weight:700;
+  font-family:var(--font-tit,'Oswald',sans-serif);font-size:2.1rem;font-weight:700;
   letter-spacing:1px;display:flex;flex-direction:column;align-items:center;line-height:1.1;
+  font-variant-numeric:tabular-nums;
+  text-shadow:0 2px 8px rgba(0,0,0,.25);
 }
-.mam-penaltis-marcador{font-size:.68rem;font-weight:600;color:#9fb3c8;letter-spacing:.3px;margin-top:2px;}
+.mam-penaltis-marcador{font-size:.68rem;font-weight:600;color:#9fb3c8;letter-spacing:.3px;margin-top:3px;}
 .mam-reloj{
   font-size:.95rem;font-weight:700;color:var(--celeste,#5bb8e8);
-  background:rgba(255,255,255,.08);padding:3px 12px;border-radius:14px;
+  background:rgba(91,184,232,.1);border:1px solid rgba(91,184,232,.25);
+  padding:4px 14px;border-radius:14px;
+  transition:background .15s ease, border-color .15s ease;
+  font-variant-numeric:tabular-nums;
 }
-.mam-reloj-corriendo{animation:mamPulso 2s infinite;}
+.mam-reloj:hover{background:rgba(91,184,232,.2);border-color:rgba(91,184,232,.5);}
+.mam-reloj-corriendo{
+  color:#fff;background:linear-gradient(135deg, var(--rojo,#d1132e), var(--rojo-oscuro,#9c0e23));
+  border-color:transparent;box-shadow:0 2px 10px rgba(209,19,46,.4);
+  animation:mamPulso 2s ease-in-out infinite;
+}
 @keyframes mamPulso{
   0%,100%{opacity:1;}
-  50%{opacity:.55;}
+  50%{opacity:.72;}
 }
 
 .mam-cabecera-controles{
   display:flex;justify-content:center;gap:10px;margin-top:10px;flex-wrap:wrap;
 }
 
-/* ---------- Cuerpo: botonera + timeline ---------- */
+@media (prefers-reduced-motion: reduce){
+  .mam-reloj-corriendo{animation:none;}
+}
+
+/* ---------- Cuerpo: botonera + timeline ----------
+   La botonera cambia de disposición según la fase del partido (ver
+   cont.classList.add("mam-fase-...") en renderBotoneraMinutoAMinuto,
+   js/minuto-a-minuto.js): antes solo existía el layout de "en juego"
+   (3 columnas centradas) y las demás fases -previa, pausa, cierre-
+   heredaban ese mismo flex centrado aunque tuvieran uno o dos botones
+   sueltos, quedando descolocadas y con muchísimo espacio muerto
+   alrededor. Ahora cada fase tiene su propia disposición: */
 .mam-cuerpo{
   flex:1;display:flex;overflow:hidden;min-height:0;
 }
 .mam-botonera{
-  flex:1;overflow-y:auto;padding:18px;
-  display:flex;gap:18px;align-items:flex-start;justify-content:center;flex-wrap:wrap;
+  flex:1;overflow-y:auto;padding:22px 18px;
+  display:flex;gap:22px;align-items:flex-start;justify-content:center;flex-wrap:wrap;
+}
+
+/* ----- Fase EN VIVO: la disposición de trabajo, 3 columnas ----- */
+.mam-fase-vivo{
+  align-items:stretch;max-width:980px;margin:0 auto;width:100%;
 }
 .mam-columna-equipo{
   flex:1;min-width:230px;max-width:320px;
+  background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.05);
+  border-radius:16px;padding:14px;
 }
 .mam-columna-equipo h5{
   color:#fff;text-align:center;font-family:var(--font-tit,'Oswald',sans-serif);
-  text-transform:uppercase;letter-spacing:.5px;font-size:.85rem;margin:0 0 10px;
-  opacity:.85;
+  text-transform:uppercase;letter-spacing:.6px;font-size:.85rem;margin:0 0 12px;
+  opacity:.9;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,.08);
 }
 .mam-grid-botones{
   display:grid;grid-template-columns:1fr 1fr;gap:10px;
@@ -1928,23 +2484,85 @@ body.mam-standalone .wrap > .panel{display:none;}
   padding-top:26px;
 }
 
-/* Botones cuadrados grandes: el corazón del panel. */
+/* ----- Fase PREVIA: el partido aún no ha arrancado -----
+   Un único botón protagonista, centrado en toda la altura disponible
+   (no solo horizontalmente, como antes), con los dos botones
+   secundarios ("retrasado"/"anular") en una fila aparte, más pequeños
+   y separados del principal para que quede clara la jerarquía: uno es
+   la acción normal, los otros dos son la excepción. */
+.mam-fase-previa{
+  flex-direction:column;align-items:center;justify-content:center;
+  min-height:100%;gap:26px;
+}
+.mam-fase-previa .mam-boton-grande{margin:0;}
+.mam-previa-secundarios{
+  display:flex;gap:14px;flex-wrap:wrap;justify-content:center;
+}
+.mam-previa-secundarios .mam-boton{
+  aspect-ratio:auto;width:150px;height:64px;font-size:.74rem;
+}
+
+/* ----- Fase PAUSA (descanso / hidratación) -----
+   Igual de centrada que la previa pero sin los botones secundarios:
+   en pausa solo hay una acción posible (reanudar), así que no necesita
+   la fila de excepciones de la previa. */
+.mam-fase-pausa{
+  flex-direction:column;align-items:center;justify-content:center;
+  min-height:100%;
+}
+.mam-fase-pausa .mam-boton-grande{margin:0;}
+
+/* ----- Fase CIERRE (finalizado / anulado) -----
+   Antes era una columna estrecha (max-width:420px del propio texto)
+   con todo apilado uno debajo de otro por accidente, en vez de por
+   diseño. Ahora son dos tarjetas lado a lado -resultado/tanda de
+   penaltis a la izquierda, MVP a la derecha-, cada una autocontenida,
+   que se apilan solas en pantallas estrechas (ver responsive). */
+.mam-fase-cierre{
+  align-items:stretch;justify-content:center;max-width:760px;margin:0 auto;width:100%;
+}
+.mam-cierre-tarjeta{
+  flex:1;min-width:260px;max-width:340px;
+  background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);
+  border-radius:16px;padding:20px;
+  display:flex;flex-direction:column;align-items:center;gap:14px;
+}
+.mam-cierre-tarjeta .mam-boton-grande{margin:0;}
+.mam-cierre-tarjeta .mam-finalizado-aviso{margin:0;max-width:none;}
+/* El aviso de "partido anulado" a secas no lleva tarjeta envolvente
+   (no hay nada más que mostrar), así que se centra suelto igual que
+   antes en vez de heredar el ancho fijo de .mam-cierre-tarjeta. */
+.mam-fase-cierre > .mam-finalizado-aviso:only-child{margin:auto;}
+
+/* Botones cuadrados grandes: el corazón del panel. Se usan a toda
+   velocidad mientras se narra en directo, así que el feedback al
+   pasar el ratón/dedo y al pulsar tiene que ser inmediato y muy
+   visible -- de ahí el borde que se ilumina y el "hundido" al pulsar,
+   por encima de la elevación que ya tenían. */
 .mam-boton{
-  background:#1d3552;color:#fff;border:2px solid rgba(255,255,255,.06);
+  background:#1d3552;color:#fff;border:2px solid rgba(255,255,255,.07);
   border-radius:14px;aspect-ratio:1/1;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;gap:2px;cursor:pointer;
+  align-items:center;justify-content:center;gap:3px;cursor:pointer;
   font-size:.78rem;font-weight:700;line-height:1.3;text-align:center;
-  transition:transform .12s,box-shadow .12s,background .12s;padding:6px;
+  transition:transform .12s ease,box-shadow .12s ease,background .12s ease,border-color .12s ease;
+  padding:6px;position:relative;
 }
 .mam-boton br{content:"";display:block;margin:2px 0;}
-.mam-boton:hover{transform:translateY(-2px) scale(1.03);box-shadow:0 6px 16px rgba(0,0,0,.35);}
-.mam-boton:active{transform:scale(.96);}
+.mam-boton:hover{
+  transform:translateY(-2px) scale(1.03);
+  box-shadow:0 8px 18px rgba(0,0,0,.4);
+  border-color:rgba(255,255,255,.25);
+}
+.mam-boton:active{transform:translateY(0) scale(.96);box-shadow:0 2px 6px rgba(0,0,0,.35);}
+.mam-boton:focus-visible{outline:2px solid var(--celeste,#5bb8e8);outline-offset:2px;}
 
 .mam-boton-grande{
-  aspect-ratio:auto;width:260px;height:110px;font-size:1.05rem;margin:40px auto;
+  aspect-ratio:auto;width:260px;height:112px;font-size:1.05rem;margin:40px auto;
   background:linear-gradient(135deg,#1a9e57,#0f7a41);
+  border-radius:18px;
 }
-.mam-boton-iniciar{box-shadow:0 6px 20px rgba(26,158,87,.4);}
+.mam-boton-iniciar{box-shadow:0 8px 24px rgba(26,158,87,.45);}
+.mam-boton-iniciar:hover{box-shadow:0 10px 28px rgba(26,158,87,.55);}
 
 .mam-boton-gol{background:linear-gradient(135deg,#1a9e57,#0f7a41);}
 .mam-boton-amarilla{background:linear-gradient(135deg,#e8b923,#c79411);color:#2a2005;}
@@ -1956,10 +2574,10 @@ body.mam-standalone .wrap > .panel{display:none;}
 .mam-boton-otro{background:#2a3f5c;}
 .mam-boton-descanso{background:linear-gradient(135deg,#8a94a3,#5f6b7d);}
 .mam-boton-descanso:disabled{
-  background:#243349;color:rgba(255,255,255,.4);cursor:not-allowed;
-  box-shadow:none;
+  background:#243349;color:rgba(255,255,255,.35);cursor:not-allowed;
+  box-shadow:none;border-color:rgba(255,255,255,.04);
 }
-.mam-boton-descanso:disabled:hover{transform:none;box-shadow:none;}
+.mam-boton-descanso:disabled:hover{transform:none;box-shadow:none;border-color:rgba(255,255,255,.04);}
 .mam-boton-descanso small{font-size:.62rem;font-weight:600;opacity:.85;}
 .mam-boton-final{background:linear-gradient(135deg,#d1132e,#7a0a1a);}
 .mam-boton-hidratacion{background:linear-gradient(135deg,#2fa8c4,#1b6f85);}
@@ -1968,15 +2586,18 @@ body.mam-standalone .wrap > .panel{display:none;}
 .mam-boton-retrasado{background:linear-gradient(135deg,#e8952a,#b9700f);}
 .mam-boton-anulado{background:linear-gradient(135deg,#6b0f1f,#3d0a12);}
 .mam-boton-tanda-penaltis{background:linear-gradient(135deg,#5638ab,#2f8fc4);}
-.mam-reloj{cursor:pointer;}
-.mam-reloj:hover{text-decoration:underline;}
+.mam-boton-mvp{background:linear-gradient(135deg,#e8b923,#b9860f);color:#2a2005;}
 
 .mam-finalizado-aviso{
   color:#dbe3ee;text-align:center;max-width:420px;margin:60px auto;
   font-size:.9rem;line-height:1.5;
 }
 
-/* ---------- Timeline lateral ---------- */
+/* ---------- Timeline lateral ----------
+   El registro de lo que ya se ha narrado: cada fila lleva ahora un
+   filete de color a la izquierda (a juego con el color del minuto) en
+   vez de un fondo plano igual para todos los eventos, para poder
+   revisar de un vistazo qué se ha ido metiendo sin leer línea a línea. */
 .mam-timeline-wrap{
   width:320px;flex-shrink:0;background:var(--marino2,#152b46);
   border-left:1px solid rgba(255,255,255,.08);
@@ -1987,29 +2608,51 @@ body.mam-standalone .wrap > .panel{display:none;}
   font-family:var(--font-tit,'Oswald',sans-serif);text-transform:uppercase;
   letter-spacing:.5px;border-bottom:1px solid rgba(255,255,255,.08);
 }
-.mam-timeline{flex:1;overflow-y:auto;padding:10px 12px;}
+.mam-timeline{flex:1;overflow-y:auto;padding:12px;}
 .mam-sin-eventos{color:var(--texto-suave);font-size:.82rem;text-align:center;padding:24px 8px;font-style:italic;}
 
 .mam-evento-item{
-  display:flex;align-items:flex-start;gap:8px;padding:9px 10px;
-  background:rgba(255,255,255,.05);border-radius:10px;margin-bottom:7px;
+  display:flex;align-items:flex-start;gap:9px;padding:9px 11px;
+  background:rgba(255,255,255,.045);border-left:3px solid rgba(255,255,255,.14);
+  border-radius:8px;margin-bottom:7px;
   color:#e8edf4;font-size:.8rem;
+  transition:background .15s ease;
+  animation:mamEventoAparece .25s ease both;
 }
+.mam-evento-item:hover{background:rgba(255,255,255,.08);}
 .mam-evento-minuto{
   font-weight:700;color:var(--celeste,#5bb8e8);flex-shrink:0;min-width:34px;
+  font-variant-numeric:tabular-nums;
 }
 .mam-evento-texto{flex:1;line-height:1.4;}
-.mam-evento-eliminar{
+.mam-evento-eliminar,.mam-evento-editar{
   flex-shrink:0;background:none;border:none;color:var(--texto-suave);cursor:pointer;
   font-size:.85rem;padding:2px 4px;border-radius:4px;transition:color .15s,background .15s;
 }
 .mam-evento-eliminar:hover{color:#fff;background:rgba(209,19,46,.5);}
+.mam-evento-editar:hover{color:#fff;background:rgba(91,184,232,.4);}
 
+@keyframes mamEventoAparece{
+  from{opacity:0;transform:translateX(6px);}
+  to{opacity:1;transform:translateX(0);}
+}
+
+.mam-evento-gol{border-left-color:#5ecb8a;}
 .mam-evento-gol .mam-evento-minuto{color:#5ecb8a;}
+.mam-evento-gol_pp{border-left-color:#e8952a;}
 .mam-evento-gol_pp .mam-evento-minuto{color:#e8952a;}
+.mam-evento-roja{border-left-color:#ff6b7a;}
 .mam-evento-roja .mam-evento-minuto{color:#ff6b7a;}
+.mam-evento-amarilla,
+.mam-evento-doble_amarilla{border-left-color:#e8b923;}
 .mam-evento-amarilla .mam-evento-minuto,
 .mam-evento-doble_amarilla .mam-evento-minuto{color:#e8b923;}
+.mam-evento-cambio{border-left-color:#5bb8e8;}
+.mam-evento-var{border-left-color:#a48ae0;}
+
+@media (prefers-reduced-motion: reduce){
+  .mam-evento-item{animation:none;}
+}
 
 /* Lanzamientos de la tanda de penaltis dentro de su propio modal
    (reutiliza .mam-evento-item, con un botón de editar además del de
@@ -2029,22 +2672,35 @@ body.mam-standalone .wrap > .panel{display:none;}
 /* ---------- Modal rápido (minuto / dorsal / jugador) ---------- */
 .mam-modal-overlay{
   display:none;position:fixed;inset:0;z-index:9500;
-  background:rgba(6,14,25,.72);align-items:center;justify-content:center;padding:16px;
+  background:rgba(6,14,25,.78);backdrop-filter:blur(2px);
+  align-items:center;justify-content:center;padding:16px;
+  animation:mamOverlayAparece .15s ease;
 }
 .mam-modal-overlay.mam-abierto{display:flex;}
 .mam-modal-caja{
   background:var(--tarjeta);border-radius:16px;padding:24px;width:100%;max-width:380px;
-  box-shadow:0 14px 40px rgba(0,0,0,.4);
+  box-shadow:0 20px 50px rgba(0,0,0,.45);
+  animation:mamModalAparece .18s ease;
+}
+@keyframes mamOverlayAparece{from{opacity:0;}to{opacity:1;}}
+@keyframes mamModalAparece{
+  from{opacity:0;transform:translateY(8px) scale(.98);}
+  to{opacity:1;transform:translateY(0) scale(1);}
 }
 .mam-modal-caja h4{
   margin:0 0 16px;color:var(--marino,#0c1b2e);font-family:var(--font-tit,'Oswald',sans-serif);
   text-transform:uppercase;letter-spacing:.4px;font-size:1rem;
+  padding-bottom:12px;border-bottom:1px solid var(--borde);
 }
 .mam-modal-caja label{display:block;font-size:.8rem;font-weight:600;margin:12px 0 5px;color:var(--marino,#0c1b2e);}
 .mam-modal-caja input{
   width:100%;padding:9px 12px;border:1.5px solid var(--borde);border-radius:8px;font-size:.9rem;
+  transition:border-color .15s ease, box-shadow .15s ease;
 }
-.mam-modal-caja input:focus{outline:none;border-color:var(--celeste,#5bb8e8);}
+.mam-modal-caja input:focus{
+  outline:none;border-color:var(--celeste,#5bb8e8);
+  box-shadow:0 0 0 3px rgba(91,184,232,.18);
+}
 .mam-fila-jugador{display:flex;gap:10px;}
 .mam-fila-jugador > div{flex:1;}
 .mam-fila-jugador > div:first-child{flex:0 0 80px;}
@@ -2058,6 +2714,10 @@ body.mam-standalone .wrap > .panel{display:none;}
   background:#eef3fb;border-radius:8px;padding:8px 12px;line-height:1.4;
 }
 
+@media (prefers-reduced-motion: reduce){
+  .mam-modal-overlay,.mam-modal-caja{animation:none;}
+}
+
 /* ---------- Modal de la tanda de penaltis (rediseño) ----------
    Antes reutilizaba sin más el modal rápido genérico (caja blanca de
    380px con el marcador metido a presión en el h4): funcional pero muy
@@ -2069,7 +2729,10 @@ body.mam-standalone .wrap > .panel{display:none;}
   max-width:460px;padding:0;overflow:hidden;border-radius:18px;
 }
 #mamModalTanda .mam-tanda-cabecera{
-  background:linear-gradient(135deg,#152b46,#0c1b2e);color:#fff;
+  background:
+    radial-gradient(140% 160% at 50% -20%, rgba(91,184,232,.14), transparent 60%),
+    linear-gradient(135deg,#152b46,#0c1b2e);
+  color:#fff;
   padding:20px 24px 18px;text-align:center;position:relative;
 }
 #mamModalTanda .mam-tanda-cabecera h4{
@@ -2088,9 +2751,13 @@ body.mam-standalone .wrap > .panel{display:none;}
 #mamModalTanda .mam-evento-item{
   background:var(--gris-claro,#f0f1f3);color:var(--marino,#0c1b2e);
   border-radius:10px;border-left:4px solid #c7cdd6;
+  transition:background .15s ease;
 }
+#mamModalTanda .mam-evento-item:hover{background:#e7e9ee;}
 #mamModalTanda .mam-tanda-marcado{border-left-color:#1a9e4f;}
+#mamModalTanda .mam-tanda-marcado .mam-evento-minuto{color:#1a9e4f;}
 #mamModalTanda .mam-tanda-fallado{border-left-color:var(--rojo,#d1132e);}
+#mamModalTanda .mam-tanda-fallado .mam-evento-minuto{color:var(--rojo,#d1132e);}
 #mamModalTanda .mam-evento-eliminar,
 #mamModalTanda .mam-evento-editar{color:var(--texto-suave);}
 #mamModalTanda .mam-evento-eliminar:hover{color:#fff;background:rgba(209,19,46,.7);}
@@ -2138,11 +2805,19 @@ body.mam-standalone .wrap > .panel{display:none;}
   #mamMarcador{font-size:1.5rem;}
   .mam-marcador-central{gap:2px;}
   .mam-grid-botones{grid-template-columns:1fr 1fr;gap:8px;}
-  .mam-columna-equipo{min-width:0;width:100%;}
+  .mam-columna-equipo{min-width:0;width:100%;padding:10px;}
   .mam-columna-central{width:100%;flex-direction:row;flex-wrap:wrap;padding-top:0;order:3;}
   .mam-columna-central .mam-boton{flex:1 1 calc(50% - 5px);min-width:80px;aspect-ratio:auto;height:64px;}
   .mam-boton{font-size:.68rem;}
   .mam-boton-grande{width:100%;max-width:280px;height:90px;font-size:.92rem;margin:24px auto;}
+  /* La previa/pausa ya centran el botón grande con flex (gap, no
+     margin), así que en móvil se le quita el margen automático de
+     arriba para que no se sume al gap y separe de más. */
+  .mam-fase-previa .mam-boton-grande,
+  .mam-fase-pausa .mam-boton-grande{margin:0 auto;}
+  .mam-previa-secundarios{flex-direction:column;width:100%;max-width:280px;}
+  .mam-previa-secundarios .mam-boton{width:100%;}
+  .mam-cierre-tarjeta{max-width:none;width:100%;}
 }
 
 /* =====================================================================
@@ -2387,6 +3062,10 @@ body.mam-standalone .wrap > .panel{display:none;}
 .nivel-badge-2{background:var(--nivel-2-suave);color:var(--nivel-2);border-color:#bfd7fb;}
 .nivel-badge-3{background:var(--nivel-3-suave);color:var(--nivel-3);border-color:#e2ccfb;}
 .nivel-badge-4{background:var(--nivel-4-suave);color:var(--nivel-4);border-color:#ffd2ac;}
+/* Fotógrafo: el sistema de niveles de redactor no le aplica, así que en
+   vez de un nivel falso se muestra esta etiqueta neutra (ver admin.js,
+   columna "Nivel" de la tabla de usuarios). */
+.nivel-badge-na{background:var(--gris-claro);color:var(--texto-suave);border-color:var(--borde);cursor:default;font-style:italic;}
 
 @keyframes nivelAparece{
   from{opacity:0; transform:translateY(6px);}
@@ -2918,26 +3597,32 @@ body.mam-standalone .wrap > .panel{display:none;}
 [data-theme="dark"] .dropzone:hover{background:linear-gradient(135deg, var(--panel-hover) 0%, var(--tarjeta) 100%);}
 
 /* Tablas de listado */
-[data-theme="dark"] table.lista{background:var(--tarjeta);box-shadow:0 6px 24px rgba(0,0,0,.3);}
+[data-theme="dark"] table.lista{background:var(--tarjeta);box-shadow:var(--sombra-md);}
 [data-theme="dark"] table.lista th, [data-theme="dark"] table.lista td{border-bottom-color:var(--borde);color:var(--texto);}
 [data-theme="dark"] table.lista tbody tr:hover{background:var(--panel-fondo-suave);}
 [data-theme="dark"] table.lista .acciones .solicitar{background:#3a2f16;color:#e0b060;}
 
-/* Badges de estado (algo más apagados sobre fondo oscuro, mismo significado de color) */
-[data-theme="dark"] .badge-estado.publicado{background:#123321;color:#7fe0a3;}
+/* Badges de estado (algo más apagados sobre fondo oscuro, mismo significado de color, con el mismo degradado + borde + icono que en claro) */
+[data-theme="dark"] .badge-estado{box-shadow:0 2px 8px rgba(0,0,0,.35);}
+[data-theme="dark"] .badge-estado.publicado{background:linear-gradient(135deg,#123321,#0e2a1b);color:#7fe0a3;border-color:#1f5c38;}
 [data-theme="dark"] .badge-estado.borrador,
-[data-theme="dark"] .badge-estado.borrador-terminado{background:#3a1616;color:#f19b9b;}
-[data-theme="dark"] .badge-estado.borrador-proceso{background:#3a2f16;color:#e0b060;}
-[data-theme="dark"] .badge-estado.programado{background:#122b45;color:#8ec3f5;}
-[data-theme="dark"] tr.fila-de-otro .badge-estado.publicado{background:#16261c;color:#8fb89c;}
+[data-theme="dark"] .badge-estado.borrador-terminado{background:linear-gradient(135deg,#3a1616,#2e1010);color:#f19b9b;border-color:#5c2323;}
+[data-theme="dark"] .badge-estado.borrador-proceso{background:linear-gradient(135deg,#3a2f16,#2e2510);color:#e0b060;border-color:#5c4a23;}
+[data-theme="dark"] .badge-estado.programado{background:linear-gradient(135deg,#122b45,#0e2138);color:#8ec3f5;border-color:#1f4a75;}
+[data-theme="dark"] .badge-preferencia-fechas.fase-pendiente{background:#2a2c31;color:#9aa0aa;}
+[data-theme="dark"] .badge-preferencia-fechas.fase-disponible{background:#0f2a1a;color:#4ade80;}
+[data-theme="dark"] .badge-preferencia-fechas.fase-caducada{background:#3a1616;color:#f87171;}
+[data-theme="dark"] tr.fila-de-otro .badge-estado.publicado{background:linear-gradient(135deg,#16261c,#122019);color:#8fb89c;border-color:#264331;box-shadow:none;}
 [data-theme="dark"] tr.fila-de-otro .badge-estado.borrador,
-[data-theme="dark"] tr.fila-de-otro .badge-estado.borrador-terminado{background:#2a1c1f;color:#c99aa2;}
-[data-theme="dark"] tr.fila-de-otro .badge-estado.borrador-proceso{background:#2a2418;color:#c9b183;}
-[data-theme="dark"] tr.fila-de-otro .badge-estado.programado{background:#1c2a38;color:#7fa8c9;}
+[data-theme="dark"] tr.fila-de-otro .badge-estado.borrador-terminado{background:linear-gradient(135deg,#2a1c1f,#221618);color:#c99aa2;border-color:#472e33;box-shadow:none;}
+[data-theme="dark"] tr.fila-de-otro .badge-estado.borrador-proceso{background:linear-gradient(135deg,#2a2418,#221d13);color:#c9b183;border-color:#473c22;box-shadow:none;}
+[data-theme="dark"] tr.fila-de-otro .badge-estado.programado{background:linear-gradient(135deg,#1c2a38,#16222e);color:#7fa8c9;border-color:#2f4a63;box-shadow:none;}
 
 /* Filtros de contenido */
-[data-theme="dark"] .filtros-contenido button{border-color:var(--borde);color:var(--texto-suave);}
+[data-theme="dark"] .filtros-contenido{border-color:var(--borde);}
+[data-theme="dark"] .filtros-contenido button{color:var(--texto-suave);}
 [data-theme="dark"] .filtros-contenido button:hover:not(.activo){color:var(--celeste-claro);}
+[data-theme="dark"] .modal-caja-reproductor-media{box-shadow:0 30px 80px rgba(0,0,0,.7), 0 0 0 1px rgba(255,255,255,.08);}
 
 /* Modal overlay y mensajes de confirmación */
 [data-theme="dark"] .modal-overlay{background:rgba(0,0,0,.7);}
@@ -3118,9 +3803,26 @@ body.mam-standalone .wrap > .panel{display:none;}
 /* Botón "Editar" de una foto en la galería de medios: fondo gris claro
    fijo con texto marino fijo */
 [data-theme="dark"] .tarjeta-media .btn-editar-media{background:var(--panel-hover);color:var(--texto);}
+[data-theme="dark"] .tarjeta-media .btn-compartir-media{background:var(--panel-hover);color:var(--texto);}
 /* Botón "Eliminar": fondo rojo pastel fijo, se aclara para que el rojo
    siga leyéndose sobre fondo oscuro */
 [data-theme="dark"] .tarjeta-media .btn-eliminar-media{background:#3a1616;color:#f19b9b;}
+/* Selector "Cambiar de qué equipo es esta foto" en cada tarjeta de la
+   galería de partido: fondo blanco fijo (pensado para tema claro), casi
+   invisible/desentonado sobre la tarjeta oscura. */
+[data-theme="dark"] .tarjeta-media .select-equipo-galeria{background:var(--tarjeta);color:var(--texto);border-color:var(--borde);}
+
+/* ---------- Galería de partido (subpanel "Galería de partido") en modo
+   oscuro: tarjeta del enlace público, contador y botón "Quitar". ---------- */
+[data-theme="dark"] .tarjeta-link-galeria{
+  background:linear-gradient(135deg, rgba(91,184,232,.1), rgba(255,255,255,.03));
+  border-color:rgba(91,184,232,.4);box-shadow:0 8px 24px rgba(0,0,0,.35);
+}
+[data-theme="dark"] .tarjeta-link-galeria-icono{box-shadow:0 4px 12px rgba(0,0,0,.4);}
+[data-theme="dark"] .btn-copiar-link-galeria{background:var(--panel-hover);color:var(--texto);border-color:var(--borde);}
+[data-theme="dark"] .contador-total-galeria{background:var(--panel-hover);color:var(--texto);border-color:var(--borde);}
+[data-theme="dark"] .btn-quitar-galeria-partido{background:#3a1616;color:#f19b9b;}
+[data-theme="dark"] .btn-quitar-galeria-partido:hover{background:var(--rojo);color:#fff;}
 
 /* Campo de contraseña dentro del modal: hereda el fondo blanco fijo de
    los inputs normales sin pasar por el bloque genérico de inputs */
@@ -3136,6 +3838,13 @@ body.mam-standalone .wrap > .panel{display:none;}
    claro. La etiqueta ya estaba cubierta (PARCHE 3), pero el valor en sí
    no, y quedaba casi invisible sobre la tarjeta oscura. */
 [data-theme="dark"] .solicitud-card-fila{color:var(--texto);}
+
+/* Mismo problema que el parche de arriba pero en el motivo/mensaje que
+   escribe quien pide algo (p. ej. "Solicitud pendiente de tu
+   respuesta"): .solicitud-card-motivo también usa el mismo gris
+   oscuro fijo (#3a4150) pensado para fondo claro, y quedaba igual de
+   ilegible sobre la tarjeta oscura. */
+[data-theme="dark"] .solicitud-card-motivo{color:var(--texto-suave);}
 
 /* =====================================================================
    MODO OSCURO — PARCHE 5: modales de Minuto a Minuto

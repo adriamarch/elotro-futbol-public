@@ -96,11 +96,22 @@ const MAM_TIPOS_SIN_EQUIPO = [
 // "Final").
 const MAM_TIPOS_TANDA_PENALTIS = ["penalti_marcado", "penalti_fallado_tanda"];
 
-// Clave de localStorage donde se guarda qué partido tiene abierto el
+// Clave de sessionStorage donde se guarda qué partido tiene abierto el
 // panel de Minuto a Minuto. Sirve para volver a abrirlo automáticamente
 // si se recarga la página (F5, Ctrl+R...) mientras se está gestionando
 // un partido en vivo: sin esto, un recargar accidental hacía perder de
 // vista el partido en curso y había que buscarlo de nuevo en la tabla.
+//
+// Importante: es sessionStorage, NO localStorage. localStorage se
+// comparte entre todas las pestañas del mismo origen, así que con él
+// esta reapertura automática "se filtraba" de una pestaña a otra: un
+// redactor con el minuto a minuto abierto en la pestaña A y la crónica
+// en la pestaña B veía cómo, en cuanto la B recargaba o navegaba (por
+// ejemplo al volver de previsualizar), el panel de minuto a minuto se
+// le abría también ahí encima, tapando la crónica. sessionStorage es
+// propio de cada pestaña (aunque sea el mismo origen y la misma
+// sesión), así que cada una solo reabre el panel si fue ELLA quien lo
+// tenía abierto, sin interferir con las demás.
 const MAM_STORAGE_KEY = "mam_resultado_abierto";
 
 async function abrirPanelMinutoAMinuto(resultadoId) {
@@ -136,14 +147,14 @@ async function abrirPanelMinutoAMinuto(resultadoId) {
     document.getElementById("panelMinutoAMinuto").classList.add("mam-abierto");
     document.body.style.overflow = "hidden";
     iniciarTickCronometro();
-    try { localStorage.setItem(MAM_STORAGE_KEY, String(resultadoId)); } catch {}
+    try { sessionStorage.setItem(MAM_STORAGE_KEY, String(resultadoId)); } catch {}
   } catch (err) {
     EOF.toast("Error abriendo el panel: " + err.message, "error");
     salirDelModoStandaloneSiFalla();
     // Si el partido guardado ya no se puede abrir (borrado, finalizado,
     // permisos cambiados...), se limpia para no quedar reintentando
     // abrirlo en cada recarga.
-    try { localStorage.removeItem(MAM_STORAGE_KEY); } catch {}
+    try { sessionStorage.removeItem(MAM_STORAGE_KEY); } catch {}
   }
 }
 
@@ -160,7 +171,7 @@ function cerrarPanelMinutoAMinuto() {
   panel?.classList.remove("mam-abierto");
   if (panel) panel.innerHTML = "";
   document.body.style.overflow = "";
-  try { localStorage.removeItem(MAM_STORAGE_KEY); } catch {}
+  try { sessionStorage.removeItem(MAM_STORAGE_KEY); } catch {}
   try {
     // Si el modal rápido de evento (gol/tarjeta/cambio) estaba abierto
     // por encima, se limpia también (aunque al vaciar el innerHTML de
@@ -898,6 +909,11 @@ function renderBotoneraMinutoAMinuto() {
   const r = MAM_RESULTADO;
   const finalizado = r.estado === "finalizado" || MAM_EVENTOS.some((ev) => ev.tipo === "fin_partido");
   const anulado = r.estado === "anulado";
+  // Clase de fase en el propio contenedor de la botonera, para poder dar
+  // a cada momento del partido (previa / pausa / en juego / cierre) su
+  // propia disposición en CSS en vez de que las cuatro compartan el
+  // mismo layout centrado -pensado en realidad solo para "en juego"-.
+  cont.classList.remove("mam-fase-previa", "mam-fase-pausa", "mam-fase-vivo", "mam-fase-cierre");
   // Se usa el cronómetro (fuente de verdad en el servidor) para saber si
   // estamos en una pausa, en vez de mirar el último evento del array:
   // los eventos se ordenan por minuto (no por orden de inserción), así
@@ -915,37 +931,49 @@ function renderBotoneraMinutoAMinuto() {
   const esPausaHidratacion = enPausa && !(ultimaPausaDescanso && ultimaPausaDescanso.tipo === "descanso");
 
   if (anulado) {
+    cont.classList.add("mam-fase-cierre");
     cont.innerHTML = `<p class="mam-finalizado-aviso">Este partido está marcado como anulado.</p>`;
     return;
   }
 
   if (finalizado) {
+    cont.classList.add("mam-fase-cierre");
     const mvpTexto = r.mvp_jugador
       ? `MVP actual: <b>${escapeHtml(r.mvp_jugador)}</b> (${r.mvp_equipo === "local" ? escapeHtml(r.equipo_local) : escapeHtml(r.equipo_visitante)})`
       : "Todavía no se ha marcado ningún MVP.";
     cont.innerHTML = `
-      <p class="mam-finalizado-aviso">Este partido ya está marcado como finalizado. Si necesitas corregir algún gol o tarjeta, hazlo desde "Editar" en la lista de resultados.</p>
-      <button type="button" class="mam-boton mam-boton-grande mam-boton-tanda-penaltis" onclick="mamAbrirTandaPenaltis()">🥅⚽<br>Tanda de penaltis</button>
-      <p class="mam-finalizado-aviso" id="mamMvpTexto">${mvpTexto}</p>
-      <button type="button" class="mam-boton mam-boton-grande mam-boton-mvp" onclick="mamMarcarMvp()">🏅<br>${r.mvp_jugador ? "Cambiar MVP" : "Marcar MVP"}</button>
-      ${r.mvp_jugador ? `<button type="button" class="mam-boton mam-boton-anulado" onclick="mamQuitarMvp()">✕<br>Quitar MVP</button>` : ""}`;
+      <div class="mam-cierre-tarjeta">
+        <p class="mam-finalizado-aviso">Este partido ya está marcado como finalizado. Si necesitas corregir algún gol o tarjeta, hazlo desde "Editar" en la lista de resultados.</p>
+        <button type="button" class="mam-boton mam-boton-grande mam-boton-tanda-penaltis" onclick="mamAbrirTandaPenaltis()">🥅⚽<br>Tanda de penaltis</button>
+      </div>
+      <div class="mam-cierre-tarjeta">
+        <p class="mam-finalizado-aviso" id="mamMvpTexto">${mvpTexto}</p>
+        <button type="button" class="mam-boton mam-boton-grande mam-boton-mvp" onclick="mamMarcarMvp()">🏅<br>${r.mvp_jugador ? "Cambiar MVP" : "Marcar MVP"}</button>
+        ${r.mvp_jugador ? `<button type="button" class="mam-boton mam-boton-anulado" onclick="mamQuitarMvp()">✕<br>Quitar MVP</button>` : ""}
+      </div>`;
     return;
   }
 
   if (!r.inicio_cronometro_at) {
+    cont.classList.add("mam-fase-previa");
     cont.innerHTML = `
       <button type="button" class="mam-boton mam-boton-grande mam-boton-iniciar" onclick="mamIniciarPartido()">▶<br>Iniciar partido</button>
-      <button type="button" class="mam-boton mam-boton-retrasado" onclick="mamMarcarRetrasado()">🕒<br>Partido retrasado</button>
-      <button type="button" class="mam-boton mam-boton-anulado" onclick="mamMarcarAnulado()">🚫<br>Anular partido</button>`;
+      <div class="mam-previa-secundarios">
+        <button type="button" class="mam-boton mam-boton-retrasado" onclick="mamMarcarRetrasado()">🕒<br>Partido retrasado</button>
+        <button type="button" class="mam-boton mam-boton-anulado" onclick="mamMarcarAnulado()">🚫<br>Anular partido</button>
+      </div>`;
     return;
   }
 
   if (enPausa) {
+    cont.classList.add("mam-fase-pausa");
     cont.innerHTML = esPausaHidratacion
       ? `<button type="button" class="mam-boton mam-boton-grande mam-boton-iniciar" onclick="mamReanudarTrasHidratacion()">▶<br>Se reanuda el partido</button>`
       : `<button type="button" class="mam-boton mam-boton-grande mam-boton-iniciar" onclick="mamComenzarSegundaParte()">▶<br>Comienza la 2ª parte</button>`;
     return;
   }
+
+  cont.classList.add("mam-fase-vivo");
 
   const local = escapeHtml(r.equipo_local);
   const visitante = escapeHtml(r.equipo_visitante);
@@ -1323,7 +1351,7 @@ function renderTandaPenaltisMAM() {
   // sesión anterior en OTRA pestaña, que podría ser un partido distinto.
   if (new URLSearchParams(location.search).get("minuto_a_minuto")) return;
   let resultadoId;
-  try { resultadoId = localStorage.getItem(MAM_STORAGE_KEY); } catch { return; }
+  try { resultadoId = sessionStorage.getItem(MAM_STORAGE_KEY); } catch { return; }
   if (!resultadoId) return;
   const intentarAbrir = () => {
     if (typeof apiFetch !== "function" || !document.getElementById("panelMinutoAMinuto")) {

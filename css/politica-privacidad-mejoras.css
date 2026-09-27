@@ -1,0 +1,101 @@
+/* =========================================================================
+   Mejoras de estilo y responsive — politica-privacidad.html
+   Hoja adicional cargada tras style.css, limitada a
+   body[data-page="politica-privacidad"]. Da jerarquía visual a un
+   documento legal largo con 8 secciones numeradas: numeración destacada,
+   tarjeta para la lista de finalidades, y tipografía de lectura afinada.
+   No cambia HTML ni JS (salvo el <link> y el atributo data-page).
+   ========================================================================= */
+
+body[data-page="politica-privacidad"] .pagina-info{
+  max-width: 740px;
+}
+
+body[data-page="politica-privacidad"] .pagina-info-cuerpo{
+  font-size: 1rem;
+  line-height: 1.72;
+}
+
+/* ---------- Secciones numeradas (1. Responsable... 8. Cambios...) ---------- */
+/* El número de cada sección va envuelto en <span class="num-seccion"> en
+   el HTML; aquí se convierte en una píldora circular en vez de texto
+   plano seguido de un punto. */
+body[data-page="politica-privacidad"] .pagina-info-cuerpo h3{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 34px;
+  padding-left: 0;
+  border-left: none;
+  font-size: 1rem;
+}
+body[data-page="politica-privacidad"] .pagina-info-cuerpo h3:first-of-type{
+  margin-top: 26px;
+}
+body[data-page="politica-privacidad"] .pagina-info-cuerpo .num-seccion{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--rojo);
+  color: #fff;
+  font-family: var(--font-tit);
+  font-size: .78rem;
+}
+
+/* ---------- Lista de finalidades (art. 2) como tarjetas ---------- */
+body[data-page="politica-privacidad"] .pagina-info-cuerpo .lista-valores{
+  list-style: none;
+  padding-left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+body[data-page="politica-privacidad"] .pagina-info-cuerpo .lista-valores li{
+  background: var(--fondo-alt);
+  border: 1px solid var(--borde);
+  border-left: 3px solid var(--celeste);
+  border-radius: var(--radio);
+  padding: 12px 16px;
+  margin-bottom: 0;
+  font-size: .94rem;
+  line-height: 1.6;
+}
+body[data-page="politica-privacidad"] .pagina-info-cuerpo .lista-valores strong{
+  color: var(--marino-texto);
+}
+
+body[data-page="politica-privacidad"] .pagina-info-cuerpo a{
+  font-weight: 600;
+  text-underline-offset: 2px;
+}
+body[data-page="politica-privacidad"] .pagina-info-cuerpo a:hover{
+  color: var(--rojo);
+}
+body[data-page="politica-privacidad"] .pagina-info-cuerpo a:focus-visible{
+  outline: 2px solid var(--celeste);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* =========================================================================
+   RESPONSIVE
+   ========================================================================= */
+
+@media (max-width: 600px){
+  body[data-page="politica-privacidad"] .pagina-info-cuerpo{
+    font-size: .94rem;
+  }
+  body[data-page="politica-privacidad"] .pagina-info-cuerpo .num-seccion{
+    width: 22px;
+    height: 22px;
+    font-size: .7rem;
+  }
+  body[data-page="politica-privacidad"] .pagina-info-cuerpo .lista-valores li{
+    padding: 10px 12px;
+    font-size: .88rem;
+  }
+}

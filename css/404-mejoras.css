@@ -1,0 +1,118 @@
+/* =========================================================================
+   Mejoras de estilo y responsive — 404.html
+   Hoja adicional cargada tras style.css, limitada a body[data-page="404"]
+   (la clase .pagina-404 ya es exclusiva de esta página, pero se mantiene
+   el mismo criterio de scoping que en el resto de mejoras del sitio).
+   ========================================================================= */
+
+body[data-page="404"] .pagina-404{
+  min-height: calc(100vh - 320px);
+  justify-content: center;
+  padding: 60px 20px 80px;
+}
+
+/* Balón con una animación sutil de flotación, para que la página se sienta
+   menos estática sin resultar molesta. */
+body[data-page="404"] .balon-404{
+  animation: balon404-flotar 3.2s ease-in-out infinite;
+}
+@keyframes balon404-flotar{
+  0%, 100%{ transform: translateY(0) rotate(0deg); }
+  50%{ transform: translateY(-8px) rotate(6deg); }
+}
+
+body[data-page="404"] .codigo-404{
+  font-size: 7.5rem;
+}
+
+body[data-page="404"] h1{
+  margin-top: -4px;
+}
+
+body[data-page="404"] .pagina-404 p{
+  line-height: 1.6;
+}
+
+/* ---------- Botones: estados de foco visibles ---------- */
+body[data-page="404"] .btn-primario:focus-visible,
+body[data-page="404"] .btn-secundario:focus-visible{
+  outline: 2px solid var(--celeste);
+  outline-offset: 3px;
+}
+
+/* ---------- Sugerencias ---------- */
+body[data-page="404"] .sugerencias{
+  border-top-color: var(--borde);
+}
+body[data-page="404"] .sugerencias h4{
+  color: var(--texto-suave);
+}
+body[data-page="404"] .sugerencias a{
+  background: var(--fondo-alt);
+  color: var(--marino-texto);
+  border: 1px solid var(--borde);
+  font-weight: 500;
+}
+body[data-page="404"] .sugerencias a:hover{
+  background: var(--marino);
+  color: #fff;
+  border-color: var(--marino);
+}
+body[data-page="404"] .sugerencias a:focus-visible{
+  outline: 2px solid var(--celeste);
+  outline-offset: 2px;
+}
+
+/* =========================================================================
+   RESPONSIVE
+   ========================================================================= */
+
+@media (max-width: 640px){
+  body[data-page="404"] .pagina-404{
+    padding: 44px 16px 60px;
+    gap: 14px;
+    min-height: calc(100vh - 260px);
+  }
+  body[data-page="404"] .codigo-404{
+    font-size: 3.6rem;
+  }
+  body[data-page="404"] .balon-404{
+    width: 60px;
+    height: 60px;
+  }
+  body[data-page="404"] h1{
+    font-size: 1.25rem;
+  }
+  body[data-page="404"] .pagina-404 p{
+    font-size: .92rem;
+  }
+  body[data-page="404"] .acciones-404{
+    flex-direction: column;
+    width: 100%;
+    max-width: 280px;
+  }
+  body[data-page="404"] .btn-primario,
+  body[data-page="404"] .btn-secundario{
+    width: 100%;
+    text-align: center;
+  }
+  body[data-page="404"] .sugerencias ul{
+    gap: 8px;
+  }
+  body[data-page="404"] .sugerencias a{
+    font-size: .8rem;
+    padding: 6px 12px;
+  }
+}
+
+@media (max-width: 360px){
+  body[data-page="404"] .codigo-404{
+    font-size: 2.9rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce){
+  body[data-page="404"] .balon-404{
+    animation: none;
+  }
+}

@@ -1,0 +1,146 @@
+/* =========================================================================
+   Mejoras de estilo y responsive — linea-editorial.html
+   Hoja adicional cargada tras style.css, limitada a
+   body[data-page="linea-editorial"]. Solo retoca presentación: tipografía
+   de lectura larga, jerarquía de encabezados, listado de equipos y
+   comportamiento responsive. No cambia HTML ni JS.
+   ========================================================================= */
+
+body[data-page="linea-editorial"] .pagina-info{
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+/* ---------- Cabecera ---------- */
+body[data-page="linea-editorial"] .section-title{
+  margin-bottom: 6px;
+}
+body[data-page="linea-editorial"] .section-subtitle{
+  margin: 0 0 32px 18px;
+}
+
+/* ---------- Tipografía de lectura ---------- */
+body[data-page="linea-editorial"] .pagina-info-cuerpo{
+  font-size: 1.02rem;
+  line-height: 1.75;
+}
+body[data-page="linea-editorial"] .pagina-info-cuerpo p{
+  margin-bottom: 18px;
+}
+
+/* Primer párrafo (declaración de intenciones) destacado con una entradilla
+   ligeramente mayor, como en una editorial de periódico. */
+body[data-page="linea-editorial"] .pagina-info-cuerpo > p:first-of-type{
+  font-size: 1.12rem;
+  line-height: 1.7;
+  color: var(--marino-texto);
+  font-weight: 500;
+}
+
+body[data-page="linea-editorial"] .pagina-info-cuerpo h3{
+  margin-top: 38px;
+  padding-left: 12px;
+  border-left: 4px solid var(--rojo);
+}
+body[data-page="linea-editorial"] .pagina-info-cuerpo h3:first-of-type{
+  margin-top: 30px;
+}
+
+/* h4 no tenía estilo propio y heredaba la tipografía por defecto del
+   navegador; se alinea con la identidad visual del resto del sitio. */
+body[data-page="linea-editorial"] .pagina-info-cuerpo h4{
+  font-family: var(--font-tit);
+  text-transform: uppercase;
+  font-size: .82rem;
+  letter-spacing: .5px;
+  color: var(--texto-suave);
+  font-weight: 700;
+  margin: 22px 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+body[data-page="linea-editorial"] .pagina-info-cuerpo h4::before{
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--celeste);
+  flex-shrink: 0;
+}
+
+/* Párrafos de listado de equipos: se muestran como tarjeta suave en vez de
+   texto corrido, más fáciles de escanear visualmente. */
+body[data-page="linea-editorial"] .pagina-info-cuerpo h4 + p{
+  background: var(--fondo-alt);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  padding: 14px 16px;
+  font-size: .92rem;
+  line-height: 1.65;
+  color: var(--texto-suave);
+}
+body[data-page="linea-editorial"] .pagina-info-cuerpo h4 + p strong{
+  display: block;
+  color: var(--marino-texto);
+  font-family: var(--font-tit);
+  text-transform: uppercase;
+  font-size: .74rem;
+  letter-spacing: .4px;
+  margin-bottom: 6px;
+}
+
+body[data-page="linea-editorial"] .pagina-info-cuerpo a{
+  font-weight: 600;
+  text-underline-offset: 2px;
+  transition: color .15s;
+}
+body[data-page="linea-editorial"] .pagina-info-cuerpo a:hover{
+  color: var(--rojo);
+}
+body[data-page="linea-editorial"] .pagina-info-cuerpo a:focus-visible{
+  outline: 2px solid var(--celeste);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Último párrafo (contacto) diferenciado como cierre del documento */
+body[data-page="linea-editorial"] .pagina-info-cuerpo > p:last-of-type{
+  margin-top: 8px;
+  padding-top: 18px;
+  border-top: 1px solid var(--borde);
+  color: var(--texto-suave);
+  font-size: .92rem;
+}
+
+/* =========================================================================
+   RESPONSIVE
+   ========================================================================= */
+
+@media (max-width: 720px){
+  body[data-page="linea-editorial"] .pagina-info-cuerpo{
+    font-size: .96rem;
+    line-height: 1.68;
+  }
+  body[data-page="linea-editorial"] .pagina-info-cuerpo > p:first-of-type{
+    font-size: 1.02rem;
+  }
+}
+
+@media (max-width: 600px){
+  body[data-page="linea-editorial"] .section-title{
+    font-size: 1.15rem;
+  }
+  body[data-page="linea-editorial"] .section-subtitle{
+    margin-left: 0;
+    font-size: .76rem;
+  }
+  body[data-page="linea-editorial"] .pagina-info-cuerpo h3{
+    margin-top: 28px;
+    font-size: .86rem;
+  }
+  body[data-page="linea-editorial"] .pagina-info-cuerpo h4 + p{
+    padding: 12px 14px;
+    font-size: .86rem;
+  }
+}

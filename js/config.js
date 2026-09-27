@@ -690,15 +690,53 @@ function fichaTecnicaArticuloHTML(ficha) {
 // noticia esto solo importa mientras el partido puede seguir cambiando
 // (en_juego); una vez "finalizado" el resultado ya no cambia, así que
 // también se aplican para dejar fijado el once final.
+// Debajo de esa fila de pestañas (si hay alguna) se añade el cartel de
+// invitación a la galería del partido (cartelGaleriaPartidoHTML), pero
+// solo cuando ya hay fotos subidas: va fuera de la fila porque, a
+// diferencia de esos dos botones que despliegan contenido en la misma
+// página, es una tarjeta más grande que enlaza a otra página (galeria.html).
 function togglesArticuloHTML(r) {
   const alineaciones = alineacionesConCambiosAplicados(r.alineaciones, r.eventos, r.estado);
   const { boton: botonAlineaciones, panel: panelAlineaciones } = alineacionesBotonYPanelHTML(alineaciones);
   const { boton: botonEventos, panel: panelEventos } = eventosArticuloBotonYPanelHTML(r);
-  if (!botonAlineaciones && !botonEventos) return "";
+  const filaBotones = (botonAlineaciones || botonEventos)
+    ? `<div class="toggles-articulo-fila">${botonAlineaciones}${botonEventos}</div>`
+    : "";
   return `
-    <div class="toggles-articulo-fila">${botonAlineaciones}${botonEventos}</div>
+    ${filaBotones}
     ${panelAlineaciones}
-    ${panelEventos}`;
+    ${panelEventos}
+    ${cartelGaleriaPartidoHTML(r)}`;
+}
+
+// Cartel de invitación a la galería de fotos del partido: todas las
+// subidas por el/los fotógrafo/s, no solo las que el redactor haya
+// metido a mano en el cuerpo de la crónica. Solo se pinta cuando ya hay
+// fotos de verdad (r.galeria_disponible); si el partido tiene resultado
+// vinculado pero el fotógrafo todavía no ha subido nada, no se muestra
+// nada, en vez de invitar a una galería vacía.
+// Es un enlace normal (lleva a galeria.html), con su propio diseño tipo
+// "tarjeta" -ya no la píldora compacta de Alineaciones/Eventos- para que
+// destaque de verdad dentro de la crónica.
+function cartelGaleriaPartidoHTML(r) {
+  if (!r.url_galeria || !r.galeria_disponible) return "";
+  const fondoUrl = r.foto_portada_galeria ? cloudinaryOptimizada(r.foto_portada_galeria, 900) : "";
+  const estiloFondo = fondoUrl ? ` style="background-image:url('${escapeHtml(fondoUrl)}');"` : "";
+  return `
+    <a href="${escapeHtml(r.url_galeria)}" class="cartel-galeria-articulo con-foto"${estiloFondo}>
+      <span class="cartel-galeria-velo"></span>
+      <span class="cartel-galeria-icono" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6.5" width="19" height="14" rx="2.5"/><circle cx="12" cy="13.5" r="3.6"/><path d="M8.5 6.5l1.3-2.3a1 1 0 0 1 .87-.5h2.66a1 1 0 0 1 .87.5l1.3 2.3"/></svg>
+      </span>
+      <span class="cartel-galeria-texto">
+        <span class="cartel-galeria-titulo">Galería de fotos del partido</span>
+        <span class="cartel-galeria-desc">Todas las fotos de este encuentro, en la galería completa</span>
+      </span>
+      <span class="cartel-galeria-boton">
+        <span>Ver galería completa</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </span>
+    </a>`;
 }
 
 // Wrapper simple para sitios que solo necesitan el bloque de
