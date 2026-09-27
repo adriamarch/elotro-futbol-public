@@ -914,6 +914,14 @@
     if (!estado.activaId && !estado.splitIds && !estado.gridIds && estado.pestanas.length) {
       estado.activaId = estado.pestanas[estado.pestanas.length - 1].id;
     }
+    // Quitar también el nodo físico del iframe (y el slot que lo
+    // envuelve, si queda alguno en el limbo) para que no se quede
+    // suelto en el DOM ocupando memoria/red tras cerrar la pestaña.
+    const iframeCerrado = iframesVivos[id];
+    if (iframeCerrado) {
+      const slotCerrado = iframeCerrado.closest(".ws-panel-slot");
+      (slotCerrado || iframeCerrado).remove();
+    }
     delete iframesVivos[id];
     guardarEstado();
     render();
@@ -1237,12 +1245,48 @@
     catch (e) { return window.innerWidth <= 760; }
   };
 
+  // Contenedor oculto donde se "aparcan" temporalmente los slots que
+  // contienen un iframe vivo mientras se reconstruye "area", en vez de
+  // borrarlos con innerHTML="". Un innerHTML="" sobre un padre destruye
+  // el nodo del iframe aunque JS siga teniendo una referencia a él en
+  // iframesVivos: el navegador lo desconecta del documento y descarga su
+  // contentWindow, así que al volver a insertarlo (appendChild) es a
+  // efectos prácticos un iframe nuevo que recarga panel.html desde su
+  // ?ir= original -- perdiendo cualquier navegación hecha dentro (por
+  // eso una pestaña volvía siempre a la subsección con la que se abrió
+  // al pasar por otra pestaña del workspace y regresar). Aparcar antes
+  // de vaciar evita ese ciclo de desconexión/reconexión.
+  let limbo = document.getElementById("wsLimbo");
+  if (!limbo) {
+    limbo = document.createElement("div");
+    limbo.id = "wsLimbo";
+    limbo.style.cssText = "position:absolute;width:0;height:0;overflow:hidden;visibility:hidden;pointer-events:none;";
+    document.body.appendChild(limbo);
+  }
+  function aparcarSlotsVivos(){
+    area.querySelectorAll(".ws-panel-slot").forEach(slot => limbo.appendChild(slot));
+  }
+  // Tras reconstruir "area", cada slot de crearSlot() que reutilizó un
+  // iframe ya se lo llevó consigo (slot.appendChild lo mueve). Lo que
+  // queda en limbo son: (a) el envoltorio vacío que dejó atrás ese
+  // iframe reutilizado -- se puede tirar sin más --, y (b) slots
+  // completos de pestañas abiertas que no están visibles en este render
+  // (caso normal: una sola pestaña activa y hay otras de fondo) -- esos
+  // NO se tocan, para no repetir el mismo problema con ellos.
+  function limpiarLimbo(){
+    limbo.querySelectorAll(".ws-panel-slot").forEach(slot => {
+      if (!slot.querySelector("iframe")) slot.remove();
+    });
+  }
+
   function render(){
     renderTabbar();
     document.getElementById("btnGirar").style.display = estado.splitIds ? "" : "none";
     document.getElementById("btnDividir").classList.toggle("activo", !!estado.splitIds);
     document.getElementById("btnGrid4").classList.toggle("activo", !!estado.gridIds);
     document.getElementById("btnDividir").querySelector(".txt-btn").textContent = estado.splitIds ? "Cerrar split" : "Dividir";
+
+    aparcarSlotsVivos();
 
     if (estado.gridIds) {
       area.className = "ws-area grid4";
@@ -1252,6 +1296,7 @@
         area.appendChild(id ? crearSlot(id, true, idx) : crearHuecoVacioGrid(idx));
       });
       if (ES_MOVIL()) marcarSlotVisibleMovil(estado.gridIds.find(Boolean));
+      limpiarLimbo();
       return;
     }
 
@@ -1270,6 +1315,7 @@
       area.appendChild(slotB);
       habilitarArrastreDivisor(divisor, slotA, slotB);
       if (ES_MOVIL()) marcarSlotVisibleMovil(idA);
+      limpiarLimbo();
       return;
     }
 
@@ -1277,6 +1323,7 @@
 
     if (estado.activaId) {
       area.appendChild(crearSlot(estado.activaId, false));
+      limpiarLimbo();
       // Caso de una sola pestaña sin split/grid: en pantallas estrechas
       // el CSS oculta con display:none!important cualquier
       // .ws-panel-slot que no lleve esta clase (ver @media max-width:
@@ -1287,6 +1334,7 @@
       return;
     }
 
+    limpiarLimbo();
     mostrarBienvenida();
   }
 
