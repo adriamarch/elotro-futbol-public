@@ -94,7 +94,7 @@ if (USER) {
   // llegado hasta aquí (el enlace ya se le oculta en admin/panel.html),
   // pero por si acaso entra con la URL directa se le devuelve al panel.
   if (USER.rol !== "admin") {
-    location.href = "admin/workspace.html";
+    location.href = "admin/panel.html";
   }
 
   // ---------- Cierre de sesión por inactividad (15 minutos) ----------
@@ -133,7 +133,7 @@ function irAAjustesCuenta(seccion) {
   // Los "Ajustes de cuenta" viven como pestaña del panel de redacción,
   // no de esta página; se manda allí con el destino en la URL para que
   // admin.js pueda abrir directamente la subpestaña correspondiente.
-  location.href = `admin/workspace.html?ajustes=${encodeURIComponent(seccion)}`;
+  location.href = `admin/panel.html?ajustes=${encodeURIComponent(seccion)}`;
 }
 
 // ---------- Notificaciones (contenido subido / crónicas publicadas) ----------
@@ -248,7 +248,7 @@ function irANotificacionDesdeAnaliticas(n) {
     window.open(urlNoticia(n.categoria, n.slug), "_blank");
     return;
   }
-  location.href = "admin/workspace.html";
+  location.href = "admin/panel.html";
 }
 
 function marcarNotificacionesVistas() {

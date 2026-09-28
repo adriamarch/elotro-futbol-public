@@ -768,6 +768,34 @@ export default {
       return env.ASSETS.fetch(request);
     }
 
+    // --- "/" (portada): igual tratamiento que /widgets.html
+    // y /admin/panel.html de aquí abajo, y por el mismo motivo -- Cloudflare
+    // Pages ignora _headers en cualquier ruta que pase por este Worker, así
+    // que la CSP global de _headers (frame-ancestors 'none') es la que
+    // siempre llegaba al navegador para la portada, JAMÁS la excepción.
+    // widgets.html embebe la portada en vivo dentro de un <iframe> como
+    // vista previa de los widgets (ver más abajo, frame-src ya incluye
+    // "elotrofutbol.media"), pero frame-src solo gobierna lo que la página
+    // que EMBEBE tiene permitido cargar en su iframe -- quien decide si esa
+    // página puede SER embebida es su propia cabecera frame-ancestors. Con
+    // "none" en la portada, el navegador bloqueaba el framing igualmente
+    // (ERR_BLOCKED_BY_RESPONSE / "violates ... frame-ancestors 'none'"), sin
+    // importar lo permisivo que fuera widgets.html. Aquí se relaja SOLO
+    // para la portada, a 'self' (se deja embeber por el propio dominio,
+    // nunca por terceros), igual que ya se hace con /admin/panel.html.
+    if ((path === "/" || path === "/index.html") && request.method === "GET") {
+      const respuesta = await env.ASSETS.fetch(request);
+      const nuevas = new Headers(respuesta.headers);
+      nuevas.delete("Content-Security-Policy");
+      nuevas.delete("X-Frame-Options");
+      nuevas.set(
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://accounts.google.com https://alcdn.msauth.net https://platform.twitter.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https://res.cloudinary.com; connect-src 'self' https://api.elotrofutbol.media https://elotro-futbol-api-production.up.railway.app https://accounts.google.com https://login.microsoftonline.com https://es.wikipedia.org; frame-src https://accounts.google.com https://platform.twitter.com https://syndication.twitter.com; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'; upgrade-insecure-requests"
+      );
+      nuevas.set("X-Frame-Options", "SAMEORIGIN");
+      return new Response(respuesta.body, { status: respuesta.status, headers: nuevas });
+    }
+
     // --- /widgets.html: cabeceras de seguridad puestas A MANO aquí.
     // Cloudflare Pages IGNORA por completo el archivo _headers en
     // cualquier ruta que pase por este _worker.js (documentado: "Custom
@@ -815,49 +843,9 @@ export default {
       return new Response(respuesta.body, { status: respuesta.status, headers: nuevas });
     }
 
-    // --- /workspace.html: mismo problema y mismo motivo que
-    // /widgets.html justo arriba (public/_headers no se aplica en
-    // rutas que pasan por este Worker), pero aquí el iframe que se
-    // auto-embebe es panel.html dentro del propio workspace (una
-    // pestaña de trabajo por panel abierto), no una vista previa de
-    // widget. Sin esto, workspace.html salía por env.ASSETS.fetch()
-    // más abajo con la CSP "global" de _headers (sin el propio dominio
-    // en frame-src) y el navegador bloqueaba esos iframes con
-    // ERR_BLOCKED_BY_CSP.
-    if ((path === "/workspace.html" || path === "/workspace") && request.method === "GET") {
-      const respuesta = await env.ASSETS.fetch(request);
-      const nuevas = new Headers(respuesta.headers);
-      nuevas.delete("Content-Security-Policy");
-      nuevas.set(
-        "Content-Security-Policy",
-        "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://accounts.google.com https://alcdn.msauth.net https://platform.twitter.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://api.elotrofutbol.media https://elotro-futbol-api-production.up.railway.app https://accounts.google.com https://login.microsoftonline.com; frame-src 'self' https://accounts.google.com https://platform.twitter.com https://syndication.twitter.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests"
-      );
-      return new Response(respuesta.body, { status: respuesta.status, headers: nuevas });
-    }
-
-    // --- /admin/workspace.html y /admin/panel.html: existe TAMBIÉN una
-    // copia real del workspace y del panel bajo /admin/ en el servidor
-    // (descubierto porque el enlace "Abrir workspace" de /panel.html
-    // llevaba en producción a esta copia, no a /workspace.html en la
-    // raíz). Su iframe.src relativo ("panel.html") sí resuelve bien
-    // AQUÍ, a /admin/panel.html -- pero como ninguna regla de arriba
-    // cubría el prefijo /admin/, ambas rutas seguían saliendo con la
-    // CSP/X-Frame-Options restrictivas de "/*" y el navegador bloqueaba
-    // el framing. Mismo tratamiento que /workspace.html y /widgets.html
-    // arriba, con frame-ancestors 'self' para panel.html (que es el
-    // que se deja embeber) y frame-src 'self' para workspace.html (que
-    // es el que embebe).
-    if ((path === "/admin/workspace.html" || path === "/admin/workspace") && request.method === "GET") {
-      const respuesta = await env.ASSETS.fetch(request);
-      const nuevas = new Headers(respuesta.headers);
-      nuevas.delete("Content-Security-Policy");
-      nuevas.set(
-        "Content-Security-Policy",
-        "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://accounts.google.com https://alcdn.msauth.net https://platform.twitter.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://api.elotrofutbol.media https://elotro-futbol-api-production.up.railway.app https://accounts.google.com https://login.microsoftonline.com; frame-src 'self' https://accounts.google.com https://platform.twitter.com https://syndication.twitter.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests"
-      );
-      return new Response(respuesta.body, { status: respuesta.status, headers: nuevas });
-    }
-
+    // --- /admin/panel.html: su CSP/X-Frame-Options se fijan aquí a mano
+    // porque Cloudflare Pages ignora _headers en rutas que pasan por este
+    // Worker (ver /widgets.html más arriba).
     if ((path === "/admin/panel.html" || path === "/admin/panel") && request.method === "GET") {
       const respuesta = await env.ASSETS.fetch(request);
       const nuevas = new Headers(respuesta.headers);

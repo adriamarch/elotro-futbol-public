@@ -2704,6 +2704,23 @@ body.mam-standalone .wrap > .panel{display:none;}
 .mam-fila-jugador{display:flex;gap:10px;}
 .mam-fila-jugador > div{flex:1;}
 .mam-fila-jugador > div:first-child{flex:0 0 80px;}
+/* Revisión VAR: los desplegables de equipo/jugada/estado ocupan el ancho
+   completo de su columna (la primera columna de .mam-fila-jugador está
+   limitada a 80px porque en el resto de filas solo lleva el dorsal). */
+#mamFormEvento select{
+  width:100%;padding:9px 12px;border:1.5px solid var(--borde);border-radius:8px;font-size:.9rem;
+  background:var(--tarjeta,#fff);color:var(--marino,#0c1b2e);
+  transition:border-color .15s ease, box-shadow .15s ease;
+}
+#mamFormEvento select:focus{
+  outline:none;border-color:var(--celeste,#5bb8e8);
+  box-shadow:0 0 0 3px rgba(91,184,232,.18);
+}
+#mamFormEvento #mamFilaVar > div:first-child,
+#mamFormEvento #mamFilaVarDecision > div:first-child{flex:1 1 0;}
+[data-theme="dark"] #mamFormEvento select{
+  background:var(--panel-fondo-suave);border-color:var(--borde);color:var(--texto);
+}
 .mam-fila-checkbox{margin-top:14px;padding:10px 12px;background:rgba(219,68,68,.08);border:1px solid rgba(219,68,68,.3);border-radius:8px;}
 .mam-checkbox-label{display:flex !important;align-items:flex-start;gap:8px;font-size:.85rem;font-weight:600;margin:0 !important;color:var(--marino,#0c1b2e);cursor:pointer;}
 .mam-checkbox-label input[type="checkbox"]{width:auto;margin-top:2px;flex-shrink:0;cursor:pointer;}

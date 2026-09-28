@@ -162,7 +162,7 @@ let INTERVALO_AUTOREFRESCO_PARTIDOS = null;
 function firmaEventos(eventos) {
   if (!eventos || !eventos.length) return "0";
   return eventos.length + ":" + eventos
-    .map(e => [e.id, e.minuto, e.minuto_extra, e.tipo, e.equipo, e.jugador, e.jugador_sale, e.jugador_asistencia, e.bajar_gol, e.orden].join("|"))
+    .map(e => [e.id, e.minuto, e.minuto_extra, e.tipo, e.equipo, e.jugador, e.jugador_sale, e.jugador_asistencia, e.bajar_gol, e.var_motivo, e.var_decision, e.orden].join("|"))
     .join(",");
 }
 

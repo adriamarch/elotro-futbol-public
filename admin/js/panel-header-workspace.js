@@ -22,7 +22,13 @@
 // El guard "de verdad" (sin sesión -> login.html) ya lo hace el propio
 // workspace.html antes de pintar nada; aquí solo se lee lo que ya se
 // sabe que existe.
-const TOKEN = localStorage.getItem("eof_token");
+// TOKEN_ACTUAL() en vez de una constante congelada al cargar el script:
+// si admin.js renueva el token en localStorage (p.ej. al guardar "Mis
+// datos") esta cabecera, cargada aparte, seguía mandando el token viejo
+// y acababa recibiendo 401 en cascada. Ver misma corrección en admin.js.
+function TOKEN_ACTUAL() {
+  return localStorage.getItem("eof_token");
+}
 const USER = JSON.parse(localStorage.getItem("eof_user") || "null");
 // USER se expone también en window (además de como variable local) para
 // que otros scripts cargados después, como el bloque de arranque de
@@ -33,7 +39,7 @@ const NOTIF_CLAVE = `eof_notif_visto_${USER ? USER.username : ""}`;
 let ultimaVisitaNotifServidor = null;
 
 function authHeaders() {
-  return { "Content-Type": "application/json", Authorization: `Bearer ${TOKEN}` };
+  return { "Content-Type": "application/json", Authorization: `Bearer ${TOKEN_ACTUAL()}` };
 }
 
 // Misma apiFetch() de admin.js: usa el motor de failover de config.js

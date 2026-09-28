@@ -2,30 +2,6 @@
 <html lang="es">
 <head>
 <meta name="color-scheme" content="light dark">
-<script>
-  // ---------------------------------------------------------------------
-  // El workspace es ahora el sistema principal: si alguien llega aquí
-  // directamente (marcador guardado, enlace antiguo, escribir la URL a
-  // mano...) como página de nivel superior, se le manda sin preguntar a
-  // workspace.html, que es quien decide qué abrir según su rol y sesión
-  // (ver el bloque de arranque al final de workspace.html). Nada de
-  // panel "secundario": esto YA NO es una opción entre panel y
-  // workspace, es la única entrada.
-  //
-  // OJO: panel.html se sigue usando tal cual dentro de los iframes del
-  // propio workspace (ver workspace.html, iframe.src = "panel.html...")
-  // -- ahí NO hay que redirigir, o cada pestaña abierta volvería a crear
-  // un workspace nuevo dentro de sí misma sin parar. window.self !==
-  // window.top es la forma estándar de saber si esta página vive dentro
-  // de un iframe.
-  (function () {
-    if (window.self !== window.top) return; // vive en un iframe del workspace: no redirigir
-    try {
-      const qs = location.search; // conserva ?ir=, ?ajustes=, ?minuto_a_minuto=, etc.
-      location.replace("workspace.html" + qs);
-    } catch (e) {}
-  })();
-</script>
 <script src="/js/tema.js"></script>
 <script src="/admin/js/rol-inicial.js?v=4"></script>
 <meta charset="UTF-8">
@@ -92,7 +68,7 @@
           <a href="javascript:void(0)" onclick="irAAjustesCuenta('password')">Cambiar contraseña</a>
           <a href="javascript:void(0)" onclick="irAAjustesCuenta('progreso')">Mi progreso</a>
           <a href="javascript:void(0)" onclick="irAAjustesCuenta('sesiones')">Dispositivos</a>
-          <a href="/index.html" target="_blank" rel="noopener">Ver la web</a>
+          <a href="/index.html" rel="noopener">Ver la web</a>
           <a href="/panel-analiticas.html" id="enlaceAnaliticas" target="_blank" rel="noopener">Analíticas</a>
           <button type="button" onclick="logout()">Cerrar sesión</button>
         </div>
@@ -2029,11 +2005,22 @@
     <p class="ayuda-editor" style="margin:0;">
       Como redactor, tus noticias se guardan como borrador hasta que las revise un administrador. Si es urgente, introduce tu PIN de 4 dígitos de "Última hora" para publicarla directamente.
     </p>
+    <!-- Antes esto estaba envuelto en un <form> para que Chrome dejara de
+         avisar "Password field is not contained in a form". Se revirtió:
+         panel.html ya tiene otros <form> reales (formPassword, etc.) en el
+         mismo documento, y anidar/yuxtaponer otro <form> aquí disparaba un
+         segundo aviso distinto ("Multiple forms should be contained in
+         their own form elements"), sin necesidad real -- estos 4 inputs
+         nunca se envían como formulario, se leen por JS al pulsar
+         "Publicar ahora" (btnConfirmarPinUltimaHora, type="button"). El
+         aviso original es solo informativo (no rompe nada ni afecta a
+         usuarios reales) y cambiar de un aviso inofensivo a otro no
+         merece la pena: se deja como <div> simple. -->
     <div class="pin-modal-inputs">
-      <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" id="pin_d1">
-      <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" id="pin_d2">
-      <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" id="pin_d3">
-      <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" id="pin_d4">
+      <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" id="pin_d1" autocomplete="off">
+      <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" id="pin_d2" autocomplete="off">
+      <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" id="pin_d3" autocomplete="off">
+      <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" id="pin_d4" autocomplete="off">
     </div>
     <p id="errPinUltimaHora" style="display:none;color:var(--rojo, #c00);margin:6px 0 0;font-size:.85rem;"></p>
     <button type="button" class="btn-primari" id="btnConfirmarPinUltimaHora" style="width:100%;margin-top:16px;">Publicar ahora</button>

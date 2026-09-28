@@ -128,11 +128,11 @@ function accesoHeaderHTML() {
             <span>${user.rol === "admin" ? "Administrador" : (user.rol === "fotografo" ? "Fotógrafo" : "Colaborador")}</span>
           </div>
         </div>
-        <a href="${baseHref()}admin/workspace.html?ajustes=perfil">Editar perfil</a>
-        <a href="${baseHref()}admin/workspace.html?ajustes=password">Cambiar contraseña</a>
-        <a href="${baseHref()}admin/workspace.html?ajustes=progreso">Mi progreso</a>
-        <a href="${baseHref()}admin/workspace.html?ajustes=sesiones">Dispositivos</a>
-        <a href="${baseHref()}admin/workspace.html">Ir al panel</a>
+        <a href="${baseHref()}admin/panel.html?ajustes=perfil">Editar perfil</a>
+        <a href="${baseHref()}admin/panel.html?ajustes=password">Cambiar contraseña</a>
+        <a href="${baseHref()}admin/panel.html?ajustes=progreso">Mi progreso</a>
+        <a href="${baseHref()}admin/panel.html?ajustes=sesiones">Dispositivos</a>
+        <a href="${baseHref()}admin/panel.html">Ir al panel</a>
         <button type="button" id="btnCerrarSesion">Cerrar sesión</button>
       </div>
     </div>`;
@@ -390,7 +390,7 @@ function renderFooter() {
               <li><a href="${baseHref()}calendario.html">Calendario</a></li>
               <li><a href="${baseHref()}clasificacion.html">Clasificación</a></li>
               <li><a href="${baseHref()}predicciones.html">Porras</a></li>
-              <li><a href="${baseHref()}galerias.html">Galería de fotos</a></li>
+              <li><a href="${baseHref()}galerias.html">Galería de contenido</a></li>
               <li><a href="${baseHref()}buscar.html">Buscar noticias</a></li>
             </ul>
           </div>

@@ -82,6 +82,27 @@ const MAM_ETIQUETAS = {
   otro: "Otra incidencia",
 };
 
+// Revisión VAR: qué jugada se revisa y en qué punto está la revisión.
+// Los valores (claves) se guardan tal cual en match_events.var_motivo /
+// var_decision y deben coincidir con VAR_MOTIVOS_VALIDOS /
+// VAR_DECISIONES_VALIDAS del Worker y con las etiquetas públicas de
+// config.js (VAR_MOTIVOS_PUBLICO / VAR_DECISIONES_PUBLICO).
+const MAM_VAR_MOTIVOS = {
+  gol: "Posible gol",
+  penalti: "Posible penalti",
+  roja: "Posible tarjeta roja",
+  amarilla: "Posible tarjeta amarilla",
+  falta: "Posible falta",
+  fuera_juego: "Posible fuera de juego",
+  mano: "Posible mano",
+  otra: "Otra jugada",
+};
+const MAM_VAR_DECISIONES = {
+  revisando: "En revisión",
+  mantiene: "Se mantiene la decisión",
+  cambia: "Se cambia la decisión",
+};
+
 const MAM_TIPOS_SIN_EQUIPO = [
   "inicio_partido", "descanso", "fin_descanso",
   "pausa_hidratacion", "fin_pausa_hidratacion",
@@ -522,6 +543,8 @@ async function registrarEventoMinutoAMinuto(tipo, equipo, opciones = {}) {
     // no, el gol anulado se registra en el timeline sin tocar el
     // marcador (porque nunca llegó a sumar).
     bajar_gol: opciones.bajarGol === true,
+    var_motivo: opciones.varMotivo || null,
+    var_decision: opciones.varDecision || null,
     // Permite forzar el desempate dentro de un mismo minuto/minuto_extra
     // (ver ORDER BY minuto, minuto_extra, orden en el backend). Se usa,
     // por ejemplo, para que "Comienza la 2ª parte" quede siempre después
@@ -616,8 +639,35 @@ function mamAbrirFormularioEvento(tipo, equipo) {
   // defecto: el redactor decide caso por caso.
   document.getElementById("mamFilaBajarGol").style.display = esGolVar ? "flex" : "none";
   document.getElementById("mamFormBajarGol").checked = false;
+  mamPrepararFilaVar(tipo, null);
   document.querySelector("#mamFormEvento .btn-primari").textContent = "Guardar";
   document.getElementById("mamModalEvento").classList.add("mam-abierto");
+}
+
+// Muestra u oculta los campos propios de la "Revisión VAR" (equipo,
+// jugada revisada y estado de la revisión) y, si se está editando un
+// evento ya guardado (ev), los rellena con sus datos. Se llama siempre
+// al abrir el modal, para que al pasar de un VAR a otro tipo de evento
+// no queden campos o etiquetas del VAR a la vista.
+function mamPrepararFilaVar(tipo, ev) {
+  const esVar = tipo === "var";
+  document.getElementById("mamFilaVar").style.display = esVar ? "flex" : "none";
+  document.getElementById("mamFilaVarDecision").style.display = esVar ? "flex" : "none";
+  const labelJugador = document.getElementById("mamFormLabelJugador");
+  if (labelJugador) labelJugador.textContent = esVar ? "Jugador implicado" : "Jugador";
+  if (!esVar) return;
+  const selEquipo = document.getElementById("mamFormVarEquipo");
+  selEquipo.innerHTML = "";
+  [["", "Elige equipo…"], ["local", MAM_RESULTADO.equipo_local], ["visitante", MAM_RESULTADO.equipo_visitante]].forEach(([valor, texto]) => {
+    const op = document.createElement("option");
+    op.value = valor;
+    op.textContent = texto;
+    selEquipo.appendChild(op);
+  });
+  selEquipo.value = ev && (ev.equipo === "local" || ev.equipo === "visitante") ? ev.equipo : "";
+  document.getElementById("mamFormVarMotivo").value = (ev && ev.var_motivo) || "";
+  document.getElementById("mamFormVarDecision").value = (ev && ev.var_decision) || "revisando";
+  document.getElementById("mamFormJugador").placeholder = "Jugador implicado (opcional)";
 }
 
 // Abre el mismo modal que mamAbrirFormularioEvento pero precargado con
@@ -653,6 +703,7 @@ function mamAbrirFormularioEdicionEvento(ev) {
   document.getElementById("mamFilaAyudaGolPP").style.display = esGolPP ? "block" : "none";
   document.getElementById("mamFilaBajarGol").style.display = esGolVar ? "flex" : "none";
   document.getElementById("mamFormBajarGol").checked = !!ev.bajar_gol;
+  mamPrepararFilaVar(tipo, ev);
   document.querySelector("#mamFormEvento .btn-primari").textContent = "Guardar cambios";
   document.getElementById("mamModalEvento").classList.add("mam-abierto");
 }
@@ -688,9 +739,20 @@ function mamCerrarFormularioEvento() {
 async function mamGuardarFormularioEvento(e) {
   e.preventDefault();
   const tipo = document.getElementById("mamFormTipo").value;
-  const equipo = document.getElementById("mamFormEquipo").value || null;
+  const esVar = tipo === "var";
+  // En la Revisión VAR el equipo se elige en su propio desplegable; en
+  // el resto de eventos viene ya fijado por el botón que se pulsó.
+  const equipo = (esVar ? document.getElementById("mamFormVarEquipo").value : document.getElementById("mamFormEquipo").value) || null;
   const minuto = parseInt(document.getElementById("mamFormMinuto").value, 10);
   if (isNaN(minuto)) return EOF.toast("Falta el minuto", "error");
+  let varMotivo = null;
+  let varDecision = null;
+  if (esVar) {
+    if (!equipo) return EOF.toast("Elige el equipo de la revisión VAR", "error");
+    varMotivo = document.getElementById("mamFormVarMotivo").value;
+    if (!varMotivo) return EOF.toast("Elige qué jugada se revisa", "error");
+    varDecision = document.getElementById("mamFormVarDecision").value || "revisando";
+  }
   const minutoExtraTexto = document.getElementById("mamFormMinutoExtra").value;
   const minutoExtra = minutoExtraTexto.trim() === "" ? null : parseInt(minutoExtraTexto, 10);
   const jugador = combinarDorsalYJugador(document.getElementById("mamFormDorsal").value, document.getElementById("mamFormJugador").value);
@@ -709,10 +771,10 @@ async function mamGuardarFormularioEvento(e) {
   mamCerrarFormularioEvento();
   if (eventoIdEditando) {
     await mamActualizarEvento(eventoIdEditando, tipo, equipo, {
-      minutoForzado: minuto, minutoExtraForzado: minutoExtra, jugador, jugadorSale, jugadorAsistencia, bajarGol, orden: ordenEditando,
+      minutoForzado: minuto, minutoExtraForzado: minutoExtra, jugador, jugadorSale, jugadorAsistencia, bajarGol, varMotivo, varDecision, orden: ordenEditando,
     });
   } else {
-    await registrarEventoMinutoAMinuto(tipo, equipo, { minutoForzado: minuto, minutoExtraForzado: minutoExtra, jugador, jugadorSale, jugadorAsistencia, bajarGol });
+    await registrarEventoMinutoAMinuto(tipo, equipo, { minutoForzado: minuto, minutoExtraForzado: minutoExtra, jugador, jugadorSale, jugadorAsistencia, bajarGol, varMotivo, varDecision });
   }
 }
 
@@ -732,6 +794,8 @@ async function mamActualizarEvento(eventoId, tipo, equipo, opciones = {}) {
     jugador_sale: opciones.jugadorSale || null,
     jugador_asistencia: opciones.jugadorAsistencia || null,
     bajar_gol: opciones.bajarGol === true,
+    var_motivo: opciones.varMotivo || null,
+    var_decision: opciones.varDecision || null,
     // Se conserva el "orden" que ya tuviera el evento (p.ej. el 1 que
     // fuerza "fin_descanso" para quedar detrás de "descanso" en el
     // timeline), para que corregir un evento no le haga perder su
@@ -795,6 +859,27 @@ function renderPanelMinutoAMinuto() {
             <div>
               <label>Añadido</label>
               <input type="number" id="mamFormMinutoExtra" min="0" max="15" placeholder="Ej. 2">
+            </div>
+          </div>
+          <div class="mam-fila-jugador" id="mamFilaVar" style="display:none">
+            <div>
+              <label>Equipo *</label>
+              <select id="mamFormVarEquipo"></select>
+            </div>
+            <div>
+              <label>Jugada revisada *</label>
+              <select id="mamFormVarMotivo">
+                <option value="">Elige la jugada…</option>
+                ${Object.entries(MAM_VAR_MOTIVOS).map(([valor, texto]) => `<option value="${valor}">${texto}</option>`).join("")}
+              </select>
+            </div>
+          </div>
+          <div class="mam-fila-jugador" id="mamFilaVarDecision" style="display:none">
+            <div style="flex:1">
+              <label>Estado de la revisión</label>
+              <select id="mamFormVarDecision">
+                ${Object.entries(MAM_VAR_DECISIONES).map(([valor, texto]) => `<option value="${valor}">${texto}</option>`).join("")}
+              </select>
             </div>
           </div>
           <div class="mam-fila-jugador">
@@ -1178,7 +1263,7 @@ function renderTimelineMinutoAMinuto() {
   // Más recientes primero, para ver de un vistazo lo último que ha pasado.
   const eventos = [...eventosTimeline].reverse();
   cont.innerHTML = eventos.map((ev) => {
-    const sinEquipo = MAM_TIPOS_SIN_EQUIPO.includes(ev.tipo);
+    const sinEquipo = MAM_TIPOS_SIN_EQUIPO.includes(ev.tipo) || ev.equipo === "ninguno";
     const nombreEquipo = ev.equipo === "local" ? MAM_RESULTADO.equipo_local : MAM_RESULTADO.equipo_visitante;
     let detalle = "";
     if (ev.tipo === "cambio") {
@@ -1196,6 +1281,11 @@ function renderTimelineMinutoAMinuto() {
     } else if (ev.tipo === "gol_pp") {
       const marcador = ev.jugador ? escapeHtml(ev.jugador) : "";
       detalle = [marcador, "Gol para el rival"].filter(Boolean).join(" · ");
+    } else if (ev.tipo === "var") {
+      const motivo = MAM_VAR_MOTIVOS[ev.var_motivo] || "";
+      const decision = MAM_VAR_DECISIONES[ev.var_decision] || "";
+      const jugadorVar = ev.jugador ? escapeHtml(ev.jugador) : "";
+      detalle = [motivo, decision, jugadorVar].filter(Boolean).join(" · ");
     } else if (ev.jugador) {
       detalle = escapeHtml(ev.jugador);
     }

@@ -4,112 +4,198 @@
 <script src="js/tema.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Galería de fotos — ELOTROFÚTBOLTV</title>
-<meta name="description" content="Todas las fotos y vídeos publicados en ELOTROFÚTBOLTV: partidos, previas y crónicas de LaLiga Hypermotion, Primera y Segunda Federación.">
+<title>Galería de contenido — ELOTROFÚTBOLTV</title>
+<meta name="description" content="Toda la Galería de contenido publicada en ELOTROFÚTBOLTV: fotos y vídeos de partidos, previas y crónicas de LaLiga Hypermotion, Primera y Segunda Federación.">
 <link rel="canonical" href="https://elotrofutbol.media/galerias.html">
 <link rel="icon" href="/favicon.ico?v=2" sizes="any">
 <link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=2">
 <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<link rel="preconnect" href="https://res.cloudinary.com" crossorigin>
+<link rel="dns-prefetch" href="https://res.cloudinary.com">
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css?v=16">
 <style>
-  /* Mismo lenguaje visual que galeria.html (galería de un partido
-     concreto): cabecera marino de marca + grid de fotos con lightbox.
-     Aquí no hay marcador (esto no es de un partido en concreto, es
-     toda la mediateca), así que la cabecera es más simple. */
+  /* ==========================================================
+     GALERÍA DE CONTENIDO — rediseño estilo Pixieset / Flickr:
+     cabecera compacta de marca, luego un lienzo a todo el ancho
+     de la pantalla (sin el max-width típico del resto del sitio)
+     con un masonry de columnas CSS (más "foto-editorial" que un
+     grid rígido de cuadrados) y tarjetas grandes con overlay de
+     acciones (ver, descargar, compartir) al pasar el ratón.
+     Todo pensado para que cargue rápido: thumbnails Cloudinary
+     optimizados (f_auto,q_auto + ancho ajustado a la columna real),
+     lazy-loading + IntersectionObserver, decoding async y un
+     esqueleto de carga que evita el "salto" de layout.
+     ========================================================== */
   body[data-page="galerias"]{background:var(--fondo-alt);}
+  body[data-page="galerias"] main{margin:0 auto;}
 
   .gals-cabecera{
     background:linear-gradient(160deg, var(--marino) 0%, var(--marino2) 100%);
-    color:#fff;padding:34px 0 30px;position:relative;overflow:hidden;
-    box-shadow:0 6px 22px rgba(12,27,46,.22);text-align:center;
+    color:#fff;padding:30px 0 26px;position:relative;overflow:hidden;
   }
   .gals-cabecera::before{
-    content:"";position:absolute;inset:0;pointer-events:none;opacity:.05;
+    content:"";position:absolute;inset:0;pointer-events:none;opacity:.06;
     background-image:radial-gradient(circle at 15% 20%, #fff 0, transparent 45%),
       radial-gradient(circle at 85% 80%, #fff 0, transparent 45%);
   }
-  .gals-cabecera-inner{max-width:760px;margin:0 auto;padding:0 20px;position:relative;}
+  .gals-cabecera-inner{max-width:1100px;margin:0 auto;padding:0 24px;position:relative;
+    display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;}
   .gals-titulo{
-    font-family:var(--font-tit);font-size:1.9rem;font-weight:700;margin:0 0 8px;
-    display:flex;align-items:center;justify-content:center;gap:11px;
+    font-family:var(--font-tit);font-size:1.9rem;font-weight:700;margin:0 0 6px;
+    display:flex;align-items:center;gap:11px;
   }
-  .gals-titulo svg{width:26px;height:26px;color:var(--celeste-claro);flex-shrink:0;}
-  .gals-subtitulo{color:var(--celeste-claro);font-size:.92rem;font-weight:500;margin:0;}
-
-  .gals-wrap{max-width:1080px;margin:0 auto;padding:26px 20px 60px;}
-
-  .gals-filtros{
-    display:flex;gap:4px;flex-wrap:wrap;margin-bottom:22px;
-    background:var(--tarjeta);padding:5px;border-radius:14px;border:1px solid var(--borde);box-shadow:var(--sombra);
-    width:fit-content;
+  .gals-titulo svg{width:24px;height:24px;color:var(--celeste-claro);flex-shrink:0;}
+  .gals-subtitulo{color:var(--celeste-claro);font-size:.9rem;font-weight:500;margin:0;}
+  .gals-contador{
+    font-family:var(--font-tit);font-size:.78rem;font-weight:600;letter-spacing:.04em;
+    text-transform:uppercase;color:#fff;background:rgba(255,255,255,.12);
+    border:1px solid rgba(255,255,255,.22);border-radius:999px;padding:7px 16px;
+    white-space:nowrap;backdrop-filter:blur(4px);
   }
+
+  /* Barra de filtros: pegajosa para que, al hacer scroll por un muro
+     largo de fotos, siempre se pueda cambiar de filtro sin volver arriba. */
+  .gals-barra{
+    position:sticky;top:0;z-index:20;background:var(--tarjeta);
+    border-bottom:1px solid var(--borde);box-shadow:0 2px 10px rgba(12,27,46,.05);
+    transition:background .2s ease,border-color .2s ease;
+  }
+  [data-theme="dark"] .gals-barra{box-shadow:0 2px 10px rgba(0,0,0,.25);}
+  .gals-barra-inner{
+    max-width:1600px;margin:0 auto;padding:12px 24px;
+    display:flex;align-items:center;justify-content:center;gap:22px;flex-wrap:wrap;
+  }
+  .gals-filtros{display:flex;gap:4px;flex-wrap:wrap;background:var(--fondo-alt);padding:4px;
+    border-radius:12px;border:1px solid var(--borde);}
   .gals-filtro{
     appearance:none;border:none;background:transparent;cursor:pointer;
-    padding:9px 16px;font-family:var(--font-text);font-weight:600;font-size:.83rem;
-    color:var(--texto-suave);border-radius:10px;transition:color .15s ease,background .15s ease;
+    padding:8px 15px;font-family:var(--font-text);font-weight:600;font-size:.82rem;
+    color:var(--texto-suave);border-radius:9px;transition:color .15s ease,background .15s ease;
+    display:flex;align-items:center;gap:6px;
   }
-  .gals-filtro:hover{color:var(--marino-texto);background:var(--fondo-alt);}
+  .gals-filtro:hover{color:var(--marino-texto);background:var(--tarjeta);}
   .gals-filtro.activo{color:#fff;background:linear-gradient(135deg, var(--marino), var(--marino2));box-shadow:0 3px 10px rgba(12,27,46,.28);}
 
-  .gals-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px;}
+  .gals-tamano{display:flex;align-items:center;gap:2px;background:var(--fondo-alt);padding:4px;
+    border-radius:12px;border:1px solid var(--borde);}
+  .gals-tamano-btn{
+    appearance:none;border:none;background:transparent;cursor:pointer;width:32px;height:32px;
+    border-radius:9px;display:flex;align-items:center;justify-content:center;color:var(--texto-suave);
+    transition:color .15s ease,background .15s ease;
+  }
+  .gals-tamano-btn svg{width:15px;height:15px;}
+  .gals-tamano-btn:hover{color:var(--marino-texto);background:var(--tarjeta);}
+  .gals-tamano-btn.activo{color:#fff;background:linear-gradient(135deg, var(--marino), var(--marino2));}
+
+  /* ---------- Lienzo a todo el ancho ---------- */
+  .gals-wrap{width:100%;max-width:1900px;margin:0 auto;padding:0 18px 70px;box-sizing:border-box;}
+
+  /* Cuadrícula que ocupa todo el ancho: N columnas iguales por fila.
+     El selector de "tamaño" solo cambia cuántas columnas hay. */
+  .gals-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px;}
+  .gals-grid.tam-compacto{grid-template-columns:repeat(7,minmax(0,1fr));gap:10px;}
+  .gals-grid.tam-grande{grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;}
+
   .gals-item{
-    position:relative;aspect-ratio:4/3;border-radius:14px;overflow:hidden;
-    cursor:pointer;background:linear-gradient(135deg,var(--marino),var(--marino2));
-    border:1px solid var(--borde);box-shadow:0 2px 10px rgba(12,27,46,.08);
-    transition:transform .22s cubic-bezier(.2,.8,.2,1), box-shadow .22s ease, border-color .22s ease;
-    animation:apareceGalsItem .3s ease both;
+    position:relative;overflow:hidden;cursor:pointer;background:var(--gris-claro);
+    border-radius:14px;box-shadow:0 1px 4px rgba(12,27,46,.10);
+    display:block;margin:0;aspect-ratio:4/5;min-width:0;
+    animation:apareceGalsItem .4s ease both;
+    transition:box-shadow .2s ease,transform .2s ease;
   }
-  @keyframes apareceGalsItem{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
-  .gals-item:hover{transform:translateY(-3px);box-shadow:0 14px 28px rgba(12,27,46,.22);border-color:rgba(91,184,232,.45);}
-  [data-theme="dark"] .gals-item{box-shadow:0 2px 10px rgba(0,0,0,.35);}
-  [data-theme="dark"] .gals-item:hover{box-shadow:0 16px 32px rgba(0,0,0,.55);}
-  .gals-item img, .gals-item video{width:100%;height:100%;object-fit:cover;display:block;transition:transform .5s cubic-bezier(.2,.8,.2,1);}
-  .gals-item:hover img, .gals-item:hover video{transform:scale(1.07);}
+  .gals-grid.tam-compacto .gals-item{border-radius:9px;}
+  .gals-grid.tam-grande .gals-item{border-radius:18px;}
+  @keyframes apareceGalsItem{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+  .gals-item:hover{z-index:3;box-shadow:0 14px 34px rgba(12,27,46,.24);transform:translateY(-2px);}
+  [data-theme="dark"] .gals-item{box-shadow:0 1px 4px rgba(0,0,0,.35);}
+  [data-theme="dark"] .gals-item:hover{box-shadow:0 14px 34px rgba(0,0,0,.55);}
+
+  .gals-item img, .gals-item video{
+    position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;
+    transition:transform .5s cubic-bezier(.2,.8,.2,1),filter .35s ease;
+    background:var(--gris-claro);
+  }
+  .gals-item:hover img, .gals-item:hover video{transform:scale(1.035);}
+
+  /* Difuminado gradual: la imagen empieza ligeramente borrosa/oscura
+     mientras carga y "revela" en cuanto decodifica, sensación de
+     carga mucho más pulida que un simple pop-in. */
+  .gals-item img{filter:blur(0);}
+  .gals-item img.cargando{filter:blur(14px);transform:scale(1.04);}
+
   .gals-item::after{
-    content:"";position:absolute;left:0;right:0;bottom:0;height:52%;
-    background:linear-gradient(to top, rgba(6,16,28,.68), rgba(6,16,28,0));pointer-events:none;
+    content:"";position:absolute;left:0;right:0;bottom:0;height:46%;
+    background:linear-gradient(to top, rgba(6,16,28,.72), rgba(6,16,28,0));pointer-events:none;
+    opacity:0;transition:opacity .2s ease;
   }
+  .gals-item:hover::after{opacity:1;}
+
   .gals-item .gals-badge-tipo{
-    position:absolute;top:9px;left:9px;z-index:1;width:26px;height:26px;border-radius:50%;
+    position:absolute;top:9px;left:9px;z-index:2;width:26px;height:26px;border-radius:50%;
     background:rgba(6,16,28,.55);backdrop-filter:blur(3px);border:1px solid rgba(255,255,255,.16);
     display:flex;align-items:center;justify-content:center;
   }
   .gals-item .gals-badge-tipo svg{width:13px;height:13px;stroke:#fff;fill:none;stroke-width:2;}
   .gals-item .gals-play{
-    position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:1;
-    width:46px;height:46px;border-radius:50%;background:rgba(6,16,28,.4);
+    position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:2;
+    width:50px;height:50px;border-radius:50%;background:rgba(6,16,28,.42);
     display:flex;align-items:center;justify-content:center;
     border:1.5px solid rgba(255,255,255,.55);backdrop-filter:blur(4px);
     box-shadow:0 6px 18px rgba(0,0,0,.35);
     transition:background .2s ease, transform .2s ease, border-color .2s ease;
   }
   .gals-item:hover .gals-play{background:var(--rojo);border-color:var(--rojo);transform:translate(-50%,-50%) scale(1.1);}
-  .gals-item .gals-play svg{width:17px;height:17px;fill:#fff;margin-left:2px;}
-  .gals-item .gals-credito{
-    position:absolute;left:0;right:0;bottom:0;padding:8px 10px;font-size:.7rem;font-weight:600;
-    color:#fff;z-index:1;letter-spacing:.01em;
-    opacity:0;transform:translateY(4px);transition:opacity .2s ease,transform .2s ease;
-  }
-  .gals-item:hover .gals-credito{opacity:1;transform:translateY(0);}
+  .gals-item .gals-play svg{width:18px;height:18px;fill:#fff;margin-left:2px;}
 
-  .gals-cargar-mas-wrap{display:flex;justify-content:center;margin-top:28px;}
+  /* Overlay inferior: título/crédito + acciones rápidas (descargar,
+     compartir) que solo aparecen al pasar el ratón — igual que
+     Pixieset/Flickr, sin saturar la tarjeta cuando no hace falta. */
+  .gals-item-overlay{
+    position:absolute;left:0;right:0;bottom:0;padding:10px 10px 9px;z-index:2;
+    display:flex;align-items:flex-end;justify-content:space-between;gap:8px;
+    opacity:0;transform:translateY(6px);transition:opacity .2s ease,transform .2s ease;
+  }
+  .gals-item:hover .gals-item-overlay{opacity:1;transform:translateY(0);}
+  .gals-item-credito{
+    color:#fff;font-size:.72rem;font-weight:600;letter-spacing:.01em;min-width:0;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,.4);
+  }
+  .gals-item-acciones{display:flex;gap:6px;flex-shrink:0;}
+  .gals-item-accion{
+    appearance:none;border:1px solid rgba(255,255,255,.3);background:rgba(6,16,28,.55);
+    backdrop-filter:blur(3px);color:#fff;border-radius:8px;width:30px;height:30px;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;
+    transition:background .15s ease,transform .15s ease,border-color .15s ease;
+  }
+  .gals-item-accion svg{width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2;}
+  .gals-item-accion:hover{background:var(--celeste);border-color:var(--celeste);transform:translateY(-1px);}
+  .gals-item-accion.ok{background:#1f9d55;border-color:#1f9d55;}
+
+  /* ---------- Carga / vacío ---------- */
+  .gals-cargar-mas-wrap{display:flex;justify-content:center;margin-top:30px;}
   .gals-cargar-mas{
     appearance:none;border:1.5px solid var(--borde);background:var(--tarjeta);cursor:pointer;
-    padding:11px 26px;border-radius:24px;font-family:var(--font-tit);text-transform:uppercase;
-    font-size:.75rem;letter-spacing:.4px;color:var(--marino-texto);transition:background .15s,border-color .15s;
+    padding:12px 30px;border-radius:24px;font-family:var(--font-tit);text-transform:uppercase;
+    font-size:.75rem;letter-spacing:.4px;color:var(--marino-texto);transition:background .15s,border-color .15s,transform .15s;
+    display:flex;align-items:center;gap:8px;
   }
-  .gals-cargar-mas:hover{background:var(--fondo-alt);border-color:var(--celeste);}
-  .gals-cargar-mas:disabled{opacity:.5;cursor:default;}
+  .gals-cargar-mas:hover{background:var(--fondo-alt);border-color:var(--celeste);transform:translateY(-1px);}
+  .gals-cargar-mas:disabled{opacity:.5;cursor:default;transform:none;}
+  .gals-spin{width:14px;height:14px;border-radius:50%;border:2px solid rgba(12,27,46,.18);
+    border-top-color:var(--marino-texto);animation:galsSpin .7s linear infinite;display:none;}
+  .gals-cargar-mas:disabled .gals-spin{display:inline-block;}
+  @keyframes galsSpin{to{transform:rotate(360deg);}}
 
   .gals-vacio{
-    text-align:center;color:var(--texto-suave);padding:60px 20px;font-size:.92rem;
+    text-align:center;color:var(--texto-suave);padding:80px 20px;font-size:.92rem;
     background:var(--tarjeta);border:1px solid var(--borde);border-radius:16px;
   }
-  .gals-vacio svg{width:40px;height:40px;color:var(--borde);margin-bottom:14px;}
+  .gals-vacio svg{width:44px;height:44px;color:var(--borde);margin-bottom:14px;}
 
-  .gals-grid-skeleton{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px;}
-  .gals-skel{background:var(--gris-claro);border-radius:14px;aspect-ratio:4/3;border:1px solid var(--borde);position:relative;overflow:hidden;}
+  .gals-grid-skeleton{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px;}
+  .gals-skel{background:var(--gris-claro);border-radius:14px;
+    position:relative;overflow:hidden;width:100%;aspect-ratio:4/5;margin:0;}
   .gals-skel::after{
     content:"";position:absolute;inset:0;transform:translateX(-100%);
     background:linear-gradient(90deg, transparent, rgba(0,0,0,.05), transparent);
@@ -118,35 +204,81 @@
   [data-theme="dark"] .gals-skel::after{background:linear-gradient(90deg, transparent, rgba(255,255,255,.06), transparent);}
   @keyframes galsSkelBrillo{100%{transform:translateX(100%);}}
 
-  /* Lightbox: idéntico a galeria.html, con el añadido del enlace al
-     partido (cuando la foto está vinculada a uno). */
+  /* ---------- Lightbox grande, estilo visor profesional ---------- */
   .gals-lightbox{
     position:fixed;inset:0;z-index:80;display:none;align-items:center;justify-content:center;
-    background:rgba(6,12,20,.94);padding:20px;backdrop-filter:blur(6px);
+    background:rgba(4,9,16,.97);padding:0;backdrop-filter:blur(6px);
   }
   .gals-lightbox.abierto{display:flex;animation:galsLightboxFade .18s ease both;}
   @keyframes galsLightboxFade{from{opacity:0;}to{opacity:1;}}
-  .gals-lightbox-media{max-width:min(92vw,920px);max-height:80vh;display:flex;flex-direction:column;gap:12px;align-items:center;}
+  .gals-lightbox-media{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;position:relative;padding:70px 90px 100px;box-sizing:border-box;}
   .gals-lightbox-media img, .gals-lightbox-media video{
-    max-width:100%;max-height:72vh;border-radius:10px;object-fit:contain;
-    box-shadow:0 20px 60px rgba(0,0,0,.5);animation:galsLightboxMediaIn .2s ease both;
+    max-width:100%;max-height:100%;border-radius:6px;object-fit:contain;
+    box-shadow:0 20px 70px rgba(0,0,0,.6);animation:galsLightboxMediaIn .22s ease both;
   }
   @keyframes galsLightboxMediaIn{from{opacity:0;transform:scale(.97);}to{opacity:1;transform:scale(1);}}
-  .gals-lightbox-info{display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;}
-  .gals-lightbox-credito{color:#e7eaf0;font-size:.84rem;font-weight:600;}
+  .gals-lightbox-info{
+    position:absolute;left:0;right:0;bottom:0;padding:18px 90px 22px;
+    display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;
+    background:linear-gradient(to top, rgba(4,9,16,.85), transparent);
+  }
+  .gals-lightbox-texto{display:flex;flex-direction:column;gap:3px;min-width:0;}
+  .gals-lightbox-credito{color:#fff;font-size:.86rem;font-weight:600;}
   .gals-lightbox-partido{color:var(--celeste-claro);font-size:.76rem;font-weight:600;text-decoration:none;}
   .gals-lightbox-partido:hover{text-decoration:underline;}
-  .gals-lightbox-cerrar{
-    position:absolute;top:18px;right:18px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);
-    color:#fff;border-radius:50%;width:42px;height:42px;display:flex;align-items:center;
-    justify-content:center;cursor:pointer;transition:background .15s ease,transform .15s ease,border-color .15s ease;
-  }
-  .gals-lightbox-cerrar:hover{background:var(--celeste);border-color:var(--celeste);transform:scale(1.06);}
-  .gals-lightbox-cerrar svg{width:19px;height:19px;stroke:#fff;fill:none;stroke-width:2;}
+  .gals-lightbox-contador{color:#8a96a8;font-size:.72rem;font-weight:600;letter-spacing:.03em;}
 
+  .gals-lightbox-acciones{display:flex;gap:8px;flex-shrink:0;}
+  .gals-lightbox-boton{
+    appearance:none;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.08);
+    color:#fff;border-radius:10px;padding:9px 16px;display:flex;align-items:center;gap:7px;
+    font-family:var(--font-text);font-weight:600;font-size:.78rem;cursor:pointer;
+    transition:background .15s ease,border-color .15s ease,transform .15s ease;
+  }
+  .gals-lightbox-boton svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;flex-shrink:0;}
+  .gals-lightbox-boton:hover{background:var(--celeste);border-color:var(--celeste);transform:translateY(-1px);}
+  .gals-lightbox-boton.ok{background:#1f9d55;border-color:#1f9d55;}
+
+  .gals-lightbox-cerrar, .gals-lightbox-nav{
+    position:absolute;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);
+    color:#fff;border-radius:50%;width:44px;height:44px;display:flex;align-items:center;
+    justify-content:center;cursor:pointer;transition:background .15s ease,transform .15s ease,border-color .15s ease;
+    z-index:3;
+  }
+  .gals-lightbox-cerrar:hover, .gals-lightbox-nav:hover{background:var(--celeste);border-color:var(--celeste);transform:scale(1.06);}
+  .gals-lightbox-cerrar{top:20px;right:20px;}
+  .gals-lightbox-nav svg, .gals-lightbox-cerrar svg{width:20px;height:20px;stroke:#fff;fill:none;stroke-width:2;}
+  .gals-lightbox-prev{left:18px;top:50%;transform:translateY(-50%);}
+  .gals-lightbox-next{right:18px;top:50%;transform:translateY(-50%);}
+  .gals-lightbox-prev:hover, .gals-lightbox-next:hover{transform:translateY(-50%) scale(1.06);}
+
+  @media (max-width:1300px){
+    .gals-grid, .gals-grid-skeleton{grid-template-columns:repeat(4,minmax(0,1fr));}
+    .gals-grid.tam-compacto{grid-template-columns:repeat(6,minmax(0,1fr));}
+    .gals-grid.tam-grande{grid-template-columns:repeat(3,minmax(0,1fr));}
+  }
+  @media (max-width:900px){
+    .gals-grid, .gals-grid-skeleton{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;}
+    .gals-grid.tam-compacto{grid-template-columns:repeat(4,minmax(0,1fr));}
+    .gals-grid.tam-grande{grid-template-columns:repeat(2,minmax(0,1fr));}
+    .gals-item{border-radius:11px;}
+    .gals-tamano{display:none;}
+    .gals-lightbox-media{padding:56px 16px 96px;}
+    .gals-lightbox-info{padding:14px 16px 18px;}
+  }
+  @media (max-width:640px){
+    .gals-cabecera-inner{flex-direction:column;align-items:flex-start;}
+    .gals-barra-inner{padding:10px 12px;}
+    .gals-grid, .gals-grid-skeleton{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+    .gals-item{border-radius:9px;}
+  }
   @media (max-width:520px){
     .gals-titulo{font-size:1.5rem;}
-    .gals-grid, .gals-grid-skeleton{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;}
+    .gals-lightbox-nav{width:38px;height:38px;}
+    .gals-lightbox-cerrar{width:38px;height:38px;top:12px;right:12px;}
+    .gals-lightbox-prev{left:8px;}
+    .gals-lightbox-next{right:8px;}
+    .gals-lightbox-info{flex-direction:column;align-items:flex-start;}
   }
 </style>
 </head>
@@ -156,31 +288,47 @@
 
 <header class="gals-cabecera">
   <div class="gals-cabecera-inner">
-    <h1 class="gals-titulo">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5" fill="currentColor" stroke="none"/><path d="m4 17 4.5-4.5a2 2 0 0 1 2.8 0L15 16"/><path d="m13.5 14.5 1-1a2 2 0 0 1 2.8 0L20 16.5"/></svg>
-      Galería de fotos
-    </h1>
-    <p class="gals-subtitulo">Todo el contenido gráfico publicado en ELOTROFÚTBOLTV, de más reciente a más antiguo.</p>
+    <div>
+      <h1 class="gals-titulo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5" fill="currentColor" stroke="none"/><path d="m4 17 4.5-4.5a2 2 0 0 1 2.8 0L15 16"/><path d="m13.5 14.5 1-1a2 2 0 0 1 2.8 0L20 16.5"/></svg>
+        Galería de contenido
+      </h1>
+      <p class="gals-subtitulo">Todo el contenido gráfico publicado en ELOTROFÚTBOLTV, de más reciente a más antiguo.</p>
+    </div>
+    <span class="gals-contador" id="galsContador" hidden></span>
   </div>
 </header>
 
-<main class="gals-wrap">
-  <div class="gals-filtros" id="galsFiltros">
-    <button type="button" class="gals-filtro activo" data-tipo="">Todo</button>
-    <button type="button" class="gals-filtro" data-tipo="foto">Fotos</button>
-    <button type="button" class="gals-filtro" data-tipo="video">Vídeos</button>
-  </div>
-
-  <div id="galsContenido">
-    <div class="gals-grid-skeleton">
-      <div class="gals-skel"></div><div class="gals-skel"></div><div class="gals-skel"></div>
-      <div class="gals-skel"></div><div class="gals-skel"></div><div class="gals-skel"></div>
-      <div class="gals-skel"></div><div class="gals-skel"></div>
+<div class="gals-barra">
+  <div class="gals-barra-inner">
+    <div class="gals-filtros" id="galsFiltros">
+      <button type="button" class="gals-filtro activo" data-tipo="">Todo</button>
+      <button type="button" class="gals-filtro" data-tipo="foto">Fotos</button>
+      <button type="button" class="gals-filtro" data-tipo="video">Vídeos</button>
     </div>
+    <div class="gals-tamano" id="galsTamano" aria-label="Tamaño de las miniaturas">
+      <button type="button" class="gals-tamano-btn" data-tam="compacto" title="Miniaturas pequeñas">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      </button>
+      <button type="button" class="gals-tamano-btn activo" data-tam="normal" title="Miniaturas medianas">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="8" height="8" rx="1"/><rect x="13" y="4" width="8" height="8" rx="1"/><rect x="3" y="14" width="8" height="6" rx="1"/><rect x="13" y="12" width="8" height="8" rx="1"/></svg>
+      </button>
+      <button type="button" class="gals-tamano-btn" data-tam="grande" title="Miniaturas grandes">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="9" rx="1"/><rect x="3" y="14" width="8" height="7" rx="1"/><rect x="13" y="14" width="8" height="7" rx="1"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<main class="gals-wrap">
+  <div id="galsContenido">
+    <div class="gals-grid-skeleton" id="galsSkeleton"></div>
   </div>
 
   <div class="gals-cargar-mas-wrap" id="galsCargarMasWrap" hidden>
-    <button type="button" class="gals-cargar-mas" id="galsBtnCargarMas">Cargar más fotos</button>
+    <button type="button" class="gals-cargar-mas" id="galsBtnCargarMas">
+      <span class="gals-spin"></span><span class="gals-cargar-mas-txt">Cargar más fotos</span>
+    </button>
   </div>
 </main>
 
@@ -189,6 +337,12 @@
 <div class="gals-lightbox" id="galsLightbox">
   <button type="button" class="gals-lightbox-cerrar" onclick="cerrarLightboxGalerias()" aria-label="Cerrar">
     <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+  </button>
+  <button type="button" class="gals-lightbox-nav gals-lightbox-prev" onclick="moverLightboxGalerias(-1)" aria-label="Anterior">
+    <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+  </button>
+  <button type="button" class="gals-lightbox-nav gals-lightbox-next" onclick="moverLightboxGalerias(1)" aria-label="Siguiente">
+    <svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
   </button>
   <div class="gals-lightbox-media" id="galsLightboxMedia"></div>
 </div>
@@ -205,41 +359,65 @@ function escapeHtml(str) {
   return String(str ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
+// Ancho de thumbnail a pedir a Cloudinary según el modo de columnas
+// activo: cuantas más columnas, más pequeño puede ser el archivo que
+// se descarga (evita bajar una foto de 1600px para mostrarla en una
+// celda de 200px). Es la pieza clave de la mejora de velocidad.
+const GALS_ANCHOS_TAM = { compacto: 260, normal: 420, grande: 640 };
+
 let GALS_MEDIA = [];
 let GALS_PAGINA = 1;
 let GALS_HAY_MAS = false;
 let GALS_TIPO = "";
+let GALS_TAM = "normal";
 let GALS_CARGANDO = false;
+let GALS_TOTAL = null;
+let GALS_LIGHTBOX_INDICE = -1;
+let GALS_IO = null;
+
+function esquelas(n) {
+  return Array.from({ length: n }, () => `<div class="gals-skel"></div>`).join("");
+}
+document.getElementById("galsSkeleton").innerHTML = esquelas(24);
 
 async function cargarPaginaGalerias(reset) {
   if (GALS_CARGANDO) return;
   GALS_CARGANDO = true;
   const btn = document.getElementById("galsBtnCargarMas");
-  if (btn) { btn.disabled = true; btn.textContent = "Cargando..."; }
+  if (btn) { btn.disabled = true; btn.querySelector(".gals-cargar-mas-txt").textContent = "Cargando…"; }
   if (reset) {
     GALS_PAGINA = 1;
     GALS_MEDIA = [];
-    document.getElementById("galsContenido").innerHTML = `
-      <div class="gals-grid-skeleton">
-        <div class="gals-skel"></div><div class="gals-skel"></div><div class="gals-skel"></div>
-        <div class="gals-skel"></div><div class="gals-skel"></div><div class="gals-skel"></div>
-      </div>`;
+    if (GALS_IO) { GALS_IO.disconnect(); }
+    document.getElementById("galsContenido").innerHTML = `<div class="gals-grid-skeleton" id="galsSkeleton">${esquelas(24)}</div>`;
   }
   try {
     const params = new URLSearchParams({ pagina: GALS_PAGINA });
     if (GALS_TIPO) params.set("tipo", GALS_TIPO);
     const res = await apiFetch(`/api/media/publica?${params.toString()}`);
     if (!res.ok) throw new Error("Error de red");
-    const { media = [], hayMas } = await res.json();
+    const data = await res.json();
+    const media = data.media || [];
+    GALS_HAY_MAS = !!data.hayMas;
+    if (typeof data.total === "number") GALS_TOTAL = data.total;
     GALS_MEDIA = GALS_MEDIA.concat(media);
-    GALS_HAY_MAS = !!hayMas;
     pintarGridGalerias();
+    pintarContador();
   } catch (err) {
     document.getElementById("galsContenido").innerHTML = estadoVacioGaleriasHTML("No se ha podido cargar", "Ha habido un problema de conexión. Inténtalo de nuevo.");
   } finally {
     GALS_CARGANDO = false;
-    if (btn) { btn.disabled = false; btn.textContent = "Cargar más fotos"; }
+    if (btn) { btn.disabled = false; btn.querySelector(".gals-cargar-mas-txt").textContent = "Cargar más fotos"; }
   }
+}
+
+function pintarContador() {
+  const el = document.getElementById("galsContador");
+  if (!el) return;
+  if (GALS_TOTAL === null && !GALS_MEDIA.length) { el.hidden = true; return; }
+  const n = GALS_TOTAL !== null ? GALS_TOTAL : GALS_MEDIA.length;
+  el.hidden = false;
+  el.textContent = `${n.toLocaleString("es-ES")} ${n === 1 ? "archivo" : "archivos"}`;
 }
 
 function estadoVacioGaleriasHTML(titulo, texto) {
@@ -252,42 +430,123 @@ function pintarGridGalerias() {
   const cont = document.getElementById("galsContenido");
   const wrapCargarMas = document.getElementById("galsCargarMasWrap");
   if (!GALS_MEDIA.length) {
-    cont.innerHTML = estadoVacioGaleriasHTML("Todavía no hay fotos", "Vuelve más tarde: la galería se va completando con cada partido cubierto.");
+    cont.innerHTML = estadoVacioGaleriasHTML("Todavía no hay fotos", "Vuelve más tarde: la Galería de contenido se va completando con cada partido cubierto.");
     wrapCargarMas.hidden = true;
     return;
   }
   const iconoFoto = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5" fill="currentColor" stroke="none"/><path d="m4 17 4.5-4.5a2 2 0 0 1 2.8 0L15 16"/><path d="m13.5 14.5 1-1a2 2 0 0 1 2.8 0L20 16.5"/></svg>`;
   const iconoVideo = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="14" height="12" rx="2"/><path d="m16.5 10.5 5-3v9l-5-3Z"/></svg>`;
-  cont.innerHTML = `<div class="gals-grid">${GALS_MEDIA.map((f, i) => {
+  const iconoDescargar = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>`;
+  const iconoCompartir = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 10.5 6.8-3.9M8.6 13.5l6.8 3.9"/></svg>`;
+  const anchoThumb = GALS_ANCHOS_TAM[GALS_TAM] || 420;
+
+  cont.innerHTML = `<div class="gals-grid tam-${GALS_TAM}" id="galsGrid">${GALS_MEDIA.map((f, i) => {
     const esFoto = f.tipo === "foto";
+    const thumb = esFoto ? cloudinaryOptimizada(f.cloudinary_url, anchoThumb) : "";
     return `
-      <div class="gals-item" onclick="abrirLightboxGalerias(${i})">
+      <div class="gals-item" data-indice="${i}">
         <span class="gals-badge-tipo">${esFoto ? iconoFoto : iconoVideo}</span>
         ${esFoto
-          ? `<img src="${f.cloudinary_url}" alt="${escapeHtml(f.titulo || "")}" loading="lazy">`
-          : `<video src="${f.cloudinary_url}" preload="metadata" muted></video><div class="gals-play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>`}
-        ${f.autor_nombre ? `<span class="gals-credito">© ${escapeHtml(f.autor_nombre)}</span>` : ""}
+          ? `<img data-src="${thumb}" alt="${escapeHtml(f.titulo || "")}" class="cargando" decoding="async">`
+          : `<video src="${f.cloudinary_url}#t=0.1" preload="metadata" muted playsinline></video><div class="gals-play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>`}
+        <div class="gals-item-overlay">
+          <span class="gals-item-credito">${f.autor_nombre ? "© " + escapeHtml(f.autor_nombre) : (f.titulo ? escapeHtml(f.titulo) : "")}</span>
+          <span class="gals-item-acciones">
+            <button type="button" class="gals-item-accion" title="Descargar" data-accion="descargar" data-indice="${i}">${iconoDescargar}</button>
+            <button type="button" class="gals-item-accion" title="Compartir" data-accion="compartir" data-indice="${i}">${iconoCompartir}</button>
+          </span>
+        </div>
       </div>`;
   }).join("")}</div>`;
   wrapCargarMas.hidden = !GALS_HAY_MAS;
+
+  document.getElementById("galsGrid").addEventListener("click", (e) => {
+    const btnAccion = e.target.closest(".gals-item-accion");
+    if (btnAccion) {
+      e.stopPropagation();
+      const idx = Number(btnAccion.dataset.indice);
+      if (btnAccion.dataset.accion === "descargar") descargarMediaGalerias(idx);
+      if (btnAccion.dataset.accion === "compartir") compartirMediaGalerias(idx, btnAccion);
+      return;
+    }
+    const item = e.target.closest(".gals-item");
+    if (item) abrirLightboxGalerias(Number(item.dataset.indice));
+  });
+
+  activarCargaPerezosaGalerias();
+}
+
+// IntersectionObserver propio (además del loading="lazy" nativo) para
+// controlar el momento exacto en que se decodifica cada imagen y
+// poder aplicar la transición de desenfoque -> nítido, y para no
+// pedir de golpe al navegador cientos de descargas simultáneas.
+function activarCargaPerezosaGalerias() {
+  if (GALS_IO) GALS_IO.disconnect();
+  const imgs = document.querySelectorAll("#galsGrid img[data-src]");
+  GALS_IO = new IntersectionObserver((entradas) => {
+    entradas.forEach((entrada) => {
+      if (!entrada.isIntersecting) return;
+      const img = entrada.target;
+      const src = img.dataset.src;
+      if (!src) return;
+      img.src = src;
+      img.loading = "lazy";
+      img.addEventListener("load", () => img.classList.remove("cargando"), { once: true });
+      img.removeAttribute("data-src");
+      GALS_IO.unobserve(img);
+    });
+  }, { rootMargin: "600px 0px" });
+  imgs.forEach((img) => GALS_IO.observe(img));
+}
+
+function urlDescarga(url) {
+  if (!url || typeof url !== "string") return url;
+  const marca = "/upload/";
+  const i = url.indexOf(marca);
+  if (i === -1) return url;
+  return url.slice(0, i + marca.length) + "fl_attachment/" + url.slice(i + marca.length);
+}
+
+function descargarMediaGalerias(indice) {
+  const f = GALS_MEDIA[indice];
+  if (!f) return;
+  const a = document.createElement("a");
+  a.href = urlDescarga(f.cloudinary_url);
+  a.download = (f.titulo || "elotrofutbol-foto").replace(/[^a-z0-9-_]+/gi, "-");
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+async function compartirMediaGalerias(indice, boton) {
+  const f = GALS_MEDIA[indice];
+  if (!f) return;
+  const url = f.partido ? `${location.origin}/galeria/${f.partido.slug}` : location.href;
+  const datos = { title: f.titulo || "ELOTROFÚTBOLTV", text: f.titulo || "Mira esta foto en ELOTROFÚTBOLTV", url };
+  try {
+    if (navigator.share) {
+      await navigator.share(datos);
+      return;
+    }
+    await navigator.clipboard.writeText(url);
+    marcarAccionOk(boton);
+  } catch (err) {
+    if (err && err.name === "AbortError") return;
+    try { await navigator.clipboard.writeText(url); marcarAccionOk(boton); } catch (e2) { /* silencioso */ }
+  }
+}
+
+function marcarAccionOk(boton) {
+  if (!boton) return;
+  boton.classList.add("ok");
+  const original = boton.innerHTML;
+  boton.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>`;
+  setTimeout(() => { boton.classList.remove("ok"); boton.innerHTML = original; }, 1400);
 }
 
 function abrirLightboxGalerias(indice) {
-  const f = GALS_MEDIA[indice];
-  if (!f) return;
-  const esFoto = f.tipo === "foto";
-  const credito = (f.titulo || f.autor_nombre)
-    ? `${escapeHtml(f.titulo || "")}${f.titulo && f.autor_nombre ? " — " : ""}${f.autor_nombre ? "© " + escapeHtml(f.autor_nombre) : ""}`
-    : "";
-  const enlacePartido = f.partido
-    ? `<a class="gals-lightbox-partido" href="/galeria/${escapeHtml(f.partido.slug)}">Ver galería de ${escapeHtml(f.partido.equipo_local)} - ${escapeHtml(f.partido.equipo_visitante)} →</a>`
-    : "";
-  document.getElementById("galsLightboxMedia").innerHTML = `
-    ${esFoto ? `<img src="${f.cloudinary_url}" alt="${escapeHtml(f.titulo || "")}">` : `<video src="${f.cloudinary_url}" controls autoplay></video>`}
-    <div class="gals-lightbox-info">
-      ${credito ? `<p class="gals-lightbox-credito">${credito}</p>` : ""}
-      ${enlacePartido}
-    </div>`;
+  GALS_LIGHTBOX_INDICE = indice;
+  pintarLightboxGalerias();
   document.getElementById("galsLightbox").classList.add("abierto");
   document.body.style.overflow = "hidden";
 }
@@ -298,11 +557,52 @@ function cerrarLightboxGalerias() {
   document.getElementById("galsLightboxMedia").innerHTML = "";
 }
 
+function moverLightboxGalerias(delta) {
+  if (!GALS_MEDIA.length) return;
+  GALS_LIGHTBOX_INDICE = (GALS_LIGHTBOX_INDICE + delta + GALS_MEDIA.length) % GALS_MEDIA.length;
+  pintarLightboxGalerias();
+}
+
+function pintarLightboxGalerias() {
+  const f = GALS_MEDIA[GALS_LIGHTBOX_INDICE];
+  if (!f) return;
+  const esFoto = f.tipo === "foto";
+  const iconoDescargar = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>`;
+  const iconoCompartir = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 10.5 6.8-3.9M8.6 13.5l6.8 3.9"/></svg>`;
+  const credito = (f.titulo || f.autor_nombre)
+    ? `${escapeHtml(f.titulo || "")}${f.titulo && f.autor_nombre ? " — " : ""}${f.autor_nombre ? "© " + escapeHtml(f.autor_nombre) : ""}`
+    : "";
+  const enlacePartido = f.partido
+    ? `<a class="gals-lightbox-partido" href="/galeria/${escapeHtml(f.partido.slug)}">Ver galería de ${escapeHtml(f.partido.equipo_local)} - ${escapeHtml(f.partido.equipo_visitante)} →</a>`
+    : "";
+  const srcGrande = esFoto ? cloudinaryOptimizada(f.cloudinary_url, 1800) : f.cloudinary_url;
+
+  document.getElementById("galsLightboxMedia").innerHTML = `
+    ${esFoto ? `<img src="${srcGrande}" alt="${escapeHtml(f.titulo || "")}" decoding="async">` : `<video src="${f.cloudinary_url}" controls autoplay></video>`}
+    <div class="gals-lightbox-info">
+      <div class="gals-lightbox-texto">
+        ${credito ? `<p class="gals-lightbox-credito">${credito}</p>` : ""}
+        ${enlacePartido}
+        ${GALS_MEDIA.length > 1 ? `<p class="gals-lightbox-contador">${GALS_LIGHTBOX_INDICE + 1} / ${GALS_MEDIA.length}</p>` : ""}
+      </div>
+      <div class="gals-lightbox-acciones">
+        <button type="button" class="gals-lightbox-boton" id="galsBtnDescargarLB">${iconoDescargar} Descargar</button>
+        <button type="button" class="gals-lightbox-boton" id="galsBtnCompartirLB">${iconoCompartir} Compartir</button>
+      </div>
+    </div>`;
+
+  document.getElementById("galsBtnDescargarLB").onclick = () => descargarMediaGalerias(GALS_LIGHTBOX_INDICE);
+  document.getElementById("galsBtnCompartirLB").onclick = (e) => compartirMediaGalerias(GALS_LIGHTBOX_INDICE, e.currentTarget);
+}
+
 document.getElementById("galsLightbox").addEventListener("click", (e) => {
   if (e.target.id === "galsLightbox") cerrarLightboxGalerias();
 });
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && document.getElementById("galsLightbox").classList.contains("abierto")) cerrarLightboxGalerias();
+  if (!document.getElementById("galsLightbox").classList.contains("abierto")) return;
+  if (e.key === "Escape") cerrarLightboxGalerias();
+  if (e.key === "ArrowLeft") moverLightboxGalerias(-1);
+  if (e.key === "ArrowRight") moverLightboxGalerias(1);
 });
 
 document.getElementById("galsFiltros").addEventListener("click", (e) => {
@@ -312,6 +612,18 @@ document.getElementById("galsFiltros").addEventListener("click", (e) => {
   btn.classList.add("activo");
   GALS_TIPO = btn.dataset.tipo || "";
   cargarPaginaGalerias(true);
+});
+
+document.getElementById("galsTamano").addEventListener("click", (e) => {
+  const btn = e.target.closest(".gals-tamano-btn");
+  if (!btn) return;
+  document.querySelectorAll(".gals-tamano-btn").forEach((b) => b.classList.remove("activo"));
+  btn.classList.add("activo");
+  GALS_TAM = btn.dataset.tam;
+  const grid = document.getElementById("galsGrid");
+  if (grid) {
+    grid.className = `gals-grid tam-${GALS_TAM}`;
+  }
 });
 
 document.getElementById("galsBtnCargarMas").addEventListener("click", () => {

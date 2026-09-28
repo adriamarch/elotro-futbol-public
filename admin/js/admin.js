@@ -151,7 +151,19 @@ function actualizarPreviewResultado() {
 
 
 // ---------- Auth guard ----------
-const TOKEN = localStorage.getItem("eof_token");
+// TOKEN se leía antes una sola vez con `const` al cargar el script, así
+// que quedaba congelado para el resto de la vida de la pestaña. Si el
+// panel renovaba el token (p.ej. al guardar "Mis datos", ver más abajo
+// `if (data.token) localStorage.setItem("eof_token", data.token)`) o si
+// localStorage aún no tenía el token en el instante exacto en que este
+// script se evaluaba, todas las llamadas siguientes seguían mandando el
+// valor antiguo/vacío y el servidor las rechazaba con 401 en cascada,
+// incluso con una sesión válida. Ahora es una función que relee
+// localStorage en cada petición, así que un token renovado se usa de
+// inmediato sin necesidad de recargar la página.
+function TOKEN_ACTUAL() {
+  return localStorage.getItem("eof_token");
+}
 const USER = JSON.parse(localStorage.getItem("eof_user") || "null");
 const NOTIF_CLAVE = `eof_notif_visto_${USER ? USER.username : ""}`;
 let ultimaVisitaNotifServidor = null;
@@ -169,7 +181,7 @@ const NIVELES_ETIQUETA = {
   3: { emoji: "🟣", nombre: "Maestro" },
   4: { emoji: "🟠", nombre: "Experto" },
 };
-if (!TOKEN || !USER) {
+if (!TOKEN_ACTUAL() || !USER) {
   // Si se llegó sin sesión a una URL con querystring propio (p. ej.
   // panel.html?minuto_a_minuto=<id>, abierto en pestaña nueva desde el
   // enlace "Abrir en pestaña independiente" cuando esa pestaña todavía
@@ -754,7 +766,7 @@ function logout() {
 }
 
 function authHeaders() {
-  return { "Content-Type": "application/json", Authorization: `Bearer ${TOKEN}` };
+  return { "Content-Type": "application/json", Authorization: `Bearer ${TOKEN_ACTUAL()}` };
 }
 
 // Esta función se llama igual que la apiFetch() de failover definida en
@@ -766,6 +778,30 @@ function authHeaders() {
 // dentro apuntaría a esta misma función, no a la de config.js, causando
 // recursión infinita), se llama explícitamente a window.eofApiFetch — el
 // motor de failover expuesto aparte en config.js para este caso.
+// Margen de gracia tras un login: nada de lo que pase en este intervalo
+// puede desloguear a la persona. Motivo (ver historial de bugs de
+// apiFetch más abajo): justo después de iniciar sesión, con el circuito
+// de failover abierto (PRIMARY inestable/caída), las primeras lecturas
+// del panel (perfil, nivel, notificaciones...) pueden llegar a
+// SECONDARY -cuya tabla "sessions" es una RÉPLICA con lag de ~60s- antes
+// de que la sesión recién creada en PRIMARY se haya replicado allí, y
+// dar 401. Se observó incluso el propio reintento a PRIMARY (más abajo)
+// devolviendo 401 en esta ventana, probablemente por la misma clase de
+// lag de propagación en el lado de PRIMARY. Sea cual sea la causa exacta,
+// una persona que ACABA de loguearse correctamente no debe ser expulsada
+// a los pocos segundos: se guarda la marca de tiempo del login y, dentro
+// de este margen, un 401 nunca ejecuta logout().
+const EOF_MARGEN_GRACIA_LOGIN_MS = 15000;
+function eofRegistrarLoginReciente() {
+  try { sessionStorage.setItem("eof_login_en", String(Date.now())); } catch {}
+}
+function eofDentroDeMargenGraciaLogin() {
+  try {
+    const en = Number(sessionStorage.getItem("eof_login_en") || 0);
+    return en > 0 && (Date.now() - en) < EOF_MARGEN_GRACIA_LOGIN_MS;
+  } catch { return false; }
+}
+
 async function apiFetch(path, options = {}) {
   let res = await window.eofApiFetch(path, { ...options, headers: authHeaders() });
   if (res.status === 401) {
@@ -788,14 +824,38 @@ async function apiFetch(path, options = {}) {
     try {
       res = await eofFetchConTimeout(`${PRIMARY_API}${path}`, { ...options, headers: authHeaders() }, EOF_API_TIMEOUT_MS);
     } catch {
-      // Si ni siquiera se puede contactar con la primaria, se mantiene el
-      // 401 original (no se puede confirmar si es un problema real de
-      // sesión o solo de conectividad) y se procede a cerrar sesión como
-      // antes: es preferible pedir que vuelva a iniciar sesión a dejar a
-      // la persona atascada sin saber qué pasa.
+      // Si ni siquiera se puede contactar con la primaria (p.ej. PRIMARY
+      // caída / circuit breaker OPEN), NO se puede confirmar si el 401
+      // original era una sesión realmente caducada o solo un falso
+      // positivo de la réplica con lag. Antes esto hacía logout() igual,
+      // lo cual provocaba un bucle real de login (no visual) cada vez que
+      // cualquier petición devolvía 401 mientras la primaria estaba caída:
+      // el reintento a PRIMARY nunca podía "salvar" la sesión porque
+      // PRIMARY no respondía, así que cualquier 401 pasajero de la
+      // secundaria (réplica con lag) desconectaba a la persona sin motivo
+      // real, en cada cambio de pestaña. Ahora se trata como error de
+      // conectividad, no como sesión caducada: NO se cierra sesión y se
+      // devuelve un objeto vacío (igual que hacía logout() antes para no
+      // romper a los llamadores), dejando que la sesión se recupere sola
+      // cuando la primaria vuelva.
+      return {};
     }
   }
   if (res.status === 401) {
+    // Incluso con PRIMARY respondiendo (no fallo de transporte), se ha
+    // observado un 401 real en este reintento justo después de un login
+    // recién hecho, con el circuito de failover abierto -probablemente
+    // por el mismo tipo de lag de propagación de sesión, esta vez del
+    // lado de la propia PRIMARIA-. Como consecuencia, alguien que ACABA
+    // de introducir sus credenciales correctamente era expulsado de
+    // nuevo a login.html a los pocos segundos, en bucle. Mientras dure el
+    // margen de gracia tras un login, o mientras el circuito de failover
+    // siga abierto (el sistema ya sabe que está en un estado inestable),
+    // no se cierra sesión: se trata este 401 igual que un fallo de
+    // transporte, dejando que la sesión se estabilice sola.
+    if (eofDentroDeMargenGraciaLogin() || (typeof eofApiState !== "undefined" && eofApiState.circuitoAbierto)) {
+      return {};
+    }
     logout();
     // logout() ya redirige a login.html; devolvemos un objeto vacío para
     // que el código que llama (p.ej. "const { articles } = await ...")
@@ -876,7 +936,7 @@ async function subirImagenSuelta(file) {
     try {
       res = await fetch(`${API_URL}/api/subir-imagen`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${TOKEN}` },
+        headers: { Authorization: `Bearer ${TOKEN_ACTUAL()}` },
         body: formData,
       });
     } catch (err) {
@@ -4380,7 +4440,19 @@ function ordenarPorPreferenciaFechas(articles) {
 
 async function cargaListaArticulos() {
   const cos = document.getElementById("tablaArticulos");
-  cos.innerHTML = "<tr><td colspan='5'>Cargando...</td></tr>";
+  // Antes esto vaciaba la tabla y ponía "Cargando..." SIEMPRE, incluso
+  // cuando ya había una lista pintada de una visita anterior a esta
+  // subpestaña: como esta función se llama en cada clic en la pestaña
+  // "Noticias" (ver el manejador de .tabs/.subtabs), el resultado era que
+  // cada vez que volvías a "Noticias" veías la tabla vaciarse un instante
+  // y rellenarse de nuevo -- eso es el parpadeo al cambiar de subpestaña.
+  // Ahora solo se muestra "Cargando..." si de verdad no hay nada pintado
+  // todavía (primera carga); si ya había una lista, se deja tal cual en
+  // pantalla mientras se refresca por detrás y solo se sustituye cuando
+  // llegan los datos nuevos.
+  if (!ARTICULOS_LISTA_COMPLETA || !ARTICULOS_LISTA_COMPLETA.length) {
+    cos.innerHTML = "<tr><td colspan='5'>Cargando...</td></tr>";
+  }
   try {
     await cargarPermisosTemporalesVigentes();
     // Antes se pedían solo las últimas 200 noticias: con más de 200 en
@@ -5926,7 +5998,12 @@ function timestampFechaPartidoAdmin(r) {
 
 async function cargaListaResultados() {
   const cos = document.getElementById("tablaResultados");
-  cos.innerHTML = "<tr><td colspan='6'>Cargando...</td></tr>";
+  // Igual que en cargaListaArticulos(): no vaciar una tabla que ya tiene
+  // datos de una visita anterior a esta subpestaña, para no provocar el
+  // parpadeo de vaciar+rellenar en cada cambio de subpestaña.
+  if (!RESULTADOS_CACHE || !Object.keys(RESULTADOS_CACHE).length) {
+    cos.innerHTML = "<tr><td colspan='6'>Cargando...</td></tr>";
+  }
   try {
     await cargarPermisosTemporalesVigentes();
     // Antes se pedían solo los últimos 200 resultados (ordenados por
@@ -8730,7 +8807,7 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
 
       const xhr = new XMLHttpRequest();
       xhr.open("POST", `${API_URL}/api/media`);
-      xhr.setRequestHeader("Authorization", `Bearer ${TOKEN}`);
+      xhr.setRequestHeader("Authorization", `Bearer ${TOKEN_ACTUAL()}`);
 
       xhr.upload.addEventListener("progress", (e) => {
         if (e.lengthComputable) {
@@ -8979,7 +9056,12 @@ function formatoTamanoAdmin(bytes) {
 async function cargaContenido() {
   const cont = document.getElementById("galeriaContenido");
   if (!cont) return;
-  cont.innerHTML = "<p>Cargando...</p>";
+  // Igual que en cargaListaArticulos(): no vaciar la galería si ya había
+  // contenido pintado de una visita anterior a esta subpestaña, para no
+  // provocar el parpadeo de vaciar+rellenar en cada cambio de subpestaña.
+  if (!mediaActual || !mediaActual.length) {
+    cont.innerHTML = "<p>Cargando...</p>";
+  }
   const ayuda = document.getElementById("ayudaGaleriaContenido");
   if (ayuda) {
     ayuda.textContent = USER.rol === "admin"
@@ -9045,7 +9127,7 @@ function pintarGaleriaContenido() {
 
   cont.innerHTML = lista.map((m) => {
     const esFoto = m.tipo === "foto";
-    const urlDescarga = `${API_URL}/api/media/${m.id}/descargar?token=${encodeURIComponent(TOKEN)}`;
+    const urlDescarga = `${API_URL}/api/media/${m.id}/descargar?token=${encodeURIComponent(TOKEN_ACTUAL())}`;
     const urlMiniatura = miniaturaCloudinary(m.cloudinary_url, esFoto ? "image" : "video", m.portada_segundo, m.portada_foco);
     const iconoRespaldo = esFoto ? iconoFotoAdmin : iconoVideoAdmin;
     // La persona que subió el archivo puede editarlo; un admin puede
@@ -10845,8 +10927,14 @@ async function cargaSolicitudesEdicion() {
   const contRecibidas = document.getElementById("listaSolicitudesRecibidas");
   const contMias = document.getElementById("listaSolicitudesMias");
   if (!contRecibidas || !contMias) return;
-  contRecibidas.innerHTML = "<p class='solicitudes-vacio'>Cargando...</p>";
-  contMias.innerHTML = "<p class='solicitudes-vacio'>Cargando...</p>";
+  // Igual que en cargaListaArticulos(): no vaciar las listas si ya había
+  // solicitudes pintadas de una visita anterior a esta subpestaña, para
+  // no provocar el parpadeo de vaciar+rellenar en cada cambio de
+  // subpestaña.
+  if (!SOLICITUDES_CACHE || !Object.keys(SOLICITUDES_CACHE).length) {
+    contRecibidas.innerHTML = "<p class='solicitudes-vacio'>Cargando...</p>";
+    contMias.innerHTML = "<p class='solicitudes-vacio'>Cargando...</p>";
+  }
   try {
     const { solicitudes = [] } = await apiFetch(`/api/edit-requests`);
     SOLICITUDES_CACHE = {};
@@ -11378,9 +11466,9 @@ document.getElementById("btnAbrirWhatsapp")?.addEventListener("click", () => {
 // sin esperar a que esa promesa termine, se captura con autor_id
 // todavía vacío -- y en cuanto la petición completa y rellena el
 // autor, el formulario ya "difiere" del snapshot sin que la persona
-// haya tocado nada, disparando un falso "1 sin guardar" en el
-// Workspace nada más entrar. Se espera a que termine antes de tomar
-// el snapshot para evitar ese falso positivo.
+// haya tocado nada, disparando un falso "cambios sin guardar" nada más
+// entrar. Se espera a que termine antes de tomar el snapshot para
+// evitar ese falso positivo.
 cargarAutoresSelect(USER.id).finally(() => {
   SNAPSHOT_ARTICULO_ORIGINAL = snapshotFormularioArticulo();
 });
@@ -12287,14 +12375,6 @@ function collagesDesdeImagenes(imagenes) {
 // <head> de panel.html), y este botón es la única forma de cambiarlo,
 // recordando la elección en localStorage para las siguientes visitas
 // (compartido con el resto del sitio, incluida la pantalla de acceso).
-//
-// Cuando panel.html vive dentro de un iframe del Workspace (ver
-// workspace.html), cambiar aquí data-theme solo afecta al documento de
-// ESTE iframe: el Workspace (la ventana padre) y cualquier otra pestaña
-// abierta (otros iframes de panel.html) se quedan con el tema antiguo
-// hasta que se recargan. Por eso, además de aplicar el cambio local,
-// se avisa al padre por postMessage para que él lo propague; ver el
-// listener "eof-workspace-tema" en workspace.html.
 function aplicarTemaEnDocumento(nuevo) {
   if (nuevo === "dark") {
     document.documentElement.setAttribute("data-theme", "dark");
@@ -12314,20 +12394,6 @@ function aplicarTemaEnDocumento(nuevo) {
     try {
       localStorage.setItem("eof_tema", nuevo);
     } catch {}
-    if (window.parent !== window) {
-      try {
-        window.parent.postMessage({ tipo: "eof-workspace-tema", tema: nuevo }, location.origin);
-      } catch (e) {}
-    }
-  });
-  // Si el cambio de tema viene de OTRA pestaña del Workspace (otro
-  // iframe de panel.html) o del propio Workspace, el padre nos lo
-  // reenvía con este mismo mensaje: nos limitamos a aplicarlo, sin
-  // volver a avisar al padre (evita bucles de mensajes).
-  window.addEventListener("message", (ev) => {
-    if (ev.origin !== location.origin) return;
-    if (!ev.data || ev.data.tipo !== "eof-workspace-tema") return;
-    aplicarTemaEnDocumento(ev.data.tema);
   });
 })();
 
@@ -13570,12 +13636,10 @@ async function actualizarBadgeTiendaGestionPendientes(numeroConocido) {
 }
 
 // ---------- Navegación directa por URL: ?ir=tab.subtab ----------
-// Usado por el Workspace (workspace.html), que carga panel.html dentro
-// de iframes y necesita poder abrir cada uno directamente en una
-// sección/subsección concreta (p. ej. "?ir=noticias.nueva" o
-// "?ir=resultados.lista") en vez de aterrizar siempre en la pestaña por
-// defecto. Reutiliza el mismo mecanismo de clicks programáticos que ya
-// usa irANotificacion() más arriba, así que no duplica lógica de pintado.
+// Permite abrir el panel directamente en una sección/subsección concreta
+// (p. ej. "?ir=noticias.nueva" o "?ir=resultados.lista"), en vez de
+// aterrizar siempre en la pestaña por defecto. Reutiliza el mismo
+// mecanismo de clicks programáticos que irANotificacion().
 (function irSegunQuerystring() {
   const params = new URLSearchParams(location.search);
   const ir = params.get("ir");
@@ -13589,94 +13653,26 @@ async function actualizarBadgeTiendaGestionPendientes(numeroConocido) {
       const btnSubtab = document.querySelector(`#panel-${tab} .subtabs button[data-subtab="${subtab}"]`);
       if (btnSubtab) btnSubtab.click();
     }
+    // Si el enlace traía también "?articulo=<id>", se abre ese artículo
+    // en el editor en vez de dejar el formulario de "Nueva noticia" en blanco.
+    const articuloId = params.get("articulo");
+    if (tab === "noticias" && subtab === "nueva" && articuloId) {
+      const art = (ARTICULOS_CACHE && ARTICULOS_CACHE[articuloId]) || { id: articuloId };
+      editarArticulo(art).catch(() => {});
+    }
     return true;
   };
   // El panel pinta sus pestañas de forma síncrona al cargar el script,
   // pero por si algún dato (rol, nivel) llega async y reordena/oculta
-  // pestañas, se reintenta una vez tras un pequeño margen.
-  if (!intentar()) setTimeout(intentar, 300);
-})();
-
-// ---------- Título de pestaña dinámico para el Workspace ----------
-// Cuando panel.html vive dentro de un iframe del Workspace, la pestaña
-// visual del Workspace (no la del navegador) quiere reflejar en qué
-// sección está cada iframe, para que "Noticias · Nueva" y "Resultados"
-// se distingan aunque las dos sean panel.html. Se notifica al padre
-// (si existe y es el propio Workspace) cada vez que cambia de pestaña
-// o subpestaña, en vez de que el Workspace tenga que adivinarlo desde
-// fuera inspeccionando el DOM del iframe.
-function notificarWorkspaceSeccionActiva() {
-  if (window.parent === window) return; // no está dentro de un iframe
-  try {
-    const btnTab = document.querySelector(".tabs button.activo");
-    if (!btnTab) return;
-    const tab = btnTab.dataset.tab;
-    const subtabBtn = document.querySelector(`#panel-${tab} .subtabs button.activo`);
-    window.parent.postMessage({
-      tipo: "eof-workspace-seccion",
-      tab,
-      subtab: subtabBtn ? subtabBtn.dataset.subtab : null,
-      tituloTab: btnTab.textContent.trim().replace(/^\d+$/, "").trim(),
-    }, location.origin);
-  } catch (e) {
-    // Si el padre no es del mismo origen (no debería pasar aquí) o algo
-    // falla al serializar, simplemente no se avisa: el Workspace se
-    // queda con el título genérico "Panel".
+  // pestañas, se reintenta hasta que el botón exista (con un límite de
+  // reintentos, no un único intento a los 300ms) en vez de arriesgarse
+  if (!intentar()) {
+    let reintentos = 0;
+    const intervalo = setInterval(() => {
+      reintentos++;
+      if (intentar() || reintentos >= 20) {
+        clearInterval(intervalo);
+      }
+    }, 150);
   }
-}
-document.querySelectorAll(".tabs button, .subtabs button").forEach(btn => {
-  btn.addEventListener("click", () => setTimeout(notificarWorkspaceSeccionActiva, 0));
-});
-setTimeout(notificarWorkspaceSeccionActiva, 300);
-
-// ---------- Fase 2 del Workspace: avisar de cambios sin guardar ----------
-// El Workspace quiere poder confirmar antes de cerrar una pestaña que
-// tiene trabajo sin guardar (p. ej. una noticia a medio escribir), en
-// vez de cerrarla sin más como con cualquier otra pestaña. Se reutiliza
-// la misma comparación de snapshot que ya usa el propio formulario de
-// noticias (ver snapshotFormularioArticulo/SNAPSHOT_ARTICULO_ORIGINAL
-// más arriba) en vez de duplicar lógica de detección de cambios; para
-// el formulario de resultados, que no tiene un snapshot equivalente,
-// se usa una comprobación más simple: si el formulario tiene algún
-// campo relleno y no se acaba de guardar/resetear.
-function hayCambiosSinGuardarEnEstaPestana() {
-  try {
-    if (typeof SNAPSHOT_ARTICULO_ORIGINAL !== "undefined" && SNAPSHOT_ARTICULO_ORIGINAL !== null
-        && document.getElementById("subpanel-nueva")?.classList.contains("activo")
-        && typeof snapshotFormularioArticulo === "function") {
-      if (snapshotFormularioArticulo() !== SNAPSHOT_ARTICULO_ORIGINAL) return true;
-    }
-  } catch (e) {}
-  try {
-    const subpanelResultado = document.getElementById("subpanel-resultado");
-    if (subpanelResultado && subpanelResultado.classList.contains("activo")) {
-      const golesLocal = document.getElementById("rGolesLocal")?.value;
-      const golesVisitante = document.getElementById("rGolesVisitante")?.value;
-      // Un resultado "nuevo" (sin id) con algún gol ya escrito cuenta
-      // como cambio sin guardar; uno ya guardado que se está reeditando
-      // se deja pasar sin avisar, para no ser demasiado pesado (ese caso
-      // ya tiene su propio autoguardado periódico).
-      const idResultado = document.getElementById("resultadoId")?.value;
-      if (!idResultado && (golesLocal || golesVisitante)) return true;
-    }
-  } catch (e) {}
-  return false;
-}
-function notificarWorkspaceCambiosSinGuardar() {
-  if (window.parent === window) return;
-  try {
-    window.parent.postMessage({
-      tipo: "eof-workspace-dirty",
-      dirty: hayCambiosSinGuardarEnEstaPestana(),
-    }, location.origin);
-  } catch (e) {}
-}
-// Se comprueba con un intervalo corto (no en cada tecla, para no
-// recorrer el DOM constantemente) y también al cambiar de pestaña o
-// subpestaña, que es cuando más probable es que el estado cambie de
-// "limpio" a "sucio" o viceversa (p. ej. al guardar con éxito).
-setInterval(notificarWorkspaceCambiosSinGuardar, 2000);
-document.querySelectorAll(".tabs button, .subtabs button").forEach(btn => {
-  btn.addEventListener("click", () => setTimeout(notificarWorkspaceCambiosSinGuardar, 50));
-});
-document.getElementById("formArticle")?.addEventListener("input", () => setTimeout(notificarWorkspaceCambiosSinGuardar, 0));
+})();

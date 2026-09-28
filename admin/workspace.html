@@ -272,6 +272,30 @@
   .ws-panel-slot + .ws-panel-slot{border-left:1px solid var(--borde);}
   .ws-area.horizontal .ws-panel-slot + .ws-panel-slot{border-left:none;border-top:1px solid var(--borde);}
   .ws-area.grid4 .ws-panel-slot{border:0;}
+  /* Slots de pestañas abiertas que no toca mostrar en este render
+     (p. ej. pestañas de fondo cuando no hay split/grid activo): se
+     ocultan manteniéndolos en su sitio dentro de "area", en vez de
+     moverlos a otro contenedor -- ver el comentario largo junto a
+     limpiarAreaExceptoSlotsVivos()/actualizarVisibilidadSlots() en el
+     bloque de JS de más abajo sobre por qué reparentar el iframe podía
+     recargarlo en Safari/iOS.
+     IMPORTANTE: esto ya NO usa display:none. display:none hace que el
+     navegador desactive por completo el renderer interno del <iframe>
+     (deja de pintar, en algunos casos deja de ejecutar rAF/timers), así
+     que al volver a mostrarlo con display:flex el iframe tiene que
+     rehacer layout+paint de cero -- eso es exactamente lo que se veía
+     como parpadeo/lentitud en cada cambio de pestaña, sin importar cuánto
+     se ajustara la transición CSS (el problema nunca fue la animación,
+     era este re-render forzado del iframe). Ocultarlo así en su lugar
+     -fuera del flujo, sin tamaño, pero SIN display:none- mantiene el
+     iframe "vivo" y pintado, así que mostrarlo de nuevo es instantáneo. */
+  .ws-panel-slot.ws-slot-oculto{
+    position:absolute!important;
+    top:0;left:0;width:100%;height:100%;
+    visibility:hidden!important;
+    pointer-events:none!important;
+    z-index:-1!important;
+  }
   .ws-panel-slot iframe{flex:1;border:0;width:100%;height:100%;background:var(--fondo);position:relative;z-index:1;}
   .ws-slot-etiqueta{
     display:flex;align-items:center;gap:6px;
@@ -540,8 +564,20 @@
       display:flex!important;flex-direction:column;
     }
     .ws-area .ws-divisor{display:none!important;}
-    .ws-area .ws-panel-slot{display:none!important;}
-    .ws-area .ws-panel-slot.ws-slot-movil-activo{display:flex!important;flex:1!important;}
+    /* Igual que en escritorio: no usar display:none aquí (ver el
+       comentario grande junto a .ws-slot-oculto más arriba) para no
+       forzar al iframe a re-renderizar de cero cada vez que se cambia de
+       pestaña en móvil -- se usa la misma ocultación por
+       posición+visibility. */
+    .ws-area .ws-panel-slot{
+      position:absolute!important;top:0;left:0;width:100%;height:100%;
+      visibility:hidden!important;pointer-events:none!important;z-index:-1!important;
+      flex:none!important;
+    }
+    .ws-area .ws-panel-slot.ws-slot-movil-activo{
+      position:relative!important;visibility:visible!important;pointer-events:auto!important;
+      z-index:1!important;display:flex!important;flex:1!important;
+    }
     .ws-aviso-movil.visible{display:flex;}
     .ws-tab{min-width:128px;}
     .ws-overlay{padding-top:6vh;}
@@ -809,7 +845,13 @@
     });
   }
 
-  function abrirPestana(seccionId, { activarla = true, enSplitCon = null } = {}){
+  // Crea (o dispone) una pestaña para la sección indicada. Por defecto NO
+  // cambia el foco a ella (activarla=false): solo la deja abierta/creada,
+  // sin arrancarte de la pestaña en la que estuvieras. Hay que pedir
+  // explícitamente activarla:true en los sitios donde abrir la pestaña es
+  // justo la acción que la persona quiere hacer ahora mismo (paleta de
+  // comandos, duplicar pestaña, elegir sección para un hueco vacío...).
+  function abrirPestana(seccionId, { activarla = false, enSplitCon = null } = {}){
     const seccion = seccionPorId(seccionId);
     if (!seccion) return;
     const id = nuevoId();
@@ -833,17 +875,24 @@
   // con ella (en vez de duplicarla), o crea una pestaña nueva si no.
   // Expuesta en window porque abrirDesdeQuerystring() y
   // abrirPestanaAjustes() la usan más abajo en este mismo IIFE.
-  function abrirPestanaPorId(seccionId){
+  //
+  // activarla=false (usado por ej. desde las notificaciones del
+  // workspace) crea/localiza la pestaña sin arrancar el foco de la
+  // pestaña en la que la persona esté en ese momento: solo la deja
+  // disponible en la barra para que la abra cuando quiera.
+  function abrirPestanaPorId(seccionId, { activarla = true } = {}){
     const existente = estado.pestanas.find(p => p.seccionId === seccionId);
     if (existente) {
-      estado.splitIds = null;
-      estado.gridIds = null;
-      estado.activaId = existente.id;
-      guardarEstado();
-      render();
+      if (activarla) {
+        estado.splitIds = null;
+        estado.gridIds = null;
+        estado.activaId = existente.id;
+        guardarEstado();
+        render();
+      }
       return existente.id;
     }
-    return abrirPestana(seccionId);
+    return abrirPestana(seccionId, { activarla });
   }
   window.abrirPestanaPorId = abrirPestanaPorId;
 
@@ -1061,7 +1110,7 @@
   }
 
   function duplicarPestana(p){
-    abrirPestana(p.seccionId);
+    abrirPestana(p.seccionId, { activarla: true });
     mostrarToast(`"${p.titulo}" duplicada.`, "exito");
   }
   async function cerrarOtrasPestanas(idQueQueda){
@@ -1245,38 +1294,118 @@
     catch (e) { return window.innerWidth <= 760; }
   };
 
-  // Contenedor oculto donde se "aparcan" temporalmente los slots que
-  // contienen un iframe vivo mientras se reconstruye "area", en vez de
-  // borrarlos con innerHTML="". Un innerHTML="" sobre un padre destruye
-  // el nodo del iframe aunque JS siga teniendo una referencia a él en
-  // iframesVivos: el navegador lo desconecta del documento y descarga su
-  // contentWindow, así que al volver a insertarlo (appendChild) es a
-  // efectos prácticos un iframe nuevo que recarga panel.html desde su
-  // ?ir= original -- perdiendo cualquier navegación hecha dentro (por
-  // eso una pestaña volvía siempre a la subsección con la que se abrió
-  // al pasar por otra pestaña del workspace y regresar). Aparcar antes
-  // de vaciar evita ese ciclo de desconexión/reconexión.
-  let limbo = document.getElementById("wsLimbo");
-  if (!limbo) {
-    limbo = document.createElement("div");
-    limbo.id = "wsLimbo";
-    limbo.style.cssText = "position:absolute;width:0;height:0;overflow:hidden;visibility:hidden;pointer-events:none;";
-    document.body.appendChild(limbo);
-  }
-  function aparcarSlotsVivos(){
-    area.querySelectorAll(".ws-panel-slot").forEach(slot => limbo.appendChild(slot));
-  }
-  // Tras reconstruir "area", cada slot de crearSlot() que reutilizó un
-  // iframe ya se lo llevó consigo (slot.appendChild lo mueve). Lo que
-  // queda en limbo son: (a) el envoltorio vacío que dejó atrás ese
-  // iframe reutilizado -- se puede tirar sin más --, y (b) slots
-  // completos de pestañas abiertas que no están visibles en este render
-  // (caso normal: una sola pestaña activa y hay otras de fondo) -- esos
-  // NO se tocan, para no repetir el mismo problema con ellos.
-  function limpiarLimbo(){
-    limbo.querySelectorAll(".ws-panel-slot").forEach(slot => {
-      if (!slot.querySelector("iframe")) slot.remove();
+  // Las pestañas abiertas que no se muestran en el layout actual (p.
+  // ej. pestañas de fondo cuando no hay split/grid) YA NO se mueven a
+  // ningún contenedor externo. Antes se "aparcaban" en un <div> aparte
+  // fuera de "area" (limbo) y se reinsertaban en "area" con appendChild
+  // en cada cambio de pestaña -- eso reparenta el <iframe> de un padre
+  // a otro. En navegadores basados en WebKit (Safari/iOS) mover así un
+  // <iframe> entre padres puede hacer que el motor lo recargue de cero:
+  // aunque la referencia JS en iframesVivos siga siendo "la misma", su
+  // contentWindow se resetea y panel.html vuelve a arrancar desde su
+  // estado por defecto (Noticias · Nueva noticia) antes de que "?ir="
+  // llegue a aplicarse, lo que además de perder la navegación hecha
+  // dentro, hacía "saltar" el título de esa pestaña en la barra del
+  // Workspace justo al cambiar de foco entre pestañas (reproducible de
+  // forma inmediata y consistente en iPhone). Chrome/desktop no
+  // mostraba el problema porque ahí mover un iframe con appendChild no
+  // lo recarga, así que pasaba desapercibido fuera de Safari.
+  //
+  // Ahora los slots con un iframe vivo se quedan siempre como hijos
+  // directos de "area", en el mismo sitio, y solo se ocultan o muestran
+  // con CSS (ver actualizarVisibilidadSlots() más abajo y la clase
+  // ws-slot-oculto). El único reparenting que sigue existiendo es el
+  // de asegurarSlotEnModo(): mover el <iframe> ya vivo (con su
+  // contentWindow intacto) de un slot viejo a uno nuevo cuando cambia
+  // de modo split/no-split, ambos ya dentro de "area" -- ese es el
+  // mismo tipo de movimiento que crearSlot() siempre hizo para
+  // reutilizar iframes entre renders y nunca causó este problema.
+  //
+  // Quita de "area" únicamente los hijos que NO sean un slot con un
+  // iframe vivo (el mensaje de bienvenida, huecos de grid vacíos, el
+  // divisor de split, etc.), dejando intactos -- en su sitio, sin
+  // moverlos -- los slots de pestañas ya abiertas para que su iframe
+  // nunca cambie de padre real.
+  function limpiarAreaExceptoSlotsVivos(){
+    Array.from(area.children).forEach(hijo => {
+      if (hijo.classList.contains("ws-panel-slot") && hijo.querySelector("iframe")) return;
+      hijo.remove();
     });
+  }
+
+  // Oculta con CSS (sin desmontar) cualquier slot vivo que no deba
+  // verse en este render, y muestra los que sí. idsVisibles puede ser
+  // un solo id (string) o una lista de ids (split/grid).
+  // Antes este cambio de visibilidad pasaba por un cross-fade de opacidad
+  // (aplicarOcultamientoSuave/ws-slot-ocultando + transitionend + timeout
+  // de seguridad) pensado para evitar un corte brusco al cambiar de
+  // pestaña. En la práctica ese fundido -por corto que fuera- se veía y
+  // sentía como un parpadeo/lentitud constante, mucho más molesto que el
+  // corte instantáneo que pretendía disimular. Ahora el cambio es
+  // directo: display:none/flex sin transición ni estado intermedio.
+  function actualizarVisibilidadSlots(idsVisibles){
+    const visibles = new Set(Array.isArray(idsVisibles) ? idsVisibles.filter(Boolean) : [idsVisibles].filter(Boolean));
+    area.querySelectorAll(".ws-panel-slot").forEach(slot => {
+      const esVisible = visibles.has(slot.dataset.pestanaId);
+      const estabaOculto = slot.classList.contains("ws-slot-oculto");
+
+      if (!esVisible && !estabaOculto) {
+        slot.classList.add("ws-slot-oculto");
+        return;
+      }
+
+      if (esVisible && estabaOculto) {
+        slot.classList.remove("ws-slot-oculto");
+      }
+      // Si esta pestaña ACABA de pasar de oculta a visible, se le pide a
+      // su iframe que vuelva a avisar en qué sección/subsección está
+      // ahora mismo (ver el listener "eof-workspace-pedir-seccion" en
+      // admin.js). Esto es justo lo contrario de depender solo del push
+      // que ya manda panel.html en cada click interno (notificarWorkspace-
+      // SeccionActiva()): si ese aviso llegó a perderse -- p. ej. porque
+      // el click que cambiaba de sección y el cambio de pestaña del
+      // Workspace ocurrieron tan seguidos que el aviso, diferido con
+      // setTimeout(0), cayó justo cuando esta pestaña ya se estaba
+      // ocultando y notificarWorkspaceSeccionActiva() lo descartó por
+      // "document.hidden" -- aquí se vuelve a pedir un dato fresco en
+      // cuanto la pestaña recupera el foco, en vez de fiarse de que ese
+      // único aviso automático haya llegado. Así el título de la pestaña
+      // del Workspace no puede quedarse desincronizado de la sección real
+      // que muestra su iframe por mucho que el aviso automático falle.
+      if (esVisible && estabaOculto) {
+        const ifr = iframesVivos[slot.dataset.pestanaId];
+        if (ifr && ifr.contentWindow) {
+          try { ifr.contentWindow.postMessage({ tipo: "eof-workspace-pedir-seccion" }, location.origin); } catch (e) {}
+        }
+      }
+    });
+  }
+
+  // Devuelve el slot ya existente en "area" para pestanaId si lo hay
+  // (con su iframe real dentro, sin tocarlo), o null si aún no existe.
+  function slotExistente(pestanaId){
+    return area.querySelector(`.ws-panel-slot[data-pestana-id="${pestanaId}"]`);
+  }
+
+  // Asegura que el slot de pestanaId esté en "area" con el modo (split
+  // o no) correcto, SIN separar nunca el iframe de su slot inmediato:
+  // si el slot ya existe pero en el modo equivocado (p. ej. se pasó de
+  // pantalla completa a split y ahora necesita la etiqueta A/B, o al
+  // revés), se mueve el propio iframe -- ya montado y con su
+  // contentWindow intacto -- al nuevo slot con crearSlot(), que solo
+  // reutiliza el iframe de iframesVivos en vez de crear uno nuevo. El
+  // slot viejo (ahora vacío) se descarta. Este único reparenting
+  // (iframe -> nuevo slot, ambos ya dentro de "area") es el mismo que
+  // ya hacía crearSlot() de siempre para reutilizar iframes entre
+  // renders, y no el que causaba el bug (mover el slot ENTERO a un
+  // contenedor de otro documento/padre externo).
+  function asegurarSlotEnModo(pestanaId, esSplit, indiceGrid){
+    const existente = slotExistente(pestanaId);
+    const modoActualEsSplit = !!(existente && existente.querySelector(".ws-slot-etiqueta"));
+    if (existente && modoActualEsSplit === !!esSplit) return existente;
+    const nuevo = crearSlot(pestanaId, esSplit, indiceGrid);
+    if (existente) existente.remove();
+    return nuevo;
   }
 
   function render(){
@@ -1286,44 +1415,48 @@
     document.getElementById("btnGrid4").classList.toggle("activo", !!estado.gridIds);
     document.getElementById("btnDividir").querySelector(".txt-btn").textContent = estado.splitIds ? "Cerrar split" : "Dividir";
 
-    aparcarSlotsVivos();
-
     if (estado.gridIds) {
       area.className = "ws-area grid4";
-      area.innerHTML = "";
-      avisoMovil.classList.toggle("visible", ES_MOVIL());
+      limpiarAreaExceptoSlotsVivos();
       estado.gridIds.forEach((id, idx) => {
-        area.appendChild(id ? crearSlot(id, true, idx) : crearHuecoVacioGrid(idx));
+        if (!id) { area.appendChild(crearHuecoVacioGrid(idx)); return; }
+        area.appendChild(asegurarSlotEnModo(id, true, idx));
       });
+      actualizarVisibilidadSlots(estado.gridIds.filter(Boolean));
+      avisoMovil.classList.toggle("visible", ES_MOVIL());
       if (ES_MOVIL()) marcarSlotVisibleMovil(estado.gridIds.find(Boolean));
-      limpiarLimbo();
       return;
     }
 
     area.className = "ws-area " + (estado.orientacion === "horizontal" ? "horizontal" : "vertical");
-    area.innerHTML = "";
 
     if (estado.splitIds && estado.splitIds.length === 2) {
-      avisoMovil.classList.toggle("visible", ES_MOVIL());
+      limpiarAreaExceptoSlotsVivos();
       const [idA, idB] = estado.splitIds;
-      const slotA = crearSlot(idA, true);
-      const slotB = crearSlot(idB, true);
-      const divisor = document.createElement("div");
-      divisor.className = "ws-divisor";
+      const slotA = asegurarSlotEnModo(idA, true);
+      const slotB = asegurarSlotEnModo(idB, true);
+      let divisor = area.querySelector(".ws-divisor");
+      if (!divisor) {
+        divisor = document.createElement("div");
+        divisor.className = "ws-divisor";
+      }
+      // Reordenar: slotA, divisor, slotB, tal cual el layout espera.
       area.appendChild(slotA);
       area.appendChild(divisor);
       area.appendChild(slotB);
       habilitarArrastreDivisor(divisor, slotA, slotB);
+      actualizarVisibilidadSlots([idA, idB]);
+      avisoMovil.classList.toggle("visible", ES_MOVIL());
       if (ES_MOVIL()) marcarSlotVisibleMovil(idA);
-      limpiarLimbo();
       return;
     }
 
     avisoMovil.classList.remove("visible");
 
     if (estado.activaId) {
-      area.appendChild(crearSlot(estado.activaId, false));
-      limpiarLimbo();
+      limpiarAreaExceptoSlotsVivos();
+      area.appendChild(asegurarSlotEnModo(estado.activaId, false));
+      actualizarVisibilidadSlots(estado.activaId);
       // Caso de una sola pestaña sin split/grid: en pantallas estrechas
       // el CSS oculta con display:none!important cualquier
       // .ws-panel-slot que no lleve esta clase (ver @media max-width:
@@ -1334,7 +1467,8 @@
       return;
     }
 
-    limpiarLimbo();
+    limpiarAreaExceptoSlotsVivos();
+    actualizarVisibilidadSlots([]);
     mostrarBienvenida();
   }
 
@@ -1396,7 +1530,13 @@
     if (!iframe) {
       iframe = document.createElement("iframe");
       const seccion = seccionPorId(p.seccionId);
-      iframe.src = "panel.html" + (seccion ? "?ir=" + encodeURIComponent(seccion.tab + "." + seccion.subtab) : "");
+      // Si esta pestaña tenía un artículo abierto en edición, se añade
+      // "&articulo=" para que admin.js lo reabra en vez de dejar el
+      // formulario de "Nueva noticia" en blanco (ver notificarWorkspace-
+      // SeccionActiva() e irSegunQuerystring() en admin.js).
+      iframe.src = "panel.html" + (seccion
+        ? "?ir=" + encodeURIComponent(seccion.tab + "." + seccion.subtab) + (p.articuloId ? "&articulo=" + encodeURIComponent(p.articuloId) : "")
+        : "");
       iframe.id = "iframe-" + pestanaId;
       iframe.setAttribute("title", p.titulo);
       iframesVivos[pestanaId] = iframe;
@@ -1467,7 +1607,13 @@
     const dentroDeGrid = typeof huecoGridIndice === "number";
     if (!dentroDeGrid) {
       area.className = "ws-area vertical";
-      area.innerHTML = "";
+      // No usar innerHTML="": destruiría cualquier slot con iframe vivo
+      // que siga en "area" (pestañas abiertas de fondo, sin ninguna
+      // activa en este momento). render() ya llamó a
+      // limpiarAreaExceptoSlotsVivos() antes de esto, así que aquí solo
+      // puede quedar contenido no esencial (un mensaje de bienvenida
+      // anterior, etc.) -- se quita eso y se deja intacto lo demás.
+      limpiarAreaExceptoSlotsVivos();
     }
 
     function elegir(seccionId){
@@ -1478,7 +1624,7 @@
         registrarReciente(seccionId);
         asignarHuecoGrid(huecoGridIndice, id);
       } else {
-        abrirPestana(seccionId);
+        abrirPestana(seccionId, { activarla: true });
       }
     }
 
@@ -1590,6 +1736,18 @@
       return;
     }
 
+    // Un iframe de panel.html ha detectado una sesión caducada/revocada
+    // de verdad (401 fuera del margen de gracia de login y sin el
+    // circuito de failover abierto, ver logout() en admin.js) y no puede
+    // navegar él solo a login.html: localStorage ya se limpió en ese
+    // iframe (y por tanto para TODOS, es el mismo storage), así que aquí
+    // basta con mandar a la ventana de nivel superior a login.html sin
+    // tener que volver a tocar localStorage.
+    if (ev.data.tipo === "eof-workspace-logout") {
+      location.href = "login.html";
+      return;
+    }
+
     // Averiguar qué pestaña es este iframe comparando ev.source con los
     // iframes vivos.
     const idPestana = Object.keys(iframesVivos).find(id => iframesVivos[id].contentWindow === ev.source);
@@ -1605,13 +1763,96 @@
     if (ev.data.tipo !== "eof-workspace-seccion") return;
     const p = estado.pestanas.find(x => x.id === idPestana);
     if (!p) return;
+    // Se actualiza el articuloId ANTES de reescribir la URL del iframe más
+    // abajo, para que esa URL use siempre el valor fresco (si no, la URL
+    // reescrita se quedaría con el articuloId del mensaje anterior).
+    p.articuloId = ev.data.articuloId || null;
     const seccion = SECCIONES.find(s => s.tab === ev.data.tab && s.subtab === ev.data.subtab);
     if (seccion) {
+      // Importante: también se actualiza seccionId, no solo el título. Si
+      // no se hiciera, cambiar de subpestaña DENTRO del iframe (p. ej. de
+      // "Nueva noticia" a "Ver noticias") no quedaría reflejado aquí, y si
+      // el iframe se recrea desde cero (al recuperar en iOS/Safari una
+      // pestaña del navegador que el sistema había descargado de memoria),
+      // crearSlot() reconstruiría la URL a partir del seccionId antiguo y
+      // volvería siempre a la subpestaña con la que se abrió la pestaña
+      // por primera vez, en vez de a la última que se estuviera viendo.
+      p.seccionId = seccion.id;
       p.titulo = seccion.titulo.split(" · ")[0];
       p.subTitulo = null;
+      // CLAVE (fix definitivo de este bug): además de guardar el
+      // seccionId en el estado del Workspace, hay que mantener el propio
+      // atributo src/URL del <iframe> sincronizado con la sección actual,
+      // usando history.replaceState() -- NO reasignando iframe.src (eso
+      // SÍ recargaría el iframe de verdad, perdiendo cualquier cosa sin
+      // guardar). Motivo: el navegador (no solo iOS/Safari, también
+      // Chrome/Edge de escritorio bajo presión de memoria) puede
+      // descargar y recrear por su cuenta el documento de un iframe
+      // oculto con display:none para liberar memoria. Cuando eso pasa, el
+      // <iframe> "sigue vivo" como objeto de JS (mismo elemento, sigue en
+      // iframesVivos[id]), pero su documento interno se recarga desde
+      // cero y vuelve a ejecutar panel.html leyendo su atributo src actual
+      // -- que sin este fix seguía siendo el "?ir=" ORIGINAL con el que
+      // se creó esa pestaña la primera vez, nunca el de la última sección
+      // que se estuviera viendo, porque cambiar de tab/subtab con los
+      // botones de panel.html es solo un cambio de clases CSS dentro de
+      // ese documento (no una navegación real), así que iframe.src nunca
+      // se actualizaba solo. Con history.replaceState() dentro del propio
+      // iframe (mismo origen, permitido) se reescribe su URL sin recargar
+      // nada ahora mismo, de forma que si el navegador SÍ decide recrear
+      // ese documento más adelante, lo haga arrancando ya en la sección
+      // correcta en vez de siempre en la primera con la que se abrió la
+      // pestaña.
+      const ifrVivo = iframesVivos[idPestana];
+      if (ifrVivo && ifrVivo.contentWindow) {
+        try {
+          const nuevaUrl = "panel.html?ir=" + encodeURIComponent(seccion.tab + "." + seccion.subtab) +
+            (p.articuloId ? "&articulo=" + encodeURIComponent(p.articuloId) : "");
+          ifrVivo.contentWindow.history.replaceState(null, "", nuevaUrl);
+          // BUG ANTERIOR (causaba el bucle de recargas infinitas): el
+          // comentario original asumía que el navegador compara el nuevo
+          // valor de "src" contra ifrVivo.contentWindow.location.href
+          // (que replaceState() ya había puesto en nuevaUrl), y por tanto
+          // no navegaría de nuevo. Eso es falso: el navegador compara
+          // contra el ÚLTIMO VALOR DE "src" QUE CAUSÓ UNA NAVEGACIÓN REAL
+          // (el "?ir=..." original con el que crearSlot() creó este
+          // iframe), no contra location.href. Como nuevaUrl casi siempre
+          // es distinta de ese src original, ifrVivo.setAttribute("src",
+          // nuevaUrl) SÍ disparaba una recarga real del iframe cada vez
+          // que se cambiaba de sección/subpestaña. Esa recarga volvía a
+          // ejecutar admin.js desde cero, que al arrancar vuelve a leer
+          // "?ir=" y notifica de nuevo al Workspace (notificarWorkspace-
+          // SeccionActiva), que volvía a llamar aquí -> bucle. Con la API
+          // primaria caída, cada recarga disparaba además una nueva
+          // tanda de peticiones fallidas (notificaciones, comentarios,
+          // autores...), lo que hacía el parpadeo mucho más visible y
+          // agresivo.
+          //
+          // Fix: solo tocar el atributo "src" del <iframe> cuando de
+          // verdad ha cambiado respecto a su valor actual. Comparamos
+          // contra getAttribute("src") (el string tal cual está en el
+          // DOM), no contra ifrVivo.src (que el navegador resuelve a URL
+          // absoluta y NUNCA sería igual a nuestra ruta relativa, lo que
+          // forzaría la escritura -y la navegación- siempre). Así se
+          // conserva el objetivo original (que al recrearse el documento
+          // por descarga de memoria arranque en la última sección vista)
+          // sin forzar una recarga real en el caso normal, que es
+          // simplemente cambiar de pestaña/subpestaña sin que el
+          // navegador haya descargado nada.
+          if (ifrVivo.getAttribute("src") !== nuevaUrl) {
+            ifrVivo.setAttribute("src", nuevaUrl);
+          }
+        } catch (e) {
+          // Si esto falla (p. ej. iframe ya no accesible), no hay nada
+          // más que hacer: el peor caso es que ese iframe concreto no
+          // recuerde la última sección vista si el navegador llega a
+          // descargarlo de memoria más adelante.
+        }
+      }
     } else if (ev.data.tituloTab) {
       p.titulo = ev.data.tituloTab;
     }
+
     guardarEstado();
     renderTabbar();
   });
@@ -1853,7 +2094,7 @@
   function pintarPaleta(filtro){
     const f = (filtro || "").trim().toLowerCase();
     const secciones = SECCIONES.filter(s => !f || (s.titulo + " " + s.desc).toLowerCase().includes(f))
-      .map(s => ({ nombre: s.titulo, detalle: s.desc, cat: "seccion", icono: s.categoria, run: () => abrirPestana(s.id) }));
+      .map(s => ({ nombre: s.titulo, detalle: s.desc, cat: "seccion", icono: s.categoria, run: () => abrirPestana(s.id, { activarla: true }) }));
     const acciones = ACCIONES_PALETA.filter(a => !f || a.nombre.toLowerCase().includes(f));
     itemsPaletaActuales = [...acciones, ...secciones];
     indiceActivoPaleta = 0;
@@ -1956,7 +2197,7 @@
     // ya se ha abierto la sección pedida por querystring
   } else if (!estado.pestanas.length) {
     const esFotografo = USER && USER.rol === "fotografo";
-    abrirPestana(esFotografo ? "contenido.subir" : "noticias.nueva");
+    abrirPestana(esFotografo ? "contenido.subir" : "noticias.nueva", { activarla: true });
   } else {
     render();
   }

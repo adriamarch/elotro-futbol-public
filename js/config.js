@@ -476,6 +476,26 @@ const ETIQUETAS_EVENTO_PUBLICO = {
   nota: "Nota",
 };
 
+// Revisión VAR (tipo "var"): jugada revisada y estado de la revisión.
+// Mismas claves que MAM_VAR_MOTIVOS / MAM_VAR_DECISIONES del panel de
+// Minuto a Minuto y que VAR_MOTIVOS_VALIDOS / VAR_DECISIONES_VALIDAS
+// del Worker.
+const VAR_MOTIVOS_PUBLICO = {
+  gol: "Posible gol",
+  penalti: "Posible penalti",
+  roja: "Posible tarjeta roja",
+  amarilla: "Posible tarjeta amarilla",
+  falta: "Posible falta",
+  fuera_juego: "Posible fuera de juego",
+  mano: "Posible mano",
+  otra: "Otra jugada",
+};
+const VAR_DECISIONES_PUBLICO = {
+  revisando: "En revisión",
+  mantiene: "Se mantiene la decisión",
+  cambia: "Se cambia la decisión",
+};
+
 // Eventos que son un hito del propio partido (no de un equipo/jugador
 // concreto): se pintan sin escudo/etiqueta de equipo.
 const TIPOS_EVENTO_SIN_EQUIPO_PUBLICO = [
@@ -568,6 +588,14 @@ function detalleJugadorEventoPublico(ev) {
   if (ev.tipo === "gol_pp") {
     const marcador = ev.jugador ? escapeHtml(ev.jugador) : "";
     return marcador ? ` · ${marcador} (p.p.)` : "";
+  }
+  if (ev.tipo === "var") {
+    const partes = [
+      VAR_MOTIVOS_PUBLICO[ev.var_motivo],
+      VAR_DECISIONES_PUBLICO[ev.var_decision],
+      ev.jugador ? escapeHtml(ev.jugador) : "",
+    ].filter(Boolean);
+    return partes.length ? " · " + partes.join(" · ") : "";
   }
   return ev.jugador ? " · " + escapeHtml(ev.jugador) : "";
 }
