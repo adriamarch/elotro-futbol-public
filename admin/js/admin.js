@@ -803,6 +803,7 @@ function eofDentroDeMargenGraciaLogin() {
 }
 
 async function apiFetch(path, options = {}) {
+  const esEscrituraAdmin = ["POST", "PUT", "PATCH", "DELETE"].includes(String(options.method || "GET").toUpperCase());
   let res = await window.eofApiFetch(path, { ...options, headers: authHeaders() });
   if (res.status === 401) {
     // Antes de dar la sesión por caducada de verdad, se reintenta UNA vez
@@ -838,6 +839,10 @@ async function apiFetch(path, options = {}) {
       // devuelve un objeto vacío (igual que hacía logout() antes para no
       // romper a los llamadores), dejando que la sesión se recupere sola
       // cuando la primaria vuelva.
+      // Si era una ESCRITURA (p. ej. eliminar un usuario) no se puede
+      // devolver {} como si hubiera ido bien: el llamador recargaría la
+      // lista y parecería que no ha pasado nada. Se avisa con un error.
+      if (esEscrituraAdmin) throw new Error("No se pudo contactar con la API principal. La acción no se ha realizado: inténtalo de nuevo en unos segundos.");
       return {};
     }
   }
@@ -853,7 +858,27 @@ async function apiFetch(path, options = {}) {
     // siga abierto (el sistema ya sabe que está en un estado inestable),
     // no se cierra sesión: se trata este 401 igual que un fallo de
     // transporte, dejando que la sesión se estabilice sola.
+    // Un 401 en una ESCRITURA no implica que la sesión haya caducado (el
+    // resto de peticiones del panel pueden seguir funcionando). Antes de
+    // expulsar a la persona se comprueba con /api/me si la sesión sigue
+    // viva; si lo está, se muestra el error real de esa acción en vez de
+    // cerrar sesión o fingir que se ha hecho.
+    if (esEscrituraAdmin) {
+      let sesionViva = true;
+      try {
+        const chk = await eofFetchConTimeout(`${PRIMARY_API}/api/me`, { headers: authHeaders() }, EOF_API_TIMEOUT_MS);
+        sesionViva = chk.status !== 401;
+      } catch { sesionViva = true; }
+      if (sesionViva) {
+        let mensaje = "No autorizado para esta acción. Recarga el panel e inténtalo de nuevo.";
+        try { const d = await res.json(); if (d && d.error) mensaje = d.error; } catch {}
+        const err = new Error(mensaje);
+        err.status = 401;
+        throw err;
+      }
+    }
     if (eofDentroDeMargenGraciaLogin() || (typeof eofApiState !== "undefined" && eofApiState.circuitoAbierto)) {
+      if (esEscrituraAdmin) throw new Error("La sesión se está estabilizando. La acción no se ha realizado: inténtalo de nuevo en unos segundos.");
       return {};
     }
     logout();
