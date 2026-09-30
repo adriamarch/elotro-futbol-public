@@ -3064,7 +3064,7 @@ function comprobarBorradorLocalDeEmergencia() {
 // Contador de caracteres del contenido: el texto tiene que tener entre
 // 2000 y 8000 caracteres (se cuenta el texto "de verdad", sin las
 // etiquetas HTML del editor), igual que valida el worker al guardar.
-const CONTENIDO_MIN = 2000;
+const CONTENIDO_MIN = 1500;
 const CONTENIDO_MAX = 8000;
 const contadorCaracteres = document.getElementById("contadorCaracteres");
 
@@ -5890,8 +5890,10 @@ function dentroDelDiaDelPartidoFrontend(fechaPartido) {
 }
 
 // Misma idea que ARTICULOS_LISTA_COMPLETA/ARTICULOS_PAGINA_ACTUAL, para
-// el listado de resultados: se guarda ya ordenado (en_juego/programado
-// primero) para no tener que reordenar en cada repintado.
+// el listado de resultados: se guarda ya ordenado (en juego arriba y el
+// resto por cercanía a la hora actual, ver
+// ordenarResultadosPorCercaniaAhora) para no tener que
+// reordenar en cada repintado.
 let RESULTADOS_LISTA_COMPLETA = [];
 let RESULTADOS_PAGINA_ACTUAL = 1;
 const RESULTADOS_POR_PAGINA = 20;
@@ -5996,6 +5998,142 @@ function timestampFechaPartidoAdmin(r) {
   return isNaN(t) ? NaN : t;
 }
 
+// "Ahora" en hora de Madrid, expresado en la misma escala que devuelve
+// timestampFechaPartidoAdmin: esa función interpreta fecha_partido (que
+// está guardada en hora de Madrid, sin zona) como si fuera UTC, así que
+// para compararla contra "ahora" hay que poner "ahora" en la misma escala
+// (los dígitos del reloj de Madrid tratados como UTC). Comparar contra
+// Date.now() a secas dejaría un desfase de 1-2 h según el horario de
+// verano/invierno, y con orden "por minutos" eso sería un error visible.
+function ahoraMadridEscalaFechaPartido() {
+  const p = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Europe/Madrid", hourCycle: "h23",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+  }).formatToParts(new Date()).reduce((acc, x) => (acc[x.type] = x.value, acc), {});
+  return Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second);
+}
+
+// Estados agrupados para ordenar y filtrar el listado de resultados.
+const ESTADOS_RESULTADO_POR_JUGAR = ["programado", "retrasado"];
+const ESTADOS_RESULTADO_TERMINADOS = ["finalizado", "anulado"];
+
+// Devuelve el grupo de un estado: "en_juego", "por_jugar", "terminados",
+// o "" si el estado no se reconoce.
+function grupoEstadoResultado(estado) {
+  if (estado === "en_juego") return "en_juego";
+  if (ESTADOS_RESULTADO_POR_JUGAR.includes(estado)) return "por_jugar";
+  if (ESTADOS_RESULTADO_TERMINADOS.includes(estado)) return "terminados";
+  return "";
+}
+
+// Prioridad de orden: 0 en juego, 1 por jugar (programado/retrasado),
+// 2 terminados y cualquier estado desconocido.
+function prioridadEstadoResultado(estado) {
+  const g = grupoEstadoResultado(estado);
+  return g === "en_juego" ? 0 : g === "por_jugar" ? 1 : 2;
+}
+
+// Ordena los resultados de arriba a abajo en tres niveles:
+//  1) EN JUEGO, siempre arriba del todo.
+//  2) POR JUGAR (programados y retrasados), justo debajo.
+//  3) TERMINADOS (finalizados y anulados) y el resto, al final.
+// Dentro de cada nivel se ordena por cercanía a la hora actual (el que
+// empieza dentro de un minuto, el primero; cuanto más lejos en el pasado
+// o el futuro, más abajo). A igual distancia va antes el que todavía no
+// ha empezado. Los que no tienen fecha van al final de su nivel,
+// conservando el orden que traían de la API.
+function ordenarResultadosPorCercaniaAhora(lista) {
+  const ahora = ahoraMadridEscalaFechaPartido();
+  return lista
+    .map((r, i) => ({ r, i, t: timestampFechaPartidoAdmin(r) }))
+    .sort((a, b) => {
+      const pa = prioridadEstadoResultado(a.r.estado);
+      const pb = prioridadEstadoResultado(b.r.estado);
+      if (pa !== pb) return pa - pb;
+      const sinFechaA = isNaN(a.t);
+      const sinFechaB = isNaN(b.t);
+      if (sinFechaA || sinFechaB) {
+        if (sinFechaA && sinFechaB) return a.i - b.i;
+        return sinFechaA ? 1 : -1;
+      }
+      const distA = Math.abs(a.t - ahora);
+      const distB = Math.abs(b.t - ahora);
+      if (distA !== distB) return distA - distB;
+      const futuroA = a.t >= ahora;
+      const futuroB = b.t >= ahora;
+      if (futuroA !== futuroB) return futuroA ? -1 : 1;
+      return a.i - b.i;
+    })
+    .map(({ r }) => r);
+}
+
+// "sáb 26 sep · 17:00" (o "sáb 26 sep" si solo hay día). Vacío si no hay fecha.
+function fechaPartidoLegibleAdmin(fecha) {
+  if (!fecha) return "";
+  const m = String(fecha).trim().match(/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}))?/);
+  if (!m) return "";
+  const dias = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
+  const meses = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+  const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+  const dia = `${dias[d.getUTCDay()]} ${+m[3]} ${meses[+m[2] - 1]}`;
+  return m[4] !== undefined ? `${dia} · ${m[4]}:${m[5]}` : dia;
+}
+
+const ETIQUETAS_ESTADO_RESULTADO = {
+  en_juego: "En juego", programado: "Programado", retrasado: "Retrasado",
+  finalizado: "Finalizado", anulado: "Anulado",
+};
+function estadoResultadoBadgeHTML(r) {
+  const etiqueta = ETIQUETAS_ESTADO_RESULTADO[r.estado] || r.estado || "";
+  return `<span class="estado-resultado estado-resultado-${escapeHtml(String(r.estado || "desconocido"))}">${escapeHtml(etiqueta)}</span>`;
+}
+
+// Contenido de la celda "Partido": equipos, avisos y fecha/hora legible.
+function celdaPartidoResultadoHTML(r) {
+  const fecha = fechaPartidoLegibleAdmin(r.fecha_partido);
+  return `<span class="partido-equipos">${escapeHtml(r.equipo_local)} <span class="partido-vs">-</span> ${escapeHtml(r.equipo_visitante)}</span> ${avisoDatosFaltantesResultadoHTML(r)}${avisoPartidoDesatendidoHTML(r)}` +
+    (fecha ? `<br><small class="resultado-fecha">${escapeHtml(fecha)}</small>` : "");
+}
+
+// ---------- Filtro por estado: En juego / Por jugar / Terminados ----------
+const CLAVE_FILTRO_ESTADO_RESULTADOS = "eof_filtro_estado_resultados";
+let filtroEstadoResultados = (() => {
+  try {
+    const v = localStorage.getItem(CLAVE_FILTRO_ESTADO_RESULTADOS) || "";
+    return ["en_juego", "por_jugar", "terminados"].includes(v) ? v : "";
+  } catch (e) { return ""; }
+})();
+
+// Lista tras aplicar competición, equipo, buscador y (si se pide) estado
+// y "solo sin cubrir". Sin estado se usa para calcular los contadores.
+function resultadosFiltradosActuales({ incluirEstado = true } = {}) {
+  const textoBusqueda = (document.getElementById("buscadorResultados")?.value || "").trim().toLowerCase();
+  const competicionElegida = document.getElementById("filtroCompeticionResultados")?.value || "";
+  const equipoElegido = document.getElementById("filtroEquipoResultados")?.value || "";
+  let lista = RESULTADOS_LISTA_COMPLETA
+    .filter(r => resultadoCoincideFiltros(r, competicionElegida, equipoElegido))
+    .filter(r => resultadoCoincideBusqueda(r, textoBusqueda));
+  if (incluirEstado && filtroEstadoResultados) {
+    lista = lista.filter(r => grupoEstadoResultado(r.estado) === filtroEstadoResultados);
+  }
+  return lista;
+}
+
+function actualizarChipsEstadoResultados() {
+  const base = resultadosFiltradosActuales({ incluirEstado: false });
+  const cuenta = { "": base.length, en_juego: 0, por_jugar: 0, terminados: 0 };
+  base.forEach((r) => { const g = grupoEstadoResultado(r.estado); if (g) cuenta[g]++; });
+  document.querySelectorAll("#filtrosEstadoResultados [data-filtro-estado]").forEach((btn) => {
+    const clave = btn.dataset.filtroEstado;
+    const activo = clave === filtroEstadoResultados;
+    btn.classList.toggle("activo", activo);
+    btn.setAttribute("aria-pressed", String(activo));
+    const n = btn.querySelector(".chip-estado-n");
+    if (n) n.textContent = cuenta[clave];
+  });
+}
+
 async function cargaListaResultados() {
   const cos = document.getElementById("tablaResultados");
   // Igual que en cargaListaArticulos(): no vaciar una tabla que ya tiene
@@ -6024,20 +6162,10 @@ async function cargaListaResultados() {
     const { results = [] } = await apiFetch(`/api/results?limit=500`);
     RESULTADOS_CACHE = {};
     results.forEach((r) => { RESULTADOS_CACHE[r.id] = r; });
-    // Los partidos en juego o por jugar (programado) son los que más
-    // atención necesitan del redactor (eventar en vivo, revisar datos
-    // antes de que empiecen...), así que se muestran arriba del todo.
-    // Dentro de cada grupo se conserva el orden que ya traía la API.
-    const ordenEstadoTabla = { en_juego: 0, programado: 1 };
-    RESULTADOS_LISTA_COMPLETA = results
-      .map((r, i) => ({ r, i }))
-      .sort((a, b) => {
-        const pa = ordenEstadoTabla[a.r.estado] ?? 2;
-        const pb = ordenEstadoTabla[b.r.estado] ?? 2;
-        if (pa !== pb) return pa - pb;
-        return a.i - b.i;
-      })
-      .map(({ r }) => r);
+    // Orden (ver ordenarResultadosPorCercaniaAhora): los partidos en
+    // juego siempre arriba del todo y, debajo, el resto por cercanía a
+    // la hora actual (el que empieza dentro de un minuto, el primero).
+    RESULTADOS_LISTA_COMPLETA = ordenarResultadosPorCercaniaAhora(results);
     RESULTADOS_PAGINA_ACTUAL = 1;
     poblarFiltroCompeticionResultados();
     poblarFiltroEquipoResultados();
@@ -6055,13 +6183,12 @@ function pintarListaResultados() {
   const textoBusqueda = (inputBuscador?.value || "").trim().toLowerCase();
   const competicionElegida = document.getElementById("filtroCompeticionResultados")?.value || "";
   const equipoElegido = document.getElementById("filtroEquipoResultados")?.value || "";
-  let resultadosFiltrados = RESULTADOS_LISTA_COMPLETA
-    .filter(r => resultadoCoincideFiltros(r, competicionElegida, equipoElegido))
-    .filter(r => resultadoCoincideBusqueda(r, textoBusqueda));
+  let resultadosFiltrados = resultadosFiltradosActuales();
+  actualizarChipsEstadoResultados();
 
   if (filtroSoloSinCubrirResultadosActivo) {
-    // Con el filtro activo se abandona el orden habitual (en juego /
-    // programado primero) y se ordena solo por fecha del partido, del
+    // Con el filtro activo se abandona el orden habitual (en juego arriba
+    // y cercanía a la hora actual) y se ordena solo por fecha, del
     // más reciente al más antiguo, que es lo útil para revisar de un
     // vistazo qué se ha quedado sin cubrir más recientemente. Los que no
     // tienen fecha se van al final en vez de romper el orden.
@@ -6084,7 +6211,7 @@ function pintarListaResultados() {
 
   const contador = document.getElementById("contadorResultados");
   if (contador) {
-    contador.textContent = (textoBusqueda || filtroSoloSinCubrirResultadosActivo)
+    contador.textContent = (textoBusqueda || filtroSoloSinCubrirResultadosActivo || filtroEstadoResultados || competicionElegida || equipoElegido)
       ? `${resultadosFiltrados.length} de ${RESULTADOS_LISTA_COMPLETA.length} resultados`
       : `${RESULTADOS_LISTA_COMPLETA.length} resultados`;
   }
@@ -6123,15 +6250,16 @@ function pintarListaResultados() {
       <tr class="${!esMio && USER.rol !== "admin" ? "fila-de-otro" : ""}" data-resultado-id="${r.id}">
         <td data-label="Competición"><span class="competicion-celda">${categoriaLogo(r.competicion) ? `<img class="competicion-celda-logo${r.competicion === "hypermotion" ? " competicion-celda-logo-hypermotion" : ""}" src="../${categoriaLogo(r.competicion)}" alt="" loading="lazy">` : ""}${categoriaLabel(r.competicion)}</span> ${badgeAutoria}</td>
         <td data-label="Jornada">${r.jornada}</td>
-        <td data-label="Partido">${escapeHtml(r.equipo_local)} - ${escapeHtml(r.equipo_visitante)} ${avisoDatosFaltantesResultadoHTML(r)}${avisoPartidoDesatendidoHTML(r)}</td>
-        <td data-label="Resultado">${r.estado === "programado" ? "vs" : `${r.goles_local ?? 0} : ${r.goles_visitante ?? 0}`}${(r.penaltis_local !== null && r.penaltis_local !== undefined && r.penaltis_visitante !== null && r.penaltis_visitante !== undefined) ? `<br><small class="penaltis-tag-admin">(${r.penaltis_local} - ${r.penaltis_visitante} pen.)</small>` : ""}</td>
-        <td data-label="Estado">${r.estado} ${avisoFinalizadoNoCubiertoHTML(r)}</td>
+        <td data-label="Partido">${celdaPartidoResultadoHTML(r)}</td>
+        <td data-label="Resultado"><span class="marcador-lista${r.estado === "programado" ? " marcador-lista-vs" : ""}">${r.estado === "programado" ? "vs" : `${r.goles_local ?? 0} : ${r.goles_visitante ?? 0}`}</span>${(r.penaltis_local !== null && r.penaltis_local !== undefined && r.penaltis_visitante !== null && r.penaltis_visitante !== undefined) ? `<br><small class="penaltis-tag-admin">(${r.penaltis_local} - ${r.penaltis_visitante} pen.)</small>` : ""}</td>
+        <td data-label="Estado">${estadoResultadoBadgeHTML(r)} ${avisoFinalizadoNoCubiertoHTML(r)}</td>
         <td class="acciones" data-label="">${botonMinutoAMinuto}${botonesEstadoPartido}${botonesAccion}</td>
       </tr>`;
     }).join("") || `<tr><td colspan='6'>${
       filtroSoloSinCubrirResultadosActivo
         ? "No hay ningún partido sin cubrir ahora mismo."
-        : (textoBusqueda ? "Ningún resultado coincide con la búsqueda." : "Todavía no hay resultados.")
+        : (filtroEstadoResultados ? "No hay partidos en este estado con los filtros actuales."
+          : (textoBusqueda || competicionElegida || equipoElegido) ? "Ningún resultado coincide con los filtros." : "Todavía no hay resultados.")
     }</td></tr>`;
   } catch (err) {
     cos.innerHTML = `<tr><td colspan="6">Error mostrando el listado: ${err.message}</td></tr>`;
@@ -6163,6 +6291,15 @@ document.getElementById("filtroSoloSinCubrirResultados")?.addEventListener("clic
   filtroSoloSinCubrirResultadosActivo = !filtroSoloSinCubrirResultadosActivo;
   ev.currentTarget.classList.toggle("activo", filtroSoloSinCubrirResultadosActivo);
   ev.currentTarget.setAttribute("aria-pressed", String(filtroSoloSinCubrirResultadosActivo));
+  RESULTADOS_PAGINA_ACTUAL = 1;
+  pintarListaResultados();
+});
+
+document.getElementById("filtrosEstadoResultados")?.addEventListener("click", (ev) => {
+  const btn = ev.target.closest("[data-filtro-estado]");
+  if (!btn) return;
+  filtroEstadoResultados = btn.dataset.filtroEstado;
+  try { localStorage.setItem(CLAVE_FILTRO_ESTADO_RESULTADOS, filtroEstadoResultados); } catch (e) {}
   RESULTADOS_PAGINA_ACTUAL = 1;
   pintarListaResultados();
 });
@@ -6280,7 +6417,13 @@ function avisoPartidoDesatendido(r) {
     return `El cronómetro sigue corriendo y va por el minuto ${minuto} sin que se haya registrado el final del partido. Revisa si sigue en juego de verdad.`;
   }
   if (minuto >= MAM_UMBRAL_PRIMERA_PARTE_SIN_DESCANSO) {
-    return `El cronómetro sigue corriendo y va por el minuto ${minuto} sin que se haya pitado el descanso. Puede que nadie esté cubriendo el partido.`;
+    // El reloj NO se reinicia en la 2ª parte (se reanuda desde el 45), así
+    // que entre el min. 55 y el 100 es lo normal si la 2ª parte ya está
+    // en marcha. El backend manda segunda_parte_iniciada (1 si existe el
+    // evento "fin_descanso"); solo sin él es un "sin descanso" de verdad.
+    // Mismo criterio que evaluarSituacionDesatendida() en el Worker.
+    if (Number(r.segunda_parte_iniciada) === 1) return null;
+    return `El cronómetro sigue corriendo y va por el minuto ${minuto} sin que nadie haya pausado el descanso ni iniciado la 2ª parte. Puede que nadie esté cubriendo el partido.`;
   }
   return null;
 }
@@ -6334,6 +6477,16 @@ setInterval(async () => {
   try {
     const { results = [] } = await apiFetch(`/api/results?limit=500`);
     results.forEach((r) => { RESULTADOS_CACHE[r.id] = r; });
+    // Reordena con los datos frescos (un partido que pasa a "en juego"
+    // sube solo) y repinta únicamente si lo que se ve en la página
+    // actual ha cambiado, para no molestar si no hay novedades.
+    const idsAntes = [...tabla.querySelectorAll("tr[data-resultado-id]")].map((f) => f.dataset.resultadoId).join(",");
+    RESULTADOS_LISTA_COMPLETA = ordenarResultadosPorCercaniaAhora(results);
+    const idsTras = resultadosFiltradosActuales()
+      .slice((RESULTADOS_PAGINA_ACTUAL - 1) * RESULTADOS_POR_PAGINA, RESULTADOS_PAGINA_ACTUAL * RESULTADOS_POR_PAGINA)
+      .map((r) => r.id).join(",");
+    if (!filtroSoloSinCubrirResultadosActivo && idsAntes !== idsTras) pintarListaResultados();
+    else actualizarChipsEstadoResultados();
   } catch (err) {
     // Si falla el refresco (red, etc.) se sigue con los datos que ya
     // había en caché en vez de romper el repintado del resto del panel.
@@ -6342,7 +6495,7 @@ setInterval(async () => {
     const r = RESULTADOS_CACHE[fila.dataset.resultadoId];
     if (!r) return;
     const celda = fila.querySelector("td[data-label='Partido']");
-    if (celda) celda.innerHTML = `${escapeHtml(r.equipo_local)} - ${escapeHtml(r.equipo_visitante)} ${avisoDatosFaltantesResultadoHTML(r)}${avisoPartidoDesatendidoHTML(r)}`;
+    if (celda) celda.innerHTML = celdaPartidoResultadoHTML(r);
     // Mismo refresco de fondo que ya hacía esta función para "🔴 Sin
     // cubrir": ahora también repinta la celda de Estado, para que
     // "🟠 FINALIZADO NO CUBIERTO" aparezca solo (sin recargar la pestaña
@@ -6351,7 +6504,7 @@ setInterval(async () => {
     // a "finalizado" (o al revés) también actualice su texto de estado
     // sin que el redactor tenga que volver a entrar en la pestaña.
     const celdaEstado = fila.querySelector("td[data-label='Estado']");
-    if (celdaEstado) celdaEstado.innerHTML = `${r.estado} ${avisoFinalizadoNoCubiertoHTML(r)}`;
+    if (celdaEstado) celdaEstado.innerHTML = `${estadoResultadoBadgeHTML(r)} ${avisoFinalizadoNoCubiertoHTML(r)}`;
   });
 }, 60000);
 
@@ -8789,7 +8942,84 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
   // Sube un único archivo con XMLHttpRequest (en vez de fetch) porque es
   // lo único que permite mostrar el progreso real de la subida, algo
   // importante para vídeos pesados en su calidad original.
-  function subirArchivo({ id, file, portadaSegundo }, titulo, descripcion, club, resultId, equipo, visibilidad) {
+
+  // ---------- Ajuste automático de fotos al límite de Cloudinary ----------
+  // Cloudinary (plan actual) rechaza cualquier imagen de más de 10 MB con
+  // "File size too large. Maximum is 10485760". Las fotos de cámara réflex
+  // suelen pesar 10-14 MB, así que fallaban justo las más pesadas. Aquí, SOLO
+  // si una foto supera el límite, se recodifica como JPEG a resolución
+  // completa con la calidad más alta que quepa por debajo de 10 MB (casi
+  // siempre ~0.85-0.92, imperceptible). Las fotos que ya caben se suben
+  // intactas, byte a byte, como siempre. Nota: al recodificar se pierden los
+  // metadatos EXIF (cámara, fecha...); la orientación sí se conserva.
+  const LIMITE_FOTO_CLOUDINARY_BYTES = 10 * 1024 * 1024;
+  const OBJETIVO_FOTO_BYTES = Math.floor(9.6 * 1024 * 1024);
+
+  function canvasABlobJpeg(canvas, calidad) {
+    return new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/jpeg", calidad));
+  }
+
+  async function ajustarFotoAlLimite(file) {
+    const esFoto = file.type && file.type.startsWith("image/") && file.type !== "image/gif";
+    if (!esFoto || file.size <= LIMITE_FOTO_CLOUDINARY_BYTES) return file;
+    try {
+      const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+      let escala = 1;
+      for (let intento = 0; intento < 4; intento++) {
+        const w = Math.max(1, Math.round(bitmap.width * escala));
+        const h = Math.max(1, Math.round(bitmap.height * escala));
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#fff"; // por si un PNG traía transparencia
+        ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(bitmap, 0, 0, w, h);
+
+        let elegido = await canvasABlobJpeg(canvas, 0.92);
+        if (elegido && elegido.size > OBJETIVO_FOTO_BYTES) {
+          // Búsqueda binaria de la mejor calidad que quepa.
+          let bajo = 0.5, alto = 0.92, encontrado = null;
+          for (let i = 0; i < 6; i++) {
+            const q = (bajo + alto) / 2;
+            const b = await canvasABlobJpeg(canvas, q);
+            if (b && b.size <= OBJETIVO_FOTO_BYTES) { encontrado = b; bajo = q; } else { alto = q; }
+          }
+          elegido = encontrado;
+        }
+        if (elegido && elegido.size <= OBJETIVO_FOTO_BYTES) {
+          if (bitmap.close) bitmap.close();
+          const nombre = file.name.replace(/\.[^.]+$/, "") + ".jpg";
+          return new File([elegido], nombre, { type: "image/jpeg", lastModified: file.lastModified });
+        }
+        escala *= 0.85; // ni con calidad 0.5 cabe: se reduce un poco la resolución
+      }
+      if (bitmap.close) bitmap.close();
+    } catch (err) {
+      // El navegador no pudo decodificarla (p. ej. HEIC en Chrome): se
+      // devuelve la original y el servidor dará su mensaje de siempre.
+      console.warn("No se pudo ajustar la foto al límite:", err);
+    }
+    return file;
+  }
+
+  // Punto de entrada de la subida: ajusta la foto si hace falta y delega en
+  // subirArchivoCrudo (la subida de siempre). El resultado se guarda en el
+  // propio item para no recomprimir en los reintentos.
+  async function subirArchivo(item, ...args) {
+    if (!item.ajustado) {
+      const pesaDemasiado = item.file.size > LIMITE_FOTO_CLOUDINARY_BYTES && item.file.type.startsWith("image/");
+      if (pesaDemasiado) {
+        const fila = listaArchivos.querySelector(`.item-archivo[data-id="${item.id}"]`);
+        const estadoTxt = fila && fila.querySelector(".estado-txt");
+        if (estadoTxt) estadoTxt.textContent = "Optimizando foto (supera 10 MB)...";
+      }
+      item.ajustado = await ajustarFotoAlLimite(item.file);
+    }
+    return subirArchivoCrudo({ ...item, file: item.ajustado }, ...args);
+  }
+
+  function subirArchivoCrudo({ id, file, portadaSegundo }, titulo, descripcion, club, resultId, equipo, visibilidad, avisoLote) {
     return new Promise((resolve, reject) => {
       const fila = listaArchivos.querySelector(`.item-archivo[data-id="${id}"]`);
       const barra = fila.querySelector(".barra-progreso i");
@@ -8801,6 +9031,9 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
       formData.append("descripcion", descripcion);
       formData.append("club", club);
       formData.append("visibilidad", visibilidad === "privado" ? "privado" : "publico");
+      // Tanda de varios archivos: el servidor no manda correo por cada uno;
+      // el resumen se manda una sola vez al terminar (ver enviarAvisoLote).
+      if (avisoLote) formData.append("avisoLote", "1");
       if (resultId) formData.append("resultId", resultId);
       if (equipo) formData.append("equipo", equipo);
       if (Number.isFinite(portadaSegundo)) formData.append("portadaSegundo", portadaSegundo);
@@ -8843,10 +9076,17 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
             else if (xhr.status === 0) mensaje = "Se ha perdido la conexión durante la subida";
             else if (xhr.status >= 500) mensaje = "Error del servidor. Inténtalo de nuevo en unos minutos";
           }
+          // Un 401 aquí es "No autorizado" a secas, que no dice nada útil
+          // a quien sube fotos: se traduce a algo entendible. (Antes de
+          // llegar aquí ya se ha reintentado solo, ver subirConReintento.)
+          if (xhr.status === 401) {
+            mensaje = "No se ha podido verificar tu sesión. Vuelve a iniciar sesión y pulsa «Subir contenido» otra vez (los archivos pendientes se conservan)";
+          }
           fila.classList.add(esDuplicado ? "duplicado" : "error");
           estadoTxt.textContent = esDuplicado ? `Ya subido antes: ${mensaje}` : mensaje;
           const error = new Error(mensaje);
           error.esDuplicado = esDuplicado;
+          error.status = xhr.status;
           reject(error);
         }
       });
@@ -8873,6 +9113,53 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
       xhr.send(formData);
     });
   }
+
+  // Reintenta automáticamente un archivo si el servidor responde 401.
+  // Un 401 se produce ANTES de que el servidor guarde nada, así que
+  // reintentar es seguro (no puede duplicar el archivo). Sirve para los
+  // 401 pasajeros (sesión que aún no se ha propagado entre servidores)
+  // en tandas largas de fotos, sin que el fotógrafo tenga que hacer nada.
+  async function subirConReintento(item, ...args) {
+    const MAX_INTENTOS = 3;
+    for (let intento = 1; ; intento++) {
+      try {
+        return await subirArchivo(item, ...args);
+      } catch (err) {
+        if (err.status !== 401 || intento >= MAX_INTENTOS) throw err;
+        const fila = listaArchivos.querySelector(`.item-archivo[data-id="${item.id}"]`);
+        if (fila) {
+          fila.classList.remove("error");
+          const estadoTxt = fila.querySelector(".estado-txt");
+          if (estadoTxt) estadoTxt.textContent = `Reintentando... (${intento}/${MAX_INTENTOS - 1})`;
+          const barra = fila.querySelector(".barra-progreso i");
+          if (barra) barra.style.width = "0%";
+        }
+        await new Promise((r) => setTimeout(r, 1500 * intento));
+      }
+    }
+  }
+
+  // Resumen de la tanda en curso (solo si son varios archivos). Se manda UNA
+  // vez al terminar, o al cerrar la pestaña a medias con lo ya subido, para
+  // que 80 fotos sean 1 correo y no 80. Nunca rompe la subida si falla.
+  let avisoLotePendiente = null; // { fotos, videos, titulo, club, descripcion }
+  function esVideoArchivo(file) {
+    return /^video\//.test(file.type || "") || /\.(mp4|mov|webm|mkv|mpe?g)$/i.test(file.name || "");
+  }
+  function enviarAvisoLote({ enSegundoPlano = false } = {}) {
+    const datos = avisoLotePendiente;
+    avisoLotePendiente = null;
+    if (!datos || (!datos.fotos && !datos.videos)) return Promise.resolve();
+    if (enSegundoPlano) {
+      // Al cerrar la pestaña: fetch con keepalive para que el navegador lo termine de enviar.
+      try {
+        fetch(`${API_URL}/api/media/aviso-lote`, { method: "POST", headers: authHeaders(), body: JSON.stringify(datos), keepalive: true });
+      } catch {}
+      return Promise.resolve();
+    }
+    return apiFetch(`/api/media/aviso-lote`, { method: "POST", body: JSON.stringify(datos) }).catch(() => {});
+  }
+  window.addEventListener("pagehide", () => enviarAvisoLote({ enSegundoPlano: true }));
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -8922,21 +9209,28 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
     const fallidos = []; // [{ id, file, mensaje, esDuplicado }]
     let totalIntentado = 0;
     let ultimoSlugGaleria = null;
+    // Con más de un archivo, un solo correo de resumen al final (no uno por archivo).
+    const enLote = archivos.length > 1;
+    avisoLotePendiente = enLote ? { fotos: 0, videos: 0, titulo, club, descripcion } : null;
     for (const item of archivos) {
       totalIntentado++;
       try {
         // Si hay varios archivos, se numera el título para diferenciarlos
         // sin que el redactor tenga que repetirlo campo a campo.
         const tituloArchivo = archivos.length > 1 ? `${titulo} (${totalIntentado}/${archivos.length})` : titulo;
-        const slug = await subirArchivo(item, tituloArchivo, descripcion, club, resultIdElegido, equipoElegido, visibilidadElegida);
+        const slug = await subirConReintento(item, tituloArchivo, descripcion, club, resultIdElegido, equipoElegido, visibilidadElegida, enLote);
         if (slug) ultimoSlugGaleria = slug;
         subidos++;
+        if (avisoLotePendiente) {
+          if (esVideoArchivo(item.file)) avisoLotePendiente.videos++; else avisoLotePendiente.fotos++;
+        }
       } catch (err) {
         fallidos.push({ ...item, mensaje: err.message, esDuplicado: !!err.esDuplicado });
       }
     }
 
     btnSubir.textContent = "Subir contenido";
+    await enviarAvisoLote();
 
     if (fallidos.length === 0) {
       msgOk.textContent = `Se ${subidos === 1 ? "ha" : "han"} subido ${subidos} archivo${subidos === 1 ? "" : "s"} correctamente. Gracias por la aportación.`;
@@ -11347,12 +11641,6 @@ async function abrirModalCompartir(a) {
   const textoInstagram = `${etiquetaTipoX(a.tipo)} | ElOtroFútbol\n\n${titulo}\n\n${subtitulo ? subtitulo + "\n\n" : ""}Noticia completa en el enlace de nuestra biografía 🔗\n\n${hashtagsInstagram}`;
   document.getElementById("cp_texto_instagram").value = textoInstagram;
 
-  // WhatsApp sí permite prellenar un enlace clicable (a diferencia de
-  // Instagram, donde el link de la bio no puede ir en el texto): mismo
-  // formato que el texto de X, con el enlace real de la noticia.
-  const textoWhatsapp = `${etiquetaTipoX(a.tipo)} | ElOtroFútbol\n\n${titulo}\n\n🔗 ${link}${lineaHashtag}`;
-  document.getElementById("cp_texto_whatsapp").value = textoWhatsapp;
-
   document.getElementById("modalCompartir").classList.add("abierto");
 }
 
@@ -11414,14 +11702,6 @@ document.getElementById("btnAbrirX")?.addEventListener("click", () => {
 // botón de arriba, listo para pegar al crear el post.
 document.getElementById("btnAbrirInstagram")?.addEventListener("click", () => {
   window.open("https://www.instagram.com/elotrofutboltv_/", "_blank");
-});
-
-// WhatsApp sí permite prellenar el mensaje mediante la URL pública de
-// wa.me/api.whatsapp.com; se abre sin número de destino para que el autor
-// elija el chat o grupo al que enviarlo desde WhatsApp Web/app.
-document.getElementById("btnAbrirWhatsapp")?.addEventListener("click", () => {
-  const texto = document.getElementById("cp_texto_whatsapp").value;
-  window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(texto)}`, "_blank");
 });
 
 // Permite llegar directamente a una sección de "Ajustes de cuenta" desde
@@ -13659,6 +13939,13 @@ async function actualizarBadgeTiendaGestionPendientes(numeroConocido) {
     if (tab === "noticias" && subtab === "nueva" && articuloId) {
       const art = (ARTICULOS_CACHE && ARTICULOS_CACHE[articuloId]) || { id: articuloId };
       editarArticulo(art).catch(() => {});
+    }
+    // Enlace del email resumen de partidos sin cubrir
+    // (?ir=resultados.lista&sin_cubrir=1): abre la lista con el filtro
+    // "Solo sin cubrir" ya activado.
+    if (tab === "resultados" && params.get("sin_cubrir") === "1") {
+      const btnFiltro = document.getElementById("filtroSoloSinCubrirResultados");
+      if (btnFiltro && !filtroSoloSinCubrirResultadosActivo) btnFiltro.click();
     }
     return true;
   };

@@ -301,8 +301,18 @@ function actualizarRelojEnPantalla() {
   if (!el || !MAM_RESULTADO) return;
   const corriendo = MAM_RESULTADO.inicio_cronometro_at && (MAM_RESULTADO.cronometro_pausado_en === null || MAM_RESULTADO.cronometro_pausado_en === undefined);
   const minuto = minutoEnVivo();
-  el.textContent = `${minuto}'`;
-  el.classList.toggle("mam-reloj-corriendo", Boolean(corriendo));
+  // Antes de empezar y una vez terminado, el reloj deja de enseñar un
+  // "0'" o un minuto congelado sin contexto y dice en qué punto está el
+  // partido (Por jugar / Retrasado / Final / Anulado), con su propio
+  // estilo en CSS (mam-reloj-previa / -final / -anulado).
+  const anulado = MAM_RESULTADO.estado === "anulado";
+  const finalizado = !anulado && (MAM_RESULTADO.estado === "finalizado" || MAM_EVENTOS.some((ev) => ev.tipo === "fin_partido"));
+  const previa = !anulado && !finalizado && !MAM_RESULTADO.inicio_cronometro_at;
+  el.textContent = anulado ? "Anulado" : finalizado ? "Final" : previa ? (MAM_RESULTADO.estado === "retrasado" ? "Retrasado" : "Por jugar") : `${minuto}'`;
+  el.classList.toggle("mam-reloj-previa", previa);
+  el.classList.toggle("mam-reloj-final", finalizado);
+  el.classList.toggle("mam-reloj-anulado", anulado);
+  el.classList.toggle("mam-reloj-corriendo", Boolean(corriendo) && !finalizado && !anulado);
   // El botón de "Descanso" pasa de deshabilitado a habilitado justo al
   // llegar al minuto 40, sin esperar a que se repinte la botonera por
   // otro motivo (p.ej. al registrar un evento).
@@ -980,6 +990,53 @@ function renderPanelMinutoAMinuto() {
   actualizarCabeceraMinutoAMinuto();
 }
 
+// ---------- Datos para las pantallas de "previa" y "cierre" ----------
+// Hora HH:MM de una fecha guardada como "YYYY-MM-DDTHH:MM".
+function mamHoraDe(fecha) {
+  return fecha && fecha.length >= 16 ? fecha.slice(11, 16) : "";
+}
+
+// "Grupo 1" / "Jornada 4": si el dato es solo un número se le pone la
+// palabra delante; si ya trae texto ("Grupo B", "Semifinal") se deja tal cual.
+function mamEtiquetaNumerada(palabra, valor) {
+  if (valor === null || valor === undefined || valor === "") return "";
+  return /^\d+$/.test(String(valor).trim()) ? `${palabra} ${String(valor).trim()}` : String(valor);
+}
+
+// Tarjeta con los datos del partido que se ven antes de arrancar el
+// cronómetro (competición, hora y lugar), para poder confirmar de un
+// vistazo que se está a punto de narrar el partido correcto.
+function mamDatosPrevia(r) {
+  const retrasado = r.estado === "retrasado";
+  const horaOriginal = mamHoraDe(r.fecha_partido);
+  const horaNueva = retrasado ? mamHoraDe(r.fecha_partido_retrasado) : "";
+  const competicion = [r.competicion, mamEtiquetaNumerada("Grupo", r.grupo), mamEtiquetaNumerada("Jornada", r.jornada)].filter(Boolean).join(" · ");
+  const fila = (icono, etiqueta, valor, extra = "") => valor
+    ? `<li class="mam-previa-dato"><span class="mam-previa-dato-icono" aria-hidden="true">${icono}</span><span class="mam-previa-dato-texto"><small>${etiqueta}</small><b>${escapeHtml(valor)}</b>${extra}</span></li>`
+    : "";
+  return [
+    fila("🏆", "Competición", competicion),
+    horaNueva
+      ? fila("🕒", "Nueva hora de inicio", horaNueva, horaOriginal ? `<s class="mam-previa-hora-tachada">${escapeHtml(horaOriginal)}</s>` : "")
+      : fila("🕒", retrasado ? "Hora prevista" : "Hora de inicio", horaOriginal),
+    fila("📍", "Campo", r.ubicacion),
+  ].join("");
+}
+
+// Números del partido para la tarjeta de resumen del cierre. Los goles
+// salen del marcador del resultado (que ya cuenta propia puerta y VAR);
+// tarjetas y cambios, de los eventos registrados.
+function mamEstadisticasCierre() {
+  const r = MAM_RESULTADO;
+  const cuenta = (tipos, equipo) => MAM_EVENTOS.filter((ev) => tipos.includes(ev.tipo) && ev.equipo === equipo).length;
+  return [
+    { etiqueta: "Goles", local: r.goles_local ?? 0, visitante: r.goles_visitante ?? 0 },
+    { etiqueta: "Amarillas", local: cuenta(["amarilla"], "local"), visitante: cuenta(["amarilla"], "visitante") },
+    { etiqueta: "Expulsiones", local: cuenta(["roja", "doble_amarilla"], "local"), visitante: cuenta(["roja", "doble_amarilla"], "visitante") },
+    { etiqueta: "Cambios", local: cuenta(["cambio"], "local"), visitante: cuenta(["cambio"], "visitante") },
+  ];
+}
+
 // La botonera cambia según el estado del partido/cronómetro:
 //  - Anulado: panel de solo lectura, con aviso (no se puede reanudar).
 //  - Finalizado: panel de solo lectura (sin botones), con aviso.
@@ -998,7 +1055,7 @@ function renderBotoneraMinutoAMinuto() {
   // a cada momento del partido (previa / pausa / en juego / cierre) su
   // propia disposición en CSS en vez de que las cuatro compartan el
   // mismo layout centrado -pensado en realidad solo para "en juego"-.
-  cont.classList.remove("mam-fase-previa", "mam-fase-pausa", "mam-fase-vivo", "mam-fase-cierre");
+  cont.classList.remove("mam-fase-previa", "mam-fase-pausa", "mam-fase-vivo", "mam-fase-cierre", "mam-fase-anulado");
   // Se usa el cronómetro (fuente de verdad en el servidor) para saber si
   // estamos en una pausa, en vez de mirar el último evento del array:
   // los eventos se ordenan por minuto (no por orden de inserción), así
@@ -1016,36 +1073,83 @@ function renderBotoneraMinutoAMinuto() {
   const esPausaHidratacion = enPausa && !(ultimaPausaDescanso && ultimaPausaDescanso.tipo === "descanso");
 
   if (anulado) {
-    cont.classList.add("mam-fase-cierre");
-    cont.innerHTML = `<p class="mam-finalizado-aviso">Este partido está marcado como anulado.</p>`;
+    cont.classList.add("mam-fase-cierre", "mam-fase-anulado");
+    cont.innerHTML = `
+      <div class="mam-cierre-banner mam-cierre-banner-anulado">
+        <span class="mam-cierre-check" aria-hidden="true">🚫</span>
+        <div class="mam-cierre-banner-texto">
+          <strong>Partido anulado</strong>
+          <p class="mam-finalizado-aviso">Este partido está marcado como anulado.</p>
+        </div>
+      </div>`;
     return;
   }
 
   if (finalizado) {
     cont.classList.add("mam-fase-cierre");
     const mvpTexto = r.mvp_jugador
-      ? `MVP actual: <b>${escapeHtml(r.mvp_jugador)}</b> (${r.mvp_equipo === "local" ? escapeHtml(r.equipo_local) : escapeHtml(r.equipo_visitante)})`
+      ? `<b>${escapeHtml(r.mvp_jugador)}</b> (${r.mvp_equipo === "local" ? escapeHtml(r.equipo_local) : escapeHtml(r.equipo_visitante)})`
       : "Todavía no se ha marcado ningún MVP.";
+    const hayTanda = r.penaltis_local !== null && r.penaltis_local !== undefined && r.penaltis_visitante !== null && r.penaltis_visitante !== undefined;
+    const filasStats = mamEstadisticasCierre().map((f) => {
+      const max = Math.max(f.local, f.visitante, 1);
+      return `
+        <div class="mam-stat-fila">
+          <span class="mam-stat-valor">${f.local}</span>
+          <div class="mam-stat-centro">
+            <span class="mam-stat-etiqueta">${f.etiqueta}</span>
+            <div class="mam-stat-barras">
+              <div class="mam-stat-mitad mam-stat-mitad-local"><i style="--p:${Math.round((f.local / max) * 100)}%"></i></div>
+              <div class="mam-stat-mitad mam-stat-mitad-visitante"><i style="--p:${Math.round((f.visitante / max) * 100)}%"></i></div>
+            </div>
+          </div>
+          <span class="mam-stat-valor">${f.visitante}</span>
+        </div>`;
+    }).join("");
     cont.innerHTML = `
-      <div class="mam-cierre-tarjeta">
-        <p class="mam-finalizado-aviso">Este partido ya está marcado como finalizado. Si necesitas corregir algún gol o tarjeta, hazlo desde "Editar" en la lista de resultados.</p>
-        <button type="button" class="mam-boton mam-boton-grande mam-boton-tanda-penaltis" onclick="mamAbrirTandaPenaltis()">🥅⚽<br>Tanda de penaltis</button>
+      <div class="mam-cierre-banner">
+        <span class="mam-cierre-check" aria-hidden="true">✓</span>
+        <div class="mam-cierre-banner-texto">
+          <strong>Partido finalizado</strong>
+          <p class="mam-finalizado-aviso">Este partido ya está marcado como finalizado. Si necesitas corregir algún gol o tarjeta, hazlo desde "Editar" en la lista de resultados.</p>
+        </div>
+      </div>
+      <div class="mam-cierre-stats">
+        <div class="mam-stat-cabecera">
+          <span>${escapeHtml(r.equipo_local)}</span>
+          <span>Resumen</span>
+          <span>${escapeHtml(r.equipo_visitante)}</span>
+        </div>
+        ${filasStats}
       </div>
       <div class="mam-cierre-tarjeta">
-        <p class="mam-finalizado-aviso" id="mamMvpTexto">${mvpTexto}</p>
-        <button type="button" class="mam-boton mam-boton-grande mam-boton-mvp" onclick="mamMarcarMvp()">🏅<br>${r.mvp_jugador ? "Cambiar MVP" : "Marcar MVP"}</button>
-        ${r.mvp_jugador ? `<button type="button" class="mam-boton mam-boton-anulado" onclick="mamQuitarMvp()">✕<br>Quitar MVP</button>` : ""}
+        <span class="mam-cierre-titulo">Tanda de penaltis</span>
+        <p class="mam-finalizado-aviso mam-cierre-dato">${hayTanda ? `<b>${r.penaltis_local} - ${r.penaltis_visitante}</b>` : "Sin tanda registrada."}</p>
+        <button type="button" class="mam-boton mam-boton-grande mam-boton-tanda-penaltis" onclick="mamAbrirTandaPenaltis()"><span class="mam-boton-icono" aria-hidden="true">🥅⚽</span><span>${hayTanda ? "Abrir la tanda" : "Registrar tanda"}</span></button>
+      </div>
+      <div class="mam-cierre-tarjeta mam-cierre-tarjeta-mvp">
+        <span class="mam-cierre-titulo">MVP del partido</span>
+        <p class="mam-finalizado-aviso mam-cierre-dato" id="mamMvpTexto">${mvpTexto}</p>
+        <button type="button" class="mam-boton mam-boton-grande mam-boton-mvp" onclick="mamMarcarMvp()"><span class="mam-boton-icono" aria-hidden="true">🏅</span><span>${r.mvp_jugador ? "Cambiar MVP" : "Marcar MVP"}</span></button>
+        ${r.mvp_jugador ? `<button type="button" class="mam-cierre-quitar" onclick="mamQuitarMvp()">✕ Quitar MVP</button>` : ""}
       </div>`;
     return;
   }
 
   if (!r.inicio_cronometro_at) {
     cont.classList.add("mam-fase-previa");
+    const retrasado = r.estado === "retrasado";
+    const datosPrevia = mamDatosPrevia(r);
     cont.innerHTML = `
-      <button type="button" class="mam-boton mam-boton-grande mam-boton-iniciar" onclick="mamIniciarPartido()">▶<br>Iniciar partido</button>
+      <div class="mam-previa-tarjeta${retrasado ? " mam-previa-retrasada" : ""}">
+        <span class="mam-previa-estado">${retrasado ? "Partido retrasado" : "Antes del pitido inicial"}</span>
+        ${datosPrevia ? `<ul class="mam-previa-datos">${datosPrevia}</ul>` : ""}
+        <button type="button" class="mam-boton mam-boton-grande mam-boton-iniciar" onclick="mamIniciarPartido()"><span class="mam-boton-icono" aria-hidden="true">▶</span><span>Iniciar partido</span></button>
+        <p class="mam-previa-ayuda">El cronómetro empezará a contar desde el minuto 0. Podrás corregir el minuto tocando el reloj.</p>
+      </div>
       <div class="mam-previa-secundarios">
-        <button type="button" class="mam-boton mam-boton-retrasado" onclick="mamMarcarRetrasado()">🕒<br>Partido retrasado</button>
-        <button type="button" class="mam-boton mam-boton-anulado" onclick="mamMarcarAnulado()">🚫<br>Anular partido</button>
+        <button type="button" class="mam-boton mam-boton-retrasado" onclick="mamMarcarRetrasado()"><span class="mam-boton-icono" aria-hidden="true">🕒</span><span>Partido retrasado</span></button>
+        <button type="button" class="mam-boton mam-boton-anulado" onclick="mamMarcarAnulado()"><span class="mam-boton-icono" aria-hidden="true">🚫</span><span>Anular partido</span></button>
       </div>`;
     return;
   }

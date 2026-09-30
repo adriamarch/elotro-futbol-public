@@ -988,6 +988,22 @@ body{background:var(--fondo-alt);color:var(--texto);overflow-x:hidden;color-sche
   .btn-filtro-sin-cubrir.activo{background:#fee2e2;border-color:#b91c1c;color:#b91c1c;}
   [data-theme="dark"] .btn-filtro-sin-cubrir.activo{background:#450a0a;border-color:#f87171;color:#f87171;}
 
+  .filtros-estado-resultados{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px;}
+  .chip-estado{display:inline-flex;align-items:center;gap:8px;padding:8px 16px;border-radius:22px;border:1.5px solid var(--borde);background:var(--tarjeta);color:var(--marino-texto,var(--marino));font-size:.85rem;font-weight:600;cursor:pointer;transition:border-color .15s,color .15s,background .15s;}
+  .chip-estado:hover{border-color:var(--celeste);color:var(--celeste);}
+  .chip-estado.activo{background:var(--celeste);border-color:var(--celeste);color:#fff;}
+  .chip-estado-n{background:rgba(0,0,0,.08);border-radius:12px;padding:1px 8px;font-size:.75rem;min-width:22px;text-align:center;}
+  .chip-estado.activo .chip-estado-n{background:rgba(255,255,255,.25);}
+  .estado-resultado{display:inline-block;padding:3px 10px;border-radius:14px;font-size:.72rem;font-weight:700;white-space:nowrap;background:var(--gris-claro);color:var(--texto-suave);}
+  .estado-resultado-en_juego{background:#dcfce7;color:#166534;}
+  .estado-resultado-programado{background:#e6f4fb;color:var(--celeste);}
+  .estado-resultado-retrasado{background:#fef3c7;color:#92400e;}
+  .estado-resultado-anulado{background:#fee2e2;color:#b91c1c;}
+  [data-theme="dark"] .estado-resultado-en_juego{background:#052e16;color:#4ade80;}
+  [data-theme="dark"] .estado-resultado-retrasado{background:#451a03;color:#fbbf24;}
+  [data-theme="dark"] .estado-resultado-anulado{background:#450a0a;color:#f87171;}
+  .resultado-fecha{color:var(--gris-texto);font-weight:600;}
+
   .paginacion-lista{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;margin-top:16px;}
   .pagina-btn{
     border:1.5px solid var(--borde);background:var(--tarjeta);color:var(--marino-texto,var(--marino));cursor:pointer;
@@ -2458,7 +2474,7 @@ body.mam-standalone .wrap > .panel{display:none;}
   flex:1;display:flex;overflow:hidden;min-height:0;
 }
 .mam-botonera{
-  flex:1;overflow-y:auto;padding:22px 18px;
+  box-sizing:border-box;flex:1;overflow-y:auto;padding:22px 18px;
   display:flex;gap:22px;align-items:flex-start;justify-content:center;flex-wrap:wrap;
 }
 
@@ -2484,22 +2500,147 @@ body.mam-standalone .wrap > .panel{display:none;}
   padding-top:26px;
 }
 
+/* Los elementos nuevos de previa y cierre llevan padding y anchos en %,
+   así que cuentan el padding dentro del ancho (si no, se salen de su
+   contenedor y no alinean con los botones de debajo). */
+.mam-previa-tarjeta,.mam-previa-tarjeta *,
+.mam-previa-secundarios,.mam-previa-secundarios *,
+.mam-cierre-banner,.mam-cierre-banner *,
+.mam-cierre-stats,.mam-cierre-stats *,
+.mam-cierre-tarjeta,.mam-cierre-tarjeta *{box-sizing:border-box;}
+
 /* ----- Fase PREVIA: el partido aún no ha arrancado -----
-   Un único botón protagonista, centrado en toda la altura disponible
-   (no solo horizontalmente, como antes), con los dos botones
-   secundarios ("retrasado"/"anular") en una fila aparte, más pequeños
-   y separados del principal para que quede clara la jerarquía: uno es
-   la acción normal, los otros dos son la excepción. */
+   Una tarjeta protagonista con los datos del partido (competición, hora,
+   campo) y el botón de iniciar como única acción destacada; debajo, las
+   dos excepciones (retrasar / anular) como botones "fantasma" discretos
+   para que la jerarquía sea clara: uno es lo normal, los otros dos son
+   lo raro. Un resplandor verde de fondo marca la fase de "listo para
+   empezar". Es columna SIN wrap (con wrap, en pantallas bajas los
+   elementos saltaban a una segunda columna) y centrada con márgenes
+   auto en el primer/último hijo, para que si no cabe se pueda hacer
+   scroll en vez de cortar la parte de arriba. */
 .mam-fase-previa{
-  flex-direction:column;align-items:center;justify-content:center;
-  min-height:100%;gap:26px;
+  flex-direction:column;flex-wrap:nowrap;align-items:center;justify-content:flex-start;gap:20px;
+  background:radial-gradient(60% 55% at 50% 38%, rgba(26,158,87,.13), transparent 70%);
 }
-.mam-fase-previa .mam-boton-grande{margin:0;}
+.mam-fase-previa > *,
+.mam-previa-tarjeta > *{flex-shrink:0;}
+.mam-fase-previa > :first-child{margin-top:auto;}
+.mam-fase-previa > :last-child{margin-bottom:auto;}
+
+.mam-previa-tarjeta{
+  position:relative;overflow:hidden;
+  width:100%;max-width:460px;
+  display:flex;flex-direction:column;align-items:stretch;gap:20px;
+  padding:28px 26px 22px;border-radius:22px;
+  background:linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.025));
+  border:1px solid rgba(255,255,255,.1);
+  box-shadow:0 18px 44px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.06);
+}
+/* Filete de color arriba: verde = listo, ámbar = retrasado. */
+.mam-previa-tarjeta::before{
+  content:"";position:absolute;inset:0 0 auto 0;height:4px;
+  background:linear-gradient(90deg,#1a9e57,#5ecb8a,#1a9e57);
+}
+.mam-previa-retrasada::before{background:linear-gradient(90deg,#c9860f,#f0b64a,#c9860f);}
+
+.mam-previa-estado{
+  align-self:center;display:inline-flex;align-items:center;gap:8px;
+  font-size:.7rem;font-weight:700;letter-spacing:1.1px;text-transform:uppercase;
+  color:#7fe0a5;background:rgba(26,158,87,.14);border:1px solid rgba(94,203,138,.3);
+  padding:5px 14px 5px 12px;border-radius:999px;
+}
+.mam-previa-estado::before{
+  content:"";width:7px;height:7px;border-radius:50%;background:currentColor;
+  box-shadow:0 0 0 0 currentColor;animation:mamLatido 2.2s ease-out infinite;
+}
+.mam-previa-retrasada .mam-previa-estado{
+  color:#f5c46b;background:rgba(232,163,38,.14);border-color:rgba(240,182,74,.35);
+}
+@keyframes mamLatido{
+  0%{box-shadow:0 0 0 0 rgba(127,224,165,.55);}
+  70%,100%{box-shadow:0 0 0 8px rgba(127,224,165,0);}
+}
+
+.mam-previa-datos{
+  list-style:none;margin:0;padding:0;
+  display:flex;flex-direction:column;gap:2px;
+  background:rgba(4,12,22,.35);border:1px solid rgba(255,255,255,.06);
+  border-radius:14px;overflow:hidden;
+}
+.mam-previa-dato{
+  display:flex;align-items:center;gap:14px;padding:12px 16px;
+}
+.mam-previa-dato + .mam-previa-dato{border-top:1px solid rgba(255,255,255,.06);}
+.mam-previa-dato-icono{
+  flex-shrink:0;width:36px;height:36px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;font-size:1.05rem;
+  background:rgba(255,255,255,.07);
+}
+.mam-previa-dato-texto{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.mam-previa-dato-texto small{
+  font-size:.66rem;font-weight:600;letter-spacing:.7px;text-transform:uppercase;color:#8fa6bf;
+}
+.mam-previa-dato-texto b{
+  font-size:.95rem;font-weight:600;color:#fff;line-height:1.3;
+  overflow-wrap:anywhere;font-variant-numeric:tabular-nums;
+}
+.mam-previa-hora-tachada{
+  font-size:.75rem;color:#8fa6bf;font-variant-numeric:tabular-nums;
+}
+
+/* Botón de iniciar: ancho completo de la tarjeta, con brillo al pasar el
+   ratón y un halo suave que respira para invitar a pulsarlo. */
+.mam-previa-tarjeta .mam-boton-iniciar{
+  width:100%;height:76px;margin:0;border-radius:16px;
+  flex-direction:row;gap:12px;font-size:1.15rem;letter-spacing:.3px;
+  overflow:hidden;animation:mamHalo 2.8s ease-in-out infinite;
+}
+.mam-previa-tarjeta .mam-boton-iniciar::after{
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(105deg, transparent 35%, rgba(255,255,255,.22) 50%, transparent 65%);
+  transform:translateX(-120%);transition:transform .6s ease;pointer-events:none;
+}
+.mam-previa-tarjeta .mam-boton-iniciar:hover::after{transform:translateX(120%);}
+.mam-previa-tarjeta .mam-boton-iniciar .mam-boton-icono{font-size:1.3rem;}
+@keyframes mamHalo{
+  0%,100%{box-shadow:0 8px 22px rgba(26,158,87,.35);}
+  50%{box-shadow:0 8px 34px rgba(26,158,87,.6);}
+}
+.mam-previa-ayuda{
+  margin:-4px 0 0;text-align:center;font-size:.76rem;line-height:1.45;color:#8fa6bf;
+}
+
+/* Icono + texto en fila, común a los botones nuevos de previa y cierre. */
+.mam-boton-icono{line-height:1;flex-shrink:0;}
+
+/* Excepciones: botones fantasma (contorno de color, sin relleno sólido). */
 .mam-previa-secundarios{
-  display:flex;gap:14px;flex-wrap:wrap;justify-content:center;
+  display:flex;gap:12px;flex-wrap:wrap;justify-content:center;
+  width:100%;max-width:460px;
 }
 .mam-previa-secundarios .mam-boton{
-  aspect-ratio:auto;width:150px;height:64px;font-size:.74rem;
+  flex:1 1 170px;aspect-ratio:auto;height:50px;padding:0 16px;
+  flex-direction:row;gap:9px;font-size:.8rem;border-radius:12px;
+  background:transparent;box-shadow:none;
+}
+.mam-previa-secundarios .mam-boton-retrasado{
+  color:#f5c46b;border-color:rgba(240,182,74,.4);
+}
+.mam-previa-secundarios .mam-boton-retrasado:hover{
+  background:rgba(232,163,38,.14);border-color:rgba(240,182,74,.75);box-shadow:none;
+}
+.mam-previa-secundarios .mam-boton-anulado{
+  color:#ff8d9a;border-color:rgba(255,107,122,.35);
+}
+.mam-previa-secundarios .mam-boton-anulado:hover{
+  background:rgba(209,19,46,.18);border-color:rgba(255,107,122,.7);box-shadow:none;
+}
+
+@media (prefers-reduced-motion: reduce){
+  .mam-previa-estado::before,
+  .mam-previa-tarjeta .mam-boton-iniciar{animation:none;}
+  .mam-previa-tarjeta .mam-boton-iniciar::after{display:none;}
 }
 
 /* ----- Fase PAUSA (descanso / hidratación) -----
@@ -2513,26 +2654,153 @@ body.mam-standalone .wrap > .panel{display:none;}
 .mam-fase-pausa .mam-boton-grande{margin:0;}
 
 /* ----- Fase CIERRE (finalizado / anulado) -----
-   Antes era una columna estrecha (max-width:420px del propio texto)
-   con todo apilado uno debajo de otro por accidente, en vez de por
-   diseño. Ahora son dos tarjetas lado a lado -resultado/tanda de
-   penaltis a la izquierda, MVP a la derecha-, cada una autocontenida,
-   que se apilan solas en pantallas estrechas (ver responsive). */
+   De arriba abajo: banner de estado (check verde + aviso de solo
+   lectura), tarjeta de resumen con barras comparativas entre los dos
+   equipos (goles, amarillas, expulsiones, cambios) y dos tarjetas de
+   acciones (tanda de penaltis / MVP) lado a lado que se apilan solas en
+   pantallas estrechas. Un resplandor azul-dorado de fondo la distingue
+   de la previa (verde). Es fila con wrap y align-content:flex-start
+   para que las líneas no se estiren a toda la altura. */
 .mam-fase-cierre{
-  align-items:stretch;justify-content:center;max-width:760px;margin:0 auto;width:100%;
+  flex-direction:row;flex-wrap:wrap;align-items:stretch;align-content:flex-start;
+  justify-content:center;gap:16px;max-width:760px;margin:0 auto;width:100%;
+  background:radial-gradient(48% 40% at 50% 0%, rgba(91,184,232,.09), transparent 100%);
 }
-.mam-cierre-tarjeta{
-  flex:1;min-width:260px;max-width:340px;
+.mam-fase-anulado{
+  align-content:center;
+  background:radial-gradient(48% 45% at 50% 40%, rgba(209,19,46,.12), transparent 100%);
+}
+
+.mam-cierre-banner{
+  flex:1 1 100%;display:flex;align-items:center;gap:16px;
+  padding:18px 20px;border-radius:16px;
+  background:linear-gradient(135deg, rgba(26,158,87,.2), rgba(26,158,87,.05));
+  border:1px solid rgba(94,203,138,.28);
+}
+.mam-cierre-check{
+  flex-shrink:0;width:46px;height:46px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.35rem;font-weight:700;color:#fff;
+  background:linear-gradient(135deg,#1a9e57,#0f7a41);
+  box-shadow:0 6px 16px rgba(26,158,87,.4);
+}
+.mam-cierre-banner-texto{min-width:0;}
+.mam-cierre-banner-texto strong{
+  display:block;color:#fff;font-family:var(--font-tit,'Oswald',sans-serif);
+  font-size:1.05rem;letter-spacing:.6px;text-transform:uppercase;margin-bottom:3px;
+}
+.mam-cierre-banner .mam-finalizado-aviso{
+  margin:0;max-width:none;text-align:left;font-size:.82rem;color:#b9c8da;
+}
+.mam-cierre-banner-anulado{
+  flex:0 1 460px;
+  background:linear-gradient(135deg, rgba(209,19,46,.22), rgba(209,19,46,.05));
+  border-color:rgba(255,107,122,.32);
+}
+.mam-cierre-banner-anulado .mam-cierre-check{
+  background:linear-gradient(135deg,#6b0f1f,#3d0a12);
+  box-shadow:0 6px 16px rgba(209,19,46,.35);font-size:1.25rem;
+}
+
+/* Resumen comparativo: valor local | etiqueta + barras | valor visitante. */
+.mam-cierre-stats{
+  flex:1 1 100%;padding:16px 20px 8px;border-radius:16px;
   background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);
-  border-radius:16px;padding:20px;
-  display:flex;flex-direction:column;align-items:center;gap:14px;
 }
-.mam-cierre-tarjeta .mam-boton-grande{margin:0;}
-.mam-cierre-tarjeta .mam-finalizado-aviso{margin:0;max-width:none;}
-/* El aviso de "partido anulado" a secas no lleva tarjeta envolvente
-   (no hay nada más que mostrar), así que se centra suelto igual que
-   antes en vez de heredar el ancho fijo de .mam-cierre-tarjeta. */
-.mam-fase-cierre > .mam-finalizado-aviso:only-child{margin:auto;}
+.mam-stat-cabecera{
+  display:grid;grid-template-columns:1fr auto 1fr;gap:14px;align-items:center;
+  padding-bottom:12px;margin-bottom:6px;border-bottom:1px solid rgba(255,255,255,.08);
+  font-size:.74rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#fff;
+}
+.mam-stat-cabecera span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+.mam-stat-cabecera span:first-child{text-align:left;}
+.mam-stat-cabecera span:nth-child(2){text-align:center;color:#8fa6bf;font-weight:600;}
+.mam-stat-cabecera span:last-child{text-align:right;}
+.mam-stat-fila{
+  display:grid;grid-template-columns:34px 1fr 34px;gap:14px;align-items:center;
+  padding:9px 0;
+}
+.mam-stat-fila + .mam-stat-fila{border-top:1px solid rgba(255,255,255,.04);}
+.mam-stat-valor{
+  font-family:var(--font-tit,'Oswald',sans-serif);font-size:1.25rem;font-weight:700;color:#fff;
+  font-variant-numeric:tabular-nums;line-height:1;
+}
+.mam-stat-fila .mam-stat-valor:first-child{text-align:left;}
+.mam-stat-fila .mam-stat-valor:last-child{text-align:right;}
+.mam-stat-centro{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0;}
+.mam-stat-etiqueta{font-size:.68rem;font-weight:600;letter-spacing:.7px;text-transform:uppercase;color:#8fa6bf;}
+.mam-stat-barras{display:flex;gap:4px;width:100%;}
+.mam-stat-mitad{
+  flex:1;height:6px;border-radius:3px;background:rgba(255,255,255,.07);
+  display:flex;overflow:hidden;
+}
+.mam-stat-mitad-local{justify-content:flex-end;}
+.mam-stat-mitad i{
+  display:block;height:100%;width:var(--p,0%);border-radius:3px;
+  transition:width .5s cubic-bezier(.2,.8,.2,1);
+}
+.mam-stat-mitad-local i{background:linear-gradient(270deg,#5bb8e8,#2f8fc4);}
+.mam-stat-mitad-visitante i{background:linear-gradient(90deg,#e8b923,#c79411);}
+
+/* Tarjetas de acciones (tanda / MVP): título, dato y botón ancho. */
+.mam-cierre-tarjeta{
+  flex:1 1 260px;min-width:0;max-width:none;
+  background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);
+  border-radius:16px;padding:18px 20px 20px;
+  display:flex;flex-direction:column;align-items:stretch;gap:12px;
+}
+.mam-cierre-tarjeta-mvp{
+  background:linear-gradient(180deg, rgba(232,185,35,.09), rgba(232,185,35,.02));
+  border-color:rgba(232,185,35,.22);
+}
+.mam-cierre-titulo{
+  font-size:.7rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#8fa6bf;
+}
+.mam-cierre-tarjeta-mvp .mam-cierre-titulo{color:#e8c95a;}
+.mam-cierre-tarjeta .mam-finalizado-aviso{margin:0;max-width:none;text-align:left;}
+.mam-cierre-dato{
+  min-height:2.6em;display:flex;flex-wrap:wrap;align-items:center;gap:0 .4em;
+  font-size:.9rem;color:#c5d2e2;line-height:1.4;
+}
+.mam-cierre-dato b{color:#fff;font-size:1.1rem;font-weight:700;font-variant-numeric:tabular-nums;}
+.mam-cierre-tarjeta .mam-boton-grande{
+  width:100%;height:54px;margin:0;border-radius:12px;
+  flex-direction:row;gap:10px;font-size:.92rem;
+}
+.mam-cierre-quitar{
+  align-self:center;background:none;border:1px solid transparent;border-radius:8px;
+  color:#ff8d9a;font-size:.78rem;font-weight:600;cursor:pointer;padding:6px 12px;
+  transition:background .15s,border-color .15s,color .15s;
+}
+.mam-cierre-quitar:hover{background:rgba(209,19,46,.18);border-color:rgba(255,107,122,.4);color:#fff;}
+.mam-cierre-quitar:focus-visible{outline:2px solid var(--celeste,#5bb8e8);outline-offset:2px;}
+
+/* Estados del reloj de la cabecera fuera de "en juego": antes de empezar
+   (contorno discontinuo, apagado), final (verde sólido) y anulado. */
+.mam-reloj-previa{
+  color:#9fb3c8;background:transparent;border:1px dashed rgba(159,179,200,.4);
+  font-weight:600;letter-spacing:.4px;
+}
+.mam-reloj-final{
+  color:#fff;background:linear-gradient(135deg,#1a9e57,#0f7a41);
+  border-color:transparent;box-shadow:0 2px 10px rgba(26,158,87,.35);
+  text-transform:uppercase;letter-spacing:.8px;font-size:.8rem;
+}
+.mam-reloj-anulado{
+  color:#ffb3bc;background:rgba(209,19,46,.18);border-color:rgba(255,107,122,.4);
+  text-transform:uppercase;letter-spacing:.8px;font-size:.8rem;
+}
+
+/* Timeline sin eventos: un estado vacío con icono en vez de una línea
+   de texto suelta (se ve en la previa y, si nunca se narró nada, al final). */
+.mam-sin-eventos::before{
+  content:"📋";display:block;font-size:1.6rem;margin-bottom:8px;opacity:.55;font-style:normal;
+}
+.mam-sin-eventos{line-height:1.5;}
+
+@media (prefers-reduced-motion: reduce){
+  .mam-stat-mitad i{transition:none;}
+}
 
 /* Botones cuadrados grandes: el corazón del panel. Se usan a toda
    velocidad mientras se narra en directo, así que el feedback al
@@ -2827,14 +3095,27 @@ body.mam-standalone .wrap > .panel{display:none;}
   .mam-columna-central .mam-boton{flex:1 1 calc(50% - 5px);min-width:80px;aspect-ratio:auto;height:64px;}
   .mam-boton{font-size:.68rem;}
   .mam-boton-grande{width:100%;max-width:280px;height:90px;font-size:.92rem;margin:24px auto;}
-  /* La previa/pausa ya centran el botón grande con flex (gap, no
-     margin), así que en móvil se le quita el margen automático de
-     arriba para que no se sume al gap y separe de más. */
-  .mam-fase-previa .mam-boton-grande,
+  /* La pausa centra el botón grande con flex (gap, no margin), así que
+     en móvil se le quita el margen automático de arriba para que no se
+     sume al gap y separe de más. */
   .mam-fase-pausa .mam-boton-grande{margin:0 auto;}
-  .mam-previa-secundarios{flex-direction:column;width:100%;max-width:280px;}
-  .mam-previa-secundarios .mam-boton{width:100%;}
-  .mam-cierre-tarjeta{max-width:none;width:100%;}
+  /* Previa: tarjeta más compacta y excepciones apiladas a todo el ancho. */
+  .mam-fase-previa{gap:14px;}
+  .mam-previa-tarjeta{padding:20px 14px 16px;gap:14px;border-radius:18px;}
+  .mam-previa-dato{padding:10px 12px;gap:12px;}
+  .mam-previa-dato-icono{width:32px;height:32px;}
+  .mam-previa-tarjeta .mam-boton-iniciar{height:64px;font-size:1.05rem;max-width:none;}
+  .mam-previa-ayuda{display:none;}
+  .mam-previa-secundarios{gap:10px;flex-wrap:nowrap;}
+  .mam-previa-secundarios .mam-boton{flex:1 1 0;min-width:0;height:46px;padding:0 8px;font-size:.74rem;gap:6px;}
+  /* Cierre: banner en vertical y tarjetas a todo el ancho. */
+  .mam-fase-cierre{gap:12px;}
+  .mam-cierre-banner{flex-direction:column;text-align:center;padding:16px;}
+  .mam-cierre-banner .mam-finalizado-aviso{text-align:center;}
+  .mam-cierre-stats{padding:14px 14px 6px;}
+  .mam-stat-fila{grid-template-columns:28px 1fr 28px;gap:10px;}
+  .mam-cierre-tarjeta{flex-basis:100%;}
+  .mam-cierre-tarjeta .mam-boton-grande{max-width:none;height:50px;}
 }
 
 /* =====================================================================
@@ -4740,4 +5021,275 @@ table.lista .acciones button.btn-quitar-uh:hover{
 }
 [data-theme="dark"] table.lista .acciones button.btn-quitar-uh:hover{
   background:#d1132e;color:#fff;
+}
+
+/* =====================================================================
+   "VER RESULTADOS" -- rediseño visual del panel
+   ---------------------------------------------------------------------
+   Todo acotado a #subpanel-listaResultados para no alterar el resto de
+   tablas .lista (noticias, usuarios...). Usa las variables de tema ya
+   existentes (--tarjeta, --borde, --marino, --celeste...) así que el
+   modo oscuro funciona sin reglas extra salvo en los pocos sitios con
+   colores fijos. Marcadores nuevos (generados en admin.js):
+   .partido-equipos / .partido-vs y .marcador-lista / .marcador-lista-vs
+   ===================================================================== */
+
+/* ---------- Barra de filtros: tarjeta con buscador destacado ---------- */
+#subpanel-listaResultados .buscador-lista{
+  gap:10px;padding:14px 16px;margin-bottom:12px;
+  background:var(--tarjeta);border:1px solid var(--borde);
+  border-radius:var(--radio-lg);box-shadow:var(--sombra-sm);
+}
+#subpanel-listaResultados .buscador-lista-input,
+#subpanel-listaResultados .buscador-lista-select{
+  border-radius:12px;border:1.5px solid var(--borde);
+  background-color:var(--gris-claro);font-size:.86rem;height:42px;
+  transition:border-color .15s,box-shadow .15s,background-color .15s;
+}
+#subpanel-listaResultados .buscador-lista-input{
+  flex:1 1 260px;max-width:none;padding:0 16px 0 42px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%239aa4b8' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:14px center;
+}
+#subpanel-listaResultados .buscador-lista-select{
+  flex:0 1 210px;padding:0 14px;cursor:pointer;
+}
+#subpanel-listaResultados .buscador-lista-input:hover,
+#subpanel-listaResultados .buscador-lista-select:hover{border-color:var(--celeste-claro);}
+#subpanel-listaResultados .buscador-lista-input:focus,
+#subpanel-listaResultados .buscador-lista-select:focus{
+  outline:none;border-color:var(--celeste);background-color:var(--tarjeta);
+  box-shadow:0 0 0 4px rgba(91,184,232,.22);
+}
+#subpanel-listaResultados .btn-filtro-sin-cubrir{
+  height:42px;padding:0 18px;border-radius:12px;font-weight:700;
+}
+#subpanel-listaResultados .buscador-lista-contador{
+  margin-left:auto;padding:6px 12px;border-radius:999px;
+  background:var(--gris-claro);border:1px solid var(--borde);
+  font-size:.76rem;font-weight:700;letter-spacing:.2px;color:var(--gris-texto);
+}
+
+/* ---------- Chips de estado ---------- */
+#subpanel-listaResultados .filtros-estado-resultados{gap:8px;margin:0 0 16px;}
+#subpanel-listaResultados .chip-estado{
+  gap:8px;padding:7px 8px 7px 15px;border-radius:999px;
+  border:1.5px solid var(--borde);background:var(--tarjeta);
+  font-size:.84rem;font-weight:700;box-shadow:var(--sombra-sm);
+  transition:border-color .15s,color .15s,background .15s,box-shadow .15s,transform .15s;
+}
+#subpanel-listaResultados .chip-estado:hover{transform:translateY(-1px);box-shadow:var(--sombra-md);}
+#subpanel-listaResultados .chip-estado:focus-visible{outline:none;box-shadow:0 0 0 4px rgba(91,184,232,.3);}
+#subpanel-listaResultados .chip-estado-n{
+  min-width:26px;padding:2px 9px;border-radius:999px;font-size:.74rem;font-weight:800;
+  background:var(--gris-claro);color:var(--gris-texto);
+}
+#subpanel-listaResultados .chip-estado.activo{
+  background:linear-gradient(135deg,var(--marino),var(--marino2));
+  border-color:transparent;color:#fff;box-shadow:0 6px 16px rgba(12,27,46,.25);
+}
+#subpanel-listaResultados .chip-estado.activo .chip-estado-n{background:rgba(255,255,255,.22);color:#fff;}
+#subpanel-listaResultados .chip-estado-en-juego.activo{
+  background:linear-gradient(135deg,#1fb865,#0f8a45);box-shadow:0 6px 16px rgba(22,163,74,.35);
+}
+[data-theme="dark"] #subpanel-listaResultados .chip-estado.activo{
+  background:linear-gradient(135deg,#2a86b8,#1d5f86);box-shadow:0 6px 16px rgba(0,0,0,.4);
+}
+[data-theme="dark"] #subpanel-listaResultados .chip-estado-en-juego.activo{
+  background:linear-gradient(135deg,#1fb865,#0f8a45);
+}
+
+/* ---------- Tabla ---------- */
+#subpanel-listaResultados table.lista{
+  border-radius:var(--radio-lg);border:1px solid var(--borde);
+  box-shadow:var(--sombra-md);
+}
+#subpanel-listaResultados table.lista thead{background:linear-gradient(135deg,var(--marino),var(--marino2));}
+#subpanel-listaResultados table.lista th{
+  background:transparent;padding:15px 16px;font-size:.7rem;letter-spacing:.9px;font-weight:600;
+  border-bottom:none;white-space:nowrap;
+}
+#subpanel-listaResultados table.lista td{
+  padding:14px 16px;vertical-align:middle;
+  border-bottom:1px solid var(--borde);
+}
+#subpanel-listaResultados table.lista tbody tr{transition:background .15s,box-shadow .15s;}
+#subpanel-listaResultados table.lista tbody tr:hover{background:rgba(91,184,232,.08);}
+[data-theme="dark"] #subpanel-listaResultados table.lista tbody tr:hover{background:rgba(91,184,232,.09);}
+
+/* Banda de color a la izquierda según el estado del partido (mejora
+   progresiva con :has(); si el navegador no lo soporta, simplemente no
+   se ve la banda). */
+#subpanel-listaResultados table.lista tbody tr td:first-child{box-shadow:inset 4px 0 0 transparent;}
+#subpanel-listaResultados table.lista tbody tr:has(.estado-resultado-en_juego) td:first-child{box-shadow:inset 4px 0 0 #16a34a;}
+#subpanel-listaResultados table.lista tbody tr:has(.estado-resultado-programado) td:first-child{box-shadow:inset 4px 0 0 var(--celeste);}
+#subpanel-listaResultados table.lista tbody tr:has(.estado-resultado-retrasado) td:first-child{box-shadow:inset 4px 0 0 #d97706;}
+#subpanel-listaResultados table.lista tbody tr:has(.estado-resultado-anulado) td:first-child{box-shadow:inset 4px 0 0 #dc2626;}
+#subpanel-listaResultados table.lista tbody tr:has(.estado-resultado-finalizado) td:first-child{box-shadow:inset 4px 0 0 #94a3b8;}
+
+/* Competición: logo en círculo blanco + nombre */
+#subpanel-listaResultados .competicion-celda{gap:10px;font-weight:700;color:var(--marino-texto,var(--marino));}
+#subpanel-listaResultados .competicion-celda-logo{
+  width:28px;height:28px;padding:3px;background:#fff;
+  border:1px solid var(--borde);border-radius:50%;
+  box-shadow:0 1px 3px rgba(12,27,46,.12);
+}
+#subpanel-listaResultados .badge-autoria{margin-left:6px;}
+
+/* Jornada */
+#subpanel-listaResultados td[data-label="Jornada"]{
+  font-family:var(--font-tit);font-size:.95rem;font-weight:500;letter-spacing:.3px;color:var(--gris-texto);
+}
+
+/* Partido: equipos en negrita y fecha como línea secundaria */
+#subpanel-listaResultados .partido-equipos{font-weight:700;font-size:.9rem;color:var(--marino-texto,var(--marino));}
+#subpanel-listaResultados .partido-vs{margin:0 3px;color:var(--gris-texto);font-weight:400;}
+#subpanel-listaResultados td[data-label="Partido"] br{display:none;}
+#subpanel-listaResultados td[data-label="Partido"] .resultado-fecha{
+  display:block;margin-top:4px;font-size:.76rem;font-weight:600;color:var(--gris-texto);
+}
+#subpanel-listaResultados td[data-label="Partido"] .resultado-fecha::before{content:"🗓";margin-right:5px;font-size:.72rem;}
+
+/* Marcador: pastilla oscura tipo marcador de estadio */
+#subpanel-listaResultados td[data-label="Resultado"]{text-align:center;white-space:nowrap;}
+#subpanel-listaResultados td[data-label="Resultado"] br{display:none;}
+#subpanel-listaResultados .marcador-lista{
+  display:inline-flex;align-items:center;justify-content:center;min-width:70px;
+  padding:5px 14px;border-radius:10px;
+  background:linear-gradient(135deg,var(--marino),var(--marino2));color:#fff;
+  font-family:var(--font-tit);font-size:1.1rem;font-weight:600;letter-spacing:1.5px;line-height:1.2;
+  border:1px solid rgba(255,255,255,.08);
+  box-shadow:0 3px 10px rgba(12,27,46,.22),inset 0 1px 0 rgba(255,255,255,.1);
+}
+#subpanel-listaResultados .marcador-lista-vs{
+  background:transparent;color:var(--gris-texto);box-shadow:none;
+  border:1.5px dashed var(--borde);font-family:var(--font-text);
+  font-size:.8rem;font-weight:700;letter-spacing:.6px;text-transform:uppercase;
+}
+[data-theme="dark"] #subpanel-listaResultados .marcador-lista:not(.marcador-lista-vs){
+  background:linear-gradient(135deg,#243149,#1a2538);border-color:rgba(255,255,255,.12);
+}
+#subpanel-listaResultados td[data-label="Resultado"] .penaltis-tag-admin{
+  display:block;margin-top:5px;font-size:.72rem;font-weight:600;color:var(--gris-texto);
+}
+
+/* Estado: píldora con punto (el de "en juego" late) */
+#subpanel-listaResultados .estado-resultado{
+  display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;
+  font-size:.7rem;font-weight:800;letter-spacing:.5px;text-transform:uppercase;
+  border:1px solid transparent;
+}
+#subpanel-listaResultados .estado-resultado::before{
+  content:"";width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0;
+}
+#subpanel-listaResultados .estado-resultado-en_juego{background:#dcfce7;color:#15803d;border-color:#bbf7d0;}
+#subpanel-listaResultados .estado-resultado-en_juego::before{animation:pulsoEstadoResultado 1.6s ease-in-out infinite;}
+#subpanel-listaResultados .estado-resultado-programado{background:#e6f4fb;color:#1f7fb0;border-color:#c5e6f6;}
+#subpanel-listaResultados .estado-resultado-retrasado{background:#fef3c7;color:#92400e;border-color:#fde68a;}
+#subpanel-listaResultados .estado-resultado-anulado{background:#fee2e2;color:#b91c1c;border-color:#fecaca;}
+#subpanel-listaResultados .estado-resultado-finalizado{background:var(--gris-claro);color:var(--texto-suave);border-color:var(--borde);}
+[data-theme="dark"] #subpanel-listaResultados .estado-resultado-en_juego{background:#052e16;color:#4ade80;border-color:#14532d;}
+[data-theme="dark"] #subpanel-listaResultados .estado-resultado-programado{background:#0c2a3b;color:#7cc9ee;border-color:#164863;}
+[data-theme="dark"] #subpanel-listaResultados .estado-resultado-retrasado{background:#451a03;color:#fbbf24;border-color:#78350f;}
+[data-theme="dark"] #subpanel-listaResultados .estado-resultado-anulado{background:#450a0a;color:#f87171;border-color:#7f1d1d;}
+@keyframes pulsoEstadoResultado{
+  0%,100%{opacity:1;box-shadow:0 0 0 0 currentColor;}
+  50%{opacity:.55;box-shadow:0 0 0 4px transparent;}
+}
+@media (prefers-reduced-motion: reduce){
+  #subpanel-listaResultados .estado-resultado-en_juego::before{animation:none;}
+}
+
+/* Acciones: botones en píldora, más compactos y con hover claro */
+#subpanel-listaResultados table.lista td.acciones{white-space:normal;min-width:190px;}
+#subpanel-listaResultados table.lista .acciones button{
+  margin:0 6px 6px 0;padding:6px 13px;border-radius:999px;
+  font-size:.76rem;font-weight:700;letter-spacing:.1px;
+}
+#subpanel-listaResultados table.lista .acciones button:last-child{margin-right:0;}
+#subpanel-listaResultados table.lista .acciones .editar{
+  background:transparent;color:#1f7fb0;box-shadow:inset 0 0 0 1.5px var(--celeste);
+}
+#subpanel-listaResultados table.lista .acciones .editar:hover{background:var(--celeste);color:#fff;}
+#subpanel-listaResultados table.lista .acciones .eliminar{
+  background:transparent;color:var(--rojo);box-shadow:inset 0 0 0 1.5px rgba(209,19,46,.45);
+}
+#subpanel-listaResultados table.lista .acciones .eliminar:hover{background:var(--rojo);color:#fff;box-shadow:none;}
+#subpanel-listaResultados table.lista .acciones .solicitar{
+  background:#fef3da;color:#a3760f;box-shadow:inset 0 0 0 1.5px #f0deac;
+}
+#subpanel-listaResultados table.lista .acciones .solicitar:hover{background:#f0c14b;color:#fff;box-shadow:none;}
+[data-theme="dark"] #subpanel-listaResultados table.lista .acciones .editar{background:transparent;color:#7cc9ee;box-shadow:inset 0 0 0 1.5px #3a8bb5;}
+[data-theme="dark"] #subpanel-listaResultados table.lista .acciones .editar:hover{background:var(--celeste);color:#0c1b2e;}
+[data-theme="dark"] #subpanel-listaResultados table.lista .acciones .eliminar{background:transparent;color:#ff6b7d;box-shadow:inset 0 0 0 1.5px rgba(255,107,125,.5);}
+[data-theme="dark"] #subpanel-listaResultados table.lista .acciones .eliminar:hover{background:#d1132e;color:#fff;}
+[data-theme="dark"] #subpanel-listaResultados table.lista .acciones .solicitar{background:#3a2f16;color:#e0b060;box-shadow:inset 0 0 0 1.5px #5a4720;}
+
+/* Fila de "Cargando…" / "Sin resultados" */
+#subpanel-listaResultados table.lista td[colspan]{padding:52px 20px;font-size:.92rem;}
+
+/* ---------- Paginación ---------- */
+#paginacionResultados{gap:6px;margin-top:20px;}
+#paginacionResultados .pagina-btn{
+  min-width:38px;height:38px;padding:0 12px;border-radius:12px;font-weight:700;
+  box-shadow:var(--sombra-sm);
+}
+#paginacionResultados .pagina-btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:var(--sombra-md);}
+#paginacionResultados .pagina-btn.activa{box-shadow:0 6px 14px rgba(12,27,46,.28);}
+
+/* ---------- Móvil: cada partido es una tarjeta ---------- */
+@media(max-width:780px){
+  #subpanel-listaResultados .buscador-lista{padding:12px;gap:8px;}
+  #subpanel-listaResultados .buscador-lista-input,
+  #subpanel-listaResultados .buscador-lista-select,
+  #subpanel-listaResultados .btn-filtro-sin-cubrir{flex:1 1 100%;max-width:none;width:100%;}
+  #subpanel-listaResultados .buscador-lista-contador{margin:2px 0 0;align-self:flex-start;}
+  #subpanel-listaResultados .filtros-estado-resultados{
+    flex-wrap:nowrap;overflow-x:auto;padding-bottom:6px;scrollbar-width:none;
+  }
+  #subpanel-listaResultados .filtros-estado-resultados::-webkit-scrollbar{display:none;}
+  #subpanel-listaResultados .chip-estado{flex-shrink:0;}
+
+  #subpanel-listaResultados table.lista{border:none;box-shadow:none;border-radius:0;}
+  #subpanel-listaResultados table.lista tbody{gap:14px;}
+  #subpanel-listaResultados table.lista tbody tr{
+    padding:4px 16px 6px;border-radius:var(--radio-lg);border:1px solid var(--borde);
+    box-shadow:var(--sombra-md);overflow:hidden;position:relative;
+  }
+  /* la banda de estado pasa a ser una barra superior de la tarjeta */
+  #subpanel-listaResultados table.lista tbody tr td:first-child,
+  #subpanel-listaResultados table.lista tbody tr:has(.estado-resultado-en_juego) td:first-child,
+  #subpanel-listaResultados table.lista tbody tr:has(.estado-resultado-programado) td:first-child,
+  #subpanel-listaResultados table.lista tbody tr:has(.estado-resultado-retrasado) td:first-child,
+  #subpanel-listaResultados table.lista tbody tr:has(.estado-resultado-anulado) td:first-child,
+  #subpanel-listaResultados table.lista tbody tr:has(.estado-resultado-finalizado) td:first-child{box-shadow:none;}
+  #subpanel-listaResultados table.lista tbody tr::before{
+    content:"";position:absolute;left:0;right:0;top:0;height:4px;background:transparent;
+  }
+  #subpanel-listaResultados table.lista tbody tr:has(.estado-resultado-en_juego)::before{background:#16a34a;}
+  #subpanel-listaResultados table.lista tbody tr:has(.estado-resultado-programado)::before{background:var(--celeste);}
+  #subpanel-listaResultados table.lista tbody tr:has(.estado-resultado-retrasado)::before{background:#d97706;}
+  #subpanel-listaResultados table.lista tbody tr:has(.estado-resultado-anulado)::before{background:#dc2626;}
+  #subpanel-listaResultados table.lista tbody tr:has(.estado-resultado-finalizado)::before{background:#94a3b8;}
+  #subpanel-listaResultados table.lista tbody tr:hover{background:var(--tarjeta);}
+
+  #subpanel-listaResultados table.lista td{padding:11px 0;text-align:right;}
+  #subpanel-listaResultados table.lista td:first-child{padding-top:14px;}
+  #subpanel-listaResultados td[data-label="Partido"],
+  #subpanel-listaResultados td[data-label="Resultado"]{flex-wrap:wrap;}
+  #subpanel-listaResultados .partido-equipos{flex:1 1 auto;text-align:right;}
+  #subpanel-listaResultados td[data-label="Partido"] .resultado-fecha,
+  #subpanel-listaResultados td[data-label="Resultado"] .penaltis-tag-admin{
+    flex:0 0 100%;text-align:right;margin-top:0;
+  }
+  #subpanel-listaResultados table.lista td.acciones{
+    display:flex;flex-direction:column;align-items:stretch;min-width:0;padding-top:14px;
+  }
+  #subpanel-listaResultados table.lista .acciones button{
+    margin:0;padding:11px 12px;font-size:.84rem;width:100%;
+  }
+  #subpanel-listaResultados table.lista td[colspan]{padding:36px 12px;}
+}
+[data-theme="dark"] #paginacionResultados .pagina-btn.activa{
+  background:linear-gradient(135deg,#2a86b8,#1d5f86);color:#fff;box-shadow:0 6px 14px rgba(0,0,0,.4);
 }

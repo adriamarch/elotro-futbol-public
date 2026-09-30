@@ -1064,9 +1064,6 @@ function tipoContenidoLabel(tipo) {
   return TIPOS_CONTENIDO[tipo] || "noticia";
 }
 
-function iconoWhatsApp() {
-  return `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.46 1.32 4.96L2.05 22l5.25-1.38a9.9 9.9 0 0 0 4.74 1.2h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2m0 1.67c2.23 0 4.32.87 5.89 2.44a8.26 8.26 0 0 1 2.43 5.8c0 4.55-3.7 8.25-8.26 8.25a8.2 8.2 0 0 1-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.18 8.18 0 0 1-1.26-4.38c0-4.56 3.7-8.25 8.19-8.25M8.5 6.9c-.17 0-.44.06-.67.31s-.88.86-.88 2.1.9 2.44 1.03 2.6c.13.19 1.75 2.67 4.25 3.74.6.26 1.06.41 1.42.53.6.19 1.14.16 1.57.1.48-.08 1.47-.6 1.68-1.18s.21-1.08.15-1.18-.24-.16-.5-.29-1.48-.73-1.71-.81-.4-.13-.56.13-.64.81-.79.97-.29.19-.55.06a6.87 6.87 0 0 1-2.02-1.25 7.6 7.6 0 0 1-1.4-1.75c-.15-.25 0-.38.11-.51.13-.14.28-.34.42-.51s.19-.29.28-.48.05-.36-.02-.5-.55-1.34-.76-1.83c-.2-.48-.4-.4-.56-.41h-.47z"/></svg>`;
-}
 function iconoX() {
   return `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M13.9 10.5 21.3 2h-1.9l-6.4 7.4L7.9 2H2l7.8 11.3L2 22h1.9l6.8-7.8L16.3 22h5.9l-8.3-11.5Zm-2.4 2.8-.8-1.1L4.4 3.4h2.8l5.1 7.2.8 1.1 6.6 9.3h-2.8l-5.4-7.6Z"/></svg>`;
 }
@@ -1086,7 +1083,7 @@ function iconoCompartirNativo() {
   return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><path d="M8.3 10.7l7.4-4.2M8.3 13.3l7.4 4.2"/></svg>`;
 }
 
-// Genera la fila de botones para compartir en redes/WhatsApp y copiar enlace.
+// Genera la fila de botones para compartir en redes y copiar enlace.
 // En móvil (donde suele haber navigator.share) se antepone un botón que
 // abre el menú de compartir nativo del sistema operativo -- el mismo
 // gesto al que ya está acostumbrado el usuario en cualquier otra app --
@@ -1107,7 +1104,6 @@ function botonesCompartirHTML(url, titulo) {
   return `
     <div class="compartir-botones">
       <button type="button" class="btn-compartir btn-compartir-nativo" data-url="${urlAttr}" data-titulo="${tituloAttr}" onclick="compartirNativo(this)" aria-label="Compartir" hidden><span class="btn-compartir-icono">${iconoCompartirNativo()}</span><span>Compartir</span></button>
-      <a class="btn-compartir btn-whatsapp" href="https://api.whatsapp.com/send?text=${texto}%20${enlace}" target="_blank" rel="noopener noreferrer" aria-label="Compartir por WhatsApp"><span class="btn-compartir-icono">${iconoWhatsApp()}</span><span>WhatsApp</span></a>
       <a class="btn-compartir btn-x" href="https://twitter.com/intent/tweet?text=${texto}&url=${enlace}" target="_blank" rel="noopener noreferrer" aria-label="Compartir en X"><span class="btn-compartir-icono">${iconoX()}</span><span>X</span></a>
       <a class="btn-compartir btn-facebook" href="https://www.facebook.com/sharer/sharer.php?u=${enlace}" target="_blank" rel="noopener noreferrer" aria-label="Compartir en Facebook"><span class="btn-compartir-icono">${iconoFacebook()}</span><span>Facebook</span></a>
       <a class="btn-compartir btn-telegram" href="https://t.me/share/url?url=${enlace}&text=${texto}" target="_blank" rel="noopener noreferrer" aria-label="Compartir en Telegram"><span class="btn-compartir-icono">${iconoTelegram()}</span><span>Telegram</span></a>

@@ -16,10 +16,11 @@
 //   2) "adsense" -> Google AdSense "clásico" (anuncios manuales por unidad),
 //                   sin pasar por GAM. Más simple de dar de alta, sirve como
 //                   modo intermedio o de respaldo mientras se aprueba GAM.
-//   3) "none"    -> sin proveedor configurado: se pintan los huecos vacíos
-//                   con su alto reservado (útil en local/desarrollo, evita
-//                   saltos de maquetación -- "layout shift" -- cuando se
-//                   activen los anuncios de verdad).
+//   3) "none"    -> sin proveedor configurado: NO se pinta ningún hueco
+//                   publicitario (ni caja vacía, ni etiqueta "Publicidad").
+//                   Para verlos igualmente en local/desarrollo (con su alto
+//                   reservado), poner window.EOF_ADS_MOSTRAR_HUECOS = true
+//                   en un <script> antes de cargar este archivo.
 //
 // ---------- CÓMO ACTIVAR LA PUBLICIDAD DE VERDAD ----------
 // 1. Rellenar los datos en EOF_ADS_CONFIG (más abajo en este mismo archivo,
@@ -188,6 +189,29 @@ function eofAdsPuedeCargar() {
   return window.EOF_CONSENTIMIENTO_PUBLICIDAD === true;
 }
 
+// ¿Hay de verdad un anuncio que servir en este hueco? Solo entonces se
+// pinta el contenedor. Se considera configurado cuando:
+//   - gam:     hay networkCode y el adUnit del hueco no es el de ejemplo
+//              ("/0000000/...").
+//   - adsense: hay clienteAdsense, el hueco tiene su adsenseSlotId, y no se
+//              usan Auto ads (con Auto ads es Google quien coloca los
+//              anuncios, y los contenedores manuales sobran).
+// Con proveedor "none" (o datos a medio rellenar) devuelve false, salvo que
+// window.EOF_ADS_MOSTRAR_HUECOS === true (modo desarrollo).
+function eofAdsSlotConfigurado(slotDef) {
+  if (window.EOF_ADS_MOSTRAR_HUECOS === true) return true;
+  const proveedor = eofAdsProveedorActivo();
+  if (proveedor === "gam") {
+    const ad = (slotDef && slotDef.gamAdUnit) || "";
+    return !!EOF_ADS_CONFIG.gam.networkCode && !!ad && !ad.startsWith("/0000000/");
+  }
+  if (proveedor === "adsense") {
+    if (EOF_ADS_CONFIG.adsense.autoAds) return false;
+    return !!EOF_ADS_CONFIG.adsense.clienteAdsense && !!(slotDef && slotDef.adsenseSlotId);
+  }
+  return false;
+}
+
 // Alto reservado (el mayor de los tamaños del formato aplicable al ancho
 // actual de ventana) para que el contenedor nunca haga saltar el resto del
 // contenido al cargar el anuncio de verdad (evita Cumulative Layout Shift).
@@ -215,6 +239,9 @@ function eofAdsAltoReservado(slotDef) {
 function adSlotHTML(key, idUnico) {
   const slotDef = EOF_AD_SLOTS[key];
   if (!slotDef) return "";
+  // Sin publicidad realmente configurada para este hueco, no se pinta nada:
+  // así no aparecen cajas vacías ni la etiqueta "Publicidad" antes de tiempo.
+  if (!eofAdsSlotConfigurado(slotDef)) return "";
   const id = `eof-ad-${key}-${idUnico || ++_eofAdsContador}`;
   const alto = eofAdsAltoReservado(slotDef);
   return `
@@ -436,6 +463,8 @@ function initAds() {
 function insertarAdsEnGrid(selectorGrid) {
   const grid = typeof selectorGrid === "string" ? document.querySelector(selectorGrid) : selectorGrid;
   if (!grid) return;
+  // Sin publicidad configurada no se intercala nada en el listado.
+  if (!EOF_AD_SLOTS.entre_noticias || !eofAdsSlotConfigurado(EOF_AD_SLOTS.entre_noticias)) return;
   const tarjetas = [...grid.children].filter((el) => !el.classList.contains("eof-ad-wrap"));
   if (tarjetas.length < EOF_ADS_CADA_N_TARJETAS) return;
 

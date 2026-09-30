@@ -1,0 +1,338 @@
+/* =========================================================================
+   Mejoras de estilo y responsive — quienes-somos.html, contacto.html y
+   estado.html
+   Hoja adicional cargada tras style.css, limitada a
+   body[data-page="quienes-somos" | "contacto" | "estado"]. Solo retoca
+   presentación (misma idea que linea-editorial-mejoras.css): no cambia
+   HTML de contenido ni JS. Todo usa las variables de tema, así que
+   funciona igual en modo claro y oscuro.
+   ========================================================================= */
+
+/* ---------- Común a las tres páginas ---------- */
+body[data-page="quienes-somos"] .section-title,
+body[data-page="contacto"] .section-title,
+body[data-page="estado"] .section-title{
+  margin: 44px 0 8px;
+  font-size: 1.7rem;
+  letter-spacing: .3px;
+}
+body[data-page="quienes-somos"] .section-subtitle,
+body[data-page="contacto"] .section-subtitle,
+body[data-page="estado"] .section-subtitle{
+  margin: 0 0 30px 18px;
+}
+
+/* =========================================================================
+   QUIÉNES SOMOS
+   ========================================================================= */
+body[data-page="quienes-somos"] .pagina-info{ max-width: 780px; }
+
+body[data-page="quienes-somos"] .pagina-info-cuerpo{
+  font-size: 1.02rem;
+  line-height: 1.75;
+}
+
+/* Primer párrafo: entradilla de la misión, con más peso que el resto. */
+body[data-page="quienes-somos"] .pagina-info-cuerpo > p:first-child{
+  font-size: 1.16rem;
+  line-height: 1.7;
+  font-weight: 500;
+  padding: 4px 0 4px 20px;
+  border-left: 4px solid var(--rojo);
+  margin-bottom: 24px;
+}
+
+body[data-page="quienes-somos"] .pagina-info-cuerpo h3{
+  margin: 42px 0 14px;
+  padding-left: 12px;
+  border-left: 4px solid var(--rojo);
+  font-size: 1.05rem;
+  color: var(--marino-texto);
+}
+
+/* Valores: de lista con viñetas a tres tarjetas. El título de cada valor
+   (el <strong> inicial) pasa a encabezado de la tarjeta. */
+body[data-page="quienes-somos"] .pagina-info-cuerpo .lista-valores{
+  list-style: none;
+  padding: 0;
+  margin: 0 0 20px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+body[data-page="quienes-somos"] .pagina-info-cuerpo .lista-valores li{
+  margin: 0;
+  padding: 18px 18px 20px;
+  background: var(--tarjeta);
+  border: 1px solid var(--borde);
+  border-top: 4px solid var(--rojo);
+  border-radius: var(--radio-md, 12px);
+  box-shadow: var(--sombra-sm, none);
+  font-size: .92rem;
+  line-height: 1.6;
+  color: var(--texto-suave);
+}
+body[data-page="quienes-somos"] .pagina-info-cuerpo .lista-valores li strong{
+  display: block;
+  margin-bottom: 8px;
+  font-family: var(--font-tit);
+  font-size: 1.05rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .3px;
+  color: var(--marino-texto);
+}
+
+/* Último párrafo (enlaces a línea editorial y contacto): cierre destacado. */
+body[data-page="quienes-somos"] .pagina-info-cuerpo > p:last-child{
+  margin-top: 34px;
+  padding: 18px 20px;
+  background: var(--fondo-alt);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-md, 12px);
+  font-size: .95rem;
+}
+
+body[data-page="quienes-somos"] .pagina-info-cuerpo a,
+body[data-page="contacto"] .pagina-info-cuerpo a,
+body[data-page="estado"] .estado-contacto a{
+  font-weight: 600;
+  text-underline-offset: 3px;
+  transition: color .15s;
+}
+body[data-page="quienes-somos"] .pagina-info-cuerpo a:hover,
+body[data-page="contacto"] .pagina-info-cuerpo a:hover,
+body[data-page="estado"] .estado-contacto a:hover{ color: var(--rojo); }
+body[data-page="quienes-somos"] .pagina-info-cuerpo a:focus-visible,
+body[data-page="contacto"] .pagina-info-cuerpo a:focus-visible,
+body[data-page="estado"] .estado-contacto a:focus-visible{
+  outline: 2px solid var(--celeste);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* =========================================================================
+   CONTACTO
+   ========================================================================= */
+body[data-page="contacto"] .pagina-info{ max-width: 640px; }
+
+/* Texto de arriba como aviso destacado con el correo directo. */
+body[data-page="contacto"] .pagina-info-cuerpo{
+  padding: 16px 20px;
+  margin-bottom: 22px;
+  background: var(--fondo-alt);
+  border: 1px solid var(--borde);
+  border-left: 4px solid var(--celeste);
+  border-radius: var(--radio-md, 12px);
+  font-size: .95rem;
+  line-height: 1.65;
+}
+body[data-page="contacto"] .pagina-info-cuerpo p{ margin: 0; }
+
+/* Formulario como tarjeta. */
+body[data-page="contacto"] .form-contacto{
+  max-width: none;
+  margin-top: 0;
+  gap: 18px;
+  padding: 28px 28px 26px;
+  background: var(--tarjeta);
+  border: 1px solid var(--borde);
+  border-top: 4px solid var(--rojo);
+  border-radius: 16px;
+  box-shadow: var(--sombra-md, var(--sombra));
+}
+body[data-page="contacto"] .campo-contacto{ gap: 7px; }
+body[data-page="contacto"] .campo-contacto label{
+  font-size: .85rem;
+  letter-spacing: .1px;
+}
+body[data-page="contacto"] .campo-contacto input,
+body[data-page="contacto"] .campo-contacto textarea{
+  width: 100%;
+  box-sizing: border-box;
+  padding: 13px 14px;
+  font-size: 1rem; /* 16px: evita el zoom automático de iOS al enfocar */
+  line-height: 1.4;
+  color: var(--texto);
+  background: var(--fondo-alt);
+  border: 1.5px solid var(--borde);
+  border-radius: 12px;
+  transition: border-color .15s, box-shadow .15s, background .15s;
+}
+body[data-page="contacto"] .campo-contacto textarea{
+  min-height: 150px;
+  resize: vertical;
+}
+body[data-page="contacto"] .campo-contacto input:hover,
+body[data-page="contacto"] .campo-contacto textarea:hover{ border-color: var(--celeste); }
+body[data-page="contacto"] .campo-contacto input:focus,
+body[data-page="contacto"] .campo-contacto textarea:focus{
+  outline: none;
+  background: var(--tarjeta);
+  border-color: var(--celeste);
+  box-shadow: 0 0 0 4px rgba(91,184,232,.25);
+}
+
+body[data-page="contacto"] .form-contacto button{
+  align-self: stretch;
+  padding: 15px 26px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--rojo), var(--rojo-oscuro));
+  color: #fff;
+  font-family: var(--font-tit);
+  font-size: .95rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  box-shadow: 0 8px 20px rgba(209,19,46,.3);
+  transition: transform .15s, box-shadow .15s, opacity .15s;
+}
+body[data-page="contacto"] .form-contacto button:hover:not(:disabled){
+  opacity: 1;
+  transform: translateY(-1px);
+  box-shadow: 0 12px 26px rgba(209,19,46,.4);
+}
+body[data-page="contacto"] .form-contacto button:focus-visible{
+  outline: 3px solid var(--celeste);
+  outline-offset: 2px;
+}
+body[data-page="contacto"] .form-contacto button:disabled{ box-shadow: none; }
+
+/* Mensaje de estado: solo ocupa sitio cuando tiene texto. */
+body[data-page="contacto"] .contacto-estado{ font-size: .9rem; line-height: 1.5; }
+body[data-page="contacto"] .contacto-estado:empty{ display: none; }
+body[data-page="contacto"] .contacto-estado-ok,
+body[data-page="contacto"] .contacto-estado-error{
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-weight: 500;
+}
+body[data-page="contacto"] .contacto-estado-ok{
+  background: rgba(27,138,74,.12);
+  border: 1px solid rgba(27,138,74,.35);
+  color: #1b8a4a;
+}
+body[data-page="contacto"] .contacto-estado-error{
+  background: rgba(209,19,46,.08);
+  border: 1px solid rgba(209,19,46,.3);
+  color: var(--rojo-oscuro);
+}
+[data-theme="dark"] body[data-page="contacto"] .contacto-estado-ok{ color: #5fd394; }
+[data-theme="dark"] body[data-page="contacto"] .contacto-estado-error{ color: #ff8a98; }
+
+/* =========================================================================
+   ESTADO DEL SERVICIO
+   ========================================================================= */
+body[data-page="estado"] .pagina-info{ max-width: 780px; }
+
+body[data-page="estado"] .estado-grid{ gap: 14px; margin-bottom: 18px; }
+
+/* Cada servicio: tarjeta con franja lateral del color de su estado y un
+   punto que late suavemente cuando todo va bien. */
+body[data-page="estado"] .estado-item{
+  position: relative;
+  gap: 16px;
+  padding: 18px 20px 18px 22px;
+  border-radius: var(--radio-md, 12px);
+  box-shadow: var(--sombra-sm, none);
+  overflow: hidden;
+  transition: border-color .2s, background .2s;
+}
+body[data-page="estado"] .estado-item::before{
+  content: "";
+  position: absolute; left: 0; top: 0; bottom: 0; width: 5px;
+  background: #c8c8c8;
+  transition: background .2s;
+}
+body[data-page="estado"] .estado-item.estado-ok{ background: rgba(27,138,74,.06); border-color: rgba(27,138,74,.28); }
+body[data-page="estado"] .estado-item.estado-ok::before{ background: #1b8a4a; }
+body[data-page="estado"] .estado-item.estado-mal{ background: rgba(209,19,46,.06); border-color: rgba(209,19,46,.28); }
+body[data-page="estado"] .estado-item.estado-mal::before{ background: var(--rojo); }
+
+body[data-page="estado"] .estado-punto{ width: 14px; height: 14px; }
+body[data-page="estado"] .estado-item.estado-ok .estado-punto{
+  box-shadow: 0 0 0 0 rgba(27,138,74,.5);
+  animation: estadoLatido 2.4s ease-out infinite;
+}
+@keyframes estadoLatido{
+  0%   { box-shadow: 0 0 0 0 rgba(27,138,74,.5); }
+  70%  { box-shadow: 0 0 0 9px rgba(27,138,74,0); }
+  100% { box-shadow: 0 0 0 0 rgba(27,138,74,0); }
+}
+body[data-page="estado"] .estado-item-nombre{
+  font-family: var(--font-tit);
+  font-size: 1.02rem;
+  letter-spacing: .2px;
+  text-transform: uppercase;
+}
+body[data-page="estado"] .estado-item-detalle{ font-size: .88rem; line-height: 1.4; }
+
+/* Puntos de la leyenda ("¿Qué significa cada estado?"): llevan la clase de
+   estado en el propio punto, no en un .estado-item padre, así que salían
+   grises. */
+body[data-page="estado"] .estado-punto.estado-ok{ background: #1b8a4a; }
+body[data-page="estado"] .estado-punto.estado-mal{ background: var(--rojo); }
+[data-theme="dark"] body[data-page="estado"] .estado-punto.estado-ok{ background: #3ecf7a; }
+
+body[data-page="estado"] .estado-acciones{ gap: 16px; }
+body[data-page="estado"] #estadoRecomprobar{
+  padding: 11px 22px;
+  background: var(--marino);
+  color: #fff;
+  border-color: var(--marino);
+  transition: background .15s, border-color .15s, transform .15s;
+}
+body[data-page="estado"] #estadoRecomprobar:hover{
+  background: var(--rojo);
+  border-color: var(--rojo);
+  transform: translateY(-1px);
+}
+body[data-page="estado"] #estadoRecomprobar:focus-visible{
+  outline: 3px solid var(--celeste);
+  outline-offset: 2px;
+}
+body[data-page="estado"] #estadoRecomprobar:disabled{ opacity: .6; cursor: default; transform: none; }
+
+body[data-page="estado"] .estado-seccion-titulo{
+  font-size: 1.1rem;
+  margin-bottom: 12px;
+}
+body[data-page="estado"] .estado-detalle-item{
+  border-radius: var(--radio-md, 12px);
+  padding: 16px 18px;
+  box-shadow: var(--sombra-sm, none);
+}
+body[data-page="estado"] .estado-detalle-valor{ font-size: 1.2rem; }
+body[data-page="estado"] .estado-historial-fila{ padding: 10px 14px; }
+body[data-page="estado"] .estado-historial-fila:first-child{ border-color: var(--celeste); }
+
+/* Modo oscuro: los verdes/rojos de la marca ganan luminosidad para leerse
+   sobre fondos oscuros. */
+[data-theme="dark"] body[data-page="estado"] .estado-item.estado-ok .estado-punto,
+[data-theme="dark"] body[data-page="estado"] .estado-item.estado-ok::before{ background: #3ecf7a; }
+[data-theme="dark"] body[data-page="estado"] #estadoRecomprobar{ background: var(--marino2); border-color: var(--borde); }
+
+/* =========================================================================
+   RESPONSIVE
+   ========================================================================= */
+@media (max-width: 720px){
+  body[data-page="quienes-somos"] .pagina-info-cuerpo{ font-size: .97rem; line-height: 1.7; }
+  body[data-page="quienes-somos"] .pagina-info-cuerpo > p:first-child{ font-size: 1.05rem; padding-left: 16px; }
+  body[data-page="quienes-somos"] .pagina-info-cuerpo .lista-valores{ grid-template-columns: 1fr; }
+}
+@media (max-width: 480px){
+  body[data-page="quienes-somos"] .section-title,
+  body[data-page="contacto"] .section-title,
+  body[data-page="estado"] .section-title{ font-size: 1.35rem; margin-top: 30px; }
+  body[data-page="contacto"] .form-contacto{ padding: 22px 18px 20px; border-radius: 14px; }
+  body[data-page="contacto"] .pagina-info-cuerpo{ padding: 14px 16px; }
+  body[data-page="estado"] .estado-item{ padding: 16px 16px 16px 20px; }
+  body[data-page="estado"] .estado-acciones{ flex-direction: column; align-items: stretch; }
+  body[data-page="estado"] #estadoRecomprobar{ width: 100%; }
+  body[data-page="estado"] .estado-autorefresco{ text-align: center; }
+}
+@media (prefers-reduced-motion: reduce){
+  body[data-page="estado"] .estado-item.estado-ok .estado-punto{ animation: none; }
+  body[data-page="contacto"] .form-contacto button,
+  body[data-page="estado"] #estadoRecomprobar{ transition: none; }
+}

@@ -19,7 +19,7 @@
      "mam-abierto" sí se añadía) pero sin ningún estilo aplicado: sin
      position:fixed, sin z-index, sin fondo... por eso el clic parecía
      "no hacer nada" (solo el salto del overflow:hidden del body). -->
-<link rel="stylesheet" href="/admin/css/admin.css?v=13">
+<link rel="stylesheet" href="/admin/css/admin.css?v=14">
 <!-- Tutorial guiado interactivo para nuevos redactores (overlay con
      flechas/spotlight sobre el propio panel, ver js/tutorial.js). -->
 <link rel="stylesheet" href="/admin/css/tutorial.css?v=1">
@@ -69,7 +69,7 @@
           <a href="javascript:void(0)" onclick="irAAjustesCuenta('progreso')">Mi progreso</a>
           <a href="javascript:void(0)" onclick="irAAjustesCuenta('sesiones')">Dispositivos</a>
           <a href="/index.html" rel="noopener">Ver la web</a>
-          <a href="/panel-analiticas.html" id="enlaceAnaliticas" target="_blank" rel="noopener">Analíticas</a>
+          <a href="/panel-analiticas.html" id="enlaceAnaliticas" rel="noopener">Analíticas</a>
           <button type="button" onclick="logout()">Cerrar sesión</button>
         </div>
       </div>
@@ -241,7 +241,7 @@
             <div id="contenidoEditor" class="article-body" contenteditable="true" data-placeholder="Escribe aquí la noticia..."></div>
           </div>
           <p class="ayuda-editor">Selecciona texto y usa los botones para darle formato. "Entradilla" pone en negrita destacada el párrafo inicial, como en el resto de noticias de la web.</p>
-          <p class="contador-caracteres" id="contadorCaracteres">0 caracteres (mínimo 2000, máximo 8000)</p>
+          <p class="contador-caracteres" id="contadorCaracteres">0 caracteres (mínimo 1500, máximo 8000)</p>
 
           <div id="bloqueFichaTecnica" style="display:none;">
             <label>Ficha técnica del partido (solo crónicas)</label>
@@ -902,6 +902,12 @@
         <input type="search" id="buscadorResultados" class="buscador-lista-input" placeholder="Buscar por competición, jornada o equipo...">
         <button type="button" id="filtroSoloSinCubrirResultados" class="btn-secundari btn-filtro-sin-cubrir" aria-pressed="false" title="Mostrar solo los partidos en juego sin cubrir y los finalizados sin cubrir, del más reciente al menos reciente">🔴 Solo sin cubrir</button>
         <span class="buscador-lista-contador" id="contadorResultados"></span>
+      </div>
+      <div class="filtros-estado-resultados" id="filtrosEstadoResultados" role="group" aria-label="Filtrar por estado del partido">
+        <button type="button" class="chip-estado" data-filtro-estado="" aria-pressed="true">Todos <span class="chip-estado-n">0</span></button>
+        <button type="button" class="chip-estado chip-estado-en-juego" data-filtro-estado="en_juego" aria-pressed="false">🟢 En juego <span class="chip-estado-n">0</span></button>
+        <button type="button" class="chip-estado" data-filtro-estado="por_jugar" aria-pressed="false">🕒 Por jugar <span class="chip-estado-n">0</span></button>
+        <button type="button" class="chip-estado" data-filtro-estado="terminados" aria-pressed="false">🏁 Terminados <span class="chip-estado-n">0</span></button>
       </div>
       <table class="lista">
         <thead><tr><th>Competición</th><th>Jornada</th><th>Partido</th><th>Resultado</th><th>Estado</th><th>Acciones</th></tr></thead>
@@ -2140,21 +2146,6 @@
         <p class="compartir-ayuda">Instagram no permite prellenar el texto de una publicación desde fuera de la app: copia el texto, descarga la imagen de portada y pégalo al crear el post.</p>
       </div>
 
-      <div class="compartir-red">
-        <div class="compartir-red-cabecera">
-          <span class="compartir-red-icono whatsapp"><svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.87 9.87 0 0 0 4.74 1.21h.01c5.46 0 9.9-4.45 9.9-9.91C21.96 6.45 17.5 2 12.04 2zm5.79 14.03c-.24.68-1.4 1.3-1.93 1.38-.49.08-1.11.11-1.79-.11-.41-.13-.94-.3-1.62-.6-2.85-1.23-4.71-4.1-4.85-4.29-.14-.19-1.16-1.54-1.16-2.94 0-1.4.73-2.09.99-2.37.26-.28.57-.35.76-.35.19 0 .38 0 .55.01.18.01.41-.07.64.49.24.57.81 1.98.88 2.12.07.14.12.31.02.5-.09.19-.14.31-.28.48-.14.16-.29.36-.42.49-.14.14-.28.29-.12.57.16.28.71 1.17 1.52 1.9 1.05.94 1.93 1.23 2.21 1.37.28.14.44.12.6-.07.17-.19.7-.81.89-1.09.19-.28.38-.23.64-.14.26.09 1.66.78 1.94.92.28.14.47.21.54.33.07.12.07.68-.17 1.35z"/></svg></span>
-          <span class="compartir-red-nombre">WhatsApp</span>
-        </div>
-        <textarea id="cp_texto_whatsapp"></textarea>
-        <div class="compartir-red-acciones">
-          <button type="button" data-copiar="cp_texto_whatsapp">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
-            <span>Copiar texto</span>
-          </button>
-          <button type="button" id="btnAbrirWhatsapp">Abrir en WhatsApp ↗</button>
-        </div>
-      </div>
-
     </div>
 
     <button type="button" class="btn-primari" style="width:100%;margin-top:18px;" onclick="cerrarModalCompartir()">Cerrar</button>
@@ -2367,7 +2358,7 @@
 <script src="/js/corrector-formato.js?v=1"></script>
 <script src="/admin/js/admin.js?v=42"></script>
 <script src="/admin/js/dropzone-global.js?v=1"></script>
-<script src="/admin/js/minuto-a-minuto.js?v=5"></script>
+<script src="/admin/js/minuto-a-minuto.js?v=6"></script>
 <script src="/admin/js/importacion-rapida.js?v=1"></script>
 <script src="/admin/js/importacion-rapida-eventos.js?v=1"></script>
 <script src="/admin/js/tutorial.js?v=1"></script>

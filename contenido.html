@@ -11,7 +11,7 @@
 <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=16">
+<link rel="stylesheet" href="css/style.css?v=17">
 <style>
   .contenido-wrap{max-width:820px;margin:0 auto;}
   .contenido-intro{
@@ -268,9 +268,9 @@
 <script src="js/ui-alertas.js?v=4"></script>
 <script src="js/config.js?v=15"></script>
 <script src="js/clubs.js?v=4"></script>
-<script src="js/layout.js?v=6"></script>
-<script src="js/cookies.js?v=1"></script>
-<script src="js/ads.js?v=1"></script>
+<script src="js/layout.js?v=7"></script>
+<script src="js/cookies.js?v=2"></script>
+<script src="js/ads.js?v=2"></script>
 <script>
 // ---------- Comprobación de sesión (mismo login que el panel de redacción) ----------
 const TOKEN = localStorage.getItem("eof_token");
@@ -447,7 +447,81 @@ function iniciarSubida() {
   // Sube un único archivo con XMLHttpRequest (en vez de fetch) porque es
   // lo único que permite mostrar el progreso real de la subida, algo
   // importante para vídeos pesados en su calidad original.
-  function subirArchivo({ id, file }, titulo, descripcion, club) {
+
+  // ---------- Ajuste automático de fotos al límite de Cloudinary ----------
+  // Cloudinary (plan actual) rechaza cualquier imagen de más de 10 MB con
+  // "File size too large. Maximum is 10485760". Las fotos de cámara réflex
+  // suelen pesar 10-14 MB, así que fallaban justo las más pesadas. Aquí, SOLO
+  // si una foto supera el límite, se recodifica como JPEG a resolución
+  // completa con la calidad más alta que quepa por debajo de 10 MB (casi
+  // siempre ~0.85-0.92, imperceptible). Las fotos que ya caben se suben
+  // intactas, byte a byte, como siempre. Nota: al recodificar se pierden los
+  // metadatos EXIF (cámara, fecha...); la orientación sí se conserva.
+  const LIMITE_FOTO_CLOUDINARY_BYTES = 10 * 1024 * 1024;
+  const OBJETIVO_FOTO_BYTES = Math.floor(9.6 * 1024 * 1024);
+
+  function canvasABlobJpeg(canvas, calidad) {
+    return new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/jpeg", calidad));
+  }
+
+  async function ajustarFotoAlLimite(file) {
+    const esFoto = file.type && file.type.startsWith("image/") && file.type !== "image/gif";
+    if (!esFoto || file.size <= LIMITE_FOTO_CLOUDINARY_BYTES) return file;
+    try {
+      const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+      let escala = 1;
+      for (let intento = 0; intento < 4; intento++) {
+        const w = Math.max(1, Math.round(bitmap.width * escala));
+        const h = Math.max(1, Math.round(bitmap.height * escala));
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#fff"; // por si un PNG traía transparencia
+        ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(bitmap, 0, 0, w, h);
+
+        let elegido = await canvasABlobJpeg(canvas, 0.92);
+        if (elegido && elegido.size > OBJETIVO_FOTO_BYTES) {
+          // Búsqueda binaria de la mejor calidad que quepa.
+          let bajo = 0.5, alto = 0.92, encontrado = null;
+          for (let i = 0; i < 6; i++) {
+            const q = (bajo + alto) / 2;
+            const b = await canvasABlobJpeg(canvas, q);
+            if (b && b.size <= OBJETIVO_FOTO_BYTES) { encontrado = b; bajo = q; } else { alto = q; }
+          }
+          elegido = encontrado;
+        }
+        if (elegido && elegido.size <= OBJETIVO_FOTO_BYTES) {
+          if (bitmap.close) bitmap.close();
+          const nombre = file.name.replace(/\.[^.]+$/, "") + ".jpg";
+          return new File([elegido], nombre, { type: "image/jpeg", lastModified: file.lastModified });
+        }
+        escala *= 0.85; // ni con calidad 0.5 cabe: se reduce un poco la resolución
+      }
+      if (bitmap.close) bitmap.close();
+    } catch (err) {
+      // El navegador no pudo decodificarla (p. ej. HEIC en Chrome): se
+      // devuelve la original y el servidor dará su mensaje de siempre.
+      console.warn("No se pudo ajustar la foto al límite:", err);
+    }
+    return file;
+  }
+
+  async function subirArchivo(item, ...args) {
+    if (!item.ajustado) {
+      const pesaDemasiado = item.file.size > LIMITE_FOTO_CLOUDINARY_BYTES && item.file.type.startsWith("image/");
+      if (pesaDemasiado) {
+        const fila = listaArchivos.querySelector(`.item-archivo[data-id="${item.id}"]`);
+        const estadoTxt = fila && fila.querySelector(".estado-txt");
+        if (estadoTxt) estadoTxt.textContent = "Optimizando foto (supera 10 MB)...";
+      }
+      item.ajustado = await ajustarFotoAlLimite(item.file);
+    }
+    return subirArchivoCrudo({ ...item, file: item.ajustado }, ...args);
+  }
+
+  function subirArchivoCrudo({ id, file }, titulo, descripcion, club) {
     return new Promise((resolve, reject) => {
       const fila = listaArchivos.querySelector(`.item-archivo[data-id="${id}"]`);
       const barra = fila.querySelector(".barra-progreso i");
@@ -461,7 +535,7 @@ function iniciarSubida() {
 
       const xhr = new XMLHttpRequest();
       xhr.open("POST", `${API_URL}/api/media`);
-      xhr.setRequestHeader("Authorization", `Bearer ${TOKEN}`);
+      xhr.setRequestHeader("Authorization", `Bearer ${localStorage.getItem("eof_token") || TOKEN}`);
 
       xhr.upload.addEventListener("progress", (e) => {
         if (e.lengthComputable) {
@@ -480,8 +554,13 @@ function iniciarSubida() {
           fila.classList.add("error");
           let mensaje = "Error al subir";
           try { mensaje = JSON.parse(xhr.responseText).error || mensaje; } catch {}
+          if (xhr.status === 401) {
+            mensaje = "No se ha podido verificar tu sesión. Vuelve a iniciar sesión y pulsa «Subir contenido» otra vez";
+          }
           estadoTxt.textContent = mensaje;
-          reject(new Error(mensaje));
+          const error = new Error(mensaje);
+          error.status = xhr.status;
+          reject(error);
         }
       });
       xhr.addEventListener("error", () => {
@@ -517,7 +596,23 @@ function iniciarSubida() {
         // Si hay varios archivos, se numera el título para diferenciarlos
         // sin que el redactor tenga que repetirlo campo a campo.
         const tituloArchivo = archivos.length > 1 ? `${titulo} (${subidos + fallidos + 1}/${archivos.length})` : titulo;
-        await subirArchivo(item, tituloArchivo, descripcion, club);
+        // Un 401 ocurre antes de que el servidor guarde nada: reintentar es
+        // seguro y cubre los 401 pasajeros en tandas largas de fotos.
+        for (let intento = 1; ; intento++) {
+          try {
+            await subirArchivo(item, tituloArchivo, descripcion, club);
+            break;
+          } catch (errIntento) {
+            if (errIntento.status !== 401 || intento >= 3) throw errIntento;
+            const filaR = listaArchivos.querySelector(`.item-archivo[data-id="${item.id}"]`);
+            if (filaR) {
+              filaR.classList.remove("error");
+              filaR.querySelector(".estado-txt").textContent = `Reintentando... (${intento}/2)`;
+              filaR.querySelector(".barra-progreso i").style.width = "0%";
+            }
+            await new Promise((r) => setTimeout(r, 1500 * intento));
+          }
+        }
         subidos++;
       } catch (err) {
         fallidos++;

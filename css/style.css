@@ -2501,70 +2501,222 @@ footer .footer-arriba:hover{background:var(--rojo);color:#fff;}
 }
 
 /* ---------- Modal de suscripción al boletín (lectores) ---------- */
-/* Aparece hasta dos veces por visitante (ver inicializarModalNewsletter en
-   layout.js): la primera al poco de entrar, la segunda pasado un rato en
-   una visita posterior. Reutiliza el mismo endpoint y la misma clase
-   .newsletter-form que el formulario del pie de página, pero con sus
-   propios estilos de input/botón porque aquí el fondo es claro
-   (--tarjeta) y no el oscuro del footer. */
+/* Aparece hasta dos veces por visitante y solo con cookies aceptadas (ver
+   inicializarModalNewsletter en layout.js). Cabecera marino con las líneas
+   de un campo de fútbol y un corte diagonal rojo; cuerpo con las ventajas,
+   el campo de correo y el botón. Reutiliza el endpoint y la clase
+   .newsletter-form del pie, pero con estilos propios. */
 .modal-newsletter{
   position:fixed;inset:0;z-index:1100;
   display:none;align-items:center;justify-content:center;
   padding:20px;
+  padding-top:calc(20px + env(safe-area-inset-top, 0px));
+  padding-bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+  box-sizing:border-box;
 }
 .modal-newsletter.abierto{display:flex;}
 .modal-newsletter-fondo{
-  position:absolute;inset:0;background:rgba(12,27,46,.65);backdrop-filter:blur(3px);
-  animation:modalFadeIn .2s ease;
+  position:absolute;inset:0;background:rgba(6,13,24,.74);
+  -webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);
+  animation:modalFadeIn .25s ease;
 }
 .modal-newsletter-caja{
-  position:relative;background:var(--tarjeta);color:var(--texto);border-radius:20px;
-  max-width:440px;width:100%;max-height:90vh;overflow-y:auto;
-  padding:38px 32px 30px;text-align:center;
-  box-shadow:0 24px 70px rgba(12,27,46,.4);
-  animation:modalPopIn .25s cubic-bezier(.2,.9,.3,1.2);
-  border-top:5px solid var(--rojo);
+  position:relative;background:var(--tarjeta);color:var(--texto);border-radius:22px;
+  max-width:460px;width:100%;max-height:100%;
+  overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;
+  box-shadow:0 30px 80px rgba(4,10,20,.55),0 0 0 1px rgba(255,255,255,.07);
+  animation:nlPop .38s cubic-bezier(.2,.9,.3,1.12);
+  outline:none;text-align:center;
 }
-.modal-newsletter-cerrar{
-  position:absolute;top:14px;right:14px;border:none;background:var(--gris-claro);color:var(--marino-texto);
-  width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:1rem;line-height:1;
-  display:flex;align-items:center;justify-content:center;transition:background .15s,transform .15s;
+
+/* Cabecera */
+.modal-newsletter-cabecera{
+  position:relative;isolation:isolate;overflow:hidden;
+  padding:34px 30px 50px;color:#fff;
+  background:
+    radial-gradient(circle at 50% -10%, rgba(91,184,232,.28), transparent 62%),
+    linear-gradient(160deg, var(--marino2) 0%, var(--marino) 72%);
 }
-.modal-newsletter-cerrar:hover{background:var(--borde);transform:rotate(90deg);}
-.modal-newsletter-icono{font-size:2.4rem;margin-bottom:10px;line-height:1;}
+.modal-newsletter-campo{
+  position:absolute;inset:0;width:100%;height:100%;z-index:-1;
+  color:rgba(255,255,255,.09);pointer-events:none;
+}
+/* Corte diagonal inferior: una cuña roja y, encima, una cuña del color de la
+   tarjeta desplazada hacia abajo, de modo que solo asoma una franja roja. */
+.modal-newsletter-cabecera::before,
+.modal-newsletter-cabecera::after{
+  content:"";position:absolute;left:0;right:0;bottom:0;height:30px;z-index:0;pointer-events:none;
+}
+.modal-newsletter-cabecera::before{
+  background:var(--rojo);
+  clip-path:polygon(0 45%,100% 0,100% 100%,0 100%);
+}
+.modal-newsletter-cabecera::after{
+  /* 2px de más por debajo (los recorta overflow:hidden) para que no asome
+     una línea de la cuña roja por redondeo de subpíxeles. */
+  bottom:-2px;height:32px;
+  background:var(--tarjeta);
+  clip-path:polygon(0 73.1%,100% 30.9%,100% 100%,0 100%);
+}
+.modal-newsletter-cabecera > *:not(svg.modal-newsletter-campo){position:relative;z-index:1;}
+
+.modal-newsletter-sello{
+  position:relative;width:74px;height:74px;margin:0 auto 16px;border-radius:50%;
+  background:#fff;color:var(--marino);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 0 0 5px rgba(255,255,255,.14),0 10px 26px rgba(0,0,0,.35);
+  animation:nlDrop .6s .12s cubic-bezier(.3,1.5,.5,1) both;
+}
+.modal-newsletter-balon{
+  position:absolute;right:-12px;top:-10px;
+  filter:drop-shadow(0 3px 5px rgba(0,0,0,.35));
+}
 .modal-newsletter-caja h3{
-  font-family:var(--font-tit);text-transform:uppercase;font-size:1.3rem;
-  color:var(--marino-texto);margin-bottom:10px;letter-spacing:.3px;
+  font-family:var(--font-tit);text-transform:uppercase;font-size:1.65rem;font-weight:700;
+  line-height:1.15;letter-spacing:.5px;margin:0 0 8px;
 }
-.modal-newsletter-caja p{
-  color:var(--gris-texto);font-size:.9rem;line-height:1.5;margin-bottom:24px;
+.modal-newsletter-cabecera h3{color:#fff;}
+.modal-newsletter-sub{
+  color:rgba(255,255,255,.8);font-size:.92rem;line-height:1.5;
+  max-width:32ch;margin:0 auto;
 }
+
+/* Cerrar */
+.modal-newsletter-cerrar{
+  position:absolute;top:12px;right:12px;z-index:3;
+  width:36px;height:36px;border-radius:50%;border:none;cursor:pointer;
+  background:rgba(255,255,255,.14);color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .15s,transform .2s;
+}
+.modal-newsletter-cerrar:hover{background:rgba(255,255,255,.26);transform:rotate(90deg);}
+.modal-newsletter-cerrar:focus-visible{outline:2px solid var(--celeste-claro);outline-offset:2px;}
+.modal-newsletter-caja--exito .modal-newsletter-cerrar{background:var(--gris-claro);color:var(--marino-texto);}
+.modal-newsletter-caja--exito .modal-newsletter-cerrar:hover{background:var(--borde);}
+
+/* Cuerpo */
+.modal-newsletter-cuerpo{padding:6px 30px 24px;}
+.modal-newsletter-ventajas{
+  list-style:none;margin:0 0 22px;padding:0;
+  display:flex;flex-direction:column;gap:12px;text-align:left;
+}
+.modal-newsletter-ventajas li{
+  display:flex;align-items:flex-start;gap:12px;
+  font-size:.9rem;line-height:1.45;color:var(--texto);
+}
+.modal-newsletter-ventajas li svg{flex-shrink:0;color:var(--rojo);margin-top:1px;}
+.modal-newsletter-ventajas strong{font-weight:600;color:var(--marino-texto);}
+
 .modal-newsletter-form.newsletter-form{
-  display:flex;flex-direction:column;gap:12px;flex-wrap:nowrap;margin-bottom:14px;
+  display:flex;flex-direction:column;flex-wrap:nowrap;gap:12px;margin:0 0 12px;
 }
+.modal-newsletter-etiqueta{
+  position:absolute;width:1px;height:1px;margin:-1px;padding:0;border:0;
+  overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;
+}
+.modal-newsletter-campo-email{position:relative;}
+.modal-newsletter-campo-email svg{
+  position:absolute;left:15px;top:50%;transform:translateY(-50%);
+  color:var(--gris-texto);pointer-events:none;transition:color .15s;
+}
+.modal-newsletter-campo-email:focus-within svg{color:var(--rojo);}
 .modal-newsletter-form.newsletter-form input{
-  padding:13px 16px;border-radius:24px;border:1px solid var(--borde);
-  background:var(--fondo);color:var(--texto);font-family:var(--font-text);font-size:.92rem;
-  min-width:0;width:100%;text-align:center;
+  width:100%;min-width:0;box-sizing:border-box;flex:none;
+  padding:14px 16px 14px 46px;border-radius:12px;
+  border:1.5px solid var(--borde);background:var(--fondo-alt);color:var(--texto);
+  font-family:var(--font-text);font-size:.95rem;text-align:left;
+  transition:border-color .15s,box-shadow .15s,background .15s;
 }
-.modal-newsletter-form.newsletter-form input::placeholder{color:var(--gris-texto);}
-.modal-newsletter-form.newsletter-form input:focus{outline:2px solid var(--celeste);outline-offset:1px;}
-.modal-newsletter-form.newsletter-form button{
-  padding:13px 22px;border-radius:24px;border:none;
+.modal-newsletter-form.newsletter-form input::placeholder{color:var(--gris-texto);opacity:.75;}
+.modal-newsletter-form.newsletter-form input:focus{
+  outline:none;border-color:var(--celeste);background:var(--tarjeta);
+  box-shadow:0 0 0 4px rgba(91,184,232,.25);
+}
+.modal-newsletter-error{
+  margin:-4px 0 0;text-align:left;font-size:.82rem;line-height:1.4;color:var(--rojo-oscuro);
+}
+.modal-newsletter-error[hidden]{display:none;}
+[data-theme="dark"] .modal-newsletter-error{color:#ff8a98;}
+
+.modal-newsletter-form.newsletter-form button[type="submit"]{
+  position:relative;overflow:hidden;width:100%;box-sizing:border-box;
+  padding:15px 22px;border-radius:12px;border:none;
   background:linear-gradient(135deg, var(--rojo), var(--rojo-oscuro));color:#fff;
-  font-family:var(--font-tit);font-size:.85rem;text-transform:uppercase;letter-spacing:.4px;
-  cursor:pointer;transition:transform .15s,box-shadow .15s;
-  box-shadow:0 6px 16px rgba(209,19,46,.3);
+  font-family:var(--font-tit);font-size:.95rem;font-weight:600;text-transform:uppercase;letter-spacing:.6px;
+  cursor:pointer;box-shadow:0 8px 20px rgba(209,19,46,.35);
+  transition:transform .15s,box-shadow .15s;
 }
-.modal-newsletter-form.newsletter-form button:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(209,19,46,.4);}
-.modal-newsletter-form.newsletter-form button:disabled{opacity:.7;cursor:default;transform:none;}
+.modal-newsletter-form.newsletter-form button[type="submit"]::after{
+  content:"";position:absolute;top:0;left:-70%;width:45%;height:100%;
+  background:linear-gradient(100deg,transparent,rgba(255,255,255,.28),transparent);
+  transform:skewX(-20deg);transition:left .55s ease;pointer-events:none;
+}
+.modal-newsletter-form.newsletter-form button[type="submit"]:hover{
+  transform:translateY(-1px);box-shadow:0 12px 26px rgba(209,19,46,.45);background:linear-gradient(135deg, var(--rojo), var(--rojo-oscuro));
+}
+.modal-newsletter-form.newsletter-form button[type="submit"]:hover::after{left:125%;}
+.modal-newsletter-form.newsletter-form button[type="submit"]:focus-visible{outline:3px solid var(--celeste);outline-offset:2px;}
+.modal-newsletter-form.newsletter-form button[type="submit"]:disabled{opacity:.7;cursor:default;transform:none;box-shadow:none;}
+.modal-newsletter-form.newsletter-form button[type="submit"]:disabled::after{display:none;}
+
 .modal-newsletter-omitir{
-  background:none;border:none;color:var(--gris-texto);font-size:.8rem;
-  text-decoration:underline;cursor:pointer;padding:4px;
+  background:none;border:none;color:var(--gris-texto);font-family:var(--font-text);font-size:.85rem;
+  text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:8px 10px;
 }
 .modal-newsletter-omitir:hover{color:var(--texto);}
+.modal-newsletter-omitir:focus-visible{outline:2px solid var(--celeste);outline-offset:2px;border-radius:6px;}
+.modal-newsletter-legal{
+  margin:6px 0 0;font-size:.74rem;line-height:1.45;color:var(--gris-texto);
+}
+.modal-newsletter-legal a{color:inherit;text-decoration:underline;text-underline-offset:2px;}
+.modal-newsletter-legal a:hover{color:var(--texto);}
+
+/* Estado "suscrito" dentro del propio modal */
+.modal-newsletter-exito{padding:54px 30px 46px;}
+.modal-newsletter-exito[hidden]{display:none;}
+.modal-newsletter-exito-icono{
+  width:84px;height:84px;margin:0 auto 20px;border-radius:50%;
+  background:linear-gradient(135deg, var(--rojo), var(--rojo-oscuro));color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 0 0 8px rgba(209,19,46,.14),0 12px 28px rgba(209,19,46,.35);
+  animation:nlDrop .5s cubic-bezier(.3,1.5,.5,1) both;
+}
+.modal-newsletter-exito h3{color:var(--marino-texto);margin-bottom:8px;}
+.modal-newsletter-exito p{color:var(--gris-texto);font-size:.95rem;line-height:1.5;margin:0;}
+.nl-check{stroke-dasharray:40;stroke-dashoffset:40;animation:nlCheck .45s .3s ease forwards;}
+
+@keyframes nlPop{
+  from{opacity:0;transform:translateY(18px) scale(.96);}
+  to{opacity:1;transform:translateY(0) scale(1);}
+}
+@keyframes nlDrop{
+  from{opacity:0;transform:translateY(-16px) scale(.7);}
+  to{opacity:1;transform:translateY(0) scale(1);}
+}
+@keyframes nlCheck{to{stroke-dashoffset:0;}}
+
 @media (max-width:480px){
-  .modal-newsletter-caja{padding:30px 22px 26px;border-radius:16px;}
+  .modal-newsletter{padding:14px;}
+  .modal-newsletter-caja{border-radius:18px;}
+  .modal-newsletter-cabecera{padding:28px 22px 46px;}
+  .modal-newsletter-caja h3{font-size:1.4rem;}
+  .modal-newsletter-cuerpo{padding:4px 22px 20px;}
+  .modal-newsletter-exito{padding:44px 22px 38px;}
+}
+@media (max-height:600px){
+  .modal-newsletter-sello{width:58px;height:58px;margin-bottom:10px;}
+  .modal-newsletter-sobre{width:28px;height:28px;}
+  .modal-newsletter-cabecera{padding-top:24px;padding-bottom:42px;}
+}
+@media (prefers-reduced-motion: reduce){
+  .modal-newsletter-fondo,
+  .modal-newsletter-caja,
+  .modal-newsletter-sello,
+  .modal-newsletter-exito-icono{animation:none;}
+  .nl-check{animation:none;stroke-dashoffset:0;}
+  .modal-newsletter-cerrar,
+  .modal-newsletter-form.newsletter-form button[type="submit"],
+  .modal-newsletter-form.newsletter-form button[type="submit"]::after{transition:none;}
 }
 /* ---------- BANNER "ÚLTIMA HORA" ---------- */
 /* Fijo arriba del todo en cualquier página (lo inyecta layout.js, ver

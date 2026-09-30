@@ -353,16 +353,67 @@ function renderFooter() {
         ${bloquePatrocinadoresFooter}
         <div id="modalNewsletter" class="modal-newsletter" aria-hidden="true">
           <div class="modal-newsletter-fondo" onclick="cerrarModalNewsletter()"></div>
-          <div class="modal-newsletter-caja" role="dialog" aria-modal="true" aria-labelledby="modalNewsletterTitulo">
-            <button type="button" class="modal-newsletter-cerrar" onclick="cerrarModalNewsletter()" aria-label="Cerrar">✕</button>
-            <div class="modal-newsletter-icono">⚽📬</div>
-            <h3 id="modalNewsletterTitulo">No te pierdas nada</h3>
-            <p>Cada semana, un resumen con lo más destacado de LaLiga Hypermotion, Primera y Segunda Federación directo a tu correo. Sin spam, cancelas cuando quieras.</p>
-            <form class="newsletter-form modal-newsletter-form" id="modalNewsletterForm">
-              <input type="email" id="modalNewsletterEmail" placeholder="Tu correo electrónico" required autocomplete="email">
-              <button type="submit">Quiero suscribirme</button>
-            </form>
-            <button type="button" class="modal-newsletter-omitir" onclick="cerrarModalNewsletter()">Ahora no, gracias</button>
+          <div class="modal-newsletter-caja" role="dialog" aria-modal="true" aria-labelledby="modalNewsletterTitulo" aria-describedby="modalNewsletterDesc" tabindex="-1">
+            <button type="button" class="modal-newsletter-cerrar" onclick="cerrarModalNewsletter()" aria-label="Cerrar">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+            </button>
+
+            <div class="modal-newsletter-cabecera">
+              <svg class="modal-newsletter-campo" viewBox="0 0 460 240" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+                <g fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="230" y1="-4" x2="230" y2="244"/>
+                  <circle cx="230" cy="120" r="64"/>
+                  <rect x="-4" y="52" width="86" height="136"/>
+                  <rect x="-4" y="88" width="32" height="64"/>
+                  <rect x="378" y="52" width="86" height="136"/>
+                  <rect x="432" y="88" width="32" height="64"/>
+                </g>
+                <circle cx="230" cy="120" r="4" fill="currentColor"/>
+              </svg>
+              <div class="modal-newsletter-sello">
+                <svg class="modal-newsletter-sobre" viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 7.2l8.5 6.3 8.5-6.3"/></svg>
+                <svg class="modal-newsletter-balon" viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><circle cx="12" cy="12" r="10.5" fill="#fff" stroke="#0c1b2e" stroke-width="1.5"/><path d="M12 7.2l3.6 2.6-1.4 4.2H9.8L8.4 9.8z" fill="#0c1b2e"/><path d="M12 7.2V2M15.6 9.8L20.6 8M14.2 14l3 4.2M9.8 14l-3 4.2M8.4 9.8L3.4 8" stroke="#0c1b2e" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg>
+              </div>
+              <h3 id="modalNewsletterTitulo">No te pierdas nada</h3>
+              <p id="modalNewsletterDesc" class="modal-newsletter-sub">Tu jornada de fútbol no profesional, cada semana en tu correo.</p>
+            </div>
+
+            <div class="modal-newsletter-cuerpo">
+              <ul class="modal-newsletter-ventajas">
+                <li>
+                  <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="12" cy="12" r="12" fill="currentColor" opacity=".14"/><path d="M7.5 12.4l3 3 6-6.4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  <span><strong>Lo más destacado</strong> de LaLiga Hypermotion, Primera y Segunda Federación.</span>
+                </li>
+                <li>
+                  <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="12" cy="12" r="12" fill="currentColor" opacity=".14"/><path d="M7.5 12.4l3 3 6-6.4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  <span><strong>Un solo correo</strong> a la semana con el resumen de resultados y crónicas.</span>
+                </li>
+                <li>
+                  <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="12" cy="12" r="12" fill="currentColor" opacity=".14"/><path d="M7.5 12.4l3 3 6-6.4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  <span><strong>Sin spam.</strong> Te das de baja cuando quieras.</span>
+                </li>
+              </ul>
+
+              <form class="newsletter-form modal-newsletter-form" id="modalNewsletterForm">
+                <label class="modal-newsletter-etiqueta" for="modalNewsletterEmail">Correo electrónico</label>
+                <div class="modal-newsletter-campo-email">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 7.2l8.5 6.3 8.5-6.3"/></svg>
+                  <input type="email" id="modalNewsletterEmail" placeholder="tucorreo@ejemplo.com" required autocomplete="email" inputmode="email">
+                </div>
+                <p class="modal-newsletter-error" id="modalNewsletterError" role="alert" hidden></p>
+                <button type="submit">Quiero suscribirme</button>
+              </form>
+              <button type="button" class="modal-newsletter-omitir" onclick="cerrarModalNewsletter()">Ahora no, gracias</button>
+              <p class="modal-newsletter-legal">Al suscribirte aceptas nuestra <a href="${baseHref()}politica-privacidad.html">política de privacidad</a>.</p>
+            </div>
+
+            <div class="modal-newsletter-exito" role="status" hidden>
+              <div class="modal-newsletter-exito-icono">
+                <svg viewBox="0 0 52 52" width="52" height="52" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="nl-check" d="M14 27.5l8.5 8.5L38.5 18"/></svg>
+              </div>
+              <h3>¡Ya estás dentro!</h3>
+              <p>Cada semana recibirás el resumen en tu correo.</p>
+            </div>
           </div>
         </div>
         <div class="footer-grid">
@@ -456,6 +507,12 @@ function pintarFechaHoy() {
 const UH_INTERVALO_COMPROBACION_MS = 60000; // 1 minuto
 
 async function cargarBannerUrgente() {
+  // Sin cookies aceptadas no se muestran avisos secundarios (ver
+  // eofAlAceptarCookies más abajo): ni se pide ni se deja pintado.
+  if (!eofCookiesAceptadasAhora()) {
+    quitarBannerUrgenteDelDOM();
+    return;
+  }
   try {
     const res = await apiFetch("/api/articles/banner-urgente");
     // apiFetch (config.js) devuelve un Response crudo, igual que fetch
@@ -572,7 +629,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // y solo distrae de un formulario que el usuario necesita completar.
   const esPaginaAcceso = /(^|\/)acceso(\.html)?(\/)?$/.test(location.pathname);
   if (!esPaginaAcceso) {
-    cargarBannerUrgente();
+    eofAlAceptarCookies(cargarBannerUrgente);
     // Comprobación periódica: así, si se activa (o se quita) el banner
     // mientras alguien ya tiene la página abierta, se refleja solo, sin
     // que tenga que recargar. Se limpia si la pestaña se cierra o
@@ -580,6 +637,13 @@ document.addEventListener("DOMContentLoaded", () => {
     // corriendo hasta entonces (una llamada ligera por minuto).
     setInterval(cargarBannerUrgente, UH_INTERVALO_COMPROBACION_MS);
   }
+  // Si en algún momento la persona rechaza las cookies (p. ej. desde
+  // "Configurar cookies" en el pie), se retiran los avisos que ya estuvieran
+  // a la vista.
+  document.addEventListener("eof:cookies-rechazadas", () => {
+    cerrarModalNewsletter();
+    quitarBannerUrgenteDelDOM();
+  });
 
   // Los clubes "personalizados" (añadidos desde "Otro equipo" en el
   // panel) se cargan aparte, sin bloquear la primera pintura del menú;
@@ -619,17 +683,37 @@ document.addEventListener("DOMContentLoaded", () => {
   inicializarModalNewsletter();
 });
 
+// ---------- Avisos secundarios y consentimiento de cookies ----------
+// Regla del sitio: mientras no se hayan ACEPTADO cookies (no se ha contestado
+// todavía al aviso de cookies, o se ha pulsado "Rechazar no necesarias"), no
+// aparece ningún otro aviso (modal de newsletter, banner de última hora).
+// El estado lo fija cookies.js (window.EOF_CONSENTIMIENTO_*) y avisa con los
+// eventos "eof:cookies-aceptadas" / "eof:cookies-rechazadas".
+function eofCookiesAceptadasAhora() {
+  return !!(window.EOF_CONSENTIMIENTO_ANALITICA || window.EOF_CONSENTIMIENTO_PUBLICIDAD);
+}
+
+// Ejecuta fn ahora si ya hay cookies aceptadas, y otra vez cada vez que se
+// (re)acepten. Cubre los dos órdenes de arranque posibles entre layout.js y
+// cookies.js: si la decisión ya estaba aplicada se ejecuta al momento, y si
+// se aplica después se ejecuta con el evento.
+function eofAlAceptarCookies(fn) {
+  if (eofCookiesAceptadasAhora()) fn();
+  document.addEventListener("eof:cookies-aceptadas", fn);
+}
+
 // ---------- Modal de suscripción al boletín (lectores) ----------
 // Se muestra hasta dos veces por persona, pensado para captar
-// suscripciones sin resultar cargante: la primera vez nada más entrar en
-// la web (con un pequeño respiro para no interrumpir la carga), y la
+// suscripciones sin resultar cargante: la primera vez poco después de
+// aceptar las cookies (con un pequeño respiro para no interrumpir), y la
 // segunda pasado un rato de lectura en una visita posterior. Si en
 // cualquiera de las dos ya se ha suscrito, o si ya se ha mostrado dos
 // veces, no se vuelve a insistir. Todo se recuerda en localStorage, así
-// que es por navegador, no por sesión.
+// que es por navegador, no por sesión. Sin cookies aceptadas no se muestra.
 const NEWSLETTER_MODAL_CLAVE = "eof_newsletter_modal";
-const NEWSLETTER_MODAL_RETRASO_PRIMERA_VEZ_MS = 4000; // pequeño respiro tras cargar
+const NEWSLETTER_MODAL_RETRASO_PRIMERA_VEZ_MS = 4000; // pequeño respiro tras cargar/aceptar
 const NEWSLETTER_MODAL_RETRASO_SEGUNDA_VEZ_MS = 45000; // "pasado un tiempo" en una visita posterior
+const NEWSLETTER_MODAL_EXITO_MS = 2600; // cuánto se ve el "¡Ya estás dentro!" antes de cerrarse solo
 
 function estadoModalNewsletter() {
   try {
@@ -652,11 +736,14 @@ function guardarEstadoModalNewsletter(estado) {
 function abrirModalNewsletter() {
   const modal = document.getElementById("modalNewsletter");
   if (!modal) return;
+  if (!eofCookiesAceptadasAhora()) return;
   // Si ya hay otro modal (p. ej. el de detalle de partido) abierto encima,
   // no se superpone el de newsletter: se deja para la próxima ocasión.
   if (document.querySelector(".modal-partido.abierto")) return;
   modal.classList.add("abierto");
   modal.setAttribute("aria-hidden", "false");
+  const caja = modal.querySelector(".modal-newsletter-caja");
+  if (caja) caja.focus({ preventScroll: true });
 }
 
 function cerrarModalNewsletter() {
@@ -666,6 +753,19 @@ function cerrarModalNewsletter() {
   modal.setAttribute("aria-hidden", "true");
 }
 
+// Sustituye el formulario del modal por el mensaje de "¡Ya estás dentro!".
+function mostrarExitoModalNewsletter() {
+  const caja = document.querySelector("#modalNewsletter .modal-newsletter-caja");
+  if (!caja) return;
+  caja.classList.add("modal-newsletter-caja--exito");
+  const cabecera = caja.querySelector(".modal-newsletter-cabecera");
+  const cuerpo = caja.querySelector(".modal-newsletter-cuerpo");
+  const exito = caja.querySelector(".modal-newsletter-exito");
+  if (cabecera) cabecera.hidden = true;
+  if (cuerpo) cuerpo.hidden = true;
+  if (exito) exito.hidden = false;
+}
+
 function inicializarModalNewsletter() {
   const modal = document.getElementById("modalNewsletter");
   const form = document.getElementById("modalNewsletterForm");
@@ -673,16 +773,28 @@ function inicializarModalNewsletter() {
 
   const estado = estadoModalNewsletter();
   if (!estado.suscrito && estado.veces < 2) {
-    const retraso = estado.veces === 0 ? NEWSLETTER_MODAL_RETRASO_PRIMERA_VEZ_MS : NEWSLETTER_MODAL_RETRASO_SEGUNDA_VEZ_MS;
-    setTimeout(() => {
-      // Se vuelve a comprobar el estado al saltar el timeout (no solo al
-      // programarlo): si mientras tanto la persona ya se ha suscrito
-      // desde el formulario del pie de página, no tiene sentido interrumpirle.
-      const estadoActual = estadoModalNewsletter();
-      if (estadoActual.suscrito || estadoActual.veces >= 2) return;
-      abrirModalNewsletter();
-      guardarEstadoModalNewsletter({ ...estadoActual, veces: estadoActual.veces + 1 });
-    }, retraso);
+    let programado = false;
+    // El temporizador arranca cuando hay cookies aceptadas (al cargar, si ya
+    // estaban aceptadas de una visita anterior, o justo tras pulsar
+    // "Aceptar" en el aviso de cookies), no antes.
+    eofAlAceptarCookies(() => {
+      if (programado) return;
+      const estadoInicial = estadoModalNewsletter();
+      if (estadoInicial.suscrito || estadoInicial.veces >= 2) return;
+      programado = true;
+      const retraso = estadoInicial.veces === 0 ? NEWSLETTER_MODAL_RETRASO_PRIMERA_VEZ_MS : NEWSLETTER_MODAL_RETRASO_SEGUNDA_VEZ_MS;
+      setTimeout(() => {
+        // Se vuelve a comprobar todo al saltar el timeout (no solo al
+        // programarlo): si mientras tanto la persona ya se ha suscrito
+        // desde el pie de página, o ha retirado las cookies, no tiene
+        // sentido interrumpirle.
+        const estadoActual = estadoModalNewsletter();
+        if (estadoActual.suscrito || estadoActual.veces >= 2) return;
+        if (!eofCookiesAceptadasAhora()) { programado = false; return; }
+        abrirModalNewsletter();
+        guardarEstadoModalNewsletter({ ...estadoActual, veces: estadoActual.veces + 1 });
+      }, retraso);
+    });
   }
 
   document.addEventListener("keydown", (e) => {
@@ -692,9 +804,15 @@ function inicializarModalNewsletter() {
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const input = document.getElementById("modalNewsletterEmail");
+    const errorEl = document.getElementById("modalNewsletterError");
     const email = (input.value || "").trim();
-    if (!email) return;
-    const boton = form.querySelector("button");
+    if (errorEl) { errorEl.hidden = true; errorEl.textContent = ""; }
+    if (!email) {
+      if (errorEl) { errorEl.textContent = "Escribe tu correo electrónico."; errorEl.hidden = false; }
+      input.focus();
+      return;
+    }
+    const boton = form.querySelector("button[type=\"submit\"]");
     const textoOriginal = boton.textContent;
     boton.disabled = true;
     boton.textContent = "Enviando...";
@@ -709,13 +827,16 @@ function inicializarModalNewsletter() {
         throw new Error(data.error || "No se pudo completar la suscripción");
       }
       guardarEstadoModalNewsletter({ ...estadoModalNewsletter(), suscrito: true });
-      if (window.EOF && EOF.toast) {
-        EOF.toast("¡Suscripción realizada! Revisa tu correo cada semana.", "exito");
-      }
-      cerrarModalNewsletter();
+      mostrarExitoModalNewsletter();
       renderFooter_actualizarBloqueNewsletter();
+      setTimeout(cerrarModalNewsletter, NEWSLETTER_MODAL_EXITO_MS);
     } catch (err) {
-      if (window.EOF && EOF.toast) {
+      // Error dentro del propio modal (junto al campo), no en un toast que
+      // quedaría fuera del foco de atención.
+      if (errorEl) {
+        errorEl.textContent = err.message || "No se pudo completar la suscripción";
+        errorEl.hidden = false;
+      } else if (window.EOF && EOF.toast) {
         EOF.toast(err.message || "No se pudo completar la suscripción", "error");
       }
     } finally {

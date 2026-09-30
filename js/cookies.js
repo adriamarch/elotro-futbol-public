@@ -95,6 +95,12 @@ function eofCookiesAplicarConsentimiento(analiticas, publicidad) {
   document.dispatchEvent(new CustomEvent("eof:consentimiento-analitica", { detail: { concedido: !!analiticas } }));
   document.dispatchEvent(new CustomEvent("eof:consentimiento-publicidad", { detail: { concedido: !!publicidad } }));
 
+  // Aviso resumido para el resto de avisos del sitio (modal de newsletter,
+  // banner de última hora... ver layout.js): solo se muestran si la persona
+  // ha ACEPTADO alguna categoría de cookies. "Rechazar no necesarias" (o no
+  // haber contestado todavía) los mantiene ocultos.
+  document.dispatchEvent(new CustomEvent(analiticas || publicidad ? "eof:cookies-aceptadas" : "eof:cookies-rechazadas"));
+
   // Si ads.js ya está cargado y esperando (EOF_ADS_CONFIG.esperarConsentimiento
   // = true), esto es lo que le hace falta para arrancar initAds() de verdad.
   if (publicidad && typeof initAds === "function") initAds();
@@ -228,6 +234,12 @@ function eofCookiesGuardarDesdeModal() {
 // permite reabrir el selector de preferencias en cualquier momento, no
 // solo la primera vez que se visita el sitio.
 window.eofAbrirPreferenciasCookies = eofCookiesAbrirModal;
+
+// true si la persona ha aceptado alguna categoría de cookies (analíticas y/o
+// publicidad). layout.js lo usa para decidir si puede mostrar otros avisos.
+window.eofCookiesAceptadas = function () {
+  return !!(window.EOF_CONSENTIMIENTO_ANALITICA || window.EOF_CONSENTIMIENTO_PUBLICIDAD);
+};
 
 function eofCookiesInit() {
   const guardado = eofCookiesLeerPreferencias();

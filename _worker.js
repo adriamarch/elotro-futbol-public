@@ -819,13 +819,13 @@ export default {
     // api.elotrofutbol.media en frame-src). Por eso hay que cubrir las
     // dos variantes de la ruta.
     //
-    // OJO 2: el dominio que hay que permitir en frame-src es
-    // "elotrofutbol.media" (el sitio en sí, que se auto-embebe para la
-    // vista previa), NO "api.elotrofutbol.media" (el backend de la
-    // API) — ese último no sirve ningún HTML embebible. Se había
-    // escrito el subdominio equivocado, así que el navegador seguía
-    // bloqueando el iframe con ERR_BLOCKED_BY_CSP aun después de
-    // "arreglar" esta ruta.
+    // OJO 2: widgets.html ya no auto-embebe el sitio: la vista previa
+    // carga /widgets/* desde el worker de la API (ORIGEN_WIDGETS =
+    // "https://api.elotrofutbol.media" en widgets.html), que SÍ sirve
+    // HTML embebible. Por eso frame-src tiene que incluir
+    // "api.elotrofutbol.media"; sin él el navegador bloquea las cuatro
+    // vistas previas con ERR_BLOCKED_BY_CSP. "elotrofutbol.media" se
+    // mantiene por compatibilidad con la vista previa anterior.
     if ((path === "/widgets.html" || path === "/widgets") && request.method === "GET") {
       const respuesta = await env.ASSETS.fetch(request);
       const nuevas = new Headers(respuesta.headers);
@@ -838,7 +838,7 @@ export default {
       nuevas.delete("Content-Security-Policy");
       nuevas.set(
         "Content-Security-Policy",
-        "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://accounts.google.com https://alcdn.msauth.net https://platform.twitter.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://api.elotrofutbol.media https://elotro-futbol-api-production.up.railway.app https://accounts.google.com https://login.microsoftonline.com; frame-src https://accounts.google.com https://elotrofutbol.media https://platform.twitter.com https://syndication.twitter.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests"
+        "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://accounts.google.com https://alcdn.msauth.net https://platform.twitter.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https://res.cloudinary.com; connect-src 'self' https://api.elotrofutbol.media https://elotro-futbol-api-production.up.railway.app https://accounts.google.com https://login.microsoftonline.com; frame-src https://accounts.google.com https://elotrofutbol.media https://api.elotrofutbol.media https://platform.twitter.com https://syndication.twitter.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests"
       );
       return new Response(respuesta.body, { status: respuesta.status, headers: nuevas });
     }
@@ -853,7 +853,7 @@ export default {
       nuevas.delete("X-Frame-Options");
       nuevas.set(
         "Content-Security-Policy",
-        "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://accounts.google.com https://alcdn.msauth.net https://platform.twitter.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://api.elotrofutbol.media https://elotro-futbol-api-production.up.railway.app https://accounts.google.com https://login.microsoftonline.com; frame-src https://accounts.google.com https://platform.twitter.com https://syndication.twitter.com; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'; upgrade-insecure-requests"
+        "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://accounts.google.com https://alcdn.msauth.net https://platform.twitter.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https://res.cloudinary.com; connect-src 'self' https://api.elotrofutbol.media https://elotro-futbol-api-production.up.railway.app https://accounts.google.com https://login.microsoftonline.com; frame-src https://accounts.google.com https://platform.twitter.com https://syndication.twitter.com; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'; upgrade-insecure-requests"
       );
       nuevas.set("X-Frame-Options", "SAMEORIGIN");
       return new Response(respuesta.body, { status: respuesta.status, headers: nuevas });
