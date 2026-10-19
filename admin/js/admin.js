@@ -16244,6 +16244,7 @@ const ETIQUETAS_ACCION = {
   crear_evento_partido: "Evento de minuto a minuto añadido",
   aviso_partido_desatendido: "Aviso: partido desatendido",
   partido_colgado_ocultado: "Partido colgado ocultado",
+  relleno_automatico: "Relleno automático (TheSportsDB)",
   // Clubes
   crear_club_personalizado: "Club personalizado creado",
   editar_club_info: "Ficha de club editada",
