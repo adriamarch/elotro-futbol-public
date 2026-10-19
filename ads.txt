@@ -1,1 +1,10 @@
 google.com, pub-7347856722927942, DIRECT, f08c47fec0942fa0
+# ---------------------------------------------------------------------------
+# Cuando cada red te APRUEBE, pega aquí las líneas EXACTAS que te dé en su
+# panel (sección "ads.txt"). Sin esas líneas la mayoría de compradores no
+# puja por tu inventario. NO inventes IDs: cada línea lleva tu ID de editor.
+#   Media.net : (panel Media.net > Ads.txt)
+#   Taboola   : (panel Taboola > Settings > ads.txt)
+#   Ezoic     : lo gestiona Ezoic (adstxtmanager); sigue sus instrucciones
+#   Prebid    : una línea por cada SSP que añadas en prebid.bidders
+# ---------------------------------------------------------------------------

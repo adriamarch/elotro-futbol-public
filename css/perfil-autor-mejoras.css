@@ -1,0 +1,273 @@
+/* =======================================================================
+   PERFIL PÚBLICO DE AUTOR (autor.html) — rediseño v2
+   -----------------------------------------------------------------------
+   Componente propio (clases "pa-"): no depende ni pelea con el bloque
+   "PERFIL PÚBLICO DE AUTOR" de style.css, que se sigue usando solo en la
+   versión que ve el buscador (ver _worker.js).
+
+   Estructura:
+     .pa-ficha ── tarjeta a todo el ancho de la página
+       .pa-banda ......... banda marino con un campo de fútbol dibujado
+       .pa-identidad ..... avatar (asoma sobre la banda) · nombre y clubes · redes
+       .pa-cuerpo
+         .pa-principal ... biografía + experiencia (línea de tiempo)
+         .pa-lateral ..... actividad: cifras y secciones en las que escribe
+
+   Todo el color sale de las variables de style.css, así que sigue el tema
+   claro/oscuro. Sin animaciones salvo respuesta al ratón/teclado.
+   ======================================================================= */
+
+.pa-ficha{
+  --pa-pad:clamp(20px,4vw,48px);
+  --pa-avatar:clamp(116px,15vw,172px);
+  position:relative;
+  margin:28px 0 56px;
+  background:var(--tarjeta);
+  border:1px solid var(--borde);
+  border-radius:var(--radio-lg,18px);
+  box-shadow:var(--sombra-md,0 8px 28px rgba(12,27,46,.12));
+  overflow:hidden;
+}
+
+/* ---------- Banda: campo visto desde arriba ---------- */
+.pa-banda{
+  position:relative;
+  height:clamp(124px,16vw,196px);
+  background:
+    url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%201240%20190'%20preserveAspectRatio='xMidYMid%20slice'%3E%3Cg%20fill='none'%20stroke='white'%20stroke-opacity='.17'%20stroke-width='2'%3E%3Crect%20x='28'%20y='22'%20width='1184'%20height='146'%20rx='4'/%3E%3Cpath%20d='M620%2022v146'/%3E%3Ccircle%20cx='620'%20cy='95'%20r='40'/%3E%3Crect%20x='28'%20y='52'%20width='96'%20height='86'/%3E%3Crect%20x='28'%20y='72'%20width='36'%20height='46'/%3E%3Cpath%20d='M124%2078a24%2024%200%200%201%200%2034'/%3E%3Crect%20x='1116'%20y='52'%20width='96'%20height='86'/%3E%3Crect%20x='1176'%20y='72'%20width='36'%20height='46'/%3E%3Cpath%20d='M1116%2078a24%2024%200%200%200%200%2034'/%3E%3C/g%3E%3Ccircle%20cx='620'%20cy='95'%20r='3.5'%20fill='white'%20fill-opacity='.35'/%3E%3C/svg%3E") center / cover no-repeat,
+    linear-gradient(115deg, rgba(91,184,232,.22), transparent 48%),
+    repeating-linear-gradient(90deg, rgba(255,255,255,.03) 0 76px, transparent 76px 152px),
+    linear-gradient(135deg, var(--marino), var(--marino2, var(--marino)));
+}
+.pa-banda::after{
+  content:"";position:absolute;left:0;right:0;bottom:0;height:4px;
+  background:linear-gradient(90deg, var(--rojo), var(--celeste));
+}
+
+/* ---------- Identidad ---------- */
+.pa-identidad{
+  display:grid;
+  grid-template-columns:var(--pa-avatar) minmax(0,1fr) auto;
+  column-gap:clamp(18px,3vw,38px);
+  align-items:start;
+  padding:0 var(--pa-pad);
+}
+
+.pa-avatar{
+  grid-column:1;
+  width:var(--pa-avatar);height:var(--pa-avatar);
+  margin-top:calc(var(--pa-avatar) / -2);
+  position:relative;z-index:1;
+  border-radius:50%;
+  border:6px solid var(--tarjeta);
+  background:var(--gris-claro);
+  box-shadow:0 12px 32px rgba(12,27,46,.32),0 0 0 1px var(--borde);
+  object-fit:cover;
+  object-position:var(--foco-x,50%) var(--foco-y,50%);
+  transform-origin:var(--foco-x,50%) var(--foco-y,50%);
+}
+.pa-avatar-iniciales{
+  display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg, var(--rojo), var(--rojo-oscuro));
+  color:#fff;font-family:var(--font-tit);font-weight:700;
+  font-size:calc(var(--pa-avatar) * .34);letter-spacing:1px;
+}
+
+.pa-id-texto{ grid-column:2;min-width:0;padding:24px 0 30px; }
+
+.pa-rol{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:3px 12px 3px 10px;border-radius:999px;
+  background:rgba(209,19,46,.1);color:var(--rojo);
+  font-family:var(--font-tit);font-size:.76rem;font-weight:700;letter-spacing:.6px;
+}
+.pa-rol::before{ content:"";width:6px;height:6px;border-radius:50%;background:currentColor; }
+
+.pa-nombre{
+  margin:12px 0 0;
+  font-family:var(--font-headline);font-weight:800;
+  font-size:clamp(2rem,4.6vw,3.3rem);line-height:1.05;letter-spacing:-.015em;
+  color:var(--marino-texto);
+  overflow-wrap:anywhere;text-wrap:balance;
+}
+
+.pa-clubes{
+  display:flex;flex-wrap:wrap;gap:8px;
+  list-style:none;margin:16px 0 0;padding:0;
+}
+.pa-club{
+  display:inline-flex;align-items:center;gap:9px;
+  padding:5px 14px 5px 6px;border-radius:999px;
+  background:var(--gris-claro);border:1px solid var(--borde);
+  color:var(--texto);font-family:var(--font-text);font-size:.84rem;font-weight:600;line-height:1.2;
+}
+.pa-club:not(:has(img)){ padding-left:14px; }
+.pa-club img{
+  width:26px;height:26px;object-fit:contain;flex-shrink:0;
+  padding:2px;border-radius:50%;background:#fff;
+}
+
+/* ---------- Redes ---------- */
+.pa-redes{
+  grid-column:3;
+  display:flex;flex-wrap:wrap;justify-content:flex-end;gap:10px;
+  padding-top:26px;
+}
+.pa-redes a{
+  display:flex;align-items:center;justify-content:center;
+  width:44px;height:44px;border-radius:50%;
+  background:var(--gris-claro);color:var(--marino-texto);
+  border:1px solid var(--borde);
+  transition:background .18s,color .18s,border-color .18s,transform .18s,box-shadow .18s;
+}
+.pa-redes a svg{ width:19px;height:19px; }
+.pa-redes a:hover{
+  background:var(--rojo);border-color:var(--rojo);color:#fff;
+  transform:translateY(-2px);box-shadow:0 8px 18px rgba(12,27,46,.22);
+}
+.pa-redes a[title^="X"]:hover{ background:#000;border-color:#000; }
+.pa-redes a[title^="TikTok"]:hover{ background:#010101;border-color:#25f4ee;box-shadow:3px 3px 0 #fe2c55; }
+.pa-redes a[title^="YouTube"]:hover{ background:#ff0033;border-color:#ff0033; }
+.pa-redes a[title^="Instagram"]{
+  border-color:transparent;color:#fff;
+  background:radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%);
+}
+.pa-redes a[title^="Instagram"]:hover{
+  background:radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%);
+  box-shadow:0 8px 18px rgba(214,36,159,.38);
+}
+.pa-redes a:focus-visible{ outline:3px solid var(--celeste);outline-offset:3px; }
+
+/* ---------- Cuerpo ---------- */
+.pa-cuerpo{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(280px,340px);
+  gap:clamp(28px,4.5vw,64px);
+  padding:36px var(--pa-pad) calc(var(--pa-pad) - 4px);
+  border-top:1px solid var(--borde);
+}
+
+.pa-h2{
+  display:flex;align-items:center;gap:14px;
+  margin:0 0 16px;
+  font-family:var(--font-tit);font-weight:500;font-size:1.2rem;letter-spacing:.3px;
+  color:var(--marino-texto);
+}
+.pa-h2::after{ content:"";flex:1;height:1px;background:var(--borde); }
+.pa-bloque + .pa-bloque{ margin-top:38px; }
+
+.pa-bio{
+  max-width:68ch;margin:0;
+  font-family:var(--font-body);font-size:1.12rem;line-height:1.8;
+  color:var(--texto);
+}
+
+/* Experiencia previa: línea de tiempo */
+.pa-linea{
+  position:relative;list-style:none;margin:0;padding:0 0 0 28px;max-width:68ch;
+}
+.pa-linea::before{
+  content:"";position:absolute;left:6px;top:10px;bottom:10px;width:2px;border-radius:2px;
+  background:linear-gradient(var(--celeste), var(--borde));
+}
+.pa-linea li{
+  position:relative;padding:0 0 20px;
+  font-family:var(--font-body);font-size:1.02rem;line-height:1.6;color:var(--texto);
+}
+.pa-linea li:last-child{ padding-bottom:0; }
+.pa-linea li::before{
+  content:"";position:absolute;left:-28px;top:.42em;
+  width:14px;height:14px;box-sizing:border-box;border-radius:50%;
+  background:var(--tarjeta);border:3px solid var(--celeste);
+}
+
+/* Estados vacíos */
+.pa-vacio{
+  margin:0;padding:14px 18px;max-width:68ch;
+  border:1.5px dashed var(--borde);border-radius:var(--radio-md,12px);
+  font-family:var(--font-text);font-size:.92rem;line-height:1.5;color:var(--gris-texto);
+}
+
+/* ---------- Actividad (lateral) ---------- */
+.pa-lateral{
+  align-self:start;
+  position:sticky;top:16px;
+  padding:22px;
+  background:var(--gris-claro);
+  border:1px solid var(--borde);
+  border-radius:var(--radio-md,12px);
+}
+.pa-lateral .pa-h2{ font-size:1.05rem; }
+
+.pa-datos{
+  display:grid;grid-template-columns:1fr 1fr;gap:12px;
+  list-style:none;margin:0 0 24px;padding:0;
+}
+.pa-datos li{
+  display:flex;flex-direction:column;justify-content:space-between;gap:8px;
+  min-height:92px;padding:14px 14px 12px;
+  background:var(--tarjeta);border:1px solid var(--borde);border-radius:10px;
+}
+.pa-cifra{
+  font-family:var(--font-tit);font-weight:700;font-size:2.3rem;line-height:1;
+  color:var(--marino-texto);font-variant-numeric:tabular-nums;
+}
+.pa-cifra-texto{ font-size:1.15rem;line-height:1.2;font-weight:600; }
+.pa-datos span{ font-size:.78rem;line-height:1.3;color:var(--gris-texto); }
+
+.pa-h3{
+  margin:0 0 12px;
+  font-family:var(--font-tit);font-weight:500;font-size:.98rem;letter-spacing:.3px;
+  color:var(--marino-texto);
+}
+.pa-secciones{
+  display:flex;flex-wrap:wrap;gap:8px;list-style:none;margin:0;padding:0;
+}
+.pa-secciones li{
+  padding:5px 12px;border-radius:999px;
+  background:var(--tarjeta);border:1px solid var(--borde);
+  font-family:var(--font-text);font-size:.8rem;font-weight:600;color:var(--texto);
+}
+
+/* ---------- Sus últimas noticias ---------- */
+#noticiasAutorWrap{ max-width:none; }
+#noticiasAutorWrap .section-title{ margin-top:0; }
+.pa-contador{
+  display:inline-flex;align-items:center;
+  padding:2px 11px;border-radius:999px;
+  background:var(--gris-claro);border:1px solid var(--borde);
+  font-family:var(--font-text);font-size:.78rem;font-weight:700;
+  letter-spacing:0;text-transform:none;color:var(--gris-texto);
+}
+.pa-contador:empty{ display:none; }
+
+/* ---------- Modo oscuro ---------- */
+[data-theme="dark"] .pa-ficha{ box-shadow:0 14px 40px rgba(0,0,0,.5); }
+[data-theme="dark"] .pa-avatar{ box-shadow:0 12px 32px rgba(0,0,0,.6),0 0 0 1px var(--borde); }
+[data-theme="dark"] .pa-rol{ background:rgba(255,122,138,.14);color:#ff7a8a; }
+[data-theme="dark"] .pa-lateral{ background:var(--fondo-alt,#171d29); }
+[data-theme="dark"] .pa-redes a[title^="X"]:hover{ background:#fff;color:#000;border-color:#fff; }
+
+/* ---------- Tablet / móvil ---------- */
+@media (max-width:900px){
+  .pa-cuerpo{ grid-template-columns:minmax(0,1fr); }
+  .pa-lateral{ position:static; }
+}
+@media (max-width:760px){
+  .pa-ficha{ margin:16px 0 40px; }
+  .pa-identidad{
+    grid-template-columns:minmax(0,1fr);
+    justify-items:center;text-align:center;
+  }
+  .pa-avatar{ grid-column:1; }
+  .pa-id-texto{ grid-column:1;padding:18px 0 8px; }
+  .pa-clubes{ justify-content:center; }
+  .pa-redes{ grid-column:1;justify-content:center;padding:4px 0 26px; }
+  .pa-cuerpo{ padding-top:28px; }
+}
+
+/* ---------- Movimiento reducido ---------- */
+@media (prefers-reduced-motion:reduce){
+  .pa-redes a{ transition:none; }
+  .pa-redes a:hover{ transform:none; }
+}

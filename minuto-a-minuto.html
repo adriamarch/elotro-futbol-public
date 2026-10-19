@@ -1,334 +1,174 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<script src="js/tema.js"></script>
+<meta name="google-adsense-account" content="ca-pub-7347856722927942">
+<script src="js/tema.js?v=2"></script>
+<script src="js/preferencias.js?v=3"></script>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://api.elotrofutbol.media" crossorigin>
+<link rel="preconnect" href="https://res.cloudinary.com">
 <title id="pageTitle">Minuto a minuto — ELOTROFÚTBOLTV</title>
 <meta name="description" content="Sigue el partido al minuto, con goles, tarjetas y todos los eventos en directo.">
-<link rel="canonical" href="https://elotrofutbol.media/minuto-a-minuto.html">
-<link rel="icon" href="/favicon.ico?v=2" sizes="any">
-<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=2">
-<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
-<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=17">
-<style>
-  /* ---------- MINUTO A MINUTO: liveblog público ----------
-     Rediseño completo del liveblog en tres fases visuales claramente
-     diferenciadas -antes / durante / después del partido-, pero sin
-     abandonar el lenguaje visual de marca que ya usa el resto del
-     sitio (.en-vivo-punto, var(--rojo), var(--marino), Oswald/Inter):
-
-     - PREVIA (.mam-cabecera-programado): cabecera en tono marino más
-       sobrio, sin animaciones de "en vivo", con una tarjeta de previa
-       centrada y una cuenta atrás textual a la hora del partido.
-     - EN VIVO (.mam-cabecera-en-vivo): cabecera con una textura sutil
-       de foco de estadio y un borde inferior rojo pulsante; el chip de
-       estado tiene el punto animado y el marcador respira ligeramente.
-     - FINAL (.mam-cabecera-finalizado): cabecera atenuada (sin verde
-       "en juego" ni rojo "en vivo"), con un remate visual de resultado
-       definitivo y, si lo hay, el MVP destacado con más peso.
-
-     Debajo, un timeline real con línea de tiempo continua en el centro:
-     cada evento "cuelga" de esa línea con un sello del minuto encima.
-     Los goles llevan el acento rojo de marca; tarjetas, cambios y VAR
-     tienen ahora su propio color de sello para que el relato se lea de
-     un vistazo sin tener que leer cada línea entera. */
-
-  body[data-page="minuto-a-minuto"]{background:var(--fondo-alt);}
-
-  /* ===== Cabecera ===== */
-  .mam-cabecera{
-    position:sticky;top:0;z-index:20;
-    background:
-      radial-gradient(120% 140% at 15% 0%, rgba(91,184,232,.16), transparent 55%),
-      linear-gradient(160deg, var(--marino) 0%, var(--marino2) 100%);
-    color:#fff;padding:16px 0 0;
-    box-shadow:0 6px 24px rgba(12,27,46,.28);
-    border-bottom:3px solid transparent;
-    transition:border-color .4s ease, box-shadow .4s ease;
-  }
-  .mam-cabecera-en-vivo{
-    border-bottom-color:var(--rojo);
-    box-shadow:0 6px 24px rgba(12,27,46,.3), 0 3px 14px rgba(209,19,46,.25);
-  }
-  .mam-cabecera-finalizado{
-    background:linear-gradient(160deg, #16283f 0%, var(--marino) 100%);
-  }
-  .mam-cabecera-inner{max-width:760px;margin:0 auto;padding:0 20px 16px;position:relative;}
-  .mam-breadcrumb{
-    display:flex;align-items:center;gap:6px;font-size:.72rem;
-    color:var(--celeste-claro);text-decoration:none;font-weight:600;
-    letter-spacing:.03em;text-transform:uppercase;margin-bottom:16px;width:fit-content;
-    transition:color .15s ease, transform .15s ease;
-  }
-  .mam-breadcrumb:hover{color:#fff;transform:translateX(-2px);}
-  .mam-breadcrumb svg{width:13px;height:13px;transform:rotate(180deg);}
-
-  .mam-marcador-fila{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;}
-  .mam-equipo{display:flex;flex-direction:column;align-items:center;gap:9px;min-width:0;}
-  .mam-escudo{
-    width:58px;height:58px;object-fit:contain;
-    filter:drop-shadow(0 3px 8px rgba(0,0,0,.3));
-    transition:filter .3s ease;
-  }
-  .mam-nombre{
-    font-family:var(--font-tit);font-weight:600;font-size:.86rem;text-align:center;
-    line-height:1.2;letter-spacing:.01em;
-    max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-  }
-  .mam-centro{display:flex;flex-direction:column;align-items:center;gap:9px;padding:0 8px;min-width:96px;}
-  .mam-marcador{
-    font-family:var(--font-tit);font-size:2.5rem;font-weight:700;line-height:1;
-    letter-spacing:.01em;white-space:nowrap;
-    font-variant-numeric:tabular-nums;
-    text-shadow:0 2px 10px rgba(0,0,0,.2);
-  }
-  .mam-cabecera-en-vivo .mam-marcador{animation:mamRespiroMarcador 2.6s ease-in-out infinite;}
-  .mam-cabecera-programado .mam-marcador{opacity:.5;font-size:1.5rem;}
-
-  .mam-estado{
-    font-size:.68rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
-    color:var(--celeste-claro);display:flex;align-items:center;gap:6px;white-space:nowrap;
-    transition:all .25s ease;
-  }
-  .mam-estado.mam-estado-en-vivo{
-    color:#fff;background:linear-gradient(135deg, var(--rojo), var(--rojo-oscuro));
-    padding:5px 14px;border-radius:20px;
-    box-shadow:0 2px 12px rgba(209,19,46,.45), inset 0 1px 0 rgba(255,255,255,.15);
-  }
-  .mam-estado .en-vivo-punto{background:#fff;}
-  .mam-estado:not(.mam-estado-en-vivo) .en-vivo-punto{display:none;}
-
-  .mam-subtitulo{
-    text-align:center;color:var(--celeste-claro);font-size:.74rem;font-weight:500;
-    margin:14px 0 0;padding-top:13px;border-top:1px solid rgba(255,255,255,.14);
-    letter-spacing:.01em;
-  }
-
-  @keyframes mamRespiroMarcador{
-    0%,100%{opacity:1;} 50%{opacity:.88;}
-  }
-
-  /* ===== Cuerpo ===== */
-  .mam-wrap{max-width:760px;margin:0 auto;padding:0 20px;}
-  .mam-cuerpo{padding:30px 0 64px;}
-
-  .mam-mvp{
-    display:flex;align-items:center;justify-content:center;gap:12px;
-    background:linear-gradient(180deg, var(--tarjeta), rgba(209,19,46,.04));
-    border:1px solid var(--borde);border-radius:var(--radio-md, var(--radio));
-    padding:12px 18px;margin-bottom:26px;font-size:.82rem;
-    box-shadow:var(--sombra-sm, none);
-    animation:mamAparecer .4s ease both;
-  }
-  .mam-mvp img{width:28px;height:28px;object-fit:contain;filter:drop-shadow(0 1px 3px rgba(0,0,0,.15));}
-  .mam-mvp-etiqueta{
-    font-family:var(--font-tit);font-size:.65rem;font-weight:700;letter-spacing:.08em;
-    color:var(--rojo);text-transform:uppercase;
-    background:rgba(209,19,46,.1);padding:3px 8px;border-radius:5px;
-  }
-  .mam-mvp-nombre{font-weight:600;color:var(--marino-texto);}
-
-  /* ----- Línea de tiempo -----
-     Una línea vertical continua a la que cada evento se "engancha" con
-     un sello circular del minuto: estructura de liveblog de periódico
-     deportivo, no una lista de tarjetas suelta. Cada tipo de evento
-     tiene su propio color de sello y un leve tinte de fondo en la
-     tarjeta, para que el ojo distinga goles/tarjetas/cambios/VAR sin
-     leer el texto entero. */
-  .mam-timeline{position:relative;}
-  .mam-timeline::before{
-    content:"";position:absolute;left:29px;top:6px;bottom:6px;width:2px;
-    background:linear-gradient(var(--borde), var(--borde));
-  }
-  .mam-evento{position:relative;padding:0 0 22px 66px;min-height:1px;animation:mamAparecer .35s ease both;}
-  .mam-evento:last-child{padding-bottom:0;}
-  .mam-evento-sello{
-    position:absolute;left:0;top:0;width:60px;
-    display:flex;flex-direction:column;align-items:center;
-  }
-  .mam-evento-minuto{
-    position:relative;z-index:1;background:var(--fondo-alt);
-    width:40px;height:40px;border-radius:50%;
-    display:flex;align-items:center;justify-content:center;
-    font-family:var(--font-tit);font-weight:700;font-size:.72rem;
-    color:var(--marino-texto);border:2px solid var(--borde);
-    font-variant-numeric:tabular-nums;
-    box-shadow:0 1px 4px rgba(12,27,46,.08);
-  }
-
-  .mam-evento-gol .mam-evento-minuto{
-    background:linear-gradient(135deg, var(--rojo), var(--rojo-oscuro));
-    color:#fff;border-color:var(--rojo-oscuro);
-    box-shadow:0 2px 12px rgba(209,19,46,.4);
-  }
-  .mam-evento-gol .mam-evento-contenido{
-    border-color:rgba(209,19,46,.35);
-    background:linear-gradient(180deg, rgba(209,19,46,.07), transparent 65%);
-  }
-  .mam-evento-roja .mam-evento-minuto{
-    background:linear-gradient(135deg, var(--rojo), var(--rojo-oscuro));
-    color:#fff;border-color:var(--rojo-oscuro);
-  }
-  .mam-evento-roja .mam-evento-contenido{border-color:rgba(209,19,46,.28);}
-  .mam-evento-amarilla .mam-evento-minuto{
-    background:#fdf2d0;color:#8a6a04;border-color:#e8b923;
-  }
-  .mam-evento-amarilla .mam-evento-contenido{border-color:rgba(232,185,35,.4);}
-  .mam-evento-cambio .mam-evento-minuto{
-    background:#e8f6ee;color:#1a7a41;border-color:#8fd6ac;
-  }
-  .mam-evento-var .mam-evento-minuto{
-    background:var(--marino);color:#fff;border-color:var(--marino2);
-  }
-
-  .mam-evento-contenido{
-    display:flex;align-items:flex-start;gap:10px;
-    background:var(--tarjeta);border:1px solid var(--borde);border-radius:var(--radio-sm, var(--radio));
-    padding:12px 14px;font-size:.87rem;line-height:1.45;
-    box-shadow:var(--sombra-sm, none);
-    transition:box-shadow .2s ease, transform .2s ease;
-  }
-  .mam-evento-contenido:hover{box-shadow:var(--sombra-md, var(--sombra-sm));}
-  .mam-evento-centro .mam-evento-contenido{
-    background:transparent;border:none;box-shadow:none;padding:6px 0 0;font-style:italic;
-    color:var(--gris-texto);font-size:.8rem;
-  }
-  .mam-evento-icono,.mev-icono{width:19px;height:19px;flex-shrink:0;margin-top:1px;color:var(--marino-texto);}
-  .mam-evento-gol .mev-icono{color:var(--rojo);}
-  .mam-evento-equipo{
-    font-size:.7rem;font-weight:700;color:var(--gris-texto);text-transform:uppercase;
-    letter-spacing:.03em;display:block;margin-bottom:2px;
-  }
-  .mam-evento-texto{color:var(--texto);}
-  .mam-evento-texto strong{font-weight:600;}
-
-  .mam-tanda-titulo{
-    font-family:var(--font-tit);font-size:.85rem;font-weight:600;letter-spacing:.02em;
-    text-transform:uppercase;color:var(--marino-texto);margin:32px 0 16px;
-    padding-top:24px;border-top:2px dashed var(--borde);text-align:center;
-  }
-
-  @keyframes mamAparecer{
-    from{opacity:0;transform:translateY(6px);}
-    to{opacity:1;transform:translateY(0);}
-  }
-
-  /* ===== Estados vacíos: previa / sin eventos / no cubierto ===== */
-  .mam-estado-inicial{
-    text-align:center;color:var(--gris-texto);font-size:.9rem;padding:50px 20px;
-  }
-  .mam-estado-inicial svg{width:36px;height:36px;color:var(--borde);margin-bottom:10px;}
-
-  .mam-estado-previa{
-    background:var(--tarjeta);border:1px solid var(--borde);border-radius:var(--radio-md, var(--radio));
-    padding:44px 24px;box-shadow:var(--sombra-sm, none);
-  }
-  .mam-previa-reloj{
-    width:56px;height:56px;border-radius:50%;margin:0 auto 16px;
-    display:flex;align-items:center;justify-content:center;
-    background:linear-gradient(135deg, var(--celeste), var(--marino2));
-  }
-  .mam-previa-reloj svg{width:26px;height:26px;color:#fff;margin:0;}
-  .mam-previa-titulo{
-    font-family:var(--font-tit);font-weight:600;font-size:1.02rem;
-    color:var(--marino-texto);margin:0 0 6px;
-  }
-  .mam-previa-hora{
-    font-size:.86rem;font-weight:600;color:var(--rojo);margin:0 0 12px;
-    text-transform:capitalize;
-  }
-  .mam-previa-nota{font-size:.82rem;color:var(--gris-texto);max-width:360px;margin:0 auto;line-height:1.5;}
-
-  /* ===== Post-partido: remate de "resultado definitivo" ===== */
-  .mam-final-remate{
-    display:flex;align-items:center;justify-content:center;gap:8px;
-    text-align:center;color:var(--gris-texto);font-size:.78rem;font-weight:600;
-    letter-spacing:.04em;text-transform:uppercase;margin:24px 0 0;padding-top:20px;
-    border-top:1px solid var(--borde);
-  }
-  .mam-final-remate svg{width:15px;height:15px;color:var(--marino-texto);}
-
-  @media (max-width:560px){
-    .mam-escudo{width:46px;height:46px;}
-    .mam-nombre{font-size:.72rem;max-width:88px;}
-    .mam-marcador{font-size:1.9rem;}
-    .mam-cabecera-programado .mam-marcador{font-size:1.3rem;}
-    .mam-evento{padding-left:56px;}
-    .mam-timeline::before{left:23px;}
-    .mam-evento-minuto{width:34px;height:34px;font-size:.65rem;}
-    .mam-evento-sello{width:50px;}
-    .mam-estado-previa{padding:36px 18px;}
-  }
-
-  @media (prefers-reduced-motion: reduce){
-    .mam-estado-en-vivo .en-vivo-punto,
-    .mam-cabecera-en-vivo .mam-marcador,
-    .mam-evento{animation:none;}
-  }
-</style>
+<meta property="og:image" content="https://elotrofutbol.media/img/og-default.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://elotrofutbol.media/img/og-default.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ELOTROFÚTBOLTV">
+<meta property="og:locale" content="es_ES">
+<meta property="og:title" content="Minuto a minuto — ELOTROFÚTBOLTV">
+<meta property="og:description" content="Sigue el partido al minuto, con goles, tarjetas y todos los eventos en directo.">
+<meta property="og:url" content="https://elotrofutbol.media/minuto-a-minuto">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="ELOTROFÚTBOLTV: noticias del fútbol no profesional">
+<meta name="twitter:title" content="Minuto a minuto — ELOTROFÚTBOLTV">
+<meta name="twitter:description" content="Sigue el partido al minuto, con goles, tarjetas y todos los eventos en directo.">
+<meta name="twitter:site" content="@elotrofutbol">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+<meta name="theme-color" content="#0c1b2e">
+<link rel="alternate" type="application/rss+xml" title="ELOTROFÚTBOLTV" href="https://elotrofutbol.media/rss.xml">
+<link rel="canonical" href="https://elotrofutbol.media/minuto-a-minuto">
+<script type="application/ld+json" id="seo-jsonld-pagina">{"@context":"https://schema.org","@type":"WebPage","@id":"https://elotrofutbol.media/minuto-a-minuto#pagina","url":"https://elotrofutbol.media/minuto-a-minuto","name":"Minuto a minuto — ELOTROFÚTBOLTV","description":"Sigue el partido al minuto, con goles, tarjetas y todos los eventos en directo.","inLanguage":"es","isPartOf":{"@id":"https://elotrofutbol.media/#sitio"},"publisher":{"@id":"https://elotrofutbol.media/#organizacion"}}</script>
+<link rel="icon" href="/favicon.ico?v=3" sizes="any">
+<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=3">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png?v=2">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'"><noscript><link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>
+<link rel="stylesheet" href="css/style.css?v=25">
+<link rel="stylesheet" href="css/accesibilidad.css?v=1">
+<script src="js/accesibilidad.js?v=1" defer></script>
+<link rel="stylesheet" href="css/minuto-a-minuto.css?v=7">
 </head>
 <body data-page="minuto-a-minuto">
 
+<div id="mamCabeceraHueco" class="mam-cabecera-hueco">
 <div id="mamCabecera" class="mam-cabecera" hidden>
+  <i class="mam-latido" aria-hidden="true"></i>
   <div class="mam-cabecera-inner">
-    <a href="calendario.html" class="mam-breadcrumb">
+    <a href="/calendario" class="mam-breadcrumb">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
       Calendario
     </a>
     <div class="mam-marcador-fila">
       <div class="mam-equipo">
-        <img id="mamEscudoLocal" class="mam-escudo" src="" alt="" onerror="manejarErrorEscudo(this);">
+        <span class="mam-rol">Local</span>
+        <div class="mam-escudo-marco"><img id="mamEscudoLocal" class="mam-escudo" src="" alt="" onerror="manejarErrorEscudo(this);"></div>
         <span id="mamNombreLocal" class="mam-nombre"></span>
+        <div id="mamGolesLocal" class="mam-goleadores"></div>
       </div>
       <div class="mam-centro">
-        <span id="mamMarcador" class="mam-marcador"></span>
+        <span id="mamMarcador" class="mam-marcador" aria-live="polite"></span>
         <span id="mamEstado" class="mam-estado"></span>
       </div>
       <div class="mam-equipo">
-        <img id="mamEscudoVisitante" class="mam-escudo" src="" alt="" onerror="manejarErrorEscudo(this);">
+        <span class="mam-rol">Visitante</span>
+        <div class="mam-escudo-marco"><img id="mamEscudoVisitante" class="mam-escudo" src="" alt="" onerror="manejarErrorEscudo(this);"></div>
         <span id="mamNombreVisitante" class="mam-nombre"></span>
+        <div id="mamGolesVisitante" class="mam-goleadores"></div>
       </div>
     </div>
-    <p id="mamSubtitulo" class="mam-subtitulo"></p>
+    <div id="mamProgreso" class="mam-progreso" hidden>
+      <div class="mam-progreso-pista"><span id="mamProgresoRelleno" class="mam-progreso-relleno"></span><span id="mamProgresoBalon" class="mam-progreso-balon" aria-hidden="true">⚽</span></div>
+      <div class="mam-progreso-marcas"><span>0'</span><span>45'</span><span>90'</span></div>
+    </div>
+    <div id="mamMeta" class="mam-meta"></div>
   </div>
+</div>
 </div>
 
 <main class="wrap mam-wrap">
   <div class="mam-cuerpo">
     <div id="mamMvp"></div>
-    <div id="mamContenido">
-      <div class="mam-estado-inicial">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-        <p>Cargando partido…</p>
+    <div id="mamResumen"></div>
+    <div id="mamControles" class="mam-controles"></div>
+    <div id="mamContenido" aria-live="polite">
+      <div class="mam-skel" aria-label="Cargando partido">
+        <div class="mam-skel-fila"></div><div class="mam-skel-fila"></div><div class="mam-skel-fila"></div>
       </div>
     </div>
+    <div id="mamCompartir" class="mam-compartir"></div>
   </div>
 </main>
 
-<script src="js/ui-alertas.js?v=4"></script>
-<script src="js/config.js?v=15"></script>
-<script src="js/seo.js?v=4"></script>
-<script src="js/clubs.js?v=4"></script>
+<button type="button" id="mamArriba" class="mam-arriba" aria-label="Volver arriba">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg>
+</button>
+
+<script src="js/ui-alertas.js?v=5"></script>
+<script src="js/config.js?v=25"></script>
+<script src="js/seo.js?v=5"></script>
+<script src="js/clubs.js?v=6"></script>
 <script src="js/lector-auth.js?v=13"></script>
-<script src="js/partidos.js?v=9"></script>
+<script src="js/lecturas.js?v=7"></script>
+<script src="js/partidos.js?v=14"></script>
 <script>
-// Página pública para que cualquier lector (no solo el redactor que lo
-// está eventando desde el panel) pueda seguir un partido al minuto,
-// desde un enlace propio: minuto-a-minuto.html?id=<id del resultado>.
-// El pintado de eventos es propio de esta página (mamRenderTimeline),
-// pensado como un liveblog con línea de tiempo, pero reutiliza los
-// datos y las etiquetas/iconos ya definidos en config.js
-// (ETIQUETAS_EVENTO_PUBLICO, iconoEventoPublico) para no mantener dos
-// diccionarios de eventos distintos.
+// Página pública para seguir un partido al minuto desde un enlace propio:
+// minuto-a-minuto.html?id=<id del resultado>. El pintado es propio de esta
+// página (liveblog con línea de tiempo de dos carriles) pero reutiliza los
+// datos, etiquetas e iconos de config.js (ETIQUETAS_EVENTO_PUBLICO,
+// iconoEventoPublico...) para no mantener dos diccionarios de eventos.
 
 const MAM_ID = new URLSearchParams(location.search).get("id");
 let mamPartido = null;
 let mamIntervaloEstado = null;
 let mamIntervaloMinuto = null;
+let mamIntervaloCuenta = null;
+let mamIntervaloReloj = null;     // reloj del partido, cada segundo
+let mamTemporizador = null;       // siguiente refresco (setTimeout autoprogramado)
+let mamFallos = 0;                // fallos seguidos de red (para el aviso y el retroceso)
+let mamRefrescando = false;
+let mamAnimarEntrada = true;      // false en refrescos: solo animan los eventos nuevos
+// Cadencia del refresco: en directo cada 5 s (el worker cachea 3 s el partido
+// ligero, ver memoCorta); fuera de directo cada 15 s. Con fallos retrocede.
+const MAM_POLL_VIVO = 5000;
+const MAM_POLL_ESPERA = 15000;
+// Con la pestaña en segundo plano se sigue vigilando (para avisar de goles en el título), pero más despacio.
+const MAM_POLL_SEGUNDO_PLANO = 15000;
 let mamFirmaEventos = "";
+let mamEventos = [];
+let mamClavesVistas = null;      // claves de eventos ya pintados (para resaltar los nuevos)
+let mamMarcadorPrevio = null;    // para animar el marcador cuando cambia en directo
+let mamUltimaActualizacion = null;
+// Últimos HTML pintados: si no cambian, no se toca el DOM (evita reanimar y perder scroll/foco).
+let mamResumenPrevio = null;
+let mamControlesPrevio = null;
+let mamMvpPrevio = null;
+let mamGolesPrevio = { local: null, visitante: null };
+let mamAlertaTitulo = null;      // aviso temporal en el título de la pestaña (gol, roja...)
+let mamFiltro = "todo";
+let mamOrdenManual = null;       // "asc" | "desc" | null (= automático)
+try {
+  const o = localStorage.getItem("mamOrden");
+  if (o === "asc" || o === "desc") mamOrdenManual = o;
+} catch (_) {}
 
+const MAM_GRUPOS = {
+  goles: ["gol", "gol_pp", "gol_var", "penalti_fallado", "penalti_marcado", "penalti_fallado_tanda"],
+  tarjetas: ["amarilla", "doble_amarilla", "roja"],
+  cambios: ["cambio"],
+  var: ["var", "gol_var"],
+};
+const MAM_FILTROS = [["todo", "Todo"], ["goles", "Goles"], ["tarjetas", "Tarjetas"], ["cambios", "Cambios"], ["var", "VAR"]];
+const MAM_HITOS_FUERTES = ["inicio_partido", "descanso", "fin_descanso", "fin_partido", "partido_anulado"];
+const MAM_SVG_CAL = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>`;
+const MAM_SVG_PIN = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>`;
+const MAM_SVG_ORDEN = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4v16M8 20l-3-3M8 20l3-3M16 20V4M16 4l-3 3M16 4l3 3"/></svg>`;
+
+const mamEnGrupo = (ev, g) => g === "todo" || (MAM_GRUPOS[g] || []).includes(ev.tipo);
+const mamClave = (ev) => String(ev.id ?? [ev.minuto, ev.minuto_extra, ev.tipo, ev.equipo, ev.jugador].join("|"));
+const mamRival = (lado) => (lado === "local" ? "visitante" : "local");
+const mamEsTanda = (ev) => TIPOS_EVENTO_TANDA_PENALTIS.includes(ev.tipo);
+function mamLado(ev) {
+  if (TIPOS_EVENTO_SIN_EQUIPO_PUBLICO.includes(ev.tipo)) return "centro";
+  return ev.equipo === "local" || ev.equipo === "visitante" ? ev.equipo : "centro";
+}
+function mamOrdenEfectivo() {
+  return mamOrdenManual || (mamPartido && mamPartido.estado === "en_juego" ? "desc" : "asc");
+}
+
+// ---------- Carga inicial ----------
 async function mamCargarInicial() {
   const cont = document.getElementById("mamContenido");
   if (!MAM_ID || !/^\d+$/.test(MAM_ID)) {
@@ -344,32 +184,31 @@ async function mamCargarInicial() {
     PARTIDOS_CACHE[resultado.id] = resultado;
     mamPintarCabecera();
     await mamCargarEventos();
-    // Tracking propio para "partidos más seguidos" en el panel de
-    // analíticas (ver public/js/analiticas-tracking.js para el mismo
-    // patrón en noticia.html). Sin bloquear el resto de la carga ni
-    // afectar a la página si falla -- best effort, igual que el resto
-    // del tracking del sitio.
+    // Tracking propio para "partidos más seguidos" (best effort, no bloquea).
     fetch(`${(typeof PRIMARY_API !== "undefined" && PRIMARY_API) || ""}/api/track/result-view`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ result_id: resultado.id }),
     }).catch(() => {});
     fijarSeoBasico({
-      titulo: `${resultado.equipo_local} ${resultado.goles_local ?? ""}-${resultado.goles_visitante ?? ""} ${resultado.equipo_visitante} — Minuto a minuto — ELOTROFÚTBOLTV`,
+      titulo: mamTituloBase(),
       descripcion: `Sigue en directo, minuto a minuto, el ${resultado.equipo_local} - ${resultado.equipo_visitante}.`,
-      urlPath: `/minuto-a-minuto.html?id=${resultado.id}`,
+      urlPath: `/minuto-a-minuto?id=${resultado.id}`,
     });
-    if (resultado.estado === "programado" || resultado.estado === "en_juego") {
-      mamIntervaloEstado = setInterval(mamRefrescarPartido, 15000);
+    const cajaCompartir = document.getElementById("mamCompartir");
+    if (cajaCompartir && typeof botonesCompartirHTML === "function" && !cajaCompartir.dataset.listo) {
+      cajaCompartir.dataset.listo = "1";
+      cajaCompartir.innerHTML = mamCompartirHTML(resultado);
+      if (typeof revelarBotonCompartirNativo === "function") revelarBotonCompartirNativo();
     }
-    if (resultado.estado === "en_juego") {
-      mamIntervaloMinuto = setInterval(mamPintarCabecera, 20000);
-    }
+    mamProgramarRefresco();
+    if (resultado.estado === "en_juego") mamIniciarReloj();
   } catch (err) {
     cont.innerHTML = `<p class="mam-estado-inicial">No se ha podido cargar este partido. Puede que el enlace ya no sea válido.</p>`;
   }
 }
 
+// ---------- Cabecera ----------
 function mamPintarCabecera() {
   const p = mamPartido;
   if (!p) return;
@@ -379,83 +218,475 @@ function mamPintarCabecera() {
   const cabecera = document.getElementById("mamCabecera");
   cabecera.hidden = false;
   cabecera.classList.toggle("mam-cabecera-en-vivo", enJuego);
-  cabecera.classList.toggle("mam-cabecera-finalizado", p.estado === "finalizado" || p.estado === "anulado");
-  cabecera.classList.toggle("mam-cabecera-programado", p.estado === "programado");
-  document.getElementById("mamEscudoLocal").src = getEscudoUrl(p.equipo_local, p.escudo_local_url);
-  document.getElementById("mamEscudoLocal").dataset.equipo = p.equipo_local;
-  document.getElementById("mamEscudoVisitante").src = getEscudoUrl(p.equipo_visitante, p.escudo_visitante_url);
-  document.getElementById("mamEscudoVisitante").dataset.equipo = p.equipo_visitante;
+  cabecera.classList.toggle("mam-cabecera-finalizado", p.estado === "finalizado");
+  // Un partido anulado se ve como "Por jugar" (pendiente de reprogramar).
+  cabecera.classList.toggle("mam-cabecera-programado", p.estado === "programado" || p.estado === "anulado");
+
+  const escL = document.getElementById("mamEscudoLocal");
+  const escV = document.getElementById("mamEscudoVisitante");
+  escL.src = getEscudoUrl(p.equipo_local, p.escudo_local_url);
+  escL.dataset.equipo = p.equipo_local;
+  escV.src = getEscudoUrl(p.equipo_visitante, p.escudo_visitante_url);
+  escV.dataset.equipo = p.equipo_visitante;
   document.getElementById("mamNombreLocal").textContent = p.equipo_local;
   document.getElementById("mamNombreVisitante").textContent = p.equipo_visitante;
-  document.getElementById("mamMarcador").innerHTML = marcadorConPenaltisHTML(p, { claseChica: "penaltis-marcador" });
+
+  // Marcador: si cambia con el partido en juego, "late" para llamar la atención.
+  const marcadorHtml = marcadorConPenaltisHTML(p, { claseChica: "penaltis-marcador" });
+  if (mamMarcadorPrevio !== marcadorHtml) {
+    const el = document.getElementById("mamMarcador");
+    el.innerHTML = marcadorHtml;
+    if (mamMarcadorPrevio !== null && enJuego) {
+      el.classList.remove("mam-marcador-gol");
+      void el.offsetWidth; // reinicia la animación
+      el.classList.add("mam-marcador-gol");
+    }
+    mamMarcadorPrevio = marcadorHtml;
+  }
 
   const estadoEl = document.getElementById("mamEstado");
   estadoEl.classList.toggle("mam-estado-en-vivo", enJuego);
+  // Tiempo añadido anunciado en directo (solo con el reloj corriendo).
+  const anadidoAnun = anadidoAnunciadoPublico(p);
+  const anadidoHtml = enJuego && !enDescanso && anadidoAnun
+    ? ` <span class="mam-anadido" id="mamAnadido" hidden style="--p:0%" title="Tiempo añadido anunciado por la redacción"><b>+${anadidoAnun.minutos}'</b><span id="mamAnadidoTxt">añadido</span></span>` : "";
   estadoEl.innerHTML = enJuego
-    ? `<span class="en-vivo-punto"></span>${enDescanso ? "Descanso" : "En juego"} <span data-minuto-en-vivo="${p.id}">${minutoEnVivoTexto(p)}</span>`
+    ? `<span class="en-vivo-punto"></span>${enDescanso ? "Descanso" : "En juego"} <span class="mam-reloj${enDescanso ? " mam-reloj-pausa" : ""}" id="mamReloj"><b id="mamRelojM">0</b><i>:</i><b id="mamRelojS">00</b></span>${anadidoHtml}`
     : estadoLabel(p.estado);
 
-  const subtitulo =
-    (p.competicion === "amistoso" ? "Amistoso" : (p.jornada ? "Jornada " + (p.jornada_mostrar ?? p.jornada) : categoriaLabel(p.competicion))) +
-    (p.grupo ? " · " + p.grupo : "") +
-    (p.fecha_partido ? " · " + formatFecha(p.fecha_partido) : "");
-  document.getElementById("mamSubtitulo").textContent = subtitulo;
+  // Barra de tiempo y reloj (solo en directo): los pinta mamTickReloj cada segundo.
+  document.getElementById("mamProgreso").hidden = !enJuego;
+  mamTickReloj();
+
+  // Chips de competición, jornada, fecha y estadio.
+  const chips = [];
+  chips.push(escapeHtml(p.competicion === "amistoso" ? "Amistoso" : categoriaLabel(p.competicion)));
+  if (p.competicion !== "amistoso" && p.jornada) chips.push("Jornada " + escapeHtml(String(p.jornada_mostrar ?? p.jornada)));
+  if (p.grupo) chips.push(escapeHtml(p.grupo));
+  if (p.estado === "anulado") chips.push(MAM_SVG_CAL + "Fecha por confirmar");
+  else if (p.fecha_partido) chips.push(MAM_SVG_CAL + escapeHtml(formatFecha(p.fecha_partido)));
+  if (p.estadio) chips.push(MAM_SVG_PIN + escapeHtml(p.estadio));
+  document.getElementById("mamMeta").innerHTML = chips.map((c) => `<span class="mam-chip">${c}</span>`).join("");
 
   const contMvp = document.getElementById("mamMvp");
-  if (p.mvp_jugador) {
+  let mvpHtml = "";
+  if (p.mvp_jugador && p.estado !== "anulado") {
     const escudoMvp = p.mvp_equipo === "local"
       ? getEscudoUrl(p.equipo_local, p.escudo_local_url)
       : getEscudoUrl(p.equipo_visitante, p.escudo_visitante_url);
-    contMvp.innerHTML = `
+    mvpHtml = `
       <div class="mam-mvp">
         <img src="${escudoMvp}" alt="" onerror="manejarErrorEscudo(this);">
         <span class="mam-mvp-etiqueta">MVP</span>
         <span class="mam-mvp-nombre">${escapeHtml(p.mvp_jugador)}</span>
       </div>`;
+  }
+  // Solo se repinta si cambia: si no, la animación de entrada se repetiría en cada refresco.
+  if (mvpHtml !== mamMvpPrevio) {
+    contMvp.innerHTML = mvpHtml;
+    mamMvpPrevio = mvpHtml;
+  }
+
+  mamAplicarTituloBase();
+  mamActualizarCompartir();
+}
+
+// ---------- Tarjeta de compartir ----------
+// Cabecera con los dos equipos y el marcador (se mantiene al día en directo), los botones de
+// siempre (botonesCompartirHTML: UTM, compartir nativo, etc.) en cuadrícula y una barra con el enlace.
+function mamShareMarcadorTexto(p) {
+  return (p.estado === "programado" || p.estado === "anulado") ? "VS" : `${p.goles_local ?? 0} - ${p.goles_visitante ?? 0}`;
+}
+function mamShareEstado(p) {
+  if (p.estado === "en_juego") return { clase: "mam-share-vivo", texto: "En directo" };
+  if (p.estado === "finalizado") return { clase: "", texto: "Finalizado" };
+  if (p.estado === "anulado") return { clase: "", texto: "Pendiente de reprogramar" };
+  return { clase: "", texto: "Próximamente" };
+}
+function mamCompartirHTML(p) {
+  const e = escapeHtml;
+  const url = `https://elotrofutbol.media/minuto-a-minuto?id=${p.id}`;
+  const titulo = `${p.equipo_local} - ${p.equipo_visitante}: sigue el partido minuto a minuto`;
+  const est = mamShareEstado(p);
+  const equipo = (nombre, escudoUrl) => `
+    <div class="mam-share-equipo">
+      <span class="mam-share-escudo"><img src="${getEscudoUrl(nombre, escudoUrl)}" alt="" data-equipo="${e(nombre)}" onerror="manejarErrorEscudo(this);"></span>
+      <span class="mam-share-nombre">${e(nombre)}</span>
+    </div>`;
+  const icono = (f) => (typeof window[f] === "function" ? window[f]() : "");
+  return `
+    <section class="mam-share" aria-label="Compartir el partido">
+      <div class="mam-share-cab">
+        <span class="mam-share-kicker">${icono("iconoCompartir")}Comparte el partido</span>
+        <div class="mam-share-match">
+          ${equipo(p.equipo_local, p.escudo_local_url)}
+          <span class="mam-share-marcador" id="mamShareMarcador">${e(mamShareMarcadorTexto(p))}</span>
+          ${equipo(p.equipo_visitante, p.escudo_visitante_url)}
+        </div>
+        <span class="mam-share-estado ${est.clase}" id="mamShareEstado"><span class="en-vivo-punto"></span><span id="mamShareEstadoTxt">${e(est.texto)}</span></span>
+        <p class="mam-share-texto">Mándalo a quien quiera seguirlo.</p>
+      </div>
+      <div class="mam-share-cuerpo">
+        ${botonesCompartirHTML(url, titulo)}
+        <div class="mam-share-enlace">
+          <span class="mam-share-enlace-icono">${icono("iconoEnlace")}</span>
+          <span class="mam-share-url" title="${e(url)}">${e(url.replace(/^https?:\/\//, ""))}</span>
+          <button type="button" class="btn-compartir mam-share-copiar" data-url="${e(url)}" onclick="copiarEnlaceCompartir(this)" aria-label="Copiar enlace del partido"><span class="btn-compartir-icono">${icono("iconoEnlace")}</span><span>Copiar</span></button>
+        </div>
+      </div>
+    </section>`;
+}
+function mamActualizarCompartir() {
+  const p = mamPartido;
+  const m = document.getElementById("mamShareMarcador");
+  if (!p || !m) return;
+  m.textContent = mamShareMarcadorTexto(p);
+  const est = mamShareEstado(p);
+  const caja = document.getElementById("mamShareEstado");
+  caja.classList.toggle("mam-share-vivo", !!est.clase);
+  document.getElementById("mamShareEstadoTxt").textContent = est.texto;
+}
+
+// Goleadores bajo cada equipo (un gol en propia puerta cuenta para el rival).
+function mamGoleadoresHTML(eventos, lado) {
+  const mapa = new Map();
+  for (const ev of eventos) {
+    if (ev.tipo !== "gol" && ev.tipo !== "gol_pp") continue;
+    const beneficiado = ev.tipo === "gol_pp" ? mamRival(ev.equipo) : ev.equipo;
+    if (beneficiado !== lado) continue;
+    const nombre = (ev.jugador || "Gol") + (ev.tipo === "gol_pp" ? " (p.p.)" : "");
+    const minutos = mapa.get(nombre) || [];
+    minutos.push(formatMinutoEventoPublico(ev));
+    mapa.set(nombre, minutos);
+  }
+  return [...mapa].map(([n, m]) => `<span class="mam-gol-linea">${escapeHtml(n)}<em>${escapeHtml(m.join(" "))}</em></span>`).join("");
+}
+
+function mamLimpiarExtras() {
+  document.getElementById("mamGolesLocal").innerHTML = "";
+  document.getElementById("mamGolesVisitante").innerHTML = "";
+  document.getElementById("mamResumen").innerHTML = "";
+  document.getElementById("mamControles").innerHTML = "";
+  mamResumenPrevio = null;
+  mamControlesPrevio = null;
+  mamGolesPrevio = { local: null, visitante: null };
+}
+
+// ---------- Resumen y controles ----------
+function mamResumenHTML(eventos) {
+  const cuenta = (fn) => ({
+    l: eventos.filter((e) => e.equipo === "local" && fn(e)).length,
+    v: eventos.filter((e) => e.equipo === "visitante" && fn(e)).length,
+  });
+  const filas = [
+    ["Tarjetas amarillas", cuenta((e) => e.tipo === "amarilla" || e.tipo === "doble_amarilla")],
+    ["Tarjetas rojas", cuenta((e) => e.tipo === "roja" || e.tipo === "doble_amarilla")],
+    ["Cambios", cuenta((e) => e.tipo === "cambio")],
+    ["Penaltis fallados", cuenta((e) => e.tipo === "penalti_fallado")],
+  ].filter(([, c]) => c.l + c.v > 0);
+  if (!filas.length) return "";
+  return `
+    <section class="mam-resumen" aria-label="Resumen del partido">
+      <h3 class="mam-resumen-titulo">Resumen</h3>
+      ${filas.map(([label, c]) => `
+        <div class="mam-res-fila">
+          <span class="mam-res-n">${c.l}</span>
+          <div>
+            <span class="mam-res-label">${label}</span>
+            <div class="mam-res-barra">
+              ${c.l ? `<i class="l" style="flex-grow:${c.l}"></i>` : ""}${c.v ? `<i class="v" style="flex-grow:${c.v}"></i>` : ""}
+            </div>
+          </div>
+          <span class="mam-res-n">${c.v}</span>
+        </div>`).join("")}
+    </section>`;
+}
+
+function mamPintarControles(eventos) {
+  const cont = document.getElementById("mamControles");
+  const cuentas = { todo: eventos.length };
+  for (const [g] of MAM_FILTROS) if (g !== "todo") cuentas[g] = eventos.filter((e) => mamEnGrupo(e, g)).length;
+  if (mamFiltro !== "todo" && !cuentas[mamFiltro]) mamFiltro = "todo";
+  const grupos = MAM_FILTROS.filter(([g]) => g === "todo" || cuentas[g] > 0);
+
+  const filtros = grupos.length > 1
+    ? `<div class="mam-filtros" role="group" aria-label="Filtrar eventos">${grupos.map(([g, l]) =>
+        `<button type="button" class="mam-filtro" data-mam-filtro="${g}" aria-pressed="${g === mamFiltro}">${l}<span class="mam-filtro-n">${cuentas[g]}</span></button>`).join("")}</div>`
+    : "";
+
+  const desc = mamOrdenEfectivo() === "desc";
+  const orden = eventos.length > 1
+    ? `<button type="button" class="mam-orden" data-mam-orden="${desc ? "asc" : "desc"}" aria-label="Cambiar el orden de los eventos">${MAM_SVG_ORDEN}${desc ? "Más recientes primero" : "Más antiguos primero"}</button>`
+    : "";
+  const enVivo = mamPartido && mamPartido.estado === "en_juego";
+  const pulso = enVivo ? `<span class="mam-pulso" id="mamPulso"></span>` : "<span></span>";
+
+  const html = `${filtros}<div class="mam-controles-fila">${pulso}${orden}</div>`;
+  // Recrear los botones en cada refresco resetea el scroll horizontal de los filtros y el hover/foco.
+  if (html !== mamControlesPrevio) {
+    cont.innerHTML = html;
+    mamControlesPrevio = html;
+  }
+  mamActualizarPulso();
+}
+
+function mamActualizarPulso() {
+  const el = document.getElementById("mamPulso");
+  if (!el) return;
+  const sinRed = !navigator.onLine || mamFallos >= 2;
+  el.classList.toggle("mam-pulso-error", sinRed);
+  if (sinRed) {
+    el.innerHTML = `<span class="en-vivo-punto"></span>Sin conexión · reintentando`;
   } else {
-    contMvp.innerHTML = "";
+    const hora = mamUltimaActualizacion
+      ? mamUltimaActualizacion.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "";
+    el.innerHTML = `<span class="en-vivo-punto"></span>En directo · actualizado <time>${hora}</time>`;
   }
 }
 
+document.getElementById("mamControles").addEventListener("click", (e) => {
+  const f = e.target.closest("[data-mam-filtro]");
+  const o = e.target.closest("[data-mam-orden]");
+  if (f) {
+    mamFiltro = f.dataset.mamFiltro;
+    mamRepintar(`[data-mam-filtro="${mamFiltro}"]`);
+  } else if (o) {
+    mamOrdenManual = o.dataset.mamOrden;
+    try { localStorage.setItem("mamOrden", mamOrdenManual); } catch (_) {}
+    mamRepintar("[data-mam-orden]");
+  }
+});
+function mamRepintar(selectorFoco) {
+  mamRenderTimeline(mamEventosCrudos, false);
+  const el = document.querySelector("#mamControles " + selectorFoco);
+  if (el) el.focus();
+}
+
+// ---------- Previa con cuenta atrás ----------
+// La hora de un partido guardada como "YYYY-MM-DDTHH:MM" (sin zona) es hora
+// de España tal cual la escribió quien gestiona el partido (ver formatFecha
+// en config.js), así que se interpreta como Europe/Madrid, no como la zona
+// del navegador. Devuelve ms epoch, o NaN si no hay una hora utilizable.
+function mamFechaPartidoMs(str) {
+  if (!str) return NaN;
+  const s = String(str).trim().replace(" ", "T");
+  if (/Z$|[+-]\d\d:\d\d$/.test(s)) return new Date(s).getTime();
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  if (!m) return NaN; // solo día (sin hora): no hay cuenta atrás fiable
+  const asUtc = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]);
+  const partes = Object.fromEntries(new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Madrid", hourCycle: "h23",
+    year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit",
+  }).formatToParts(new Date(asUtc)).map((x) => [x.type, x.value]));
+  const madridComoUtc = Date.UTC(+partes.year, +partes.month - 1, +partes.day, +partes.hour, +partes.minute, +partes.second);
+  return asUtc - (madridComoUtc - asUtc);
+}
+
+function mamPintarPrevia() {
+  const p = mamPartido;
+  const cont = document.getElementById("mamContenido");
+  mamLimpiarExtras();
+  const ms = mamFechaPartidoMs(p.fecha_partido);
+  const valida = !isNaN(ms);
+  const horaTexto = valida
+    ? new Date(ms).toLocaleString("es-ES", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Madrid" })
+    : (p.fecha_partido ? formatFecha(p.fecha_partido) : "");
+  cont.innerHTML = `
+    <div class="mam-estado-inicial mam-estado-previa">
+      <div class="mam-previa-reloj">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+      </div>
+      <p class="mam-previa-titulo">El partido todavía no ha empezado</p>
+      ${horaTexto ? `<p class="mam-previa-hora">${escapeHtml(horaTexto)}</p>` : ""}
+      ${valida ? `<div id="mamCuenta" class="mam-cuenta" role="timer" aria-label="Cuenta atrás para el inicio"></div>` : ""}
+      <p class="mam-previa-nota">En cuanto arranque, los goles, tarjetas y demás eventos irán apareciendo aquí solos.</p>
+    </div>`;
+  if (valida) mamIniciarCuenta(ms);
+}
+
+// Partido anulado: en vez de los eventos (que no se enseñan) se pinta un
+// aviso de que sigue pendiente y aún no tiene nueva fecha.
+function mamPintarAplazado() {
+  const p = mamPartido;
+  const cont = document.getElementById("mamContenido");
+  clearInterval(mamIntervaloCuenta);
+  mamLimpiarExtras();
+  const prevista = p.fecha_partido ? formatFecha(p.fecha_partido) : "";
+  cont.innerHTML = `
+    <div class="mam-estado-inicial mam-estado-previa mam-aplazado">
+      <div class="mam-previa-reloj">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16.5" rx="3"/><path d="M8 2.8v3.4M16 2.8v3.4M3 10h18"/><path d="M12 13.4v2.6l1.9 1.1"/></svg>
+      </div>
+      <p class="mam-previa-titulo">Partido pendiente de reprogramar</p>
+      <p class="mam-previa-hora">Todavía sin nueva fecha</p>
+      <p class="mam-previa-nota">${prevista ? `Estaba previsto para el ${escapeHtml(prevista)}. ` : ""}En cuanto se confirme la nueva fecha, la verás aquí y podrás seguir el partido minuto a minuto.</p>
+    </div>`;
+}
+
+function mamIniciarCuenta(objetivo) {
+  clearInterval(mamIntervaloCuenta);
+  const bloque = (n, l) => `<div class="mam-cuenta-bloque"><span class="mam-cuenta-n">${String(n).padStart(2, "0")}</span><span class="mam-cuenta-l">${l}</span></div>`;
+  const pintar = () => {
+    const el = document.getElementById("mamCuenta");
+    if (!el) { clearInterval(mamIntervaloCuenta); return; }
+    const resto = objetivo - Date.now();
+    if (resto <= 0) {
+      el.outerHTML = `<p id="mamCuenta" class="mam-cuenta-cero">Está a punto de empezar…</p>`;
+      clearInterval(mamIntervaloCuenta);
+      return;
+    }
+    const s = Math.floor(resto / 1000);
+    const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60), seg = s % 60;
+    el.innerHTML = (d > 0 ? bloque(d, "días") : "") + bloque(h, "horas") + bloque(m, "min") + bloque(seg, "seg");
+  };
+  pintar();
+  mamIntervaloCuenta = setInterval(pintar, 1000);
+}
+
+// ---------- Eventos ----------
 async function mamCargarEventos() {
   const p = mamPartido;
   const cont = document.getElementById("mamContenido");
   if (p.estado === "programado") {
-    const horaTexto = p.fecha_partido
-      ? new Date(p.fecha_partido).toLocaleString("es-ES", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })
-      : "";
-    cont.innerHTML = `
-      <div class="mam-estado-inicial mam-estado-previa">
-        <div class="mam-previa-reloj">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-        </div>
-        <p class="mam-previa-titulo">El partido todavía no ha empezado</p>
-        ${horaTexto ? `<p class="mam-previa-hora">Comienza el ${horaTexto}</p>` : ""}
-        <p class="mam-previa-nota">En cuanto arranque, los goles, tarjetas y demás eventos irán apareciendo aquí solos.</p>
-      </div>`;
+    mamPintarPrevia();
+    return;
+  }
+  // Anulado: no se enseñan eventos, solo el aviso de pendiente de reprogramar.
+  if (p.estado === "anulado") {
+    mamPintarAplazado();
     return;
   }
   try {
     const res = await apiFetch(`/api/results/${p.id}/eventos`, { cache: "no-store" });
     const { eventos } = await res.json();
     mamFirmaEventos = firmaEventos(eventos || []);
-    mamRenderTimeline(eventos || []);
+    mamUltimaActualizacion = new Date();
+    mamRenderTimeline(eventos || [], false);
   } catch (err) {
     cont.innerHTML = `<p class="mam-estado-inicial">No se han podido cargar los eventos.</p>`;
   }
 }
 
-// Pinta el timeline propio de esta página: una línea de tiempo continua
-// (ver .mam-timeline) con cada evento colgando de un sello del minuto.
-// Reutiliza ETIQUETAS_EVENTO_PUBLICO/iconoEventoPublico/TIPOS_EVENTO_TANDA_PENALTIS
-// (definidos en config.js/partidos.js) para no duplicar ese diccionario.
-function mamRenderTimeline(eventos) {
+// Cuerpo de la tarjeta según el tipo de evento (el jugador es el protagonista).
+function mamCuerpoEvento(ev) {
+  const e = escapeHtml;
+  const titulo = `<strong class="mam-ev-titulo">${e(ETIQUETAS_EVENTO_PUBLICO[ev.tipo] || ev.tipo)}</strong>`;
+  const jugador = ev.jugador ? `<span class="mam-ev-protagonista">${e(ev.jugador)}</span>` : "";
+  let resto = "";
+  switch (ev.tipo) {
+    case "gol":
+    case "gol_var":
+      resto = jugador + (ev.jugador_asistencia ? `<span class="mam-ev-detalle">Asistencia: ${e(ev.jugador_asistencia)}</span>` : "");
+      break;
+    case "gol_pp":
+      resto = ev.jugador ? `<span class="mam-ev-protagonista">${e(ev.jugador)} <small>(p.p.)</small></span>` : "";
+      break;
+    case "cambio":
+      resto = (ev.jugador ? `<span class="mam-ev-entra">${e(ev.jugador)}</span>` : "") +
+              (ev.jugador_sale ? `<span class="mam-ev-sale">${e(ev.jugador_sale)}</span>` : "");
+      break;
+    case "amarilla": case "doble_amarilla": case "roja":
+    case "penalti_fallado": case "penalti_marcado": case "penalti_fallado_tanda":
+      resto = jugador;
+      break;
+    default: {
+      // detalleJugadorEventoPublico ya devuelve el texto escapado (" · a · b").
+      const d = detalleJugadorEventoPublico(ev).replace(/^\s*·\s*/, "");
+      if (d) resto = `<span class="mam-ev-detalle">${d}</span>`;
+    }
+  }
+  return titulo + resto;
+}
+
+function mamFilaEvento(ev, nuevos, idx = 0) {
+  const p = mamPartido;
+  const e = escapeHtml;
+  const lado = mamLado(ev);
+  const nuevo = nuevos.has(mamClave(ev)) ? " mam-evento-nuevo" : (mamAnimarEntrada ? "" : " mam-estatico");
+  const estiloI = ` style="--i:${Math.min(idx, 12)}"`;
+  const min = e(formatMinutoEventoPublico(ev));
+
+  if (ev.tipo === "nota") {
+    return `
+      <div class="mam-evento mam-evento-nota${nuevo}" role="listitem"${estiloI} data-k="${e(mamClave(ev))}" data-tipo="nota" data-lado="centro">
+        <div class="mam-nota">
+          <div class="mam-nota-cab">${iconoEventoPublico("nota")}Nota · ${min}</div>
+          <div class="mam-nota-texto">${e(ev.jugador || "")}</div>
+        </div>
+      </div>`;
+  }
+
+  if (lado === "centro") {
+    const fuerte = MAM_HITOS_FUERTES.includes(ev.tipo) ? " mam-hito-fuerte" : "";
+    const detalle = detalleJugadorEventoPublico(ev).replace(/^\s*·\s*/, "");
+    const mostrarMin = ev.tipo !== "inicio_partido" && ev.minuto !== null && ev.minuto !== undefined;
+    if (ev.tipo === "anadido") {
+      // Tarjeta propia: los minutos anunciados en grande y hasta dónde llega.
+      const nAn = parseInt(ev.jugador, 10) || 0;
+      const parteAn = ev.minuto === 45 ? "1ª parte" : "2ª parte";
+      return `
+      <div class="mam-evento mam-evento-hito${nuevo}" role="listitem"${estiloI} data-k="${e(mamClave(ev))}" data-tipo="anadido" data-lado="centro">
+        <span class="mam-hito mam-hito-anadido">
+          <span class="mam-hito-anadido-n">+${nAn}'</span>
+          <span class="mam-hito-anadido-txt"><b>Tiempo añadido</b><small>${parteAn} · hasta el ${ev.minuto}+${nAn}'</small></span>
+        </span>
+      </div>`;
+    }
+    return `
+      <div class="mam-evento mam-evento-hito${nuevo}" role="listitem"${estiloI} data-k="${e(mamClave(ev))}" data-tipo="${e(ev.tipo)}" data-lado="centro">
+        <span class="mam-hito${fuerte}">
+          ${iconoEventoPublico(ev.tipo)}
+          <span>${e(ETIQUETAS_EVENTO_PUBLICO[ev.tipo] || ev.tipo)}${detalle ? ": " + detalle : ""}</span>
+          ${mostrarMin ? `<span class="mam-hito-min">${min}</span>` : ""}
+        </span>
+      </div>`;
+  }
+
+  const nombre = lado === "local" ? p.equipo_local : p.equipo_visitante;
+  const escudo = lado === "local" ? getEscudoUrl(p.equipo_local, p.escudo_local_url) : getEscudoUrl(p.equipo_visitante, p.escudo_visitante_url);
+  const esGol = ev.tipo === "gol" || ev.tipo === "gol_pp";
+  let claseTipo = "";
+  if (ev.tipo === "roja" || ev.tipo === "doble_amarilla") claseTipo = " mam-evento-roja";
+  else if (ev.tipo === "amarilla") claseTipo = " mam-evento-amarilla";
+  else if (ev.tipo === "cambio") claseTipo = " mam-evento-cambio";
+  else if (ev.tipo === "var") claseTipo = " mam-evento-var";
+  else if (ev.tipo === "gol_var") claseTipo = " mam-evento-var mam-evento-anulado";
+  return `
+    <div class="mam-evento${esGol ? " mam-evento-gol" : ""}${claseTipo}${nuevo}" role="listitem"${estiloI} data-k="${e(mamClave(ev))}" data-tipo="${e(ev.tipo)}" data-lado="${lado}">
+      <div class="mam-evento-sello"><span class="mam-evento-minuto">${min}</span></div>
+      <div class="mam-evento-contenido">
+        <div class="mam-ev-cab">
+          <span class="mam-ev-icono">${iconoEventoPublico(ev.tipo)}</span>
+          <div class="mam-ev-textos">
+            <span class="mam-evento-equipo"><img src="${escudo}" alt="" data-equipo="${e(nombre)}" onerror="manejarErrorEscudo(this);"><span>${e(nombre)}</span></span>
+            ${mamCuerpoEvento(ev)}
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+// Eventos tal cual llegan de la API (incluye el "Tiempo añadido" aunque aún no toque enseñarlo).
+let mamEventosCrudos = [];
+function mamEventosPublicos(lista) {
+  return lista.filter((ev) => ev.tipo !== "anadido" || eventoAnadidoVisiblePublico(ev, mamPartido));
+}
+function mamRenderTimeline(eventos, animar) {
+  clearInterval(mamIntervaloCuenta);
   const cont = document.getElementById("mamContenido");
-  // Igual que en el modal de resultado (partidos.js/renderEventosModal,
-  // ver partidoNoCubierto): un partido finalizado sin ningún evento
-  // "real" -solo, como mucho, los hitos automáticos de inicio/fin- no
-  // es que "todavía" no tenga nada, es que nunca se cubrió al minuto.
-  if (mamPartido && partidoNoCubierto(mamPartido.estado, eventos)) {
+  // En refrescos en directo se recuerda qué evento estaba leyendo la persona para que el scroll no salte.
+  const ancla = animar ? mamCapturarAnclaje() : null;
+  mamEventosCrudos = eventos || [];
+  mamEventos = mamEventosPublicos(mamEventosCrudos);
+
+  // Eventos que no estaban en el último pintado: se resaltan unos segundos.
+  const claves = new Set(mamEventos.map(mamClave));
+  const nuevos = new Set(animar && mamClavesVistas ? [...claves].filter((k) => !mamClavesVistas.has(k)) : []);
+  mamClavesVistas = claves;
+  mamAnimarEntrada = !animar; // primer pintado y cambios de filtro/orden animan todo; los refrescos, solo lo nuevo
+
+  if (mamPartido && partidoNoCubierto(mamPartido.estado, mamEventos)) {
+    mamLimpiarExtras();
     cont.innerHTML = `
       <div class="mam-estado-inicial">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/></svg>
@@ -463,105 +694,440 @@ function mamRenderTimeline(eventos) {
       </div>`;
     return;
   }
-  if (!eventos.length) {
+  if (!mamEventos.length) {
+    mamLimpiarExtras();
     cont.innerHTML = `
       <div class="mam-estado-inicial">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
         <p>Todavía no hay goles ni tarjetas registrados para este partido.</p>
+        ${mamPartido && mamPartido.estado === "en_juego" ? mamEscribiendoHTML() : ""}
       </div>`;
     return;
   }
-  const eventosTanda = eventos.filter(ev => TIPOS_EVENTO_TANDA_PENALTIS.includes(ev.tipo));
-  const eventosPartido = eventos.filter(ev => !TIPOS_EVENTO_TANDA_PENALTIS.includes(ev.tipo));
 
-  const filaEvento = (ev) => {
-    const esGol = ev.tipo === "gol" || ev.tipo === "gol_pp" || (ev.tipo === "gol_var" && !ev.bajar_gol);
-    const esCentro = ev.equipo === "ninguno";
-    const claseEquipo = esCentro ? "mam-evento-centro" : "";
-    const nombreEquipo = ev.equipo === "local" ? mamPartido.equipo_local : (ev.equipo === "visitante" ? mamPartido.equipo_visitante : "");
-    const esTarjetaRoja = ev.tipo === "roja" || ev.tipo === "doble_amarilla";
-    const esTarjetaAmarilla = ev.tipo === "amarilla";
-    const esCambio = ev.tipo === "cambio";
-    const esVar = ev.tipo === "var";
-    let claseTipo = "";
-    if (esTarjetaRoja) claseTipo = " mam-evento-roja";
-    else if (esTarjetaAmarilla) claseTipo = " mam-evento-amarilla";
-    else if (esCambio) claseTipo = " mam-evento-cambio";
-    else if (esVar) claseTipo = " mam-evento-var";
-    return `
-      <div class="mam-evento${esGol ? " mam-evento-gol" : ""}${claseTipo} ${claseEquipo}" data-tipo="${escapeHtml(ev.tipo)}">
-        <div class="mam-evento-sello">
-          <span class="mam-evento-minuto">${formatMinutoEventoPublico(ev)}</span>
-        </div>
-        <div class="mam-evento-contenido">
-          ${iconoEventoPublico(ev.tipo)}
-          <span class="mam-evento-texto">
-            ${nombreEquipo ? `<span class="mam-evento-equipo">${escapeHtml(nombreEquipo)}</span>` : ""}
-            ${ev.tipo === "nota" ? escapeHtml(ev.jugador || "") : escapeHtml(ETIQUETAS_EVENTO_PUBLICO[ev.tipo] || ev.tipo) + detalleJugadorEventoPublico(ev)}
-          </span>
-        </div>
-      </div>`;
-  };
+  // Goleadores, resumen y controles.
+  for (const lado of ["local", "visitante"]) {
+    const h = mamGoleadoresHTML(mamEventos, lado);
+    if (h !== mamGolesPrevio[lado]) {
+      document.getElementById(lado === "local" ? "mamGolesLocal" : "mamGolesVisitante").innerHTML = h;
+      mamGolesPrevio[lado] = h;
+    }
+  }
+  const resHtml = mamResumenHTML(mamEventos);
+  if (resHtml !== mamResumenPrevio) {
+    const cajaRes = document.getElementById("mamResumen");
+    const habiaResumen = !!mamResumenPrevio;
+    cajaRes.innerHTML = resHtml;
+    // Las barras solo "crecen" la primera vez; en refrescos se actualizan sin volver a animarse desde cero.
+    if (habiaResumen && cajaRes.firstElementChild) cajaRes.firstElementChild.classList.add("mam-sin-anim");
+    mamResumenPrevio = resHtml;
+  }
+  mamPintarControles(mamEventos);
 
-  let html = `<div class="mam-timeline">${eventosPartido.map(filaEvento).join("")}</div>`;
+  const desc = mamOrdenEfectivo() === "desc";
+  const visible = (ev) => mamEnGrupo(ev, mamFiltro);
+  let partido = mamEventos.filter((ev) => !mamEsTanda(ev) && visible(ev));
+  let tanda = mamEventos.filter((ev) => mamEsTanda(ev) && visible(ev)).sort((a, b) => a.minuto - b.minuto);
+  if (desc) { partido = [...partido].reverse(); tanda = [...tanda].reverse(); }
 
-  if (eventosTanda.length) {
-    const ordenados = [...eventosTanda].sort((a, b) => a.minuto - b.minuto);
-    html += `<h3 class="mam-tanda-titulo">Tanda de penaltis</h3><div class="mam-timeline">${ordenados.map(filaEvento).join("")}</div>`;
+  const bloquePartido = partido.length
+    ? `<div class="mam-timeline" role="list">${partido.map((ev, i) => mamFilaEvento(ev, nuevos, i)).join("")}</div>` : "";
+  const bloqueTanda = tanda.length
+    ? `<h3 class="mam-tanda-titulo">Tanda de penaltis</h3><div class="mam-timeline" role="list">${tanda.map((ev, i) => mamFilaEvento(ev, nuevos, i)).join("")}</div>` : "";
+
+  let html = desc ? bloqueTanda + bloquePartido : bloquePartido + bloqueTanda;
+  if (!html) html = `<p class="mam-estado-inicial">No hay eventos de este tipo todavía.</p>`;
+  if (mamPartido && mamPartido.estado === "en_juego" && mamFiltro === "todo") {
+    html = desc ? mamEscribiendoHTML() + html : html + mamEscribiendoHTML();
   }
 
-  if (mamPartido && (mamPartido.estado === "finalizado" || mamPartido.estado === "anulado")) {
-    html += `
-      <p class="mam-final-remate">
+  if (mamPartido && (mamPartido.estado === "finalizado" || mamPartido.estado === "anulado") && mamFiltro === "todo") {
+    const remate = `
+      <p class="mam-final-remate${desc ? " mam-final-remate-arriba" : ""}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
         ${mamPartido.estado === "anulado" ? "Partido anulado" : "Resultado definitivo"}
       </p>`;
+    html = desc ? remate + html : html + remate;
   }
-
   cont.innerHTML = html;
+  mamRestaurarAnclaje(ancla);
+  if (animar && nuevos.size) mamCelebrar(mamEventos.filter((e) => nuevos.has(mamClave(e))));
+}
+
+// ---------- Refresco en directo ----------
+function mamProgramarRefresco() {
+  clearTimeout(mamTemporizador);
+  if (!mamPartido || mamPartido.estado === "finalizado") return;
+  let base = mamPartido.estado === "en_juego" ? MAM_POLL_VIVO : MAM_POLL_ESPERA;
+  if (document.hidden) base = Math.max(base, MAM_POLL_SEGUNDO_PLANO);
+  const espera = Math.min(60000, base * Math.pow(2, Math.min(mamFallos, 4)));
+  mamTemporizador = setTimeout(async () => {
+    await mamRefrescarPartido();
+    mamProgramarRefresco();
+  }, espera);
 }
 
 async function mamRefrescarPartido() {
-  if (!mamPartido) return;
+  // Con la pestaña oculta también se consulta (más despacio, ver mamProgramarRefresco): así el título avisa de los goles.
+  if (!mamPartido || mamRefrescando) return;
+  mamRefrescando = true;
+  const pulso = document.getElementById("mamPulso");
+  if (pulso) pulso.classList.add("mam-pulso-act");
   try {
-    const res = await apiFetch(`/api/results/${mamPartido.id}`, { cache: "no-store" });
-    if (!res.ok) return;
-    const { resultado } = await res.json();
-    if (!resultado) return;
+    const res = await apiFetch(`/api/results/${mamPartido.id}?ligero=1`, { cache: "no-store" });
+    if (!res.ok) throw new Error("http");
+    const { resultado: resultadoLigero } = await res.json();
+    if (!resultadoLigero) throw new Error("vacío");
+    // El refresco ligero no trae alineaciones/noticias/galería: se conservan las ya cargadas.
+    const resultado = { ...mamPartido, ...resultadoLigero };
     const cambioEstado = resultado.estado !== mamPartido.estado;
     const cambioMarcador = resultado.goles_local !== mamPartido.goles_local || resultado.goles_visitante !== mamPartido.goles_visitante;
+    const cambioPausa = (resultado.cronometro_pausado_en ?? null) !== (mamPartido.cronometro_pausado_en ?? null)
+      || (resultado.anadido_minutos ?? null) !== (mamPartido.anadido_minutos ?? null)
+      || (resultado.anadido_parte ?? null) !== (mamPartido.anadido_parte ?? null);
     mamPartido = resultado;
     PARTIDOS_CACHE[resultado.id] = resultado;
-    if (cambioEstado || cambioMarcador) mamPintarCabecera();
+    if (cambioEstado || cambioMarcador || cambioPausa) mamPintarCabecera();
+    if (resultado.estado === "en_juego") mamIniciarReloj();
 
-    // Si el partido acaba de arrancar (pasó de "programado" a "en_juego"
-    // mientras el lector ya tenía esta página abierta), hay que arrancar
-    // aquí el intervalo que refresca el minuto en vivo: antes solo se
-    // arrancaba en la carga inicial si el partido YA estaba en juego en
-    // ese momento, así que si alguien entraba antes del pitido inicial
-    // el minuto se quedaba congelado hasta recargar la página a mano.
-    if (cambioEstado && resultado.estado === "en_juego" && !mamIntervaloMinuto) {
-      mamIntervaloMinuto = setInterval(mamPintarCabecera, 20000);
+    if (resultado.estado === "programado" || resultado.estado === "anulado") {
+      mamFallos = 0;
+      // Si cambia entre programado y anulado (p. ej. se reprograma), se
+      // repinta el cuerpo de la página con el aviso o la cuenta atrás.
+      if (cambioEstado) {
+        if (resultado.estado === "anulado") mamPintarAplazado(); else mamPintarPrevia();
+      }
+      return;
     }
-
-    if (resultado.estado === "programado") return;
 
     const resEv = await apiFetch(`/api/results/${resultado.id}/eventos`, { cache: "no-store" });
+    if (!resEv.ok) throw new Error("http");
     const { eventos } = await resEv.json();
     const firma = firmaEventos(eventos || []);
-    if (firma !== mamFirmaEventos) {
+    mamFallos = 0;
+    mamUltimaActualizacion = new Date();
+    if (firma !== mamFirmaEventos || cambioEstado) {
       mamFirmaEventos = firma;
-      mamRenderTimeline(eventos || []);
+      mamRenderTimeline(eventos || [], true);
     }
+    mamActualizarPulso();
 
-    if (resultado.estado === "finalizado" || resultado.estado === "anulado") {
-      clearInterval(mamIntervaloEstado);
-      clearInterval(mamIntervaloMinuto);
+    if (resultado.estado === "finalizado") {
+      clearInterval(mamIntervaloReloj);
+      mamIntervaloReloj = null;
     }
   } catch (err) {
-    // Sin red o fallo puntual: se ignora y se reintenta en el siguiente ciclo.
+    // Sin red o fallo puntual: se avisa en el indicador y se reintenta con retroceso.
+    mamFallos++;
+    mamActualizarPulso();
+  } finally {
+    mamRefrescando = false;
+    const p2 = document.getElementById("mamPulso");
+    if (p2) p2.classList.remove("mam-pulso-act");
   }
 }
+document.addEventListener("visibilitychange", () => {
+  mamTituloComprobar();
+  if (!document.hidden) mamRefrescarPartido().finally(mamProgramarRefresco);
+});
+window.addEventListener("online", () => { mamFallos = 0; mamRefrescarPartido().finally(mamProgramarRefresco); });
+window.addEventListener("offline", mamActualizarPulso);
+
+// ---------- Reloj en vivo (mm:ss), calculado en el navegador ----------
+// Misma lógica que minutoEnVivoPublico (partidos.js) pero con segundos.
+function mamSegundosJuego(p) {
+  if (p.cronometro_pausado_en !== null && p.cronometro_pausado_en !== undefined) return p.cronometro_pausado_en * 60;
+  if (!p.inicio_cronometro_at) return null;
+  let raw = String(p.inicio_cronometro_at).trim();
+  if (!/[zZ]|[+-]\d\d:?\d\d$/.test(raw)) raw = raw.includes("T") ? raw + "Z" : raw.replace(" ", "T") + "Z";
+  const inicio = new Date(raw).getTime();
+  if (isNaN(inicio)) return null;
+  const ajuste = Number.isInteger(p.ajuste_cronometro_minutos) ? p.ajuste_cronometro_minutos : 0;
+  const segundos = Math.max(0, Math.floor((Date.now() - inicio) / 1000) + ajuste * 60);
+  // Con añadido anunciado el reloj se queda en el final de ese añadido (45+N /
+  // 90+N) hasta que el servidor para el partido (ver minutoEnVivoPublico).
+  const limite = limiteAnadidoPublico(p);
+  return limite !== null ? Math.min(segundos, limite * 60) : segundos;
+}
+function mamTickReloj() {
+  const p = mamPartido;
+  if (!p || p.estado !== "en_juego") return;
+  const rel = document.getElementById("mamReloj");
+  const prog = document.getElementById("mamProgreso");
+  const seg = mamSegundosJuego(p);
+  if (seg === null) {
+    if (rel) rel.hidden = true;
+    if (prog) prog.hidden = true;
+    return;
+  }
+  const m = Math.floor(seg / 60), s = seg % 60;
+  if (rel) {
+    rel.hidden = false;
+    const mEl = document.getElementById("mamRelojM"), sEl = document.getElementById("mamRelojS");
+    const anunciado = anadidoAnunciadoPublico(p);
+    if (mEl) mEl.textContent = m > 90 ? `90+${m - 90}` : (anunciado && anunciado.parte === 1 && m > 45 ? `45+${m - 45}` : String(m));
+    if (sEl) sEl.textContent = String(s).padStart(2, "0");
+  }
+  // Si hay un "Tiempo añadido" pendiente de enseñar y el reloj acaba de llegar al 45'/90', se pinta ya.
+  if (mamEventosCrudos.some((ev) => ev.tipo === "anadido")
+      && mamEventosPublicos(mamEventosCrudos).length !== mamEventos.length) {
+    mamRenderTimeline(mamEventosCrudos, true);
+  }
+  // Pastilla del añadido: minutos anunciados y barra de avance (sin cuenta atrás). Al agotarse se
+  // queda en "final del añadido" hasta que la redacción (o el servidor) pita.
+  const pastilla = document.getElementById("mamAnadido");
+  const anun = anadidoAnunciadoPublico(p);
+  if (pastilla && anun) {
+    const base = anun.parte === 1 ? 45 : 90;
+    // Hasta que el reloj llega al 45'/90' el añadido no se enseña al público.
+    pastilla.hidden = seg < base * 60;
+    const restoSeg = (base + anun.minutos) * 60 - seg;
+    const txt = restoSeg <= 0 ? "final del añadido" : "añadido";
+    const txtEl = document.getElementById("mamAnadidoTxt");
+    if (txtEl && txtEl.textContent !== txt) txtEl.textContent = txt;
+    const jugado = Math.max(0, Math.min(anun.minutos * 60, seg - base * 60));
+    pastilla.style.setProperty("--p", `${Math.round((jugado / (anun.minutos * 60)) * 100)}%`);
+    pastilla.classList.toggle("mam-anadido-fin", restoSeg <= 0);
+  }
+  if (prog) {
+    prog.hidden = false;
+    const pct = Math.min(100, (seg / 5400) * 100) + "%";
+    document.getElementById("mamProgresoRelleno").style.width = pct;
+    document.getElementById("mamProgresoBalon").style.left = pct;
+  }
+}
+function mamIniciarReloj() {
+  if (mamIntervaloReloj) return;
+  mamIntervaloReloj = setInterval(mamTickReloj, 1000);
+  mamTickReloj();
+}
+
+// ---------- Título de la pestaña ----------
+// Marcador en el título (siempre al día) y aviso temporal cuando pasa algo importante:
+// "⚽ ¡GOLLL! Local 1-0 Visitante" durante 1-2 minutos, alternando con el marcador si la pestaña está
+// en segundo plano (para que se note en la barra de pestañas) y fijo si la persona la está mirando.
+function mamMarcadorTexto() {
+  const p = mamPartido;
+  return `${p.equipo_local} ${p.goles_local ?? 0}-${p.goles_visitante ?? 0} ${p.equipo_visitante}`;
+}
+function mamTituloBase() {
+  const p = mamPartido;
+  if (!p) return document.title;
+  const sufijo = " — Minuto a minuto — ELOTROFÚTBOLTV";
+  if (p.estado === "programado" || p.estado === "anulado") return `${p.equipo_local} - ${p.equipo_visitante}${sufijo}`;
+  return (p.estado === "en_juego" ? "EN DIRECTO: " : "") + mamMarcadorTexto() + sufijo;
+}
+function mamAplicarTituloBase() {
+  if (mamAlertaTitulo) return;
+  const t = mamTituloBase();
+  if (t && document.title !== t) document.title = t;
+}
+// El orden importa: si llegan varios eventos a la vez, manda el primero de la lista.
+const MAM_AVISOS_TITULO = [
+  { tipos: ["gol"], texto: "\u26BD \u00A1GOLLL!", ms: 90000 },
+  { tipos: ["gol_pp"], texto: "\u26BD \u00A1GOL EN PROPIA!", ms: 90000 },
+  { tipos: ["roja", "doble_amarilla"], texto: "\uD83D\uDFE5 \u00A1ROJA!", ms: 60000 },
+  { tipos: ["fin_partido"], texto: "\uD83C\uDFC1 \u00A1FINAL!", ms: 90000 },
+  { tipos: ["inicio_partido"], texto: "\uD83D\uDFE2 \u00A1EMPIEZA!", ms: 60000 },
+];
+function mamAvisarTitulo(nuevosEv) {
+  if (!mamPartido) return;
+  const aviso = MAM_AVISOS_TITULO.find((a) => nuevosEv.some((e) => a.tipos.includes(e.tipo)));
+  if (!aviso) return;
+  mamTituloLimpiar(false);
+  const marcador = mamMarcadorTexto();
+  const textos = [`${aviso.texto} ${marcador}`, `\uD83D\uDD34 ${marcador}`];
+  const fin = Date.now() + aviso.ms;
+  let i = 0;
+  const pintar = () => {
+    if (Date.now() >= fin) { mamTituloLimpiar(true); return; }
+    document.title = document.hidden ? textos[i++ % textos.length] : textos[0];
+  };
+  mamAlertaTitulo = { pintar, timer: setInterval(pintar, 1200) };
+  pintar();
+}
+// Al volver a la pestaña: aviso fijo (sin parpadeo) o, si ya caducó, título normal.
+function mamTituloComprobar() {
+  if (mamAlertaTitulo) mamAlertaTitulo.pintar();
+}
+function mamTituloLimpiar(restaurar) {
+  if (mamAlertaTitulo) { clearInterval(mamAlertaTitulo.timer); mamAlertaTitulo = null; }
+  if (restaurar) mamAplicarTituloBase();
+}
+
+// ---------- Ancla de scroll en refrescos ----------
+// Al repintar la lista (innerHTML) el navegador pierde su ancla de scroll: si llega un evento nuevo
+// por arriba, lo que se estaba leyendo se desplaza. Se guarda el primer evento visible y, tras
+// repintar, se compensa el desplazamiento (sin animación, aunque la página tenga scroll suave).
+function mamCapturarAnclaje() {
+  if (window.scrollY < 80) return null; // arriba del todo no hay nada que conservar
+  const cab = document.getElementById("mamCabecera");
+  const tope = cab && cab.classList.contains("mam-compacta") ? cab.offsetHeight : 0;
+  for (const el of document.querySelectorAll("#mamContenido .mam-evento[data-k]")) {
+    const r = el.getBoundingClientRect();
+    if (r.bottom > tope + 4) return { k: el.dataset.k, top: r.top };
+  }
+  return null;
+}
+function mamRestaurarAnclaje(ancla) {
+  if (!ancla) return;
+  const el = [...document.querySelectorAll("#mamContenido .mam-evento[data-k]")].find((x) => x.dataset.k === ancla.k);
+  if (!el) return;
+  const delta = el.getBoundingClientRect().top - ancla.top;
+  if (Math.abs(delta) > 1) window.scrollBy({ top: delta, behavior: "instant" });
+}
+
+// ---------- Celebraciones y avisos ----------
+function mamEscribiendoHTML() {
+  return `<div class="mam-escribiendo" aria-hidden="true"><span class="mam-puntos"><i></i><i></i><i></i></span>En directo · esperando el próximo evento</div>`;
+}
+
+function mamConfeti() {
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const caja = document.createElement("div");
+  caja.className = "mam-confeti";
+  const colores = ["#d1132e", "#5bb8e8", "#f5b301", "#ffffff", "#1a9e4f"];
+  for (let i = 0; i < 36; i++) {
+    const c = document.createElement("i");
+    const ang = Math.random() * Math.PI * 2, dist = 110 + Math.random() * 240;
+    c.style.setProperty("--dx", Math.cos(ang) * dist + "px");
+    c.style.setProperty("--dy", Math.sin(ang) * dist - 90 + "px");
+    c.style.setProperty("--rot", Math.floor(Math.random() * 720 - 360) + "deg");
+    c.style.background = colores[i % colores.length];
+    c.style.animationDelay = Math.floor(Math.random() * 140) + "ms";
+    caja.appendChild(c);
+  }
+  document.body.appendChild(caja);
+  setTimeout(() => caja.remove(), 2400);
+}
+
+function mamEfectoGol(lado) {
+  const cab = document.getElementById("mamCabecera");
+  cab.classList.remove("mam-cabecera-gol");
+  void cab.offsetWidth;
+  cab.classList.add("mam-cabecera-gol");
+  setTimeout(() => cab.classList.remove("mam-cabecera-gol"), 2700);
+  const esc = document.getElementById(lado === "local" ? "mamEscudoLocal" : "mamEscudoVisitante");
+  if (esc) {
+    esc.classList.remove("mam-escudo-gol");
+    void esc.offsetWidth;
+    esc.classList.add("mam-escudo-gol");
+    setTimeout(() => esc.classList.remove("mam-escudo-gol"), 1600);
+  }
+  mamConfeti();
+  try { if (navigator.vibrate) navigator.vibrate([90, 50, 90]); } catch (_) {}
+}
+
+function mamToast(ev) {
+  const p = mamPartido;
+  const e = escapeHtml;
+  let cont = document.getElementById("mamToasts");
+  if (!cont) {
+    cont = document.createElement("div");
+    cont.id = "mamToasts";
+    cont.className = "mam-toasts";
+    cont.setAttribute("role", "status");
+    document.body.appendChild(cont);
+  }
+  const lado = mamLado(ev);
+  const equipo = lado === "local" ? p.equipo_local : (lado === "visitante" ? p.equipo_visitante : "");
+  const escudo = lado === "local" ? getEscudoUrl(p.equipo_local, p.escudo_local_url)
+    : (lado === "visitante" ? getEscudoUrl(p.equipo_visitante, p.escudo_visitante_url) : "");
+  const min = formatMinutoEventoPublico(ev);
+  const marcador = `${p.equipo_local} ${p.goles_local ?? 0}-${p.goles_visitante ?? 0} ${p.equipo_visitante}`;
+  let clase = "", icono = "\u26BD", titulo = ETIQUETAS_EVENTO_PUBLICO[ev.tipo] || ev.tipo, sub = marcador;
+  if (ev.tipo === "gol" || ev.tipo === "gol_pp") {
+    clase = " mam-toast-gol";
+    titulo = ev.tipo === "gol_pp" ? "¡Gol en propia puerta!" : "¡Gol!";
+    sub = `${ev.jugador ? ev.jugador + " · " : ""}${min}${equipo && ev.tipo === "gol" ? " · " + equipo : ""}<br>${marcador}`;
+    sub = e(sub).replace(/&lt;br&gt;/g, "<br>");
+  } else if (ev.tipo === "roja" || ev.tipo === "doble_amarilla") {
+    clase = " mam-toast-roja";
+    icono = "\uD83D\uDFE5";
+    sub = e(`${ev.jugador ? ev.jugador + " · " : ""}${min}${equipo ? " · " + equipo : ""}`);
+  } else if (ev.tipo === "var") {
+    icono = "\uD83D\uDCFA";
+    sub = e(`${min}${equipo ? " · " + equipo : ""}`);
+  } else {
+    icono = "\u23F1\uFE0F";
+    sub = e(marcador);
+  }
+  const t = document.createElement("div");
+  t.className = "mam-toast" + clase;
+  t.innerHTML = `
+    <span class="mam-toast-icono">${escudo && clase === " mam-toast-gol" ? `<img src="${escudo}" alt="" onerror="this.replaceWith(document.createTextNode('\u26BD'))">` : icono}</span>
+    <span><strong class="mam-toast-t">${e(titulo)}</strong><span class="mam-toast-s">${sub}</span></span>`;
+  const quitar = () => {
+    if (!t.isConnected) return;
+    t.classList.add("mam-toast-saliendo");
+    setTimeout(() => t.remove(), 380);
+  };
+  t.addEventListener("click", quitar);
+  cont.appendChild(t);
+  while (cont.children.length > 3) cont.firstChild.remove();
+  setTimeout(quitar, 6500);
+}
+
+// Se llama con los eventos recién llegados en un refresco.
+function mamCelebrar(nuevosEv) {
+  mamAvisarTitulo(nuevosEv);
+  const importantes = nuevosEv.filter((e) =>
+    ["gol", "gol_pp", "roja", "doble_amarilla", "var", "inicio_partido", "descanso", "fin_descanso", "fin_partido"].includes(e.tipo)).slice(-2);
+  importantes.forEach((ev, i) => setTimeout(() => mamToast(ev), i * 900));
+  const gol = nuevosEv.filter((e) => e.tipo === "gol" || e.tipo === "gol_pp").pop();
+  if (gol) mamEfectoGol(gol.tipo === "gol_pp" ? mamRival(gol.equipo) : gol.equipo);
+}
+
+// ---------- Cabecera compacta y botón "volver arriba" ----------
+// La cabecera completa va en el flujo normal y se va con el scroll. Cuando ya casi ha salido de la
+// pantalla pasa a una barra compacta FIJA (position:fixed). El "hueco" (#mamCabeceraHueco) conserva la
+// altura de la cabecera completa, así que al compactarse NO cambia la altura de la página: ni saltos
+// del contenido ni bucles de scroll como cuando la cabecera sticky se encogía.
+(function mamInitScroll() {
+  const cab = document.getElementById("mamCabecera");
+  const hueco = document.getElementById("mamCabeceraHueco");
+  const arriba = document.getElementById("mamArriba");
+  let altoCompleta = 0;
+  let altoCompacta = 60;
+  let pendiente = false;
+
+  const medir = () => {
+    if (cab.hidden || cab.classList.contains("mam-compacta")) return;
+    altoCompleta = cab.getBoundingClientRect().height;
+    hueco.style.minHeight = altoCompleta + "px";
+  };
+  const remedir = () => { // p. ej. al girar el móvil: se mide siempre la cabecera completa
+    const era = cab.classList.contains("mam-compacta");
+    if (era) cab.classList.remove("mam-compacta");
+    medir();
+    if (era) cab.classList.add("mam-compacta");
+  };
+  if ("ResizeObserver" in window) new ResizeObserver(medir).observe(cab);
+  window.addEventListener("resize", remedir);
+
+  const alScroll = () => {
+    if (pendiente) return;
+    pendiente = true;
+    requestAnimationFrame(() => {
+      pendiente = false;
+      if (cab.hidden) return;
+      const y = window.scrollY;
+      const umbral = Math.max(100, altoCompleta - altoCompacta);
+      const compacta = cab.classList.contains("mam-compacta");
+      // Histéresis de 10 px a cada lado para que no parpadee en el umbral.
+      if (!compacta && y > umbral + 10) {
+        cab.classList.add("mam-compacta");
+        altoCompacta = cab.offsetHeight || altoCompacta;
+      } else if (compacta && y < umbral - 10) {
+        cab.classList.remove("mam-compacta");
+      }
+      arriba.classList.toggle("mam-arriba-visible", y > 600);
+    });
+  };
+  window.addEventListener("scroll", alScroll, { passive: true });
+  window.addEventListener("load", alScroll);
+  arriba.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
+})();
 
 mamCargarInicial();
 </script>

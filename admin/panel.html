@@ -2,27 +2,48 @@
 <html lang="es">
 <head>
 <meta name="color-scheme" content="light dark">
-<script src="/js/tema.js"></script>
+<script src="/js/tema.js?v=2"></script>
+<script src="/js/preferencias.js?v=3"></script>
 <script src="/admin/js/rol-inicial.js?v=4"></script>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Redacción — ELOTROFÚTBOLTV</title>
 <meta name="robots" content="noindex, nofollow">
-<link rel="icon" href="/favicon.ico?v=2" sizes="any">
-<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=2">
-<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<meta property="og:image" content="https://elotrofutbol.media/img/og-default.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://elotrofutbol.media/img/og-default.png">
+<link rel="icon" href="/favicon.ico?v=3" sizes="any">
+<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=3">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png?v=2">
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&family=Playfair+Display:wght@700;800&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/style.css?v=10">
+<link rel="stylesheet" href="/css/style.css?v=21">
+<!-- Sistema de foco de imagen (mismo CSS que la web pública, ver js/foco.js). -->
+<link rel="stylesheet" href="/css/foco.css?v=1">
 <!-- CSS específico del panel de administración: tablas, formularios,
      media, y el overlay del panel de Minuto a Minuto (.mam-*). Antes no
      estaba enlazado aquí, así que ese overlay se activaba (la clase
      "mam-abierto" sí se añadía) pero sin ningún estilo aplicado: sin
      position:fixed, sin z-index, sin fondo... por eso el clic parecía
      "no hacer nada" (solo el salto del overflow:hidden del body). -->
-<link rel="stylesheet" href="/admin/css/admin.css?v=14">
+<link rel="stylesheet" href="/admin/css/admin.css?v=78">
+<link rel="stylesheet" href="/admin/css/modales.css?v=8">
+<!-- Selector de foco único del panel (ver js/foco-selector.js). -->
+<link rel="stylesheet" href="/admin/css/foco-selector.css?v=4">
 <!-- Tutorial guiado interactivo para nuevos redactores (overlay con
      flechas/spotlight sobre el propio panel, ver js/tutorial.js). -->
-<link rel="stylesheet" href="/admin/css/tutorial.css?v=1">
+<link rel="stylesheet" href="/admin/css/tutorial.css?v=3">
+<!-- Votaciones internas del equipo (pestaña "Votaciones", ver js/votaciones.js). -->
+<link rel="stylesheet" href="/admin/css/votaciones.css?v=5">
+<link rel="stylesheet" href="/admin/css/funcionalidades.css?v=3">
+<link rel="stylesheet" href="/admin/css/tienda-mejoras.css?v=1">
+<link rel="stylesheet" href="/admin/css/calendario-contenido.css?v=6">
+<link rel="stylesheet" href="/admin/css/calendario-jornadas.css?v=2">
+<link rel="stylesheet" href="/admin/css/relleno-mejoras.css?v=1">
+<link rel="stylesheet" href="/admin/css/organigrama.css?v=5">
+<link rel="stylesheet" href="/admin/css/jugadores-admin.css?v=2">
+<link rel="stylesheet" href="/admin/css/selector-fecha-modal.css?v=1">
+<link rel="stylesheet" href="/css/accesibilidad.css?v=1">
+<script src="/js/accesibilidad.js?v=1" defer></script>
 </head>
 <body>
 
@@ -41,13 +62,38 @@
         <svg class="theme-icon-sol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2.4M12 19.1v2.4M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M2.5 12h2.4M19.1 12h2.4M4.9 19.1l1.7-1.7M17.4 6.6l1.7-1.7"/></svg>
       </button>
       <div class="notif-wrap" id="notifWrap" style="display:none">
-        <button type="button" class="notif-campana" id="notifBtn" aria-label="Notificaciones">
+        <button type="button" class="notif-campana" id="notifBtn" aria-label="Avisos de la redacción" aria-haspopup="true" aria-expanded="false" aria-controls="notifPanel">
           <svg viewBox="0 0 24 24" width="36" height="36" fill="currentColor"><path fill-rule="evenodd" d="M5.25 9a6.75 6.75 0 0 1 13.5 0v.75c0 2.123.8 4.057 2.118 5.52a.75.75 0 0 1-.297 1.206 24.585 24.585 0 0 1-4.831 1.243 3.75 3.75 0 1 1-7.48 0A24.585 24.585 0 0 1 3.43 16.48a.75.75 0 0 1-.298-1.205A8.217 8.217 0 0 0 5.25 9.75V9Zm4.502 8.9a2.25 2.25 0 1 0 4.496 0 25.057 25.057 0 0 1-4.496 0Z" clip-rule="evenodd"/></svg>
-          <span class="notif-contador" id="notifContador" style="display:none">0</span>
+          <span class="notif-punto" id="notifPunto" style="display:none" title="Avisos activados en este dispositivo"></span>
         </button>
+        <!-- Ajustes de avisos push del equipo (solo admin y redactores de Nivel 4). Lógica en admin.js: inicializarNotificaciones() / staffPush*() -->
         <div class="notif-panel" id="notifPanel">
-          <div class="notif-panel-titulo">Novedades</div>
-          <div id="notifLista"><p class="notif-vacio">Cargando...</p></div>
+          <div class="sp-agarre" aria-hidden="true"></div>
+          <div class="sp-cabecera">
+            <span class="sp-cabecera-ico"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M5.25 9a6.75 6.75 0 0 1 13.5 0v.75c0 2.123.8 4.057 2.118 5.52a.75.75 0 0 1-.297 1.206 24.585 24.585 0 0 1-4.831 1.243 3.75 3.75 0 1 1-7.48 0A24.585 24.585 0 0 1 3.43 16.48a.75.75 0 0 1-.298-1.205A8.217 8.217 0 0 0 5.25 9.75V9Zm4.502 8.9a2.25 2.25 0 1 0 4.496 0 25.057 25.057 0 0 1-4.496 0Z" clip-rule="evenodd"/></svg></span>
+            <div class="sp-cabecera-textos">
+              <div class="sp-cabecera-titulo">Avisos de la redacción</div>
+              <div class="sp-cabecera-sub">Notificaciones push, aunque el panel esté cerrado</div>
+            </div>
+            <span class="sp-pildora" id="staffPushPildora">Desactivado</span>
+          </div>
+          <div class="staff-push">
+            <p class="staff-push-msg" id="staffPushMsg" style="display:none" role="status" aria-live="polite"></p>
+            <label class="staff-push-interruptor">
+              <span class="staff-push-interruptor-textos">
+                <span class="staff-push-texto">Avisarme en este dispositivo</span>
+                <span class="staff-push-ayuda">Se activa por navegador o móvil</span>
+              </span>
+              <input type="checkbox" id="staffPushActivar" disabled>
+              <span class="staff-push-pista" aria-hidden="true"></span>
+            </label>
+            <div class="staff-push-titulo-cats">Avisarme de</div>
+            <div class="staff-push-categorias" id="staffPushCategorias"></div>
+            <button type="button" class="staff-push-prueba" id="staffPushPrueba" disabled>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+              Enviar notificación de prueba
+            </button>
+          </div>
         </div>
       </div>
       <div class="sheet-overlay" id="notifOverlay"></div>
@@ -65,9 +111,10 @@
             </div>
           </div>
           <a href="javascript:void(0)" onclick="irAAjustesCuenta('perfil')">Editar perfil</a>
-          <a href="javascript:void(0)" onclick="irAAjustesCuenta('password')">Cambiar contraseña</a>
+          <a href="javascript:void(0)" onclick="irAAjustesCuenta('seguridad')">Seguridad</a>
           <a href="javascript:void(0)" onclick="irAAjustesCuenta('progreso')">Mi progreso</a>
           <a href="javascript:void(0)" onclick="irAAjustesCuenta('sesiones')">Dispositivos</a>
+          <a href="javascript:void(0)" onclick="irAAjustesCuenta('preferencias')">Preferencias</a>
           <a href="/index.html" rel="noopener">Ver la web</a>
           <a href="/panel-analiticas.html" id="enlaceAnaliticas" rel="noopener">Analíticas</a>
           <button type="button" onclick="logout()">Cerrar sesión</button>
@@ -80,11 +127,12 @@
 <div class="wrap">
   <div class="tabs">
     <button class="activo" data-tab="noticias"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z" opacity="0"/><path d="M19 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1Z"/><path d="M8 9h8M8 13h8M8 17h4"/></svg>Noticias</button>
-    <button data-tab="resultados"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.2l3.6 2.6-1.4 4.2h-4.4l-1.4-4.2z"/></svg>Resultados</button>
+    <button data-tab="resultados"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.2l3.6 2.6-1.4 4.2h-4.4l-1.4-4.2z"/></svg>Resultados<span class="tab-badge-pendientes" id="badgeResultadosAnulados" style="display:none;">0</span></button>
     <button data-tab="ajustes" id="tabAjustesOculto" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>Ajustes de cuenta</button>
     <button data-tab="contenido" id="tabContenido"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>Contenido</button>
     <button data-tab="solicitudes" id="tabSolicitudes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Solicitudes<span class="tab-badge-pendientes" id="badgeSolicitudesPendientes" style="display:none;">0</span></button>
     <button data-tab="tienda" id="tabTienda"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>Tienda<span class="tab-badge-pendientes" id="badgeTiendaPendientes" style="display:none;">0</span></button>
+    <button data-tab="votaciones" id="tabVotaciones"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V8l3-5 4 4v4"/><path d="m9 16 2 2 4-4"/></svg>Votaciones<span class="tab-badge-pendientes" id="badgeVotPendientes" style="display:none;">0</span></button>
     <button data-tab="usuarios" id="tabUsuarios"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>Usuarios</button>
     <button data-tab="funcionalidades" id="tabFuncionalidades"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3 6.5 7 1-5 5 1.5 7-6.5-3.5L5 21.5l1.5-7-5-5 7-1z"/></svg>Funcionalidades<span class="tab-badge-pendientes" id="badgeFuncionalidadesPendientes" style="display:none;">0</span></button>
   </div>
@@ -94,10 +142,11 @@
     <div class="subtabs" id="subtabsNoticias">
       <button class="activo" data-subtab="nueva">+ Nueva noticia</button>
       <button data-subtab="lista">Ver noticias</button>
+      <button data-subtab="noticiasRapidas" id="subtabNoticiasRapidas_btn">⚡ Noticias rápidas</button>
     </div>
 
     <div class="subpanel activo" id="subpanel-nueva">
-      <div class="form-card">
+      <div class="form-card nn-form">
         <form id="formArticle">
           <input type="hidden" id="articleId">
           <input type="hidden" id="articleSlug">
@@ -106,12 +155,18 @@
           <input type="hidden" id="articleProgramadoParaOriginal">
           <input type="hidden" id="articleFechaPreferenciaDesdeOriginal">
           <input type="hidden" id="articleFechaPreferenciaHastaOriginal">
-          <label>Título *</label>
-          <input type="text" id="titulo" required>
+          <nav class="nn-nav" id="nnNav" aria-label="Secciones de la noticia"><button type="button" data-nn-ir="nn-sec-datos">Datos</button><button type="button" data-nn-ir="nn-sec-imagenes">Imágenes</button><button type="button" data-nn-ir="nn-sec-redes">Redes</button><button type="button" data-nn-ir="nn-sec-partido">Partido y encuesta</button><button type="button" data-nn-ir="nn-sec-contenido">Contenido</button><button type="button" data-nn-ir="nn-sec-traducciones">Traducciones</button><button type="button" data-nn-ir="nn-sec-publicacion">Publicación</button></nav>
 
-          <label>Subtítulo</label>
-          <input type="text" id="subtitulo">
+          <section class="nn-titular" id="nn-sec-titular">
+            <label for="titulo">Título <span class="nn-req" title="Obligatorio">*</span></label>
+            <input type="text" id="titulo" required placeholder="Escribe el titular" autocomplete="off">
+            <label for="subtitulo">Subtítulo</label>
+            <input type="text" id="subtitulo" placeholder="Una frase que amplíe el titular (opcional)" autocomplete="off">
+          </section>
 
+          <section class="nn-seccion" id="nn-sec-datos">
+            <header class="nn-seccion-cab"><span class="nn-seccion-icono" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.2"/></svg></span><span class="nn-seccion-textos"><h4 class="nn-seccion-titulo">Datos de la noticia</h4><span class="nn-seccion-desc">Tipo, categoría, club y quién la firma.</span></span></header>
+            <div class="nn-seccion-cuerpo">
           <div class="row3">
             <div>
               <label>Tipo</label>
@@ -122,6 +177,7 @@
                 <option value="analisis">Análisis</option>
                 <option value="opinion">Opinión</option>
                 <option value="entrevista">Entrevista</option>
+                <option value="uno_por_uno">1x1 de jugadores</option>
               </select>
             </div>
             <div id="categoriaWrapNormal">
@@ -130,6 +186,8 @@
                 <option value="hypermotion">LaLiga Hypermotion</option>
                 <option value="primera_federacion">Primera Federación</option>
                 <option value="segunda_federacion">Segunda Federación</option>
+                <option value="copa_del_rey">Copa del Rey</option>
+                <option value="copa_federacion">Copa Federación</option>
                 <option value="amistoso">Amistoso</option>
                 <option value="general">General</option>
               </select>
@@ -158,23 +216,35 @@
             <span id="categorias_adicionales_ayuda">Puedes dejarlo sin especificar.</span>
           </p>
 
-          <label for="autor_id">Autor de la noticia</label>
-          <select id="autor_id"></select>
-          <p class="ayuda-editor">Por defecto se firma con tu nombre. Si la noticia la ha escrito otra persona pero la subes tú, elige aquí quién la ha hecho para que quede firmada por ella.</p>
+          <hr class="nn-sep">
+          <div class="row2 nn-firma">
+            <div class="nn-campo">
+              <label for="autor_id">Autor de la noticia</label>
+              <select id="autor_id"></select>
+              <p class="ayuda-editor">Por defecto se firma con tu nombre. Si la noticia la ha escrito otra persona pero la subes tú, elige aquí quién la ha hecho para que quede firmada por ella.</p>
+            </div>
+            <div class="nn-campo">
+              <label for="coautor_id">Segundo autor (opcional)</label>
+              <select id="coautor_id"><option value="">— Sin segundo autor —</option></select>
+              <p class="ayuda-editor">Si la noticia la habéis escrito entre dos personas, elige aquí a la segunda. Se mostrará firmada por ambas.</p>
+            </div>
+          </div>
+          </div>
+          </section>
 
-          <label for="coautor_id">Segundo autor (opcional)</label>
-          <select id="coautor_id"><option value="">— Sin segundo autor —</option></select>
-          <p class="ayuda-editor">Si la noticia la habéis escrito entre dos personas, elige aquí a la segunda. Se mostrará firmada por ambas.</p>
-
-          <label>Fotos</label>
+          <details class="nn-seccion" id="nn-sec-imagenes" open>
+            <summary class="nn-seccion-cab"><span class="nn-seccion-icono" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></span><span class="nn-seccion-textos"><h4 class="nn-seccion-titulo">Imágenes</h4><span class="nn-seccion-desc">Fotos con portada y posición, y collages.</span></span></summary>
+            <div class="nn-seccion-cuerpo">
+          <p class="nn-subtitulo">Fotos</p>
           <div id="imagenesLista"></div>
           <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
             <button type="button" class="btn-secundari" id="btnAddImagen">+ Añadir otra foto</button>
-            <button type="button" class="btn-secundari" id="btnImportarGaleriaAFotos">+ Importar de la galería del partido</button>
+            <button type="button" class="btn-secundari" id="btnImportarGaleriaAFotos" disabled title="Vincula un partido con galería de fotos en \"Resultado vinculado\" para activar este botón">+ Importar de la galería del partido</button>
           </div>
-          <p class="ayuda-editor">Selecciona las fotografías, marca con "Portada" la que quieres que se vea en las tarjetas y elige dónde aparece dentro de la noticia con el desplegable de posición. Todas las fotos se muestran con el mismo ancho que el texto; si una foto no encaja en esa proporción, usa el botón ✂ para marcar qué parte no quieres que se recorte. "Importar de la galería del partido" trae fotos ya subidas a la galería del encuentro para tratarlas igual que el resto: elegir su posición, marcarlas como portada o ajustar su foco, y así se ven también en la vista previa.</p>
+          <details class="nn-ayuda"><summary>Cómo funcionan las fotos</summary><p class="ayuda-editor">Selecciona las fotografías, marca con "Portada" la que quieres que se vea en las tarjetas y elige dónde aparece dentro de la noticia con el desplegable de posición. Todas las fotos se muestran con el mismo ancho que el texto; si una foto no encaja en esa proporción, usa el botón ✂ para marcar qué parte no quieres que se recorte. "Importar de la galería del partido" trae fotos ya subidas a la galería del encuentro para tratarlas igual que el resto: elegir su posición, marcarlas como portada o ajustar su foco, y así se ven también en la vista previa.</p></details>
 
-          <label>Collages de fotos (opcional)</label>
+          <hr class="nn-sep">
+          <p class="nn-subtitulo">Collages de fotos <span class="nn-opcional">opcional</span></p>
           <div id="listaCollages"></div>
           <button type="button" class="btn-secundari" id="btnAnadirCollage" style="margin-top:8px;">+ Añadir collage</button>
           <p class="ayuda-editor">Combina 2, 3 o 4 fotos en una sola cuadrícula dentro del texto de la noticia, con la disposición que elijas.</p>
@@ -188,12 +258,23 @@
                resetGaleriaArticulo, media_ids al guardar) se deja intacto
                para no romper noticias ya publicadas que usaban el carrusel. -->
 
-          <label>Tweets y posts de Instagram incrustados (opcional)</label>
+          </div>
+          </details>
+
+          <details class="nn-seccion" id="nn-sec-redes" open>
+            <summary class="nn-seccion-cab"><span class="nn-seccion-icono" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.5 8.5 0 0 1-3.8-.9L3 21l1.9-5.2A8.4 8.4 0 1 1 21 11.5z"/></svg></span><span class="nn-seccion-textos"><h4 class="nn-seccion-titulo">Tweets e Instagram</h4><span class="nn-seccion-desc">Posts incrustados dentro del texto de la noticia. Opcional.</span></span></summary>
+            <div class="nn-seccion-cuerpo">
           <div id="tweetsLista"></div>
           <button type="button" class="btn-secundari" id="btnAddTweet" style="margin-top:8px;">+ Añadir tweet o post</button>
-          <p class="ayuda-editor">Pega la URL de un tweet (x.com o twitter.com) o de un post/reel de Instagram y elige dónde debe aparecer dentro de la noticia con el mismo selector de posición que las fotos. La plataforma se detecta sola a partir de la URL. Aquí se ve exactamente igual que en la web ya publicada.</p>
+          <details class="nn-ayuda"><summary>Cómo añadirlos</summary><p class="ayuda-editor">Pega la URL de un tweet (x.com o twitter.com) o de un post/reel de Instagram y elige dónde debe aparecer dentro de la noticia con el mismo selector de posición que las fotos. La plataforma se detecta sola a partir de la URL. Aquí se ve exactamente igual que en la web ya publicada.</p></details>
 
-          <label for="resultado_id_buscador">Resultado vinculado (opcional)</label>
+          </div>
+          </details>
+
+          <details class="nn-seccion" id="nn-sec-partido" open>
+            <summary class="nn-seccion-cab"><span class="nn-seccion-icono" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.2l3.6 2.6-1.4 4.2h-4.4l-1.4-4.2z"/></svg></span><span class="nn-seccion-textos"><h4 class="nn-seccion-titulo">Partido y encuesta</h4><span class="nn-seccion-desc">Marcador vinculado, alineaciones y encuesta. Opcional.</span></span></summary>
+            <div class="nn-seccion-cuerpo">
+          <label for="resultado_id_buscador" id="resultadoVinculadoLabel">Resultado vinculado (opcional)</label>
           <div class="autocompletar-resultado" style="position:relative;">
             <input type="text" id="resultado_id_buscador" placeholder="Escribe un equipo, competición o jornada… o deja vacío para ver todos" autocomplete="off">
             <div id="resultado_id_sugerencias" class="autocompletar-resultado-lista" style="display:none;"></div>
@@ -202,19 +283,34 @@
             <option value="">— Ninguno —</option>
             <option value="__nuevo__">+ Nuevo resultado…</option>
           </select>
-          <p class="ayuda-editor">Si esta noticia o crónica es sobre un partido ya jugado, vincúlalo aquí para que su marcador aparezca dentro de la noticia. Si el partido todavía no está registrado en "Resultados", elige "+ Nuevo resultado…" para crearlo sin salir de la noticia.</p>
+          <p class="ayuda-editor"><strong id="resultadoVinculadoObligatorioAviso" style="display:none;">En previas y crónicas el resultado vinculado es obligatorio.</strong> Si esta noticia es sobre un partido ya jugado, vincúlalo aquí para que su marcador aparezca dentro de la noticia (en previas y crónicas es imprescindible: de él se toman el club, la categoría y el marcador). Si el partido todavía no está registrado en "Resultados", elige "+ Nuevo resultado…" para crearlo sin salir de la noticia.</p>
 
-          <label>Alineaciones (opcional)</label>
-          <div id="listaAlineacionesArticulo" class="lista-alineaciones"></div>
-          <button type="button" class="btn-secundari" id="btnAnadirAlineacionArticulo" style="margin-top:8px;" disabled>+ Añadir alineación</button>
-          <p class="ayuda-editor" id="ayudaAlineacionArticulo">Guarda primero la noticia como borrador para poder añadirle alineaciones.</p>
-          <p class="ayuda-editor" id="ayudaAlineacionArticuloVinculada" style="display:none;">Esta noticia está vinculada a un partido: la alineación es la misma que la del partido y se gestiona desde aquí o desde "Resultados" indistintamente, siempre sincronizada.</p>
+          <div class="nn-sub" id="nnSubAlineaciones">
+            <div class="nn-sub-cab">
+              <span class="nn-sub-icono" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v16M3 12h18"/><circle cx="12" cy="12" r="2.5"/></svg></span>
+              <h5 class="nn-sub-titulo">Alineaciones <span class="nn-opcional">(opcional)</span></h5>
+              <button type="button" class="btn-secundari nn-sub-btn" id="btnAnadirAlineacionArticulo" disabled>+ Añadir alineación</button>
+            </div>
+            <div id="listaAlineacionesArticulo" class="lista-alineaciones"></div>
+            <p class="ayuda-editor nn-sub-aviso" id="ayudaAlineacionArticulo">Guarda primero la noticia como borrador para poder añadirle alineaciones.</p>
+            <p class="ayuda-editor nn-sub-nota" id="ayudaAlineacionArticuloVinculada" style="display:none;">Esta noticia está vinculada a un partido: la alineación es la misma que la del partido y se gestiona desde aquí o desde "Resultados" indistintamente, siempre sincronizada.</p>
+          </div>
 
-          <label>Encuesta (opcional)</label>
-          <div id="bloqueEncuestaArticulo"></div>
-          <p class="ayuda-editor" id="ayudaEncuestaArticulo">Guarda primero la noticia como borrador para poder añadirle una encuesta.</p>
+          <div class="nn-sub" id="nnSubEncuesta">
+            <div class="nn-sub-cab">
+              <span class="nn-sub-icono" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span>
+              <h5 class="nn-sub-titulo">Encuesta <span class="nn-opcional">(opcional)</span></h5>
+            </div>
+            <div id="bloqueEncuestaArticulo"></div>
+            <p class="ayuda-editor nn-sub-aviso" id="ayudaEncuestaArticulo">Guarda primero la noticia como borrador para poder añadirle una encuesta.</p>
+          </div>
 
-          <label>Contenido *</label>
+          </div>
+          </details>
+
+          <section class="nn-seccion" id="nn-sec-contenido">
+            <header class="nn-seccion-cab"><span class="nn-seccion-icono" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span><span class="nn-seccion-textos"><h4 class="nn-seccion-titulo">Contenido <span class="nn-req" title="Obligatorio">*</span></h4><span class="nn-seccion-desc">El cuerpo de la noticia.</span></span></header>
+            <div class="nn-seccion-cuerpo">
           <div class="editor-wrap">
             <div class="editor-toolbar" id="editorToolbar">
               <button type="button" class="b" data-cmd="bold" title="Negrita">N</button>
@@ -242,10 +338,14 @@
           </div>
           <p class="ayuda-editor">Selecciona texto y usa los botones para darle formato. "Entradilla" pone en negrita destacada el párrafo inicial, como en el resto de noticias de la web.</p>
           <p class="contador-caracteres" id="contadorCaracteres">0 caracteres (mínimo 1500, máximo 8000)</p>
+          </div>
+          </section>
 
-          <div id="bloqueFichaTecnica" style="display:none;">
-            <label>Ficha técnica del partido (solo crónicas)</label>
+          <details class="nn-seccion" id="bloqueFichaTecnica" style="display:none;" open>
+            <summary class="nn-seccion-cab"><span class="nn-seccion-icono" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg></span><span class="nn-seccion-textos"><h4 class="nn-seccion-titulo">Ficha técnica del partido</h4><span class="nn-seccion-desc">Solo crónicas. Se muestra en una tarjeta al final.</span></span></summary>
+            <div class="nn-seccion-cuerpo">
             <p class="ayuda-editor">Se muestra en una tarjeta al final de la crónica, en la web. Todos los campos son opcionales: rellena solo los que tengas.</p>
+            <p class="ayuda-editor ficha-precargada-aviso" id="fichaPrecargadaAviso" role="status" hidden></p>
             <div class="ficha-tecnica-caja">
               <div class="row3">
                 <div>
@@ -298,9 +398,12 @@
               <label for="fichaNotas" style="margin-top:16px;">Notas adicionales</label>
               <textarea id="fichaNotas" rows="3" placeholder="Cualquier otro dato relevante del partido..."></textarea>
             </div>
-          </div>
+            </div>
+          </details>
 
-          <label>Traducciones (opcional)</label>
+          <details class="nn-seccion" id="nn-sec-traducciones" open>
+            <summary class="nn-seccion-cab"><span class="nn-seccion-icono" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></span><span class="nn-seccion-textos"><h4 class="nn-seccion-titulo">Traducciones</h4><span class="nn-seccion-desc">Opcional. Euskera, català, galego y English.</span></span></summary>
+            <div class="nn-seccion-cuerpo">
           <p class="ayuda-editor">Esta noticia se publica siempre en castellano. Si quieres, tradúcela también a otras lenguas; los idiomas que dejes en blanco no se traducen automáticamente y en la web se avisará de que no está disponible en ellos.</p>
           <p class="traduccion-progreso" id="traduccionProgreso">
             <span id="traduccionProgresoTexto">0 de 4 idiomas completos</span>
@@ -316,6 +419,12 @@
             <div id="traduccionPaneles"></div>
           </div>
           <div id="avisosTraduccionGuardado" style="display:none;"></div>
+          </div>
+          </details>
+
+          <section class="nn-seccion" id="nn-sec-publicacion">
+            <header class="nn-seccion-cab"><span class="nn-seccion-icono" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg></span><span class="nn-seccion-textos"><h4 class="nn-seccion-titulo">Publicación</h4><span class="nn-seccion-desc">Cómo y cuándo sale la noticia.</span></span></header>
+            <div class="nn-seccion-cuerpo">
 
           <div class="opciones-noticia">
             <label class="opcion-toggle">
@@ -354,7 +463,7 @@
                 <span class="opcion-toggle-caja"></span>
                 <span class="opcion-toggle-texto">
                   <span class="opcion-toggle-titulo">Programar publicación</span>
-                  <span class="opcion-toggle-sub">Elige cuándo se publicará</span>
+                  <span class="opcion-toggle-sub">Se publicará sola el día y la hora que elijas</span>
                 </span>
               </label>
               <div id="campoFechaProgramada" style="display:none;">
@@ -372,7 +481,7 @@
                 <span class="opcion-toggle-caja"></span>
                 <span class="opcion-toggle-texto">
                   <span class="opcion-toggle-titulo">Fecha de preferencia</span>
-                  <span class="opcion-toggle-sub">Sugiere cuándo publicarla (no programa nada)</span>
+                  <span class="opcion-toggle-sub">Sugiere cuándo publicarla (no programa nada). Desaparece al programarla</span>
                 </span>
               </label>
               <div id="campoFechaPreferencia" style="display:none;">
@@ -399,8 +508,10 @@
             </div>
           </div>
           <p class="ayuda-editor" id="avisoPublicadoRedactorNivel2" style="display:none;"></p>
+          </div>
+          </section>
 
-          <div class="barra-acciones-form">
+          <div class="barra-acciones-form nn-barra">
             <button type="submit" class="btn-primari" id="btnGuardar">Publicar noticia</button>
             <button type="button" class="btn-secundari" id="btnPrevisualizar">Previsualizar</button>
             <button type="button" class="btn-secundari" id="btnCancelar" style="display:none" onclick="cancelarEdicion()">Cancelar edición</button>
@@ -415,11 +526,131 @@
         <input type="search" id="buscadorArticulos" class="buscador-lista-input" placeholder="Buscar por título, categoría o autor...">
         <span class="buscador-lista-contador" id="contadorArticulos"></span>
       </div>
+      <div class="filtros-noticias" id="filtrosNoticias" style="display:none;" role="group" aria-label="Filtrar noticias por estado">
+        <button type="button" class="chip-noticia chip-noticia-revision" data-filtro-noticias="revision" aria-pressed="false" title="Noticias terminadas que esperan a que alguien las revise y las publique">
+          <span class="chip-noticia-ico" aria-hidden="true">🕒</span>
+          <span class="chip-noticia-txt"><strong>En revisión</strong><small>Listas para publicar</small></span>
+          <span class="chip-noticia-n" id="contadorEnRevision">0</span>
+        </button>
+        <button type="button" class="chip-noticia chip-noticia-proceso" data-filtro-noticias="proceso" aria-pressed="false" title="Borradores que su autor todavía está escribiendo">
+          <span class="chip-noticia-ico" aria-hidden="true">✏️</span>
+          <span class="chip-noticia-txt"><strong>Borradores en proceso</strong><small>Aún se están escribiendo</small></span>
+          <span class="chip-noticia-n" id="contadorEnProceso">0</span>
+        </button>
+      </div>
+      <!-- Organización para redes: etiquetas de carrusel (solo admin y Nivel 4+). Lógica en admin.js (pintarOrganizacionRedes). -->
+      <details class="redes-org" id="redesOrg" style="display:none;">
+        <summary class="redes-org-resumen">
+          <span class="redes-org-titulo">Organización para redes</span>
+          <span class="redes-org-contadores" id="redesResumen"></span>
+          <span class="redes-org-chevron" aria-hidden="true"></span>
+        </summary>
+        <div class="redes-org-cuerpo">
+          <div class="redes-tarjetas" id="redesTarjetas" aria-label="Noticias programadas por carrusel y liga"></div>
+          <div class="redes-filtro-activo" id="redesFiltroActivo" hidden></div>
+          <p class="redes-org-ayuda">Marca con la casilla las noticias programadas (o publicadas hace menos de 48 h) y asígnalas a un carrusel. Se agrupan por liga (un post de Instagram por liga) y, al publicarse, siguen en su carrusel 48 h para que puedas seleccionarlas y abrir el modal de compartir. <strong>La hora «IG» de cada liga es la de su última noticia</strong>: a esa hora se sube el carrusel a Instagram; en X, cada noticia sale a su hora normal.</p>
+        </div>
+      </details>
+      <div class="redes-org-barra" id="redesOrgBarra" hidden>
+        <strong id="redesOrgSel">0 noticias seleccionadas</strong>
+        <span class="redes-org-botones">
+          <button type="button" class="btn-redes btn-redes-carousel_1" data-redes-marcar="carousel_1">Carrusel 1</button>
+          <button type="button" class="btn-redes btn-redes-carousel_2" data-redes-marcar="carousel_2">Carrusel 2</button>
+          <button type="button" class="btn-redes btn-redes-individual" data-redes-marcar="individual">Individual</button>
+          <button type="button" class="btn-redes btn-redes-compartir" data-redes-compartir="seleccion" title="Genera los textos de X e Instagram de la selección">Compartir</button>
+          <button type="button" class="btn-redes btn-redes-quitar" data-redes-marcar="">Quitar etiqueta</button>
+          <button type="button" class="btn-redes btn-redes-cancelar" data-redes-cancelar>Cancelar</button>
+        </span>
+      </div>
       <table class="lista">
-        <thead><tr><th>Título</th><th>Categoría</th><th>Fecha</th><th>Estado</th><th>Acciones</th></tr></thead>
+        <thead><tr><th class="col-sel"><input type="checkbox" id="chkTodasRedes" aria-label="Seleccionar todas las noticias programadas de esta página" title="Seleccionar todas las programadas de esta página"></th><th>Título</th><th>Categoría</th><th>Fecha</th><th>Estado</th><th>Acciones</th></tr></thead>
         <tbody id="tablaArticulos"></tbody>
       </table>
       <div class="paginacion-lista" id="paginacionArticulos"></div>
+    </div>
+
+    <!-- NOTICIAS RÁPIDAS: solo foto, titular y subtitular. Se publican al
+         guardar (sin borrador, categoría ni cuerpo). Lógica en admin.js
+         (cargaNoticiasRapidas / guardarNoticiaRapida). Un fotógrafo no ve
+         esta pestaña porque no ve "Noticias". -->
+    <div class="subpanel" id="subpanel-noticiasRapidas">
+      <div class="nr-hero-admin">
+        <span class="nr-hero-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13.2 2 4.5 13.4c-.4.5 0 1.2.6 1.2H10l-1.2 7.2c-.1.7.8 1.1 1.2.5l8.7-11.4c.4-.5 0-1.2-.6-1.2H14l1.2-7.2c.1-.7-.8-1.1-1.2-.5Z"/></svg></span>
+        <div class="nr-hero-txt">
+          <h3>Noticias rápidas</h3>
+          <p>Una foto, un titular y un subtitular. Se publican al instante en la portada.</p>
+        </div>
+        <div class="nr-hero-stats" aria-label="Resumen">
+          <div><b id="nrStatTotal">–</b><span>publicadas</span></div>
+          <div><b id="nrStatHoy">–</b><span>hoy</span></div>
+          <div><b id="nrStatMias">–</b><span>tuyas</span></div>
+        </div>
+      </div>
+
+      <div class="nr-tabs" role="tablist" aria-label="Noticias rápidas">
+        <button type="button" role="tab" data-nr-tab="redactar" aria-selected="true">✍️ Redactar</button>
+        <button type="button" role="tab" data-nr-tab="publicadas" aria-selected="false">📋 Publicadas <span class="nr-tab-badge" id="nrTabBadge" hidden></span></button>
+      </div>
+
+      <section class="nr-pane" data-nr-pane="redactar" role="tabpanel">
+        <div class="nr-editor">
+        <div class="form-card nr-form-card" id="nrFormCard">
+          <h4 class="titulo-subseccion" style="margin-top:0;" id="nrFormTitulo">Nueva noticia rápida</h4>
+          <div class="nr-aviso-edicion" role="status">✏️ Estás editando una noticia ya publicada. Los cambios se verán en la web al guardar.</div>
+          <p class="ayuda-editor" style="margin:0 0 14px;">Una noticia rápida lleva solo una foto, un titular y un subtitular. Se publica en cuanto la guardas.</p>
+          <form id="formNoticiaRapida">
+            <input type="hidden" id="nrId">
+            <input type="hidden" id="nrImagenUrl">
+            <input type="hidden" id="nrImagenFoco" value="50% 50%">
+            <label>Foto *</label>
+            <div class="nr-foto-fila" id="nrDropzone">
+              <div class="nr-foto-preview" id="nrFotoPreview" tabindex="0" role="button" aria-label="Elegir o arrastrar una foto"><span>Sin foto</span></div>
+              <div class="nr-foto-acciones">
+                <button type="button" class="btn-secundari" id="btnNrSubirFoto">📷 Subir foto</button>
+                <button type="button" class="btn-foco" id="btnNrFoco" hidden title="Elegir qué parte de la foto no se debe recortar nunca"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/></svg><span class="btn-foco-texto">Foco</span></button>
+                <input type="file" id="nrFotoArchivo" accept="image/*" hidden>
+                <p class="nr-foto-ayuda">Arrastra una imagen aquí o púlsala. Mejor en horizontal (16:10).</p>
+                <p class="ayuda-editor" id="nrFotoEstado" aria-live="polite"></p>
+              </div>
+            </div>
+            <label for="nrTitulo">Titular * <span class="nr-contador" id="nrContTitulo"></span></label>
+            <input type="text" id="nrTitulo" lang="es" spellcheck="true" maxlength="150" required autocomplete="off">
+            <label for="nrSubtitulo">Subtitular * <span class="nr-contador" id="nrContSubtitulo"></span></label>
+            <input type="text" id="nrSubtitulo" lang="es" spellcheck="true" maxlength="250" required autocomplete="off">
+            <div class="barra-acciones-form">
+              <button type="submit" class="btn-primari" id="btnGuardarNoticiaRapida">Publicar noticia rápida</button>
+              <button type="button" class="btn-secundari" id="btnCancelarNoticiaRapida" style="display:none;">Cancelar edición</button>
+            </div>
+            <p id="nrMsgOk" style="display:none;" role="status">✅ Guardado correctamente.</p>
+          </form>
+        </div>
+
+        <aside class="nr-preview" aria-label="Vista previa en portada">
+          <span class="nr-preview-etiqueta">Vista previa en portada</span>
+          <article class="nr-pv-card">
+            <div class="nr-pv-media nr-pv-sinfoto" id="nrPvMedia"><span class="nr-pv-chip"><i></i>Ahora mismo</span></div>
+            <div class="nr-pv-cuerpo">
+              <h5 id="nrPvTitulo" class="nr-pv-vacio">Tu titular aparecerá aquí</h5>
+              <p id="nrPvSub" class="nr-pv-vacio">El subtitular explica la noticia en una frase.</p>
+              <div class="nr-pv-meta"><span class="nr-pv-avatar" id="nrPvAvatar">·</span><span id="nrPvAutor">Redacción</span></div>
+            </div>
+          </article>
+          <p class="nr-preview-nota">Así se verá la tarjeta en la web. Se actualiza mientras escribes.</p>
+        </aside>
+      </div>
+      </section>
+
+      <section class="nr-pane" data-nr-pane="publicadas" role="tabpanel" hidden>
+        <div class="nr-toolbar" id="nrToolbar" hidden>
+          <span class="nr-lista-total" id="nrTotal" hidden></span>
+        <label class="nr-buscar"><span class="nr-buscar-icono" aria-hidden="true">🔍</span><input type="search" id="nrBuscar" placeholder="Buscar por titular, subtitular o autor…" autocomplete="off" aria-label="Buscar noticias rápidas"></label>
+        <div class="nr-vistas" role="group" aria-label="Tipo de vista">
+          <button type="button" data-nr-vista="lista" aria-pressed="true" title="Vista de lista">☰ Lista</button>
+          <button type="button" data-nr-vista="grid" aria-pressed="false" title="Vista de cuadrícula">▦ Cuadrícula</button>
+        </div>
+      </div>
+        <div id="listaNoticiasRapidas" data-vista="lista"><p class="solicitudes-vacio">Cargando...</p></div>
+      </section>
     </div>
   </div>
 
@@ -427,7 +658,7 @@
   <div class="panel" id="panel-resultados">
     <div class="subtabs" id="subtabsResultados">
       <button class="activo" data-subtab="resultado">+ Nuevo resultado</button>
-      <button data-subtab="listaResultados">Ver resultados</button>
+      <button data-subtab="listaResultados">Ver resultados<span class="tab-badge-pendientes" id="badgeSubtabAnulados" style="display:none;">0</span></button>
       <button data-subtab="calendarioJornadas" id="subtabCalendarioJornadas_btn">Calendario de jornadas</button>
       <button data-subtab="importacionRapida">Importación rápida</button>
     </div>
@@ -901,11 +1132,18 @@
         </select>
         <input type="search" id="buscadorResultados" class="buscador-lista-input" placeholder="Buscar por competición, jornada o equipo...">
         <button type="button" id="filtroSoloSinCubrirResultados" class="btn-secundari btn-filtro-sin-cubrir" aria-pressed="false" title="Mostrar solo los partidos en juego sin cubrir y los finalizados sin cubrir, del más reciente al menos reciente">🔴 Solo sin cubrir</button>
+        <button type="button" id="filtroSoloPartidazosResultados" class="btn-secundari btn-filtro-sin-cubrir btn-filtro-partidazo" aria-pressed="false" title="Mostrar solo los partidazos de la jornada (uno por liga y jornada)">🔥 Solo partidazos</button>
         <span class="buscador-lista-contador" id="contadorResultados"></span>
+      </div>
+      <div class="aviso-anulados" id="avisoAnuladosResultados" role="status" hidden>
+        <span class="aviso-anulados-ico" aria-hidden="true">⛔</span>
+        <span class="aviso-anulados-texto" id="avisoAnuladosTexto"></span>
+        <button type="button" class="btn-secundari aviso-anulados-btn" id="btnVerAnulados">Ver anulados</button>
       </div>
       <div class="filtros-estado-resultados" id="filtrosEstadoResultados" role="group" aria-label="Filtrar por estado del partido">
         <button type="button" class="chip-estado" data-filtro-estado="" aria-pressed="true">Todos <span class="chip-estado-n">0</span></button>
         <button type="button" class="chip-estado chip-estado-en-juego" data-filtro-estado="en_juego" aria-pressed="false">🟢 En juego <span class="chip-estado-n">0</span></button>
+        <button type="button" class="chip-estado chip-estado-anulados" data-filtro-estado="anulados" aria-pressed="false" title="Partidos anulados: acaban jugándose, hay que reprogramarlos">⛔ Anulados <span class="chip-estado-n">0</span></button>
         <button type="button" class="chip-estado" data-filtro-estado="por_jugar" aria-pressed="false">🕒 Por jugar <span class="chip-estado-n">0</span></button>
         <button type="button" class="chip-estado" data-filtro-estado="terminados" aria-pressed="false">🏁 Terminados <span class="chip-estado-n">0</span></button>
       </div>
@@ -923,52 +1161,179 @@
          jornada N". El relleno automático usa esto con prioridad sobre
          lo que diga la API. -->
     <div class="subpanel" id="subpanel-calendarioJornadas">
-      <div class="form-card">
-        <p class="ayuda-editor" style="margin:0 0 16px;">
-          Corrige aquí la jornada que TheSportsDB asigna mal a los partidos automáticos.
-          Define un rango de fechas por competición: todos los partidos jugados en ese
-          rango se guardan con la jornada que indiques, en vez de la de la API.
-        </p>
 
-        <div class="cal-jornadas-toolbar">
-          <select id="calJornadasCompeticion">
-            <option value="hypermotion">LaLiga Hypermotion</option>
-            <option value="primera_federacion">Primera Federación</option>
-            <option value="segunda_federacion">Segunda Federación</option>
-          </select>
-          <select id="calJornadasGrupo" style="display:none">
-            <option value="Grupo 1">Grupo 1</option>
-            <option value="Grupo 2">Grupo 2</option>
-            <option value="Grupo 3">Grupo 3</option>
-            <option value="Grupo 4">Grupo 4</option>
-            <option value="Grupo 5">Grupo 5</option>
-          </select>
-          <label class="cal-jornadas-check">
-            <input type="checkbox" id="calJornadasTodosGrupos" checked>
-            Aplicar a todos los grupos de esta competición
+      <!-- Calendario de jornadas: sobre-escritura manual de la jornada
+           (intRound) que da TheSportsDB, que a menudo se equivoca, sobre
+           todo en Primera/Segunda RFEF. Cada bloque = "estos partidos,
+           jugados entre estas fechas, en esta competición/grupo, son la
+           jornada N". El relleno automático usa esto con prioridad sobre
+           lo que diga la API. Lógica: admin.js (calJornadas*), estilos:
+           /admin/css/calendario-jornadas.css -->
+      <div class="form-card cj" id="cjCard">
+        <header class="cj-cab">
+          <span class="cj-icono" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16.5" rx="3"/><path d="M8 2.5v4M16 2.5v4M3 10h18"/><path d="M8 14.5h.01M12 14.5h.01M16 14.5h.01M8 18h.01M12 18h.01"/></svg>
+          </span>
+          <div class="cj-cab-texto">
+            <h3>Calendario de jornadas</h3>
+            <p>
+              TheSportsDB suele asignar mal la jornada. Define aquí «del día X al día Y es la
+              jornada N» y todos los partidos automáticos jugados en ese rango se guardarán con
+              esa jornada, en lugar de la que dé la API.
+            </p>
+          </div>
+          <button type="button" class="cj-btn cj-btn-sec" id="btnRecalcularJornadas" title="Revisa los partidos automáticos ya guardados y les aplica la jornada de este calendario">↻ Recalcular partidos ya guardados</button>
+        </header>
+
+        <div class="cj-comps" id="cjComps" role="tablist" aria-label="Competición">
+          <button type="button" role="tab" class="cj-comp" data-comp="hypermotion" aria-selected="true">LaLiga Hypermotion<span class="cj-comp-n">0</span></button>
+          <button type="button" role="tab" class="cj-comp" data-comp="primera_federacion" aria-selected="false">Primera Federación<span class="cj-comp-n">0</span></button>
+          <button type="button" role="tab" class="cj-comp" data-comp="segunda_federacion" aria-selected="false">Segunda Federación<span class="cj-comp-n">0</span></button>
+        </div>
+        <!-- Estado interno (los lee admin.js): competición y grupo activos -->
+        <input type="hidden" id="calJornadasCompeticion" value="hypermotion">
+        <input type="hidden" id="calJornadasGrupo" value="">
+
+        <div class="cj-resumen" id="cjResumen" aria-live="polite"></div>
+        <div class="cj-banner" id="cjBanner" role="alert" hidden></div>
+
+        <div class="cj-filtros">
+          <div class="cj-grupos" id="cjGrupos" role="group" aria-label="Filtrar por grupo" hidden></div>
+          <label class="cj-toggle" title="Oculta las jornadas cuyo rango ya terminó">
+            <input type="checkbox" id="cjOcultarPasadas">
+            <span class="cj-toggle-pista" aria-hidden="true"></span>
+            <span>Ocultar finalizadas</span>
           </label>
-          <button type="button" class="btn-secundario" id="btnRecalcularJornadas">↻ Recalcular partidos ya guardados</button>
         </div>
 
         <div id="calJornadasLista" class="cal-jornadas-lista"></div>
 
-        <button type="button" class="btn-anadir" id="btnAnadirRangoJornada">+ Añadir rango de jornada</button>
+        <div class="cj-acciones">
+          <button type="button" class="cj-btn cj-btn-pri" id="btnAnadirRangoJornada">+ Añadir siguiente jornada</button>
+          <button type="button" class="cj-btn cj-btn-sec" id="cjBtnGenerar" aria-expanded="false" aria-controls="cjGenerador">Generar varias de golpe</button>
+          <span class="cj-destino" id="cjDestino"></span>
+        </div>
+
+        <div class="cj-generador" id="cjGenerador" hidden>
+          <p class="cj-generador-ayuda">
+            Crea una tanda de rangos consecutivos (sin huecos entre ellos). Útil al empezar la
+            temporada: indica cuántas jornadas y cuántos días dura cada una.
+          </p>
+          <div class="cj-generador-campos">
+            <label class="cj-campo"><span class="cj-cap">Primera jornada</span><input type="number" class="cj-input" id="cjGenDesde" min="1" value="1"></label>
+            <label class="cj-campo"><span class="cj-cap">Nº de jornadas</span><input type="number" class="cj-input" id="cjGenCuantas" min="1" max="60" value="10"></label>
+            <label class="cj-campo"><span class="cj-cap">Empieza el</span><input type="date" class="cj-input" id="cjGenInicio"></label>
+            <label class="cj-campo"><span class="cj-cap">Días por jornada</span><input type="number" class="cj-input" id="cjGenDias" min="1" max="31" value="7"></label>
+          </div>
+          <div class="cj-generador-pie">
+            <span class="cj-generador-vista" id="cjGenVista"></span>
+            <button type="button" class="cj-btn cj-btn-pri" id="cjGenCrear">Crear rangos</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Relleno automatico de partidos (TheSportsDB): ver "RELLENO
+           AUTOMATICO DE PARTIDOS" en worker/src/index.js. -->
+      <div class="form-card relleno-auto" id="rellenoAuto">
+        <header class="relleno-cab">
+          <span class="relleno-icono" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5"/><path d="M3 21v-5h5"/></svg>
+          </span>
+          <div class="relleno-cab-texto">
+            <h3>Relleno automático de partidos</h3>
+            <p>
+              Trae de TheSportsDB los partidos para que salgan en el calendario y cuenten en la
+              clasificación. El relleno automático manda en horario, jornada y sede (aunque se haya
+              editado el partido); en marcador y equipos solo manda si el partido nació del relleno
+              y nadie lo está cubriendo en directo. Cada liga necesita su ID de TheSportsDB (usa «Buscar IDs»).
+            </p>
+          </div>
+          <label class="relleno-switch" title="Activa o pausa la sincronización programada">
+            <input type="checkbox" id="rellenoActivo" checked>
+            <span class="relleno-switch-pista" aria-hidden="true"></span>
+            <span class="relleno-switch-texto">Sincronización automática</span>
+          </label>
+        </header>
+
+        <div id="rellenoEstado" class="relleno-estado" aria-live="polite">Cargando…</div>
+
+        <section class="relleno-bloque" aria-labelledby="rellenoTituloLigas">
+          <div class="relleno-bloque-cab">
+            <h4 id="rellenoTituloLigas">Ligas a sincronizar</h4>
+            <span class="relleno-sucio" id="rellenoSucio" hidden>Cambios sin guardar</span>
+          </div>
+          <div id="rellenoLigas" class="relleno-ligas"></div>
+          <div class="relleno-acciones">
+            <button type="button" class="relleno-btn relleno-btn-sec" id="rellenoAnadirLiga">+ Añadir liga</button>
+            <button type="button" class="relleno-btn relleno-btn-sec" id="rellenoBuscarIds">Buscar IDs de TheSportsDB</button>
+            <button type="button" class="relleno-btn relleno-btn-pri relleno-acciones-fin" id="rellenoGuardar">Guardar configuración</button>
+          </div>
+          <div id="rellenoIds" class="relleno-ids" hidden></div>
+        </section>
+
+        <section class="relleno-bloque" aria-labelledby="rellenoTituloEjecutar">
+          <div class="relleno-bloque-cab"><h4 id="rellenoTituloEjecutar">Sincronizar ahora</h4></div>
+          <div class="relleno-acciones">
+            <button type="button" class="relleno-btn relleno-btn-pri" id="rellenoLanzarAction" title="Lanza la GitHub Action que descarga los partidos de TheSportsDB y los guarda aquí">Sincronizar todo (GitHub Action)</button>
+            <button type="button" class="relleno-btn relleno-btn-sec" id="rellenoEjecutar" title="Pide los partidos desde el servidor. Si TheSportsDB responde 403, usa la Action.">Rellenar desde el servidor</button>
+            <button type="button" class="relleno-btn relleno-btn-sec" id="rellenoVivo">Actualizar resultados de hoy</button>
+            <button type="button" class="relleno-btn relleno-btn-peligro" id="rellenoDetener" hidden>Detener</button>
+          </div>
+          <div id="rellenoProgreso" class="relleno-progreso" aria-live="polite"></div>
+          <p id="rellenoActionInfo" class="relleno-ayuda" hidden></p>
+        </section>
+
+        <section class="relleno-bloque" aria-labelledby="rellenoTituloAlias">
+          <div class="relleno-bloque-cab"><h4 id="rellenoTituloAlias">Equipos sin reconocer</h4></div>
+          <p class="relleno-ayuda">
+            Nombres que la API usa y que no coinciden con ningún equipo del sitio. Indica a qué equipo
+            corresponde y se corregirán los partidos ya guardados.
+          </p>
+          <datalist id="rellenoEquiposConocidos"></datalist>
+          <div id="rellenoSinAlias"></div>
+          <details class="relleno-alias-det">
+            <summary>Alias ya definidos</summary>
+            <div id="rellenoAliasLista"></div>
+          </details>
+        </section>
+
+        <div class="relleno-barra-sucia" id="rellenoBarraSucia" role="status" hidden>
+          <span class="relleno-barra-sucia-texto"><i aria-hidden="true"></i>Cambios sin guardar en las ligas</span>
+          <button type="button" class="relleno-btn relleno-btn-sec relleno-btn-mini" id="rellenoDescartar">Descartar</button>
+          <button type="button" class="relleno-btn relleno-btn-pri relleno-btn-mini" id="rellenoGuardarBarra">Guardar ahora</button>
+        </div>
       </div>
     </div>
 
     <!-- Fila-plantilla de un rango de jornada, clonada por JS. No se
-         muestra directamente (display:none): admin.js clona su
-         contenido para cada fila real en #calJornadasLista. -->
+         muestra directamente: admin.js clona su contenido para cada fila
+         real en #calJornadasLista (calJornadasPintar). -->
     <template id="plantillaRangoJornada">
-      <div class="cal-jornada-fila" data-id="">
-        <span class="cal-jornada-numero">J<span class="cal-jornada-numero-valor"></span></span>
-        <input type="number" class="cal-jornada-input-jornada" min="1" placeholder="Jornada" title="Número de jornada">
-        <input type="date" class="cal-jornada-input-inicio" title="Fecha de inicio (inclusive)">
-        <span class="cal-jornada-hasta">→</span>
-        <input type="date" class="cal-jornada-input-fin" title="Fecha de fin (inclusive)">
-        <span class="cal-jornada-grupo-etiqueta"></span>
-        <button type="button" class="cal-jornada-guardar" title="Guardar cambios">💾</button>
-        <button type="button" class="cal-jornada-borrar" title="Eliminar este rango">🗑️</button>
+      <div class="cj-fila cal-jornada-fila" data-id="">
+        <label class="cj-campo cj-campo-jor"><span class="cj-cap">Jornada</span>
+          <input type="number" class="cj-input cal-jornada-input-jornada" min="1" placeholder="Nº" aria-label="Número de jornada"></label>
+        <label class="cj-campo cj-campo-ini"><span class="cj-cap">Desde</span>
+          <input type="date" class="cj-input cal-jornada-input-inicio" aria-label="Fecha de inicio (inclusive)"></label>
+        <span class="cj-flecha" aria-hidden="true">→</span>
+        <label class="cj-campo cj-campo-fin"><span class="cj-cap">Hasta</span>
+          <input type="date" class="cj-input cal-jornada-input-fin" aria-label="Fecha de fin (inclusive)"></label>
+        <div class="cj-meta">
+          <span class="cj-estado"></span>
+          <span class="cj-duracion"></span>
+          <span class="cj-grupo cal-jornada-grupo-etiqueta"></span>
+        </div>
+        <div class="cj-fila-acciones">
+          <button type="button" class="cj-icono-btn cal-jornada-guardar" title="Guardar cambios" aria-label="Guardar cambios" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+          </button>
+          <button type="button" class="cj-icono-btn cal-jornada-duplicar" title="Crear la jornada siguiente a continuación de esta" aria-label="Crear la jornada siguiente">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6.5A2.5 2.5 0 0 0 13.5 4h-7A2.5 2.5 0 0 0 4 6.5v7A2.5 2.5 0 0 0 6.5 16H8"/></svg>
+          </button>
+          <button type="button" class="cj-icono-btn cj-icono-peligro cal-jornada-borrar" title="Eliminar este rango" aria-label="Eliminar este rango">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 1.8h6a2 2 0 0 0 2-1.8l1-12M9 7V4.5h6V7"/></svg>
+          </button>
+        </div>
+        <p class="cj-aviso" hidden></p>
       </div>
     </template>
   </div>
@@ -981,9 +1346,10 @@
 
     <div class="subtabs" id="subtabsAjustes">
       <button class="activo" data-subtab="perfil">Editar perfil</button>
-      <button data-subtab="password">Cambiar contraseña</button>
+      <button data-subtab="seguridad" id="subtabSeguridad_btn">Seguridad</button>
       <button data-subtab="progreso">Mi progreso</button>
       <button data-subtab="sesiones">Dispositivos</button>
+      <button data-subtab="preferencias">Preferencias</button>
     </div>
 
     <div class="subpanel activo" id="subpanel-perfil">
@@ -1021,13 +1387,6 @@
         <button type="button" class="btn-foco" id="btnFocoAvatar" title="Elegir qué parte de la foto no se debe recortar nunca"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/></svg><span class="btn-foco-texto">Foco</span></button>
         <button type="button" class="quitar-imagen" id="btnQuitarAvatar" title="Quitar esta foto">✕ Quitar</button>
       </div>
-    </div>
-  </div>
-  <div class="foco-panel oculto" id="focoPanelAvatar">
-    <div class="foco-preview" id="focoPreviewAvatar"><div class="foco-marcador" id="focoMarcadorAvatar"></div></div>
-    <div class="foco-texto">
-      <p>Esta foto se muestra siempre con la misma proporción; si hace falta recortarla, haz clic en el punto de la imagen que quieres que se vea siempre.</p>
-      <button type="button" id="btnFocoResetAvatar">Centrar de nuevo</button>
     </div>
   </div>
 </div>
@@ -1073,8 +1432,46 @@
       </div>
     </div>
 
-    <div class="subpanel" id="subpanel-password">
+    <div class="subpanel" id="subpanel-progreso">
+      <div class="form-card" id="progresoNivelCont">
+        <p class="sesiones-vacio">Cargando tu progreso…</p>
+      </div>
+    </div>
+
+    <div class="subpanel" id="subpanel-preferencias">
       <div class="form-card">
+        <h3 class="titulo-subseccion" style="margin-top:0;">Preferencias de visualización</h3>
+        <p class="ayuda-editor" style="margin:0 0 4px;">Adapta el panel y la web a cómo te resulta más cómoda. Se guardan en este dispositivo y se aplican también a la web pública.</p>
+        <div id="contenedorPreferenciasRedactor"></div>
+        <script>window.EOFPrefs && window.EOFPrefs.montarPanel(document.getElementById("contenedorPreferenciasRedactor"));</script>
+      </div>
+      <div class="form-card" id="cardInterruptorSecundaria">
+        <h3 class="titulo-subseccion" style="margin-top:0;">API secundaria (Railway)</h3>
+        <p class="ayuda-editor" style="margin:0 0 10px;">Desactivada por defecto. Si la activas, <strong>este navegador</strong> usará la API secundaria como respaldo cuando la principal no responda (solo lecturas e inicio de sesión). Se guarda en este dispositivo y recarga la página.</p>
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+          <input type="checkbox" id="chkSecundariaActiva">
+          <span>Usar la API secundaria como respaldo</span>
+        </label>
+        <p id="estadoSecundaria" class="ayuda-editor" style="margin:10px 0 0;"></p>
+      </div>
+    </div>
+
+    <div class="subpanel" id="subpanel-sesiones">
+      <div class="form-card">
+        <h3 class="titulo-subseccion" style="margin-top:0;">Dispositivos conectados</h3>
+        <p class="ayuda-editor" style="margin:0 0 14px;">Estos son los dispositivos y navegadores donde tu cuenta tiene la sesión iniciada actualmente. Si no reconoces alguno, ciérralo.</p>
+        <div id="listaSesiones" class="lista-sesiones"></div>
+        <button type="button" class="btn-secundari" id="btnCerrarOtrasSesiones" style="margin-top:14px;">Cerrar todos los demás dispositivos</button>
+        <p id="msgOkSesiones"></p>
+        <p id="errSesiones"></p>
+      </div>
+    </div>
+
+    <!-- Seguridad: cambiar contraseña + verificación en dos pasos (opcional para redactores y
+         fotógrafos, obligatoria para admins). El 2FA lo pinta admin.js (pintarSeguridad2fa) según el
+         estado de la cuenta. -->
+    <div class="subpanel" id="subpanel-seguridad">
+      <div class="form-card" id="seguridadPasswordCont">
         <h3 class="titulo-subseccion" style="margin-top:0;">Cambiar contraseña</h3>
         <form id="formPassword">
           <label for="passActual">Contraseña actual *</label>
@@ -1090,38 +1487,28 @@
           <p id="errPassword"></p>
         </form>
       </div>
-    </div>
-
-    <div class="subpanel" id="subpanel-progreso">
-      <div class="form-card" id="progresoNivelCont">
-        <p class="sesiones-vacio">Cargando tu progreso…</p>
-      </div>
-    </div>
-
-    <div class="subpanel" id="subpanel-sesiones">
-      <div class="form-card">
-        <h3 class="titulo-subseccion" style="margin-top:0;">Dispositivos conectados</h3>
-        <p class="ayuda-editor" style="margin:0 0 14px;">Estos son los dispositivos y navegadores donde tu cuenta tiene la sesión iniciada actualmente. Si no reconoces alguno, ciérralo.</p>
-        <div id="listaSesiones" class="lista-sesiones"></div>
-        <button type="button" class="btn-secundari" id="btnCerrarOtrasSesiones" style="margin-top:14px;">Cerrar todos los demás dispositivos</button>
-        <p id="msgOkSesiones"></p>
-        <p id="errSesiones"></p>
+      <div class="form-card" id="seguridad2faCont" style="display:none">
+        <p class="sesiones-vacio">Cargando…</p>
       </div>
     </div>
   </div>
 
   <!-- AJUSTES DEL MEDIO: redes sociales + fichas de equipo -->
   <div class="panel" id="panel-funcionalidades">
-    <div class="subtabs" id="subtabsFuncionalidades">
-      <button class="activo" data-subtab="comentarios" id="subtabFuncComentarios_btn">Comentarios<span class="tab-badge-pendientes" id="badgeFuncComentarios" style="display:none;">0</span></button>
-      <button data-subtab="encuestas" id="subtabFuncEncuestas_btn">Encuestas</button>
-      <button data-subtab="newsletter" id="subtabFuncNewsletter_btn">Newsletter</button>
-      <button data-subtab="historial" id="subtabFuncHistorial_btn">Historial</button>
-      <button data-subtab="equipos">Equipos</button>
-      <button data-subtab="redesSociales" id="subtabRedesSociales_btn">Redes sociales</button>
+    <div class="subtabs func-nav" id="subtabsFuncionalidades">
+      <button class="activo" data-subtab="comentarios" id="subtabFuncComentarios_btn"><span class="func-nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></span><span class="func-nav-txt">Comentarios</span><span class="tab-badge-pendientes" id="badgeFuncComentarios" style="display:none;">0</span></button>
+      <button data-subtab="encuestas" id="subtabFuncEncuestas_btn"><span class="func-nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 20V10M12 20V4M6 20v-6"/></svg></span><span class="func-nav-txt">Encuestas</span></button>
+      <button data-subtab="newsletter" id="subtabFuncNewsletter_btn"><span class="func-nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg></span><span class="func-nav-txt">Newsletter</span></button>
+      <button data-subtab="anuncios" id="subtabFuncAnuncios_btn"><span class="func-nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11v2a1 1 0 001 1h2l5 4V6L6 10H4a1 1 0 00-1 1z"/><path d="M15.5 8.5a5 5 0 010 7M18.5 5.5a9 9 0 010 13"/></svg></span><span class="func-nav-txt">Anuncios</span></button>
+      <button data-subtab="historial" id="subtabFuncHistorial_btn"><span class="func-nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><span class="func-nav-txt">Historial</span></button>
+      <button data-subtab="equipos"><span class="func-nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg></span><span class="func-nav-txt">Equipos</span></button>
+      <button data-subtab="jugadores" id="subtabFuncJugadores_btn"><span class="func-nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg></span><span class="func-nav-txt">Jugadores</span></button>
+      <button data-subtab="informacion" id="subtabFuncInformacion_btn"><span class="func-nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.5v.01"/></svg></span><span class="func-nav-txt">Información</span></button>
+      <button data-subtab="redesSociales" id="subtabRedesSociales_btn"><span class="func-nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg></span><span class="func-nav-txt">Redes sociales</span></button>
     </div>
 
     <div class="subpanel activo" id="subpanel-comentarios">
+      <header class="func-head"><span class="func-head-ico verde"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></span><div class="func-head-txt"><h3>Moderación de comentarios</h3><p>Revisa lo que escriben los lectores antes de que aparezca en la web, y actúa sobre los comentarios ya publicados o denunciados.</p></div></header>
       <div class="subtabs" id="subtabsComentarios">
         <button class="activo" data-subtab="comentariosPendientes">Pendientes</button>
         <button data-subtab="comentariosAprobados">Aprobados</button>
@@ -1150,106 +1537,142 @@
       </div>
     </div>
 
-    <!-- ENCUESTAS: solo pueden votar lectores registrados, logueados y con
-         cuenta verificada (mismo requisito que comentar). Una encuesta
+    <!-- ENCUESTAS: puede votar cualquier lector, sin cuenta ni sesión (un
+         voto por persona y encuesta, ver hashVotanteEncuesta en el worker). Una encuesta
          puede estar ligada a una noticia, destacada en portada, o ambas
          cosas a la vez. -->
     <div class="subpanel" id="subpanel-encuestas">
-      <p class="ayuda-editor" style="margin:0 0 14px;">Solo pueden votar lectores con cuenta, con sesión iniciada y con el correo verificado. Una encuesta puede estar ligada a una noticia, destacarse en portada, o ambas cosas a la vez.</p>
-      <button type="button" class="btn-primari" id="btnNuevaEncuesta" style="margin-bottom:16px;">+ Nueva encuesta</button>
+      <header class="func-head"><span class="func-head-ico violeta"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 20V10M12 20V4M6 20v-6"/></svg></span><div class="func-head-txt"><h3>Encuestas</h3><p>Puede votar cualquier lector, sin cuenta ni sesión (un voto por persona y encuesta). Una encuesta puede ligarse a una noticia, destacarse en portada, o ambas cosas.</p></div><div class="func-head-acc"><button type="button" class="func-cta" id="btnNuevaEncuesta"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Nueva encuesta</button></div></header>
       <div id="listaEncuestas"><p class="solicitudes-vacio">Cargando...</p></div>
     </div>
 
     <!-- NEWSLETTER: suscriptores al boletín semanal (solo admins) -->
     <div class="subpanel" id="subpanel-newsletter">
-      <h3 class="titulo-subseccion" style="margin-top:0;">Boletín semanal</h3>
-      <p class="ayuda-editor" style="margin:0 0 20px;">
-        Personas suscritas desde el formulario del pie de página. El boletín se envía automáticamente una vez a la semana con las últimas noticias publicadas, sin que haga falta hacer nada aquí. También puedes forzar un envío puntual con el botón de abajo, eligiendo a quién se le manda.
-      </p>
-      <div class="newsletter-cabecera">
-        <div class="contador-usuarios" id="contadorNewsletter" style="display:none;">
-          <span class="contador-usuarios-numero" id="contadorNewsletterNumero">0 / 0</span>
-          <span class="contador-usuarios-etiqueta">activos de los registrados</span>
-        </div>
-        <button type="button" class="btn-enviar-newsletter" onclick="abrirModalEnviarNewsletter()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7Z"/></svg>
-          Enviar boletín ahora
-        </button>
+      <header class="func-head"><span class="func-head-ico celeste"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg></span><div class="func-head-txt"><h3>Boletín semanal</h3><p>Personas suscritas desde el formulario del pie de página. El boletín sale solo una vez a la semana con las últimas noticias; aquí puedes forzar un envío puntual eligiendo a quién se manda.</p></div><div class="func-head-acc"><button type="button" class="func-cta azul" onclick="abrirModalEnviarNewsletter()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7Z"/></svg>Enviar boletín ahora</button></div></header>
+      <div class="func-stats" id="newsletterStats">
+        <div class="func-stat"><span class="func-stat-ico verde"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span class="func-stat-txt"><span class="func-stat-num " id="newsletterStatActivos">—</span><span class="func-stat-et">Suscriptores activos</span></span></div>
+        <div class="func-stat"><span class="func-stat-ico rojo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></span><span class="func-stat-txt"><span class="func-stat-num " id="newsletterStatBajas">—</span><span class="func-stat-et">De baja</span></span></div>
+        <div class="func-stat"><span class="func-stat-ico azul"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/></svg></span><span class="func-stat-txt"><span class="func-stat-num pequeno" id="newsletterProximoEnvio">—</span><span class="func-stat-et">Próximo envío automático</span></span></div>
+        <div class="func-stat"><span class="func-stat-ico ambar"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><span class="func-stat-txt"><span class="func-stat-num pequeno" id="newsletterUltimoEnvio">—</span><span class="func-stat-et">Último envío automático</span></span></div>
       </div>
-      <div class="newsletter-envio-info" id="newsletterEnvioInfo" style="display:none;">
-        <div class="newsletter-envio-dato">
-          <span class="newsletter-envio-etiqueta">Próximo envío automático</span>
-          <span class="newsletter-envio-valor" id="newsletterProximoEnvio">—</span>
-        </div>
-        <div class="newsletter-envio-dato">
-          <span class="newsletter-envio-etiqueta">Último envío automático</span>
-          <span class="newsletter-envio-valor" id="newsletterUltimoEnvio">—</span>
-        </div>
-      </div>
+      <div class="func-barra-tabla"><label class="func-buscador"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input type="search" id="newsletterBuscador" placeholder="Buscar suscriptor por correo..." autocomplete="off"></label></div>
       <table class="lista">
-        <thead><tr><th>Email</th><th>Estado</th><th>Suscrito desde</th><th>Acciones</th></tr></thead>
+        <thead><tr><th>Suscriptor</th><th>Estado</th><th>Suscrito desde</th><th>Acciones</th></tr></thead>
         <tbody id="tablaNewsletter"></tbody>
       </table>
     </div>
 
+    <!-- ANUNCIOS POR CORREO: mensajes puntuales a colaboradores y lectores (solo admins) -->
+    <div class="subpanel" id="subpanel-anuncios">
+      <header class="func-head"><span class="func-head-ico celeste"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11v2a1 1 0 001 1h2l5 4V6L6 10H4a1 1 0 00-1 1z"/><path d="M15.5 8.5a5 5 0 010 7M18.5 5.5a9 9 0 010 13"/></svg></span><div class="func-head-txt"><h3>Anuncios por correo</h3><p>Escribe un mensaje y elige a quién llega: grupos enteros o personas concretas. Cada persona recibe su propio correo; nadie ve las direcciones de los demás.</p></div></header>
+      <p id="anuncioAvisoConfig" class="an-aviso" style="display:none;">El envío de correo no está configurado en el servidor (falta RESEND_API_KEY). Puedes redactar, pero no enviar.</p>
+
+      <div class="an-layout">
+        <div class="an-col-izq">
+          <!-- 1 · MENSAJE -->
+          <section class="an-card">
+            <header class="an-card-cab"><span class="an-paso">1</span><div><h4>Mensaje</h4><p>Lo que van a leer en su correo.</p></div></header>
+            <label class="an-label" for="anuncioAsunto">Asunto</label>
+            <input type="text" id="anuncioAsunto" class="an-input" maxlength="150" placeholder="Ej.: Cambios en el calendario de publicaciones">
+            <label class="an-label" for="anuncioMensaje">Texto del anuncio</label>
+            <textarea id="anuncioMensaje" class="an-input an-textarea" rows="8" maxlength="5000" placeholder="Escribe el anuncio. Una línea en blanco separa párrafos."></textarea>
+            <div class="an-contador"><span class="an-contador-barra"><i id="anuncioMensajeBarra"></i></span><span><b id="anuncioMensajeContador">0</b> / 5000</span></div>
+            <div class="an-boton-fila">
+              <div><label class="an-label" for="anuncioBotonTexto">Texto del botón <em>(opcional)</em></label><input type="text" id="anuncioBotonTexto" class="an-input" maxlength="40" placeholder="Ej.: Leer más"></div>
+              <div><label class="an-label" for="anuncioBotonUrl">Enlace del botón</label><input type="url" id="anuncioBotonUrl" class="an-input" maxlength="500" placeholder="https://elotrofutbol.media/..."></div>
+            </div>
+          </section>
+
+          <!-- 2 · DESTINATARIOS -->
+          <section class="an-card">
+            <header class="an-card-cab"><span class="an-paso">2</span><div><h4>Destinatarios</h4><p>Marca un grupo entero o pulsa <b>Elegir</b> para seleccionar personas una a una.</p></div>
+              <div class="an-presets"><button type="button" class="an-preset" data-preset="equipo">Todo el equipo</button><button type="button" class="an-preset an-preset-limpiar" data-preset="limpiar">Limpiar</button></div>
+            </header>
+            <div id="anuncioGrupos" class="an-grupos"><p class="an-vacio">Cargando personas…</p></div>
+            <p class="an-nota">Los suscriptores del boletín han pedido recibir correos y llevan enlace de baja. A los lectores con cuenta, mándales solo avisos del servicio (cambios en la web, cuentas, normas), no publicidad.</p>
+          </section>
+        </div>
+
+        <aside class="an-col-der">
+          <!-- VISTA PREVIA -->
+          <section class="an-card an-previa-card">
+            <header class="an-card-cab an-card-cab-peq"><div><h4>Vista previa</h4><p>Así se verá en la bandeja de entrada.</p></div></header>
+            <div class="an-correo">
+              <div class="an-correo-cab"><span>ELOTROFÚTBOLTV</span></div>
+              <div class="an-correo-raya"></div>
+              <div class="an-correo-cuerpo">
+                <span class="an-correo-etiqueta">Anuncio</span>
+                <h5 id="anuncioPrevAsunto" class="an-vacio-prev">El asunto aparecerá aquí</h5>
+                <div id="anuncioPrevMensaje" class="an-correo-texto"><p class="an-vacio-prev">Tu mensaje aparecerá aquí mientras lo escribes.</p></div>
+                <span id="anuncioPrevBoton" class="an-correo-boton" style="display:none;"></span>
+              </div>
+              <div class="an-correo-pie">Recibes este correo de ELOTROFÚTBOLTV por ser parte de la comunidad del medio.</div>
+            </div>
+          </section>
+
+          <!-- RESUMEN + ENVÍO -->
+          <section class="an-card an-resumen">
+            <div class="an-total"><strong id="anuncioTotalSeleccion">0</strong><span>personas recibirán este anuncio <small id="anuncioTotalNota"></small></span></div>
+            <div class="an-pila" id="anuncioPila" aria-hidden="true"></div>
+            <div class="an-desglose" id="anuncioDesglose"><span class="an-vacio">Aún no has elegido a nadie.</span></div>
+            <div class="an-acciones">
+              <button type="button" class="an-btn an-btn-sec" id="btnAnuncioPrueba" onclick="enviarPruebaAnuncio()">Enviarme una prueba</button>
+              <button type="button" class="an-btn an-btn-pri" id="btnAnuncioEnviar" onclick="enviarAnuncio()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 3L3 10.5l7 3 3 7z"/><path d="M10 13.5L21 3"/></svg>Enviar anuncio</button>
+            </div>
+            <div class="an-progreso" id="anuncioProgreso" style="display:none;"><div class="an-progreso-barra"><span id="anuncioProgresoRelleno"></span></div><p id="anuncioProgresoTexto"></p></div>
+          </section>
+        </aside>
+      </div>
+
+      <h4 class="an-hist-titulo">Anuncios enviados</h4>
+      <div id="tablaAnuncios" class="an-hist"><p class="an-vacio">Cargando…</p></div>
+    </div>
+
     <!-- HISTORIAL DE ACCIONES (solo admins) -->
     <div class="subpanel" id="subpanel-historial">
-      <h3 class="titulo-subseccion" style="margin-top:0;">Historial de acciones</h3>
-      <p class="ayuda-editor" style="margin:0 0 16px;">Registro de lo que hace cada persona del equipo: quién, qué acción, sobre qué y cuándo. Solo lo puede ver un administrador.</p>
-
-      <div class="form-card" style="margin-bottom:18px;">
-        <div class="row2">
-          <div>
-            <label>Buscar</label>
-            <input type="text" id="hist_q" placeholder="Buscar en la descripción o nombre...">
-          </div>
-          <div>
-            <label>Usuario</label>
-            <select id="hist_usuario"><option value="">— Todos —</option></select>
-          </div>
-        </div>
-        <div class="row2">
-          <div>
-            <label>Tipo de acción</label>
-            <select id="hist_accion"><option value="">— Todas —</option></select>
-          </div>
-          <div>
-            <label>Entidad</label>
-            <select id="hist_entidad">
-              <option value="">— Todas —</option>
-              <option value="articulo">Noticias/crónicas</option>
-              <option value="usuario">Usuarios</option>
-              <option value="media">Contenido multimedia</option>
-              <option value="resultado">Resultados</option>
-              <option value="settings">Ajustes del medio</option>
-              <option value="sesion">Sesión</option>
-            </select>
-          </div>
-        </div>
-        <div class="row2">
-          <div>
-            <label>Desde</label>
-            <input type="date" id="hist_desde">
-          </div>
-          <div>
-            <label>Hasta</label>
-            <input type="date" id="hist_hasta">
-          </div>
-        </div>
-        <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;">
+      <header class="func-head"><span class="func-head-ico ambar"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><div class="func-head-txt"><h3>Historial de acciones</h3><p>Registro de lo que hace cada persona del equipo: quién, qué acción, sobre qué y cuándo. Solo lo puede ver un administrador.</p></div></header>
+      <div class="func-filtros">
+        <div><label for="hist_q">Buscar</label><input type="text" id="hist_q" placeholder="Descripción o nombre..."></div>
+        <div><label for="hist_usuario">Usuario</label><select id="hist_usuario"><option value="">— Todos —</option></select></div>
+        <div><label for="hist_accion">Tipo de acción</label><select id="hist_accion"><option value="">— Todas —</option></select></div>
+        <div><label for="hist_entidad">Entidad</label>
+          <select id="hist_entidad">
+            <option value="">— Todas —</option>
+            <option value="articulo">Noticias/crónicas</option>
+            <option value="noticia_rapida">Noticias rápidas</option>
+            <option value="usuario">Usuarios</option>
+            <option value="media">Contenido multimedia</option>
+            <option value="resultado">Resultados</option>
+            <option value="club">Clubes</option>
+            <option value="comentario">Comentarios</option>
+            <option value="encuesta">Encuestas</option>
+            <option value="votacion_interna">Votaciones internas</option>
+            <option value="acreditacion">Acreditaciones</option>
+            <option value="formulario">Formularios</option>
+            <option value="producto_tienda">Productos de tienda</option>
+            <option value="pedido_tienda">Pedidos de tienda</option>
+            <option value="lector">Lectores</option>
+            <option value="newsletter">Boletín</option>
+            <option value="anuncio">Anuncios por correo</option>
+            <option value="settings">Ajustes del medio</option>
+            <option value="sesion">Sesión</option>
+          </select></div>
+        <div><label for="hist_desde">Desde</label><input type="date" id="hist_desde"></div>
+        <div><label for="hist_hasta">Hasta</label><input type="date" id="hist_hasta"></div>
+        <div class="func-filtros-botones">
           <button type="button" class="btn-primari" id="btnFiltrarHistorial">Filtrar</button>
           <button type="button" class="btn-secundari" id="btnLimpiarHistorial">Limpiar filtros</button>
         </div>
       </div>
 
       <table class="lista">
-        <thead><tr><th>Fecha</th><th>Usuario</th><th>Acción</th><th>Descripción</th><th>IP</th></tr></thead>
+        <thead><tr><th>Fecha</th><th>Persona</th><th>Acción</th><th>Descripción</th><th>IP</th></tr></thead>
         <tbody id="tablaHistorial"></tbody>
       </table>
 
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;flex-wrap:wrap;gap:10px;">
+      <div class="func-paginacion">
         <span id="historialResumen" class="ayuda-editor" style="margin:0;"></span>
-        <div style="display:flex;gap:10px;">
+        <div>
           <button type="button" class="btn-secundari" id="btnHistorialAnterior">← Anterior</button>
           <button type="button" class="btn-secundari" id="btnHistorialSiguiente">Siguiente →</button>
         </div>
@@ -1257,27 +1680,87 @@
     </div>
 
     <div class="subpanel" id="subpanel-redesSociales">
-      <div class="form-card">
-        <p class="ayuda-editor" style="margin:0 0 4px;">Estos enlaces son los mismos que se muestran en toda la web (cabecera, pie y portada). Cambiándolos aquí se actualizan en un único sitio.</p>
-        <form id="formRedes">
-          <label for="red_twitter">X (Twitter)</label>
-          <input type="url" id="red_twitter" placeholder="https://twitter.com/...">
-          <label for="red_instagram">Instagram</label>
-          <input type="url" id="red_instagram" placeholder="https://instagram.com/...">
-          <label for="red_tiktok">TikTok</label>
-          <input type="url" id="red_tiktok" placeholder="https://tiktok.com/@...">
-          <label for="red_youtube">YouTube</label>
-          <input type="url" id="red_youtube" placeholder="https://youtube.com/@...">
+      <header class="func-head"><span class="func-head-ico verde"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg></span><div class="func-head-txt"><h3>Redes sociales</h3><p>Estos enlaces se muestran en toda la web (cabecera, pie y portada). Cámbialos aquí y se actualizan en un único sitio.</p></div></header>
+      <form id="formRedes">
+        <div class="func-redes">
+          <div class="func-red"><span class="func-red-ico x"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.9 2H22l-7.2 8.2L23.3 22h-6.6l-5.2-6.8L5.5 22H2.4l7.7-8.8L1.9 2h6.8l4.7 6.2L18.9 2zm-1.2 18h1.8L7.4 3.9H5.5L17.7 20z"/></svg></span><div class="func-red-campo"><label for="red_twitter">X (Twitter)</label><input type="url" id="red_twitter" placeholder="https://twitter.com/..."></div></div>
+          <div class="func-red"><span class="func-red-ico ig"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 7a5 5 0 100 10 5 5 0 000-10zm0 8.2a3.2 3.2 0 110-6.4 3.2 3.2 0 010 6.4zM17.3 5.5a1.2 1.2 0 100 2.4 1.2 1.2 0 000-2.4zM12 2.2c3.2 0 3.6 0 4.8.1 3.3.1 4.8 1.7 4.9 4.9.1 1.3.1 1.6.1 4.8s0 3.6-.1 4.8c-.1 3.2-1.7 4.8-4.9 4.9-1.3.1-1.6.1-4.8.1s-3.6 0-4.8-.1c-3.3-.1-4.8-1.7-4.9-4.9C2.2 15.6 2.2 15.2 2.2 12s0-3.6.1-4.8C2.4 3.9 4 2.4 7.2 2.3 8.4 2.2 8.8 2.2 12 2.2z" fill-rule="evenodd" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></span><div class="func-red-campo"><label for="red_instagram">Instagram</label><input type="url" id="red_instagram" placeholder="https://instagram.com/..."></div></div>
+          <div class="func-red"><span class="func-red-ico tt"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.6 2h-3.2v13.3a2.9 2.9 0 11-2.9-2.9c.3 0 .6 0 .8.1V9.2a6.1 6.1 0 105.3 6V8.9a7.6 7.6 0 004.4 1.4V7.1a4.4 4.4 0 01-4.4-5.1z"/></svg></span><div class="func-red-campo"><label for="red_tiktok">TikTok</label><input type="url" id="red_tiktok" placeholder="https://tiktok.com/@..."></div></div>
+          <div class="func-red"><span class="func-red-ico yt"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.6 7.2a2.5 2.5 0 00-1.8-1.8C18.2 5 12 5 12 5s-6.2 0-7.8.4A2.5 2.5 0 002.4 7.2C2 8.8 2 12 2 12s0 3.2.4 4.8a2.5 2.5 0 001.8 1.8C5.8 19 12 19 12 19s6.2 0 7.8-.4a2.5 2.5 0 001.8-1.8c.4-1.6.4-4.8.4-4.8s0-3.2-.4-4.8zM10 15V9l5.2 3L10 15z"/></svg></span><div class="func-red-campo"><label for="red_youtube">YouTube</label><input type="url" id="red_youtube" placeholder="https://youtube.com/@..."></div></div>
+        </div>
+        <div class="func-redes-pie">
           <button type="submit" class="btn-primari">Guardar redes sociales</button>
           <p id="msgOkRedes">Guardado correctamente.</p>
           <p id="errRedes"></p>
-        </form>
+        </div>
+      </form>
+    </div>
+
+    <div class="subpanel" id="subpanel-informacion">
+      <header class="func-head"><span class="func-head-ico verde"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.5v.01"/></svg></span><div class="func-head-txt"><h3>Información</h3><p>Todo lo que el equipo necesita tener a mano: el horario de publicación y el organigrama de todo el medio.</p></div></header>
+
+      <section class="info-seccion" id="infoHorario" aria-labelledby="infoHorarioTitulo">
+        <header class="info-cab">
+          <span class="info-cab-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17M8 14.5h3M13.5 14.5h3"/></svg></span>
+          <div class="info-cab-txt">
+            <span class="info-eyebrow">Calendario editorial</span>
+            <h4 class="info-titulo" id="infoHorarioTitulo">Horario de publicación</h4>
+            <p class="info-sub">Qué toca publicar cada día, en qué franja y quién se encarga. Pulsa una tarea para ver a las personas asignadas; un administrador puede editarlo todo.</p>
+          </div>
+        </header>
+        <div class="form-card cc-card-wrap">
+          <div id="calContenido"></div>
+        </div>
+        <p class="ayuda-editor cc-ayuda">Si publicas una noticia, previa o crónica un día en el que no le toca, se publica igualmente en la web pero <strong>no se subirá a redes sociales</strong>.</p>
+      </section>
+
+      <section class="info-seccion" id="infoOrganigrama" aria-labelledby="infoOrganigramaTitulo">
+        <header class="info-cab">
+          <span class="info-cab-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="5" rx="1.5"/><rect x="3" y="16" width="6" height="5" rx="1.5"/><rect x="15" y="16" width="6" height="5" rx="1.5"/><path d="M12 8v4M6 16v-4h12v4"/></svg></span>
+          <div class="info-cab-txt">
+            <span class="info-eyebrow">El medio</span>
+            <h4 class="info-titulo" id="infoOrganigramaTitulo">Organigrama del medio</h4>
+            <p class="info-sub">Quién es quién en todo el medio (dirección, redacción, redes, fotografía, tienda, web…) y de quién depende cada persona; una casilla puede depender de varias a la vez. Pulsa una casilla para ver su detalle; un administrador puede configurarlo.</p>
+          </div>
+        </header>
+        <div id="organigrama"></div>
+      </section>
+    </div>
+
+    <div class="subpanel" id="subpanel-jugadores">
+      <header class="func-head"><span class="func-head-ico verde"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg></span><div class="func-head-txt"><h3>Jugadores</h3><p>Los tops y las fichas se calculan solos con el minuto a minuto. Aquí arreglas lo que el cálculo no puede adivinar: fusiona fichas duplicadas («Rodrigo» y «Rodrigo Martínez»), pon nombre a un «Dorsal 9» o oculta una ficha errónea.</p></div></header>
+      <div class="jug-adm" id="jugAdm">
+        <div class="jug-stats" id="jugStats" aria-live="polite"></div>
+        <div class="jug-filtros">
+          <select id="jugComp" aria-label="Competición"><option value="hypermotion">LaLiga Hypermotion</option><option value="primera_federacion">Primera Federación</option><option value="segunda_federacion">Segunda Federación</option></select>
+          <select id="jugGrupo" aria-label="Grupo" hidden></select>
+          <select id="jugClub" aria-label="Club"><option value="">Todos los clubes</option></select>
+          <input type="search" id="jugBuscar" placeholder="Buscar nombre o dorsal" autocomplete="off" aria-label="Buscar jugador">
+        </div>
+        <div class="jug-editor" id="jugEditor" hidden>
+          <div class="jug-editor-txt" id="jugEditorTxt"></div>
+          <div class="jug-editor-campos">
+            <label>Nombre del jugador<input type="text" id="jugNombre" maxlength="80" autocomplete="off"></label>
+            <label>Dorsal<input type="number" id="jugDorsal" min="0" max="999" inputmode="numeric"></label>
+          </div>
+          <div class="jug-editor-acc">
+            <button type="button" class="jug-btn jug-btn-pri" id="jugGuardar">Guardar</button>
+            <button type="button" class="jug-btn" id="jugCancelar">Cancelar</button>
+          </div>
+        </div>
+        <h4 class="jug-tit">Fichas automáticas <span class="jug-tit-n" id="jugTotal"></span></h4>
+        <p class="jug-ayuda">Marca las que sean la misma persona (del mismo club) y pulsa «Fusionar». Con una sola marcada puedes ponerle nombre o dorsal. También vale pulsar en la fila.</p>
+        <div id="jugLista"><p class="solicitudes-vacio">Cargando...</p></div>
+        <h4 class="jug-tit">Jugadores corregidos <span class="jug-tit-n" id="jugCorregidosN"></span></h4>
+        <div id="jugCorregidos"></div>
       </div>
     </div>
 
     <div class="subpanel" id="subpanel-equipos">
-      <div class="form-card equipo-info-card">
-        <p class="ayuda-editor" style="margin:0 0 4px;">Ficha informativa que se muestra en la página de cada equipo (entrenador, estadio, año de fundación, ciudad). Si un club no tiene datos aquí, simplemente no se muestra ningún recuadro en su página.</p>
+      <header class="func-head"><span class="func-head-ico rojo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg></span><div class="func-head-txt"><h3>Fichas de equipo</h3><p>Datos que se muestran en la página de cada club: entrenador, estadio, año de fundación y ciudad. Si un club no tiene ficha, simplemente no se muestra el recuadro.</p></div></header>
+      <div class="func-equipos">
+      <div class="func-col-form"><div class="form-card equipo-info-card">
+        <p class="ayuda-editor" style="margin:0 0 4px;">Elige un club y rellena sus datos. Si ya tiene ficha, se cargará para editarla.</p>
         <form id="formEquipoInfo">
           <label for="equipoInfoClub">Club *</label>
           <select id="equipoInfoClub" required>
@@ -1313,20 +1796,13 @@
           <p id="msgOkEquipoInfo">Guardado correctamente.</p>
           <p id="errEquipoInfo"></p>
         </form>
-      </div>
+      </div></div>
 
-      <h3 class="titulo-subseccion">Equipos con ficha</h3>
+      <div class="func-col-lista">
+      <h3 class="func-subtitulo" style="margin-top:0;">Equipos con ficha</h3>
       <div id="listaEquiposInfo"><p class="solicitudes-vacio">Cargando...</p></div>
 
-      <div id="bloqueEquiposInfoMisPendientes" style="display:none;">
-        <h3 class="titulo-subseccion">Tus propuestas pendientes de aprobación</h3>
-        <div id="listaEquiposInfoMisPendientes"></div>
       </div>
-
-      <div id="bloqueEquiposInfoPendientes" style="display:none;">
-        <h3 class="titulo-subseccion">Propuestas pendientes de aprobación</h3>
-        <p class="ayuda-editor" style="margin:0 0 8px;">Fichas enviadas por redactores de Nivel 1: no se aplican hasta que las apruebes.</p>
-        <div id="listaEquiposInfoPendientes"><p class="solicitudes-vacio">Cargando...</p></div>
       </div>
     </div>
   </div>
@@ -1399,6 +1875,23 @@
           </div>
           <input type="hidden" id="visibilidadSubida" value="publico">
 
+          <div id="carpetaSubidaWrap" style="display:none;">
+            <label for="carpetaSubida">Carpeta (opcional)</label>
+            <select id="carpetaSubida">
+              <option value="">— Sin carpeta —</option>
+              <option value="__nueva__">+ Nueva carpeta…</option>
+            </select>
+            <div id="carpetaNuevaWrap" style="display:none; margin-top:8px;">
+              <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <input type="text" id="carpetaNuevaNombre" maxlength="60" placeholder="Nombre de la carpeta (ej: Entrevistas pretemporada)" autocomplete="off" style="flex:1; min-width:200px;">
+                <button type="button" class="btn-secundari" id="btnCrearCarpeta">Crear carpeta</button>
+                <button type="button" class="btn-secundari" id="btnCancelarCarpeta">Cancelar</button>
+              </div>
+              <p id="errCarpetaNueva" class="ayuda-editor" style="display:none; margin:4px 0 0; color:#c0392b;"></p>
+            </div>
+            <p class="ayuda-editor" style="margin:4px 0 0;">Las carpetas organizan el contenido privado y las ve todo el equipo que sube contenido.</p>
+          </div>
+
           <label>Archivos *</label>
           <div class="dropzone" id="dropzone">
             <div class="icono-drop">
@@ -1408,6 +1901,17 @@
             <span>o haz clic para seleccionarlos — puedes subir varios a la vez, en la calidad original</span>
             <input type="file" id="inputArchivos" multiple accept="image/*,video/*">
           </div>
+
+          <details class="guia-pesado" id="guiaPesado">
+            <summary>¿Tu vídeo pesa más de 90 MB? Mira cómo subirlo</summary>
+            <ol>
+              <li>Añade el vídeo aquí igualmente: en su fila aparecerá un campo para pegar un enlace.</li>
+              <li>Entra en <a href="https://www.mediafire.com" target="_blank" rel="noopener noreferrer">MediaFire</a> (también vale Google Drive, Mega o WeTransfer) y sube allí el archivo. Es gratis.</li>
+              <li>Cuando termine, copia el enlace para compartirlo (debe empezar por <b>https://</b>). En Drive, deja el acceso en «Cualquiera con el enlace».</li>
+              <li>Pega ese enlace en la fila del vídeo, rellena el título y pulsa «Subir contenido». No se vuelve a subir el vídeo: solo se guarda el enlace.</li>
+            </ol>
+            <p>El equipo lo verá en «Ver contenido subido» con la etiqueta «Enlace externo» y podrá abrirlo y descargarlo. Este contenido es privado: no sale en las galerías públicas. No borres el archivo de MediaFire hasta que el equipo lo haya descargado.</p>
+          </details>
 
           <div class="resumen-subida" id="resumenSubida">
             <div class="dato"><b id="resumenCantidad">0</b><small>Archivos</small></div>
@@ -1435,6 +1939,16 @@
             <button data-filtro-media="video">Vídeos</button>
           </div>
         </div>
+        <div class="carpetas-contenido" id="carpetasContenido"></div>
+        <div class="barra-seleccion-media" id="barraSeleccionMedia" style="display:none;">
+          <span class="barra-seleccion-texto" id="textoSeleccionMedia">0 seleccionados</span>
+          <button type="button" class="btn-secundari" id="btnSeleccionarTodoMedia">Seleccionar todo</button>
+          <label for="moverASelectMedia" class="barra-seleccion-etiqueta">Mover a</label>
+          <select id="moverASelectMedia"></select>
+          <button type="button" class="btn-primari" id="btnMoverSeleccionMedia" disabled>Mover</button>
+          <button type="button" class="btn-secundari" id="btnCancelarSeleccionMedia">Cancelar</button>
+        </div>
+        <h4 class="carpetas-subtitulo" id="subtituloMedia" style="display:none;"></h4>
         <div class="galeria-contenido" id="galeriaContenido"></div>
       </div>
     </div>
@@ -1470,25 +1984,39 @@
     </div>
 
     <div class="subpanel activo" id="subpanel-redactores">
-      <h3 class="titulo-subseccion">PIN de "Última hora"</h3>
-      <div class="form-card" style="margin-bottom:24px;">
-        <p class="ayuda-editor" style="margin:0 0 10px;">
-          Un único PIN de 4 dígitos, compartido por todos los redactores, que permite publicar directamente una noticia urgente sin pasar por revisión. Cada vez que se usa se regenera solo, así que no hace falta gestionarlo por persona.
-        </p>
+      <div class="usuarios-stats" id="usuariosStats">
+        <button type="button" class="usuarios-stat" data-rol="todos"><span class="usuarios-stat-num" id="statUsuTotal">0</span><span class="usuarios-stat-etq">Usuarios</span></button>
+        <button type="button" class="usuarios-stat stat-redactor" data-rol="redactor"><span class="usuarios-stat-num" id="statUsuRedactores">0</span><span class="usuarios-stat-etq">Redactores</span></button>
+        <button type="button" class="usuarios-stat stat-fotografo" data-rol="fotografo"><span class="usuarios-stat-num" id="statUsuFotografos">0</span><span class="usuarios-stat-etq">Fotógrafos</span></button>
+        <button type="button" class="usuarios-stat stat-admin" data-rol="admin"><span class="usuarios-stat-num" id="statUsuAdmins">0</span><span class="usuarios-stat-etq">Administradores</span></button>
+        <button type="button" class="usuarios-stat stat-aviso" data-estado="sin_acceso"><span class="usuarios-stat-num" id="statUsuSinAcceso">0</span><span class="usuarios-stat-etq">Sin primer acceso</span></button>
+        <button type="button" class="usuarios-stat stat-inactivo" data-estado="inactivos"><span class="usuarios-stat-num" id="statUsuInactivos">0</span><span class="usuarios-stat-etq">Inactivos</span></button>
+      </div>
+
+      <div class="usuarios-pin">
+        <div class="usuarios-pin-texto">
+          <strong>PIN de "Última hora"</strong>
+          <span>Un único PIN de 4 dígitos, compartido por todos los redactores, que permite publicar una noticia urgente sin pasar por revisión. Se regenera solo cada vez que se usa.</span>
+        </div>
         <button type="button" class="btn-ver-pin-ultima-hora" id="btnVerPinUltimaHora">Ver PIN actual</button>
       </div>
 
-      <h3 class="titulo-subseccion">Crear nuevo usuario</h3>
-      <div class="form-card" style="margin-bottom:24px;">
+      <details class="usuarios-crear" id="usuariosCrear">
+      <summary><span class="usuarios-crear-mas">+</span> Crear nuevo usuario</summary>
+      <div class="form-card usuarios-crear-card">
         <p class="ayuda-editor" style="margin:0 0 4px;">Por seguridad las contraseñas se guardan cifradas y no se pueden consultar. Si alguien pierde la suya, restablécela desde la tabla de abajo: se generará una nueva que deberás comunicarle.</p>
         <form id="formNuevoUsuario">
-          <label>Usuario *</label>
-          <input type="text" id="nu_username" placeholder="p. ej. maria_gomez" required>
           <div class="row2">
+            <div>
+              <label>Usuario *</label>
+              <input type="text" id="nu_username" placeholder="p. ej. maria_gomez" required>
+            </div>
             <div>
               <label>Nombre *</label>
               <input type="text" id="nu_nombre" required>
             </div>
+          </div>
+          <div class="row2">
             <div>
               <label>Rol</label>
               <select id="nu_rol">
@@ -1497,11 +2025,13 @@
                 <option value="admin">Administrador</option>
               </select>
             </div>
+            <div>
+              <label>Correo electrónico</label>
+              <input type="email" id="nu_email">
+            </div>
           </div>
-          <label>Correo electrónico</label>
-          <input type="email" id="nu_email">
-          <label>Categoría</label>
-          <p class="ayuda-editor" style="margin:0 0 8px;">Opcional. Busca y añade una categoría (p. ej. "Arbitraje" o "Jurisdicción deportiva") para que este redactor solo pueda publicar en ella y no tenga equipo. Déjalo sin especificar para un redactor normal (con equipo, cualquier categoría).</p>
+          <label>Categoría complementaria</label>
+          <p class="ayuda-editor" style="margin:0 0 8px;">Opcional. Añade una categoría (p. ej. "Arbitraje" o "Jurisdicción deportiva") como complemento de sus equipos. No limita lo que puede publicar.</p>
           <div class="equipos-picker" id="nu_categoria_fija_picker">
             <div class="equipos-picker-cabecera">
               <span class="equipos-picker-contador" id="nu_categoria_fija_contador">0 seleccionadas</span>
@@ -1529,14 +2059,45 @@
           <p id="errUsuario"></p>
         </form>
       </div>
+      </details>
 
-      <h3 class="titulo-subseccion">Usuarios ya registrados</h3>
+      <h3 class="titulo-subseccion">Usuarios registrados</h3>
       <div class="contador-usuarios" id="contadorUsuarios" style="display:none;">
         <span class="contador-usuarios-numero" id="contadorUsuariosNumero">0 / 0</span>
         <span class="contador-usuarios-etiqueta">han iniciado sesión de los registrados</span>
+        <span class="contador-barra" aria-hidden="true"><i></i></span>
       </div>
-      <table class="lista">
-        <thead><tr><th>Usuario</th><th>Nombre</th><th>Rol</th><th>Correo</th><th>Equipo / Categoría</th><th>Nivel</th><th>Estado</th><th>Acciones</th></tr></thead>
+      <div class="usuarios-toolbar" id="usuariosToolbar">
+        <div class="usuarios-toolbar-fila">
+          <input type="search" id="usuariosBuscar" class="usuarios-buscar" placeholder="Buscar por usuario, nombre, correo o equipo…" autocomplete="off" aria-label="Buscar usuarios">
+          <select id="usuariosOrden" class="usuarios-orden" aria-label="Ordenar usuarios">
+            <option value="nombre">Orden: nombre (A-Z)</option>
+            <option value="recientes">Orden: más recientes</option>
+            <option value="antiguos">Orden: más antiguos</option>
+            <option value="nivel">Orden: nivel (mayor primero)</option>
+          </select>
+        </div>
+        <div class="usuarios-toolbar-fila">
+          <div class="usuarios-chips" id="usuariosChipsRol" role="group" aria-label="Filtrar por rol">
+            <button type="button" class="activo" data-rol="todos">Todos <b>0</b></button>
+            <button type="button" data-rol="redactor">Redactores <b>0</b></button>
+            <button type="button" data-rol="fotografo">Fotógrafos <b>0</b></button>
+            <button type="button" data-rol="admin">Administradores <b>0</b></button>
+          </div>
+          <div class="usuarios-chips" id="usuariosChipsEstado" role="group" aria-label="Filtrar por estado">
+            <button type="button" class="activo" data-estado="todos">Cualquier estado</button>
+            <button type="button" data-estado="activos">Activos <b>0</b></button>
+            <button type="button" data-estado="inactivos">Inactivos <b>0</b></button>
+            <button type="button" data-estado="sin_acceso">Sin primer acceso <b>0</b></button>
+          </div>
+        </div>
+        <div class="usuarios-toolbar-pie">
+          <span id="usuariosResultado" class="usuarios-resultado" aria-live="polite"></span>
+          <button type="button" id="usuariosLimpiar" class="usuarios-limpiar" style="display:none;">Quitar filtros</button>
+        </div>
+      </div>
+      <table class="lista tabla-usuarios">
+        <thead><tr><th>Usuario</th><th>Nombre</th><th>Rol</th><th>Correo</th><th>Equipo / Categoría</th><th>Situación</th><th>Estado</th><th>Acciones</th></tr></thead>
         <tbody id="tablaUsuarios"></tbody>
       </table>
     </div>
@@ -1559,11 +2120,13 @@
   </div>
 
   <!-- USUARIOS (solo admins) -->
-  <!-- SOLICITUDES DE EDICIÓN -->
+  <!-- SOLICITUDES: todo lo que alguien pide y hay que responder (ediciones, propuestas de fichas de equipo y formularios, incluido el de acreditaciones) -->
   <div class="panel" id="panel-solicitudes">
     <div class="subtabs" id="subtabsSolicitudes">
-      <button class="activo" data-subtab="solicitudesRecibidas">Pendientes de mi respuesta</button>
-      <button data-subtab="solicitudesMias">Mis solicitudes</button>
+      <button class="activo" data-subtab="solicitudesRecibidas">Ediciones pendientes de mi respuesta</button>
+      <button data-subtab="solicitudesMias">Mis solicitudes de edición</button>
+      <button data-subtab="propuestasEquipos" id="subtabSolPropuestasEquipos_btn">Propuestas de equipos<span class="tab-badge-pendientes" id="badgeSolPropuestasEquipos" style="display:none;">0</span></button>
+      <button data-subtab="formularios" id="subtabSolFormularios_btn">Formularios</button>
     </div>
 
     <div class="subpanel activo" id="subpanel-solicitudesRecibidas">
@@ -1574,6 +2137,200 @@
     <div class="subpanel" id="subpanel-solicitudesMias">
       <p class="ayuda-editor" style="margin:0 0 14px;">Solicitudes que tú has enviado para poder editar algo que no es tuyo.</p>
       <div id="listaSolicitudesMias"><p class="solicitudes-vacio">Cargando...</p></div>
+    </div>
+
+    <!-- Propuestas de fichas de equipo (antes dentro de Funcionalidades > Equipos) -->
+    <div class="subpanel" id="subpanel-propuestasEquipos">
+      <p class="ayuda-editor" style="margin:0 0 14px;">Fichas de equipo propuestas por redactores de Nivel 1: no se aplican hasta que un administrador (o un redactor de Nivel 4) las aprueba. Las fichas ya guardadas se gestionan en Funcionalidades &rsaquo; Equipos.</p>
+      <div id="bloqueEquiposInfoMisPendientes" style="display:none;">
+        <h3 class="func-subtitulo">Tus propuestas pendientes de aprobación</h3>
+        <div id="listaEquiposInfoMisPendientes"></div>
+      </div>
+
+      <div id="bloqueEquiposInfoPendientes" style="display:none;">
+        <h3 class="func-subtitulo">Propuestas pendientes de aprobación</h3>
+        <p class="ayuda-editor" style="margin:0 0 8px;">Fichas enviadas por redactores de Nivel 1: no se aplican hasta que las apruebes.</p>
+        <div id="listaEquiposInfoPendientes"><p class="solicitudes-vacio">Cargando...</p></div>
+      </div>
+      <p class="solicitudes-vacio" id="equiposInfoSolVacio" style="display:none;">No tienes propuestas de fichas de equipo pendientes.</p>
+    </div>
+
+    <!-- FORMULARIOS (solo admins): lista de formularios. "Acreditaciones" es un formulario ya creado
+         (su panel, sin cambios, está en #formAcredVista) y se pueden crear más (#formCustomVista). -->
+    <div class="subpanel" id="subpanel-formularios">
+      <div id="formListaVista">
+        <div class="acred-hero">
+          <div class="acred-hero-texto">
+            <h3 class="titulo-subseccion" style="margin-top:0;">Formularios</h3>
+            <p class="ayuda-editor" style="margin:0;">Todos los formularios públicos del medio. Cada uno tiene su enlace y su bandeja de respuestas. El de acreditaciones ya está creado; crea los demás que necesites (inscripciones, colaboraciones, encuestas, contacto...).</p>
+          </div>
+          <div class="acred-hero-acciones">
+            <button type="button" class="acred-btn" onclick="abrirEditorFormulario()">+ Crear formulario</button>
+          </div>
+        </div>
+        <div class="fmz-grid" id="formGrid"></div>
+      </div>
+
+      <div id="formAcredVista" hidden>
+      <button type="button" class="acred-btn acred-btn-sec fmz-volver" onclick="volverListaFormularios()">← Todos los formularios</button>
+      <div class="acred-hero">
+        <div class="acred-hero-texto">
+          <h3 class="titulo-subseccion" style="margin-top:0;">Acreditaciones</h3>
+          <p class="ayuda-editor" style="margin:0;">
+            Solicitudes recibidas desde el formulario público. Elige abajo cómo se accede al formulario (con PIN, con login de colaborador o libre para solicitar) y comparte el enlace: la solicitud aparece aquí. Aprobar o rechazar es solo un control interno: la concesión real la decide siempre el club organizador.
+          </p>
+        </div>
+        <div class="acred-hero-acciones">
+          <button type="button" class="acred-btn acred-btn-sec" onclick="abrirImportarAcreditaciones()">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3m0 0L8 7m4-4l4 4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>Importar
+          </button>
+          <button type="button" class="acred-btn acred-btn-sec" onclick="exportarAcreditacionesCSV()">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>Descargar CSV
+          </button>
+          <button type="button" class="acred-btn" onclick="abrirEditorFormularioAcreditacion()">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>Personalizar formulario
+          </button>
+        </div>
+      </div>
+
+      <div class="acred-stats" id="acredStats" role="group" aria-label="Filtrar por estado">
+        <button type="button" class="acred-stat est-todas activo" data-filtro="" onclick="filtrarAcreditaciones('')"><span class="acred-stat-num" id="acredNumTodas">0</span><span class="acred-stat-et">Total</span></button>
+        <button type="button" class="acred-stat est-pendiente" data-filtro="pendiente" onclick="filtrarAcreditaciones('pendiente')"><span class="acred-stat-num" id="acredNumPendiente">0</span><span class="acred-stat-et">Pendientes</span></button>
+        <button type="button" class="acred-stat est-aprobada" data-filtro="aprobada" onclick="filtrarAcreditaciones('aprobada')"><span class="acred-stat-num" id="acredNumAprobada">0</span><span class="acred-stat-et">Aprobadas</span></button>
+        <button type="button" class="acred-stat est-rechazada" data-filtro="rechazada" onclick="filtrarAcreditaciones('rechazada')"><span class="acred-stat-num" id="acredNumRechazada">0</span><span class="acred-stat-et">Rechazadas</span></button>
+      </div>
+
+      <div class="acred-modo" id="acredModo" role="radiogroup" aria-label="Cómo se accede al formulario">
+        <div class="acred-modo-tit">Acceso al formulario</div>
+        <div class="acred-modo-opciones">
+          <label class="acred-modo-op"><input type="radio" name="acredAcceso" value="pin" onchange="cambiarAccesoAcreditacion(this.value)"><span><strong>Con PIN</strong><small>Hay que introducir el PIN que tú compartes.</small></span></label>
+          <label class="acred-modo-op"><input type="radio" name="acredAcceso" value="login" onchange="cambiarAccesoAcreditacion(this.value)"><span><strong>Con login de colaborador</strong><small>Solo entra quien inicie sesión con su cuenta (admin, redactor o fotógrafo).</small></span></label>
+          <label class="acred-modo-op"><input type="radio" name="acredAcceso" value="solicitar" onchange="cambiarAccesoAcreditacion(this.value)"><span><strong>Solicitar (libre)</strong><small>Cualquiera con el enlace envía su solicitud, sin PIN ni cuenta.</small></span></label>
+        </div>
+      </div>
+
+      <div class="acred-acceso">
+        <div class="acred-caja">
+          <div class="acred-caja-cab"><span class="acred-caja-icono"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 007.5.5l3-3a5 5 0 00-7-7l-1.7 1.7M14 11a5 5 0 00-7.5-.5l-3 3a5 5 0 007 7l1.7-1.7"/></svg></span><label for="acredEnlace">Enlace del formulario</label></div>
+          <div class="acred-enlace-fila">
+            <input type="text" id="acredEnlace" readonly>
+            <button type="button" class="acred-btn" onclick="copiarEnlaceAcreditacion()">Copiar</button>
+            <button type="button" class="acred-btn acred-btn-sec" onclick="window.open(document.getElementById('acredEnlace').value, '_blank', 'noopener')">Abrir</button>
+          </div>
+        </div>
+        <div class="acred-caja" id="acredCajaPin">
+          <div class="acred-caja-cab"><span class="acred-caja-icono"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg></span><label for="acredPin">PIN de acceso</label></div>
+          <p class="acred-caja-ayuda">El formulario lo pide siempre al entrar. Si lo cambias, el anterior deja de valer al momento.</p>
+          <div class="acred-enlace-fila">
+            <input type="text" id="acredPin" class="acred-pin" inputmode="numeric" maxlength="8" placeholder="Cargando...">
+            <button type="button" class="acred-btn" onclick="guardarPinAcreditacionPanel()">Guardar</button>
+            <button type="button" class="acred-btn acred-btn-sec" onclick="guardarPinAcreditacionPanel(true)">Generar</button>
+            <button type="button" class="acred-btn acred-btn-sec" onclick="copiarPinAcreditacion()">Copiar</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="acred-toolbar">
+        <div class="acred-buscador">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+          <input type="text" id="acredBuscador" placeholder="Buscar por nombre, correo, DNI, equipo, partido..." autocomplete="off" oninput="pintarAcreditaciones()">
+          <button type="button" class="acred-buscador-x" id="acredBuscadorX" aria-label="Borrar búsqueda" onclick="limpiarBusquedaAcreditaciones()">×</button>
+        </div>
+        <select id="acredOrden" onchange="pintarAcreditaciones()" aria-label="Ordenar">
+          <option value="recientes">Más recientes primero</option>
+          <option value="antiguas">Más antiguas primero</option>
+          <option value="nombre">Nombre (A-Z)</option>
+          <option value="equipo">Equipo (A-Z)</option>
+        </select>
+      </div>
+      <p class="acred-resumen" id="acredResumen" aria-live="polite"></p>
+
+      <div class="acred-lista" id="tablaAcreditaciones"></div>
+      </div>
+
+      <div id="formCustomVista" hidden></div>
+    </div>
+  </div>
+
+  <!-- VOTACIONES INTERNAS DEL EQUIPO -->
+  <div class="panel" id="panel-votaciones">
+    <div class="subtabs" id="subtabsVotaciones">
+      <button class="activo" data-subtab="votActivas">Activas</button>
+      <button data-subtab="votCerradas">Cerradas</button>
+      <button data-subtab="votNueva" id="subtabVotNueva" style="display:none;">+ Nueva votación</button>
+    </div>
+
+    <div class="subpanel activo" id="subpanel-votActivas">
+      <div class="vot-grid" id="votListaActivas"><div class="vot-skeleton"></div><div class="vot-skeleton"></div></div>
+    </div>
+
+    <div class="subpanel" id="subpanel-votCerradas">
+      <div class="vot-grid" id="votListaCerradas"></div>
+    </div>
+
+    <div class="subpanel" id="subpanel-votNueva">
+      <div class="vot-editor">
+        <div class="vot-form">
+          <h3 class="vot-form-titulo">Nueva votación</h3>
+          <p class="ayuda-editor" style="margin:0 0 18px;">Plantea una pregunta al equipo con opciones tipo test. Todos los colaboradores (admin, redactores y fotógrafos) podrán votar desde esta pestaña.</p>
+
+          <label class="vot-label" for="votTitulo">Pregunta</label>
+          <input type="text" id="votTitulo" maxlength="200" placeholder="Ej.: ¿Qué día hacemos la cena de redacción?">
+
+          <label class="vot-label" for="votDescripcion">Detalles <span class="vot-opcional">(opcional)</span></label>
+          <textarea id="votDescripcion" rows="2" maxlength="1000" placeholder="Contexto, fechas, lo que haga falta para decidir con criterio"></textarea>
+
+          <label class="vot-label">Opciones</label>
+          <div id="votOpcionesLista" class="vot-opciones-editor"></div>
+          <button type="button" class="vot-btn-add" id="votAddOpcion">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+            Añadir opción
+          </button>
+
+          <div class="vot-ajustes">
+            <label class="vot-switch">
+              <input type="checkbox" id="votMultiple">
+              <span class="vot-switch-pista"></span>
+              <span class="vot-switch-texto"><strong>Respuesta múltiple</strong><small>Se pueden marcar varias opciones</small></span>
+            </label>
+            <label class="vot-switch">
+              <input type="checkbox" id="votAnonima">
+              <span class="vot-switch-pista"></span>
+              <span class="vot-switch-texto"><strong>Voto secreto</strong><small>Nadie sabrá qué votó cada persona, ni los admins</small></span>
+            </label>
+            <label class="vot-switch">
+              <input type="checkbox" id="votObligatoria">
+              <span class="vot-switch-pista"></span>
+              <span class="vot-switch-texto"><strong>Obligatoria</strong><small>Al abrir el panel, quien no haya votado no podrá hacer nada más hasta votar</small></span>
+            </label>
+          </div>
+          <div class="vot-aviso-secreto" id="votAvisoSecreto" hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4.5 6v5.5c0 4.6 3.1 8.2 7.5 9.5 4.4-1.3 7.5-4.9 7.5-9.5V6L12 3Z"/><path d="m9 12 2.2 2.2L15.5 10"/></svg>
+            <p>La papeleta se guarda sin nombre ni hora y no se puede cambiar una vez emitida. Solo se sabe <em>quién ha participado</em>, nunca <em>qué votó</em>.</p>
+          </div>
+
+          <label class="vot-label">¿Cuándo se ven los resultados?</label>
+          <div class="vot-segmentado" role="radiogroup" aria-label="Visibilidad de los resultados">
+            <label><input type="radio" name="votVis" value="tras_votar" checked><span>Al votar</span></label>
+            <label><input type="radio" name="votVis" value="siempre"><span>Siempre</span></label>
+            <label><input type="radio" name="votVis" value="al_cerrar"><span>Al cerrar</span></label>
+          </div>
+          <p class="vot-ayuda-mini" id="votAyudaVis">Los administradores ven siempre los resultados, salvo en «Al cerrar».</p>
+
+          <label class="vot-label" for="votCierraEn">Fecha límite <span class="vot-opcional">(opcional)</span></label>
+          <input type="datetime-local" id="votCierraEn">
+
+          <div class="vot-form-acciones">
+            <button type="button" class="vot-btn vot-btn-primario" id="votPublicar">Publicar votación</button>
+            <button type="button" class="vot-btn vot-btn-suave" id="votLimpiar">Limpiar</button>
+          </div>
+        </div>
+
+        <aside class="vot-preview">
+          <span class="vot-preview-etiqueta">Vista previa</span>
+          <div id="votPreview"></div>
+        </aside>
+      </div>
     </div>
   </div>
 
@@ -1589,11 +2346,24 @@
     <!-- Catálogo -->
     <div class="subpanel activo" id="subpanel-tiendaCatalogo">
       <p class="ayuda-editor" style="margin:0 0 16px;">
-        Productos oficiales de ElOtroFútbol para ir acreditado en el campo. El pago se hace por Bizum: eliges el producto, pagas y nos dices el concepto que has puesto para poder localizarlo. Cuando confirmemos el pago, tu pedido pasa a "Pagado".
+        Productos oficiales de ElOtroFútbol para ir acreditado en el campo. El pago se hace por Bizum o PayPal: eliges el producto, pagas y nos dices el concepto que has puesto para poder localizarlo. Cuando confirmemos el pago, tu pedido pasa a "Pagado".
       </p>
-      <div class="tienda-buscador">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-        <input type="text" id="tiendaBuscador" placeholder="Buscar producto...">
+      <div class="tienda-catalogo-barra">
+        <div class="tienda-buscador">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="text" id="tiendaBuscador" placeholder="Buscar producto..." aria-label="Buscar producto">
+        </div>
+        <label class="tienda-orden-wrap">
+          <span>Ordenar</span>
+          <select id="tiendaOrdenCatalogo">
+            <option value="destacados">Destacados</option>
+            <option value="precio-asc">Precio: menor a mayor</option>
+            <option value="precio-desc">Precio: mayor a menor</option>
+            <option value="nombre">Nombre (A-Z)</option>
+          </select>
+        </label>
+        <button type="button" class="tienda-toggle-filtro" id="tiendaSoloDisponibles" aria-pressed="false">Solo disponibles</button>
+        <span class="tienda-catalogo-contador" id="tiendaCatalogoContador" aria-live="polite"></span>
       </div>
       <div class="tienda-grid" id="tiendaGrid">
         <div class="tienda-skeleton"></div><div class="tienda-skeleton"></div><div class="tienda-skeleton"></div>
@@ -1612,12 +2382,17 @@
     <!-- Mis pedidos -->
     <div class="subpanel" id="subpanel-tiendaMisPedidos">
       <p class="ayuda-editor" style="margin:0 0 14px;">El estado de todo lo que has pedido en la tienda.</p>
+      <div class="tienda-gestion-filtros tienda-mis-filtros" id="tiendaMisPedidosFiltros" hidden>
+        <button type="button" class="activo" data-filtro="todos">Todos <span class="tienda-filtro-n">0</span></button>
+        <button type="button" data-filtro="curso">En curso <span class="tienda-filtro-n">0</span></button>
+        <button type="button" data-filtro="cerrados">Cerrados <span class="tienda-filtro-n">0</span></button>
+      </div>
       <div id="tiendaMisPedidosLista"><p class="solicitudes-vacio">Cargando...</p></div>
     </div>
 
     <!-- Gestión de pedidos (admin / gestor de tienda) -->
     <div class="subpanel" id="subpanel-tiendaGestion">
-      <p class="ayuda-editor" style="margin:0 0 14px;">Todos los pedidos de todos los colaboradores. Marca como "Pagado" cuando confirmes el Bizum, y como "Enviado" cuando se lo hagas llegar.</p>
+      <p class="ayuda-editor" style="margin:0 0 14px;">Todos los pedidos de todos los colaboradores. Marca como "Pagado" cuando confirmes el pago (Bizum o PayPal), y como "Enviado" cuando se lo hagas llegar.</p>
       <div class="tienda-gestion-contadores" id="tiendaGestionContadores"></div>
       <div class="tienda-gestion-barra">
         <div class="tienda-gestion-filtros" id="tiendaGestionFiltros">
@@ -1629,8 +2404,12 @@
         </div>
         <div class="tienda-buscador tienda-buscador-gestion">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-          <input type="text" id="tiendaGestionBuscador" placeholder="Buscar por colaborador o producto...">
+          <input type="text" id="tiendaGestionBuscador" placeholder="Buscar por colaborador, pedido o producto..." aria-label="Buscar pedidos">
         </div>
+        <button type="button" class="btn-secundari tienda-exportar" id="tiendaGestionExportar" title="Descarga los pedidos que se ven ahora en un CSV para Excel">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>
+          Exportar CSV
+        </button>
       </div>
       <div id="tiendaGestionLista"><p class="solicitudes-vacio">Cargando...</p></div>
     </div>
@@ -1657,42 +2436,94 @@
 
 <!-- Modal de crear/editar producto de la tienda -->
 <div class="modal-overlay" id="modalTiendaProducto">
-  <div class="modal-caja">
-    <h3 class="titulo-subseccion" style="margin:0 0 16px;" id="tpTitulo">Nuevo producto</h3>
+  <div class="modal-caja tp-caja" role="dialog" aria-modal="true" aria-labelledby="tpTitulo">
+    <div class="tp-cabecera">
+      <div>
+        <h3 class="tp-titulo" id="tpTitulo">Nuevo producto</h3>
+        <p class="tp-subtitulo">Así lo verá quien entre en la tienda. La vista previa se actualiza mientras escribes.</p>
+      </div>
+      <button type="button" class="tp-cerrar" onclick="cerrarModalTiendaProducto()" aria-label="Cerrar">&times;</button>
+    </div>
 
-    <label for="tpNombre">Nombre</label>
-    <input type="text" id="tpNombre" placeholder="Ej: Gorra oficial">
+    <div class="tp-cuerpo">
+      <!-- Vista previa en vivo -->
+      <aside class="tp-previa">
+        <div class="tp-previa-tarjeta">
+          <div class="tp-previa-imagen" id="tpPrevImg">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+            <span class="tp-previa-estado" id="tpPrevEstado">Visible</span>
+          </div>
+          <div class="tp-previa-info">
+            <strong class="tp-previa-nombre" id="tpPrevNombre">Nombre del producto</strong>
+            <span class="tp-previa-precio" id="tpPrevPrecio">0,00 €</span>
+            <p class="tp-previa-desc" id="tpPrevDesc"></p>
+            <div class="tp-previa-chips" id="tpPrevVariantes"></div>
+            <span class="tp-previa-stock" id="tpPrevStock">Sin límite de stock</span>
+          </div>
+        </div>
+        <div class="tp-galeria" id="tpGaleria"></div>
+      </aside>
 
-    <label for="tpDescripcion">Descripción (opcional)</label>
-    <textarea id="tpDescripcion" rows="2" placeholder="Breve descripción del producto"></textarea>
+      <!-- Formulario por secciones -->
+      <div class="tp-form">
+        <section class="tp-seccion">
+          <h4>Información</h4>
+          <label for="tpNombre">Nombre</label>
+          <input type="text" id="tpNombre" placeholder="Ej: Gorra oficial" maxlength="120" autocomplete="off">
+          <label for="tpDescripcion">Descripción <small>(opcional)</small></label>
+          <textarea id="tpDescripcion" rows="2" placeholder="Breve descripción del producto"></textarea>
+        </section>
 
-    <label for="tpPrecio">Precio (€)</label>
-    <input type="number" id="tpPrecio" min="0.01" step="0.01" placeholder="Ej: 15.00">
+        <section class="tp-seccion">
+          <h4>Precio y disponibilidad</h4>
+          <div class="tp-fila">
+            <div>
+              <label for="tpPrecio">Precio</label>
+              <div class="tp-input-sufijo"><input type="number" id="tpPrecio" min="0.01" step="0.01" placeholder="15.00"><span>€</span></div>
+            </div>
+            <div>
+              <label for="tpStock">Stock total <small>(opcional)</small></label>
+              <input type="number" id="tpStock" min="0" step="1" placeholder="Sin límite">
+            </div>
+            <div>
+              <label for="tpOrden">Orden</label>
+              <input type="number" id="tpOrden" min="0" step="1" placeholder="0">
+            </div>
+          </div>
+          <label for="tpVariantes">Tallas / variantes <small>(separadas por coma)</small></label>
+          <input type="text" id="tpVariantes" placeholder="Ej: S, M, L, XL" autocomplete="off">
+        </section>
 
-    <label for="tpImagen">URL de la imagen (opcional)</label>
-    <input type="text" id="tpImagen" placeholder="https://...">
+        <section class="tp-seccion">
+          <h4>Imágenes</h4>
+          <label for="tpImagen">Imagen principal <small>(URL)</small></label>
+          <input type="text" id="tpImagen" placeholder="https://..." autocomplete="off">
+          <label for="tpImagenes">Más fotos para la galería <small>(una URL por línea, máx. 8)</small></label>
+          <textarea id="tpImagenes" rows="3" placeholder="https://...&#10;https://..."></textarea>
+        </section>
 
-    <label for="tpVariantes">Tallas/variantes (opcional, separadas por coma)</label>
-    <input type="text" id="tpVariantes" placeholder="Ej: S, M, L, XL">
+        <section class="tp-seccion tp-seccion-visible">
+          <label class="tp-interruptor" for="tpActivo">
+            <span class="tienda-producto-switch"><input type="checkbox" id="tpActivo" checked><span></span></span>
+            <span class="tp-interruptor-texto"><strong>Visible en el catálogo</strong><small>Si lo desactivas, queda oculto pero no se borra.</small></span>
+          </label>
+        </section>
 
-    <label for="tpOrden">Orden en el catálogo</label>
-    <input type="number" id="tpOrden" min="0" step="1" placeholder="0">
+        <p id="tpError" class="tp-error" style="display:none;"></p>
+      </div>
+    </div>
 
-    <label class="tienda-producto-activo-check">
-      <input type="checkbox" id="tpActivo" checked>
-      <span>Visible en el catálogo</span>
-    </label>
-
-    <p id="tpError" style="display:none;color:var(--rojo, #c00);margin-top:10px;"></p>
-
-    <button type="button" class="btn-primari" id="tpGuardar" style="width:100%;margin-top:16px;" onclick="guardarTiendaProducto()">Guardar producto</button>
-    <button type="button" class="btn-secundari" style="width:100%;margin:8px 0 0;" onclick="cerrarModalTiendaProducto()">Cancelar</button>
+    <div class="tp-pie">
+      <button type="button" class="btn-secundari" onclick="cerrarModalTiendaProducto()">Cancelar</button>
+      <button type="button" class="btn-primari" id="tpGuardar" onclick="guardarTiendaProducto()">Guardar producto</button>
+    </div>
   </div>
 </div>
 
 <!-- Modal de checkout de la tienda -->
 <div class="modal-overlay" id="modalTiendaCheckout">
-  <div class="modal-caja modal-caja-tienda">
+  <div class="modal-caja modal-caja-tienda" role="dialog" aria-modal="true" aria-labelledby="tcNombre">
+    <button type="button" class="modal-cerrar" onclick="cerrarModalTiendaCheckout()" aria-label="Cerrar">&times;</button>
     <div class="tienda-checkout-cabecera">
       <img id="tcImagen" class="tienda-checkout-imagen" src="" alt="" loading="lazy" hidden>
       <div>
@@ -1701,37 +2532,97 @@
       </div>
     </div>
 
+    <div id="tcFormulario">
     <div id="tcVarianteGrupo" style="display:none;">
       <label for="tcVariante">Talla</label>
       <select id="tcVariante"></select>
     </div>
 
+    <div class="tienda-checkout-cantidad">
+      <div>
+        <label>Cantidad</label>
+        <div class="tienda-cantidad" id="tcCantidad">
+          <button type="button" class="tienda-cantidad-btn" data-delta="-1" aria-label="Quitar una unidad">−</button>
+          <span class="tienda-cantidad-valor" id="tcCantidadValor">1</span>
+          <button type="button" class="tienda-cantidad-btn" data-delta="1" aria-label="Añadir una unidad">+</button>
+        </div>
+      </div>
+      <span id="tcStockInfo" class="tienda-stock-nota"></span>
+    </div>
+    <div class="tienda-checkout-total"><span>Total</span><strong id="tcTotal">0,00 €</strong></div>
+
     <div class="tienda-bizum-caja">
       <p class="tienda-bizum-titulo">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
-        Paga por Bizum
+        Elige cómo pagar
       </p>
-      <p class="tienda-bizum-texto">Envía <strong id="tcPrecioBizum">0,00 €</strong> por Bizum al <strong>+34 669 17 80 59</strong> y pon como concepto tu nombre y el producto. Después, pega aquí el concepto/referencia que has usado para que podamos localizarlo:</p>
-      <label for="tcReferencia">Referencia del Bizum (opcional pero recomendado)</label>
-      <input type="text" id="tcReferencia" placeholder="Ej: Bizum de Juan Pérez, gorra">
+      <div class="tienda-metodo-pago" id="tcMetodoPago" role="radiogroup" aria-label="Método de pago">
+        <button type="button" class="tienda-metodo-btn activo" data-metodo="bizum" role="radio" aria-checked="true">Bizum</button>
+        <button type="button" class="tienda-metodo-btn" data-metodo="paypal" role="radio" aria-checked="false">PayPal</button>
+      </div>
+      <div id="tcPagoBizum">
+        <p class="tienda-bizum-texto">Pagarás <strong id="tcPrecioBizum">0,00 €</strong> por Bizum. Al confirmar el pedido te daremos tu <strong>número de pedido</strong> para ponerlo de concepto y te mostraremos a dónde enviar el pago.</p>
+      </div>
+      <div id="tcPagoPaypal" hidden>
+        <p class="tienda-bizum-texto">Pagarás <strong id="tcPrecioPaypal">0,00 €</strong> por PayPal. Al confirmar el pedido te daremos tu <strong>número de pedido</strong> para ponerlo de concepto y te mostraremos a dónde enviar el pago.</p>
+      </div>
+      <label for="tcReferencia" id="tcReferenciaLabel">Si ya has pagado, referencia de la operación (opcional)</label>
+      <input type="text" id="tcReferencia" placeholder="Ej: ID de la operación o nombre del pagador" maxlength="120">
     </div>
 
-    <p id="tcError" style="display:none;color:var(--rojo, #c00);margin-top:10px;"></p>
+    <div class="tienda-bizum-caja">
+      <p class="tienda-bizum-titulo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 8-9-5-9 5v8l9 5 9-5Z"/><path d="m3 8 9 5 9-5"/><path d="M12 13v8"/></svg>
+        ¿Cómo lo quieres recibir?
+      </p>
+      <div class="tienda-metodo-pago" id="tcEntrega" role="radiogroup" aria-label="Forma de entrega">
+        <button type="button" class="tienda-metodo-btn activo" data-entrega="mano" role="radio" aria-checked="true">En mano</button>
+        <button type="button" class="tienda-metodo-btn" data-entrega="envio" role="radio" aria-checked="false">Envío</button>
+      </div>
+      <p class="tienda-bizum-texto" id="tcEntregaTexto">Quedas con el equipo para recogerlo en mano cuando el pago esté confirmado.</p>
+      <div id="tcEnvioCaja" hidden>
+        <label for="tcDireccion">Dirección de envío</label>
+        <textarea id="tcDireccion" rows="3" maxlength="400" placeholder="Nombre y apellidos, calle y número, código postal, ciudad y teléfono"></textarea>
+        <div class="tienda-direccion-pie">
+          <label class="tienda-recordar"><input type="checkbox" id="tcRecordarDireccion"> Recordar en este dispositivo</label>
+          <span class="tienda-direccion-contador" id="tcDireccionContador" aria-hidden="true">0/400</span>
+        </div>
+      </div>
+    </div>
 
-    <button type="button" class="btn-primari" id="tcConfirmar" style="width:100%;margin-top:16px;" onclick="confirmarPedidoTienda()">He pagado, confirmar pedido</button>
-    <button type="button" class="btn-secundari" style="width:100%;margin:8px 0 0;" onclick="cerrarModalTiendaCheckout()">Cancelar</button>
+    <p id="tcError" class="modal-msg modal-msg-err" role="alert" style="display:none;"></p>
+
+    <div class="modal-acciones modal-acciones-pila">
+      <button type="button" class="btn-primari" id="tcConfirmar" onclick="confirmarPedidoTienda()">Confirmar pedido</button>
+      <button type="button" class="btn-secundari" onclick="cerrarModalTiendaCheckout()">Cancelar</button>
+    </div>
+    </div>
+
+    <div id="tcExito" class="tienda-exito" hidden>
+      <div class="tienda-exito-icono"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
+      <h3 class="titulo-subseccion" style="margin:0 0 4px;">¡Pedido registrado!</h3>
+      <p class="tienda-bizum-texto" style="margin:0 0 10px;">Este es tu número de pedido. Guárdalo: lo necesitas para el pago.</p>
+      <div class="tienda-exito-codigo"><strong id="tcExitoCodigo">EOF-0000</strong><button type="button" class="tienda-copiar-mini" id="tcExitoCopiarCodigo">Copiar</button></div>
+      <ul class="tienda-exito-resumen" id="tcExitoResumen"></ul>
+      <div class="tienda-bizum-caja" id="tcExitoPago"></div>
+      <div class="modal-acciones modal-acciones-pila">
+        <button type="button" class="btn-primari" id="tcExitoMisPedidos">Ver mis pedidos</button>
+        <button type="button" class="btn-secundari" onclick="cerrarModalTiendaCheckout()">Cerrar</button>
+      </div>
+    </div>
   </div>
 </div>
 
 <!-- Envío manual del boletín (Newsletter, solo admins) -->
 <div class="modal-overlay" id="modalEnviarNewsletter">
-  <div class="modal-caja modal-caja-newsletter">
+  <div class="modal-caja modal-caja-newsletter" role="dialog" aria-modal="true" aria-labelledby="modalEnviarNewsletterTitulo">
+    <button type="button" class="modal-cerrar" onclick="cerrarModalEnviarNewsletter()" aria-label="Cerrar">&times;</button>
     <div class="newsletter-modal-cabecera">
       <span class="newsletter-modal-icono">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7Z"/></svg>
       </span>
       <div>
-        <h3 class="titulo-subseccion">Enviar boletín ahora</h3>
+        <h3 class="titulo-subseccion" id="modalEnviarNewsletterTitulo">Enviar boletín ahora</h3>
         <p class="newsletter-modal-subtitulo">Con las últimas noticias publicadas, igual que el boletín automático. No afecta a la fecha del próximo envío semanal.</p>
       </div>
     </div>
@@ -1751,23 +2642,24 @@
       <p class="newsletter-picker-contador" id="enviarNewsletterContadorSeleccion">0 seleccionados</p>
     </div>
 
+    <p id="msgOkEnviarNewsletter" class="newsletter-modal-msg newsletter-modal-msg-ok"></p>
+    <p id="errEnviarNewsletter" class="newsletter-modal-msg newsletter-modal-msg-err"></p>
     <div class="newsletter-modal-acciones">
       <button type="button" class="btn-primari" id="btnConfirmarEnviarNewsletter" onclick="confirmarEnvioNewsletter()">Enviar boletín</button>
       <button type="button" class="btn-secundari" onclick="cerrarModalEnviarNewsletter()">Cancelar</button>
     </div>
-    <p id="msgOkEnviarNewsletter" class="newsletter-modal-msg newsletter-modal-msg-ok"></p>
-    <p id="errEnviarNewsletter" class="newsletter-modal-msg newsletter-modal-msg-err"></p>
   </div>
 </div>
 
 <!-- Editar equipos de un usuario (solo admins, desde la tabla de Usuarios) -->
 
 <div class="modal-overlay" id="modalEquiposUsuario">
-  <div class="modal-caja">
-    <h3 class="titulo-subseccion" style="margin-top:0;">Equipo y categoría de <span id="equiposUsuarioNombre"></span></h3>
+  <div class="modal-caja" role="dialog" aria-modal="true" aria-labelledby="modalEquiposUsuarioTitulo">
+    <button type="button" class="modal-cerrar" onclick="cerrarModalEquiposUsuario()" aria-label="Cerrar">&times;</button>
+    <h3 class="titulo-subseccion" id="modalEquiposUsuarioTitulo">Equipo y categoría de <span id="equiposUsuarioNombre"></span></h3>
     <input type="hidden" id="equiposUsuarioId">
-    <label>Categoría</label>
-    <p class="ayuda-editor" style="margin:0 0 8px;">Opcional. Busca y añade una categoría (p. ej. "Arbitraje" o "Jurisdicción deportiva") para que este redactor solo pueda publicar en ella y no tenga equipo.</p>
+    <label>Categoría complementaria</label>
+    <p class="ayuda-editor" style="margin:0 0 8px;">Opcional. Añade una categoría (p. ej. "Arbitraje" o "Jurisdicción deportiva") como complemento de sus equipos. No limita lo que puede publicar.</p>
     <div class="equipos-picker" id="equiposUsuario_categoria_fija_picker">
       <div class="equipos-picker-cabecera">
         <span class="equipos-picker-contador" id="equiposUsuarioCategoriaFijaContador">0 seleccionadas</span>
@@ -1788,17 +2680,20 @@
         <p class="equipos-picker-ayuda" id="equiposUsuarioAyuda">Puedes elegir hasta 3 equipos (o ninguno).</p>
       </div>
     </div>
-    <button type="button" class="btn-primari" id="btnGuardarEquiposUsuario" style="margin-top:18px;">Guardar</button>
-    <button type="button" class="btn-secundari" onclick="cerrarModalEquiposUsuario()">Cancelar</button>
-    <p id="msgOkEquiposUsuario" style="display:none;color:var(--celeste, #0a7);margin-top:10px;">Guardado correctamente.</p>
-    <p id="errEquiposUsuario" style="display:none;color:var(--rojo, #c00);margin-top:10px;"></p>
+    <p id="msgOkEquiposUsuario" class="modal-msg modal-msg-ok" role="status" style="display:none;">Guardado correctamente.</p>
+    <p id="errEquiposUsuario" class="modal-msg modal-msg-err" role="alert" style="display:none;"></p>
+    <div class="modal-acciones">
+      <button type="button" class="btn-primari" id="btnGuardarEquiposUsuario">Guardar</button>
+      <button type="button" class="btn-secundari" onclick="cerrarModalEquiposUsuario()">Cancelar</button>
+    </div>
   </div>
 </div>
 
 <!-- Nivel del colaborador (tabla de Usuarios, solo admins) -->
 <div class="modal-overlay" id="modalNivelUsuario">
-  <div class="modal-caja">
-    <h3 class="titulo-subseccion" style="margin-top:0;">Nivel de <span id="nivelUsuarioNombre"></span></h3>
+  <div class="modal-caja" role="dialog" aria-modal="true" aria-labelledby="modalNivelUsuarioTitulo">
+    <button type="button" class="modal-cerrar" onclick="cerrarModalNivelUsuario()" aria-label="Cerrar">&times;</button>
+    <h3 class="titulo-subseccion" id="modalNivelUsuarioTitulo">Nivel de <span id="nivelUsuarioNombre"></span></h3>
     <input type="hidden" id="nivelUsuarioId">
 
     <div id="nivelUsuarioProgreso" style="margin-bottom:16px;">
@@ -1817,10 +2712,12 @@
     <label for="nu_nivel_nota">Nota (opcional)</label>
     <textarea id="nu_nivel_nota" rows="3" maxlength="500" placeholder="Motivo del cambio, algo a mejorar, por qué todavía no sube aunque cumpla las cifras, etc."></textarea>
 
-    <button type="button" class="btn-primari" id="btnGuardarNivelUsuario" style="margin-top:14px;">Guardar nivel</button>
-    <button type="button" class="btn-secundari" onclick="cerrarModalNivelUsuario()">Cancelar</button>
-    <p id="msgOkNivelUsuario" style="display:none;color:var(--celeste, #0a7);margin-top:10px;">Guardado correctamente.</p>
-    <p id="errNivelUsuario" style="display:none;color:var(--rojo, #c00);margin-top:10px;"></p>
+    <p id="msgOkNivelUsuario" class="modal-msg modal-msg-ok" role="status" style="display:none;">Guardado correctamente.</p>
+    <p id="errNivelUsuario" class="modal-msg modal-msg-err" role="alert" style="display:none;"></p>
+    <div class="modal-acciones modal-acciones-simple">
+      <button type="button" class="btn-primari" id="btnGuardarNivelUsuario">Guardar nivel</button>
+      <button type="button" class="btn-secundari" onclick="cerrarModalNivelUsuario()">Cancelar</button>
+    </div>
 
     <h3 class="titulo-subseccion" style="margin-top:22px;">Historial de niveles</h3>
     <div id="nivelUsuarioHistorial" class="lista-sesiones">
@@ -1829,15 +2726,30 @@
   </div>
 </div>
 
+<!-- Detalle de los avisos de inactividad de un redactor (tabla de Usuarios, solo admins) -->
+<div class="modal-overlay" id="modalAvisosUsuario">
+  <div class="modal-caja avisos-caja" role="dialog" aria-modal="true" aria-labelledby="modalAvisosUsuarioTitulo">
+    <button type="button" class="modal-cerrar" onclick="cerrarModalAvisosUsuario()" aria-label="Cerrar">&times;</button>
+    <div id="avisosUsuarioCabecera" class="avisos-cab"></div>
+    <div id="avisosUsuarioContenido" class="avisos-cuerpo"></div>
+    <div class="avisos-pie">
+      <button type="button" class="btn-secundari" onclick="cerrarModalAvisosUsuario()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Elegir en qué punto del texto va una foto de posición personalizada -->
 <div class="modal-overlay" id="modalSelectorParrafo">
-  <div class="modal-caja modal-caja-parrafo">
-    <h3 class="titulo-subseccion" style="margin-top:0;">¿Dónde va esta foto?</h3>
+  <div class="modal-caja modal-caja-parrafo" role="dialog" aria-modal="true" aria-labelledby="modalSelectorParrafoTitulo">
+    <button type="button" class="modal-cerrar" onclick="cerrarModalSelectorParrafo()" aria-label="Cerrar">&times;</button>
+    <h3 class="titulo-subseccion" id="modalSelectorParrafoTitulo">¿Dónde va esta foto?</h3>
     <p class="selector-parrafo-ayuda">Haz clic entre dos párrafos del texto para marcar con una X el punto exacto donde se insertará la foto.</p>
     <div class="selector-parrafo-lista" id="selectorParrafoLista"></div>
     <p class="selector-parrafo-actual" id="selectorParrafoActual"><span class="marca-x">✕</span> <span id="selectorParrafoActualTexto">Tras el párrafo 1</span></p>
-    <button type="button" class="btn-primari" id="btnConfirmarParrafo" style="margin-top:14px;">Confirmar posición</button>
-    <button type="button" class="btn-secundari" onclick="cerrarModalSelectorParrafo()">Cancelar</button>
+    <div class="modal-acciones">
+      <button type="button" class="btn-primari" id="btnConfirmarParrafo">Confirmar posición</button>
+      <button type="button" class="btn-secundari" onclick="cerrarModalSelectorParrafo()">Cancelar</button>
+    </div>
   </div>
 </div>
 
@@ -1845,17 +2757,22 @@
 <!-- Fase 13: selector de galería de partido / mediateca para vincular a
      una noticia (tabla article_media). -->
 <div class="modal-overlay" id="modalGaleriaArticulo">
-  <div class="modal-caja modal-caja-ancha">
-    <h3 class="titulo-subseccion" id="gaTitulo" style="margin-top:0;">Añadir imágenes a la noticia</h3>
+  <div class="modal-caja modal-caja-ancha" role="dialog" aria-modal="true" aria-labelledby="gaTitulo">
+    <div class="ga-cab">
+      <h3 class="titulo-subseccion" id="gaTitulo" style="margin:0;">Añadir imágenes a la noticia</h3>
+      <button type="button" class="ga-cerrar" id="btnCerrarGaleriaArticuloX" aria-label="Cerrar" title="Cerrar (Esc)">&times;</button>
+    </div>
     <p class="ayuda-editor" id="gaAyudaModoFotos" style="display:none; margin:0 0 10px;">Las fotos que elijas aquí se añaden a "Fotos", arriba, donde podrás marcarlas como portada, ajustar su foco y elegir su posición dentro del texto (al principio, en un punto concreto o en la galería final).</p>
     <div id="gaAvisoSinPartido" class="ayuda-editor" style="display:none;">Esta noticia no tiene un resultado vinculado, así que aquí solo puedes elegir imágenes sueltas de tu contenido subido. Vincula un partido en "Resultado vinculado" para ver también su galería completa.</div>
     <div id="gaGaleriaPartidoWrap">
       <p class="ayuda-editor" style="margin:0 0 10px;">Galería del partido vinculado a esta noticia:</p>
       <div class="galeria-contenido galeria-contenido-seleccionable" id="gaGaleriaPartido"></div>
     </div>
+    <div id="gaMediatecaWrap">
     <p class="ayuda-editor" style="margin:18px 0 10px;">Tu contenido subido:</p>
     <div class="galeria-contenido galeria-contenido-seleccionable" id="gaGaleriaMediateca"></div>
-    <div style="margin-top:16px;">
+    </div>
+    <div class="ga-pie">
       <button type="button" class="btn-primari" id="btnConfirmarGaleriaArticulo">Añadir seleccionadas (<span id="gaContadorSeleccion">0</span>)</button>
       <button type="button" class="btn-secundari" onclick="cerrarModalGaleriaArticulo()">Cerrar</button>
     </div>
@@ -1863,10 +2780,12 @@
 </div>
 
 <div class="modal-overlay" id="modalEditarMedia">
-  <div class="modal-caja">
-    <h3 class="titulo-subseccion" style="margin-top:0;">Editar contenido</h3>
+  <div class="modal-caja modal-caja-editar-media" role="dialog" aria-modal="true" aria-labelledby="modalEditarMediaTitulo">
+    <button type="button" class="modal-cerrar" onclick="cerrarModalEditarMedia()" aria-label="Cerrar">&times;</button>
+    <h3 class="titulo-subseccion" id="modalEditarMediaTitulo">Editar contenido</h3>
     <form id="formEditarMedia">
       <input type="hidden" id="em_id">
+      <div class="em-cuerpo">
       <label for="em_titulo">Título *</label>
       <input type="text" id="em_titulo" required>
 
@@ -1916,6 +2835,14 @@
       </div>
       <input type="hidden" id="em_visibilidad" value="publico">
 
+      <div id="em_carpetaWrap" style="display:none;">
+        <label for="em_carpeta">Carpeta (opcional)</label>
+        <select id="em_carpeta">
+          <option value="">— Sin carpeta —</option>
+        </select>
+        <p class="ayuda-editor" style="margin:4px 0 0;">Las carpetas organizan el contenido privado. Si lo haces público, sale de su carpeta.</p>
+      </div>
+
       <div id="em_bloque_portada" style="display:none;">
         <label>Portada del vídeo</label>
         <input type="hidden" id="em_portada_segundo">
@@ -1930,13 +2857,6 @@
         <div class="fila-imagen-controles-fila fila-acciones">
           <button type="button" class="btn-foco" id="btnFocoPortadaVideo" title="Elegir qué parte del fotograma no se debe recortar nunca"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/></svg><span class="btn-foco-texto">Foco</span></button>
         </div>
-        <div class="foco-panel oculto" id="focoPanelPortadaVideo">
-          <div class="foco-preview" id="focoPreviewPortadaVideo"><div class="foco-marcador" id="focoMarcadorPortadaVideo"></div></div>
-          <div class="foco-texto">
-            <p>La miniatura de este vídeo se recorta a un cuadrado o rectángulo; haz clic en el punto del fotograma que quieres que se vea siempre.</p>
-            <button type="button" id="btnFocoResetPortadaVideo">Centrar de nuevo</button>
-          </div>
-        </div>
       </div>
       <div id="em_bloque_foco_foto" style="display:none;">
         <label style="margin-top:14px;">Punto de foco de la foto</label>
@@ -1944,25 +2864,38 @@
         <div class="fila-imagen-controles-fila fila-acciones">
           <button type="button" class="btn-foco" id="btnFocoFoto" title="Elegir qué parte de la foto no se debe recortar nunca"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/></svg><span class="btn-foco-texto">Foco</span></button>
         </div>
-        <div class="foco-panel oculto" id="focoPanelFoto">
-          <div class="foco-preview" id="focoPreviewFoto"><div class="foco-marcador" id="focoMarcadorFoto"></div></div>
-          <div class="foco-texto">
-            <p>La miniatura de esta foto se recorta a un cuadrado o rectángulo; haz clic en el punto de la imagen que quieres que se vea siempre.</p>
-            <button type="button" id="btnFocoResetFoto">Centrar de nuevo</button>
-          </div>
-        </div>
       </div>
-      <button type="submit" class="btn-primari">Guardar cambios</button>
-      <button type="button" class="btn-secundari" onclick="cerrarModalEditarMedia()">Cancelar</button>
+      </div>
       <p id="msgOkEditarMedia">Guardado correctamente.</p>
       <p id="errEditarMedia"></p>
+      <div class="modal-acciones">
+        <button type="submit" class="btn-primari">Guardar cambios</button>
+        <button type="button" class="btn-secundari" onclick="cerrarModalEditarMedia()">Cancelar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Nombre de carpeta (crear / renombrar) en "Ver contenido subido" y en "Editar contenido". Lógica en admin.js: abrirModalNombreCarpeta() -->
+<div class="modal-overlay" id="modalNombreCarpeta">
+  <div class="modal-caja modal-caja-nombre-carpeta" role="dialog" aria-modal="true" aria-labelledby="modalNombreCarpetaTitulo">
+    <button type="button" class="modal-cerrar" onclick="cerrarModalNombreCarpeta()" aria-label="Cerrar">&times;</button>
+    <h3 class="titulo-subseccion" id="modalNombreCarpetaTitulo">Carpeta</h3>
+    <form id="formNombreCarpeta">
+      <label for="nombreCarpetaInput">Nombre de la carpeta</label>
+      <input type="text" id="nombreCarpetaInput" maxlength="60" autocomplete="off" placeholder="Ej: Entrevistas pretemporada">
+      <p id="errNombreCarpeta"></p>
+      <div class="modal-acciones">
+        <button type="submit" class="btn-primari" id="btnGuardarNombreCarpeta">Guardar</button>
+        <button type="button" class="btn-secundari" onclick="cerrarModalNombreCarpeta()">Cancelar</button>
+      </div>
     </form>
   </div>
 </div>
 
 <!-- Reproductor de vídeo a pantalla completa del modal (galería de contenido) -->
 <div class="modal-overlay" id="modalReproductorMedia">
-  <div class="modal-caja modal-caja-reproductor-media">
+  <div class="modal-caja modal-caja-reproductor-media" role="dialog" aria-modal="true" aria-label="Reproductor de contenido">
     <button type="button" class="btn-cerrar-reproductor-media" onclick="cerrarModalReproductorMedia()" aria-label="Cerrar">&times;</button>
     <div class="reproductor-media-lienzo">
       <div class="reproductor-media-spinner" id="spinnerReproductorMedia"><span></span></div>
@@ -1977,9 +2910,10 @@
 
 <!-- Contraseña restablecida (solo admins, desde "Usuarios") -->
 <div class="modal-overlay" id="modalPasswordGenerada">
-  <div class="modal-caja modal-caja-password">
+  <div class="modal-caja modal-caja-password" role="dialog" aria-modal="true" aria-labelledby="modalPasswordGeneradaTitulo">
+    <button type="button" class="modal-cerrar" onclick="cerrarModalPasswordGenerada()" aria-label="Cerrar">&times;</button>
     <div class="password-modal-icono">🔑</div>
-    <h3 class="titulo-subseccion" style="margin-top:0;text-align:center;">Contraseña restablecida</h3>
+    <h3 class="titulo-subseccion" id="modalPasswordGeneradaTitulo">Contraseña restablecida</h3>
     <p class="ayuda-editor password-modal-texto">
       Nueva contraseña para <strong id="pg_username"></strong>. Apúntala o cópiala ahora: no se volverá a mostrar.
     </p>
@@ -1991,23 +2925,26 @@
       </button>
     </div>
     <p id="pg_copiado" class="password-modal-copiado">Copiada al portapapeles ✓</p>
-    <button type="button" class="btn-primari" id="btnEnviarMensajePasswordGenerada" style="width:100%;margin-top:18px;display:flex;align-items:center;justify-content:center;gap:8px;">
-      <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.9 9.9 0 0 0 4.74 1.21h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm5.8 14.09c-.24.68-1.4 1.31-1.94 1.36-.5.05-.99.25-3.31-.69-2.79-1.13-4.6-3.95-4.74-4.13-.14-.19-1.13-1.51-1.13-2.88 0-1.37.72-2.04.97-2.32.26-.28.56-.34.75-.34.19 0 .38 0 .54.01.18.01.41-.07.64.49.24.57.82 1.98.89 2.13.07.14.12.31.02.5-.09.19-.14.31-.28.47-.14.17-.29.37-.42.5-.14.14-.29.29-.12.57.16.28.72 1.19 1.55 1.93 1.06.95 1.96 1.24 2.24 1.38.28.14.44.12.6-.07.17-.19.71-.83.9-1.11.19-.28.38-.24.64-.14.26.09 1.65.78 1.93.92.28.14.47.21.54.33.07.12.07.68-.17 1.36z"/></svg>
-      <span>Enviar mensaje</span>
-    </button>
-    <button type="button" class="btn-secundari" id="btnCopiarMensajePasswordGenerada" style="width:100%;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:8px;">
-      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
-      <span>Copiar mensaje</span>
-    </button>
-    <button type="button" class="btn-secundari" style="width:100%;margin-top:8px;" onclick="cerrarModalPasswordGenerada()">Ya la he apuntado, cerrar</button>
+    <div class="modal-acciones modal-acciones-pila">
+      <button type="button" class="btn-primari" id="btnEnviarMensajePasswordGenerada">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.9 9.9 0 0 0 4.74 1.21h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm5.8 14.09c-.24.68-1.4 1.31-1.94 1.36-.5.05-.99.25-3.31-.69-2.79-1.13-4.6-3.95-4.74-4.13-.14-.19-1.13-1.51-1.13-2.88 0-1.37.72-2.04.97-2.32.26-.28.56-.34.75-.34.19 0 .38 0 .54.01.18.01.41-.07.64.49.24.57.82 1.98.89 2.13.07.14.12.31.02.5-.09.19-.14.31-.28.47-.14.17-.29.37-.42.5-.14.14-.29.29-.12.57.16.28.72 1.19 1.55 1.93 1.06.95 1.96 1.24 2.24 1.38.28.14.44.12.6-.07.17-.19.71-.83.9-1.11.19-.28.38-.24.64-.14.26.09 1.65.78 1.93.92.28.14.47.21.54.33.07.12.07.68-.17 1.36z"/></svg>
+        <span>Enviar mensaje</span>
+      </button>
+      <button type="button" class="btn-secundari" id="btnCopiarMensajePasswordGenerada">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+        <span>Copiar mensaje</span>
+      </button>
+      <button type="button" class="btn-secundari" onclick="cerrarModalPasswordGenerada()">Ya la he apuntado, cerrar</button>
+    </div>
   </div>
 </div>
 
 <!-- PIN de "Última hora" al intentar publicar sin permiso directo -->
 <div class="modal-overlay" id="modalPinUltimaHora">
-  <div class="modal-caja modal-caja-pin">
+  <div class="modal-caja modal-caja-pin" role="dialog" aria-modal="true" aria-labelledby="modalPinUltimaHoraTitulo">
+    <button type="button" class="modal-cerrar" onclick="cerrarModalPinUltimaHora()" aria-label="Cerrar">&times;</button>
     <div class="pin-modal-icono">⚡</div>
-    <h3 class="titulo-subseccion" style="margin-top:0;">Última hora</h3>
+    <h3 class="titulo-subseccion" id="modalPinUltimaHoraTitulo">Última hora</h3>
     <p class="ayuda-editor" style="margin:0;">
       Como redactor, tus noticias se guardan como borrador hasta que las revise un administrador. Si es urgente, introduce tu PIN de 4 dígitos de "Última hora" para publicarla directamente.
     </p>
@@ -2028,32 +2965,38 @@
       <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" id="pin_d3" autocomplete="off">
       <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" id="pin_d4" autocomplete="off">
     </div>
-    <p id="errPinUltimaHora" style="display:none;color:var(--rojo, #c00);margin:6px 0 0;font-size:.85rem;"></p>
-    <button type="button" class="btn-primari" id="btnConfirmarPinUltimaHora" style="width:100%;margin-top:16px;">Publicar ahora</button>
-    <button type="button" class="btn-secundari" id="btnGuardarComoBorradorPin" style="width:100%;margin:10px 0 0;">Guardar como borrador</button>
-    <button type="button" class="btn-secundari" style="width:100%;margin:8px 0 0;" onclick="cerrarModalPinUltimaHora()">Cancelar</button>
+    <p id="errPinUltimaHora" class="modal-msg modal-msg-err" role="alert" style="display:none;"></p>
+    <div class="modal-acciones modal-acciones-pila">
+      <button type="button" class="btn-primari" id="btnConfirmarPinUltimaHora">Publicar ahora</button>
+      <button type="button" class="btn-secundari" id="btnGuardarComoBorradorPin">Guardar como borrador</button>
+      <button type="button" class="btn-secundari" onclick="cerrarModalPinUltimaHora()">Cancelar</button>
+    </div>
   </div>
 </div>
 
 <!-- Al guardar una noticia como borrador: preguntar si ya está terminada -->
 <div class="modal-overlay" id="modalEstadoBorrador">
-  <div class="modal-caja">
+  <div class="modal-caja" role="dialog" aria-modal="true" aria-labelledby="modalEstadoBorradorTitulo">
+    <button type="button" class="modal-cerrar" onclick="cerrarModalEstadoBorrador()" aria-label="Cerrar">&times;</button>
     <div class="pin-modal-icono">📝</div>
-    <h3 class="titulo-subseccion" style="margin-top:0;">¿Está terminada la noticia?</h3>
+    <h3 class="titulo-subseccion" id="modalEstadoBorradorTitulo">¿Está terminada la noticia?</h3>
     <p class="ayuda-editor" style="margin:0;">
       Se va a guardar como borrador. Dinos si ya está lista para que la revisen o si todavía la estás escribiendo.
     </p>
-    <button type="button" class="btn-primari" id="btnBorradorTerminado" style="width:100%;margin-top:16px;">Sí, está terminada</button>
-    <p class="ayuda-editor" style="margin:6px 0 0;font-size:.78rem;">Se avisará por correo a la redacción para que la revise.</p>
-    <button type="button" class="btn-secundari" id="btnBorradorEnProceso" style="width:100%;margin:14px 0 0;">No, la sigo escribiendo</button>
-    <p class="ayuda-editor" style="margin:6px 0 0;font-size:.78rem;">Se guarda igualmente, pero sin avisar por correo.</p>
+    <div class="modal-acciones modal-acciones-pila">
+      <button type="button" class="btn-primari" id="btnBorradorTerminado">Sí, está terminada</button>
+      <p class="modal-nota">Se avisará por correo a la redacción para que la revise.</p>
+      <button type="button" class="btn-secundari" id="btnBorradorEnProceso">No, la sigo escribiendo</button>
+      <p class="modal-nota">Se guarda igualmente, pero sin avisar por correo.</p>
+    </div>
   </div>
 </div>
 
 <!-- Solicitar permiso para editar algo que no es tuyo -->
 <div class="modal-overlay" id="modalSolicitarEdicion">
-  <div class="modal-caja">
-    <h3 class="titulo-subseccion" style="margin-top:0;">Solicitar edición</h3>
+  <div class="modal-caja" role="dialog" aria-modal="true" aria-labelledby="modalSolicitarEdicionTitulo">
+    <button type="button" class="modal-cerrar" onclick="cerrarModalSolicitarEdicion()" aria-label="Cerrar">&times;</button>
+    <h3 class="titulo-subseccion" id="modalSolicitarEdicionTitulo">Solicitar edición</h3>
     <p class="ayuda-editor" style="margin:0 0 10px;">
       Esto no es tuyo. Se enviará una solicitud al autor original y a los administradores; en cuanto la aprueben, podrás editarlo durante un tiempo limitado.
     </p>
@@ -2061,16 +3004,19 @@
     <input type="hidden" id="se_id">
     <label for="se_motivo">Motivo (opcional)</label>
     <textarea id="se_motivo" placeholder="Explica brevemente por qué necesitas editarlo…"></textarea>
-    <button type="button" class="btn-primari" id="btnEnviarSolicitudEdicion" style="margin-top:12px;">Enviar solicitud</button>
-    <button type="button" class="btn-secundari" onclick="cerrarModalSolicitarEdicion()">Cancelar</button>
-    <p id="errSolicitarEdicion" style="display:none;color:var(--rojo, #c00);margin-top:10px;"></p>
+    <p id="errSolicitarEdicion" class="modal-msg modal-msg-err" role="alert" style="display:none;"></p>
+    <div class="modal-acciones">
+      <button type="button" class="btn-primari" id="btnEnviarSolicitudEdicion">Enviar solicitud</button>
+      <button type="button" class="btn-secundari" onclick="cerrarModalSolicitarEdicion()">Cancelar</button>
+    </div>
   </div>
 </div>
 
 <!-- PIN de "Última hora" único y compartido (solo admin lo ve) -->
 <div class="modal-overlay" id="modalPinRedactor">
-  <div class="modal-caja modal-caja-pin">
-    <h3 class="titulo-subseccion" style="margin-top:0;">PIN de "Última hora"</h3>
+  <div class="modal-caja modal-caja-pin" role="dialog" aria-modal="true" aria-labelledby="modalPinRedactorTitulo">
+    <button type="button" class="modal-cerrar" onclick="cerrarModalPinRedactor()" aria-label="Cerrar">&times;</button>
+    <h3 class="titulo-subseccion" id="modalPinRedactorTitulo">PIN de "Última hora"</h3>
     <p class="ayuda-editor" style="margin:0;">
       Un único PIN de 4 dígitos, compartido por todos los redactores. Dáselo de palabra a quien lo necesite: se regenera solo en cuanto se usa para publicar, así que solo sirve una vez.
     </p>
@@ -2080,19 +3026,34 @@
       <span class="pin-digito-mostrado" id="pr_pin_d3">•</span>
       <span class="pin-digito-mostrado" id="pr_pin_d4">•</span>
     </div>
-    <p id="errPinRedactor" style="display:none;color:var(--rojo, #c00);margin:6px 0 0;font-size:.85rem;"></p>
-    <p id="msgOkPinRedactor" style="display:none;color:#166534;margin:6px 0 0;font-size:.85rem;">PIN regenerado.</p>
-    <button type="button" class="btn-primari" id="btnGuardarPinRedactor" style="width:100%;margin-top:16px;">Regenerar PIN ahora</button>
-    <button type="button" class="btn-secundari" style="width:100%;margin:8px 0 0;" onclick="cerrarModalPinRedactor()">Cerrar</button>
+    <p id="errPinRedactor" class="modal-msg modal-msg-err" role="alert" style="display:none;"></p>
+    <p id="msgOkPinRedactor" class="modal-msg modal-msg-ok" role="status" style="display:none;">PIN regenerado.</p>
+    <div class="modal-acciones modal-acciones-pila">
+      <button type="button" class="btn-primari" id="btnGuardarPinRedactor">Regenerar PIN ahora</button>
+      <button type="button" class="btn-secundari" onclick="cerrarModalPinRedactor()">Cerrar</button>
+    </div>
   </div>
 </div>
 
 <div class="modal-overlay" id="modalCompartir">
-  <div class="modal-caja modal-caja-compartir">
-    <h3 class="titulo-subseccion" style="margin-top:0;">📢 Compartir en redes</h3>
+  <div class="modal-caja modal-caja-compartir" role="dialog" aria-modal="true" aria-labelledby="modalCompartirTitulo">
+    <button type="button" class="modal-cerrar" onclick="cerrarModalCompartir()" aria-label="Cerrar">&times;</button>
+    <h3 class="titulo-subseccion" id="modalCompartirTitulo">📢 Compartir en redes</h3>
+    <div class="compartir-cuerpo">
     <p class="ayuda-editor" style="margin-top:0;">
       Texto ya preparado para cada red. Cópialo (o ábrelo directamente en X) y pega la imagen de portada que descargues de la noticia.
     </p>
+
+    <p class="ayuda-editor" id="cp_aviso_ultima_hora" style="display:none;margin-top:0;color:#b91c1c;font-weight:600;">🔴 Noticia marcada como ÚLTIMA HORA: los textos llevan cabecera y hashtag propios.</p>
+
+    <!-- Aviso: previa/crónica del mismo partido ya subida a redes (lo rellena admin.js: pintarAvisoYaSubida) -->
+    <div class="aviso-programada-compartir" id="cp_aviso_ya_subida" style="display:none" role="status">
+      <span class="aviso-programada-icono">✅</span>
+      <div>
+        <p class="aviso-programada-titulo" id="cp_aviso_ya_subida_titulo"></p>
+        <p class="aviso-programada-texto" id="cp_aviso_ya_subida_texto"></p>
+      </div>
+    </div>
 
     <div class="compartir-link-caja">
       <input type="text" id="cp_link" readonly>
@@ -2108,9 +3069,12 @@
 
     <div class="compartir-imagenes" id="cp_imagenes_wrap">
       <p class="compartir-imagenes-titulo">Imágenes de la noticia</p>
-      <p class="compartir-ayuda" style="margin-top:0;">Descárgala para tenerla lista al pegar el texto en cada red.</p>
+      <p class="compartir-ayuda" style="margin-top:0;">Descarga las que quieras para tenerlas listas al pegar el texto en cada red.</p>
       <div class="compartir-imagenes-lista" id="cp_imagenes_lista"></div>
-      <button type="button" class="btn-secundari" id="btnDescargarImagenesCompartir" style="margin-top:10px;">Descargar seleccionadas</button>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">
+        <button type="button" class="btn-secundari" id="btnMarcarTodasImagenesCompartir" style="display:none;">Marcar / desmarcar todas</button>
+        <button type="button" class="btn-secundari" id="btnDescargarImagenesCompartir">Descargar seleccionadas</button>
+      </div>
     </div>
 
     <div class="compartir-lista">
@@ -2121,6 +3085,7 @@
         </div>
         <textarea id="cp_texto_x"></textarea>
         <div class="compartir-red-contador" id="cp_contador_x">0 / 280</div>
+        <div class="ayuda-editor" id="cp_aviso_clubes_sin_cuenta" style="display:none;margin:4px 0 0;"></div>
         <div class="compartir-red-acciones">
           <button type="button" data-copiar="cp_texto_x">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
@@ -2147,8 +3112,24 @@
       </div>
 
     </div>
+    </div><!-- /.compartir-cuerpo -->
 
-    <button type="button" class="btn-primari" style="width:100%;margin-top:18px;" onclick="cerrarModalCompartir()">Cerrar</button>
+    <div class="modal-acciones">
+      <button type="button" class="btn-primari" onclick="cerrarModalCompartir()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal "Compartir carrusel": textos de X (uno por noticia, sin portada) e Instagram (uno por liga).
+     Lo rellena admin.js (abrirModalCompartirCarrusel). -->
+<div class="modal-overlay" id="modalCompartirCarrusel">
+  <div class="modal-caja modal-caja-compartir" role="dialog" aria-modal="true" aria-labelledby="ccTitulo">
+    <button type="button" class="modal-cerrar" onclick="cerrarModalCompartirCarrusel()" aria-label="Cerrar">&times;</button>
+    <h3 class="titulo-subseccion" id="ccTitulo">🎠 Compartir carrusel</h3>
+    <div class="compartir-cuerpo" id="ccBody"></div>
+    <div class="modal-acciones">
+      <button type="button" class="btn-primari" onclick="cerrarModalCompartirCarrusel()">Cerrar</button>
+    </div>
   </div>
 </div>
 
@@ -2161,8 +3142,9 @@
      salir del editor. -->
 <!-- Modal crear/editar encuesta -->
 <div class="modal-overlay" id="modalEncuesta">
-  <div class="modal-caja">
-    <h3 class="titulo-subseccion" style="margin-top:0;" id="encuestaModalTitulo">Nueva encuesta</h3>
+  <div class="modal-caja" role="dialog" aria-modal="true" aria-labelledby="encuestaModalTitulo">
+    <button type="button" class="modal-cerrar" onclick="cerrarModalEncuesta()" aria-label="Cerrar">&times;</button>
+    <h3 class="titulo-subseccion" id="encuestaModalTitulo">Nueva encuesta</h3>
     <input type="hidden" id="enc_id">
 
     <label for="enc_pregunta">Pregunta</label>
@@ -2193,19 +3175,24 @@
     <input type="datetime-local" id="enc_cierra_en">
     <p class="ayuda-editor" style="margin:6px 0 0;">Déjalo en blanco para cerrarla tú manualmente cuando quieras desde el listado.</p>
 
-    <button type="button" class="btn-primari" id="btnGuardarEncuesta" style="margin-top:16px;">Guardar encuesta</button>
-    <button type="button" class="btn-secundari" onclick="cerrarModalEncuesta()">Cancelar</button>
-    <p id="msgOkEncuesta" style="display:none;color:var(--celeste, #0a7);margin-top:10px;">Guardado correctamente.</p>
-    <p id="errEncuesta" style="display:none;color:var(--rojo, #c00);margin-top:10px;"></p>
+    <p id="msgOkEncuesta" class="modal-msg modal-msg-ok" role="status" style="display:none;">Guardado correctamente.</p>
+    <p id="errEncuesta" class="modal-msg modal-msg-err" role="alert" style="display:none;"></p>
+    <div class="modal-acciones">
+      <button type="button" class="btn-primari" id="btnGuardarEncuesta">Guardar encuesta</button>
+      <button type="button" class="btn-secundari" onclick="cerrarModalEncuesta()">Cancelar</button>
+    </div>
   </div>
 </div>
 
 <div class="modal-overlay" id="modalNuevoResultado">
-  <div class="modal-caja modal-caja-resultado">
-    <h3 class="titulo-subseccion" style="margin-top:0;">Nuevo resultado</h3>
+  <div class="modal-caja modal-caja-resultado" role="dialog" aria-modal="true" aria-labelledby="modalNuevoResultadoTitulo">
+    <button type="button" class="modal-cerrar" onclick="cerrarModalNuevoResultado()" aria-label="Cerrar">&times;</button>
+    <h3 class="titulo-subseccion" id="modalNuevoResultadoTitulo">Nuevo resultado</h3>
     <p class="ayuda-editor" style="margin-top:0;">Rellena el partido; al guardarlo se vinculará automáticamente a esta noticia.</p>
     <div id="anclaFormResultadoModal"></div>
-    <button type="button" class="btn-secundari" style="margin-top:14px;" onclick="cerrarModalNuevoResultado()">Cerrar</button>
+    <div class="modal-acciones">
+      <button type="button" class="btn-secundari" onclick="cerrarModalNuevoResultado()">Cerrar</button>
+    </div>
   </div>
 </div>
 
@@ -2213,8 +3200,9 @@
      disposición, para combinarlas en una sola cuadrícula dentro del
      texto de la noticia (ver abrirEditorCollage() en admin.js). -->
 <div class="modal-overlay" id="modalCollage">
-  <div class="modal-caja modal-caja-collage">
-    <h3 class="titulo-subseccion" style="margin-top:0;" id="collageModalTitulo">Collage de fotos</h3>
+  <div class="modal-caja modal-caja-collage" role="dialog" aria-modal="true" aria-labelledby="collageModalTitulo">
+    <button type="button" class="modal-cerrar" onclick="cerrarModalCollage()" aria-label="Cerrar">&times;</button>
+    <h3 class="titulo-subseccion" id="collageModalTitulo">Collage de fotos</h3>
     <input type="hidden" id="cl_grupo">
 
     <label>Plantilla</label>
@@ -2245,12 +3233,12 @@
       </button>
     </div>
 
-    <div class="barra-acciones-form">
+    <p class="msg-error-alineacion" id="msgErrorCollage" style="display:none"></p>
+    <div class="barra-acciones-form modal-acciones">
       <button type="button" class="btn-primari" id="btnGuardarCollage">Guardar collage</button>
       <button type="button" class="btn-secundari" id="btnEliminarCollage" style="display:none">Eliminar collage</button>
       <button type="button" class="btn-secundari" onclick="cerrarModalCollage()">Cancelar</button>
     </div>
-    <p class="msg-error-alineacion" id="msgErrorCollage" style="display:none"></p>
   </div>
 </div>
 
@@ -2259,8 +3247,9 @@
      tanto desde el editor de noticias como desde el de resultados (ver
      abrirEditorAlineacion() en admin.js). -->
 <div class="modal-overlay" id="modalAlineacion">
-  <div class="modal-caja modal-caja-alineacion">
-    <h3 class="titulo-subseccion" style="margin-top:0;" id="alineacionModalTitulo">Alineación</h3>
+  <div class="modal-caja modal-caja-alineacion" role="dialog" aria-modal="true" aria-labelledby="alineacionModalTitulo">
+    <button type="button" class="modal-cerrar" onclick="cerrarModalAlineacion()" aria-label="Cerrar">&times;</button>
+    <h3 class="titulo-subseccion" id="alineacionModalTitulo">Alineación</h3>
     <input type="hidden" id="al_id">
     <input type="hidden" id="al_article_id">
     <input type="hidden" id="al_result_id">
@@ -2338,12 +3327,12 @@
       <button type="button" class="btn-secundari" id="btnAnadirSuplenteAlineacion">+ Añadir suplente</button>
     </div>
 
-    <div class="barra-acciones-form">
+    <p class="msg-error-alineacion" id="msgErrorAlineacion" style="display:none"></p>
+    <div class="barra-acciones-form modal-acciones">
       <button type="button" class="btn-primari" id="btnGuardarAlineacion">Guardar alineación</button>
       <button type="button" class="btn-secundari" id="btnEliminarAlineacion" style="display:none">Eliminar alineación</button>
       <button type="button" class="btn-secundari" onclick="cerrarModalAlineacion()">Cancelar</button>
     </div>
-    <p class="msg-error-alineacion" id="msgErrorAlineacion" style="display:none"></p>
   </div>
 </div>
 
@@ -2352,15 +3341,25 @@
      abrirPanelMinutoAMinuto). Vacío por defecto. -->
 <div id="panelMinutoAMinuto"></div>
 
-<script src="/js/ui-alertas.js?v=3"></script>
-<script src="/js/config.js?v=12"></script>
-<script src="/js/clubs.js?v=2"></script>
+<script src="/js/foco.js?v=1"></script>
+<script src="/js/ui-alertas.js?v=5"></script>
+<script src="/js/config.js?v=25"></script>
+<script src="/js/clubs.js?v=3"></script>
+<script src="/js/clubs-redes.js?v=2"></script>
 <script src="/js/corrector-formato.js?v=1"></script>
-<script src="/admin/js/admin.js?v=42"></script>
+<script src="/admin/js/foco-selector.js?v=2"></script>
+<script src="/js/vendor/qrcode.js"></script>
+<script src="/admin/js/admin.js?v=144"></script>
+<script src="/admin/js/selector-fecha-modal.js?v=1"></script>
 <script src="/admin/js/dropzone-global.js?v=1"></script>
-<script src="/admin/js/minuto-a-minuto.js?v=6"></script>
-<script src="/admin/js/importacion-rapida.js?v=1"></script>
-<script src="/admin/js/importacion-rapida-eventos.js?v=1"></script>
-<script src="/admin/js/tutorial.js?v=1"></script>
+<script src="/admin/js/minuto-a-minuto.js?v=13"></script>
+<script src="/admin/js/importacion-rapida.js?v=3"></script>
+<script src="/admin/js/importacion-rapida-eventos.js?v=2"></script>
+<script src="/admin/js/tutorial.js?v=3"></script>
+<script src="/admin/js/nueva-noticia-ui.js?v=1"></script>
+<script src="/admin/js/votaciones.js?v=4"></script>
+<script src="/admin/js/calendario-contenido.js?v=4"></script>
+<script src="/admin/js/organigrama.js?v=8"></script>
+<script src="/admin/js/jugadores-admin.js?v=2"></script>
 </body>
 </html>

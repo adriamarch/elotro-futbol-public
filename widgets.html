@@ -1,17 +1,29 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<script src="js/tema.js"></script>
+<meta name="google-adsense-account" content="ca-pub-7347856722927942">
+<script src="js/tema.js?v=2"></script>
+<script src="js/preferencias.js?v=3"></script>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://api.elotrofutbol.media" crossorigin>
+<link rel="preconnect" href="https://res.cloudinary.com">
 <title id="pageTitle">Widgets embebibles — ELOTROFÚTBOLTV</title>
 <meta name="description" content="Lleva la clasificación, resultados, calendario y noticias de ELOTROFÚTBOLTV a tu propia web con nuestros widgets embebibles gratuitos.">
-<link rel="canonical" href="https://elotrofutbol.media/widgets.html">
-<link rel="icon" href="/favicon.ico?v=2" sizes="any">
-<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=2">
-<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
-<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=17">
+<meta property="og:image" content="https://elotrofutbol.media/img/og-default.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://elotrofutbol.media/img/og-default.png">
+<link rel="canonical" href="https://elotrofutbol.media/widgets">
+<link rel="icon" href="/favicon.ico?v=3" sizes="any">
+<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=3">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png?v=2">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&display=swap" onload="this.onload=null;this.rel='stylesheet'"><noscript><link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet"></noscript>
+<link rel="stylesheet" href="css/style.css?v=25">
+<link rel="stylesheet" href="css/accesibilidad.css?v=1">
+<script src="js/accesibilidad.js?v=1" defer></script>
+<link rel="stylesheet" href="css/foco.css?v=1">
 <style>
   /* ---------- Página de widgets embebibles ---------- */
 
@@ -401,27 +413,27 @@
     <h3>Más de ELOTROFÚTBOLTV</h3>
     <p>Estos widgets tiran de los mismos datos que puedes consultar directamente en el sitio:</p>
     <div class="widgets-relacionados-grid">
-      <a class="widgets-relacionados-link" href="clasificacion.html">
+      <a class="widgets-relacionados-link" href="/clasificacion">
         <div class="widgets-relacionados-icono">🏆</div>
         <div class="widgets-relacionados-texto"><b>Clasificación completa</b><span>Todas las jornadas y grupos</span></div>
       </a>
-      <a class="widgets-relacionados-link" href="calendario.html">
+      <a class="widgets-relacionados-link" href="/calendario">
         <div class="widgets-relacionados-icono">📅</div>
         <div class="widgets-relacionados-texto"><b>Calendario</b><span>Próximos partidos y jornadas</span></div>
       </a>
-      <a class="widgets-relacionados-link" href="predicciones.html">
+      <a class="widgets-relacionados-link" href="/predicciones">
         <div class="widgets-relacionados-icono">🔮</div>
         <div class="widgets-relacionados-texto"><b>Porras</b><span>Predice resultados con la comunidad</span></div>
       </a>
-      <a class="widgets-relacionados-link" href="buscar.html">
+      <a class="widgets-relacionados-link" href="/buscar">
         <div class="widgets-relacionados-icono">🔎</div>
         <div class="widgets-relacionados-texto"><b>Buscar noticias</b><span>Crónicas, análisis y entrevistas</span></div>
       </a>
-      <a class="widgets-relacionados-link" href="quienes-somos.html">
+      <a class="widgets-relacionados-link" href="/quienes-somos">
         <div class="widgets-relacionados-icono">📣</div>
         <div class="widgets-relacionados-texto"><b>Quiénes somos</b><span>Nuestra misión y el equipo</span></div>
       </a>
-      <a class="widgets-relacionados-link" href="contacto.html">
+      <a class="widgets-relacionados-link" href="/contacto">
         <div class="widgets-relacionados-icono">✉️</div>
         <div class="widgets-relacionados-texto"><b>Contacto de prensa</b><span>¿Dudas sobre los widgets? Escríbenos</span></div>
       </a>
@@ -432,14 +444,16 @@
 
 <div id="site-footer"></div>
 
-<script src="js/ui-alertas.js?v=4"></script>
-<script src="js/config.js?v=15"></script>
-<script src="js/seo.js?v=4"></script>
+<script src="js/ui-alertas.js?v=5"></script>
+<script src="js/foco.js?v=1"></script>
+<script src="js/config.js?v=25"></script>
+<script src="js/seo.js?v=5"></script>
 <script src="js/lector-auth.js?v=13"></script>
-<script src="js/layout.js?v=7"></script>
+<script src="js/lecturas.js?v=7"></script>
+<script src="js/layout.js?v=22"></script>
 <script src="js/cookies.js?v=2"></script>
-<script src="js/ads.js?v=2"></script>
-<script src="js/main.js?v=10"></script>
+<script src="js/ads.js?v=3"></script>
+<script src="js/main.js?v=14"></script>
 <script>
 // Las rutas /widgets/* viven en el worker de la API
 // (worker/src/index.js), desplegado en api.elotrofutbol.media (ver

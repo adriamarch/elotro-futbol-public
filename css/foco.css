@@ -1,0 +1,123 @@
+/* ==========================================================================
+   FOCO DE IMAGEN — sistema CSS unificado
+   --------------------------------------------------------------------------
+   El foco (punto que no se debe recortar nunca) llega a cada imagen como dos
+   variables CSS, --foco-x y --foco-y, escritas por js/foco.js (siempre
+   numéricas y saneadas). Todo lo demás de este archivo las consume:
+
+     .foco-img      <img> con object-fit:cover y object-position = foco
+     .foco-bg       elemento con background-image (avatares redondos...)
+     .foco-marco    contenedor con proporción fija y recorte (ver .foco-r-*)
+     .foco-zoom     zoom al pasar el ratón/foco desde el propio punto de foco
+     .foco-suave    el foco se mueve con transición (galerías, cambios de foto)
+
+   Ventajas frente al object-position en línea de antes:
+     · Una sola fuente de verdad (también para background-position y el
+       origen de los zooms, que antes ampliaban desde el centro y se "comían"
+       justo el punto marcado).
+     · @property: las variables no se heredan a imágenes anidadas y se pueden
+       animar.
+     · Un solo sitio donde cambiar el comportamiento en toda la web.
+   ========================================================================== */
+
+@property --foco-x { syntax: "<percentage>"; inherits: false; initial-value: 50%; }
+@property --foco-y { syntax: "<percentage>"; inherits: false; initial-value: 50%; }
+
+/* ---------- Imagen con foco ---------- */
+/* :where() => especificidad 0: cualquier regla de tamaño/recorte de cada
+   componente (.card img, .hero-principal img...) sigue mandando sobre esto
+   sin necesidad de !important. */
+:where(.foco-img) {
+  object-fit: cover;
+  object-position: var(--foco-x, 50%) var(--foco-y, 50%);
+  /* Los zooms de hover/entrada crecen desde el punto de foco: el sujeto
+     marcado se queda dentro del marco mientras la foto se amplía. */
+  transform-origin: var(--foco-x, 50%) var(--foco-y, 50%);
+}
+
+/* ---------- Fondo con foco (avatares con background-image) ---------- */
+:where(.foco-bg) {
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: var(--foco-x, 50%) var(--foco-y, 50%);
+}
+
+/* ---------- Marco con proporción fija ---------- */
+/* Uso: <div class="foco-marco foco-r-16x9"><img class="foco-img" ...></div>
+   La imagen rellena el marco; el recorte respeta el foco. */
+:where(.foco-marco) {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--gris-claro, #eef1f5);
+  aspect-ratio: var(--foco-ratio, 16 / 9);
+}
+:where(.foco-marco) > :where(img, video) {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.foco-r-16x9  { --foco-ratio: 16 / 9; }
+.foco-r-16x10 { --foco-ratio: 16 / 10; }
+.foco-r-3x2   { --foco-ratio: 3 / 2; }
+.foco-r-4x3   { --foco-ratio: 4 / 3; }
+.foco-r-1x1   { --foco-ratio: 1 / 1; }
+.foco-r-4x5   { --foco-ratio: 4 / 5; }
+.foco-r-3x4   { --foco-ratio: 3 / 4; }
+.foco-r-2x1   { --foco-ratio: 2 / 1; }
+.foco-redondo { border-radius: 50%; }
+
+/* ---------- Zoom desde el foco ---------- */
+.foco-zoom > :where(.foco-img),
+.foco-zoom.foco-img {
+  transition: transform .6s cubic-bezier(.2, .7, .2, 1);
+  will-change: transform;
+}
+@media (hover: hover) {
+  .foco-zoom:hover > :where(.foco-img),
+  .foco-zoom.foco-img:hover { transform: scale(1.06); }
+}
+
+/* ---------- Cambios de foto con movimiento suave ---------- */
+.foco-suave {
+  transition: --foco-x .45s cubic-bezier(.2, .7, .2, 1),
+              --foco-y .45s cubic-bezier(.2, .7, .2, 1);
+}
+
+/* ---------- Aplicación a los componentes existentes ---------- */
+/* Mismas imágenes que antes, ahora todas con el mismo sistema. Las reglas de
+   tamaño de cada componente no se tocan; aquí solo se unifica el foco. */
+.card img,
+.mini-card img,
+.hero-principal img,
+.article-img img,
+.article-body .foto-articulo img,
+.article-galeria-principal img,
+.article-galeria .miniaturas img,
+.article-collage-foto img,
+.nr-card-media img,
+.nr-modal-foto img,
+.gal-item img,
+.gals-item img,
+.nr-avatar img,
+.perfil-autor-avatar {
+  object-position: var(--foco-x, 50%) var(--foco-y, 50%);
+  transform-origin: var(--foco-x, 50%) var(--foco-y, 50%);
+}
+
+/* ---------- Avatares con background-image ---------- */
+.user-avatar-foto {
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: var(--foco-x, 50%) var(--foco-y, 50%);
+}
+
+/* ---------- Movimiento reducido ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .foco-zoom > :where(.foco-img),
+  .foco-zoom.foco-img,
+  .foco-suave { transition: none; }
+  .foco-zoom:hover > :where(.foco-img),
+  .foco-zoom.foco-img:hover { transform: none; }
+}

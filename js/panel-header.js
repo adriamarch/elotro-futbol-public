@@ -72,7 +72,7 @@ function pintarCuentaAvatar(user) {
       el.textContent = "";
       el.style.backgroundImage = `url('${user.avatar_url}')`;
       el.style.backgroundSize = "cover";
-      el.style.backgroundPosition = user.avatar_foco || "50% 50%";
+      el.style.backgroundPosition = window.EOF_FOCO ? EOF_FOCO.texto(user.avatar_foco) : "50% 50%";
       el.classList.add("user-avatar-foto");
     } else {
       el.style.backgroundImage = "none";
@@ -185,7 +185,7 @@ async function cargarNotificaciones() {
       apiFetch(`/api/results?limit=200`),
     ]);
 
-    const TIPO_LABEL = { noticia: "Noticia", previa: "Previa", cronica: "Crónica", analisis: "Análisis", opinion: "Opinión", entrevista: "Entrevista" };
+    const TIPO_LABEL = { noticia: "Noticia", previa: "Previa", cronica: "Crónica", analisis: "Análisis", opinion: "Opinión", entrevista: "Entrevista", uno_por_uno: "1x1 de jugadores" };
 
     const hoyStr = new Date().toISOString().slice(0, 10);
     const partidosSinActualizar = resultadosPendientes
@@ -268,6 +268,7 @@ function marcarNotificacionesVistas() {
   btn.addEventListener("click", () => {
     const esOscuroAhora = document.documentElement.getAttribute("data-theme") === "dark";
     const nuevo = esOscuroAhora ? "light" : "dark";
+    if (window.EOFTema) { window.EOFTema.fijar(nuevo); return; }
     if (nuevo === "dark") {
       document.documentElement.setAttribute("data-theme", "dark");
     } else {

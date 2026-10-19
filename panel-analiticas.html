@@ -1,14 +1,21 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<script src="js/tema.js"></script>
+<script src="js/tema.js?v=2"></script>
+<script src="js/preferencias.js?v=3"></script>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Analíticas — El Otro Fútbol</title>
+<meta property="og:image" content="https://elotrofutbol.media/img/og-default.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://elotrofutbol.media/img/og-default.png">
 <meta name="robots" content="noindex, nofollow">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700;800&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://api.elotrofutbol.media" crossorigin>
+<link rel="preconnect" href="https://res.cloudinary.com">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700;800&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" onload="this.onload=null;this.rel='stylesheet'"><noscript><link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700;800&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet"></noscript>
 
 <!-- =========================================================
      HEADER COMPARTIDO CON EL PANEL DE ADMINISTRACIÓN
@@ -20,11 +27,14 @@
      estilos propios del panel de administración. Así el header de
      esta página es literalmente el mismo, no una copia aparte que
      se pueda desincronizar. -->
-<link rel="icon" href="/favicon.ico?v=2" sizes="any">
-<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=2">
-<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
-<link rel="stylesheet" href="css/style.css?v=17">
-<link rel="stylesheet" href="admin/css/admin.css?v=8">
+<link rel="icon" href="/favicon.ico?v=3" sizes="any">
+<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=3">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png?v=2">
+<link rel="stylesheet" href="css/style.css?v=25">
+<link rel="stylesheet" href="css/accesibilidad.css?v=1">
+<script src="js/accesibilidad.js?v=1" defer></script>
+<link rel="stylesheet" href="css/foco.css?v=1">
+<link rel="stylesheet" href="admin/css/admin.css?v=10">
 
 <!-- =========================================================
      CHART.JS — CARGA CON FALLBACK
@@ -37,7 +47,13 @@ window.__chartJsReady = new Promise((resolve) => {
     return;
   }
 
+  // Primero la copia propia (js/vendor/chart.umd.min.js, Chart.js 4.4.4
+  // sin la línea sourceMappingURL): no depende de ningún CDN y evita el
+  // error de CSP "Connecting to ...chart.umd.js.map violates connect-src"
+  // (las DevTools piden el .map con fetch y connect-src no lista los CDN).
+  // Los CDN quedan solo como respaldo.
   const sources = [
+    '/js/vendor/chart.umd.min.js?v=1',
     'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js',
     'https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js',
     'https://unpkg.com/chart.js@4.4.4/dist/chart.umd.min.js'
@@ -206,14 +222,19 @@ main .wrap,
 }
 
 /* =========================================================
-   MODAL DE CONFIRMACIÓN (borrado de datos / desconectar Google)
+   MODAL DE CONFIRMACIÓN (borrado de datos)
+   Mismo lenguaje que el resto de modales del panel (admin/css/modales.css):
+   fondo desenfocado, caja con acento, ✕, foco visible, hoja en móvil.
    ========================================================= */
 
 .modal-overlay{
   display:none;
   position:fixed;
   inset:0;
-  background:rgba(12,27,46,.55);
+  background:rgba(8,16,28,.52);
+  -webkit-backdrop-filter:blur(6px) saturate(130%);
+  backdrop-filter:blur(6px) saturate(130%);
+  overscroll-behavior:contain;
   z-index:200;
   align-items:center;
   justify-content:center;
@@ -222,22 +243,53 @@ main .wrap,
 
 .modal-overlay.abierto{
   display:flex;
+  animation:modalFondoIn .18s ease;
 }
+body:has(.modal-overlay.abierto){ overflow:hidden; }
 
 .modal-caja{
+  position:relative;
   background:var(--tarjeta);
-  border-radius:var(--radio);
+  border-radius:20px;
   max-width:440px;
   width:100%;
-  padding:26px;
-  box-shadow:0 20px 50px rgba(0,0,0,.3);
+  max-height:90vh;
+  max-height:90dvh;
+  overflow-y:auto;
+  padding:28px;
+  box-sizing:border-box;
+  box-shadow:0 28px 70px rgba(8,16,28,.38), 0 0 0 1px rgba(127,127,127,.14);
+  animation:modalCajaIn .22s cubic-bezier(.2,.8,.2,1);
 }
+.modal-caja::before{
+  content:"";
+  position:absolute;top:0;left:0;right:0;height:3px;
+  border-radius:20px 20px 0 0;
+  background:linear-gradient(90deg,var(--rojo),var(--celeste));
+}
+@keyframes modalFondoIn{from{opacity:0;}to{opacity:1;}}
+@keyframes modalCajaIn{from{opacity:0;transform:translateY(8px) scale(.98);}to{opacity:1;transform:none;}}
+
+.modal-cerrar{
+  position:absolute;top:14px;right:14px;
+  width:34px;height:34px;padding:0;
+  display:inline-flex;align-items:center;justify-content:center;
+  border:0;border-radius:50%;cursor:pointer;
+  background:var(--gris-claro);color:var(--marino-texto);
+  font-size:1.35rem;line-height:1;
+  transition:background .16s ease,color .16s ease,transform .2s ease;
+}
+.modal-cerrar:hover{ background:var(--rojo);color:#fff;transform:rotate(90deg); }
+.modal-cerrar:focus-visible{ outline:2px solid var(--celeste);outline-offset:2px; }
 
 .modal-caja h3{
   margin:0 0 10px;
+  padding-right:44px;
   font-family:var(--font-tit);
   color:var(--marino-texto);
   font-size:1.15rem;
+  letter-spacing:.4px;
+  text-transform:uppercase;
 }
 
 .modal-caja p{
@@ -250,42 +302,86 @@ main .wrap,
 .modal-caja label{
   display:flex;
   align-items:flex-start;
-  gap:8px;
-  font-size:.82rem;
+  gap:10px;
+  font-size:.84rem;
   color:var(--texto);
-  margin-bottom:18px;
+  line-height:1.4;
+  margin-bottom:20px;
+  padding:12px 14px;
+  border:1.5px solid var(--borde);
+  border-radius:12px;
   cursor:pointer;
+  transition:border-color .16s ease,background .16s ease;
+}
+.modal-caja label:hover{ border-color:var(--rojo); }
+.modal-caja label:has(input:checked){
+  border-color:var(--rojo);
+  background:rgba(209,19,46,.06);
+}
+.modal-caja label input[type="checkbox"]{
+  margin-top:2px;
+  flex-shrink:0;
+  accent-color:var(--rojo);
 }
 
 .modal-botones{
   display:flex;
-  justify-content:flex-end;
+  flex-direction:row-reverse;
+  justify-content:flex-start;
   gap:10px;
 }
 
 .modal-botones button{
   border:none;
-  padding:9px 18px;
+  padding:10px 20px;
   border-radius:20px;
-  font-size:.82rem;
+  font-size:.84rem;
   font-weight:600;
   cursor:pointer;
   font-family:var(--font-text);
+  transition:transform .12s ease,opacity .16s ease,background .16s ease;
 }
+.modal-botones button:focus-visible{ outline:2px solid var(--celeste);outline-offset:2px; }
+.modal-botones button:active{ transform:translateY(1px); }
 
 .modal-btn-cancelar{
   background:var(--gris-claro);
   color:var(--texto);
 }
+.modal-btn-cancelar:hover{ background:var(--borde); }
 
 .modal-btn-confirmar{
   background:linear-gradient(135deg,var(--rojo),var(--rojo-oscuro));
   color:#fff;
 }
+.modal-btn-confirmar:hover{ opacity:.92; }
 
 .modal-btn-confirmar:disabled{
   opacity:.5;
   cursor:not-allowed;
+}
+
+[data-theme="dark"] .modal-overlay{ background:rgba(0,0,0,.66); }
+[data-theme="dark"] .modal-caja{ box-shadow:0 28px 70px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.08); }
+[data-theme="dark"] .modal-cerrar{ background:rgba(255,255,255,.08);color:var(--texto); }
+[data-theme="dark"] .modal-cerrar:hover{ background:var(--rojo);color:#fff; }
+
+@media (max-width:560px){
+  .modal-overlay{ align-items:flex-end;padding:0; }
+  .modal-caja{
+    max-width:100%;
+    border-radius:22px 22px 0 0;
+    padding:26px 20px calc(20px + env(safe-area-inset-bottom,0px));
+  }
+  .modal-caja::before{ border-radius:22px 22px 0 0; }
+  .modal-botones{ flex-direction:column; }
+  .modal-botones button{ width:100%;padding:12px 20px; }
+}
+
+@media (prefers-reduced-motion: reduce){
+  .modal-overlay.abierto,.modal-caja{ animation:none; }
+  .modal-cerrar{ transition:none; }
+  .modal-cerrar:hover{ transform:none; }
 }
 
 /* =========================================================
@@ -828,6 +924,21 @@ table.top-noticias .rank{
   text-transform:uppercase;
 }
 
+.autor-barra{
+  height:5px;
+  border-radius:3px;
+  background:var(--borde);
+  margin-top:6px;
+  overflow:hidden;
+}
+
+.autor-barra > span{
+  display:block;
+  height:100%;
+  border-radius:3px;
+  background:linear-gradient(90deg,var(--marino),var(--celeste));
+}
+
 /* =========================================================
    TIEMPO LECTURA
    ========================================================= */
@@ -971,6 +1082,655 @@ table.top-noticias .rank{
     margin-left:0;
   }
 }
+
+/* =========================================================
+   REDISEÑO DEL PANEL
+   Capa final que mejora todo el panel sin tocar el marcado ni el JS
+   de cada sección: sistema de espaciado/radios, tarjetas con relieve,
+   KPIs con acento, tablas con hover, podio de autores, barra de rango
+   fija, estados de carga, foco visible, modo oscuro y responsive.
+   Solo usa las variables de style.css (claro/oscuro automático).
+   ========================================================= */
+
+:root{
+  --p-radio:16px;
+  --p-radio-sm:10px;
+  --p-gap:18px;
+  --p-oro:#d9a21b;
+  --p-plata:#8d99ab;
+  --p-bronce:#c0763c;
+  --p-oro-bg:rgba(217,162,27,.13);
+  --p-plata-bg:rgba(141,153,171,.14);
+  --p-bronce-bg:rgba(192,118,60,.13);
+  --p-transicion:.18s cubic-bezier(.2,.7,.3,1);
+}
+[data-theme="dark"]{
+  --p-oro:#f0bd3f;
+  --p-plata:#b4bfce;
+  --p-bronce:#e0955a;
+  --p-oro-bg:rgba(240,189,63,.14);
+  --p-plata-bg:rgba(180,191,206,.12);
+  --p-bronce-bg:rgba(224,149,90,.14);
+}
+
+/* ---------- Base ---------- */
+body{
+  background:
+    radial-gradient(1100px 380px at 50% -140px, rgba(91,184,232,.16), transparent 70%),
+    var(--fondo-alt);
+  font-feature-settings:"tnum" 1, "cv11" 1;
+  line-height:1.5;
+}
+main{ padding:26px 0 80px; }
+::selection{ background:var(--celeste); color:#fff; }
+
+/* Cifras tabulares: los números no "bailan" al cambiar de periodo */
+.kpi .val,.metric-num,.fuente-pct,.tl-item .val,.disp-item .pct,
+.autor-metric .n,.recurrencia-item .num,.cat-nombre{
+  font-variant-numeric:tabular-nums;
+}
+
+/* ---------- Barra de rango (fija al hacer scroll) ---------- */
+.barra-analiticas{
+  position:sticky;
+  top:0;
+  z-index:60;
+  padding:12px 0;
+  background:linear-gradient(135deg,var(--marino),var(--marino2));
+  box-shadow:0 6px 20px rgba(8,16,28,.22);
+  border-bottom:1px solid rgba(255,255,255,.07);
+}
+.rango-selector{
+  background:rgba(255,255,255,.07);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);
+  padding:4px;
+  gap:4px;
+}
+.rango-selector button{
+  padding:7px 16px;
+  border-radius:999px;
+  letter-spacing:.2px;
+  transition:background var(--p-transicion),color var(--p-transicion),transform var(--p-transicion);
+}
+.rango-selector button:hover:not(.activo){ background:rgba(255,255,255,.1); }
+.rango-selector button.activo{
+  background:#fff;
+  color:var(--marino);
+  box-shadow:0 2px 8px rgba(0,0,0,.25);
+}
+.rango-selector button:active{ transform:scale(.97); }
+.rango-selector button:focus-visible,
+.btn-borrar-datos:focus-visible,
+.buscador-noticia-form button:focus-visible{
+  outline:2px solid var(--celeste);
+  outline-offset:2px;
+}
+.btn-borrar-datos{ border-radius:999px; }
+
+/* ---------- Cabecera del panel ---------- */
+.fuentes-tabs{ padding:4px 0 18px; }
+.panel-titulo{
+  font-family:var(--font-tit);
+  font-weight:600;
+  font-size:1.25rem;
+  letter-spacing:.4px;
+  text-transform:uppercase;
+  color:var(--marino-texto);
+}
+.panel-titulo span{
+  font-family:var(--font-text);
+  font-weight:500;
+  font-size:.82rem;
+  letter-spacing:0;
+  text-transform:none;
+  color:var(--texto-suave);
+  margin-left:4px;
+}
+.fuentes-tabs .estado-conexion{
+  padding:6px 12px;
+  border:1px solid var(--borde);
+  border-radius:999px;
+  background:var(--tarjeta);
+  box-shadow:var(--sombra-sm);
+}
+.fuentes-tabs .estado-conexion .punto{
+  box-shadow:0 0 0 3px rgba(26,156,107,.18);
+  animation:pPulso 2.4s ease-in-out infinite;
+}
+@keyframes pPulso{
+  0%,100%{ box-shadow:0 0 0 3px rgba(26,156,107,.18); }
+  50%{ box-shadow:0 0 0 6px rgba(26,156,107,.05); }
+}
+
+/* ---------- Tarjetas ---------- */
+.card{
+  position:relative;
+  border-radius:var(--p-radio);
+  padding:22px 22px 20px;
+  border:1px solid var(--borde);
+  box-shadow:var(--sombra-sm);
+  transition:box-shadow var(--p-transicion),transform var(--p-transicion),border-color var(--p-transicion);
+  animation:pEntrada .45s both;
+}
+.card:hover{
+  box-shadow:var(--sombra-md);
+  border-color:color-mix(in srgb,var(--celeste) 35%,var(--borde));
+}
+.card h3{
+  font-size:1.02rem;
+  letter-spacing:.5px;
+  gap:10px;
+}
+.card h3::before{
+  content:"";
+  display:inline-block;
+  flex:0 0 4px;
+  width:4px;
+  height:1.05em;
+  border-radius:2px;
+  margin-right:2px;
+  background:linear-gradient(180deg,var(--celeste),var(--rojo));
+}
+.card h3{ justify-content:flex-start; }
+.card .sub{
+  font-size:.8rem;
+  line-height:1.45;
+  margin:2px 0 18px;
+}
+.grid2,.grid3{ gap:var(--p-gap); margin-bottom:var(--p-gap); }
+.grid2 > .card:nth-child(2){ animation-delay:.05s; }
+.grid3 > .card:nth-child(2){ animation-delay:.05s; }
+.grid3 > .card:nth-child(3){ animation-delay:.1s; }
+@keyframes pEntrada{
+  from{ opacity:0; transform:translateY(8px); }
+  to{ opacity:1; transform:none; }
+}
+
+/* Estados de carga / vacío / error: texto discreto y centrado */
+#autoresLista,#fuentesLista,#categoriasLista,#tiposLista,#scrollLista,
+#tlLista,#idiomasLista,#partidosSeguidosLista,#recurrenciaBloque,
+#gscLista,#dispositivos{
+  font-size:.85rem;
+  color:var(--texto-suave);
+}
+.card .sub:only-child{ text-align:center; padding:18px 0; margin:0; }
+
+/* ---------- KPIs ---------- */
+.kpis{ gap:var(--p-gap); margin-bottom:var(--p-gap); }
+.kpi{
+  position:relative;
+  overflow:hidden;
+  border-radius:var(--p-radio);
+  padding:20px 20px 18px;
+  box-shadow:var(--sombra-sm);
+  transition:box-shadow var(--p-transicion),transform var(--p-transicion);
+  animation:pEntrada .45s both;
+}
+.kpi::before{
+  content:"";
+  position:absolute;
+  inset:0 0 auto 0;
+  height:3px;
+  background:var(--k-color,var(--celeste));
+}
+.kpi::after{
+  content:"";
+  position:absolute;
+  right:-38px; top:-38px;
+  width:120px; height:120px;
+  border-radius:50%;
+  background:var(--k-color,var(--celeste));
+  opacity:.07;
+  pointer-events:none;
+}
+.kpi:hover{ box-shadow:var(--sombra-md); transform:translateY(-2px); }
+.kpis .kpi:nth-child(1){ --k-color:var(--celeste); }
+.kpis .kpi:nth-child(2){ --k-color:#7a6cf0; animation-delay:.04s; }
+.kpis .kpi:nth-child(3){ --k-color:var(--verde); animation-delay:.08s; }
+.kpis .kpi:nth-child(4){ --k-color:var(--naranja); animation-delay:.12s; }
+.kpi .lbl{ font-size:.72rem; letter-spacing:.7px; }
+.kpi .val{
+  font-size:2.2rem;
+  line-height:1.1;
+  margin:8px 0 8px;
+  letter-spacing:.3px;
+}
+.kpi .delta{
+  display:inline-flex;
+  width:fit-content;
+  padding:3px 10px;
+  border-radius:999px;
+  background:var(--gris-claro);
+  font-size:.74rem;
+}
+.kpi .delta.up{ background:rgba(26,156,107,.12); }
+.kpi .delta.down{ background:rgba(209,19,46,.10); }
+
+/* ---------- Buscador de noticia ---------- */
+.buscador-noticia-form{ margin-top:2px; }
+.buscador-noticia-form input{
+  border-radius:999px;
+  padding:11px 18px;
+  border:1.5px solid var(--borde);
+  background:var(--fondo-alt);
+  transition:border-color var(--p-transicion),box-shadow var(--p-transicion),background var(--p-transicion);
+}
+.buscador-noticia-form input::placeholder{ color:var(--texto-suave); opacity:.8; }
+.buscador-noticia-form input:focus{
+  outline:none;
+  background:var(--tarjeta);
+  border-color:var(--celeste);
+  box-shadow:0 0 0 4px rgba(91,184,232,.22);
+}
+.buscador-noticia-form button{
+  padding:10px 24px;
+  box-shadow:0 4px 12px rgba(12,27,46,.22);
+  transition:transform var(--p-transicion),box-shadow var(--p-transicion),opacity var(--p-transicion);
+}
+.buscador-noticia-form button:hover:not(:disabled){
+  transform:translateY(-1px);
+  box-shadow:0 6px 16px rgba(12,27,46,.28);
+}
+.buscador-noticia-item{
+  padding:14px 10px;
+  margin:0 -10px;
+  border-radius:var(--p-radio-sm);
+  transition:background var(--p-transicion);
+}
+.buscador-noticia-item:hover{ background:var(--fondo-alt); }
+
+/* ---------- Tablas (noticias / partidos) ---------- */
+table.top-noticias{ border-collapse:separate; border-spacing:0; }
+table.top-noticias th{
+  padding:10px 12px;
+  background:var(--fondo-alt);
+  font-size:.68rem;
+  letter-spacing:.7px;
+  border-bottom:1px solid var(--borde);
+}
+table.top-noticias th:first-child{ border-top-left-radius:var(--p-radio-sm); }
+table.top-noticias th:last-child{ border-top-right-radius:var(--p-radio-sm); }
+table.top-noticias td{ padding:12px; transition:background var(--p-transicion); }
+table.top-noticias tbody tr:hover td{ background:var(--fondo-alt); }
+table.top-noticias .rank{
+  width:48px;
+  text-align:center;
+  color:var(--texto-suave);
+  font-size:.95rem;
+}
+/* Top 3 con medalla de color, igual que en autores */
+table.top-noticias tbody tr:nth-child(-n+3) .rank{
+  font-weight:700;
+  color:#fff;
+  text-shadow:0 1px 1px rgba(0,0,0,.25);
+  position:relative;
+  z-index:0;
+}
+table.top-noticias tbody tr:nth-child(-n+3) .rank::before{
+  content:"";
+  position:absolute;
+  left:50%; top:50%;
+  width:28px; height:28px;
+  transform:translate(-50%,-50%);
+  border-radius:50%;
+  z-index:-1;
+  box-shadow:0 2px 6px rgba(0,0,0,.2);
+}
+table.top-noticias tbody tr:nth-child(1) .rank::before{ background:linear-gradient(135deg,#f6d06a,var(--p-oro)); }
+table.top-noticias tbody tr:nth-child(2) .rank::before{ background:linear-gradient(135deg,#d3dae4,var(--p-plata)); }
+table.top-noticias tbody tr:nth-child(3) .rank::before{ background:linear-gradient(135deg,#e6a773,var(--p-bronce)); }
+.tit-noticia{ max-width:none; }
+.tit-noticia strong{ font-size:.88rem; }
+.tag-cat{ padding:3px 10px; letter-spacing:.5px; }
+.barra-mini{
+  height:6px;
+  width:100%;
+  min-width:90px;
+  max-width:140px;
+  background:var(--gris-claro);
+}
+.barra-mini i{
+  border-radius:3px;
+  background:linear-gradient(90deg,var(--celeste),#3a8fd0);
+  transition:width .6s cubic-bezier(.2,.7,.3,1);
+}
+
+/* ---------- Filas de lista (fuentes, categorías, tipos...) ---------- */
+.fuente-row,.categoria-row,.dominio-row{
+  border-radius:var(--p-radio-sm);
+  transition:background var(--p-transicion);
+}
+.fuente-row{ padding:11px 10px; margin:0 -10px; }
+.categoria-row{ padding:12px 10px; margin:0 -10px; }
+.fuente-row:hover,.categoria-row:hover{ background:var(--fondo-alt); }
+.fuente-icon{ width:38px; height:38px; border-radius:11px; box-shadow:0 3px 8px rgba(0,0,0,.15); }
+.fuente-pct{ font-size:1.1rem; }
+.fuentes-dominios{ border-top:1px dashed var(--borde); }
+.fuentes-dominios .titulo-mini{ letter-spacing:.7px; font-weight:600; }
+.dominio-row{ padding:7px 6px; }
+.dominio-row:hover{ background:var(--fondo-alt); }
+.dominio-row .dominio-badge{ padding:2px 9px; font-weight:600; }
+.categoria-row .cat-nombre{ font-size:.88rem; }
+.categoria-row .cat-meta{ margin-top:1px; }
+
+/* ---------- Recurrencia ---------- */
+.recurrencia-bloque{ gap:var(--p-gap); }
+.recurrencia-item{
+  position:relative;
+  padding:20px 16px;
+  border-radius:var(--p-radio);
+  border:1px solid var(--borde);
+  background:linear-gradient(180deg,var(--fondo-alt),var(--tarjeta));
+}
+.recurrencia-item:first-child .num{ color:var(--celeste); }
+.recurrencia-item:last-child .num{ color:var(--verde); }
+.recurrencia-item .num{ font-size:2.1rem; line-height:1.1; }
+.recurrencia-item .lbl{ font-size:.78rem; margin-top:6px; }
+
+/* ---------- Barras de tiempo / idiomas ---------- */
+.tl-lista{ gap:12px; }
+.tl-item{ gap:12px; }
+.tl-item .cat-pill{
+  border-radius:999px;
+  padding:5px 12px;
+  font-size:.7rem;
+  letter-spacing:.3px;
+  box-shadow:0 2px 6px rgba(0,0,0,.14);
+}
+.tl-item .barra{
+  height:12px;
+  border-radius:999px;
+  background:var(--gris-claro);
+  box-shadow:inset 0 1px 2px rgba(0,0,0,.08);
+}
+.tl-item .barra i{
+  border-radius:999px;
+  transition:width .7s cubic-bezier(.2,.7,.3,1);
+}
+.tl-item .val{ width:auto; min-width:48px; font-weight:600; }
+
+/* ---------- Dispositivos ---------- */
+.dispositivos{ gap:12px; margin-top:8px; }
+.disp-item{
+  padding:16px 8px;
+  border-radius:var(--p-radio);
+  border:1px solid var(--borde);
+  background:var(--fondo-alt);
+  transition:transform var(--p-transicion),border-color var(--p-transicion);
+}
+.disp-item:hover{ transform:translateY(-2px); border-color:var(--celeste); }
+.disp-item .icon{
+  width:48px; height:48px;
+  background:var(--tarjeta);
+  box-shadow:var(--sombra-sm);
+}
+.disp-item .pct{ font-size:1.45rem; }
+.disp-item .lbl{ letter-spacing:.6px; margin-top:2px; }
+
+/* ---------- Gráficos ---------- */
+.chart-box{ height:300px; }
+.chart-box.sm{ height:230px; }
+.chart-box-bajo{ height:230px; }
+
+/* =========================================================
+   AUTORES — con podio (oro / plata / bronce)
+   ========================================================= */
+#autoresLista{ display:flex; flex-direction:column; gap:6px; }
+
+.autor-row{
+  position:relative;
+  gap:14px;
+  padding:12px 14px;
+  border:1px solid transparent;
+  border-bottom:1px solid var(--borde);
+  border-radius:var(--p-radio-sm);
+  transition:background var(--p-transicion),transform var(--p-transicion),box-shadow var(--p-transicion);
+}
+.autor-row:last-child{ border-bottom:1px solid transparent; }
+.autor-row:hover{ background:var(--fondo-alt); }
+
+.autor-pos{
+  flex:0 0 26px;
+  width:26px; height:26px;
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--font-tit);
+  font-size:.82rem;
+  font-weight:600;
+  color:var(--texto-suave);
+  border-radius:50%;
+  background:var(--gris-claro);
+}
+
+.avatar{
+  position:relative;
+  width:42px; height:42px;
+  font-size:.92rem;
+  box-shadow:0 0 0 2px var(--tarjeta),0 0 0 4px transparent;
+}
+.avatar-medalla{
+  position:absolute;
+  right:-7px; bottom:-7px;
+  font-size:1.05rem;
+  line-height:1;
+  filter:drop-shadow(0 1px 2px rgba(0,0,0,.35));
+}
+
+.autor-info{ min-width:0; }
+.autor-info .nombre{
+  font-size:.92rem;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.autor-info .stats{ line-height:1.45; }
+.autor-barra{ height:6px; margin-top:8px; }
+.autor-barra > span{ transition:width .7s cubic-bezier(.2,.7,.3,1); }
+
+.autor-metric{ min-width:64px; }
+.autor-metric .n{ font-size:1.25rem; line-height:1.1; }
+
+/* Podio: tinte de fondo, borde lateral, número y barra en el color de la medalla */
+.autor-row.podio{
+  padding:15px 16px;
+  border-color:var(--podio-borde);
+  border-left:4px solid var(--podio-color);
+  background:linear-gradient(90deg,var(--podio-bg),transparent 75%);
+  box-shadow:var(--sombra-sm);
+}
+.autor-row.podio:hover{
+  background:linear-gradient(90deg,var(--podio-bg),var(--podio-bg) 20%,transparent 85%);
+  transform:translateX(2px);
+}
+.autor-row.podio .autor-pos{
+  color:#fff;
+  background:var(--podio-grad);
+  box-shadow:0 2px 6px rgba(0,0,0,.2);
+}
+.autor-row.podio .avatar{ box-shadow:0 0 0 2px var(--tarjeta),0 0 0 4px var(--podio-color); }
+.autor-row.podio .autor-info .nombre{ font-weight:700; }
+.autor-row.podio .autor-barra > span{ background:var(--podio-grad); }
+.autor-row.podio .autor-metric .n{ color:var(--podio-color); font-size:1.5rem; }
+.autor-row.podio .autor-metric .l{ color:var(--podio-color); font-weight:600; }
+
+.autor-row.podio-1{
+  --podio-color:var(--p-oro);
+  --podio-bg:var(--p-oro-bg);
+  --podio-borde:color-mix(in srgb,var(--p-oro) 30%,transparent);
+  --podio-grad:linear-gradient(135deg,#f6d06a,var(--p-oro));
+}
+.autor-row.podio-2{
+  --podio-color:var(--p-plata);
+  --podio-bg:var(--p-plata-bg);
+  --podio-borde:color-mix(in srgb,var(--p-plata) 30%,transparent);
+  --podio-grad:linear-gradient(135deg,#d3dae4,var(--p-plata));
+}
+.autor-row.podio-3{
+  --podio-color:var(--p-bronce);
+  --podio-bg:var(--p-bronce-bg);
+  --podio-borde:color-mix(in srgb,var(--p-bronce) 30%,transparent);
+  --podio-grad:linear-gradient(135deg,#e6a773,var(--p-bronce));
+}
+/* El 1.º es algo más grande que el 2.º y el 3.º */
+.autor-row.podio-1{ padding:18px 18px; }
+.autor-row.podio-1 .avatar{ width:48px; height:48px; font-size:1rem; }
+.autor-row.podio-1 .autor-metric .n{ font-size:1.8rem; }
+/* Separación visual entre podio y resto */
+.autor-row.podio-3{ margin-bottom:8px; }
+
+/* ---------- Autores: lista plegable (10 primeros + "ver el resto") ---------- */
+.autores-resto{
+  display:grid;
+  grid-template-rows:0fr;
+  opacity:0;
+  transition:grid-template-rows .35s cubic-bezier(.2,.7,.3,1),opacity .25s ease;
+}
+.autores-resto.abierto{
+  grid-template-rows:1fr;
+  opacity:1;
+}
+.autores-resto-inner{
+  overflow:hidden;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.autores-toggle{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  width:100%;
+  margin-top:8px;
+  padding:11px 16px;
+  border:1.5px dashed var(--borde);
+  border-radius:var(--p-radio-sm);
+  background:transparent;
+  color:var(--texto-suave);
+  font-family:var(--font-text);
+  font-size:.82rem;
+  font-weight:600;
+  cursor:pointer;
+  transition:background var(--p-transicion),border-color var(--p-transicion),color var(--p-transicion);
+}
+.autores-toggle:hover{
+  background:var(--fondo-alt);
+  border-color:var(--celeste);
+  color:var(--marino-texto);
+}
+.autores-toggle:focus-visible{ outline:2px solid var(--celeste); outline-offset:2px; }
+.autores-toggle-flecha{ transition:transform .3s cubic-bezier(.2,.7,.3,1); }
+.autores-toggle[aria-expanded="true"] .autores-toggle-flecha{ transform:rotate(180deg); }
+@media (prefers-reduced-motion: reduce){
+  .autores-resto,.autores-toggle-flecha{ transition:none; }
+}
+
+/* ---------- Scrollbars discretas ---------- */
+*{ scrollbar-width:thin; scrollbar-color:color-mix(in srgb,var(--texto-suave) 40%,transparent) transparent; }
+
+/* ---------- Responsive ---------- */
+@media(max-width:1000px){
+  .kpi .val{ font-size:1.9rem; }
+  .chart-box{ height:260px; }
+}
+@media(max-width:650px){
+  main{ padding:18px 0 60px; }
+  .barra-analiticas{ padding:10px 0; }
+  .barra-analiticas .wrap{ gap:10px; }
+  .btn-borrar-datos{ width:100%; justify-content:center; }
+  .card{ padding:18px 16px 16px; border-radius:14px; }
+  .panel-titulo{ font-size:1.05rem; }
+  .panel-titulo span{ display:block; margin:2px 0 0; }
+  .fuentes-tabs .estado-conexion{ width:100%; }
+  .kpi{ padding:16px 14px 14px; border-radius:14px; }
+  .kpi .val{ font-size:1.6rem; }
+  .autor-row{ gap:10px; padding:11px 10px; }
+  .autor-row.podio,.autor-row.podio-1{ padding:12px 10px; }
+  .autor-pos{ flex-basis:22px; width:22px; height:22px; font-size:.72rem; }
+  .autor-metric .n{ font-size:1.1rem; }
+  .autor-row.podio .autor-metric .n{ font-size:1.25rem; }
+  .autor-row.podio-1 .autor-metric .n{ font-size:1.4rem; }
+  .autor-row.podio-1 .avatar{ width:44px; height:44px; }
+  .dispositivos{ flex-wrap:wrap; }
+  .disp-item{ flex:1 1 90px; }
+  .tl-item .cat-pill{ width:92px; }
+  .chart-box{ height:240px; }
+}
+
+/* ---------- Accesibilidad: sin animaciones si se pide ---------- */
+@media (prefers-reduced-motion: reduce){
+  .card,.kpi{ animation:none; }
+  .fuentes-tabs .estado-conexion .punto{ animation:none; }
+  .card,.kpi,.autor-row,.disp-item,.barra-mini i,.tl-item .barra i,.autor-barra > span{ transition:none; }
+  .kpi:hover,.disp-item:hover,.autor-row.podio:hover{ transform:none; }
+}
+
+/* ---------- Impresión ---------- */
+@media print{
+  .barra-analiticas{ position:static; box-shadow:none; }
+  .card,.kpi{ animation:none; box-shadow:none; break-inside:avoid; }
+}
+/* ---- Tarjeta explicativa del rendimiento por autor ---- */
+.rend-info{
+  margin:0 0 14px;
+  border:1px solid color-mix(in srgb,var(--celeste) 28%,var(--borde));
+  border-radius:var(--p-radio-sm);
+  background:color-mix(in srgb,var(--celeste) 7%,transparent);
+  overflow:hidden;
+}
+.rend-info summary{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:11px 14px;
+  cursor:pointer;
+  list-style:none;
+  font-size:.84rem;
+  font-weight:700;
+  color:var(--texto);
+}
+.rend-info summary::-webkit-details-marker{ display:none; }
+.rend-info summary::after{
+  content:"";
+  margin-left:auto;
+  width:8px;
+  height:8px;
+  border-right:2px solid currentColor;
+  border-bottom:2px solid currentColor;
+  transform:rotate(45deg);
+  transition:transform var(--p-transicion);
+  opacity:.6;
+}
+.rend-info[open] summary::after{ transform:rotate(-135deg); }
+.rend-info-cuerpo{
+  padding:2px 14px 14px;
+  font-size:.82rem;
+  line-height:1.5;
+  color:var(--texto-suave);
+}
+.rend-info-cuerpo p{ margin:0 0 8px; }
+.rend-info-formula{
+  margin:8px 0 10px;
+  padding:9px 12px;
+  border-radius:8px;
+  background:color-mix(in srgb,var(--celeste) 12%,transparent);
+  font-weight:700;
+  color:var(--texto);
+  text-align:center;
+}
+.rend-info-cuerpo ul{ margin:0 0 10px; padding-left:18px; }
+.rend-info-cuerpo li{ margin-bottom:4px; }
+.rend-info-ejemplo{
+  width:100%;
+  border-collapse:collapse;
+  font-size:.78rem;
+}
+.rend-info-ejemplo th,
+.rend-info-ejemplo td{
+  padding:5px 8px;
+  text-align:left;
+  border-bottom:1px solid var(--borde);
+}
+.rend-info-ejemplo th{ font-weight:700; color:var(--texto); }
+.rend-info-ejemplo td:last-child{ font-weight:700; color:var(--texto); }
 </style>
 
 </head>
@@ -1025,10 +1785,11 @@ table.top-noticias .rank{
             </div>
           </div>
           <a href="javascript:void(0)" onclick="irAAjustesCuenta('perfil')">Editar perfil</a>
-          <a href="javascript:void(0)" onclick="irAAjustesCuenta('password')">Cambiar contraseña</a>
+          <a href="javascript:void(0)" onclick="irAAjustesCuenta('seguridad')">Seguridad</a>
           <a href="javascript:void(0)" onclick="irAAjustesCuenta('progreso')">Mi progreso</a>
           <a href="javascript:void(0)" onclick="irAAjustesCuenta('sesiones')">Dispositivos</a>
-          <a href="index.html">Ver la web</a>
+          <a href="javascript:void(0)" onclick="irAAjustesCuenta('preferencias')">Preferencias</a>
+          <a href="/">Ver la web</a>
           <a href="admin/panel.html">Redacción</a>
           <button type="button" onclick="logout()">Cerrar sesión</button>
         </div>
@@ -1062,10 +1823,6 @@ table.top-noticias .rank{
         90 días
       </button>
 
-      <button data-r="365">
-        12 meses
-      </button>
-
     </div>
 
     <button type="button" class="btn-borrar-datos" id="btnBorrarDatos">
@@ -1079,8 +1836,9 @@ table.top-noticias .rank{
      MODAL: confirmar borrado de datos
      ========================================================= -->
 <div class="modal-overlay" id="modalBorrarDatos">
-  <div class="modal-caja">
-    <h3>Borrar datos de analíticas</h3>
+  <div class="modal-caja" role="alertdialog" aria-modal="true" aria-labelledby="modalBorrarDatosTitulo" aria-describedby="modalBorrarDatosTexto">
+    <button type="button" class="modal-cerrar" onclick="document.getElementById('modalBorrarDatos').classList.remove('abierto')" aria-label="Cerrar">&times;</button>
+    <h3 id="modalBorrarDatosTitulo">Borrar datos de analíticas</h3>
     <p id="modalBorrarDatosTexto">
       Esto borrará permanentemente las páginas vistas y los tiempos de
       lectura del tracking propio del rango seleccionado. No se puede
@@ -1107,8 +1865,8 @@ table.top-noticias .rank{
 
 <div class="fuentes-tabs">
 
-  <div style="font-weight:700;color:var(--marino);font-size:.86rem">
-    Panel de analíticas — todos los datos, en un único sitio
+  <div class="panel-titulo">
+    Panel de analíticas <span>— todos los datos, en un único sitio</span>
   </div>
 
   <div
@@ -1379,7 +2137,7 @@ table.top-noticias .rank{
     </h3>
 
     <p class="sub">
-      Vistas por hora del día — te dice cuándo conviene publicar
+      Vistas por hora del día (hora de Madrid) — te dice cuándo conviene publicar
     </p>
 
     <div class="chart-box chart-box-bajo">
@@ -1436,8 +2194,30 @@ table.top-noticias .rank{
     </h3>
 
     <p class="sub">
-      Vistas generadas por cada autor
+      Porcentaje de autores a los que supera en vistas por artículo en el periodo. Solo se puntúa con 3 artículos o más
     </p>
+
+    <details class="rend-info">
+      <summary>ℹ️ ¿Cómo se calcula el rendimiento?</summary>
+      <div class="rend-info-cuerpo">
+        <p>Compara cuántas vistas consigue cada autor <strong>por artículo</strong> (así es justo tanto para quien publica mucho como para quien publica poco) y lo coloca en una posición respecto al resto de autores.</p>
+        <div class="rend-info-formula">% de autores con menos vistas por artículo que él</div>
+        <ul>
+          <li><strong>90 %</strong> significa que rinde más que el 90 % de los autores; <strong>50 %</strong>, que está en la mitad; <strong>10 %</strong>, que casi todos rinden más. Un 100 % es muy difícil de ver: hace falta superar a todos.</li>
+          <li>El resto va en proporción: <strong>50 %</strong> significa la mitad de vistas por artículo que el mejor.</li>
+          <li>Quien tiene menos de 3 artículos en el periodo no se puntúa (aparece "—" y <em>pocos datos</em>), porque con tan pocos artículos el resultado no es fiable. Se compara solo entre autores con al menos 3 artículos (si nadie llega a 3, entre todos).</li>
+          <li>Cuentan los artículos publicados en el periodo y los antiguos que hayan recibido vistas en él.</li>
+        </ul>
+        <table class="rend-info-ejemplo">
+          <thead><tr><th>Ejemplo</th><th>Artículos</th><th>Vistas</th><th>Por artículo</th><th>Rendimiento</th></tr></thead>
+          <tbody>
+            <tr><td>Autor A</td><td>10</td><td>1.000</td><td>100</td><td>83 %</td></tr>
+            <tr><td>Autor B</td><td>5</td><td>250</td><td>50</td><td>50 %</td></tr>
+            <tr><td>Autor C</td><td>4</td><td>100</td><td>25</td><td>17 %</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </details>
 
     <div id="autoresLista">
       Cargando...
@@ -1545,13 +2325,47 @@ table.top-noticias .rank{
 
 
 <!-- =========================================================
+     NOTICIAS RÁPIDAS (producción editorial)
+     ========================================================= -->
+
+<div class="card" style="margin-bottom:16px" id="cardNoticiasRapidas">
+
+  <h3>⚡ Noticias rápidas</h3>
+  <p class="sub">
+    Ritmo de publicación en el periodo elegido (las noticias rápidas no tienen
+    contador de lecturas: aquí se mide cuántas se publican, quién y cuándo)
+  </p>
+
+  <div id="nrResumen" class="recurrencia-bloque">
+    Cargando...
+  </div>
+
+  <div class="chart-box chart-box-bajo" style="margin-top:14px">
+    <canvas id="chartNr"></canvas>
+  </div>
+
+  <div class="grid2" style="margin-top:14px">
+    <div>
+      <h3 style="font-size:.95rem">Quién las publica</h3>
+      <div id="nrAutores">Cargando...</div>
+    </div>
+    <div>
+      <h3 style="font-size:.95rem">Horas con más publicaciones</h3>
+      <div id="nrHoras">Cargando...</div>
+    </div>
+  </div>
+
+</div>
+
+
+<!-- =========================================================
      NUEVO: ÚLTIMAS 24 HORAS
      ========================================================= -->
 
 <div class="card" style="margin-bottom:16px">
 
   <h3>Vistas en las últimas 24 horas</h3>
-  <p class="sub">Tráfico reciente hora a hora, al margen del periodo elegido arriba</p>
+  <p class="sub">Tráfico reciente hora a hora (hora de Madrid), al margen del periodo elegido arriba</p>
 
   <div class="chart-box chart-box-bajo">
     <canvas id="chart24h"></canvas>
@@ -1658,6 +2472,11 @@ table.top-noticias .rank{
     —
   </div>
 
+  <div
+    id="gscPaginas"
+    style="margin-top:16px"
+  ></div>
+
 </div>
 
 
@@ -1675,8 +2494,10 @@ let diasActuales = 28;
 let chartEvolucion = null;
 let chartPvVisitas = null;
 let chartGsc = null;
+let ultimaSerieGsc = null;
 let chartHoras = null;
 let chart24h = null;
+let chartNr = null;
 
 
 /* =========================================================
@@ -1750,17 +2571,41 @@ function marcarErrorSeccion(selector, mensaje){
       font-size:.82rem;
     ">
       <span>⚠️</span>
-      <span>${mensaje}</span>
+      <span>${escapeHtml(String(mensaje ?? ''))}</span>
     </div>
   `;
 
   if (el.tagName === 'CANVAS'){
+    // Antes se reemplazaba TODO el contenido del contenedor (canvas
+    // incluido): tras un fallo puntual (p. ej. un 503) el <canvas> ya no
+    // existía y el gráfico no se podía volver a pintar sin recargar la
+    // página. Ahora el canvas solo se oculta y el aviso va a su lado;
+    // restaurarCanvas() lo deshace al reintentar.
     const contenedor = el.closest('.chart-box') || el.parentElement;
-    if (contenedor) contenedor.innerHTML = html;
+    if (!contenedor) return;
+    el.style.display = 'none';
+    let aviso = contenedor.querySelector(':scope > .msg-error-seccion');
+    if (!aviso){
+      aviso = document.createElement('div');
+      aviso.className = 'msg-error-seccion';
+      contenedor.appendChild(aviso);
+    }
+    aviso.innerHTML = html;
     return;
   }
 
   el.innerHTML = html;
+}
+
+// Deshace marcarErrorSeccion() sobre un canvas: lo vuelve a mostrar y
+// quita el aviso de error. Se llama al empezar cada carga de un gráfico.
+function restaurarCanvas(id){
+  const canvas = document.getElementById(id);
+  if (!canvas) return;
+  canvas.style.display = '';
+  const contenedor = canvas.closest('.chart-box') || canvas.parentElement;
+  if (!contenedor) return;
+  contenedor.querySelectorAll(':scope > .msg-error-seccion').forEach(n => n.remove());
 }
 
 
@@ -1773,6 +2618,8 @@ function categoriaLabel(categoria){
     primera_federacion: '1ª Federación',
 
     segunda_federacion: '2ª Federación',
+    copa_del_rey: 'Copa del Rey',
+    copa_federacion: 'Copa Federación',
 
     general: 'General',
 
@@ -1799,7 +2646,7 @@ function categoriaLabel(categoria){
 // dos veces, así la cabecera y las llamadas de este script comparten
 // una única fuente de verdad sobre la sesión.
 
-async function apiFetchAnaliticas(url, opciones = {}){
+async function apiFetchAnaliticasRed(url, opciones = {}){
 
   try{
 
@@ -1846,6 +2693,10 @@ async function apiFetchAnaliticas(url, opciones = {}){
       error
     );
 
+    // 503 = cortacircuitos de cuota del servidor: se avisa con su mensaje
+    // real (antes cada tarjeta mostraba un genérico "No se pudo cargar").
+    if (error && error.status === 503) avisarLimiteAnaliticas(error.message);
+
     // Las llamadas "silenciosas" (todas las de solo-lectura del panel,
     // que ya comprueban "if (!data) marcarErrorSeccion(...)") esperan
     // null en vez de una excepción. Las acciones que sí necesitan saber
@@ -1857,6 +2708,57 @@ async function apiFetchAnaliticas(url, opciones = {}){
 
   }
 
+}
+
+// ---------------------------------------------------------------------
+// Caché en memoria + deduplicación de peticiones GET.
+// Chart.js (carga tardía), el cambio de tema claro/oscuro y las
+// recargas de cada tarjeta volvían a pedir las mismas rutas una y otra
+// vez, y cada una cuenta contra la cuota de la base de datos del
+// servidor. Aquí una misma URL se pide una sola vez cada 5 minutos
+// (60 s la de últimas 24 h) y las peticiones simultáneas comparten
+// respuesta. Las respuestas nulas o con error nunca se guardan.
+// ---------------------------------------------------------------------
+const CACHE_API_ANALITICAS = new Map();
+const TTL_CACHE_API_ANALITICAS_MS = 5 * 60 * 1000;
+const TTL_CACHE_API_24H_MS = 60 * 1000;
+
+function limpiarCacheAnaliticas(){
+  CACHE_API_ANALITICAS.clear();
+}
+
+let ultimoAvisoLimiteAnaliticas = 0;
+function avisarLimiteAnaliticas(mensaje){
+  const ahora = Date.now();
+  if (ahora - ultimoAvisoLimiteAnaliticas < 30000) return;
+  ultimoAvisoLimiteAnaliticas = ahora;
+  window.EOF?.toast?.(mensaje || 'Panel de analíticas temporalmente limitado. Inténtalo de nuevo en unos minutos.', 'error');
+}
+
+async function apiFetchAnaliticas(url, opciones = {}){
+
+  const metodo = String(opciones.method || 'GET').toUpperCase();
+  const cacheable = metodo === 'GET' && !opciones.sinCache && !url.includes('/buscar-noticia');
+
+  if (!cacheable) return apiFetchAnaliticasRed(url, opciones);
+
+  const ttl = url.includes('/ultimas-24h') ? TTL_CACHE_API_24H_MS : TTL_CACHE_API_ANALITICAS_MS;
+  const previa = CACHE_API_ANALITICAS.get(url);
+  if (previa && Date.now() - previa.t < ttl) return previa.promesa;
+
+  const promesa = apiFetchAnaliticasRed(url, opciones).then(
+    datos => {
+      if (datos === null || (datos && datos.error)) CACHE_API_ANALITICAS.delete(url);
+      return datos;
+    },
+    error => {
+      CACHE_API_ANALITICAS.delete(url);
+      throw error;
+    }
+  );
+
+  CACHE_API_ANALITICAS.set(url, { t: Date.now(), promesa });
+  return promesa;
 }
 
 
@@ -1957,6 +2859,7 @@ function aplicarTemaChart(options){
 function redibujarGraficosConTemaActual(){
   cargarResumen(diasActuales).catch(() => {});
   cargarHoras(diasActuales).catch(() => {});
+  cargarNoticiasRapidas(diasActuales).catch(() => {});
   cargarComparativaMensual().catch(() => {});
   cargar24h().catch(() => {});
   if (typeof cargarGsc === 'function'){
@@ -2053,6 +2956,8 @@ function pintarDelta(elId, actual, anterior, { invertirColor = false } = {}){
 
 async function cargarResumen(dias){
 
+  restaurarCanvas('chartEvolucion');
+
   const data = await apiFetchAnaliticas(
     `/api/admin/analiticas/resumen?dias=${dias}`
   );
@@ -2090,19 +2995,24 @@ async function cargarResumen(dias){
      DELTAS vs periodo anterior
      ------------------------------------------------------- */
 
-  // No bloqueamos el resto del render por esto: se pinta aparte y en
-  // paralelo, y si falla, los KPIs de arriba ya se han mostrado igual.
+  // El servidor devuelve ya el periodo anterior equivalente (data.anterior):
+  // una sola petición, y válida también para 90 días (antes se pedía el
+  // doble de días, que el servidor capa a 90, y la comparativa quedaba
+  // vacía). Si llega una respuesta antigua sin ese campo (caché previa al
+  // cambio) se usa el método anterior, solo cuando el doble cabe en 90 días.
   (async () => {
 
-    // Para "24h" (dias=1) el rango doble son las últimas 48h (dias=2),
-    // ambos casos especiales soportados por el backend; para el resto de
-    // periodos se sigue pidiendo el doble de días como hasta ahora.
-    const diasDoble = dias === 1 ? 2 : Math.min(dias * 2, 365);
-    const dataDoble = await apiFetchAnaliticas(
-      `/api/admin/analiticas/resumen?dias=${diasDoble}`
-    );
+    let anterior = data.anterior || null;
+    const comparaTiempos = !!anterior;
 
-    if (!dataDoble){
+    if (!anterior && dias * 2 <= 90){
+      const dataDoble = await apiFetchAnaliticas(
+        `/api/admin/analiticas/resumen?dias=${dias === 1 ? 2 : dias * 2}`
+      );
+      if (dataDoble) anterior = calcularPeriodoAnterior(dataDoble, dias, data);
+    }
+
+    if (!anterior){
       ['kpiVistasDelta','kpiVisitantesDelta','kpiTiempoDelta','kpiCompletitudDelta']
         .forEach(id => {
           const el = document.getElementById(id);
@@ -2111,25 +3021,19 @@ async function cargarResumen(dias){
       return;
     }
 
-    const anterior = calcularPeriodoAnterior(dataDoble, dias, data);
-
     pintarDelta('kpiVistasDelta', data.vistas, anterior.vistas);
     pintarDelta('kpiVisitantesDelta', data.visitantes, anterior.visitantes);
 
-    // Tiempo medio y completitud no vienen desglosados por día en
-    // evolucion_diaria (solo vistas/visitantes), así que para esos dos
-    // no hay periodo anterior fiable que reconstruir sin tocar el
-    // backend: se deja explícito en vez de simular un dato inventado.
-    const kpiTiempoDelta = document.getElementById('kpiTiempoDelta');
-    if (kpiTiempoDelta){
-      kpiTiempoDelta.className = 'delta';
-      kpiTiempoDelta.textContent = 'Sin comparativa disponible';
-    }
-
-    const kpiCompletitudDelta = document.getElementById('kpiCompletitudDelta');
-    if (kpiCompletitudDelta){
-      kpiCompletitudDelta.className = 'delta';
-      kpiCompletitudDelta.textContent = 'Sin comparativa disponible';
+    if (comparaTiempos){
+      pintarDelta('kpiTiempoDelta', data.tiempo_medio_segundos, anterior.tiempo_medio_segundos);
+      pintarDelta('kpiCompletitudDelta', data.completitud, anterior.completitud);
+    }else{
+      ['kpiTiempoDelta','kpiCompletitudDelta'].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.className = 'delta';
+        el.textContent = 'Sin comparativa disponible';
+      });
     }
 
   })().catch(error => {
@@ -2700,62 +3604,101 @@ async function cargarAutores(dias){
   const autores =
     data.autores || [];
 
+  // La barra se escala contra el mejor autor del periodo (el 100 % de
+  // la barra), no contra 100, para que se vean las diferencias aunque
+  // todos estén cerca de la media.
+  const maxPct =
+    Math.max(1, ...autores.filter(a => a.rendimiento_pct != null).map(a => Number(a.rendimiento_pct) || 0));
 
-  document.getElementById('autoresLista').innerHTML =
+  const fmt =
+    n => Number(n || 0).toLocaleString('es-ES', { maximumFractionDigits: 1 });
 
-    autores.map(a => `
+  const filaAutor = (a, i) => {
 
-      <div class="autor-row">
+      const sinDatos = a.rendimiento_pct == null;
+      const pct = sinDatos ? 0 : (Number(a.rendimiento_pct) || 0);
+      const ancho = sinDatos ? 0 : Math.max(2, pct);
 
+      // Podio: los 3 primeros (siempre que tengan vistas) se destacan
+      // con oro / plata / bronce; el resto va en filas normales con
+      // su número de posición.
+      const puesto = i + 1;
+      const enPodio = !sinDatos && puesto <= 3 && Number(a.vistas) > 0;
+      const clasePodio = enPodio ? ` podio podio-${puesto}` : '';
+      const medalla = enPodio ? ['🥇', '🥈', '🥉'][i] : '';
+
+      return `
+      <div class="autor-row${clasePodio}">
+        <div class="autor-pos" aria-label="Puesto ${puesto}">${puesto}</div>
         <div class="avatar">
           ${iniciales(a.autor)}
+          ${medalla ? `<span class="avatar-medalla" aria-hidden="true">${medalla}</span>` : ''}
         </div>
-
         <div class="autor-info">
-
-          <div class="nombre">
-            ${a.autor}
-          </div>
-
+          <div class="nombre">${escapeHtml(a.autor)}</div>
           <div class="stats">
-            ${a.noticias}
-            artículos ·
-            ${formatSegundos(a.tiempo_medio_segundos)}
-            lectura media
+            ${a.noticias} ${a.noticias === 1 ? 'artículo' : 'artículos'}
+            · ${fmt(a.vistas)} vistas
+            · ${fmt(a.vistas_por_noticia)} por artículo
+            · ${formatSegundos(a.tiempo_medio_segundos)} lectura media
+            ${a.pocos_articulos ? '· <em>pocos artículos</em>' : ''}
           </div>
-
+          <div class="autor-barra"><span style="width:${ancho}%"></span></div>
         </div>
-
         <div class="autor-metric">
-
-          <div class="n">
-
-            ${
-              Number(a.vistas || 0) >= 1000
-
-              ? (
-                  Number(a.vistas) /
-                  1000
-                ).toFixed(1) + 'k'
-
-              : Number(a.vistas || 0)
-            }
-
-          </div>
-
-          <div class="l">
-            vistas
-          </div>
-
+          <div class="n">${sinDatos ? '—' : pct + '%'}</div>
+          <div class="l">${sinDatos ? 'pocos datos' : 'rendimiento'}</div>
         </div>
+      </div>`;
+  };
 
+  const contenedorAutores = document.getElementById('autoresLista');
+
+  if (!autores.length){
+    contenedorAutores.innerHTML = '<p class="sub">Sin datos en este periodo</p>';
+    return;
+  }
+
+  // Se muestran los 10 primeros; el resto queda plegado tras un botón
+  // con flecha. El estado (abierto/cerrado) se recuerda al cambiar de
+  // periodo, que vuelve a pintar la lista.
+  const TOP_AUTORES = 10;
+  const principales = autores.slice(0, TOP_AUTORES);
+  const resto = autores.slice(TOP_AUTORES);
+
+  let html = principales.map((a, i) => filaAutor(a, i)).join('');
+
+  if (resto.length){
+    const abierto = window.__autoresExpandido === true;
+    html += `
+      <div class="autores-resto${abierto ? ' abierto' : ''}" id="autoresResto">
+        <div class="autores-resto-inner">
+          ${resto.map((a, i) => filaAutor(a, i + TOP_AUTORES)).join('')}
+        </div>
       </div>
+      <button type="button" class="autores-toggle" id="autoresToggle"
+              aria-expanded="${abierto}" aria-controls="autoresResto">
+        <span class="autores-toggle-txt">${abierto ? 'Ocultar' : 'Ver los ' + resto.length + ' restantes'}</span>
+        <svg class="autores-toggle-flecha" viewBox="0 0 24 24" width="18" height="18" fill="none"
+             stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"
+             aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+      </button>`;
+  }
 
-    `).join('')
+  contenedorAutores.innerHTML = html;
 
-    ||
-
-    '<p class="sub">Sin datos en este periodo</p>';
+  const botonToggle = document.getElementById('autoresToggle');
+  if (botonToggle){
+    botonToggle.addEventListener('click', () => {
+      const bloque = document.getElementById('autoresResto');
+      const nuevoEstado = !bloque.classList.contains('abierto');
+      bloque.classList.toggle('abierto', nuevoEstado);
+      botonToggle.setAttribute('aria-expanded', String(nuevoEstado));
+      botonToggle.querySelector('.autores-toggle-txt').textContent =
+        nuevoEstado ? 'Ocultar' : 'Ver los ' + resto.length + ' restantes';
+      window.__autoresExpandido = nuevoEstado;
+    });
+  }
 
 }
 
@@ -2771,6 +3714,8 @@ const CAT_COLOR = {
   primera_federacion:'#5bb8e8',
 
   segunda_federacion:'#d1132e',
+  copa_del_rey:'#b8860b',
+  copa_federacion:'#2f6f9f',
 
   general:'#e08a1f',
 
@@ -2947,6 +3892,8 @@ function competicionLabelAnaliticas(cod){
     hypermotion: 'LaLiga Hypermotion',
     primera_federacion: 'Primera Federación',
     segunda_federacion: 'Segunda Federación',
+    copa_del_rey: 'Copa del Rey',
+    copa_federacion: 'Copa Federación',
   };
   return etiquetas[cod] || cod || '';
 }
@@ -3044,61 +3991,47 @@ async function cargarPartidosSeguidos(dias){
 
 async function cargarComparativaMensual(){
 
+  restaurarCanvas('chartPvVisitas');
+
+  // Ruta propia (agregada por mes en el servidor y cacheada 6 h). Antes
+  // se pedía /resumen?dias=365, que el servidor capa a 90 días: la
+  // comparativa solo veía ~3 meses y repetía una consulta pesada.
   const data =
     await apiFetchAnaliticas(
-      `/api/admin/analiticas/resumen?dias=365`
+      `/api/admin/analiticas/mensual`
     );
 
-  if (!data){
-    marcarErrorSeccion('#chartPvVisitas', 'No se pudo cargar la comparativa mensual.');
+  if (!data || data.error || !Array.isArray(data.meses)){
+    marcarErrorSeccion(
+      '#chartPvVisitas',
+      escapeHtml((data && data.error) || 'No se pudo cargar la comparativa mensual.')
+    );
     return;
   }
-
 
   const porMes =
     new Map();
 
+  data.meses.forEach(m => {
 
-  (data.evolucion_diaria || []).forEach(d => {
-
-    if (!d.fecha){
+    if (!m.mes){
       return;
     }
 
-
-    const clave =
-      d.fecha.slice(0,7);
-
-
-    const acc =
-      porMes.get(clave) ||
-      {
-        visitas:0,
-        pv:0
-      };
-
-
-    acc.visitas +=
-      Number(d.visitantes || 0);
-
-
-    acc.pv +=
-      Number(d.vistas || 0);
-
-
     porMes.set(
-      clave,
-      acc
+      m.mes,
+      {
+        visitas:Number(m.visitantes || 0),
+        pv:Number(m.vistas || 0)
+      }
     );
 
   });
-
 
   const claves =
     [...porMes.keys()]
       .sort()
       .slice(-6);
-
 
   const labels =
     claves.map(c => {
@@ -3243,6 +4176,26 @@ async function cargarComparativaMensual(){
    SEARCH CONSOLE
    ========================================================= */
 
+// Estado mientras se espera la respuesta: antes se pintaba "Sin conectar"
+// de entrada y la tarjeta parecía rota durante los segundos de la carga.
+function pintarGscCargando(){
+
+  const estado = document.getElementById('estadoGscConexion');
+  if (estado){
+    estado.innerHTML = `
+      <span class="punto" style="background:#9aa3ad"></span>
+      Consultando Search Console…
+    `;
+  }
+
+  const lista = document.getElementById('gscLista');
+  if (lista) lista.innerHTML = '<p class="sub" style="margin:0">Cargando…</p>';
+
+  const paginas = document.getElementById('gscPaginas');
+  if (paginas) paginas.innerHTML = '';
+
+}
+
 // Deja la tarjeta de Search Console en estado "sin conectar": KPIs a
 // guion, aviso en el hueco de la tabla y el gráfico destruido (no se
 // dibuja ningún gráfico vacío ni de ejemplo -- sin conexión real no hay
@@ -3294,6 +4247,9 @@ function pintarGscPendiente(){
     chartGsc = null;
 
   }
+
+  const paginas = document.getElementById('gscPaginas');
+  if (paginas) paginas.innerHTML = '';
 
 }
 
@@ -3407,51 +4363,84 @@ function formatFechaCorta(fechaIso){
 }
 
 
-async function cargarGsc(dias){
+// Estado de error de la tarjeta de Search Console: punto rojo, KPIs y
+// gráfico a cero (antes se quedaban los números de la carga anterior) y el
+// motivo real devuelto por el servidor/Google (permisos, propiedad mal
+// escrita, clave inválida, cuota...) en vez de un "Error de conexión" mudo.
+function pintarGscError(mensaje){
 
   const estado =
     document.getElementById('estadoGscConexion');
 
-  const data = await apiFetchAnaliticas(`/api/admin/analiticas/gsc?dias=${dias}`);
+  if (estado){
+    estado.innerHTML = `
+      <span class="punto" style="background:#d1132e"></span>
+      Error de conexión
+    `;
+  }
 
-  // data === null: ha fallado la petición en sí (red, timeout, 401, 500...),
-  // no que Search Console esté desconectado. Antes esto hacía "return" sin
-  // avisar y la tarjeta se quedaba congelada en el último estado (o en el
-  // inicial, sin ningún mensaje), pareciendo "desconectado" aunque en
-  // realidad era un fallo de la petición. Ahora se marca como error, igual
-  // que hacen el resto de secciones del panel.
-  if (!data){
-    if (estado){
-      estado.innerHTML = `
-        <span class="punto" style="background:#d1132e"></span>
-        Error de conexión
-      `;
-    }
-    marcarErrorSeccion('#gscLista', 'No se pudo cargar Search Console.');
-    marcarErrorSeccion('#chartGsc', 'No se pudo cargar el gráfico de Search Console.');
+  ['gscKpiClics','gscKpiImpresiones','gscKpiCtr','gscKpiPosicion'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = '—';
+  });
+
+  if (chartGsc){
+    try{
+      chartGsc.destroy();
+    }catch(e){}
+    chartGsc = null;
+  }
+
+  ultimaSerieGsc = null;
+
+  const paginasErr = document.getElementById('gscPaginas');
+  if (paginasErr) paginasErr.innerHTML = '';
+
+  const lista = document.getElementById('gscLista');
+  if (lista){
+    lista.innerHTML =
+      `<p class="sub">Error consultando Search Console: ${escapeHtml(mensaje || 'error desconocido')}</p>`;
+  }
+
+}
+
+
+async function cargarGsc(dias){
+
+  restaurarCanvas('chartGsc');
+
+  const estado =
+    document.getElementById('estadoGscConexion');
+
+  let data = null;
+  let errorPeticion = null;
+
+  try{
+    data = await apiFetchAnaliticas(
+      `/api/admin/analiticas/gsc?dias=${dias}`,
+      { lanzarError: true }
+    );
+  }catch(error){
+    errorPeticion = error;
+  }
+
+  // Fallo de la petición en sí (red, 401, 403, 503 por cuota, 500...):
+  // se muestra el motivo real, no un mensaje genérico.
+  if (errorPeticion || !data){
+    pintarGscError(errorPeticion ? errorPeticion.message : 'No se pudo cargar Search Console.');
     return;
   }
 
-  // data.conectado === false: esto sí es un "sin conectar" real (todavía no
-  // se han guardado las credenciales), así que se muestra el aviso normal.
+  // conectado === false: todavía no se han guardado las credenciales.
   if (!data.conectado){
     pintarGscPendiente();
     return;
   }
 
+  // Google/Search Console ha rechazado la consulta.
   if (data.error){
-
-    if (estado){
-      estado.innerHTML = `
-        <span class="punto" style="background:#d1132e"></span>
-        Error de conexión
-      `;
-    }
-
-    const lista = document.getElementById('gscLista');
-    if (lista) lista.innerHTML = `<p class="sub">Error consultando Search Console: ${escapeHtml(data.error)}</p>`;
+    pintarGscError(data.error);
     return;
-
   }
 
   if (estado){
@@ -3473,7 +4462,8 @@ async function cargarGsc(dias){
   if (kpiCtr) kpiCtr.textContent = `${totales.ctr}%`;
   if (kpiPosicion) kpiPosicion.textContent = totales.posicion;
 
-  await pintarGraficoGsc(data.serie || []);
+  ultimaSerieGsc = data.serie || [];
+  await pintarGraficoGsc(ultimaSerieGsc);
 
   const lista = document.getElementById('gscLista');
   const consultas = data.consultas || [];
@@ -3501,6 +4491,35 @@ async function cargarGsc(dias){
       : '<p class="sub">Sin consultas registradas en este periodo</p>';
   }
 
+  const contPaginas = document.getElementById('gscPaginas');
+  const paginas = data.paginas || [];
+
+  if (contPaginas){
+    contPaginas.innerHTML = paginas.length
+      ? `
+        <table class="top-noticias">
+          <thead>
+            <tr><th>Página</th><th>Clics</th><th>Impresiones</th><th>CTR</th><th>Posición media</th></tr>
+          </thead>
+          <tbody>
+            ${paginas.map(pg => {
+              let ruta = pg.pagina || '';
+              try{ const u = new URL(ruta); ruta = u.pathname + u.search; }catch(e){}
+              return `
+              <tr>
+                <td title="${escapeHtml(pg.pagina)}">${escapeHtml(ruta.length > 70 ? ruta.slice(0, 67) + '…' : ruta)}</td>
+                <td>${formatMiles(pg.clics)}</td>
+                <td>${formatMiles(pg.impresiones)}</td>
+                <td>${pg.ctr}%</td>
+                <td>${pg.posicion}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      `
+      : '';
+  }
+
 }
 
 
@@ -3508,7 +4527,33 @@ async function cargarGsc(dias){
    FRANJA HORARIA CON MÁS TRÁFICO
    ========================================================= */
 
+// El servidor agrupa por hora UTC. España va a UTC+1 (invierno) / UTC+2
+// (verano), así que la "franja con más tráfico" salía desplazada 1-2 h.
+// Se rota la serie con el desfase actual de Madrid (aproximación: si el
+// periodo cruza un cambio de hora, las semanas del otro horario quedan
+// 1 h movidas, irrelevante para ver cuándo conviene publicar).
+function desfaseMadridHoras(){
+  const ahora = new Date();
+  const madrid = parseInt(
+    new Intl.DateTimeFormat('en-GB', { timeZone:'Europe/Madrid', hour:'2-digit', hourCycle:'h23' }).format(ahora),
+    10
+  );
+  return (madrid - ahora.getUTCHours() + 24) % 24;
+}
+
+function horasAMadrid(horasUtc, campo){
+  const desfase = desfaseMadridHoras();
+  const salida = Array.from({ length:24 }, (_, h) => ({ hora:h, [campo]:0 }));
+  (horasUtc || []).forEach(f => {
+    const h = (Number(f.hora) + desfase) % 24;
+    if (h >= 0 && h < 24) salida[h][campo] += Number(f[campo]) || 0;
+  });
+  return salida;
+}
+
 async function cargarHoras(dias){
+
+  restaurarCanvas('chartHoras');
 
   const data = await apiFetchAnaliticas(`/api/admin/analiticas/horas?dias=${dias}`);
 
@@ -3522,7 +4567,7 @@ async function cargarHoras(dias){
     return;
   }
 
-  const horas = data.horas || [];
+  const horas = horasAMadrid(data.horas, 'vistas');
   const ctx = document.getElementById('chartHoras');
   if (!ctx) return;
 
@@ -3575,6 +4620,7 @@ function tipoLabel(tipo){
     cronica: 'Crónica',
     opinion: 'Opinión',
     entrevista: 'Entrevista',
+    uno_por_uno: '1x1 de jugadores',
   };
   return labels[tipo] || tipo;
 }
@@ -3663,6 +4709,8 @@ async function cargarEngagementScroll(dias){
 
 async function cargar24h(){
 
+  restaurarCanvas('chart24h');
+
   const data = await apiFetchAnaliticas('/api/admin/analiticas/ultimas-24h');
 
   if (!data){
@@ -3687,7 +4735,12 @@ async function cargar24h(){
   chart24h = new Chart(ctx, {
     type: 'line',
     data: {
-      labels: horas.map(h => h.hora.slice(11, 16)),
+      labels: horas.map(h => {
+        // h.hora = "YYYY-MM-DDTHH:00" en UTC -> hora de Madrid
+        const d = new Date(`${h.hora.slice(0, 13)}:00:00Z`);
+        if (Number.isNaN(d.getTime())) return h.hora.slice(11, 16);
+        return new Intl.DateTimeFormat('es-ES', { timeZone:'Europe/Madrid', hour:'2-digit', minute:'2-digit', hourCycle:'h23' }).format(d);
+      }),
       datasets: [{
         label: 'Vistas',
         data: horas.map(h => h.vistas),
@@ -3857,6 +4910,120 @@ async function cargarRecurrencia(dias){
 
 
 /* =========================================================
+   NOTICIAS RÁPIDAS
+   ========================================================= */
+
+async function cargarNoticiasRapidas(dias){
+
+  restaurarCanvas('chartNr');
+
+  const data = await apiFetchAnaliticas(`/api/admin/analiticas/noticias-rapidas?dias=${dias}`);
+
+  if (!data){
+    marcarErrorSeccion('#nrResumen', 'No se pudieron cargar las estadísticas de noticias rápidas.');
+    marcarErrorSeccion('#chartNr', 'No se pudo cargar el gráfico de noticias rápidas.');
+    const a = document.getElementById('nrAutores'); if (a) a.innerHTML = '';
+    const h = document.getElementById('nrHoras'); if (h) h.innerHTML = '';
+    return;
+  }
+
+  const resumen = document.getElementById('nrResumen');
+  if (resumen){
+
+    const dif = (data.total || 0) - (data.anterior || 0);
+    let comparativa = 'sin periodo anterior con el que comparar';
+    if (data.anterior > 0){
+      const pct = Math.round(dif / data.anterior * 100);
+      comparativa = `${dif >= 0 ? '▲' : '▼'} ${Math.abs(pct)}% vs. periodo anterior (${formatMiles(data.anterior)})`;
+    } else if (data.total > 0){
+      comparativa = 'el periodo anterior no tuvo ninguna';
+    }
+
+    let ultimaTxt = 'Todavía no hay ninguna';
+    if (data.ultima){
+      const d = new Date(data.ultima);
+      ultimaTxt = new Intl.DateTimeFormat('es-ES', {
+        timeZone:'Europe/Madrid', day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit', hourCycle:'h23'
+      }).format(d);
+    }
+
+    resumen.innerHTML = `
+      <div class="recurrencia-item">
+        <div class="num">${formatMiles(data.total)}</div>
+        <div class="lbl">Publicadas en ${dias === 1 ? '24 h' : dias + ' días'} — ${escapeHtml(comparativa)}</div>
+      </div>
+      <div class="recurrencia-item">
+        <div class="num">${String(data.media_dia ?? 0).replace('.', ',')}</div>
+        <div class="lbl">De media al día</div>
+      </div>
+      <div class="recurrencia-item">
+        <div class="num" style="font-size:1.1rem">${escapeHtml(ultimaTxt)}</div>
+        <div class="lbl">Última publicada · ${formatMiles(data.total_historico)} en total</div>
+      </div>
+    `;
+  }
+
+  const autores = data.autores || [];
+  const contAutores = document.getElementById('nrAutores');
+  if (contAutores){
+    contAutores.innerHTML = autores.map(a => `
+      <div class="categoria-row">
+        <div class="cat-nombre">${escapeHtml(a.nombre)}</div>
+        <div class="cat-nombre">${formatMiles(a.total)}</div>
+      </div>
+    `).join('') || '<p class="sub">Sin noticias rápidas en este periodo</p>';
+  }
+
+  const horasMax = (data.horas || []).slice().sort((x, y) => y.total - x.total).filter(x => x.total > 0).slice(0, 5);
+  const contHoras = document.getElementById('nrHoras');
+  if (contHoras){
+    contHoras.innerHTML = horasMax.map(x => `
+      <div class="categoria-row">
+        <div class="cat-nombre">${String(x.hora).padStart(2, '0')}:00 – ${String(x.hora).padStart(2, '0')}:59</div>
+        <div class="cat-nombre">${formatMiles(x.total)}</div>
+      </div>
+    `).join('') || '<p class="sub">Sin datos en este periodo</p>';
+  }
+
+  const chartListo = await esperarChart();
+  if (!chartListo) return;
+
+  const ctx = document.getElementById('chartNr');
+  if (!ctx) return;
+
+  if (chartNr){
+    try{ chartNr.destroy(); }catch(e){}
+    chartNr = null;
+  }
+
+  const serie = data.serie || [];
+  chartNr = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: serie.map(d => formatFechaCorta(d.fecha)),
+      datasets: [{
+        label: 'Noticias rápidas',
+        data: serie.map(d => d.total),
+        backgroundColor: '#e08a1f',
+        borderRadius: 4,
+        maxBarThickness: 18
+      }]
+    },
+    options: aplicarTemaChart({
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display:false } },
+      scales: {
+        x: { grid: { display:false }, ticks: { autoSkip:true, maxTicksLimit:12 } },
+        y: { beginAtZero:true, ticks: { precision:0 }, grid: {} }
+      }
+    })
+  });
+
+}
+
+
+/* =========================================================
    CARGA COMPLETA
    ========================================================= */
 
@@ -3894,7 +5061,9 @@ async function cargarTodo(dias){
 
       cargarTipos(dias),
 
-      cargarEngagementScroll(dias)
+      cargarEngagementScroll(dias),
+
+      cargarNoticiasRapidas(dias)
 
     ]);
 
@@ -3920,6 +5089,35 @@ async function cargarTodo(dias){
 /* =========================================================
    CONTROLES DE PERIODO Y FUENTE
    ========================================================= */
+
+let cargaPeriodoEnCurso = false;
+let cargaPeriodoPendiente = false;
+
+async function solicitarCargaPeriodo(){
+
+  if (cargaPeriodoEnCurso){
+    cargaPeriodoPendiente = true;
+    return;
+  }
+
+  cargaPeriodoEnCurso = true;
+
+  try{
+    do{
+      cargaPeriodoPendiente = false;
+      const dias = diasActuales;
+
+      const gsc = cargarGsc(dias)
+        .catch(error => console.error('Error cargando Search Console:', error));
+
+      await cargarTodo(dias);
+      await gsc;
+    }while (cargaPeriodoPendiente);
+  }finally{
+    cargaPeriodoEnCurso = false;
+  }
+
+}
 
 function inicializarControlesAnaliticas(){
 
@@ -3989,14 +5187,16 @@ function inicializarControlesAnaliticas(){
           /*
            * Cargamos el nuevo periodo.
            * No esperamos a Chart.js para hacerlo.
+           *
+           * Antes, dos clics seguidos en periodos distintos lanzaban dos
+           * cargas completas a la vez y la que respondía más tarde (no la
+           * última) se quedaba pintada. Ahora solo hay una carga en curso:
+           * si se hace clic mientras carga, al terminar se vuelve a cargar
+           * el último periodo elegido. Search Console va en paralelo
+           * (antes esperaba a que terminaran las otras 13 peticiones).
            */
 
-          await cargarTodo(
-            diasActuales
-          );
-
-          cargarGsc(diasActuales)
-            .catch(error => console.error('Error cargando Search Console:', error));
+          solicitarCargaPeriodo();
 
         }
       );
@@ -4068,7 +5268,10 @@ function inicializarBorrarDatos(){
       // Se recarga todo el panel para que los KPIs, gráficos y listas
       // reflejen inmediatamente que ya no hay (o hay menos) datos, en
       // vez de dejar en pantalla números que ya no existen en la BD.
+      limpiarCacheAnaliticas();
       cargarTodo(diasActuales);
+      cargarComparativaMensual().catch(() => {});
+      cargar24h().catch(() => {});
 
     }catch(error){
 
@@ -4099,19 +5302,27 @@ async function iniciarPanelAnaliticas(){
 
 
   /*
-   * PRIMERO cargamos los datos.
-   *
-   * No esperamos a Chart.js.
+   * Search Console, la comparativa mensual y las últimas 24 h son
+   * independientes del resto: se lanzan a la vez en vez de esperar a que
+   * terminen las demás peticiones del panel.
+   */
+
+  pintarGscCargando();
+
+  cargarGsc(diasActuales)
+    .catch(error => console.error('Error cargando Search Console:', error));
+
+  cargar24h()
+    .catch(error => console.error('Error cargando las últimas 24h:', error));
+
+  /*
+   * No esperamos a Chart.js para cargar los datos.
    */
 
   await cargarTodo(
     diasActuales
   );
 
-
-  /*
-   * Estos gráficos son independientes.
-   */
 
   cargarComparativaMensual()
     .catch(error => {
@@ -4123,14 +5334,6 @@ async function iniciarPanelAnaliticas(){
 
     });
 
-
-  pintarGscPendiente();
-
-  cargarGsc(diasActuales)
-    .catch(error => console.error('Error cargando Search Console:', error));
-
-  cargar24h()
-    .catch(error => console.error('Error cargando las últimas 24h:', error));
 
 }
 
@@ -4218,8 +5421,9 @@ window.__chartJsReady
       // conexión funcionara. Solo hace falta pintar el estado
       // "pendiente" si todavía no existe ningún chartGsc (ni el vacío
       // de pintarGscPendiente ni el real de cargarGsc).
-      if (!chartGsc){
-        pintarGscPendiente();
+      if (!chartGsc && ultimaSerieGsc){
+        pintarGraficoGsc(ultimaSerieGsc)
+          .catch(error => console.error('Error redibujando Search Console:', error));
       }
 
     }
@@ -4245,8 +5449,9 @@ window.__chartJsReady
      header (#userNombre, #cuentaAvatar, etc.) ya exista cuando
      panel-header.js se ejecute.
      ========================================================= -->
-<script src="js/config.js"></script>
-<script src="js/ui-alertas.js"></script>
-<script src="js/panel-header.js"></script>
+<script src="js/foco.js?v=1"></script>
+<script src="js/config.js?v=25"></script>
+<script src="js/ui-alertas.js?v=5"></script>
+<script src="js/panel-header.js?v=3"></script>
 </body>
 </html>

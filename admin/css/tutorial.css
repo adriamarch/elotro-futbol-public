@@ -1,212 +1,563 @@
 /* ============================================================
-   Tutorial guiado interactivo para nuevos redactores.
-   Overlay oscuro + "agujero" (spotlight) sobre el elemento real
-   del panel + tarjeta con flecha apuntando a ese elemento.
-   Pensado para convivir con el resto de admin.css sin chocar
-   con sus nombres de clase (todo prefijado con "tut-").
+   Tutorial guiado interactivo del panel de redacción (v3).
+   Capas, de abajo arriba:
+     #tutOverlay  -> contenedor (no captura nada)
+       #tutBloqueo   capa transparente que impide tocar el panel
+                     mientras dura el recorrido
+       #tutSpotlight "agujero" iluminado sobre el elemento real
+     #tutCentroWrap -> centra las tarjetas de bienvenida/final
+     #tutCard       -> tarjeta explicativa (con flecha o como hoja
+                       inferior en móvil)
+   Todo prefijado con "tut-" / "#tut" para no chocar con admin.css.
+   Usa las variables del sitio (--tarjeta, --texto, --borde, --rojo,
+   --marino, --celeste...) así que el modo oscuro funciona solo.
    ============================================================ */
 
+#tutOverlay,
+#tutCentroWrap,
+#tutCard {
+  --tut-acento: var(--rojo, #d1132e);
+  --tut-acento-oscuro: var(--rojo-oscuro, #9c0e23);
+  --tut-marino: var(--marino, #0c1b2e);
+  --tut-marino2: var(--marino2, #152b46);
+  --tut-celeste: var(--celeste, #5bb8e8);
+  --tut-vel: .32s;
+  --tut-curva: cubic-bezier(.2, .8, .2, 1);
+}
+
+/* ---------- Capas ---------- */
 #tutOverlay {
   position: fixed;
   inset: 0;
-  z-index: 9990;
+  z-index: 10100;
   display: none;
   pointer-events: none;
 }
-
 #tutOverlay.tut-activo { display: block; }
 
-/* Contenedor de centrado para los pasos "centrado" (bienvenida y
-   despedida): usa flexbox para colocar la tarjeta justo en medio de
-   la pantalla, sin depender de calcular top/left/transform a mano
-   (eso dependía de medir el tamaño de la tarjeta en el momento justo
-   y a veces se veía la tarjeta pegada arriba antes de recalcularse). */
-#tutCentroWrap {
+/* Impide clics accidentales en el panel mientras dura el recorrido.
+   No bloquea la rueda ni el scroll táctil (la capa no tiene scroll
+   propio, así que el gesto sigue moviendo la página). */
+#tutBloqueo {
   position: fixed;
   inset: 0;
-  z-index: 9992;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-  pointer-events: none;
+  pointer-events: auto;
+  background: transparent;
+  cursor: default;
+  touch-action: pan-y;
 }
-#tutCentroWrap.tut-activo { display: flex; }
 
-/* Capa oscura recortada con un "agujero" mediante box-shadow gigante
-   sobre un recuadro que sigue al elemento resaltado. Es más fiable que
-   clip-path con las prisas de reflow del panel (scroll, tabs, etc). */
+/* Bienvenida y final: no hay elemento resaltado, así que se oscurece
+   toda la pantalla con la propia capa de bloqueo. */
+#tutOverlay.tut-centrado #tutBloqueo { background: rgba(8, 14, 24, .76); }
+#tutBloqueo { transition: background .25s ease; }
+
+/* Capa oscura con "agujero": un recuadro con una sombra gigante.
+   Más fiable que clip-path cuando el panel hace reflow (tabs, scroll). */
 #tutSpotlight {
   position: fixed;
-  border-radius: 10px;
-  box-shadow: 0 0 0 9999px rgba(10, 12, 16, 0.72);
+  top: -9999px;
+  left: -9999px;
+  width: 0;
+  height: 0;
+  border-radius: 12px;
+  box-shadow: 0 0 0 9999px rgba(8, 14, 24, .76);
   pointer-events: none;
-  z-index: 9991;
 }
-
-#tutSpotlight.tut-sin-objetivo {
-  box-shadow: 0 0 0 9999px rgba(10, 12, 16, 0.72);
+#tutSpotlight.tut-anima {
+  transition:
+    top var(--tut-vel) var(--tut-curva),
+    left var(--tut-vel) var(--tut-curva),
+    width var(--tut-vel) var(--tut-curva),
+    height var(--tut-vel) var(--tut-curva);
 }
-
-/* Anillo animado alrededor del elemento resaltado, para que salte a la
-   vista incluso en pantallas con mucho contenido alrededor. */
+/* Anillo con latido alrededor del elemento resaltado */
 #tutSpotlight::after {
   content: "";
   position: absolute;
   inset: -4px;
-  border-radius: 14px;
-  border: 2px solid #ff3b30;
-  animation: tutPulso 1.6s ease-in-out infinite;
+  border-radius: 16px;
+  border: 2px solid var(--tut-acento);
+  animation: tutPulso 1.8s ease-in-out infinite;
 }
+#tutSpotlight.tut-sin-objetivo::after { display: none; }
 
 @keyframes tutPulso {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(255,59,48,.45); }
-  50% { box-shadow: 0 0 0 7px rgba(255,59,48,0); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(209, 19, 46, .5); }
+  50%      { box-shadow: 0 0 0 9px rgba(209, 19, 46, 0); }
 }
 
-/* Tarjeta explicativa */
+/* Contenedor de las tarjetas centradas (bienvenida y final) */
+#tutCentroWrap {
+  position: fixed;
+  inset: 0;
+  z-index: 10102;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  overflow-y: auto;
+  pointer-events: none;
+}
+#tutCentroWrap.tut-activo { display: flex; }
+
+/* ---------- Tarjeta ---------- */
 #tutCard {
   position: fixed;
-  z-index: 9993;
-  width: min(340px, calc(100vw - 32px));
+  z-index: 10102;
+  box-sizing: border-box;
+  width: min(372px, calc(100vw - 24px));
+  max-height: calc(100vh - 24px);
   background: var(--tarjeta, #fff);
-  color: var(--texto, #1a1d24);
-  border: 1px solid var(--borde, transparent);
-  border-radius: 14px;
-  box-shadow: var(--sombra, 0 12px 40px rgba(0,0,0,.35)), 0 2px 8px rgba(0,0,0,.15);
-  padding: 18px 20px 16px;
+  color: var(--texto, #1a1c22);
+  border: 1px solid var(--borde, rgba(0, 0, 0, .08));
+  border-radius: 16px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, .38), 0 2px 8px rgba(0, 0, 0, .16);
+  padding: 18px 20px 14px;
   pointer-events: auto;
-  font-family: 'Inter', system-ui, sans-serif;
-}
-
-#tutCard .tut-paso-contador {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: .04em;
-  text-transform: uppercase;
-  color: #e63329;
-  margin: 0 0 6px;
-}
-
-#tutCard .tut-titulo {
-  font-family: 'Oswald', system-ui, sans-serif;
-  font-size: 18px;
-  font-weight: 700;
-  margin: 0 0 8px;
-  line-height: 1.25;
-}
-
-#tutCard .tut-texto {
-  font-size: 14px;
+  font-family: var(--font-text, 'Inter', system-ui, sans-serif);
   line-height: 1.5;
-  margin: 0 0 16px;
-  color: inherit;
-  opacity: .92;
+  text-align: left;
+}
+#tutCard * { box-sizing: border-box; }
+#tutCard.tut-entra { animation: tutEntra .34s var(--tut-curva) both; }
+#tutCard.tut-esperando { opacity: 0; pointer-events: none; }
+#tutCard.tut-nudge { animation: tutNudge .34s ease both; }
+
+@keyframes tutEntra {
+  from { opacity: 0; transform: translateY(8px) scale(.975); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes tutNudge {
+  0%, 100% { transform: none; }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
 }
 
-#tutCard .tut-barra-progreso {
-  height: 4px;
-  border-radius: 4px;
-  background: rgba(120,120,130,.25);
-  overflow: hidden;
-  margin-bottom: 14px;
+/* Flecha que apunta al elemento. Un cuadrado girado con el mismo
+   fondo y borde que la tarjeta. */
+#tutCard .tut-flecha {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  background: var(--tarjeta, #fff);
+  border: 1px solid var(--borde, rgba(0, 0, 0, .08));
+  transform: rotate(45deg);
+  display: none;
+}
+#tutCard[data-lado="abajo"] .tut-flecha,
+#tutCard[data-lado="arriba"] .tut-flecha,
+#tutCard[data-lado="der"] .tut-flecha,
+#tutCard[data-lado="izq"] .tut-flecha { display: block; }
+#tutCard[data-lado="abajo"] .tut-flecha {
+  top: -8px; left: var(--tut-flecha, 50%); margin-left: -7px;
+  border-right: 0; border-bottom: 0;
+}
+#tutCard[data-lado="arriba"] .tut-flecha {
+  bottom: -8px; left: var(--tut-flecha, 50%); margin-left: -7px;
+  border-left: 0; border-top: 0;
+}
+#tutCard[data-lado="der"] .tut-flecha {
+  left: -8px; top: var(--tut-flecha, 50%); margin-top: -7px;
+  border-top: 0; border-right: 0;
+}
+#tutCard[data-lado="izq"] .tut-flecha {
+  right: -8px; top: var(--tut-flecha, 50%); margin-top: -7px;
+  border-bottom: 0; border-left: 0;
 }
 
-#tutCard .tut-barra-progreso-relleno {
-  height: 100%;
-  background: linear-gradient(90deg, #e63329, #ff6a5e);
-  border-radius: 4px;
-  transition: width .3s ease;
-}
-
-#tutCard .tut-botones {
+/* Cabecera: capítulo + contador */
+#tutCard .tut-meta {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  margin: 0 28px 10px 0;
+}
+#tutCard .tut-capitulo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 3px 10px 3px 8px;
+  border-radius: 999px;
+  background: rgba(209, 19, 46, .09);
+  color: var(--tut-acento);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#tutCard .tut-contador {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--texto-suave, #5a6270);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
+#tutCard .tut-titulo {
+  font-family: var(--font-tit, 'Oswald', system-ui, sans-serif);
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: .01em;
+  line-height: 1.2;
+  margin: 0 0 8px;
+  color: var(--marino-texto, var(--texto, #0c1b2e));
+}
+#tutCard .tut-texto {
+  font-size: 14px;
+  line-height: 1.55;
+  margin: 0 0 12px;
+  color: var(--texto, inherit);
+}
+#tutCard .tut-texto strong { font-weight: 700; }
+#tutCard .tut-texto kbd,
+#tutCard .tut-atajos kbd {
+  font-family: inherit;
+  font-size: .85em;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 5px;
+  border: 1px solid var(--borde, rgba(0, 0, 0, .15));
+  border-bottom-width: 2px;
+  background: var(--fondo-alt, #f7f8fa);
+}
+
+/* Consejo */
+#tutCard .tut-consejo {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  margin: 0 0 14px;
+  padding: 9px 11px;
+  border-radius: 10px;
+  border-left: 3px solid var(--tut-celeste);
+  background: rgba(91, 184, 232, .12);
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--texto, inherit);
+}
+#tutCard .tut-consejo-ico { flex: 0 0 auto; line-height: 1.3; }
+
+/* Barra de progreso */
+#tutCard .tut-barra {
+  height: 5px;
+  border-radius: 5px;
+  background: rgba(120, 128, 145, .22);
+  overflow: hidden;
+  margin: 0 0 12px;
+}
+#tutCard .tut-barra-relleno {
+  height: 100%;
+  border-radius: 5px;
+  background: linear-gradient(90deg, var(--tut-acento), #ff5d6f);
+  transition: width .4s var(--tut-curva);
+}
+
+/* Botones */
+#tutCard .tut-botones {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
 #tutCard .tut-botones-derecha {
   display: flex;
-  gap: 8px;
+  align-items: center;
+  gap: 6px;
   margin-left: auto;
 }
-
 #tutCard button {
   font-family: inherit;
   font-size: 13px;
   font-weight: 600;
-  border-radius: 8px;
-  padding: 8px 14px;
+  line-height: 1.2;
+  border-radius: 9px;
+  padding: 9px 14px;
+  min-height: 38px;
   cursor: pointer;
-  border: none;
-  transition: transform .12s ease, opacity .12s ease, background .12s ease;
+  border: 1px solid transparent;
+  background: none;
+  color: inherit;
+  transition: transform .12s ease, background .15s ease, box-shadow .15s ease, opacity .15s ease;
 }
-
-#tutCard button:active { transform: scale(0.96); }
+#tutCard button:active { transform: scale(.96); }
+#tutCard button:disabled { visibility: hidden; }
 
 #tutCard .tut-btn-siguiente {
-  background: #e63329;
+  background: linear-gradient(135deg, var(--tut-acento), var(--tut-acento-oscuro));
   color: #fff;
+  box-shadow: 0 2px 8px rgba(209, 19, 46, .3);
 }
-#tutCard .tut-btn-siguiente:hover { background: #cf2b22; }
+#tutCard .tut-btn-siguiente:hover { box-shadow: 0 4px 14px rgba(209, 19, 46, .4); transform: translateY(-1px); }
 
-#tutCard .tut-btn-anterior {
-  background: transparent;
-  color: inherit;
-  opacity: .65;
-  padding-left: 4px;
-  padding-right: 4px;
+#tutCard .tut-btn-secundario {
+  border-color: var(--borde, rgba(0, 0, 0, .15));
+  background: var(--fondo-alt, transparent);
 }
-#tutCard .tut-btn-anterior:hover { opacity: 1; }
-#tutCard .tut-btn-anterior:disabled { visibility: hidden; }
+#tutCard .tut-btn-secundario:hover { border-color: var(--tut-celeste); }
 
+#tutCard .tut-btn-anterior,
 #tutCard .tut-btn-saltar {
-  background: transparent;
-  color: inherit;
-  opacity: .55;
+  color: var(--texto-suave, #5a6270);
   font-weight: 500;
 }
-#tutCard .tut-btn-saltar:hover { opacity: .9; text-decoration: underline; }
+#tutCard .tut-btn-anterior:hover,
+#tutCard .tut-btn-saltar:hover { color: var(--texto, inherit); background: rgba(120, 128, 145, .14); }
 
+/* Cerrar */
 #tutCard .tut-cerrar-x {
   position: absolute;
   top: 10px;
   right: 10px;
-  width: 26px;
-  height: 26px;
+  width: 30px;
+  height: 30px;
+  min-height: 0;
+  padding: 0;
   border-radius: 50%;
-  background: transparent;
-  color: inherit;
-  opacity: .5;
-  font-size: 15px;
-  line-height: 1;
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--texto-suave, #5a6270);
+}
+#tutCard .tut-cerrar-x:hover { background: rgba(120, 128, 145, .18); color: var(--texto, inherit); }
+
+/* admin.css quita el outline de los botones: aquí se restituye para
+   quien navega con teclado. */
+#tutCard button:focus-visible {
+  outline: 2px solid var(--tut-celeste);
+  outline-offset: 2px;
+}
+
+#tutCard .tut-atajos {
+  margin: 10px 0 0;
+  text-align: center;
+  font-size: 11.5px;
+  color: var(--texto-suave, #5a6270);
+}
+
+/* Texto solo para lectores de pantalla */
+#tutOverlay .tut-sr,
+#tutCard .tut-sr {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- Tarjetas centradas (bienvenida / final) ---------- */
+#tutCard.tut-card-centrada {
+  position: relative;
+  width: min(440px, calc(100vw - 32px));
+  margin: auto;
+  padding: 0 0 16px;
+  text-align: center;
+}
+#tutCard.tut-card-centrada .tut-cabecera {
+  position: relative;
+  padding: 26px 20px 22px;
+  margin: 0 0 16px;
+  border-radius: 15px 15px 0 0;
+  background:
+    radial-gradient(120% 120% at 100% 0%, rgba(209, 19, 46, .45), transparent 55%),
+    linear-gradient(135deg, var(--tut-marino), var(--tut-marino2));
+  color: #fff;
+}
+#tutCard.tut-card-centrada .tut-emoji {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 10px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .12);
+  border: 1px solid rgba(255, 255, 255, .22);
+  font-size: 32px;
+  line-height: 1;
+  animation: tutRebote .7s var(--tut-curva) both;
+}
+@keyframes tutRebote {
+  0%   { transform: scale(.5) rotate(-12deg); opacity: 0; }
+  60%  { transform: scale(1.12) rotate(4deg); opacity: 1; }
+  100% { transform: none; }
+}
+#tutCard.tut-card-centrada .tut-rol {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .14);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+#tutCard.tut-card-centrada .tut-titulo {
+  font-size: 24px;
+  margin: 10px 0 0;
+  color: #fff;
+}
+#tutCard.tut-card-centrada .tut-cuerpo { padding: 0 22px; }
+#tutCard.tut-card-centrada .tut-cerrar-x { color: rgba(255, 255, 255, .8); }
+#tutCard.tut-card-centrada .tut-cerrar-x:hover { color: #fff; background: rgba(255, 255, 255, .18); }
+#tutCard.tut-card-centrada .tut-texto { font-size: 14.5px; }
+#tutCard.tut-card-centrada .tut-consejo { text-align: left; }
+
+/* Capítulos (bienvenida) y consejos (final) */
+#tutCard .tut-chips {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin: 0 0 16px;
   padding: 0;
 }
-#tutCard .tut-cerrar-x:hover { opacity: 1; background: rgba(120,120,130,.15); }
-
-/* Tarjeta de bienvenida / final, centrada, sin elemento que resaltar */
-/* Tarjeta de bienvenida / final: vive dentro de #tutCentroWrap (ver
-   arriba), que ya la centra con flexbox, así que aquí solo hace falta
-   su aspecto, no su posición. */
-#tutCard.tut-card-centrada {
-  position: static;
-  width: min(400px, calc(100vw - 32px));
-  text-align: center;
-  pointer-events: auto;
+#tutCard .tut-chips li {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--borde, rgba(0, 0, 0, .12));
+  background: var(--fondo-alt, #f7f8fa);
+  font-size: 12.5px;
+  font-weight: 600;
 }
-#tutCard.tut-card-centrada .tut-titulo { font-size: 22px; }
-#tutCard.tut-card-centrada .tut-botones { justify-content: center; flex-direction: column; }
-#tutCard.tut-card-centrada .tut-botones-derecha { margin-left: 0; }
-#tutCard.tut-card-centrada .tut-emoji {
-  font-size: 40px;
-  margin-bottom: 6px;
-  display: block;
+#tutCard .tut-lista {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  text-align: left;
+  display: grid;
+  gap: 8px;
 }
+#tutCard .tut-lista li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: var(--fondo-alt, #f7f8fa);
+  border: 1px solid var(--borde, rgba(0, 0, 0, .08));
+  font-size: 13px;
+  line-height: 1.45;
+}
+#tutCard .tut-lista li > span:first-child { flex: 0 0 auto; }
 
+#tutCard.tut-card-centrada .tut-botones {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+#tutCard.tut-card-centrada .tut-botones-derecha {
+  flex-direction: column;
+  align-items: stretch;
+  margin: 0;
+  gap: 8px;
+}
+#tutCard.tut-card-centrada .tut-btn-siguiente { padding: 12px 16px; font-size: 14px; }
+
+/* ---------- Móvil: la tarjeta se convierte en hoja inferior ---------- */
 @media (max-width: 640px) {
-  #tutCard { padding: 16px 16px 14px; }
+  #tutCard.tut-hoja {
+    top: auto !important;
+    left: 8px !important;
+    right: 8px !important;
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px)) !important;
+    width: auto;
+    max-height: 46vh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border-radius: 18px;
+    padding: 12px 16px 12px;
+  }
+  #tutCard.tut-hoja.tut-hoja-arriba {
+    top: calc(8px + env(safe-area-inset-top, 0px)) !important;
+    bottom: auto !important;
+  }
+  #tutCard.tut-hoja::before {
+    content: "";
+    display: block;
+    width: 38px;
+    height: 4px;
+    margin: 0 auto 10px;
+    border-radius: 4px;
+    background: rgba(120, 128, 145, .4);
+  }
+  #tutCard.tut-hoja .tut-flecha { display: none !important; }
+  #tutCard.tut-hoja .tut-titulo { font-size: 18px; }
+  #tutCard.tut-hoja .tut-texto { font-size: 13.5px; margin-bottom: 10px; }
+  #tutCard.tut-hoja .tut-atajos { display: none; }
+  #tutCard button { min-height: 42px; }
+  #tutCard.tut-card-centrada .tut-cabecera { padding: 20px 16px 18px; }
+  #tutCard.tut-card-centrada .tut-cuerpo { padding: 0 16px; }
 }
+
+/* Los atajos de teclado no tienen sentido en pantallas táctiles */
+@media (hover: none) {
+  #tutCard .tut-atajos { display: none; }
+}
+
+/* ---------- Preferencias: tarjeta "Tutorial" en Ajustes ---------- */
+.tut-ajuste {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px dashed var(--borde, rgba(0, 0, 0, .15));
+  background: var(--fondo-alt, #f7f8fa);
+}
+.tut-ajuste-texto { flex: 1 1 220px; min-width: 0; }
+.tut-ajuste-texto strong {
+  display: block;
+  font-size: .92rem;
+  color: var(--marino-texto, var(--texto));
+}
+.tut-ajuste-texto span {
+  font-size: .8rem;
+  color: var(--texto-suave, #5a6270);
+}
+
+/* ---------- Accesibilidad / preferencias del sistema ---------- */
+@media (prefers-reduced-motion: reduce) {
+  #tutSpotlight.tut-anima { transition: none; }
+  #tutSpotlight::after,
+  #tutCard.tut-entra,
+  #tutCard.tut-nudge,
+  #tutCard.tut-card-centrada .tut-emoji { animation: none; }
+  #tutCard .tut-barra-relleno { transition: none; }
+}
+
+/* Ajuste del panel «Desactivar animaciones» (js/preferencias.js) */
+[data-eof-anim="off"] #tutSpotlight.tut-anima,
+[data-eof-anim="off"] #tutCard .tut-barra-relleno,
+[data-eof-anim="off"] #tutBloqueo { transition: none; }
+[data-eof-anim="off"] #tutSpotlight::after,
+[data-eof-anim="off"] #tutCard.tut-entra,
+[data-eof-anim="off"] #tutCard.tut-nudge,
+[data-eof-anim="off"] #tutCard.tut-card-centrada .tut-emoji { animation: none; }
+
+@media (forced-colors: active) {
+  #tutSpotlight::after { border-color: Highlight; }
+  #tutCard { border: 2px solid CanvasText; }
+}
+
+@media print {
+  #tutOverlay, #tutCentroWrap, #tutCard { display: none !important; }
+}
+
+/* ---------- Modo oscuro: ajustes finos ---------- */
+[data-theme="dark"] #tutCard .tut-capitulo { color: #ff7d8c; background: rgba(255, 93, 111, .16); }
+[data-theme="dark"] #tutCard .tut-consejo { background: rgba(91, 184, 232, .14); }
+[data-theme="dark"] #tutCard { box-shadow: 0 18px 48px rgba(0, 0, 0, .6), 0 0 0 1px rgba(255, 255, 255, .04); }
+[data-theme="dark"] #tutSpotlight { box-shadow: 0 0 0 9999px rgba(3, 6, 12, .8); }
+[data-theme="dark"] #tutOverlay.tut-centrado #tutBloqueo { background: rgba(3, 6, 12, .8); }

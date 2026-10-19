@@ -1,0 +1,998 @@
+/* =====================================================================
+   MINUTO A MINUTO — liveblog público (v2)
+   ---------------------------------------------------------------------
+   Estructura:
+     1. Variables locales y modo oscuro
+     2. Cabecera sticky (marcador, goleadores, barra de tiempo, compacta)
+     3. Barra de controles (filtros, orden, "en directo")
+     4. Resumen de estadísticas
+     5. Línea de tiempo (dos carriles: local | visitante)
+     6. Estados: carga, previa con cuenta atrás, vacío, final
+     7. Extras: volver arriba, compartir
+     8. Responsive y movimiento reducido
+   Hereda la identidad del sitio (--marino, --rojo, --celeste, Oswald/Inter).
+   ===================================================================== */
+
+/* ---------- 1. Variables locales ---------- */
+body[data-page="minuto-a-minuto"]{
+  background:var(--fondo-alt);
+  --mam-local:var(--celeste);
+  --mam-visit:#3b5f91;
+  --mam-amarilla-bg:#fdf2d0;  --mam-amarilla-tx:#8a6a04;  --mam-amarilla-bd:#e8b923;
+  --mam-cambio-bg:#e8f6ee;    --mam-cambio-tx:#1a7a41;    --mam-cambio-bd:#8fd6ac;
+  --mam-verde:#1a9e4f;
+  --mam-eje:var(--borde);
+}
+[data-theme="dark"] body[data-page="minuto-a-minuto"],
+body[data-page="minuto-a-minuto"][data-theme="dark"]{
+  --mam-visit:#8fa6c8;
+  --mam-amarilla-bg:#3a3112;  --mam-amarilla-tx:#f3cf5a;  --mam-amarilla-bd:#b8921c;
+  --mam-cambio-bg:#12301f;    --mam-cambio-tx:#6fd69a;    --mam-cambio-bd:#2c7a4b;
+  --mam-verde:#4fd08a;
+}
+
+.mam-wrap{max-width:860px;margin:0 auto;padding:0 20px;}
+.mam-cuerpo{padding:26px 0 72px;}
+.mam-evento[hidden]{display:none !important;}
+
+/* ---------- 2. Cabecera ---------- */
+.mam-cabecera-hueco{position:relative;}
+.mam-cabecera{
+  position:relative;z-index:30;overflow:hidden;color:#fff;
+  padding-top:env(safe-area-inset-top, 0px); /* notch (viewport-fit=cover) */
+  background:
+    radial-gradient(80% 130% at 50% -25%, rgba(91,184,232,.26), transparent 62%),
+    repeating-linear-gradient(90deg, rgba(255,255,255,.03) 0 60px, transparent 60px 120px),
+    linear-gradient(165deg, var(--marino) 0%, var(--marino2) 100%);
+  box-shadow:0 8px 28px rgba(12,27,46,.32);
+  border-bottom:3px solid transparent;
+  transition:border-color .4s ease, box-shadow .4s ease;
+}
+/* Círculo central de campo, decorativo */
+.mam-cabecera::before{
+  content:"";position:absolute;left:50%;top:50%;width:300px;height:300px;
+  margin:-150px 0 0 -150px;border-radius:50%;
+  border:2px solid rgba(255,255,255,.055);pointer-events:none;
+}
+.mam-cabecera::after{
+  content:"";position:absolute;left:50%;top:0;bottom:0;width:2px;margin-left:-1px;
+  background:rgba(255,255,255,.045);pointer-events:none;
+}
+.mam-cabecera-en-vivo{
+  border-bottom-color:var(--rojo);
+  box-shadow:0 8px 28px rgba(12,27,46,.34), 0 4px 18px rgba(209,19,46,.3);
+}
+.mam-cabecera-finalizado{
+  background:
+    radial-gradient(80% 130% at 50% -25%, rgba(255,255,255,.07), transparent 62%),
+    linear-gradient(165deg, #16283f 0%, var(--marino) 100%);
+}
+.mam-cabecera-programado{
+  background:
+    radial-gradient(80% 130% at 50% -25%, rgba(91,184,232,.3), transparent 62%),
+    linear-gradient(165deg, var(--marino2) 0%, var(--marino) 100%);
+}
+
+.mam-cabecera-inner{position:relative;z-index:1;max-width:860px;margin:0 auto;padding:14px 20px 14px;}
+
+.mam-breadcrumb{
+  display:flex;align-items:center;gap:6px;width:fit-content;
+  font-size:.72rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--celeste-claro);text-decoration:none;margin-bottom:14px;
+  transition:color .15s ease, transform .15s ease;
+}
+.mam-breadcrumb:hover{color:#fff;transform:translateX(-2px);}
+.mam-breadcrumb svg{width:13px;height:13px;transform:rotate(180deg);}
+
+.mam-marcador-fila{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:start;gap:10px;}
+.mam-equipo{display:flex;flex-direction:column;align-items:center;gap:7px;min-width:0;}
+.mam-rol{
+  font-size:.6rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--celeste-claro);opacity:.75;
+}
+.mam-escudo-marco{
+  width:78px;height:78px;border-radius:50%;display:grid;place-items:center;
+  background:radial-gradient(circle at 30% 25%, rgba(255,255,255,.16), rgba(255,255,255,.05));
+  border:1px solid rgba(255,255,255,.18);
+  box-shadow:inset 0 0 20px rgba(255,255,255,.05), 0 6px 18px rgba(0,0,0,.28);
+  transition:width .25s ease, height .25s ease;
+}
+.mam-escudo{
+  width:56px;height:56px;object-fit:contain;
+  filter:drop-shadow(0 3px 6px rgba(0,0,0,.35));
+  transition:width .25s ease, height .25s ease;
+}
+.mam-nombre{
+  font-family:var(--font-tit);font-weight:600;font-size:.95rem;text-align:center;
+  line-height:1.2;letter-spacing:.01em;max-width:170px;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+  overflow-wrap:anywhere;
+}
+
+/* Goleadores bajo cada equipo */
+.mam-goleadores{
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+  font-size:.7rem;line-height:1.3;color:var(--celeste-claro);text-align:center;min-height:0;
+}
+.mam-goleadores:empty{display:none;}
+.mam-gol-linea{display:block;max-width:170px;}
+.mam-gol-linea::before{content:"\26BD\FE0E";font-size:.62rem;margin-right:4px;opacity:.8;}
+.mam-gol-linea em{font-style:normal;opacity:.72;margin-left:3px;font-variant-numeric:tabular-nums;}
+
+.mam-centro{display:flex;flex-direction:column;align-items:center;gap:10px;padding:18px 6px 0;min-width:116px;}
+.mam-marcador{
+  font-family:var(--font-tit);font-size:3rem;font-weight:700;line-height:1;
+  letter-spacing:.02em;white-space:nowrap;font-variant-numeric:tabular-nums;
+  text-shadow:0 2px 14px rgba(0,0,0,.28);
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  transition:transform .3s ease, text-shadow .3s ease;
+}
+.mam-cabecera-programado .mam-marcador{opacity:.55;font-size:1.7rem;}
+.mam-cabecera-en-vivo .mam-marcador{animation:mamRespiroMarcador 2.8s ease-in-out infinite;}
+.mam-marcador .penaltis-marcador{font-size:.8rem;font-weight:600;letter-spacing:.04em;opacity:.8;}
+.mam-marcador-gol{animation:mamGolMarcador 1.8s cubic-bezier(.2,.8,.2,1) both !important;}
+
+.mam-estado{
+  display:flex;align-items:center;gap:6px;white-space:nowrap;
+  font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--celeste-claro);
+}
+.mam-estado.mam-estado-en-vivo{
+  color:#fff;padding:5px 14px;border-radius:999px;
+  background:linear-gradient(135deg, var(--rojo), var(--rojo-oscuro));
+  box-shadow:0 2px 14px rgba(209,19,46,.5), inset 0 1px 0 rgba(255,255,255,.18);
+}
+.mam-estado .en-vivo-punto{background:#fff;}
+.mam-estado:not(.mam-estado-en-vivo) .en-vivo-punto{display:none;}
+
+/* Barra de tiempo de juego (solo en directo) */
+.mam-progreso{margin:16px auto 0;max-width:520px;}
+.mam-progreso[hidden]{display:none;}
+.mam-progreso-pista{position:relative;height:5px;border-radius:999px;background:rgba(255,255,255,.14);overflow:hidden;}
+.mam-progreso-relleno{
+  display:block;height:100%;width:0;border-radius:inherit;
+  background:linear-gradient(90deg, var(--celeste), #fff 140%);
+  transition:width .8s ease;
+}
+.mam-cabecera-en-vivo .mam-progreso-relleno{background:linear-gradient(90deg, var(--celeste), var(--rojo));}
+.mam-progreso-pista::after{ /* marca del descanso (min 45) */
+  content:"";position:absolute;left:50%;top:0;bottom:0;width:2px;background:rgba(255,255,255,.45);
+}
+.mam-progreso-marcas{
+  display:flex;justify-content:space-between;margin-top:5px;
+  font-size:.6rem;font-weight:600;letter-spacing:.05em;color:var(--celeste-claro);opacity:.7;
+  font-variant-numeric:tabular-nums;
+}
+
+/* Meta del partido: chips */
+.mam-meta{
+  display:flex;flex-wrap:wrap;justify-content:center;gap:6px;
+  margin:14px 0 0;padding-top:12px;border-top:1px solid rgba(255,255,255,.13);
+}
+.mam-chip{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:.68rem;font-weight:600;letter-spacing:.02em;
+  padding:3px 10px;border-radius:999px;
+  color:var(--celeste-claro);background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);
+}
+.mam-chip svg{width:11px;height:11px;flex-shrink:0;opacity:.85;}
+
+/* Cabecera compacta al hacer scroll */
+.mam-compacta .mam-cabecera-inner{padding-top:8px;padding-bottom:8px;}
+.mam-compacta .mam-breadcrumb,
+.mam-compacta .mam-rol,
+.mam-compacta .mam-goleadores,
+.mam-compacta .mam-meta,
+.mam-compacta .mam-progreso,
+.mam-compacta .mam-nombre{display:none;}
+.mam-compacta .mam-marcador-fila{align-items:center;}
+.mam-compacta .mam-escudo-marco{width:40px;height:40px;}
+.mam-compacta .mam-escudo{width:28px;height:28px;}
+.mam-compacta .mam-centro{padding-top:0;gap:4px;flex-direction:row;gap:14px;}
+.mam-compacta .mam-marcador{font-size:1.7rem;flex-direction:row;gap:8px;}
+.mam-compacta::before,.mam-compacta::after{display:none;}
+.mam-cabecera.mam-compacta{
+  position:fixed;top:0;left:0;right:0;
+  box-shadow:0 6px 22px rgba(12,27,46,.4);
+}
+.mam-compacta .mam-cabecera-inner{animation:mamCompactaEntra .22s ease-out both;}
+@keyframes mamCompactaEntra{from{opacity:0;transform:translateY(-8px);}to{opacity:1;transform:none;}}
+
+/* ---------- 3. Controles ---------- */
+.mam-controles{margin:0 0 22px;display:flex;flex-direction:column;gap:12px;}
+.mam-controles:empty{display:none;}
+.mam-controles-fila{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.mam-filtros{
+  display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:2px 2px 4px;margin:0 -2px;
+  -webkit-overflow-scrolling:touch;
+}
+.mam-filtros::-webkit-scrollbar{display:none;}
+.mam-filtro,.mam-orden{
+  font:inherit;font-size:.78rem;font-weight:600;cursor:pointer;white-space:nowrap;
+  display:inline-flex;align-items:center;gap:7px;
+  padding:7px 14px;border-radius:999px;
+  background:var(--tarjeta);color:var(--texto);border:1px solid var(--borde);
+  box-shadow:var(--sombra-sm, none);
+  transition:background .15s ease, color .15s ease, border-color .15s ease, transform .15s ease;
+}
+.mam-filtro:hover,.mam-orden:hover{border-color:var(--celeste);transform:translateY(-1px);}
+.mam-filtro:focus-visible,.mam-orden:focus-visible,.mam-arriba:focus-visible{outline:2px solid var(--celeste);outline-offset:2px;}
+.mam-filtro[aria-pressed="true"]{background:var(--marino);color:#fff;border-color:var(--marino);}
+[data-theme="dark"] .mam-filtro[aria-pressed="true"]{background:var(--celeste);color:var(--marino);border-color:var(--celeste);}
+.mam-filtro-n{
+  font-size:.66rem;font-weight:700;min-width:18px;padding:1px 6px;border-radius:999px;text-align:center;
+  background:rgba(127,140,160,.18);font-variant-numeric:tabular-nums;
+}
+.mam-filtro[aria-pressed="true"] .mam-filtro-n{background:rgba(255,255,255,.22);}
+.mam-orden svg{width:14px;height:14px;}
+
+.mam-pulso{
+  display:inline-flex;align-items:center;gap:7px;font-size:.74rem;font-weight:600;color:var(--gris-texto);
+}
+.mam-pulso .en-vivo-punto{flex-shrink:0;}
+.mam-pulso time{font-variant-numeric:tabular-nums;color:var(--texto);}
+
+/* ---------- 4. Resumen ---------- */
+.mam-resumen{
+  background:var(--tarjeta);border:1px solid var(--borde);border-radius:var(--radio-md, 12px);
+  padding:16px 18px 6px;margin:0 0 26px;box-shadow:var(--sombra-sm, none);
+}
+.mam-resumen-titulo{
+  font-family:var(--font-tit);font-size:.78rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--gris-texto);margin:0 0 12px;text-align:center;
+}
+.mam-res-fila{display:grid;grid-template-columns:30px minmax(0,1fr) 30px;align-items:center;gap:12px;margin-bottom:12px;}
+.mam-res-n{font-family:var(--font-tit);font-weight:700;font-size:1.05rem;font-variant-numeric:tabular-nums;color:var(--marino-texto);}
+.mam-res-n:last-child{text-align:right;}
+.mam-res-label{display:block;text-align:center;font-size:.72rem;font-weight:600;color:var(--gris-texto);margin-bottom:5px;}
+.mam-res-barra{display:flex;gap:3px;height:6px;}
+.mam-res-barra i{display:block;border-radius:999px;min-width:0;transition:flex-grow .6s ease;}
+.mam-res-barra .l{background:var(--mam-local);}
+.mam-res-barra .v{background:var(--mam-visit);}
+.mam-res-barra .vacio{background:var(--borde);}
+
+/* MVP */
+.mam-mvp{
+  display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;
+  background:linear-gradient(180deg, var(--tarjeta), rgba(209,19,46,.05));
+  border:1px solid var(--borde);border-radius:var(--radio-md, 12px);
+  padding:12px 18px;margin-bottom:22px;font-size:.84rem;box-shadow:var(--sombra-sm, none);
+  animation:mamAparecer .4s ease both;
+}
+.mam-mvp img{width:30px;height:30px;object-fit:contain;filter:drop-shadow(0 1px 3px rgba(0,0,0,.18));}
+.mam-mvp-etiqueta{
+  font-family:var(--font-tit);font-size:.65rem;font-weight:700;letter-spacing:.1em;color:var(--rojo);
+  background:rgba(209,19,46,.1);padding:3px 9px;border-radius:5px;
+}
+.mam-mvp-nombre{font-weight:700;color:var(--marino-texto);}
+
+/* ---------- 5. Línea de tiempo ---------- */
+.mam-timeline{position:relative;padding:6px 0 2px;}
+.mam-timeline::before{
+  content:"";position:absolute;top:0;bottom:0;left:50%;width:2px;margin-left:-1px;
+  background:linear-gradient(to bottom, transparent, var(--mam-eje) 28px, var(--mam-eje) calc(100% - 28px), transparent);
+}
+
+.mam-evento{
+  position:relative;display:grid;align-items:start;
+  grid-template-columns:minmax(0,1fr) 68px minmax(0,1fr);
+  margin:0 0 18px;animation:mamAparecer .35s ease both;
+}
+.mam-evento:last-child{margin-bottom:0;}
+
+.mam-evento-sello{grid-column:2;grid-row:1;display:flex;justify-content:center;position:relative;z-index:1;}
+.mam-evento-minuto{
+  display:flex;align-items:center;justify-content:center;
+  min-width:44px;height:44px;padding:0 6px;border-radius:22px;
+  background:var(--tarjeta);color:var(--marino-texto);border:2px solid var(--borde);
+  font-family:var(--font-tit);font-weight:700;font-size:.76rem;letter-spacing:.01em;
+  font-variant-numeric:tabular-nums;white-space:nowrap;
+  box-shadow:0 0 0 5px var(--fondo-alt), 0 2px 6px rgba(12,27,46,.1);
+}
+
+/* Tarjeta de evento */
+.mam-evento-contenido{
+  grid-row:1;position:relative;
+  background:var(--tarjeta);border:1px solid var(--borde);border-radius:var(--radio-md, 12px);
+  padding:11px 14px;font-size:.88rem;line-height:1.4;
+  box-shadow:var(--sombra-sm, none);
+  transition:box-shadow .2s ease, transform .2s ease, border-color .2s ease;
+}
+.mam-evento-contenido:hover{box-shadow:var(--sombra-md, var(--sombra-sm));transform:translateY(-1px);}
+.mam-evento[data-lado="local"] .mam-evento-contenido{grid-column:1;}
+.mam-evento[data-lado="visitante"] .mam-evento-contenido{grid-column:3;}
+/* Pico que apunta al eje */
+.mam-evento-contenido::after{
+  content:"";position:absolute;top:15px;width:10px;height:10px;background:inherit;
+  border:1px solid var(--borde);transform:rotate(45deg);
+}
+.mam-evento[data-lado="local"] .mam-evento-contenido::after{right:-6px;border-left:0;border-bottom:0;}
+.mam-evento[data-lado="visitante"] .mam-evento-contenido::after{left:-6px;border-right:0;border-top:0;}
+
+.mam-ev-cab{display:flex;align-items:flex-start;gap:11px;}
+.mam-evento[data-lado="local"] .mam-ev-cab{flex-direction:row-reverse;text-align:right;}
+.mam-ev-icono{
+  width:34px;height:34px;flex-shrink:0;border-radius:10px;display:grid;place-items:center;
+  background:var(--fondo-alt);color:var(--marino-texto);
+}
+.mam-ev-icono .mev-icono{width:20px;height:20px;margin:0;}
+.mam-ev-textos{min-width:0;flex:1;display:flex;flex-direction:column;gap:2px;}
+.mam-evento-equipo{
+  display:flex;align-items:center;gap:6px;
+  font-size:.66rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gris-texto);
+}
+.mam-evento[data-lado="local"] .mam-evento-equipo{flex-direction:row-reverse;}
+.mam-evento-equipo img{width:15px;height:15px;object-fit:contain;}
+.mam-evento-equipo span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+.mam-ev-titulo{font-weight:700;font-size:.9rem;color:var(--marino-texto);}
+.mam-ev-protagonista{font-weight:600;color:var(--texto);overflow-wrap:anywhere;}
+.mam-ev-detalle{font-size:.78rem;color:var(--gris-texto);overflow-wrap:anywhere;}
+.mam-ev-entra,.mam-ev-sale{display:flex;align-items:center;gap:6px;font-size:.84rem;overflow-wrap:anywhere;}
+.mam-evento[data-lado="local"] .mam-ev-entra,
+.mam-evento[data-lado="local"] .mam-ev-sale{flex-direction:row-reverse;}
+.mam-ev-entra::before,.mam-ev-sale::before{font-size:.62rem;flex-shrink:0;}
+.mam-ev-entra{color:var(--mam-verde);font-weight:600;}
+.mam-ev-entra::before{content:"\25B2";}
+.mam-ev-sale{color:var(--gris-texto);}
+.mam-ev-sale::before{content:"\25BC";color:var(--rojo);}
+
+/* Goles: protagonistas */
+.mam-evento-gol .mam-evento-minuto{
+  min-width:50px;height:50px;border-radius:25px;font-size:.84rem;
+  background:linear-gradient(135deg, var(--rojo), var(--rojo-oscuro));color:#fff;border-color:var(--rojo-oscuro);
+  box-shadow:0 0 0 5px var(--fondo-alt), 0 4px 16px rgba(209,19,46,.45);
+}
+.mam-evento-gol .mam-evento-contenido{
+  border-color:rgba(209,19,46,.38);
+  background:linear-gradient(180deg, rgba(209,19,46,.09), var(--tarjeta) 70%);
+}
+.mam-evento-gol .mam-evento-contenido::after{border-color:rgba(209,19,46,.38);}
+.mam-evento-gol .mam-ev-icono{background:rgba(209,19,46,.12);color:var(--rojo);}
+.mam-evento-gol .mam-ev-titulo{
+  font-family:var(--font-tit);font-size:1.12rem;letter-spacing:.03em;text-transform:uppercase;color:var(--rojo);
+}
+.mam-evento-gol .mam-ev-protagonista{font-size:1rem;font-weight:700;}
+
+.mam-evento-roja .mam-evento-minuto{background:linear-gradient(135deg, var(--rojo), var(--rojo-oscuro));color:#fff;border-color:var(--rojo-oscuro);}
+.mam-evento-roja .mam-evento-contenido,
+.mam-evento-roja .mam-evento-contenido::after{border-color:rgba(209,19,46,.3);}
+.mam-evento-amarilla .mam-evento-minuto{background:var(--mam-amarilla-bg);color:var(--mam-amarilla-tx);border-color:var(--mam-amarilla-bd);}
+.mam-evento-amarilla .mam-evento-contenido,
+.mam-evento-amarilla .mam-evento-contenido::after{border-color:color-mix(in srgb, var(--mam-amarilla-bd) 55%, transparent);}
+.mam-evento-cambio .mam-evento-minuto{background:var(--mam-cambio-bg);color:var(--mam-cambio-tx);border-color:var(--mam-cambio-bd);}
+.mam-evento-var .mam-evento-minuto{background:var(--marino);color:#fff;border-color:var(--marino2);}
+.mam-evento-anulado .mam-ev-protagonista{text-decoration:line-through;opacity:.7;}
+
+/* Evento recién llegado */
+.mam-evento-nuevo .mam-evento-contenido{animation:mamNuevoAro 1.4s ease-out both;}
+.mam-evento-nuevo .mam-evento-contenido::before{
+  content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:rgba(91,184,232,.2);animation:mamNuevoVelo 6s ease-out both;
+}
+.mam-evento-nuevo .mam-evento-minuto{animation:mamPulsoSello 1.6s ease-out 3;}
+
+/* Hitos del partido (inicio, descanso, final...) */
+.mam-evento-hito{grid-template-columns:1fr;justify-items:center;}
+.mam-evento-hito .mam-evento-sello{display:none;}
+.mam-hito{
+  position:relative;z-index:1;display:inline-flex;align-items:center;gap:9px;
+  padding:7px 16px 7px 12px;border-radius:999px;
+  background:var(--tarjeta);border:1px solid var(--borde);color:var(--marino-texto);
+  font-family:var(--font-tit);font-size:.78rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;
+  box-shadow:0 0 0 5px var(--fondo-alt), var(--sombra-sm, none);
+}
+.mam-hito .mev-icono{width:16px;height:16px;margin:0;}
+.mam-hito-min{font-variant-numeric:tabular-nums;opacity:.65;}
+.mam-hito-fuerte{background:var(--marino);color:#fff;border-color:var(--marino2);}
+.mam-hito-fuerte .mam-hito-min{opacity:.8;}
+
+/* Notas de texto libre */
+.mam-evento-nota{grid-template-columns:1fr;justify-items:center;}
+.mam-evento-nota .mam-evento-sello{display:none;}
+.mam-nota{
+  position:relative;z-index:1;width:100%;max-width:580px;
+  background:var(--tarjeta);border:1px solid var(--borde);border-left:4px solid var(--celeste);
+  border-radius:var(--radio-md, 12px);padding:11px 16px;font-size:.88rem;line-height:1.5;
+  box-shadow:0 0 0 5px var(--fondo-alt), var(--sombra-sm, none);
+}
+.mam-nota-cab{
+  display:flex;align-items:center;gap:7px;margin-bottom:3px;
+  font-size:.66rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gris-texto);
+}
+.mam-nota-cab .mev-icono{width:14px;height:14px;margin:0;}
+.mam-nota-texto{color:var(--texto);overflow-wrap:anywhere;}
+
+/* Tanda de penaltis */
+.mam-tanda-titulo{
+  display:flex;align-items:center;gap:14px;margin:34px 0 20px;
+  font-family:var(--font-tit);font-size:.86rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--marino-texto);
+}
+.mam-tanda-titulo::before,.mam-tanda-titulo::after{content:"";flex:1;height:0;border-top:2px dashed var(--borde);}
+
+/* ---------- 6. Estados ---------- */
+.mam-estado-inicial{text-align:center;color:var(--gris-texto);font-size:.92rem;padding:50px 20px;}
+.mam-estado-inicial svg{width:38px;height:38px;color:var(--borde);margin-bottom:10px;}
+
+/* Carga (esqueleto) */
+.mam-skel{display:flex;flex-direction:column;gap:16px;padding-top:6px;}
+.mam-skel-fila{height:62px;border-radius:var(--radio-md, 12px);background:var(--tarjeta);border:1px solid var(--borde);position:relative;overflow:hidden;}
+.mam-skel-fila:nth-child(2){width:78%;margin-left:auto;}
+.mam-skel-fila:nth-child(3){width:86%;}
+.mam-skel-fila::after{
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(100deg, transparent 20%, rgba(127,140,160,.16) 50%, transparent 80%);
+  transform:translateX(-100%);animation:mamBrillo 1.4s ease-in-out infinite;
+}
+
+/* Previa con cuenta atrás */
+.mam-estado-previa{
+  background:var(--tarjeta);border:1px solid var(--borde);border-radius:var(--radio-lg, 18px);
+  padding:38px 24px 34px;box-shadow:var(--sombra-sm, none);
+}
+.mam-previa-reloj{
+  width:58px;height:58px;border-radius:50%;margin:0 auto 16px;display:grid;place-items:center;
+  background:linear-gradient(135deg, var(--celeste), var(--marino2));
+  box-shadow:0 6px 18px rgba(91,184,232,.35);
+}
+.mam-previa-reloj svg{width:27px;height:27px;color:#fff;margin:0;}
+.mam-previa-titulo{font-family:var(--font-tit);font-weight:600;font-size:1.1rem;color:var(--marino-texto);margin:0 0 6px;}
+.mam-previa-hora{font-size:.88rem;font-weight:600;color:var(--rojo);margin:0 0 20px;}
+.mam-previa-hora::first-letter{text-transform:uppercase;}
+/* Partido anulado: misma pantalla que la previa pero en ámbar (sin cuenta atrás). */
+.mam-aplazado .mam-previa-reloj{background:linear-gradient(135deg,#f5b301,#c98a00);box-shadow:0 6px 18px rgba(245,179,1,.35);}
+.mam-aplazado .mam-previa-hora{color:#8a5d00;}
+[data-theme="dark"] .mam-aplazado .mam-previa-hora{color:#ffd23f;}
+.mam-cuenta{display:flex;justify-content:center;gap:10px;margin:0 auto 20px;}
+.mam-cuenta-bloque{
+  min-width:64px;padding:10px 6px 8px;border-radius:var(--radio-md, 12px);
+  background:var(--fondo-alt);border:1px solid var(--borde);
+}
+.mam-cuenta-n{display:block;font-family:var(--font-tit);font-weight:700;font-size:1.9rem;line-height:1;color:var(--marino-texto);font-variant-numeric:tabular-nums;}
+.mam-cuenta-l{display:block;margin-top:5px;font-size:.6rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gris-texto);}
+.mam-cuenta-cero{font-weight:600;color:var(--marino-texto);margin:0 0 20px;}
+.mam-previa-nota{font-size:.84rem;color:var(--gris-texto);max-width:380px;margin:0 auto;line-height:1.55;}
+
+.mam-final-remate{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  margin:28px 0 0;padding-top:20px;border-top:1px solid var(--borde);
+  font-size:.78rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gris-texto);
+}
+.mam-final-remate svg{width:16px;height:16px;color:var(--marino-texto);}
+
+/* ---------- 7. Extras ---------- */
+.mam-compartir{margin-top:38px;}
+.mam-arriba{
+  position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom, 0px));z-index:40;
+  width:44px;height:44px;border-radius:50%;border:0;cursor:pointer;display:grid;place-items:center;
+  background:var(--marino);color:#fff;box-shadow:0 6px 20px rgba(12,27,46,.35);
+  opacity:0;transform:translateY(12px);pointer-events:none;
+  transition:opacity .2s ease, transform .2s ease;
+}
+.mam-arriba svg{width:20px;height:20px;}
+.mam-arriba-visible{opacity:1;transform:none;pointer-events:auto;}
+[data-theme="dark"] .mam-arriba{background:var(--celeste);color:var(--marino);}
+
+/* ---------- Animaciones ---------- */
+@keyframes mamAparecer{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+@keyframes mamRespiroMarcador{0%,100%{opacity:1;}50%{opacity:.9;}}
+@keyframes mamGolMarcador{
+  0%{transform:scale(1);text-shadow:0 2px 14px rgba(0,0,0,.28);}
+  25%{transform:scale(1.28);text-shadow:0 0 28px rgba(255,255,255,.85), 0 0 8px rgba(209,19,46,.9);}
+  100%{transform:scale(1);text-shadow:0 2px 14px rgba(0,0,0,.28);}
+}
+@keyframes mamNuevoAro{
+  0%{box-shadow:0 0 0 0 rgba(91,184,232,.75);}
+  30%{box-shadow:0 0 0 6px rgba(91,184,232,.25);}
+  100%{box-shadow:0 0 0 0 rgba(91,184,232,0);}
+}
+@keyframes mamNuevoVelo{0%{opacity:1;}100%{opacity:0;}}
+@keyframes mamPulsoSello{0%{transform:scale(1);}40%{transform:scale(1.18);}100%{transform:scale(1);}}
+@keyframes mamBrillo{to{transform:translateX(100%);}}
+
+/* ---------- 8. Responsive ---------- */
+@media (max-width:700px){
+  .mam-wrap{padding:0 14px;}
+  .mam-cuerpo{padding-top:20px;}
+  .mam-cabecera-inner{padding:12px 14px 12px;}
+  .mam-escudo-marco{width:62px;height:62px;}
+  .mam-escudo{width:44px;height:44px;}
+  .mam-nombre{font-size:.8rem;max-width:104px;}
+  .mam-marcador{font-size:2.3rem;}
+  .mam-cabecera-programado .mam-marcador{font-size:1.4rem;}
+  .mam-centro{min-width:88px;padding-top:14px;}
+  .mam-goleadores{font-size:.64rem;}
+  .mam-gol-linea{max-width:112px;}
+
+  /* Una sola columna con el eje a la izquierda */
+  .mam-timeline::before{left:24px;margin-left:-1px;}
+  .mam-evento{grid-template-columns:50px minmax(0,1fr);margin-bottom:15px;}
+  .mam-evento-sello{grid-column:1;}
+  .mam-evento-minuto{min-width:38px;height:38px;font-size:.68rem;padding:0 4px;box-shadow:0 0 0 4px var(--fondo-alt), 0 2px 6px rgba(12,27,46,.1);}
+  .mam-evento-gol .mam-evento-minuto{min-width:44px;height:44px;box-shadow:0 0 0 4px var(--fondo-alt), 0 4px 14px rgba(209,19,46,.45);}
+  .mam-evento[data-lado] .mam-evento-contenido{grid-column:2;}
+  .mam-evento[data-lado="local"] .mam-ev-cab{flex-direction:row;text-align:left;}
+  .mam-evento[data-lado="local"] .mam-evento-equipo,
+  .mam-evento[data-lado="local"] .mam-ev-entra,
+  .mam-evento[data-lado="local"] .mam-ev-sale{flex-direction:row;}
+  .mam-evento[data-lado="local"] .mam-evento-contenido::after,
+  .mam-evento[data-lado="visitante"] .mam-evento-contenido::after{
+    left:-6px;right:auto;border:1px solid var(--borde);border-right:0;border-top:0;
+  }
+  .mam-evento-gol .mam-evento-contenido::after{border-color:rgba(209,19,46,.38);border-right:0;border-top:0;}
+  .mam-evento-hito,.mam-evento-nota{grid-template-columns:1fr;justify-items:start;}
+  .mam-nota{max-width:none;}
+  .mam-ev-icono{width:30px;height:30px;}
+
+  .mam-controles-fila{flex-direction:column;align-items:stretch;}
+  .mam-pulso{justify-content:center;}
+  .mam-res-fila{gap:8px;}
+  .mam-cuenta{gap:7px;}
+  .mam-cuenta-bloque{min-width:56px;}
+  .mam-cuenta-n{font-size:1.6rem;}
+  .mam-estado-previa{padding:30px 16px 28px;}
+}
+@media (max-width:360px){
+  .mam-nombre{max-width:84px;font-size:.74rem;}
+  .mam-marcador{font-size:2rem;}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .mam-evento,.mam-mvp,.mam-evento-nuevo .mam-evento-contenido,.mam-evento-nuevo .mam-evento-minuto,
+  .mam-cabecera-en-vivo .mam-marcador,.mam-marcador-gol,.mam-skel-fila::after{animation:none !important;}
+  .mam-progreso-relleno,.mam-res-barra i,.mam-arriba{transition:none;}
+}
+
+/* ---------- Ajustes finales ---------- */
+.mam-tanda-titulo:first-child{margin-top:0;}
+.mam-final-remate-arriba{margin:0 0 24px;padding:0 0 20px;border-top:0;border-bottom:1px solid var(--borde);}
+.mam-evento-gol_var .mam-ev-icono{background:rgba(127,140,160,.14);}
+
+/* =====================================================================
+   v3 — EN VIVO TOTAL: reloj con segundos, celebraciones, toasts,
+   entradas por lado, indicador "esperando", estado de conexión
+   ===================================================================== */
+
+/* Reloj del partido (mm:ss) */
+.mam-reloj{display:inline-flex;align-items:baseline;font-family:var(--font-tit);font-size:1rem;letter-spacing:.04em;font-variant-numeric:tabular-nums;}
+.mam-reloj[hidden]{display:none;}
+.mam-reloj b{font-weight:700;min-width:1ch;text-align:center;}
+.mam-reloj i{font-style:normal;margin:0 1px;animation:mamParpadeo 1s steps(1) infinite;}
+.mam-reloj-pausa i{animation:none;opacity:.55;}
+.mam-reloj-pausa{animation:mamRespiroMarcador 2.4s ease-in-out infinite;}
+.mam-anadido{
+  position:relative;display:inline-flex;align-items:center;gap:.45rem;margin-left:.55rem;padding:.18rem .65rem .26rem;
+  border-radius:999px;overflow:hidden;background:#f5b82e;color:#2b1d00;vertical-align:middle;
+  font-family:var(--font-tit);font-size:.74rem;font-weight:600;letter-spacing:.03em;white-space:nowrap;
+  animation:mamAnadidoEntrada .4s ease-out;
+}
+.mam-anadido[hidden]{display:none;}
+.mam-anadido b{font-weight:700;font-size:.82rem;}
+.mam-anadido::after{ /* avance del añadido */
+  content:"";position:absolute;left:0;bottom:0;height:3px;width:var(--p,0%);
+  background:rgba(43,29,0,.5);transition:width 1s linear;
+}
+.mam-anadido-fin{animation:mamAnadidoFin 1.2s ease-in-out infinite;}
+@keyframes mamAnadidoFin{0%,100%{opacity:1}50%{opacity:.6}}
+@media (prefers-reduced-motion:reduce){.mam-anadido,.mam-anadido-fin{animation:none;}.mam-anadido::after{transition:none;}}
+.mam-hito-anadido{
+  display:inline-flex;align-items:center;gap:12px;padding:8px 16px 8px 10px;border-radius:999px;
+  background:rgba(245,184,46,.14);border:1px solid rgba(245,184,46,.5);color:inherit;
+}
+.mam-hito-anadido-n{
+  font-family:var(--font-tit);font-size:1.15rem;font-weight:700;line-height:1;color:#2b1d00;
+  background:linear-gradient(135deg,#f5b82e,#d99a12);border-radius:999px;padding:6px 12px;
+}
+.mam-hito-anadido-txt{display:flex;flex-direction:column;text-align:left;line-height:1.25;}
+.mam-hito-anadido-txt small{font-size:.72rem;opacity:.7;}
+@keyframes mamAnadidoEntrada{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes mamParpadeo{0%{opacity:1;}50%{opacity:.15;}}
+
+/* Barra de tiempo: relleno continuo y balón que rueda */
+.mam-progreso-pista{overflow:visible;}
+.mam-progreso-relleno{transition:width 1s linear;}
+.mam-progreso-balon{
+  position:absolute;top:50%;left:0;font-size:.85rem;line-height:1;z-index:2;
+  transform:translate(-50%,-50%);transition:left 1s linear;
+  filter:drop-shadow(0 1px 3px rgba(0,0,0,.55));animation:mamBalon 1.7s ease-in-out infinite;
+}
+@keyframes mamBalon{
+  0%,100%{transform:translate(-50%,-50%) rotate(0deg);}
+  50%{transform:translate(-50%,-68%) rotate(180deg);}
+}
+
+/* Cabecera en directo: franja que respira (solo opacity = va por GPU, no repinta) y onda en el chip */
+.mam-latido{
+  position:absolute;left:0;right:0;bottom:0;height:3px;z-index:2;pointer-events:none;
+  background:linear-gradient(90deg, transparent, #ff4d63 20%, #ff4d63 80%, transparent);opacity:0;
+}
+.mam-cabecera-en-vivo .mam-latido{animation:mamLatidoCab 2.6s ease-in-out infinite;}
+@keyframes mamLatidoCab{0%,100%{opacity:.15;}50%{opacity:1;}}
+.mam-estado-en-vivo{position:relative;}
+.mam-estado-en-vivo::after{
+  content:"";position:absolute;inset:-3px;border-radius:999px;pointer-events:none;
+  border:2px solid rgba(255,77,99,.75);animation:mamOnda 2.2s ease-out infinite;
+}
+@keyframes mamOnda{0%{transform:scale(.9);opacity:.9;}100%{transform:scale(1.35,1.9);opacity:0;}}
+
+/* Celebración de gol */
+.mam-cabecera-gol{animation:mamFlashGol 2.6s ease-out both !important;}
+@keyframes mamFlashGol{
+  0%{filter:none;}
+  8%{filter:brightness(1.7) saturate(1.3);box-shadow:0 0 60px rgba(255,255,255,.55), 0 6px 40px rgba(209,19,46,.8);}
+  100%{filter:none;}
+}
+.mam-escudo-gol{animation:mamSaltoEscudo 1.5s cubic-bezier(.3,1.6,.5,1) both;}
+@keyframes mamSaltoEscudo{
+  0%{transform:scale(1);}
+  25%{transform:translateY(-14px) scale(1.35) rotate(-6deg);}
+  55%{transform:translateY(0) scale(.95) rotate(4deg);}
+  100%{transform:scale(1);}
+}
+.mam-confeti{position:fixed;left:50%;top:34%;width:0;height:0;pointer-events:none;z-index:80;}
+.mam-confeti i{
+  position:absolute;left:0;top:0;width:8px;height:13px;border-radius:2px;opacity:0;
+  animation:mamConfeti 1.8s cubic-bezier(.12,.7,.3,1) forwards;
+}
+@keyframes mamConfeti{
+  0%{opacity:1;transform:translate(0,0) rotate(0deg);}
+  100%{opacity:0;transform:translate(var(--dx), calc(var(--dy) + 280px)) rotate(var(--rot));}
+}
+
+/* Avisos emergentes (gol, roja, VAR, hitos) */
+.mam-toasts{
+  position:fixed;left:50%;transform:translateX(-50%);z-index:70;
+  bottom:calc(74px + env(safe-area-inset-bottom, 0px));
+  display:flex;flex-direction:column;gap:10px;width:min(92vw,430px);pointer-events:none;
+}
+.mam-toast{
+  pointer-events:auto;cursor:pointer;display:flex;align-items:center;gap:12px;
+  padding:12px 16px 12px 12px;border-radius:16px;color:#fff;
+  background:linear-gradient(135deg, var(--marino2), var(--marino));
+  border:1px solid rgba(255,255,255,.15);box-shadow:0 14px 40px rgba(12,27,46,.5);
+  animation:mamToastEntra .6s cubic-bezier(.2,.9,.3,1.2) both;
+}
+.mam-toast-gol{background:linear-gradient(135deg, var(--rojo), var(--rojo-oscuro));border-color:rgba(255,255,255,.3);}
+.mam-toast-roja{background:linear-gradient(135deg, #7a0b1c, var(--rojo-oscuro));}
+.mam-toast-saliendo{animation:mamToastSale .35s ease-in both;}
+.mam-toast-icono{
+  width:42px;height:42px;flex-shrink:0;border-radius:50%;display:grid;place-items:center;
+  background:rgba(255,255,255,.16);font-size:1.25rem;
+}
+.mam-toast-icono img{width:30px;height:30px;object-fit:contain;}
+.mam-toast-t{display:block;font-family:var(--font-tit);font-size:1.08rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;line-height:1.1;}
+.mam-toast-s{display:block;margin-top:3px;font-size:.78rem;line-height:1.3;opacity:.92;overflow-wrap:anywhere;}
+@keyframes mamToastEntra{from{opacity:0;transform:translateY(40px) scale(.9);}to{opacity:1;transform:none;}}
+@keyframes mamToastSale{to{opacity:0;transform:translateY(24px) scale(.95);}}
+
+/* Entradas: los eventos nuevos entran desde su lado */
+.mam-evento{animation-delay:calc(var(--i, 0) * 45ms);}
+.mam-estatico{animation:none !important;}
+.mam-evento-nuevo{animation:mamEntraNuevo .85s cubic-bezier(.2,.9,.3,1.12) both;animation-delay:0s;}
+@media (min-width:701px){
+  .mam-evento-nuevo[data-lado="local"]{animation-name:mamEntraIzq;}
+  .mam-evento-nuevo[data-lado="visitante"]{animation-name:mamEntraDer;}
+}
+@keyframes mamEntraNuevo{from{opacity:0;transform:translateY(-18px) scale(.96);}to{opacity:1;transform:none;}}
+@keyframes mamEntraIzq{from{opacity:0;transform:translateX(-46px) scale(.97);}to{opacity:1;transform:none;}}
+@keyframes mamEntraDer{from{opacity:0;transform:translateX(46px) scale(.97);}to{opacity:1;transform:none;}}
+
+/* Barras del resumen: crecen al pintarse */
+.mam-res-barra i{transform-origin:left center;animation:mamBarra .9s cubic-bezier(.2,.8,.2,1) both;}
+@keyframes mamBarra{from{transform:scaleX(0);}to{transform:scaleX(1);}}
+
+/* Indicador "esperando el próximo evento" */
+.mam-escribiendo{
+  display:flex;align-items:center;justify-content:center;gap:10px;width:fit-content;max-width:100%;
+  margin:0 auto 24px;padding:8px 16px;border-radius:999px;
+  background:var(--tarjeta);border:1px solid var(--borde);box-shadow:var(--sombra-sm, none);
+  font-size:.76rem;font-weight:600;color:var(--gris-texto);text-align:center;
+}
+.mam-timeline + .mam-escribiendo{margin:26px auto 0;}
+.mam-puntos{display:inline-flex;gap:4px;}
+.mam-puntos i{width:6px;height:6px;border-radius:50%;background:var(--rojo);animation:mamPuntos 1.2s ease-in-out infinite;}
+.mam-puntos i:nth-child(2){animation-delay:.18s;}
+.mam-puntos i:nth-child(3){animation-delay:.36s;}
+@keyframes mamPuntos{0%,60%,100%{transform:translateY(0);opacity:.4;}30%{transform:translateY(-5px);opacity:1;}}
+
+/* Estado de conexión / sincronización */
+.mam-pulso-act .en-vivo-punto{animation:mamLatido .55s ease-in-out infinite;}
+.mam-pulso-error{color:var(--rojo);}
+.mam-pulso-error .en-vivo-punto{background:var(--rojo);animation:mamParpadeo 1s steps(1) infinite;}
+@keyframes mamLatido{0%,100%{transform:scale(1);}50%{transform:scale(1.7);}}
+
+@media (prefers-reduced-motion:reduce){
+  .mam-cabecera-en-vivo .mam-latido,.mam-compacta .mam-cabecera-inner,.mam-evento-nuevo .mam-evento-contenido::before,
+  .mam-cabecera-gol,.mam-estado-en-vivo::after,.mam-escudo-gol,
+  .mam-progreso-balon,.mam-reloj i,.mam-reloj-pausa,.mam-puntos i,.mam-pulso-act .en-vivo-punto,
+  .mam-evento-nuevo,.mam-res-barra i,.mam-toast,.mam-toast-saliendo{animation:none !important;}
+  .mam-confeti{display:none;}
+  .mam-progreso-relleno,.mam-progreso-balon{transition:none;}
+}
+
+
+/* =====================================================================
+   v4 — Scroll estable y pulido visual
+   ===================================================================== */
+
+/* Los eventos nuevos entran deslizándose desde el lado: sin esto, entre 701 y ~900 px de ancho
+   asomaban 46 px fuera de la columna y aparecía scroll horizontal un instante. */
+.mam-wrap{overflow-x:clip;}
+
+/* Resumen: en refrescos las barras se actualizan sin recrecer desde cero */
+.mam-sin-anim .mam-res-barra i{animation:none;}
+.mam-res-barra{height:7px;}
+.mam-res-barra i{transition:flex-grow .6s ease;}
+
+/* Hover solo con ratón: en táctil el :hover se queda pegado y las tarjetas "saltan" al hacer scroll */
+@media (hover:none){
+  .mam-evento-contenido:hover{transform:none;box-shadow:var(--sombra-sm, none);}
+  .mam-filtro:hover,.mam-orden:hover{transform:none;border-color:var(--borde);}
+  .mam-filtro[aria-pressed="true"]:hover{border-color:var(--marino);}
+  .mam-breadcrumb:hover{transform:none;}
+}
+.mam-filtro,.mam-orden,.mam-arriba,.mam-toast{-webkit-tap-highlight-color:transparent;}
+@media (hover:hover){
+  .mam-arriba:hover{transform:translateY(-2px);box-shadow:0 10px 26px rgba(12,27,46,.42);}
+}
+.mam-arriba-visible:active{transform:scale(.94);}
+
+/* Tarjetas de evento: algo más de profundidad y bordes suaves */
+.mam-evento-contenido{
+  border-radius:14px;
+  box-shadow:0 1px 2px rgba(12,27,46,.05), 0 4px 14px rgba(12,27,46,.05);
+}
+.mam-evento-gol .mam-evento-contenido{
+  box-shadow:0 1px 2px rgba(209,19,46,.08), 0 6px 20px rgba(209,19,46,.12);
+}
+[data-theme="dark"] .mam-evento-contenido{box-shadow:0 1px 2px rgba(0,0,0,.3), 0 4px 14px rgba(0,0,0,.22);}
+.mam-ev-icono{transition:transform .2s ease;}
+@media (hover:hover){ .mam-evento-contenido:hover .mam-ev-icono{transform:scale(1.08) rotate(-4deg);} }
+
+/* Sello de minuto: aro más limpio en los goles */
+.mam-evento-gol .mam-evento-minuto{letter-spacing:.02em;}
+.mam-evento-gol .mam-ev-icono{box-shadow:inset 0 0 0 1px rgba(209,19,46,.18);}
+
+/* Hitos fuertes (inicio, descanso, final) con degradado */
+.mam-hito-fuerte{background:linear-gradient(135deg, var(--marino2), var(--marino));letter-spacing:.07em;}
+
+/* Filtros: el activo destaca y se ve el "paso" al hacer scroll horizontal en móvil */
+.mam-filtro[aria-pressed="true"]{box-shadow:0 3px 10px rgba(12,27,46,.22);}
+.mam-filtros{scroll-snap-type:x proximity;}
+.mam-filtro{scroll-snap-align:start;}
+
+/* Cuenta atrás: bloques con relieve */
+.mam-cuenta-bloque{
+  background:linear-gradient(180deg, var(--tarjeta), var(--fondo-alt));
+  box-shadow:0 2px 8px rgba(12,27,46,.06);
+}
+.mam-cuenta-n{letter-spacing:.02em;}
+
+/* Marcador con cifras de ancho fijo (no baila al cambiar) y textos equilibrados */
+.mam-marcador{font-feature-settings:"tnum" 1, "lnum" 1;}
+.mam-previa-titulo,.mam-estado-inicial p,.mam-nota-texto{text-wrap:balance;}
+.mam-nombre{text-wrap:balance;}
+
+/* Cabecera compacta: ajustes en pantallas pequeñas */
+@media (max-width:700px){
+  .mam-compacta .mam-marcador{font-size:1.5rem;}
+  .mam-compacta .mam-centro{gap:10px;min-width:0;}
+  .mam-compacta .mam-estado{font-size:.62rem;padding:4px 10px;}
+}
+
+/* Toasts: no tapan el botón de "volver arriba" en pantallas estrechas */
+@media (max-width:480px){
+  .mam-toasts{bottom:calc(76px + env(safe-area-inset-bottom, 0px));}
+}
+
+/* La cabecera compacta es otra barra (fixed) y ya no se "encoge": sin transición de tamaño en los escudos,
+   así su altura medida al volver a expandirse es siempre la real (antes se medía a mitad de animación). */
+.mam-escudo-marco,.mam-escudo{transition:none;}
+
+
+/* =====================================================================
+   v5 — Tarjeta de compartir
+   Reutiliza los botones del sitio (botonesCompartirHTML) pero solo aquí los
+   presenta como cuadrícula de teselas con el color de cada red.
+   ===================================================================== */
+.mam-share{
+  border-radius:var(--radio-lg, 18px);overflow:hidden;
+  background:var(--tarjeta);border:1px solid var(--borde);
+  box-shadow:0 2px 4px rgba(12,27,46,.05), 0 14px 36px rgba(12,27,46,.1);
+  animation:mamAparecer .4s ease both;
+}
+[data-theme="dark"] .mam-share{box-shadow:0 2px 4px rgba(0,0,0,.3), 0 14px 36px rgba(0,0,0,.28);}
+
+/* Cabecera: misma identidad que la del partido (degradado marino, círculo de campo) */
+.mam-share-cab{
+  position:relative;overflow:hidden;color:#fff;text-align:center;
+  padding:24px 20px 22px;display:flex;flex-direction:column;align-items:center;gap:14px;
+  background:
+    radial-gradient(80% 140% at 50% -30%, rgba(91,184,232,.3), transparent 62%),
+    repeating-linear-gradient(90deg, rgba(255,255,255,.03) 0 60px, transparent 60px 120px),
+    linear-gradient(165deg, var(--marino) 0%, var(--marino2) 100%);
+}
+.mam-share-cab::before{
+  content:"";position:absolute;left:50%;top:50%;width:260px;height:260px;margin:-130px 0 0 -130px;
+  border-radius:50%;border:2px solid rgba(255,255,255,.06);pointer-events:none;
+}
+.mam-share-cab > *{position:relative;}
+.mam-share-kicker{
+  display:inline-flex;align-items:center;gap:7px;
+  font-size:.68rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--celeste-claro);
+}
+.mam-share-kicker svg{width:15px;height:15px;}
+.mam-share-match{
+  display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:12px;
+  width:100%;max-width:520px;
+}
+.mam-share-equipo{display:flex;flex-direction:column;align-items:center;gap:8px;min-width:0;}
+.mam-share-escudo{
+  width:62px;height:62px;border-radius:50%;display:grid;place-items:center;
+  background:radial-gradient(circle at 30% 25%, rgba(255,255,255,.18), rgba(255,255,255,.05));
+  border:1px solid rgba(255,255,255,.2);box-shadow:0 6px 16px rgba(0,0,0,.28);
+}
+.mam-share-escudo img{width:42px;height:42px;object-fit:contain;filter:drop-shadow(0 2px 5px rgba(0,0,0,.35));}
+.mam-share-nombre{
+  font-family:var(--font-tit);font-weight:600;font-size:.86rem;line-height:1.2;max-width:150px;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;text-wrap:balance;
+}
+.mam-share-marcador{
+  font-family:var(--font-tit);font-size:2rem;font-weight:700;letter-spacing:.05em;white-space:nowrap;line-height:1;
+  font-variant-numeric:tabular-nums;padding:9px 16px;border-radius:14px;
+  background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.12);
+}
+.mam-share-estado{
+  display:inline-flex;align-items:center;gap:7px;
+  font-size:.66rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  padding:4px 12px;border-radius:999px;color:var(--celeste-claro);
+  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);
+}
+.mam-share-estado .en-vivo-punto{display:none;background:#fff;}
+.mam-share-estado.mam-share-vivo{
+  color:#fff;border-color:transparent;
+  background:linear-gradient(135deg, var(--rojo), var(--rojo-oscuro));
+  box-shadow:0 2px 12px rgba(209,19,46,.45);
+}
+.mam-share-estado.mam-share-vivo .en-vivo-punto{display:inline-block;}
+.mam-share-texto{margin:0;font-size:.84rem;color:rgba(255,255,255,.78);max-width:360px;text-wrap:balance;}
+
+/* Cuerpo: teselas de redes */
+.mam-share-cuerpo{padding:20px 18px 18px;}
+.mam-share .compartir-botones{
+  display:grid;grid-template-columns:repeat(auto-fit, minmax(92px, 1fr));gap:10px;margin:0;
+}
+.mam-share .btn-compartir{
+  flex-direction:column;justify-content:center;gap:9px;text-align:center;
+  padding:14px 6px 12px;border-radius:16px;font-size:.74rem;
+  background:var(--fondo-alt);border:1px solid transparent;box-shadow:none;
+  -webkit-tap-highlight-color:transparent;
+}
+.mam-share .btn-compartir-icono{
+  width:42px;height:42px;color:#fff;box-shadow:0 4px 12px rgba(12,27,46,.18);
+}
+.mam-share .btn-compartir-icono svg{width:20px;height:20px;}
+.mam-share .btn-compartir:active{transform:scale(.95);}
+@media (hover:hover){
+  .mam-share .btn-compartir:hover{
+    transform:translateY(-3px);background:var(--tarjeta);border-color:var(--borde);
+    box-shadow:0 10px 22px rgba(12,27,46,.12);
+  }
+  .mam-share .btn-compartir:hover .btn-compartir-icono{transform:scale(1.08) rotate(-4deg);}
+}
+.mam-share .btn-compartir:focus-visible{outline:2px solid var(--celeste);outline-offset:2px;}
+
+/* Colores de marca */
+.mam-share .btn-x .btn-compartir-icono{background:#0f1419;}
+[data-theme="dark"] .mam-share .btn-x .btn-compartir-icono{background:#fff;color:#0f1419;}
+.mam-share .btn-facebook .btn-compartir-icono{background:#1877f2;}
+.mam-share .btn-telegram .btn-compartir-icono{background:#229ed9;}
+.mam-share .btn-bluesky .btn-compartir-icono{background:#1185fe;}
+.mam-share .btn-correo .btn-compartir-icono{background:var(--marino2);}
+[data-theme="dark"] .mam-share .btn-correo .btn-compartir-icono{background:var(--celeste);color:var(--marino);}
+.mam-share .btn-instagram .btn-compartir-icono{background:linear-gradient(45deg,#f9ce34 0%,#ee2a7b 55%,#6228d7 100%);}
+
+/* "Compartir" nativo (solo móvil): ancho completo y destacado arriba */
+.mam-share .btn-compartir.btn-compartir-nativo{
+  grid-column:1 / -1;order:-1;flex-direction:row;gap:10px;padding:13px 18px;font-size:.9rem;
+  color:#fff;background:linear-gradient(135deg, var(--rojo), var(--rojo-oscuro));
+  box-shadow:0 6px 18px rgba(209,19,46,.35);
+}
+.mam-share .btn-compartir.btn-compartir-nativo[hidden]{display:none;}
+.mam-share .btn-compartir.btn-compartir-nativo .btn-compartir-icono{background:rgba(255,255,255,.2);box-shadow:none;width:32px;height:32px;}
+.mam-share .btn-compartir.btn-compartir-nativo .btn-compartir-icono svg{width:17px;height:17px;}
+@media (hover:hover){
+  .mam-share .btn-compartir.btn-compartir-nativo:hover{background:linear-gradient(135deg, var(--rojo), var(--rojo-oscuro));border-color:transparent;box-shadow:0 10px 24px rgba(209,19,46,.45);}
+}
+
+/* El "copiar" de la cuadrícula se sustituye por la barra del enlace de abajo */
+.mam-share .compartir-botones .btn-copiar{display:none;}
+
+/* Barra del enlace */
+.mam-share-enlace{
+  display:flex;align-items:center;gap:10px;margin-top:16px;padding:6px 6px 6px 16px;
+  border:1px dashed var(--borde);border-radius:999px;background:var(--fondo-alt);
+}
+.mam-share-enlace-icono{display:grid;place-items:center;color:var(--gris-texto);flex-shrink:0;}
+.mam-share-enlace-icono svg{width:16px;height:16px;}
+.mam-share-url{
+  flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-size:.8rem;font-weight:500;color:var(--gris-texto);
+}
+.mam-share .btn-compartir.mam-share-copiar{
+  flex-direction:row;flex-shrink:0;gap:8px;min-width:112px;justify-content:center;
+  padding:7px 16px 7px 8px;border-radius:999px;font-size:.8rem;
+  background:var(--marino);color:#fff;border-color:transparent;
+  transition:background .2s ease, transform .15s ease;
+}
+[data-theme="dark"] .mam-share .btn-compartir.mam-share-copiar{background:var(--celeste);color:var(--marino);}
+.mam-share .mam-share-copiar .btn-compartir-icono{width:26px;height:26px;background:rgba(255,255,255,.18);box-shadow:none;}
+[data-theme="dark"] .mam-share .mam-share-copiar .btn-compartir-icono{background:rgba(12,27,46,.18);color:var(--marino);}
+.mam-share .mam-share-copiar .btn-compartir-icono svg{width:15px;height:15px;}
+@media (hover:hover){
+  .mam-share .btn-compartir.mam-share-copiar:hover{background:var(--rojo);color:#fff;border-color:transparent;transform:none;box-shadow:none;}
+}
+.mam-share .btn-compartir.mam-share-copiar.copiado,
+[data-theme="dark"] .mam-share .btn-compartir.mam-share-copiar.copiado{background:var(--mam-verde);color:#fff;border-color:transparent;}
+.mam-share .mam-share-copiar.copiado .btn-compartir-icono{background:rgba(255,255,255,.22);color:#fff;}
+
+@media (max-width:480px){
+  .mam-share-cab{padding:20px 14px 18px;}
+  .mam-share-escudo{width:54px;height:54px;}
+  .mam-share-escudo img{width:36px;height:36px;}
+  .mam-share-nombre{font-size:.78rem;max-width:104px;}
+  .mam-share-marcador{font-size:1.6rem;padding:8px 12px;}
+  .mam-share-cuerpo{padding:16px 12px 14px;}
+  .mam-share .compartir-botones{grid-template-columns:repeat(3, 1fr);gap:8px;}
+  .mam-share .btn-compartir{padding:12px 4px 10px;}
+  .mam-share .btn-compartir-icono{width:38px;height:38px;}
+  .mam-share-url{font-size:.74rem;}
+  .mam-share .btn-compartir.mam-share-copiar{min-width:0;padding-right:14px;}
+}
+@media (prefers-reduced-motion:reduce){
+  .mam-share{animation:none;}
+  .mam-share .btn-compartir,.mam-share .btn-compartir-icono{transition:none;}
+}
+
+
+/* =====================================================================
+   v6 — Correcciones: nombres en móvil, sombra de filtros y contraste en oscuro
+   ===================================================================== */
+
+/* Rojo para TEXTO: el --rojo de marca (#d1132e) no llega a contraste suficiente sobre fondo oscuro */
+body[data-page="minuto-a-minuto"]{--mam-rojo-txt:var(--rojo);}
+[data-theme="dark"] body[data-page="minuto-a-minuto"],
+body[data-page="minuto-a-minuto"][data-theme="dark"]{
+  --mam-rojo-txt:#ff6b7d;
+  --mam-var-bg:#2d4d78;
+  --mam-var-bd:#6a93c9;
+}
+.mam-evento-gol .mam-ev-titulo,
+.mam-evento-gol .mam-ev-icono,
+.mam-mvp-etiqueta,
+.mam-previa-hora,
+.mam-pulso-error{color:var(--mam-rojo-txt);}
+
+/* Sello de VAR: en oscuro el azul marino se confundía con el fondo de la página */
+[data-theme="dark"] .mam-evento-var .mam-evento-minuto{
+  background:var(--mam-var-bg);color:#fff;border-color:var(--mam-var-bd);
+}
+
+/* Filtros: el contenedor con overflow recortaba la sombra del filtro activo y dejaba un rectángulo gris visible */
+.mam-filtros{padding:4px 8px 16px;margin:0 -8px -8px;scroll-padding-inline:8px;}
+
+/* Móvil: los nombres de equipo se cortaban con "…" teniendo columna de sobra */
+@media (max-width:700px){
+  .mam-nombre{max-width:100%;-webkit-line-clamp:3;}
+  .mam-gol-linea{max-width:100%;}
+}
+
+/* Pantallas muy estrechas: la pastilla "EN JUEGO mm:ss" (nowrap) ensanchaba la columna central y estrujaba los nombres */
+@media (max-width:400px){
+  .mam-centro{min-width:0;}
+  .mam-estado{font-size:.6rem;gap:5px;}
+  .mam-estado.mam-estado-en-vivo{padding:4px 10px;}
+  .mam-reloj{font-size:.88rem;}
+  .mam-marcador{font-size:2.1rem;}
+}

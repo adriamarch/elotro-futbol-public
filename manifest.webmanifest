@@ -1,0 +1,16 @@
+{
+  "name": "ELOTROFÚTBOLTV",
+  "short_name": "ElOtroFútbol",
+  "description": "Noticias, crónicas y resultados del fútbol no profesional.",
+  "lang": "es",
+  "start_url": "/?utm_source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0c1b2e",
+  "theme_color": "#0c1b2e",
+  "icons": [
+    { "src": "/img/icon-192.png?v=2", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/img/icon-512.png?v=2", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/img/icon-maskable-512.png?v=2", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

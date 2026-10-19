@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="es" class="bloqueado">
+<head>
+<meta name="google-adsense-account" content="ca-pub-7347856722927942">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Formulario de acreditación | ElOtroFútbol</title>
+<meta name="description" content="Solicita tu acreditación para cubrir partidos, ruedas de prensa y actos oficiales de Primera Federación y Segunda Federación con ElOtroFútbol.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ElOtroFútbol">
+<meta property="og:url" content="https://elotrofutbol.media/acreditacion">
+<meta property="og:title" content="Formulario de acreditación | ElOtroFútbol">
+<meta property="og:description" content="Solicita tu acreditación para cubrir partidos, ruedas de prensa y actos oficiales con ElOtroFútbol.">
+<meta property="og:image" content="https://elotrofutbol.media/img/og-acreditacion.jpg?v=1">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="ElOtroFútbol: formulario de acreditación">
+<meta property="og:locale" content="es_ES">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Formulario de acreditación | ElOtroFútbol">
+<meta name="twitter:description" content="Solicita tu acreditación para cubrir partidos, ruedas de prensa y actos oficiales con ElOtroFútbol.">
+<meta name="twitter:image" content="https://elotrofutbol.media/img/og-acreditacion.jpg?v=1">
+<link rel="icon" href="/favicon.ico?v=3" sizes="any">
+<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=3">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png?v=2">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://api.elotrofutbol.media" crossorigin>
+<link rel="preconnect" href="https://res.cloudinary.com">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600;700&family=Montserrat:wght@400;500;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'"><noscript><link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600;700&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>
+<style>
+  :root{
+    --acento:#1d3bff; --acento2:#5a73ff; --acento-suave:#eef1ff; --fondo:#e8eaff; --tarjeta:#fff;
+    --texto:#1d1d24; --suave:#6b6f80; --borde:#dcdfee; --error:#d32f2f; --ok:#1b7f3b;
+    --sombra:0 1px 2px rgba(20,20,60,.05),0 6px 18px rgba(20,20,60,.05);
+    --sombra-alta:0 2px 4px rgba(20,20,60,.06),0 14px 34px rgba(29,59,255,.14);
+    --curva:cubic-bezier(.22,1,.36,1);
+  }
+  *{box-sizing:border-box;}
+  html{-webkit-text-size-adjust:100%;scroll-behavior:smooth;}
+  body{margin:0;color:var(--texto);font-family:'Montserrat',system-ui,sans-serif;font-size:16px;line-height:1.5;
+    background:radial-gradient(1200px 500px at 50% -120px,#d6dcff 0%,rgba(214,220,255,0) 70%),var(--fondo);min-height:100vh;}
+  .pagina{max-width:760px;margin:0 auto;padding:22px 14px 64px;}
+
+  /* Barra de progreso */
+  .progreso{position:fixed;top:0;left:0;right:0;height:4px;background:rgba(29,59,255,.12);z-index:50;}
+  .progreso-barra{height:100%;width:0;background:linear-gradient(90deg,var(--acento),var(--acento2));border-radius:0 4px 4px 0;transition:width .5s var(--curva);box-shadow:0 0 10px rgba(29,59,255,.5);}
+
+  /* Tarjetas */
+  .tarjeta{position:relative;background:var(--tarjeta);border:1px solid var(--borde);border-radius:14px;padding:22px 24px;margin-bottom:14px;
+    box-shadow:var(--sombra);transition:box-shadow .3s var(--curva),transform .3s var(--curva),border-color .3s;}
+  .tarjeta.cabecera{border-top:10px solid var(--acento);padding-top:26px;overflow:hidden;}
+  .tarjeta.cabecera::after{content:"";position:absolute;right:-60px;top:-60px;width:180px;height:180px;border-radius:50%;
+    background:radial-gradient(circle,rgba(90,115,255,.18),rgba(90,115,255,0) 70%);pointer-events:none;}
+  .tarjeta.seccion{background:linear-gradient(135deg,var(--acento),var(--acento2));color:#fff;border:0;padding:14px 24px;}
+  .tarjeta.campo:focus-within{border-color:var(--acento2);box-shadow:var(--sombra-alta);transform:translateY(-2px);}
+  .tarjeta.campo.completo::before{content:"✓";position:absolute;right:14px;top:12px;width:22px;height:22px;border-radius:50%;
+    background:#e4f5ea;color:var(--ok);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;animation:pop .45s var(--curva);}
+
+  h1{font-family:'Lexend',sans-serif;font-size:1.9rem;line-height:1.2;margin:0 0 14px;padding-bottom:14px;border-bottom:1px solid var(--borde);}
+  h2{font-family:'Montserrat',sans-serif;font-size:.95rem;letter-spacing:.8px;margin:0;text-transform:uppercase;}
+  .intro{margin:0 0 12px;}
+  .aviso{margin:0;font-style:italic;color:#34364a;}
+  .campo > label,.campo > .etiqueta{display:block;font-family:'Lexend',sans-serif;font-size:1.05rem;margin-bottom:12px;padding-right:26px;}
+  .req{color:var(--error);margin-left:3px;}
+
+  /* Campos de texto: subrayado animado */
+  input[type=text],input[type=email],select,textarea{
+    width:100%;max-width:100%;border:0;border-bottom:1px solid var(--borde);background:transparent;
+    padding:9px 2px;font:inherit;color:inherit;border-radius:0;transition:border-color .25s,background-color .25s,box-shadow .25s;
+  }
+  input[type=text]:not(.pin-input),input[type=email]{
+    background-image:linear-gradient(var(--acento),var(--acento));background-repeat:no-repeat;background-position:left bottom;
+    background-size:0 2px;transition:background-size .35s var(--curva),border-color .25s;
+  }
+  input[type=text]:focus:not(.pin-input),input[type=email]:focus{outline:none;background-size:100% 2px;}
+  textarea{min-height:96px;resize:vertical;border:1px solid var(--borde);border-radius:10px;padding:12px;background:#fafbff;}
+  textarea:focus{outline:none;border-color:var(--acento);box-shadow:0 0 0 4px rgba(29,59,255,.12);background:#fff;}
+  select{appearance:none;-webkit-appearance:none;border:1px solid var(--borde);border-radius:10px;padding:12px 40px 12px 14px;background:#fafbff
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9'%3E%3Cpath d='M1 1.5l6 6 6-6' fill='none' stroke='%231d3bff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    no-repeat right 14px center;cursor:pointer;}
+  select:focus{outline:none;border-color:var(--acento);box-shadow:0 0 0 4px rgba(29,59,255,.12);background-color:#fff;}
+
+  /* Opciones tipo tarjeta (radio / checkbox) */
+  .opciones{display:flex;flex-direction:column;gap:10px;}
+  .opcion{display:flex;align-items:center;gap:12px;cursor:pointer;font-size:.95rem;padding:12px 14px;border:1.5px solid var(--borde);border-radius:12px;
+    background:#fff;transition:border-color .2s,background-color .2s,box-shadow .25s,transform .2s var(--curva);user-select:none;}
+  .opcion:hover{border-color:var(--acento2);background:var(--acento-suave);transform:translateX(3px);}
+  .opcion:active{transform:scale(.985);}
+  .opcion:has(input:checked){border-color:var(--acento);background:var(--acento-suave);box-shadow:0 4px 14px rgba(29,59,255,.14);}
+  .opcion:has(input:focus-visible){outline:2px solid var(--acento);outline-offset:2px;}
+  .opcion input[type=radio],.opcion input[type=checkbox]{
+    appearance:none;-webkit-appearance:none;flex:none;width:22px;height:22px;margin:0;border:2px solid #b8bdd6;background:#fff;cursor:pointer;
+    display:grid;place-content:center;transition:border-color .2s,background-color .2s,transform .25s var(--curva);
+  }
+  .opcion input[type=radio]{border-radius:50%;}
+  .opcion input[type=checkbox]{border-radius:7px;}
+  .opcion input[type=radio]::before{content:"";width:10px;height:10px;border-radius:50%;background:var(--acento);transform:scale(0);transition:transform .3s var(--curva);}
+  .opcion input[type=radio]:checked{border-color:var(--acento);}
+  .opcion input[type=radio]:checked::before{transform:scale(1);}
+  .opcion input[type=checkbox]::before{content:"";width:6px;height:11px;border:solid #fff;border-width:0 3px 3px 0;transform:rotate(45deg) scale(0);margin-top:-2px;transition:transform .25s var(--curva);}
+  .opcion input[type=checkbox]:checked{background:var(--acento);border-color:var(--acento);transform:scale(1.08);}
+  .opcion input[type=checkbox]:checked::before{transform:rotate(45deg) scale(1);}
+  .opcion-otro input[type=text]{flex:1;min-width:0;padding:6px 2px;}
+  .ayuda{font-size:.8rem;color:var(--suave);margin:6px 0 0;}
+
+  /* Errores */
+  .error-campo{display:none;color:var(--error);font-size:.82rem;margin:10px 0 0;font-weight:500;}
+  .campo.invalido{border-color:var(--error);box-shadow:0 0 0 3px rgba(211,47,47,.14);animation:sacudir .45s ease;}
+  .campo.invalido .error-campo{display:block;animation:subir .3s var(--curva);}
+  .trampa{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;}
+
+  /* Botón */
+  .acciones{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:6px;}
+  button.enviar{position:relative;overflow:hidden;background:linear-gradient(135deg,var(--acento),var(--acento2));color:#fff;border:0;border-radius:12px;
+    padding:14px 32px;font:600 1rem 'Montserrat',sans-serif;cursor:pointer;box-shadow:0 6px 18px rgba(29,59,255,.35);
+    transition:transform .2s var(--curva),box-shadow .25s,filter .2s;}
+  button.enviar:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(29,59,255,.42);}
+  button.enviar:active{transform:translateY(0) scale(.97);}
+  button.enviar:disabled{opacity:.85;cursor:default;transform:none;}
+  button.enviar.cargando{padding-left:52px;}
+  button.enviar.cargando::before{content:"";position:absolute;left:20px;top:50%;width:18px;height:18px;margin-top:-9px;border-radius:50%;
+    border:3px solid rgba(255,255,255,.4);border-top-color:#fff;animation:girar .7s linear infinite;}
+  .estado{margin:0;font-size:.9rem;}
+  .estado.error{color:var(--error);font-weight:500;}
+
+  /* Vistas */
+  #vistaFormulario,#vistaGracias{animation:entrar .5s var(--curva);}
+
+  /* ===== Pantalla de PIN ===== */
+  html.bloqueado,html.bloqueado body{overflow:hidden;}
+  .pin-escena{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;padding:70px 18px 28px;overflow-y:auto;
+    background:linear-gradient(155deg,#0a17a8 0%,#1d3bff 48%,#5a73ff 100%);
+    transition:opacity .55s var(--curva),transform .55s var(--curva);}
+  .pin-escena.saliendo{opacity:0;transform:scale(1.05);pointer-events:none;}
+  .pin-campo{position:absolute;inset:0;pointer-events:none;opacity:.14;
+    background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='600' viewBox='0 0 900 600' fill='none' stroke='%23fff' stroke-width='3'%3E%3Crect x='20' y='20' width='860' height='560' rx='6'/%3E%3Cpath d='M450 20v560'/%3E%3Ccircle cx='450' cy='300' r='90'/%3E%3Ccircle cx='450' cy='300' r='5' fill='%23fff'/%3E%3Cpath d='M20 175h120v250H20M880 175H760v250h120'/%3E%3C/svg%3E") center/cover no-repeat;
+    -webkit-mask-image:radial-gradient(ellipse at center,#000 30%,transparent 78%);mask-image:radial-gradient(ellipse at center,#000 30%,transparent 78%);}
+  .pin-blob{position:absolute;border-radius:50%;filter:blur(70px);pointer-events:none;animation:flotar 16s ease-in-out infinite alternate;}
+  .pin-blob.b1{width:380px;height:380px;left:-120px;top:-100px;background:#7e91ff;opacity:.55;}
+  .pin-blob.b2{width:340px;height:340px;right:-110px;bottom:-90px;background:#00c2ff;opacity:.35;animation-delay:-6s;}
+
+  .pin-tarjeta{position:relative;width:100%;max-width:420px;background:#fff;border-radius:28px;padding:62px 28px 26px;text-align:center;
+    box-shadow:0 40px 90px rgba(4,8,70,.5),0 0 0 1px rgba(255,255,255,.5) inset;animation:entrarPin .75s var(--curva) both;}
+  .pin-logo{position:absolute;left:50%;top:-50px;width:100px;height:100px;margin-left:-50px;border-radius:50%;background:#fff;padding:9px;
+    box-shadow:0 12px 30px rgba(4,8,70,.35),0 0 0 6px rgba(255,255,255,.28);animation:pop .7s .15s var(--curva) both;}
+  .pin-logo img{display:block;width:100%;height:100%;object-fit:contain;border-radius:50%;}
+  .pin-etiqueta{display:inline-flex;align-items:center;gap:7px;padding:6px 13px 6px 11px;border-radius:999px;background:var(--acento-suave);color:var(--acento);
+    font:700 .68rem 'Montserrat',sans-serif;letter-spacing:.14em;text-transform:uppercase;transition:background-color .3s,color .3s;}
+  .pin-etiqueta svg{display:block;overflow:visible;}
+  .pin-etiqueta .grillete{transform-origin:8px 11px;transition:transform .5s var(--curva);}
+  .pin-tarjeta.abierto .pin-etiqueta{background:#e4f5ea;color:var(--ok);}
+  .pin-tarjeta.abierto .pin-etiqueta .grillete{transform:translate(0,-2px) rotate(-28deg);}
+  .pin-tarjeta h1{font-size:1.45rem;line-height:1.25;border:0;padding:0;margin:14px 0 8px;}
+  .pin-tarjeta .intro{color:var(--suave);font-size:.9rem;margin:0 auto;max-width:330px;}
+
+  .pin-celdas{position:relative;margin:26px 0 6px;cursor:text;}
+  .pin-vista{display:flex;justify-content:center;gap:clamp(6px,2.4vw,11px);}
+  .pin-celda{flex:1 1 0;min-width:0;max-width:52px;height:62px;display:flex;align-items:center;justify-content:center;position:relative;
+    border:2px solid var(--borde);border-radius:15px;background:#f6f7ff;font:700 1.75rem 'Lexend',sans-serif;color:var(--texto);
+    transition:border-color .2s,background-color .2s,box-shadow .25s,transform .25s var(--curva);}
+  .pin-celda.llena{background:#fff;border-color:var(--acento2);}
+  .pin-celda.pop{animation:pulsar .3s var(--curva);}
+  .pin-celdas.enfocado .pin-celda.activa{border-color:var(--acento);background:#fff;box-shadow:0 0 0 4px rgba(29,59,255,.15);transform:translateY(-2px);}
+  .pin-celdas.enfocado .pin-celda.activa::after{content:"";position:absolute;width:2px;height:28px;border-radius:2px;background:var(--acento);animation:parpadeo 1s steps(1) infinite;}
+  .pin-celdas.mal .pin-vista{animation:sacudir .45s ease;}
+  .pin-celdas.mal .pin-celda{border-color:var(--error);background:#fff5f5;color:var(--error);}
+  .pin-celdas.ok .pin-celda{border-color:var(--ok);background:#effaf2;color:var(--ok);animation:pulsar .5s var(--curva) both;}
+  .pin-celdas.ok .pin-celda:nth-child(2){animation-delay:.05s}.pin-celdas.ok .pin-celda:nth-child(3){animation-delay:.1s}
+  .pin-celdas.ok .pin-celda:nth-child(4){animation-delay:.15s}.pin-celdas.ok .pin-celda:nth-child(5){animation-delay:.2s}
+  .pin-celdas.ok .pin-celda:nth-child(n+6){animation-delay:.25s}
+  /* Input real: invisible pero recibe teclado, pegado y autocompletado */
+  #pin.pin-real{position:absolute;inset:0;width:100%;height:100%;opacity:0;border:0;padding:0;margin:0;background:none;font-size:16px;color:transparent;caret-color:transparent;cursor:text;}
+  .pin-mensaje{min-height:1.5em;margin:10px 0 14px;font-size:.88rem;color:var(--suave);}
+  .pin-mensaje.error{color:var(--error);font-weight:600;}
+  .pin-mensaje.ok{color:var(--ok);font-weight:600;}
+  .pin-btn{width:100%;display:inline-flex;align-items:center;justify-content:center;gap:10px;}
+  .pin-btn svg{transition:transform .25s var(--curva);}
+  .pin-btn:hover:not(:disabled) svg{transform:translateX(4px);}
+  .pin-btn:disabled{opacity:.45;box-shadow:none;filter:saturate(.7);}
+  .pin-btn.cargando:disabled{opacity:.9;filter:none;box-shadow:0 6px 18px rgba(29,59,255,.35);}
+  .pin-pie{margin:18px 0 0;font-size:.78rem;color:var(--suave);}
+  .pin-pie a{color:var(--acento);font-weight:600;text-decoration:none;}
+  .pin-pie a:hover{text-decoration:underline;}
+  /* Modo "login de colaborador" y carga del modo de acceso */
+  .pin-tarjeta.cargando-modo > :not(.pin-logo){visibility:hidden;}
+  .pin-login{margin:22px 0 4px;text-align:left;display:grid;gap:12px;}
+  .pin-login label{display:block;font-size:.8rem;font-weight:600;color:var(--suave);margin:0 0 5px;}
+  .pin-login input[type=text],.pin-login input[type=password]{width:100%;border:1.5px solid var(--borde);border-radius:12px;background:#fafbff;padding:12px 14px;font:inherit;font-size:16px;color:inherit;transition:border-color .2s,box-shadow .2s;}
+  .pin-login input[type=text]:focus,.pin-login input[type=password]:focus{outline:none;border-color:var(--acento);box-shadow:0 0 0 4px rgba(29,59,255,.12);background:#fff;}
+  .pin-sesion{margin:18px 0 0;padding:12px 14px;border-radius:14px;background:var(--acento-suave);text-align:center;font-size:.9rem;}
+  .pin-sesion button{margin-top:10px;}
+  .pin-enlace{background:none;border:0;padding:0;margin:12px 0 0;color:var(--acento);font:inherit;font-size:.82rem;font-weight:600;cursor:pointer;text-decoration:underline;}
+  [hidden]{display:none !important;}
+  @media(max-width:380px){.pin-tarjeta{padding:62px 18px 22px;}.pin-celda{height:54px;font-size:1.5rem;border-radius:12px;}}
+
+  .gracias{text-align:center;padding:40px 24px;}
+  .gracias .tick{width:76px;height:76px;margin-bottom:14px;animation:pop .6s var(--curva);}
+  .gracias .tick circle{fill:#e4f5ea;}
+  .gracias .tick path{fill:none;stroke:var(--ok);stroke-width:5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:48;stroke-dashoffset:48;animation:trazo .6s .35s var(--curva) forwards;}
+  .gracias h2{text-transform:none;font-size:1.3rem;margin-bottom:8px;}
+  .privacidad{font-size:.78rem;color:var(--suave);text-align:center;margin-top:18px;}
+  .privacidad a{color:var(--suave);}
+
+  /* Entrada escalonada de las tarjetas */
+  #formAcreditacion > .tarjeta,.tarjeta.cabecera{animation:subir .55s var(--curva) both;}
+  #formAcreditacion > .tarjeta:nth-child(2){animation-delay:.05s}
+  #formAcreditacion > .tarjeta:nth-child(3){animation-delay:.1s}
+  #formAcreditacion > .tarjeta:nth-child(4){animation-delay:.15s}
+  #formAcreditacion > .tarjeta:nth-child(5){animation-delay:.2s}
+  #formAcreditacion > .tarjeta:nth-child(n+6){animation-delay:.25s}
+
+  @keyframes subir{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+  @keyframes entrar{from{opacity:0;transform:scale(.98)}to{opacity:1;transform:none}}
+  @keyframes pop{0%{transform:scale(0)}60%{transform:scale(1.15)}100%{transform:scale(1)}}
+  @keyframes sacudir{0%,100%{transform:translateX(0)}20%{transform:translateX(-7px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
+  @keyframes entrarPin{from{opacity:0;transform:translateY(26px) scale(.96)}to{opacity:1;transform:none}}
+  @keyframes pulsar{0%{transform:scale(1)}45%{transform:scale(1.12)}100%{transform:scale(1)}}
+  @keyframes parpadeo{0%,100%{opacity:1}50%{opacity:0}}
+  @keyframes flotar{from{transform:translate(0,0) scale(1)}to{transform:translate(40px,30px) scale(1.15)}}
+  @keyframes girar{to{transform:rotate(360deg)}}
+  @keyframes trazo{to{stroke-dashoffset:0}}
+
+  @media(max-width:520px){.tarjeta{padding:18px 16px;}h1{font-size:1.5rem;}.opcion:hover{transform:none;}}
+  @media(prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation-duration:.01ms !important;animation-delay:0s !important;transition-duration:.01ms !important;scroll-behavior:auto !important;}
+  }
+</style>
+<link rel="stylesheet" href="css/accesibilidad.css?v=1">
+<script src="js/accesibilidad.js?v=1" defer></script>
+</head>
+<body>
+<div id="vistaPin" class="pin-escena" role="dialog" aria-modal="true" aria-labelledby="pinTitulo">
+  <div class="pin-campo" aria-hidden="true"></div>
+  <span class="pin-blob b1" aria-hidden="true"></span><span class="pin-blob b2" aria-hidden="true"></span>
+  <div class="pin-tarjeta cargando-modo" id="pinCaja">
+    <div class="pin-logo"><img src="/img/logo-blanco.png" alt="ElOtroFútbol" width="82" height="82"></div>
+    <span class="pin-etiqueta">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path class="grillete" d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+      Acceso privado
+    </span>
+    <h1 id="pinTitulo">Formulario de acreditación</h1>
+    <p class="intro" id="pinIntro">Introduce el PIN que te ha facilitado el equipo de ElOtroFútbol para rellenar el formulario.</p>
+    <form id="formPin" novalidate>
+      <div class="pin-celdas" id="pinCeldas">
+        <div class="pin-vista" id="pinVista" aria-hidden="true"></div>
+        <input type="text" class="pin-input pin-real" id="pin" inputmode="numeric" pattern="[0-9]*" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="8" aria-label="PIN de acceso" aria-describedby="estadoPin">
+      </div>
+      <p class="pin-mensaje" id="estadoPin" role="status" aria-live="polite"></p>
+      <button type="submit" class="enviar pin-btn" id="btnPin" disabled>
+        <span id="btnPinTexto">Entrar</span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </button>
+    </form>
+    <div class="pin-sesion" id="pinSesion" hidden>
+      <span id="pinSesionTexto"></span><br>
+      <button type="button" class="enviar pin-btn" id="btnSesion"><span>Continuar</span></button>
+      <button type="button" class="pin-enlace" id="btnOtraCuenta">Usar otra cuenta</button>
+    </div>
+    <form id="formLogin" class="pin-login" novalidate hidden>
+      <div><label for="loginUsuario">Usuario</label><input type="text" id="loginUsuario" autocomplete="username" autocapitalize="off" spellcheck="false" maxlength="100"></div>
+      <div><label for="loginClave">Contraseña</label><input type="password" id="loginClave" autocomplete="current-password" maxlength="1024"></div>
+      <p class="pin-mensaje" id="estadoLogin" role="status" aria-live="polite"></p>
+      <button type="submit" class="enviar pin-btn" id="btnLogin"><span id="btnLoginTexto">Iniciar sesión</span></button>
+    </form>
+    <p class="pin-pie" id="pinPie">¿No tienes PIN? <a href="/contacto">Solicítalo al equipo</a>.</p>
+  </div>
+</div>
+
+<div class="progreso" aria-hidden="true" style="display:none;"><div class="progreso-barra" id="progresoBarra"></div></div>
+<main class="pagina">
+
+  <div id="vistaFormulario" style="display:none;">
+    <div class="tarjeta cabecera">
+      <h1 id="cfgTitulo">Formulario de acreditación | ElOtroFútbol</h1>
+      <p class="intro" id="cfgIntro">Solicita tu acreditación para cubrir partidos, ruedas de prensa y actos oficiales de Primera Federación y Segunda Federación.</p>
+      <p class="aviso" id="cfgAviso">Las solicitudes serán revisadas por el equipo de administración. El envío del formulario no garantiza la concesión de la acreditación, ya que la decisión final corresponde al club organizador.</p>
+    </div>
+
+    <form id="formAcreditacion" novalidate>
+      <div class="trampa" aria-hidden="true">
+        <label>No rellenar este campo <input type="text" id="web" name="web" tabindex="-1" autocomplete="off"></label>
+      </div>
+
+      <div class="tarjeta seccion" id="secSolicitante"><h2>Datos del solicitante</h2></div>
+
+      <div class="tarjeta campo" data-campo="nombre">
+        <label for="nombre"><span class="et-txt">Nombre y apellidos</span><span class="req">*</span></label>
+        <input type="text" id="nombre" maxlength="200" autocomplete="name" placeholder="Tu respuesta">
+        <p class="error-campo">Indica tu nombre y apellidos.</p>
+      </div>
+
+      <div class="tarjeta campo" data-campo="email">
+        <label for="email"><span class="et-txt">Correo electrónico</span><span class="req">*</span></label>
+        <input type="email" id="email" maxlength="200" autocomplete="email" placeholder="Tu respuesta">
+        <p class="error-campo">Introduce un correo electrónico válido.</p>
+      </div>
+
+      <div class="tarjeta campo" data-campo="dni">
+        <label for="dni"><span class="et-txt">DNI / NIE</span><span class="req">*</span></label>
+        <input type="text" id="dni" maxlength="30" autocomplete="off" placeholder="Tu respuesta">
+        <p class="error-campo">Introduce un DNI / NIE válido.</p>
+      </div>
+
+      <div class="tarjeta campo" data-campo="equipo">
+        <label for="equipo"><span class="et-txt">Equipo que deseas cubrir</span><span class="req">*</span></label>
+        <select id="equipo"><option value="">Elige un equipo…</option></select>
+        <input type="text" id="equipoOtro" maxlength="150" placeholder="Escribe el equipo" style="display:none;margin-top:12px;">
+        <p class="error-campo">Elige o escribe el equipo que deseas cubrir.</p>
+      </div>
+
+      <div class="tarjeta campo" data-campo="tipo_evento">
+        <div class="etiqueta"><span class="et-txt">Tipo de evento</span><span class="req">*</span></div>
+        <div class="opciones" id="opcionesEvento"></div>
+        <p class="error-campo">Elige el tipo de evento.</p>
+      </div>
+
+      <div class="tarjeta campo" data-campo="tipo_acreditacion">
+        <div class="etiqueta"><span class="et-txt">Tipo de acreditación</span><span class="req">*</span></div>
+        <div class="opciones" id="opcionesAcreditacion"></div>
+        <p class="error-campo">Elige el tipo de acreditación.</p>
+      </div>
+
+      <div class="tarjeta seccion" id="secCobertura"><h2>Información de la cobertura</h2></div>
+
+      <div class="tarjeta campo" data-campo="funciones">
+        <label for="funciones"><span class="et-txt">Describe brevemente las funciones que realizarás durante la cobertura</span><span class="req">*</span></label>
+        <textarea id="funciones" maxlength="2000" placeholder="Tu respuesta"></textarea>
+        <p class="error-campo">Describe brevemente tus funciones.</p>
+      </div>
+
+      <div class="tarjeta campo" data-campo="jornada_partido">
+        <label for="jornada"><span class="et-txt">Indica la jornada y partido que quieres cubrir</span><span class="req">*</span></label>
+        <select id="jornadaSel" disabled><option value="">Elige primero un equipo…</option></select>
+        <input type="text" id="jornada" maxlength="500" placeholder="Tu respuesta" style="display:none;margin-top:12px;">
+        <p class="ayuda-jornada" id="ayudaJornada" style="display:none;margin:8px 0 0;font-size:.85rem;opacity:.75;"></p>
+        <p class="error-campo">Indica la jornada y el partido.</p>
+      </div>
+
+      <div class="tarjeta seccion" id="secConfirmacion"><h2>Confirmación</h2></div>
+
+      <div class="tarjeta campo" data-campo="confirmo">
+        <label class="opcion" for="confirmo">
+          <input type="checkbox" id="confirmo">
+          <span><span id="cfgConfirmacion">Confirmo que los datos facilitados son correctos y entiendo que el envío de esta solicitud <strong>no garantiza la concesión de la acreditación</strong>.</span><span class="req">*</span></span>
+        </label>
+        <p class="error-campo">Debes confirmar para enviar la solicitud.</p>
+      </div>
+
+      <div data-eof-turnstile style="margin:0 0 .8rem"></div>
+      <div class="acciones">
+        <button type="submit" class="enviar" id="btnEnviar">Enviar solicitud</button>
+        <p class="estado" id="estado" role="status" aria-live="polite"></p>
+      </div>
+    </form>
+
+    <p class="privacidad">Los datos se usan únicamente para gestionar tu solicitud de acreditación. Más información en la <a href="/politica-privacidad">política de privacidad</a>.</p>
+  </div>
+
+  <div id="vistaGracias" style="display:none;">
+    <div class="tarjeta cabecera gracias">
+      <svg class="tick" viewBox="0 0 52 52" aria-hidden="true"><circle cx="26" cy="26" r="25"/><path d="M15 27l8 8 15-16"/></svg>
+      <h2>¡Solicitud enviada!</h2>
+      <p class="intro" id="cfgGracias">Hemos recibido tu solicitud de acreditación. El equipo de administración la revisará y se pondrá en contacto contigo por correo.</p>
+      <p class="aviso">Recuerda que el envío no garantiza la concesión: la decisión final corresponde al club organizador.</p>
+    </div>
+  </div>
+
+</main>
+
+<script src="js/config.js?v=25"></script>
+<script src="js/turnstile.js?v=2"></script>
+<script src="js/clubs.js?v=6"></script>
+<script>
+// Valores por defecto; el panel (Solicitudes > Formularios > Acreditaciones) puede cambiarlos
+// y se cargan de /api/acreditaciones/config. Si esa petición falla se usan estos.
+let EVENTOS = ["Rueda de prensa","Partido de fútbol","Presentación oficial","Acto"];
+let ACREDITACIONES = ["Prensa / Pupitre","Fotógrafo / Césped","Cabina de prensa (si el club dispone de ella)"];
+let EVENTO_OTRO = true;
+// Preguntas del formulario (textos, visibles y obligatorias); el panel las puede cambiar.
+const PREG_DEFECTO = {
+  nombre: { etiqueta: "Nombre y apellidos", ayuda: "Tu respuesta", error: "Indica tu nombre y apellidos.", activa: true, obligatoria: true },
+  email: { etiqueta: "Correo electrónico", ayuda: "Tu respuesta", error: "Introduce un correo electrónico válido.", activa: true, obligatoria: true },
+  dni: { etiqueta: "DNI / NIE", ayuda: "Tu respuesta", error: "Introduce un DNI / NIE válido.", activa: true, obligatoria: true },
+  equipo: { etiqueta: "Equipo que deseas cubrir", ayuda: "Elige un equipo…", error: "Elige o escribe el equipo que deseas cubrir.", activa: true, obligatoria: true },
+  tipo_evento: { etiqueta: "Tipo de evento", ayuda: "", error: "Elige el tipo de evento.", activa: true, obligatoria: true },
+  tipo_acreditacion: { etiqueta: "Tipo de acreditación", ayuda: "", error: "Elige el tipo de acreditación.", activa: true, obligatoria: true },
+  funciones: { etiqueta: "Describe brevemente las funciones que realizarás durante la cobertura", ayuda: "Tu respuesta", error: "Describe brevemente tus funciones.", activa: true, obligatoria: true },
+  jornada_partido: { etiqueta: "Indica la jornada y partido que quieres cubrir", ayuda: "Tu respuesta", error: "Indica la jornada y el partido.", activa: true, obligatoria: true },
+};
+let PREG = JSON.parse(JSON.stringify(PREG_DEFECTO));
+let SECC = { solicitante: "Datos del solicitante", cobertura: "Información de la cobertura", confirmacion: "Confirmación" };
+const ORDEN_PREG = ["nombre", "email", "dni", "equipo", "tipo_evento", "tipo_acreditacion", "funciones", "jornada_partido"];
+const pActiva = (k) => !!(PREG[k] && PREG[k].activa);
+const pObligatoria = (k) => pActiva(k) && !!PREG[k].obligatoria;
+
+// Pinta etiquetas, ayudas y errores, oculta las preguntas desactivadas y numera las visibles.
+function aplicarPreguntas() {
+  let n = 0;
+  ORDEN_PREG.forEach((k) => {
+    const card = document.querySelector('[data-campo="' + k + '"]');
+    if (!card) return;
+    const p = PREG[k] || PREG_DEFECTO[k];
+    card.style.display = p.activa ? "" : "none";
+    if (!p.activa) return;
+    n++;
+    const et = card.querySelector(".et-txt"); if (et) et.textContent = n + ". " + p.etiqueta;
+    const req = card.querySelector(".req"); if (req) req.style.display = p.obligatoria ? "" : "none";
+    const err = card.querySelector(".error-campo"); if (err) err.textContent = p.error;
+    const campo = card.querySelector("input[type=text]:not(.pin-input), input[type=email], textarea");
+    if (campo && k !== "equipo") campo.placeholder = p.ayuda || "";
+    if (k === "equipo" && selEquipo.options[0]) selEquipo.options[0].textContent = p.ayuda || "Elige un equipo…";
+  });
+  const h = (id, t) => { const e = document.querySelector("#" + id + " h2"); if (e && t) e.textContent = t; };
+  h("secSolicitante", SECC.solicitante); h("secCobertura", SECC.cobertura); h("secConfirmacion", SECC.confirmacion);
+  // Si no queda ninguna pregunta de cobertura, se oculta también su cabecera.
+  $("secCobertura").style.display = (pActiva("funciones") || pActiva("jornada_partido")) ? "" : "none";
+  actualizarProgreso();
+}
+
+const $ = (id) => document.getElementById(id);
+
+// ---------- PIN de acceso ----------
+// El PIN se pide SIEMPRE al entrar: no se guarda nada en el navegador, así que
+// recargar, volver atrás o abrir el enlace de nuevo vuelve a mostrar esta pantalla.
+let PIN_ACTUAL = "";
+const PIN_MIN = 4, PIN_MAX = 8, PIN_CELDAS = 6; // el servidor acepta 4-8 dígitos (por defecto genera 6)
+let PIN_LONGITUD = 0; // dígitos reales del PIN (lo dice el servidor); 0 = aún no se sabe
+const escena = $("vistaPin"), inpPin = $("pin"), zonaCeldas = $("pinCeldas"), vistaCeldas = $("pinVista");
+const btnPin = $("btnPin"), msgPin = $("estadoPin");
+let comprobando = false;
+try { sessionStorage.removeItem("acred_pin"); } catch {} // limpia versiones anteriores
+// Modo de acceso que ha elegido el admin: "pin" | "login" (cuenta de colaborador) | "solicitar" (libre).
+// Hasta que llega la configuración se asume "pin" (el más restrictivo) y la tarjeta queda oculta.
+let ACCESO = "pin";
+let TOKEN_ACRED = ""; // sesión de colaborador: solo en memoria, nunca se guarda desde esta página
+let USUARIO_ACRED = null;
+const cabecerasAcred = (extra) => Object.assign({}, extra || {}, TOKEN_ACRED ? { Authorization: "Bearer " + TOKEN_ACRED } : {});
+
+function mensajePin(texto, tipo) { msgPin.textContent = texto || ""; msgPin.className = "pin-mensaje" + (tipo ? " " + tipo : ""); }
+function pintarCeldas() {
+  const v = inpPin.value;
+  // Con la longitud conocida se pintan exactamente esas casillas; si no, se usa el valor por defecto.
+  const n = PIN_LONGITUD || Math.min(PIN_MAX, Math.max(PIN_CELDAS, v.length));
+  while (vistaCeldas.children.length < n) { const d = document.createElement("div"); d.className = "pin-celda"; vistaCeldas.appendChild(d); }
+  while (vistaCeldas.children.length > n) vistaCeldas.lastChild.remove();
+  [...vistaCeldas.children].forEach((c, i) => {
+    const ch = v[i] || "";
+    if (ch && ch !== c.dataset.v) { c.classList.remove("pop"); void c.offsetWidth; c.classList.add("pop"); }
+    c.dataset.v = ch; c.textContent = ch;
+    c.classList.toggle("llena", !!ch);
+    c.classList.toggle("activa", i === v.length);
+  });
+  if (!comprobando) btnPin.disabled = v.length < (PIN_LONGITUD || PIN_MIN);
+}
+function mostrarFormulario(pin) {
+  PIN_ACTUAL = pin;
+  $("progresoBarra").parentNode.style.display = "block";
+  $("vistaFormulario").style.display = "block";
+  escena.classList.add("saliendo");
+  setTimeout(() => { escena.style.display = "none"; document.documentElement.classList.remove("bloqueado"); }, 520);
+  window.scrollTo(0, 0);
+}
+function mostrarPin(mensaje) {
+  PIN_ACTUAL = ""; comprobando = false;
+  if (ACCESO === "solicitar") { mostrarFormulario(""); return; }
+  if (ACCESO === "login") TOKEN_ACRED = "";
+  $("vistaFormulario").style.display = "none";
+  $("vistaGracias").style.display = "none";
+  $("progresoBarra").parentNode.style.display = "none";
+  document.documentElement.classList.add("bloqueado");
+  escena.style.display = "flex"; void escena.offsetWidth; escena.classList.remove("saliendo");
+  $("pinCaja").classList.remove("abierto"); zonaCeldas.classList.remove("mal", "ok");
+  inpPin.value = ""; inpPin.disabled = false; pintarCeldas();
+  mensajePin(mensaje, mensaje ? "error" : "");
+  if (ACCESO === "login") { prepararLogin(mensaje); return; }
+  inpPin.focus();
+}
+async function comprobarPin(pin) {
+  const res = await apiFetch("/api/acreditaciones/pin", {
+    method: "POST",
+    headers: cabecerasAcred({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ pin }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "No se ha podido comprobar el acceso.");
+  return data;
+}
+inpPin.addEventListener("input", () => {
+  const limpio = inpPin.value.replace(/\D/g, "").slice(0, PIN_LONGITUD || PIN_MAX);
+  if (limpio !== inpPin.value) inpPin.value = limpio;
+  zonaCeldas.classList.remove("mal");
+  if (msgPin.classList.contains("error")) mensajePin("");
+  pintarCeldas();
+});
+inpPin.addEventListener("focus", () => zonaCeldas.classList.add("enfocado"));
+inpPin.addEventListener("blur", () => zonaCeldas.classList.remove("enfocado"));
+escena.addEventListener("pointerdown", (e) => { if (ACCESO === "pin" && !e.target.closest("a, button, input") && !inpPin.disabled) { e.preventDefault(); inpPin.focus(); } });
+
+$("formPin").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (comprobando) return;
+  const pin = inpPin.value.trim();
+  if (pin.length < (PIN_LONGITUD || PIN_MIN)) { mensajePin(PIN_LONGITUD ? "El PIN tiene " + PIN_LONGITUD + " dígitos." : "El PIN tiene al menos " + PIN_MIN + " dígitos.", "error"); return; }
+  comprobando = true; btnPin.disabled = true; btnPin.classList.add("cargando"); $("btnPinTexto").textContent = "Comprobando...";
+  mensajePin("");
+  try {
+    await comprobarPin(pin);
+    zonaCeldas.classList.add("ok"); $("pinCaja").classList.add("abierto"); inpPin.disabled = true;
+    mensajePin("Acceso concedido", "ok");
+    setTimeout(() => mostrarFormulario(pin), 750);
+  } catch (err) {
+    mensajePin(err.message, "error");
+    zonaCeldas.classList.remove("mal"); void zonaCeldas.offsetWidth; zonaCeldas.classList.add("mal");
+    setTimeout(() => { inpPin.value = ""; pintarCeldas(); inpPin.focus(); }, 650);
+    comprobando = false;
+  } finally {
+    btnPin.classList.remove("cargando"); $("btnPinTexto").textContent = "Entrar";
+    if (!$("pinCaja").classList.contains("abierto")) { comprobando = false; btnPin.disabled = inpPin.value.length < (PIN_LONGITUD || PIN_MIN); }
+  }
+});
+
+// ---------- Acceso con cuenta de colaborador ----------
+const formLogin = $("formLogin"), msgLogin = $("estadoLogin"), btnLogin = $("btnLogin");
+function mensajeLogin(texto, tipo) { msgLogin.textContent = texto || ""; msgLogin.className = "pin-mensaje" + (tipo ? " " + tipo : ""); }
+function entrarComoColaborador(usuario) {
+  USUARIO_ACRED = usuario || null;
+  $("pinCaja").classList.add("abierto"); mensajeLogin("Acceso concedido", "ok");
+  // Se rellena lo que ya sabemos de la cuenta (el colaborador puede cambiarlo).
+  if (usuario) {
+    if (usuario.nombre && !$("nombre").value) $("nombre").value = usuario.nombre;
+    if (usuario.email && !$("email").value) $("email").value = usuario.email;
+    actualizarProgreso();
+  }
+  setTimeout(() => mostrarFormulario(""), 650);
+}
+// Prepara la tarjeta en modo login; si ya hay una sesión abierta en el panel, ofrece continuar con ella.
+async function prepararLogin(mensaje) {
+  mensajeLogin(mensaje || "", mensaje ? "error" : "");
+  $("loginClave").value = "";
+  $("pinSesion").hidden = true; formLogin.hidden = false;
+  let tokenPanel = "";
+  try { tokenPanel = localStorage.getItem("eof_token") || ""; } catch {}
+  if (!tokenPanel || mensaje) { $("loginUsuario").focus(); return; }
+  try {
+    TOKEN_ACRED = tokenPanel;
+    const r = await comprobarPin("");
+    const nombre = (r.usuario && r.usuario.nombre) || "tu cuenta";
+    $("pinSesionTexto").textContent = "Has iniciado sesión como " + nombre + ".";
+    $("btnSesion").dataset.nombre = (r.usuario && r.usuario.nombre) || "";
+    $("pinSesion").hidden = false; formLogin.hidden = true;
+  } catch {
+    TOKEN_ACRED = ""; $("loginUsuario").focus();
+  }
+}
+$("btnSesion").addEventListener("click", () => entrarComoColaborador({ nombre: $("btnSesion").dataset.nombre || "" }));
+$("btnOtraCuenta").addEventListener("click", () => { TOKEN_ACRED = ""; $("pinSesion").hidden = true; formLogin.hidden = false; $("loginUsuario").focus(); });
+formLogin.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (comprobando) return;
+  const username = $("loginUsuario").value.trim(), password = $("loginClave").value;
+  if (!username || !password) { mensajeLogin("Escribe tu usuario y tu contraseña.", "error"); return; }
+  comprobando = true; btnLogin.disabled = true; btnLogin.classList.add("cargando"); $("btnLoginTexto").textContent = "Comprobando...";
+  mensajeLogin("");
+  try {
+    // Si este navegador ya es un dispositivo de confianza (se marcó al iniciar sesión en /acceso),
+    // el servidor no pide el 2FA y los administradores también pueden entrar aquí.
+    let dispositivo; try { dispositivo = localStorage.getItem("eof_td_" + encodeURIComponent(username)) || undefined; } catch {}
+    const res = await apiFetch("/api/login", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password, dispositivo }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (data.requiere_2fa || data.requiere_configurar_2fa) throw new Error("Las cuentas de administrador necesitan verificación en dos pasos. Inicia sesión primero en el panel (/acceso) y vuelve a esta página.");
+    if (!res.ok || !data.token) throw new Error(data.error || "Usuario o contraseña incorrectos.");
+    TOKEN_ACRED = data.token;
+    await comprobarPin("");
+    $("loginClave").value = "";
+    entrarComoColaborador(data.user ? { nombre: data.user.nombre, email: data.user.email || "" } : null);
+  } catch (err) {
+    TOKEN_ACRED = "";
+    mensajeLogin(err.message || "No se ha podido iniciar sesión.", "error");
+    $("loginClave").value = ""; $("loginClave").focus();
+  } finally {
+    comprobando = false; btnLogin.disabled = false; btnLogin.classList.remove("cargando"); $("btnLoginTexto").textContent = "Iniciar sesión";
+  }
+});
+
+// Adapta la pantalla de acceso al modo que haya elegido el admin.
+function aplicarAcceso(modo) {
+  ACCESO = ["pin", "login", "solicitar"].includes(modo) ? modo : "pin";
+  const pinMode = ACCESO === "pin";
+  $("formPin").hidden = !pinMode;
+  $("pinPie").hidden = ACCESO === "solicitar";
+  if (ACCESO === "login") {
+    $("pinIntro").textContent = "Inicia sesión con tu cuenta de colaborador de ElOtroFútbol para rellenar el formulario.";
+    $("pinPie").innerHTML = '¿No tienes cuenta? <a href="/contacto">Solicítala al equipo</a>.';
+  } else {
+    formLogin.hidden = true; $("pinSesion").hidden = true;
+    $("pinIntro").textContent = "Introduce el PIN que te ha facilitado el equipo de ElOtroFútbol para rellenar el formulario.";
+    $("pinPie").innerHTML = '¿No tienes PIN? <a href="/contacto">Solicítalo al equipo</a>.';
+  }
+  $("pinCaja").classList.remove("cargando-modo");
+  if (ACCESO === "solicitar") { mostrarFormulario(""); return; }
+  mostrarPin();
+}
+// Si la configuración tarda o falla, se enseña la pantalla del PIN (lo más restrictivo).
+setTimeout(() => { if ($("pinCaja").classList.contains("cargando-modo")) aplicarAcceso("pin"); }, 6000);
+
+// Al volver con "atrás" desde el historial (caché del navegador) también se pide de nuevo.
+window.addEventListener("pageshow", (e) => { if (e.persisted) mostrarPin(); });
+mostrarPin(); // el modo real llega con la configuración (aplicarAcceso)
+
+// Equipo: todos los clubes de CLUBS_BY_CATEGORY (Hypermotion, Primera y Segunda
+// Federación; sin Copa del Rey, sin duplicados, en orden alfabético) + los clubes personalizados que haya
+// dado de alta el panel + "Otro".
+function listaEquipos() {
+  const nombres = new Set();
+  Object.values(CLUBS_BY_CATEGORY).forEach((lista) => lista.forEach((n) => nombres.add(n)));
+  // Clubes personalizados: solo los de esas mismas tres categorías.
+  Object.keys(CLUBS_BY_CATEGORY).forEach((cat) => (CUSTOM_CLUBS_BY_CATEGORY[cat] || []).forEach((c) => nombres.add(c.nombre)));
+  return [...nombres].sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base" }));
+}
+const selEquipo = $("equipo");
+function pintarEquipos() {
+  const actual = selEquipo.value;
+  selEquipo.innerHTML = '<option value="">' + ((PREG.equipo && PREG.equipo.ayuda) || "Elige un equipo…") + '</option>';
+  listaEquipos().forEach((e) => { const o = document.createElement("option"); o.value = e; o.textContent = e; selEquipo.appendChild(o); });
+  const otro = document.createElement("option"); otro.value = "__otro__"; otro.textContent = "Otro…"; selEquipo.appendChild(otro);
+  if (actual) selEquipo.value = actual;
+}
+pintarEquipos();
+// Los clubes personalizados llegan del servidor: si falla, se queda la lista fija.
+cargarCustomClubs().then(pintarEquipos);
+selEquipo.addEventListener("change", () => {
+  const otro = selEquipo.value === "__otro__";
+  $("equipoOtro").style.display = otro ? "block" : "none";
+  if (otro) $("equipoOtro").focus();
+});
+
+// ---------- Partidos del equipo (desplegable de "jornada y partido") ----------
+// Al elegir equipo se piden sus próximos partidos a /api/results (la misma API
+// pública que usa el calendario). El valor guardado es siempre
+// "Jornada N: Local - Visitante (dd/mm/aaaa hh:mm)", fácil de leer y de procesar
+// después (p. ej. para el correo al club). "Otro partido…" deja escribirlo a mano.
+const selJornada = $("jornadaSel");
+const inpJornada = $("jornada");
+let jornadaToken = 0;
+const DIAS_ES = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
+
+function partesFecha(f) {
+  const m = String(f || "").match(/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}))?/);
+  if (!m) return null;
+  return { y: +m[1], mo: +m[2], d: +m[3], hh: m[4], mm: m[5] };
+}
+function fechaCorta(f) {
+  const p = partesFecha(f); if (!p) return "";
+  const dia = DIAS_ES[new Date(p.y, p.mo - 1, p.d).getDay()];
+  const base = dia + " " + String(p.d).padStart(2, "0") + "/" + String(p.mo).padStart(2, "0");
+  return p.hh ? base + " " + p.hh + ":" + p.mm : base;
+}
+function fechaLarga(f) {
+  const p = partesFecha(f); if (!p) return "";
+  const base = String(p.d).padStart(2, "0") + "/" + String(p.mo).padStart(2, "0") + "/" + p.y;
+  return p.hh ? base + " " + p.hh + ":" + p.mm : base;
+}
+function claveFecha(r) {
+  const p = partesFecha(r.fecha_partido);
+  return p ? p.y * 1e8 + p.mo * 1e6 + p.d * 1e4 + (p.hh ? +p.hh * 100 + +p.mm : 0) : Infinity;
+}
+function modoJornada(modo, aviso) {
+  // modo: "esperando" (sin equipo), "lista" (desplegable) o "libre" (texto a mano)
+  inpJornada.style.display = modo === "libre" ? "block" : "none";
+  const ay = $("ayudaJornada");
+  ay.style.display = aviso ? "block" : "none";
+  ay.textContent = aviso || "";
+}
+function valorJornada() {
+  if (selJornada.value === "__otro__" || selJornada.disabled) return inpJornada.value.trim();
+  return selJornada.value;
+}
+async function cargarPartidosEquipo() {
+  const equipo = selEquipo.value;
+  const token = ++jornadaToken;
+  selJornada.innerHTML = "";
+  inpJornada.value = "";
+  const opt = (v, t) => { const o = document.createElement("option"); o.value = v; o.textContent = t; selJornada.appendChild(o); };
+  if (!equipo) {
+    selJornada.disabled = true; opt("", "Elige primero un equipo…"); modoJornada("esperando"); actualizarProgreso(); return;
+  }
+  if (equipo === "__otro__") {
+    selJornada.disabled = true; opt("", "Escríbelo abajo"); modoJornada("libre", "Como has elegido otro equipo, escribe la jornada y el partido."); actualizarProgreso(); return;
+  }
+  selJornada.disabled = true; opt("", "Cargando partidos…"); modoJornada("esperando");
+  let partidos = null;
+  try {
+    const ayer = new Date(Date.now() - 86400000);
+    const desde = ayer.getFullYear() + "-" + String(ayer.getMonth() + 1).padStart(2, "0") + "-" + String(ayer.getDate()).padStart(2, "0");
+    const res = await apiFetch("/api/results?club=" + encodeURIComponent(equipo) + "&desde_fecha=" + desde + "&limit=100");
+    if (!res.ok) throw new Error("http " + res.status);
+    const data = await res.json();
+    partidos = (data.results || [])
+      .filter((r) => ["programado", "en_juego", "retrasado"].includes(r.estado))
+      .sort((a, b) => claveFecha(a) - claveFecha(b));
+  } catch { partidos = null; }
+  if (token !== jornadaToken) return; // el usuario cambió de equipo mientras cargaba
+  selJornada.innerHTML = "";
+  if (partidos === null) {
+    selJornada.disabled = true; opt("", "No se han podido cargar los partidos");
+    modoJornada("libre", "No hemos podido cargar los partidos. Escribe la jornada y el partido a mano."); actualizarProgreso(); return;
+  }
+  if (!partidos.length) {
+    selJornada.disabled = true; opt("", "No hay partidos programados");
+    modoJornada("libre", "No hay partidos programados para este equipo. Escribe la jornada y el partido a mano."); actualizarProgreso(); return;
+  }
+  selJornada.disabled = false;
+  opt("", "Elige el partido…");
+  partidos.forEach((r) => {
+    const j = r.jornada ? "Jornada " + r.jornada : "";
+    const f = fechaCorta(r.fecha_partido);
+    const par = r.equipo_local + " - " + r.equipo_visitante;
+    const etiqueta = [j ? "J" + r.jornada : "", par, f].filter(Boolean).join(" · ");
+    const fl = fechaLarga(r.fecha_partido);
+    const valor = (j ? j + ": " : "") + par + (fl ? " (" + fl + ")" : "");
+    opt(valor, etiqueta);
+  });
+  opt("__otro__", "Otro partido…");
+  modoJornada("lista");
+  actualizarProgreso();
+}
+selJornada.addEventListener("change", () => {
+  const otro = selJornada.value === "__otro__";
+  modoJornada(otro ? "libre" : "lista");
+  if (otro) inpJornada.focus();
+});
+selEquipo.addEventListener("change", cargarPartidosEquipo);
+
+// Radios (con "Otro" opcional con texto)
+function pintarRadios(contId, name, valores, conOtro) {
+  const cont = $(contId);
+  valores.forEach((v) => {
+    const l = document.createElement("label"); l.className = "opcion";
+    const i = document.createElement("input"); i.type = "radio"; i.name = name; i.value = v;
+    const s = document.createElement("span"); s.textContent = v;
+    l.append(i, s); cont.appendChild(l);
+  });
+  if (conOtro) {
+    const l = document.createElement("label"); l.className = "opcion opcion-otro";
+    const i = document.createElement("input"); i.type = "radio"; i.name = name; i.value = "__otro__";
+    const s = document.createElement("span"); s.textContent = "Otro:";
+    const t = document.createElement("input"); t.type = "text"; t.maxLength = 150; t.id = name + "Otro"; t.setAttribute("aria-label", "Otro");
+    t.addEventListener("focus", () => { i.checked = true; });
+    l.append(i, s, t); cont.appendChild(l);
+  }
+}
+function pintarOpciones() {
+  $("opcionesEvento").innerHTML = ""; $("opcionesAcreditacion").innerHTML = "";
+  pintarRadios("opcionesEvento", "tipo_evento", EVENTOS, EVENTO_OTRO);
+  pintarRadios("opcionesAcreditacion", "tipo_acreditacion", ACREDITACIONES, false);
+}
+pintarOpciones();
+aplicarPreguntas();
+// Textos y listas editables desde el panel.
+(async () => {
+  try {
+    const res = await apiFetch("/api/acreditaciones/config");
+    if (!res.ok) { aplicarAcceso("pin"); return; }
+    const c = await res.json();
+    if (Array.isArray(c.eventos)) EVENTOS = c.eventos;
+    if (Array.isArray(c.acreditaciones) && c.acreditaciones.length) ACREDITACIONES = c.acreditaciones;
+    EVENTO_OTRO = c.evento_otro !== false;
+    if (c.preguntas) PREG = c.preguntas;
+    if (c.secciones) SECC = c.secciones;
+    aplicarPreguntas();
+    pintarOpciones();
+    if (Number.isInteger(c.pin_longitud) && c.pin_longitud >= PIN_MIN && c.pin_longitud <= PIN_MAX) {
+      PIN_LONGITUD = c.pin_longitud;
+      inpPin.maxLength = PIN_LONGITUD;
+      if (inpPin.value.length > PIN_LONGITUD) inpPin.value = inpPin.value.slice(0, PIN_LONGITUD);
+      pintarCeldas();
+    }
+    const poner = (id, v) => { if (v && $(id)) $(id).textContent = v; };
+    poner("cfgTitulo", c.titulo); poner("cfgIntro", c.intro); poner("cfgAviso", c.aviso);
+    poner("cfgConfirmacion", c.confirmacion); poner("cfgGracias", c.gracias);
+    if (c.titulo) { document.title = c.titulo; $("pinTitulo").textContent = c.titulo.split("|")[0].trim(); }
+    aplicarAcceso(c.acceso);
+  } catch {}
+})();
+
+function valorRadio(name) {
+  const marcado = document.querySelector(`input[name="${name}"]:checked`);
+  if (!marcado) return "";
+  if (marcado.value === "__otro__") {
+    const t = ($(name + "Otro").value || "").trim();
+    return t ? "Otro: " + t : "";
+  }
+  return marcado.value;
+}
+
+function marcar(campo, malo) {
+  const el = document.querySelector(`[data-campo="${campo}"]`);
+  if (el) {
+    el.classList.remove("invalido");
+    if (malo) { void el.offsetWidth; el.classList.add("invalido"); }
+  }
+  return !malo;
+}
+
+function recoger() {
+  let equipo = selEquipo.value;
+  if (equipo === "__otro__") equipo = ($("equipoOtro").value || "").trim();
+  return {
+    nombre: $("nombre").value.trim(),
+    email: $("email").value.trim(),
+    dni: $("dni").value.trim(),
+    equipo,
+    tipo_evento: valorRadio("tipo_evento"),
+    tipo_acreditacion: valorRadio("tipo_acreditacion"),
+    funciones: $("funciones").value.trim(),
+    jornada_partido: valorJornada(),
+    confirmo: $("confirmo").checked,
+    web: $("web").value,
+    pin: PIN_ACTUAL,
+  };
+}
+
+// Progreso y marca de "campo completo" mientras se rellena.
+function estadoCampos(d) {
+  const dni = d.dni.replace(/[\s.-]/g, "");
+  return {
+    nombre: !!d.nombre,
+    email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email),
+    dni: dni.length >= 5 && /^[A-Za-z0-9]+$/.test(dni),
+    equipo: !!d.equipo,
+    tipo_evento: !!d.tipo_evento,
+    tipo_acreditacion: !!d.tipo_acreditacion,
+    funciones: !!d.funciones,
+    jornada_partido: !!d.jornada_partido,
+    confirmo: !!d.confirmo,
+  };
+}
+function actualizarProgreso() {
+  const est = estadoCampos(recoger());
+  let hechos = 0, total = 0;
+  Object.keys(est).forEach((campo) => {
+    const el = document.querySelector(`[data-campo="${campo}"]`);
+    const visible = campo === "confirmo" || pActiva(campo);
+    const cuenta = campo === "confirmo" || pObligatoria(campo);
+    if (el) {
+      el.classList.toggle("completo", visible && est[campo]);
+      if (est[campo]) el.classList.remove("invalido");
+    }
+    if (cuenta) { total++; if (est[campo]) hechos++; }
+  });
+  $("progresoBarra").style.width = Math.round((hechos / Math.max(1, total)) * 100) + "%";
+}
+["input", "change"].forEach((ev) => $("formAcreditacion").addEventListener(ev, actualizarProgreso));
+
+function validar(d) {
+  const dniLimpio = d.dni.replace(/[\s.-]/g, "");
+  const dniMal = pActiva("dni") && (dniLimpio ? (dniLimpio.length < 5 || !/^[A-Za-z0-9]+$/.test(dniLimpio)) : pObligatoria("dni"));
+  const resultados = [
+    marcar("nombre", !d.nombre),
+    marcar("email", !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email)),
+    marcar("dni", dniMal),
+    marcar("equipo", !d.equipo),
+    marcar("tipo_evento", pObligatoria("tipo_evento") && !d.tipo_evento),
+    marcar("tipo_acreditacion", !d.tipo_acreditacion),
+    marcar("funciones", pObligatoria("funciones") && !d.funciones),
+    marcar("jornada_partido", pObligatoria("jornada_partido") && !d.jornada_partido),
+    marcar("confirmo", !d.confirmo),
+  ];
+  return resultados.every(Boolean);
+}
+
+$("formAcreditacion").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const estado = $("estado"); estado.textContent = ""; estado.className = "estado";
+  const datos = recoger();
+  if (!validar(datos)) {
+    const primero = document.querySelector(".campo.invalido");
+    if (primero) primero.scrollIntoView({ behavior: "smooth", block: "center" });
+    estado.textContent = "Revisa los campos marcados en rojo.";
+    estado.classList.add("error");
+    return;
+  }
+  const boton = $("btnEnviar"); boton.disabled = true; boton.classList.add("cargando"); boton.textContent = "Enviando...";
+  try {
+    const contTs = document.querySelector("#formAcreditacion [data-eof-turnstile]");
+    const turnstileToken = await window.EOFTurnstile.esperarToken(contTs);
+    const res = await apiFetch("/api/acreditaciones", {
+      method: "POST",
+      headers: cabecerasAcred({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ ...datos, turnstileToken }),
+    });
+    window.EOFTurnstile.reiniciar(contTs);
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 401) {
+      // El admin pudo cambiar el modo o el PIN mientras se rellenaba, o caducó la sesión.
+      if (data.acceso && data.acceso !== ACCESO) aplicarAcceso(data.acceso);
+      else mostrarPin(ACCESO === "login" ? "Tu sesión ha caducado. Vuelve a iniciar sesión." : "El PIN ya no es válido. Vuelve a introducirlo.");
+      return;
+    }
+    if (!res.ok) throw new Error(data.error || "No se ha podido enviar la solicitud.");
+    $("vistaFormulario").style.display = "none";
+    $("progresoBarra").parentNode.style.display = "none";
+    $("vistaGracias").style.display = "block";
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  } catch (err) {
+    estado.textContent = err.message || "No se ha podido enviar la solicitud. Inténtalo de nuevo en unos minutos.";
+    estado.classList.add("error");
+  } finally {
+    boton.disabled = false; boton.classList.remove("cargando"); boton.textContent = "Enviar solicitud";
+  }
+});
+</script>
+</body>
+</html>

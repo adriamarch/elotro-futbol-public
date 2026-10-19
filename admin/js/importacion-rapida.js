@@ -76,9 +76,11 @@ const ESTADOS_TEXTO_A_BACKEND = {
 // solo se usan el día y el mes numéricos.
 const RE_FECHA_COMPACTA = /^(?:(?:lun|mar|mi[ée]|jue|vie|s[áa]b|dom)\.?,?\s+)?(\d{1,2})\/(\d{1,2})\s*$/i;
 
-// "Ayer" / "Hoy" (fechas relativas que a veces trae este formato en
-// vez de la fecha abreviada).
-const RE_FECHA_RELATIVA = /^(ayer|hoy)\s*$/i;
+// "Ayer" / "Hoy" / "Mañana" (fechas relativas que a veces trae este formato
+// en vez de la fecha abreviada). "Mañana" aparece en las jornadas aún por
+// jugar: antes no se reconocía, la línea se ignoraba y esos partidos
+// heredaban la fecha del bloque anterior ("Hoy").
+const RE_FECHA_RELATIVA = /^(ayer|hoy|ma[ñn]ana)\s*$/i;
 
 // Estado en su propia línea: "Fin", "Descanso", "1ª parte"...
 const ESTADOS_COMPACTO_A_BACKEND = {
@@ -525,6 +527,14 @@ function detectarFormatoTexto(lineas) {
   for (const linea of lineas) {
     if (RE_FECHA_ESPN.test(linea)) return "espn";
   }
+  // Formato AS: también se comprueba ANTES que "markdown", porque comparte
+  // con él las cabeceras de día ("Sábado 3 de Octubre") y los enlaces
+  // "[Equipo](url)", y por eso antes se leía con el parser equivocado. Sus
+  // marcas inequívocas son la viñeta de grupo ("* Grupo Iii") y la hora
+  // como enlace con zona horaria ("[16:00](url)CET").
+  for (const linea of lineas) {
+    if (RE_GRUPO_AS.test(linea) || RE_HORA_AS.test(linea)) return "as";
+  }
   // Primera pasada: solo marcas INEQUÍVOCAS de cada formato (nunca
   // aparecen en los otros dos). "Hoy"/"Ayer" (RE_FECHA_RELATIVA) se
   // deja fuera de esta pasada a propósito: la usan tanto el formato
@@ -551,7 +561,7 @@ function detectarFormatoTexto(lineas) {
   return "markdown"; // por defecto, para no romper el comportamiento previo
 }
 
-// Convierte "Vie, 28/8" (o "Ayer"/"Hoy") en "YYYY-MM-DD". Como el
+// Convierte "Vie, 28/8" (o "Ayer"/"Hoy"/"Mañana") en "YYYY-MM-DD". Como el
 // formato compacto no trae el año, se usa el año pasado por el
 // usuario, salvo que la fecha resultante caiga muy lejos en el futuro
 // respecto a hoy (más de ~200 días), en cuyo caso se asume que es del
@@ -573,10 +583,11 @@ function fechaCompactaISO(dia, mes, anio, hoy) {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-// "Ayer" / "Hoy" -> fecha ISO real, en base a la fecha de hoy.
+// "Ayer" / "Hoy" / "Mañana" -> fecha ISO real, en base a la fecha de hoy.
 function fechaRelativaISO(palabra, hoy) {
   const base = hoy || new Date();
-  const offset = /ayer/i.test(palabra) ? -1 : 0;
+  // ayer = -1, hoy = 0, mañana = +1 (también sin tilde: "manana").
+  const offset = /ayer/i.test(palabra) ? -1 : (/ma[ñn]ana/i.test(palabra) ? 1 : 0);
   const d = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth(), base.getUTCDate() + offset));
   const yyyy = d.getUTCFullYear();
   const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
@@ -650,6 +661,10 @@ function analizarTextoImportacionCompacto(texto, anio) {
   };
 
   for (const linea of lineas) {
+    // Cabecera de jornada ("Fase de grupos · Jornada 6 de 38", "Jornada 6"):
+    // se ignora. Sin esto, al ir la primera, se leía como equipo local y
+    // salía un aviso falso de "bloque incompleto".
+    if (/^(?:.*[·|-]\s*)?jornada\s+\d+(?:\s+de\s+\d+)?\s*$/i.test(linea)) continue;
     // Cabecera de estado: "Fin", "Descanso"... Abre un nuevo bloque.
     const matchEstado = linea.match(RE_ESTADO_COMPACTO);
     if (matchEstado) {
@@ -846,7 +861,45 @@ const ALIAS_NOMBRES_EQUIPO = {
   // primer equipo.
   "osasuna promesas": "Atlético Osasuna B",
   "calamocha": "CF Calamocha",
+  "utebo": "Utebo FC",
   "barca atletic": "FC Barcelona Atlètic",
+  // Nombres cortos que usa AS.com en Segunda Federación (las claves van
+  // sin tildes ni puntos, como deja el texto resolverAliasNombreEquipo).
+  "atco astorga": "Atlético Astorga",
+  "albacete b": "Atlético Albacete",
+  "valencia b": "Valencia Mestalla",
+  "pena deportiva rociera": "SCR Peña Deportiva",
+  "atco sanluqueno": "Atlético Sanluqueño",
+  "real valladolid cf promesas": "Real Valladolid Promesas",
+  "oviedo ii": "Real Oviedo Vetusta",
+  "barcelona b": "FC Barcelona Atlètic",
+  // Celta Fortuna: muchas fuentes lo llaman "Celta B" o "Celta de Vigo
+  // B". Con la heurística normal no se emparejaba nunca: el sufijo "B"
+  // no coincide con el de "Celta Fortuna" y se descartaba por filial.
+  "celta b": "Celta Fortuna",
+  "celta de vigo b": "Celta Fortuna",
+  "celta vigo b": "Celta Fortuna",
+  "rc celta b": "Celta Fortuna",
+  "rc celta de vigo b": "Celta Fortuna",
+  "real club celta b": "Celta Fortuna",
+  "celta ii": "Celta Fortuna",
+  "rc celta fortuna": "Celta Fortuna",
+  "celta de vigo fortuna": "Celta Fortuna",
+  // Más formas de Real Sporting.
+  "real sporting de gijon": "Real Sporting",
+  "real sporting gijon": "Real Sporting",
+  "r sporting de gijon": "Real Sporting",
+  // Arosa SC y RS Gimnástica de Torrelavega (Segunda RFEF, Grupo 1).
+  "arosa": "Arosa SC",
+  "arosa sociedad cultural": "Arosa SC",
+  "sociedad cultural arosa": "Arosa SC",
+  "sc arosa": "Arosa SC",
+  "gimnastica de torrelavega": "RS Gimnástica de Torrelavega",
+  "gimnastica torrelavega": "RS Gimnástica de Torrelavega",
+  "rs gimnastica": "RS Gimnástica de Torrelavega",
+  "real sociedad gimnastica": "RS Gimnástica de Torrelavega",
+  "real sociedad gimnastica de torrelavega": "RS Gimnástica de Torrelavega",
+  "real sociedad gimnastica torrelavega": "RS Gimnástica de Torrelavega",
 };
 
 // Devuelve el nombre exacto de CLUBS_BY_CATEGORY si el texto coincide
@@ -982,6 +1035,155 @@ function nombreOficialEquipo(nombreTexto, competicion) {
   return mejor || nombreTexto;
 }
 
+// ---------- FORMATO 5 ("as"): AS.com, calendario/resultados ----------
+// Texto copiado de as.com/resultados. Es parecido al "markdown" (cabeceras
+// de día en español y enlaces "[Equipo](url)") pero NO se puede leer con
+// ese parser, y por eso antes se detectaba mal:
+//   - cada partido abre con una viñeta de GRUPO ("* Grupo Iii"), no con un
+//     estado ("* Finalizado");
+//   - la HORA es un enlace seguido de la zona horaria: "[16:00](url)CET";
+//   - el nombre del equipo va como enlace "[Lorca Deportiva](url)" o como
+//     texto suelto ("Castellón B"), mezclados dentro del mismo partido.
+// Bloque típico (el partido se cierra al leer el visitante):
+//   Sábado 3 de Octubre            <- cabecera de día
+//   * Grupo Iii                    <- grupo (romano: I, Ii, Iii, Iv, V)
+//   Castellón B                    <- local (texto suelto o enlace)
+//   [16:00](url)CET                <- hora (o "[N - M](url)" si ya se jugó)
+//   [Lorca Deportiva](url)         <- visitante (texto suelto o enlace)
+//   [Más apuestas](url)            <- publicidad, se ignora
+const RE_HORA_AS = /^\[(\d{1,2}):(\d{2})\]\(([^)]*)\)\s*(?:CES?T|UTC|GMT)?\s*$/i;
+// El "*" de la viñeta es opcional: copiando directamente de la web llega
+// "Grupo Iii" a secas; copiando con enlaces llega "* Grupo Iii".
+const RE_GRUPO_AS = /^\*?\s*grupo\s+([ivx]+|\d+)\s*$/i;
+// Variante en texto plano: la hora y la zona horaria llegan en dos líneas
+// sueltas ("16:00" y "CET"), y el marcador, si lo hay, como "2 - 1".
+const RE_HORA_AS_PLANA = /^(\d{1,2}):(\d{2})$/;
+const RE_MARCADOR_AS_PLANO = /^(\d{1,2})\s*[-–]\s*(\d{1,2})$/;
+const RE_AS_IGNORAR = /^(gestionado por|ad|bookie-logo|cet|cest|utc|gmt|m[aá]s apuestas|ver cr[oó]nica|\+18\b.*|juega de forma responsable.*|actualizado a las.*|\[(m[aá]s apuestas|ver cr[oó]nica)\].*)$/i;
+
+// "Iii" -> 3, "Iv" -> 4, "V" -> 5, "2" -> 2.
+function grupoAsANumero(texto) {
+  const t = String(texto).toLowerCase();
+  if (/^\d+$/.test(t)) return parseInt(t, 10);
+  const romanos = { i: 1, ii: 2, iii: 3, iv: 4, v: 5, vi: 6 };
+  return romanos[t] || null;
+}
+
+// "[Lorca Deportiva](url)" -> "Lorca Deportiva"; el texto suelto se deja igual.
+function nombreEquipoAs(linea) {
+  const m = linea.match(RE_ENLACE);
+  return deduplicarNombreEquipo((m ? m[1] : linea).trim());
+}
+
+// La URL de la hora dice la competición ("/futbol/segunda_rfef/..."). Solo se
+// usa como último recurso si los equipos no bastan para deducirla.
+const COMPETICION_POR_URL_AS = {
+  segunda_rfef: "segunda_federacion",
+  primera_rfef: "primera_federacion",
+  segunda: "hypermotion",
+};
+
+function analizarTextoImportacionAs(texto, anio) {
+  const lineas = texto.split("\n").map(l => l.trim()).filter(l => l !== "");
+  const partidos = [];
+  const avisos = [];
+  let fechaActualISO = null;
+  let fechaActualTexto = null;
+  let pendiente = null; // { grupoNum, local, hora, golesLocal, golesVisitante, competicionUrl, estado }
+
+  const descartarPendiente = () => {
+    if (pendiente && pendiente.local) {
+      avisos.push(`No se ha podido leer el rival de "${pendiente.local}" (${fechaActualTexto || "fecha desconocida"}); se ha omitido.`);
+    }
+    pendiente = null;
+  };
+
+  for (const linea of lineas) {
+    // Cabecera de día: "Sábado 3 de Octubre"
+    const matchDia = linea.match(RE_CABECERA_DIA);
+    if (matchDia) {
+      descartarPendiente();
+      const [, , dia, mes] = matchDia;
+      fechaActualISO = fechaImportISO(dia, mes, anio);
+      fechaActualTexto = linea;
+      if (!fechaActualISO) avisos.push(`No se ha entendido la fecha "${linea}".`);
+      continue;
+    }
+
+    // Viñeta de grupo: abre un partido nuevo.
+    const matchGrupo = linea.match(RE_GRUPO_AS);
+    if (matchGrupo) {
+      descartarPendiente();
+      pendiente = { grupoNum: grupoAsANumero(matchGrupo[1]), local: null, hora: null, golesLocal: null, golesVisitante: null, competicionUrl: null, estado: null };
+      continue;
+    }
+    // Otras viñetas ("* Finalizado"...): estado del partido en curso, si se reconoce.
+    if (linea.startsWith("*")) {
+      const estado = ESTADOS_TEXTO_A_BACKEND[linea.replace(/^\*+/, "").trim().toLowerCase()];
+      if (estado && pendiente) pendiente.estado = estado;
+      continue;
+    }
+
+    if (RE_AS_IGNORAR.test(linea)) continue;
+    // Fuera de un bloque (cabeceras de la página, etc.) no se lee nada.
+    if (!pendiente) continue;
+
+    // Hora: "[16:00](url)CET"
+    const matchHora = linea.match(RE_HORA_AS);
+    if (matchHora) {
+      pendiente.hora = `${matchHora[1].padStart(2, "0")}:${matchHora[2]}`;
+      const mUrl = matchHora[3].match(/\/futbol\/([a-z_]+)\//i);
+      if (mUrl) pendiente.competicionUrl = COMPETICION_POR_URL_AS[mUrl[1].toLowerCase()] || null;
+      continue;
+    }
+    // Hora en texto plano ("16:00"; la línea "CET" siguiente se ignora).
+    const matchHoraPlana = linea.match(RE_HORA_AS_PLANA);
+    if (matchHoraPlana) {
+      pendiente.hora = `${matchHoraPlana[1].padStart(2, "0")}:${matchHoraPlana[2]}`;
+      continue;
+    }
+    // Marcador de un partido ya jugado: "[2 - 1](url)" o "2 - 1"
+    const matchMarcador = linea.match(RE_MARCADOR) || linea.match(RE_MARCADOR_AS_PLANO);
+    if (matchMarcador) {
+      pendiente.golesLocal = parseInt(matchMarcador[1], 10);
+      pendiente.golesVisitante = parseInt(matchMarcador[2], 10);
+      continue;
+    }
+
+    // Resto: nombre de equipo (enlace o texto suelto). El primero es el
+    // local; el segundo, el visitante, y con él se cierra el partido.
+    const nombre = nombreEquipoAs(linea);
+    if (!nombre) continue;
+    if (!pendiente.local) { pendiente.local = nombre; continue; }
+
+    const visitante = nombre;
+    let competicion = detectarCompeticionPorEquipos(pendiente.local, visitante) || pendiente.competicionUrl;
+    const tieneMarcador = pendiente.golesLocal !== null && pendiente.golesVisitante !== null;
+    const estadoFinal = pendiente.estado || (tieneMarcador ? "finalizado" : "programado");
+    // El grupo solo vale si esa competición tiene ese grupo ("Grupo 3" en Segunda Fed.).
+    const grupoTexto = pendiente.grupoNum ? `Grupo ${pendiente.grupoNum}` : "";
+    const grupoOrigen = (competicion && (GRUPOS_POR_COMPETICION_IMPORT[competicion] || []).includes(grupoTexto)) ? grupoTexto : "";
+    partidos.push({
+      fecha_iso: fechaActualISO,
+      fecha_texto: fechaActualTexto,
+      hora: estadoFinal === "programado" ? pendiente.hora : null,
+      competicion,
+      grupo_origen: grupoOrigen,
+      equipo_local: nombreOficialEquipo(pendiente.local, competicion),
+      equipo_visitante: nombreOficialEquipo(visitante, competicion),
+      equipo_local_original: pendiente.local,
+      equipo_visitante_original: visitante,
+      goles_local: tieneMarcador ? pendiente.golesLocal : null,
+      goles_visitante: tieneMarcador ? pendiente.golesVisitante : null,
+      estado: estadoFinal,
+    });
+    pendiente = null;
+  }
+  descartarPendiente();
+
+  return { partidos, avisos };
+}
+
 // ---------- PARSER DEL TEXTO PEGADO ----------
 // Recorre el texto línea a línea. Cada bloque de partido tiene esta
 // forma (algunas líneas pueden faltar si el partido aún no se ha
@@ -993,6 +1195,9 @@ function nombreOficialEquipo(nombreTexto, competicion) {
 //   [Ver crónica](url)        <- se ignora
 //   [Más apuestas](url)       <- se ignora (publicidad de apuestas)
 function analizarTextoImportacion(texto, anio) {
+  // Limpieza previa: tildes descompuestas (NFD), espacios duros y caracteres
+  // invisibles que a veces arrastra el copiado desde la web.
+  texto = String(texto).normalize("NFC").replace(/[\u200b-\u200d\ufeff]/g, "").replace(/\u00a0/g, " ");
   const lineasDeteccion = texto.split("\n").map(l => l.trim()).filter(l => l !== "");
   const formato = detectarFormatoTexto(lineasDeteccion);
   if (formato === "compacto") {
@@ -1003,6 +1208,9 @@ function analizarTextoImportacion(texto, anio) {
   }
   if (formato === "espn") {
     return analizarTextoImportacionEspn(texto, anio);
+  }
+  if (formato === "as") {
+    return analizarTextoImportacionAs(texto, anio);
   }
   return analizarTextoImportacionMarkdown(texto, anio);
 }
@@ -1140,21 +1348,84 @@ function deducirJornadaPorFecha(competicion, fechaISO) {
 
 // ---------- BÚSQUEDA DE PARTIDO YA EXISTENTE ----------
 // Un partido pegado se considera "el mismo" que uno ya guardado si
-// coincide la competición, el mismo día (no hace falta la hora, que
-// el texto pegado no trae) y los mismos dos equipos (en cualquier
-// orden, por si alguna vez vinieran cambiados local/visitante).
-async function buscarResultadoExistente(partido) {
+// coincide la competición, los mismos dos equipos (en cualquier orden,
+// comparando nombres NORMALIZADOS) y además o bien el mismo día, o bien
+// la misma jornada.
+//
+// Antes solo se miraba el mismo día y con el nombre exacto. El servidor,
+// en cambio, bloquea la creación de un partido cuando ya existe el mismo
+// enfrentamiento en la MISMA JORNADA (ver detectarPartidoDuplicado en el
+// worker), aunque el día u hora guardados sean otros (partido movido de
+// sábado a domingo, hora provisional, etc.). Resultado: el importador
+// creía que el partido era nuevo, intentaba crearlo y el servidor lo
+// rechazaba con "Este partido ya existe en la jornada N...". Ahora la
+// búsqueda usa el mismo criterio que el servidor, así que esos partidos
+// salen en la vista previa como "Actualizará #id".
+
+// Misma normalización que usa el servidor (normalizarEquipoDuplicado en
+// worker/src/index.js). Mantener ambas sincronizadas.
+function normalizarEquipoImportRapida(nombre) {
+  const n = String(nombre || "")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[.\-_'"`]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const societarios = ["cf", "cd", "ud", "sd", "ad", "ue", "ce", "rc", "rcd", "fc", "sad", "club", "cp", "ca"];
+  const partes = n.split(" ");
+  while (partes.length > 1 && (societarios.includes(partes[0]) || partes[0].length === 1)) partes.shift();
+  while (partes.length > 1 && societarios.includes(partes[partes.length - 1])) partes.pop();
+  return partes.join(" ");
+}
+
+function sumarDiasISOImportRapida(diaISO, n) {
+  const d = new Date(`${diaISO}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+// Los resultados de cada competición se piden UNA sola vez por análisis
+// (antes se pedían 500 filas por cada partido pegado, lo que con una
+// jornada entera son decenas de consultas pesadas a D1). "desde_fecha"
+// deja fuera las temporadas antiguas acumuladas en la base de datos.
+let CACHE_RESULTADOS_IMPORT = new Map();
+
+function reiniciarCacheResultadosImportRapida() {
+  CACHE_RESULTADOS_IMPORT = new Map();
+}
+
+function cargarResultadosCompeticionImportRapida(competicion, desdeFecha) {
+  const clave = `${competicion}|${desdeFecha || ""}`;
+  if (!CACHE_RESULTADOS_IMPORT.has(clave)) {
+    const params = new URLSearchParams({ competicion, limit: "500" });
+    if (desdeFecha) params.set("desde_fecha", desdeFecha);
+    const promesa = apiFetch(`/api/results?${params.toString()}`).then(r => r.results || []);
+    CACHE_RESULTADOS_IMPORT.set(clave, promesa);
+    // Si falla, no se deja cacheado el error: el siguiente partido reintenta.
+    promesa.catch(() => CACHE_RESULTADOS_IMPORT.delete(clave));
+  }
+  return CACHE_RESULTADOS_IMPORT.get(clave);
+}
+
+async function buscarResultadoExistente(partido, jornada = null, desdeFecha = null) {
   if (!partido.competicion) return null;
-  const { results = [] } = await apiFetch(
-    `/api/results?competicion=${encodeURIComponent(partido.competicion)}&limit=500`
-  );
-  return results.find(r => {
-    const mismoDia = (r.fecha_partido || "").slice(0, 10) === partido.fecha_iso;
-    if (!mismoDia) return false;
-    const mismosEquiposEnOrden = r.equipo_local === partido.equipo_local && r.equipo_visitante === partido.equipo_visitante;
-    const mismosEquiposCruzados = r.equipo_local === partido.equipo_visitante && r.equipo_visitante === partido.equipo_local;
-    return mismosEquiposEnOrden || mismosEquiposCruzados;
-  }) || null;
+  const results = await cargarResultadosCompeticionImportRapida(partido.competicion, desdeFecha);
+  const localNorm = normalizarEquipoImportRapida(partido.equipo_local);
+  const visitanteNorm = normalizarEquipoImportRapida(partido.equipo_visitante);
+  const mismosEquipos = (r) => {
+    const cl = normalizarEquipoImportRapida(r.equipo_local);
+    const cv = normalizarEquipoImportRapida(r.equipo_visitante);
+    return (cl === localNorm && cv === visitanteNorm) || (cl === visitanteNorm && cv === localNorm);
+  };
+  const candidatos = results.filter(mismosEquipos);
+  // 1º el del mismo día; si no hay, el de la misma jornada (los
+  // amistosos no tienen jornada real, así que solo valen por día).
+  const mismoDia = candidatos.find(r => (r.fecha_partido || "").slice(0, 10) === partido.fecha_iso);
+  if (mismoDia) return mismoDia;
+  if (partido.competicion !== "amistoso" && Number.isInteger(jornada)) {
+    return candidatos.find(r => Number(r.jornada) === jornada) || null;
+  }
+  return null;
 }
 
 // ---------- GRUPOS POR COMPETICIÓN ----------
@@ -1252,19 +1523,35 @@ async function analizarImportacionRapida() {
     // Para cada partido detectado: busca si ya existe, y deduce la
     // jornada (calendario de jornadas, o el valor de respaldo).
     const jornadaFallback = parseInt(document.getElementById("importRapidaJornadaFallback").value, 10);
+    reiniciarCacheResultadosImportRapida();
+    // Fecha mínima por competición (menos 7 días de margen) para pedir
+    // al servidor solo la temporada en curso, no todo el histórico.
+    const desdePorCompeticion = {};
+    for (const p of partidos) {
+      if (!p.competicion || !p.fecha_iso) continue;
+      if (!desdePorCompeticion[p.competicion] || p.fecha_iso < desdePorCompeticion[p.competicion]) {
+        desdePorCompeticion[p.competicion] = p.fecha_iso;
+      }
+    }
+    for (const c of Object.keys(desdePorCompeticion)) {
+      desdePorCompeticion[c] = sumarDiasISOImportRapida(desdePorCompeticion[c], -7);
+    }
     const resueltos = [];
     for (const p of partidos) {
       let existente = null;
       let errorBusqueda = null;
+      // La jornada se deduce primero (solo depende de la fecha) para
+      // poder buscar el partido existente también por jornada.
+      const jornadaDeducida = deducirJornadaPorFecha(p.competicion, p.fecha_iso);
+      const jornadaBase = jornadaDeducida ?? (Number.isInteger(jornadaFallback) ? jornadaFallback : null);
       if (p.competicion && p.fecha_iso) {
         try {
-          existente = await buscarResultadoExistente(p);
+          existente = await buscarResultadoExistente(p, jornadaBase, desdePorCompeticion[p.competicion]);
         } catch (err) {
           errorBusqueda = err.message;
         }
       }
-      const jornadaDeducida = deducirJornadaPorFecha(p.competicion, p.fecha_iso);
-      const jornadaFinal = jornadaDeducida ?? (Number.isInteger(jornadaFallback) ? jornadaFallback : (existente?.jornada ?? null));
+      const jornadaFinal = jornadaBase ?? (existente?.jornada ?? null);
       // Grupo y ubicación: si ya existe un resultado guardado en BD para
       // este partido, se respeta lo que tenga (puede haberse editado a
       // mano). Si no existe, se autorellena a partir del equipo local
@@ -1291,13 +1578,16 @@ async function analizarImportacionRapida() {
       if (grupoLocal && grupoVisitante && grupoLocal !== grupoVisitante) {
         avisos.push(`"${p.equipo_local}" (${grupoLocal}) y "${p.equipo_visitante}" (${grupoVisitante}) figuran en grupos distintos: revisa el grupo de ese partido a mano.`);
       }
+      if (p.grupo_origen && grupoSeguro && p.grupo_origen !== grupoSeguro) {
+        avisos.push(`"${p.equipo_local}" - "${p.equipo_visitante}": el texto dice ${p.grupo_origen} pero la lista de clubes los sitúa en ${grupoSeguro}; se ha usado ${p.grupo_origen}.`);
+      }
       const ubicacionAuto = getEstadioClub(p.equipo_local) || "";
       resueltos.push({
         ...p,
         existente,
         error_busqueda: errorBusqueda,
         jornada: jornadaFinal,
-        grupo: grupoSeguro || existente?.grupo || grupoAuto,
+        grupo: p.grupo_origen || grupoSeguro || existente?.grupo || grupoAuto,
         ubicacion: existente?.ubicacion || ubicacionAuto,
         // Hora del partido (solo aplica a partidos aún por jugar,
         // "programado"): si ya existe un resultado guardado con hora
@@ -1510,28 +1800,47 @@ async function confirmarImportacionRapida() {
         fila.classList.add("import-rapida-log-fila-ok");
         fila.innerHTML = `<span class="import-rapida-log-icono">✅</span> Actualizado: <strong>${escaparHtmlImportRapida(p.equipo_local)}</strong> ${p.goles_local ?? "-"} - ${p.goles_visitante ?? "-"} <strong>${escaparHtmlImportRapida(p.equipo_visitante)}</strong> (#${p.existente.id})`;
       } else {
+        // Si el servidor dice que el partido ya existe en la misma jornada
+        // (duplicado bloqueante), no es un error: es justo el partido que
+        // hay que ACTUALIZAR. El 409 trae el partido existente, así que se
+        // convierte en un PUT en vez de dejar la fila en rojo.
+        let existenteServidor = null;
         try {
           await apiFetch(`/api/results`, { method: "POST", body: JSON.stringify(body) });
         } catch (err) {
-          if (err.status === 409 && err.data?.duplicado_bloqueante) {
-            // Duplicado duro (mismos equipos, misma jornada): no se
-            // crea ni confirmando. Se marca la fila como error para que
-            // el redactor vea exactamente cuál se ha quedado fuera.
-            throw err;
-          }
-          if (err.status === 409 && err.data?.posible_duplicado) {
+          if (err.status === 409 && err.data?.duplicado_bloqueante && err.data?.partido_existente?.id) {
+            existenteServidor = err.data.partido_existente;
+          } else if (err.status === 409 && err.data?.posible_duplicado) {
             // Ya existía algo prácticamente idéntico (aunque nuestra
-            // búsqueda por día no lo haya visto, p.ej. por diferencias
-            // de hora): se crea igual, ya que el usuario ya confirmó
-            // la importación de este partido en la vista previa.
+            // búsqueda no lo haya visto, p.ej. por diferencias de hora):
+            // se crea igual, ya que el usuario ya confirmó la
+            // importación de este partido en la vista previa.
             await apiFetch(`/api/results`, { method: "POST", body: JSON.stringify({ ...body, confirmar_duplicado: true }) });
           } else {
             throw err;
           }
         }
-        creados++;
-        fila.classList.add("import-rapida-log-fila-nuevo");
-        fila.innerHTML = `<span class="import-rapida-log-icono">🆕</span> Creado: <strong>${escaparHtmlImportRapida(p.equipo_local)}</strong> ${p.goles_local ?? "-"} - ${p.goles_visitante ?? "-"} <strong>${escaparHtmlImportRapida(p.equipo_visitante)}</strong>`;
+        if (existenteServidor) {
+          const bodyUpd = { ...body, confirmar_duplicado: true };
+          // Mismo criterio que al actualizar desde la vista previa: un
+          // partido por jugar conserva la hora que ya tenía guardada si
+          // en el texto pegado no venía ninguna (si no, se perdería).
+          const horaGuardada = (existenteServidor.fecha_partido && String(existenteServidor.fecha_partido).includes("T"))
+            ? String(existenteServidor.fecha_partido).slice(11, 16) : "";
+          if (p.estado === "programado") {
+            const horaFinal = p.hora || horaGuardada;
+            bodyUpd.fecha_partido = horaFinal ? `${p.fecha_iso}T${horaFinal}` : p.fecha_iso;
+          }
+          if (!bodyUpd.grupo && existenteServidor.grupo) bodyUpd.grupo = existenteServidor.grupo;
+          await apiFetch(`/api/results/${existenteServidor.id}`, { method: "PUT", body: JSON.stringify(bodyUpd) });
+          actualizados++;
+          fila.classList.add("import-rapida-log-fila-ok");
+          fila.innerHTML = `<span class="import-rapida-log-icono">✅</span> Actualizado: <strong>${escaparHtmlImportRapida(p.equipo_local)}</strong> ${p.goles_local ?? "-"} - ${p.goles_visitante ?? "-"} <strong>${escaparHtmlImportRapida(p.equipo_visitante)}</strong> (#${existenteServidor.id}, ya existía en la jornada ${existenteServidor.jornada ?? "-"})`;
+        } else {
+          creados++;
+          fila.classList.add("import-rapida-log-fila-nuevo");
+          fila.innerHTML = `<span class="import-rapida-log-icono">🆕</span> Creado: <strong>${escaparHtmlImportRapida(p.equipo_local)}</strong> ${p.goles_local ?? "-"} - ${p.goles_visitante ?? "-"} <strong>${escaparHtmlImportRapida(p.equipo_visitante)}</strong>`;
+        }
       }
     } catch (err) {
       fallidos++;

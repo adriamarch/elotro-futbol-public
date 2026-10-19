@@ -1,7 +1,31 @@
 // ---------- Lógica compartida de partidos (usada en index.html y resultados.html) ----------
 
+// De cara al público un partido ANULADO no se enseña como "Anulado": es un
+// partido que aún está "Por jugar", solo que todavía sin nueva fecha
+// (pendiente de reprogramar). En cuanto desde el panel se le pone nueva
+// fecha y vuelve a "programado", pasa a verse como cualquier otro por jugar.
 function estadoLabel(e) {
-  return { programado: "Por jugar", en_juego: "En juego", retrasado: "Retrasado", anulado: "Anulado", finalizado: "Finalizado" }[e] || e;
+  return { programado: "Por jugar", en_juego: "En juego", retrasado: "Retrasado", anulado: "Por jugar", finalizado: "Finalizado" }[e] || e;
+}
+
+function esAnuladoPendiente(p) {
+  return !!p && p.estado === "anulado";
+}
+
+const ICONO_CALENDARIO_APLAZADO = `<svg class="aplazado-icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="16.5" rx="3"/><path d="M8 2.8v3.4M16 2.8v3.4M3 10h18"/><path d="M12 13.4v2.6l1.9 1.1"/></svg>`;
+
+// Bloque del modal de detalle para un partido anulado: sustituye a los
+// eventos (que no se enseñan) por un aviso claro de que sigue pendiente.
+function aplazadoModalHTML(p) {
+  const prevista = p && p.fecha_partido ? formatFecha(p.fecha_partido) : "";
+  return `
+    <div class="modal-aplazado">
+      <span class="modal-aplazado-icono">${ICONO_CALENDARIO_APLAZADO}</span>
+      <div class="modal-aplazado-texto">
+        <strong>Pendiente de reprogramar</strong>
+        <span>Este partido todavía no tiene nueva fecha${prevista ? ` (estaba previsto para el ${escapeHtml(prevista)})` : ""}. En cuanto se confirme, lo verás aquí.</span>
+      </div>
+    </div>`;
 }
 
 // Un partido "no cubierto" es uno ya finalizado del que nunca se hizo
@@ -14,6 +38,17 @@ function estadoLabel(e) {
 // pulse si alguien cierra el partido sin haber registrado nada más-.
 // Si solo hay esos, o ninguno, se considera sin cubrir; cualquier otro
 // evento (gol, tarjeta, cambio...) ya cuenta como cobertura real.
+// Partido ya jugado que el cron cerró solo porque nadie de la redacción lo
+// cubrió (results.finalizado_no_cubierto = 1). La web pública lo enseña con
+// un aviso -"jugado, aún sin cubrir/actualizar"- y NO cuenta en la
+// clasificación, las estadísticas ni las porras (esas pantallas no piden
+// estos partidos al backend, ver ?con_no_cubiertos=1 en /api/results).
+function esFinalizadoSinCubrir(p) {
+  return !!p && p.estado === "finalizado" && Number(p.finalizado_no_cubierto) === 1;
+}
+const ICONO_SIN_CUBRIR = `<svg class="sin-cubrir-icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/></svg>`;
+const TEXTO_SIN_CUBRIR_LARGO = "Este partido ya se ha jugado, pero todavía no se ha cubierto ni actualizado en la web. El marcador es provisional y no cuenta en la clasificación ni en las estadísticas hasta que la redacción lo confirme.";
+
 const TIPOS_EVENTO_HITO_SIN_COBERTURA = ["inicio_partido", "descanso", "fin_descanso", "fin_partido"];
 function partidoNoCubierto(estado, eventos) {
   if (estado !== "finalizado") return false;
@@ -46,14 +81,16 @@ function timestampFechaPartido(p) {
 // jugando ahora mismo debe seguir destacando arriba), y cualquier
 // partido ya jugado/en juego siempre va antes que cualquiera "por
 // jugar".
-// Rango de prioridad: 0 en juego, 1 finalizado/anulado/retrasado ya
-// disputado, 2 programado amistoso (por jugar, destacado arriba del
-// resto de programados), 3 programado del resto de competiciones (por
-// jugar, del más próximo al más lejano).
+// Rango de prioridad: 0 en juego, 1 finalizado/retrasado ya disputado,
+// 2 programado amistoso (por jugar, destacado arriba del resto de
+// programados), 3 programado del resto de competiciones (por jugar, del
+// más próximo al más lejano), 4 anulado (se ve como por jugar pero sin
+// nueva fecha: va detrás de los que sí tienen fecha).
 function prioridadOrdenPartido(p) {
   if (p.estado === "en_juego") return 0;
   if (p.estado === "programado") return p.competicion === "amistoso" ? 2 : 3;
-  return 1; // finalizado, anulado, retrasado (ya con fecha pasada o resultado)
+  if (p.estado === "anulado") return 4;
+  return 1; // finalizado, retrasado (ya con fecha pasada o resultado)
 }
 
 function ordenarPartidosCronologicamente(partidos) {
@@ -70,7 +107,7 @@ function ordenarPartidosCronologicamente(partidos) {
     if (isNaN(ta) && isNaN(tb)) return 0;
     if (isNaN(ta)) return 1; // sin fecha, al final de su grupo
     if (isNaN(tb)) return -1;
-    return (prioA === 2 || prioA === 3) ? (ta - tb) : (tb - ta);
+    return (prioA === 2 || prioA === 3 || prioA === 4) ? (ta - tb) : (tb - ta);
   });
 }
 
@@ -97,14 +134,66 @@ function minutoEnVivoPublico(p) {
   // ajuste_cronometro_minutos y hay que sumarlo, o la web pública se
   // quedaría mostrando el minuto antiguo tras la corrección.
   const ajuste = Number.isInteger(p.ajuste_cronometro_minutos) ? p.ajuste_cronometro_minutos : 0;
-  return Math.max(0, Math.floor((Date.now() - inicio) / 60000) + ajuste);
+  const minutos = Math.max(0, Math.floor((Date.now() - inicio) / 60000) + ajuste);
+  // Con añadido anunciado el reloj no pasa del final de ese añadido (45+N /
+  // 90+N): el servidor para el partido solo en ese punto, con hasta un minuto
+  // de retraso, y mientras tanto no debe verse un "45+4" con "+3" anunciado.
+  const limite = limiteAnadidoPublico(p);
+  return limite !== null ? Math.min(minutos, limite) : minutos;
+}
+
+// Tiempo añadido anunciado por la redacción en directo: { minutos, parte } o
+// null si no hay ninguno (results.anadido_minutos / anadido_parte).
+function anadidoAnunciadoPublico(p) {
+  const n = Number(p && p.anadido_minutos), parte = Number(p && p.anadido_parte);
+  if (!Number.isInteger(n) || n <= 0 || n > 15 || (parte !== 1 && parte !== 2)) return null;
+  return { minutos: n, parte };
+}
+// El añadido solo se hace público al llegar el reloj al 45' (1ª parte) o al 90'
+// (2ª), aunque la redacción lo anuncie antes (p. ej. en el 43'). Hasta entonces
+// la web pública no lo enseña (ni la pastilla, ni el "(+N)", ni el evento).
+function anadidoVisiblePublico(p) {
+  const a = anadidoAnunciadoPublico(p);
+  if (!a) return null;
+  const m = minutoEnVivoPublico(p);
+  return m !== null && m !== undefined && m >= (a.parte === 1 ? 45 : 90) ? a : null;
+}
+// ¿Se muestra ya este evento "Tiempo añadido" (minuto 45 o 90) al público?
+function eventoAnadidoVisiblePublico(ev, p) {
+  if (!p || p.estado !== "en_juego") return true;
+  const m = minutoEnVivoPublico(p);
+  return m === null || m === undefined || m >= (ev.minuto === 45 ? 45 : 90);
+}
+
+// Minuto del reloj en el que acaba el añadido anunciado (45+N o 90+N), o null.
+function limiteAnadidoPublico(p) {
+  const a = anadidoAnunciadoPublico(p);
+  return a ? (a.parte === 1 ? 45 : 90) + a.minutos : null;
 }
 
 // Texto del minuto a mostrar junto a "EN JUEGO" (p.ej. "· 63'"), o cadena
 // vacía si no tenemos datos de cronómetro todavía.
 function minutoEnVivoTexto(p) {
   const minuto = minutoEnVivoPublico(p);
-  return minuto === null ? "" : `· ${minuto}'`;
+  if (minuto === null) return "";
+  const a = anadidoVisiblePublico(p);
+  // Con el partido parado (descanso/pausa) no se enseña el "(+N)".
+  const parado = p.cronometro_pausado_en !== null && p.cronometro_pausado_en !== undefined;
+  // Ya dentro del añadido se ve también cuánto queda: "(+3 · quedan 2')".
+  let sufijo = "";
+  if (a && !parado) {
+    const base = a.parte === 1 ? 45 : 90;
+    const quedan = base + a.minutos - minuto;
+    sufijo = minuto < base ? ` (+${a.minutos})`
+      : quedan <= 0 ? ` (+${a.minutos} · final)`
+      : quedan === 1 ? ` (+${a.minutos} · último min.)`
+      : ` (+${a.minutos} · quedan ${quedan}')`;
+  }
+  // Pasado el 90 se muestra como 90+3', no 93'. En la 1ª parte con añadido
+  // anunciado, pasado el 45 se muestra como 45+2'.
+  if (minuto > 90) return `· 90+${minuto - 90}'${sufijo}`;
+  if (a && a.parte === 1 && minuto > 45) return `· 45+${minuto - 45}'${sufijo}`;
+  return `· ${minuto}'${sufijo}`;
 }
 
 // Refresca cada 20s el minuto mostrado en todas las tarjetas "en juego"
@@ -181,7 +270,7 @@ async function refrescarPartidosEnVivo() {
   if (!ids.length) return;
   try {
     await Promise.all(ids.map(async (id) => {
-      const res = await apiFetch(`/api/results/${id}`, { cache: "no-store" });
+      const res = await apiFetch(`/api/results/${id}?ligero=1`, { cache: "no-store" });
       if (!res.ok) return;
       const { resultado } = await res.json();
       if (!resultado) return;
@@ -223,7 +312,9 @@ function actualizarPartidoEnPantalla(resultado, eventos) {
     || anterior.penaltis_visitante !== resultado.penaltis_visitante
     || anterior.inicio_cronometro_at !== resultado.inicio_cronometro_at
     || anterior.cronometro_pausado_en !== resultado.cronometro_pausado_en
-    || anterior.ajuste_cronometro_minutos !== resultado.ajuste_cronometro_minutos;
+    || anterior.ajuste_cronometro_minutos !== resultado.ajuste_cronometro_minutos
+    || anterior.anadido_minutos !== resultado.anadido_minutos
+    || anterior.anadido_parte !== resultado.anadido_parte;
 
   if (eventos !== null) {
     const firmaNueva = firmaEventos(eventos);
@@ -280,6 +371,25 @@ iniciarAutoRefrescoPartidos();
 // LaLiga Hypermotion, que es la LaLiga2 actual).
 const COMPETICIONES_CON_FLASHSCORE_PUBLICO = ["hypermotion", "primera_federacion", "segunda_federacion"];
 
+// ---------- PARTIDAZO DE LA JORNADA ----------
+// El backend marca (results.partidazo = 1) un partido por liga y jornada
+// y guarda en partidazo_motivos un JSON con las etiquetas que lo explican
+// ("Derbi regional", "Duelo directo por el ascenso"...).
+function esPartidazo(p) {
+  return Number(p.partidazo) === 1 && p.estado !== "anulado";
+}
+function motivosPartidazo(p) {
+  try {
+    const m = typeof p.partidazo_motivos === "string" ? JSON.parse(p.partidazo_motivos) : p.partidazo_motivos;
+    return Array.isArray(m) ? m.filter(Boolean).map(String) : [];
+  } catch (e) { return []; }
+}
+function cintaPartidazoHTML(p) {
+  if (!esPartidazo(p)) return "";
+  const motivos = motivosPartidazo(p);
+  return `<div class="partidazo-cinta" title="${escapeHtml(motivos.join(" · "))}"><span class="partidazo-cinta-titulo"><span class="partidazo-llama" aria-hidden="true">🔥</span>Partidazo de la jornada</span>${motivos.length ? `<span class="partidazo-chips">${motivos.map((m) => `<span class="partidazo-chip">${escapeHtml(m)}</span>`).join("")}</span>` : ""}</div>`;
+}
+
 // Genera el HTML de una fila de partido (reutilizable en portada y en la
 // página de resultados). "clicable" añade role/tabindex para poder abrir
 // el modal de detalle.
@@ -314,11 +424,11 @@ function partidoHTML(p, { mostrarCompeticion = false } = {}) {
         ? `<span class="en-vivo-punto"></span>DESCANSO <span data-minuto-en-vivo="${p.id}">${minutoEnVivoTexto(p)}</span>`
         : `<span class="en-vivo-punto"></span>EN JUEGO <span data-minuto-en-vivo="${p.id}">${minutoEnVivoTexto(p)}</span>`)
     : estadoLabel(p.estado);
-  // Un partido anulado se destaca con una cinta grande encima de toda la
-  // tarjeta (no solo el texto pequeño del badge de estado, que pasaba
-  // desapercibido para algo tan importante como "esto no ha valido").
+  // Un partido anulado se enseña como "Por jugar" con una cinta suave
+  // encima de la tarjeta que avisa de que aún no tiene nueva fecha. No
+  // se pinta marcador (solo "vs") ni nada del partido que se anuló.
   const cintaAnulado = anulado
-    ? `<div class="partido-anulado-cinta">ANULADO</div>`
+    ? `<div class="partido-aplazado-cinta">${ICONO_CALENDARIO_APLAZADO}<span>Pendiente de reprogramar</span></div>`
     : "";
   // Partidos que nadie de redacción cubre se rellenan automáticamente a
   // partir de una fuente externa (ver worker: sincronizarPartidosAutomaticosSiToca)
@@ -326,9 +436,15 @@ function partidoHTML(p, { mostrarCompeticion = false } = {}) {
   // ninguna etiqueta visible: de cara al usuario se muestran igual que
   // cualquier otro partido.
   const etiquetaAutomatico = "";
+  const sinCubrir = esFinalizadoSinCubrir(p);
+  const cintaSinCubrir = sinCubrir
+    ? `<div class="partido-sin-cubrir-cinta" title="${escapeHtml(TEXTO_SIN_CUBRIR_LARGO)}">${ICONO_SIN_CUBRIR}<span>Jugado · aún sin cubrir</span><em>No cuenta en la clasificación</em></div>`
+    : "";
   return `
-    <div class="partido${enJuego ? " partido-en-vivo" : ""}${anulado ? " partido-anulado" : ""}" data-id="${p.id}" data-mostrar-competicion="${mostrarCompeticion ? "1" : "0"}" role="button" tabindex="0">
+    <div class="partido${enJuego ? " partido-en-vivo" : ""}${anulado ? " partido-anulado" : ""}${sinCubrir ? " partido-sin-cubrir" : ""}${esPartidazo(p) ? " partido-partidazo" : ""}" data-id="${p.id}" data-mostrar-competicion="${mostrarCompeticion ? "1" : "0"}" role="button" tabindex="0">
       ${cintaAnulado}
+      ${cintaSinCubrir}
+      ${cintaPartidazoHTML(p)}
       <span class="equipo equipo-local">
         <span class="nombre-equipo">${escapeHtml(p.equipo_local)}</span>
         <img class="escudo" src="${getEscudoUrl(p.equipo_local, p.escudo_local_url)}" alt="" loading="lazy" data-equipo="${escapeHtml(p.equipo_local)}" onerror="manejarErrorEscudo(this);">
@@ -338,7 +454,7 @@ function partidoHTML(p, { mostrarCompeticion = false } = {}) {
         <img class="escudo" src="${getEscudoUrl(p.equipo_visitante, p.escudo_visitante_url)}" alt="" loading="lazy" data-equipo="${escapeHtml(p.equipo_visitante)}" onerror="manejarErrorEscudo(this);">
         <span class="nombre-equipo">${escapeHtml(p.equipo_visitante)}</span>
       </span>
-      <span class="estado-badge${enJuego ? " estado-badge-en-vivo" : ""}">${estadoTexto}${metaExtra ? " · " + metaExtra : ""}${p.fecha_partido ? " · " + formatFecha(p.fecha_partido) : ""}${ubicacionExtra}</span>
+      <span class="estado-badge${enJuego ? " estado-badge-en-vivo" : ""}">${estadoTexto}${metaExtra ? " · " + metaExtra : ""}${anulado ? " · Fecha por confirmar" : (p.fecha_partido ? " · " + formatFecha(p.fecha_partido) : "")}${ubicacionExtra}</span>
       ${etiquetaAutomatico}
     </div>`;
 }
@@ -422,13 +538,13 @@ async function abrirModalPartido(id, { forzarRefrescoRed = true } = {}) {
   modalEstadoEl.classList.toggle("modal-estado-en-vivo", enJuego);
   modalEstadoEl.innerHTML = enJuego
     ? `<span class="en-vivo-punto"></span>${enDescanso ? "DESCANSO" : "EN JUEGO"} <span data-minuto-en-vivo="modal-${p.id}">${minutoEnVivoTexto(p)}</span>`
-    : estadoLabel(p.estado);
+    : (esFinalizadoSinCubrir(p) ? "Finalizado · sin cubrir" : estadoLabel(p.estado));
   document.getElementById("modalMarcador").classList.toggle("marcador-en-vivo", enJuego);
   document.querySelector(".modal-partido-caja")?.classList.toggle("modal-partido-caja-en-vivo", enJuego);
   document.getElementById("modalPartidoTitulo").textContent =
     (p.competicion === "amistoso" ? "Amistoso" : (p.jornada ? "Jornada " + (p.jornada_mostrar ?? p.jornada) : categoriaLabel(p.competicion))) +
     (p.grupo ? " · " + p.grupo : "") +
-    (p.fecha_partido ? " · " + formatFecha(p.fecha_partido) : "") +
+    (p.estado === "anulado" ? " · Fecha por confirmar" : (p.fecha_partido ? " · " + formatFecha(p.fecha_partido) : "")) +
     ((p.estado === "programado" || p.estado === "finalizado") && p.ubicacion ? " · " + p.ubicacion : "");
 
   // MVP (jugador destacado) del partido, si el redactor lo ha marcado
@@ -437,7 +553,7 @@ async function abrirModalPartido(id, { forzarRefrescoRed = true } = {}) {
   // que pertenece para que se identifique de un vistazo.
   const contMvp = document.getElementById("modalPartidoMvp");
   if (contMvp) {
-    if (p.mvp_jugador) {
+    if (p.mvp_jugador && p.estado !== "anulado") {
       const equipoMvp = p.mvp_equipo === "local" ? p.equipo_local : p.equipo_visitante;
       const escudoMvp = p.mvp_equipo === "local"
         ? getEscudoUrl(p.equipo_local, p.escudo_local_url)
@@ -478,7 +594,7 @@ async function abrirModalPartido(id, { forzarRefrescoRed = true } = {}) {
   if (enlaceMinutoAMinuto) {
     const puedeMinutoAMinuto = p.estado === "en_juego" || p.estado === "finalizado";
     enlaceMinutoAMinuto.hidden = !puedeMinutoAMinuto;
-    if (puedeMinutoAMinuto) enlaceMinutoAMinuto.href = `minuto-a-minuto.html?id=${p.id}`;
+    if (puedeMinutoAMinuto) enlaceMinutoAMinuto.href = `/minuto-a-minuto?id=${p.id}`;
   }
 
   // Si el partido tiene una (o varias) noticia ya publicada vinculada
@@ -507,6 +623,15 @@ async function abrirModalPartido(id, { forzarRefrescoRed = true } = {}) {
   document.body.style.overflow = "hidden";
 
   const cont = document.getElementById("modalPartidoEventos");
+
+  // Un partido anulado no enseña nunca sus eventos (goles, tarjetas,
+  // alineaciones...): se ve como un "por jugar" pendiente de nueva fecha.
+  if (p.estado === "anulado") {
+    const contAlineacionesAnulado = document.getElementById("modalPartidoAlineaciones");
+    if (contAlineacionesAnulado) contAlineacionesAnulado.innerHTML = "";
+    cont.innerHTML = aplazadoModalHTML(p);
+    return;
+  }
 
   // Si el partido todavía no se ha disputado, no tiene sentido pedir
   // eventos al backend: se avisa directamente.
@@ -550,12 +675,15 @@ function renderEventosModal(eventos) {
   const cont = document.getElementById("modalPartidoEventos");
   const idAbierto = document.getElementById("modalPartido")?.dataset.partidoIdAbierto;
   const p = idAbierto ? PARTIDOS_CACHE[idAbierto] : null;
+  const avisoSinCubrir = esFinalizadoSinCubrir(p)
+    ? `<div class="modal-sin-cubrir">${ICONO_SIN_CUBRIR}<div><strong>Pendiente de cobertura</strong><span>${escapeHtml(TEXTO_SIN_CUBRIR_LARGO)}</span></div></div>`
+    : "";
   if (p && partidoNoCubierto(p.estado, eventos)) {
-    cont.innerHTML = `<p class="modal-partido-sin-eventos">Este partido no ha sido cubierto minuto a minuto.</p>`;
+    cont.innerHTML = avisoSinCubrir || `<p class="modal-partido-sin-eventos">Este partido no ha sido cubierto minuto a minuto.</p>`;
     return;
   }
   if (!eventos.length) {
-    cont.innerHTML = `<p class="modal-partido-sin-eventos">Todavía no hay goles ni tarjetas registrados para este partido.</p>`;
+    cont.innerHTML = avisoSinCubrir + `<p class="modal-partido-sin-eventos">Todavía no hay goles ni tarjetas registrados para este partido.</p>`;
     return;
   }
   // La tanda de penaltis se pinta aparte, ordenada por lanzamiento (no
@@ -563,7 +691,7 @@ function renderEventosModal(eventos) {
   // se intercala con el resto del timeline del partido.
   const eventosTanda = eventos.filter(ev => TIPOS_EVENTO_TANDA_PENALTIS.includes(ev.tipo));
   const eventosPartido = eventos.filter(ev => !TIPOS_EVENTO_TANDA_PENALTIS.includes(ev.tipo));
-  cont.innerHTML = renderEventosModalPartido(eventosPartido) + renderTandaPenaltisModal(eventosTanda);
+  cont.innerHTML = avisoSinCubrir + renderEventosModalPartido(eventosPartido) + renderTandaPenaltisModal(eventosTanda);
 }
 
 function renderEventosModalPartido(eventos) {

@@ -1,0 +1,790 @@
+{
+ "actualizado": "2026-10-18",
+ "fuente": "LaPreferente.com",
+ "clubes": [
+  {
+   "club": "AD Alcorcón",
+   "slug": "ad-alcorcon",
+   "competicion": "primera_federacion",
+   "grupo": "Grupo 2",
+   "temporada": "2026/2027",
+   "jugadores": 24
+  },
+  {
+   "club": "AD Ceuta FC",
+   "slug": "ad-ceuta-fc",
+   "competicion": "hypermotion",
+   "grupo": null,
+   "temporada": "2026/2027",
+   "jugadores": 30
+  },
+  {
+   "club": "AD Mérida",
+   "slug": "ad-merida",
+   "competicion": "primera_federacion",
+   "grupo": "Grupo 1",
+   "temporada": "2026/2027",
+   "jugadores": 24
+  },
+  {
+   "club": "Águilas FC",
+   "slug": "aguilas-fc",
+   "competicion": "primera_federacion",
+   "grupo": "Grupo 2",
+   "temporada": "2026/2027",
+   "jugadores": 24
+  },
+  {
+   "club": "Albacete Balompié",
+   "slug": "albacete-balompie",
+   "competicion": "hypermotion",
+   "grupo": null,
+   "temporada": "2026/2027",
+   "jugadores": 32
+  },
+  {
+   "club": "Algeciras CF",
+   "slug": "algeciras-cf",
+   "competicion": "primera_federacion",
+   "grupo": "Grupo 2",
+   "temporada": "2026/2027",
+   "jugadores": 24
+  },
+  {
+   "club": "Antequera CF",
+   "slug": "antequera-cf",
+   "competicion": "primera_federacion",
+   "grupo": "Grupo 2",
+   "temporada": "2026/2027",
+   "jugadores": 24
+  },
+  {
+   "club": "Arenas Club",
+   "slug": "arenas-club",
+   "competicion": "primera_federacion",
+   "grupo": "Grupo 1",
+   "temporada": "2026/2027",
+   "jugadores": 25
+  },
+  {
+   "club": "Arosa SC",
+   "slug": "arosa-sc",
+   "competicion": "segunda_federacion",
+   "grupo": "Grupo 1",
+   "temporada": "2026/2027",
+   "jugadores": 24
+  },
+  {
+   "club": "Atlético Astorga",
+   "slug": "atletico-astorga",
+   "competicion": "segunda_federacion",
+   "grupo": "Grupo 1",
+   "temporada": "2026/2027",
+   "jugadores": 24
+  },
+  {
+   "club": "Atlético Madrileño",
+   "slug": "atletico-madrileno",
+   "competicion": "primera_federacion",
+   "grupo": "Grupo 2",
+   "temporada": "2026/2027",
+   "jugadores": 30
+  },
+  {
+   "club": "Atlético Osasuna B",
+   "slug": "atletico-osasuna-b",
+   "competicion": "segunda_federacion",
+   "grupo": "Grupo 2",
+   "temporada": "2026/2027",
+   "jugadores": 34
+  },
+  {
+   "club": "Barakaldo CF",
+   "slug": "barakaldo-cf",
+   "competicion": "primera_federacion",
+   "grupo": "Grupo 1",
+   "temporada": "2026/2027",
+   "jugadores": 24
+  },
+  {
+   "club": "Bergantiños",
+   "slug": "bergantinos",
+   "competicion": "segunda_federacion",
+   "grupo": "Grupo 1",
+   "temporada": "2026/2027",
+   "jugadores": 27
+  },
+  {
+   "club": "Bilbao Athletic",
+   "slug": "bilbao-athletic",
+   "competicion": "primera_federacion",
+   "grupo": "Grupo 1",
+   "temporada": "2026/2027",
+   "jugadores": 28
+  },
+  {
+   "club": "Burgos CF",
+   "slug": "burgos-cf",
+   "competicion": "hypermotion",
+   "grupo": null,
+   "temporada": "2026/2027",
+   "jugadores": 30
+  },
+  {
+   "club": "Cádiz CF",
+   "slug": "cadiz-cf",
+   "competicion": "hypermotion",
+   "grupo": null,
+   "temporada": "2026/2027",
+   "jugadores": 31
+  },
+  {
+   "club": "CD Arnedo",
+   "slug": "cd-arnedo",
+   "competicion": "segunda_federacion",
+   "grupo": "Grupo 2",
+   "temporada": "2026/2027",
+   "jugadores": 28
+  },
+  {
+   "club": "CD Basconia",
+   "slug": "cd-basconia",
+   "competicion": "segunda_federacion",
+   "grupo": "Grupo 1",
+   "temporada": "2026/2027",
+   "jugadores": 29
+  },
+  {
+   "club": "CD Castellón",
+   "slug": "cd-castellon",
+   "competicion": "hypermotion",
+   "grupo": null,
+   "temporada": "2026/2027",
+   "jugadores": 32
+  },
+  {
+   "club": "CD Coria",
+   "slug": "cd-coria",
+   "competicion": "primera_federacion",
+   "grupo": "Grupo 1",
+   "temporada": "2026/2027",
+   "jugadores": 24
+  },
+  {
+   "club": "CD Ebro",
+   "slug": "cd-ebro",
+   "competicion": "segunda_federacion",
+   "grupo": "Grupo 2",
+   "temporada": "2026/2027",
+   "jugadores": 24
+  },
+  {
+   "club": "CD Eldense",
+   "slug": "cd-eldense",
+   "competicion": "hypermotion",
+   "grupo": null,
+   "temporada": "2026/2027",
+   "jugadores": 32
+  },
+  {
+   "club": "CD Extremadura",
+   "slug": "cd-extremadura",
+   "competicion": "primera_federacion",
+   "grupo": "Grupo 1",
+   "temporada": "2026/2027",
+   "jugadores": 24
+  },
+  {
+   "club": "CD Leganés",
+   "slug": "cd-leganes",
+   "competicion": "hypermotion",
+   "grupo": null,
+   "temporada": "2026/2027",
+   "jugadores": 29
+  },
+  {
+   "club": "CD Lugo",
+   "slug": "cd-lugo",
+   "competicion": "primera_federacion",
+   "grupo": "Grupo 1",
+   "temporada": "2026/2027",
+   "jugadores": 25
+  },
+  {
+   "club": "CD Mirandés",
+   "slug": "cd-mirandes",
+   "competicion": "primera_federacion",
+   "grupo": "Grupo 1",
+   "temporada": "2026/2027",
+   "jugadores": 25
+  },
+  {
+   "club": "CD Tenerife",
+   "slug": "cd-tenerife",
+   "competicion": "hypermotion",
+   "grupo": null,
+   "temporada": "2026/2027",
+   "jugadores": 27
+  },
+  {
+   "club": "CD Teruel",
+   "slug": "cd-teruel",
+   "competicion": "primera_federacion",
+   "grupo": "Grupo 2",
+   "temporada": "2026/2027",
+   "jugadores": 21
+  },
+  {
+   "club": "CD Tudelano",
+   "slug": "cd-tudelano",
+   "competicion": "segunda_federacion",
+   "grupo": "Grupo 2",
+   "temporada": "2026/2027",
+   "jugadores": 32
+  },
+  {
+   "club": "CE Europa",
+   "slug": "ce-europa",
+   "competicion": "primera_federacion",
+   "grupo": "Grupo 2",
+   "temporada": "2026/2027",
+   "jugadores": 23
+  },
+  {
+   "club": "CE Manresa",
+   "slug": "ce-manresa",
+   "competicion": "segunda_federacion",
+   "grupo": "Grupo 2",
+   "temporada": "2026/2027",
+   "jugadores": 23
+  },
+  {
+   "club": "CE Sabadell",
+   "slug": "ce-sabadell",
+   "competicion": "hypermotion",
+   "grupo": null,
+   "temporada": "2026/2027",
+   "jugadores": 28
+  },
+  {
+   "club": "Celta Fortuna",
+   "slug": "celta-fortuna",
+   "competicion": "hypermotion",
+   "grupo": null,
+   "temporada": "2026/2027",
+   "jugadores": 30
+  },
+  {
+   "club": "CF Calamocha",
+   "slug": "cf-calamocha",
+   "competicion": "segunda_federacion",
+   "grupo": "Grupo 2",
+   "temporada": "2026/2027",
+   "jugadores": 31
+  },
+  {
+   "club": "CF Rayo Majadahonda",
+   "slug": "cf-rayo-majadahonda",
+   "competicion": "primera_federacion",
+   "grupo": "Grupo 2",
+   "temporada": "2026/2027",
+   "jugadores": 26
+  },
+  {
+   "club": "Club Marino de Luanco",
+   "slug": "club-marino-de-luanco",
+   "competicion": "segunda_federacion",
+   "grupo": "Grupo 1",
+   "temporada": "2026/2027",
+   "jugadores": 23
+  },
+  {
+   "club": "Club Portugalete",
+   "slug": "club-portugalete",
+   "competicion": "segunda_federacion",
+   "grupo": "Grupo 1",
+   "temporada": "2026/2027",
+   "jugadores": 27
+  },
+  {
+   "club": "Córdoba CF",
+   "slug": "cordoba-cf",
+   "competicion": "hypermotion",
+   "grupo": null,
+   "temporada": "2026/2027",
+   "jugadores": 30
+  },
+  {
+   "club": "Coruxo",
+   "slug": "coruxo",
+   "competicion": "segunda_federacion",
+   "grupo": "Grupo 1",
+   "temporada": "2026/2027",
+   "jugadores": 23
+  },
+  {
+   "club": "CP Cacereño",
+   "slug": "cp-cacereno",
+   "competicion": "primera_federacion",
+   "grupo": "Grupo 1",
+   "temporada": "2026/2027",
+   "jugadores": 23
+  },
+  {
+   "club": "Cultural Leonesa",
+   "slug": "cultural-leonesa",
+   "competicion": "primera_federacion",
+   "grupo": "Grupo 1",
+   "temporada": "2026/2027",
+   "jugadores": 27
+  },
+  {
+   "club": "Deportivo Alavés B",
+   "slug": "deportivo-alaves-b",
+   "competicion": "segunda_federacion",
+   "grupo": "Grupo 1",
+   "temporada": "2026/2027",
+   "jugadores": 31
+  },
+  {
+   "club": "FC Andorra",
+   "slug": "fc-andorra",
+   "competicion": "hypermotion",
+   "grupo": null,
+   "temporada": "2026/2027",
+   "jugadores": 28
+  },
+  {
+   "club": "FC Barcelona Atlètic",
+   "slug": "fc-barcelona-atletic",
+   "competicion": "segunda_federacion",
+   "grupo": "Grupo 2",
+   "temporada": "2026/2027",
+   "jugadores": 32
+  },
+  {
+   "club": "FC Cartagena",
+   "slug": "fc-cartagena",
+   "competicion": "primera_federacion",
+   "grupo": "Grupo 2",
+   "temporada": "2026/2027",
+   "jugadores": 25
+  },
+  {
+   "club": "Gimnàstic de Tarragona",
+   "slug": "gimnastic-de-tarragona",
+   "competicion": "primera_federacion",
+   "grupo": "Grupo 2",
+   "temporada": "2026/2027",
+   "jugadores": 24
+  },
+  {
+   "club": "Girona FC",
+   "slug": "girona-fc",
+   "competicion": "hypermotion",
+   "grupo": null,
+   "temporada": "2026/2027",
+   "jugadores": 32
+  },
+  {
+   "club": "Girona FC B",
+   "slug": "girona-fc-b",
+   "competicion": "segunda_federacion",
+   "grupo": "Grupo 2",
+   "temporada": "2026/2027",
+   "jugadores": 30
+  },
+  {
+   "club": "Granada CF",
+   "slug": "granada-cf",
+   "competicion": "hypermotion",
+   "grupo": null,
+   "temporada": "2026/2027",
+   "jugadores": 25
+  },
+  {
+   "club": "Hércules CF",
+   "slug": "hercules-cf",
+   "competicion": "primera_federacion",
+   "grupo": "Grupo 2",
+   "temporada": "2026/2027",
+   "jugadores": 24
+  },
+  {
+   "club": "Juventud Torremolinos CF",
+   "slug": "juventud-torremolinos-cf",
+   "competicion": "primera_federacion",
+   "grupo": "Grupo 2",
+   "temporada": "2026/2027",
+   "jugadores": 27
+  },
+  {
+   "club": "Náxara",
+   "slug": "naxara",
+   "competicion": "segunda_federacion",
+   "grupo": "Grupo 2",
+   "temporada": "2026/2027",
+   "jugadores": 22
+  },
+  {
+   "club": "Ourense CF",
+   "slug": "ourense-cf",
+   "competicion": "segunda_federacion",
+   "grupo": "Grupo 1",
+   "temporada": "2026/2027",
+   "jugadores": 23
+  },
+  {
+   "club": "Peña Sport",
+   "slug": "pena-sport",
+   "competicion": "segunda_federacion",
+   "grupo": "Grupo 2",
+   "temporada": "2026/2027",
+   "jugadores": 22
+  },
+  {
+   "club": "Pontevedra CF",
+   "slug": "pontevedra-cf",
+   "competicion": "primera_federacion",
+   "grupo": "Grupo 1",
+   "temporada": "2026/2027",
+   "jugadores": 23
+  },
+  {
+   "club": "Racing Club Ferrol",
+   "slug": "racing-club-ferrol",
+   "competicion": "primera_federacion",
+   "grupo": "Grupo 1",
+   "temporada": "2026/2027",
+   "jugadores": 21
+  },
+  {
+   "club": "Rayo Cantabria",
+   "slug": "rayo-cantabria",
+   "competicion": "segunda_federacion",
+   "grupo": "Grupo 1",
+   "temporada": "2026/2027",
+   "jugadores": 33
+  },
+  {
+   "club": "RC Deportivo Fabril",
+   "slug": "rc-deportivo-fabril",
+   "competicion": "primera_federacion",
+   "grupo": "Grupo 1",
+   "temporada": "2026/2027",
+   "jugadores": 32
+  },
+  {
+   "club": "RCD Espanyol B",
+   "slug": "rcd-espanyol-b",
+   "competicion": "segunda_federacion",
+   "grupo": "Grupo 2",
+   "temporada": "2026/2027",
+   "jugadores": 30
+  },
+  {
+   "club": "RCD Mallorca",
+   "slug": "rcd-mallorca",
+   "competicion": "hypermotion",
+   "grupo": null,
+   "temporada": "2026/2027",
+   "jugadores": 31
+  },
+  {
+   "club": "Real Avilés Industrial",
+   "slug": "real-aviles-industrial",
+   "competicion": "primera_federacion",
+   "grupo": "Grupo 1",
+   "temporada": "2026/2027",
+   "jugadores": 25
+  },
+  {
+   "club": "Real Jaén CF",
+   "slug": "real-jaen-cf",
+   "competicion": "primera_federacion",
+   "grupo": "Grupo 2",
+   "temporada": "2026/2027",
+   "jugadores": 25
+  },
+  {
+   "club": "Real Madrid Castilla",
+   "slug": "real-madrid-castilla",
+   "competicion": "primera_federacion",
+   "grupo": "Grupo 2",
+   "temporada": "2026/2027",
+   "jugadores": 30
+  },
+  {
+   "club": "Real Murcia CF",
+   "slug": "real-murcia-cf",
+   "competicion": "primera_federacion",
+   "grupo": "Grupo 2",
+   "temporada": "2026/2027",
+   "jugadores": 29
+  },
+  {
+   "club": "Real Oviedo",
+   "slug": "real-oviedo",
+   "competicion": "hypermotion",
+   "grupo": null,
+   "temporada": "2026/2027",
+   "jugadores": 30
+  },
+  {
+   "club": "Real Oviedo Vetusta",
+   "slug": "real-oviedo-vetusta",
+   "competicion": "segunda_federacion",
+   "grupo": "Grupo 1",
+   "temporada": "2026/2027",
+   "jugadores": 29
+  },
+  {
+   "club": "Real Sociedad B",
+   "slug": "real-sociedad-b",
+   "competicion": "hypermotion",
+   "grupo": null,
+   "temporada": "2026/2027",
+   "jugadores": 34
+  },
+  {
+   "club": "Real Sporting",
+   "slug": "real-sporting",
+   "competicion": "hypermotion",
+   "grupo": null,
+   "temporada": "2026/2027",
+   "jugadores": 29
+  },
+  {
+   "club": "Real Unión Club",
+   "slug": "real-union-club",
+   "competicion": "primera_federacion",
+   "grupo": "Grupo 1",
+   "temporada": "2026/2027",
+   "jugadores": 25
+  },
+  {
+   "club": "Real Valladolid CF",
+   "slug": "real-valladolid-cf",
+   "competicion": "hypermotion",
+   "grupo": null,
+   "temporada": "2026/2027",
+   "jugadores": 34
+  },
+  {
+   "club": "Real Zaragoza",
+   "slug": "real-zaragoza",
+   "competicion": "primera_federacion",
+   "grupo": "Grupo 2",
+   "temporada": "2026/2027",
+   "jugadores": 26
+  },
+  {
+   "club": "Reus FC Reddis",
+   "slug": "reus-fc-reddis",
+   "competicion": "segunda_federacion",
+   "grupo": "Grupo 2",
+   "temporada": "2026/2027",
+   "jugadores": 24
+  },
+  {
+   "club": "RS Gimnástica de Torrelavega",
+   "slug": "rs-gimnastica-de-torrelavega",
+   "competicion": "segunda_federacion",
+   "grupo": "Grupo 1",
+   "temporada": "2026/2027",
+   "jugadores": 23
+  },
+  {
+   "club": "SD Amorebieta",
+   "slug": "sd-amorebieta",
+   "competicion": "segunda_federacion",
+   "grupo": "Grupo 1",
+   "temporada": "2026/2027",
+   "jugadores": 26
+  },
+  {
+   "club": "SD Compostela",
+   "slug": "sd-compostela",
+   "competicion": "segunda_federacion",
+   "grupo": "Grupo 1",
+   "temporada": "2026/2027",
+   "jugadores": 24
+  },
+  {
+   "club": "SD Eibar",
+   "slug": "sd-eibar",
+   "competicion": "hypermotion",
+   "grupo": null,
+   "temporada": "2026/2027",
+   "jugadores": 29
+  },
+  {
+   "club": "SD Eibar B",
+   "slug": "sd-eibar-b",
+   "competicion": "segunda_federacion",
+   "grupo": "Grupo 1",
+   "temporada": "2026/2027",
+   "jugadores": 24
+  },
+  {
+   "club": "SD Gernika",
+   "slug": "sd-gernika",
+   "competicion": "segunda_federacion",
+   "grupo": "Grupo 1",
+   "temporada": "2026/2027",
+   "jugadores": 29
+  },
+  {
+   "club": "SD Huesca",
+   "slug": "sd-huesca",
+   "competicion": "primera_federacion",
+   "grupo": "Grupo 2",
+   "temporada": "2026/2027",
+   "jugadores": 25
+  },
+  {
+   "club": "SD Logroñés",
+   "slug": "sd-logrones",
+   "competicion": "segunda_federacion",
+   "grupo": "Grupo 2",
+   "temporada": "2026/2027",
+   "jugadores": 25
+  },
+  {
+   "club": "SD Ponferradina",
+   "slug": "sd-ponferradina",
+   "competicion": "primera_federacion",
+   "grupo": "Grupo 1",
+   "temporada": "2026/2027",
+   "jugadores": 25
+  },
+  {
+   "club": "Sestao River",
+   "slug": "sestao-river",
+   "competicion": "segunda_federacion",
+   "grupo": "Grupo 1",
+   "temporada": "2026/2027",
+   "jugadores": 25
+  },
+  {
+   "club": "Terrassa",
+   "slug": "terrassa",
+   "competicion": "segunda_federacion",
+   "grupo": "Grupo 2",
+   "temporada": "2026/2027",
+   "jugadores": 24
+  },
+  {
+   "club": "UD Almería",
+   "slug": "ud-almeria",
+   "competicion": "hypermotion",
+   "grupo": null,
+   "temporada": "2026/2027",
+   "jugadores": 28
+  },
+  {
+   "club": "UD Barbastro",
+   "slug": "ud-barbastro",
+   "competicion": "segunda_federacion",
+   "grupo": "Grupo 2",
+   "temporada": "2026/2027",
+   "jugadores": 25
+  },
+  {
+   "club": "UD Ibiza",
+   "slug": "ud-ibiza",
+   "competicion": "primera_federacion",
+   "grupo": "Grupo 2",
+   "temporada": "2026/2027",
+   "jugadores": 25
+  },
+  {
+   "club": "UD Las Palmas",
+   "slug": "ud-las-palmas",
+   "competicion": "hypermotion",
+   "grupo": null,
+   "temporada": "2026/2027",
+   "jugadores": 37
+  },
+  {
+   "club": "UD Llanera",
+   "slug": "ud-llanera",
+   "competicion": "segunda_federacion",
+   "grupo": "Grupo 1",
+   "temporada": "2026/2027",
+   "jugadores": 25
+  },
+  {
+   "club": "UD Logroñés",
+   "slug": "ud-logrones",
+   "competicion": "primera_federacion",
+   "grupo": "Grupo 1",
+   "temporada": "2026/2027",
+   "jugadores": 25
+  },
+  {
+   "club": "UD Logroñés B",
+   "slug": "ud-logrones-b",
+   "competicion": "segunda_federacion",
+   "grupo": "Grupo 2",
+   "temporada": "2026/2027",
+   "jugadores": 26
+  },
+  {
+   "club": "UD Ourense",
+   "slug": "ud-ourense",
+   "competicion": "primera_federacion",
+   "grupo": "Grupo 1",
+   "temporada": "2026/2027",
+   "jugadores": 25
+  },
+  {
+   "club": "UE Olot",
+   "slug": "ue-olot",
+   "competicion": "segunda_federacion",
+   "grupo": "Grupo 2",
+   "temporada": "2026/2027",
+   "jugadores": 26
+  },
+  {
+   "club": "UE Sant Andreu",
+   "slug": "ue-sant-andreu",
+   "competicion": "primera_federacion",
+   "grupo": "Grupo 2",
+   "temporada": "2026/2027",
+   "jugadores": 26
+  },
+  {
+   "club": "Unionistas de Salamanca CF",
+   "slug": "unionistas-de-salamanca-cf",
+   "competicion": "primera_federacion",
+   "grupo": "Grupo 1",
+   "temporada": "2026/2027",
+   "jugadores": 26
+  },
+  {
+   "club": "Utebo FC",
+   "slug": "utebo-fc",
+   "competicion": "segunda_federacion",
+   "grupo": "Grupo 2",
+   "temporada": "2026/2027",
+   "jugadores": 29
+  },
+  {
+   "club": "Villarreal CF B",
+   "slug": "villarreal-cf-b",
+   "competicion": "primera_federacion",
+   "grupo": "Grupo 2",
+   "temporada": "2026/2027",
+   "jugadores": 26
+  },
+  {
+   "club": "Zamora CF",
+   "slug": "zamora-cf",
+   "competicion": "primera_federacion",
+   "grupo": "Grupo 1",
+   "temporada": "2026/2027",
+   "jugadores": 23
+  }
+ ]
+}

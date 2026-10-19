@@ -1,17 +1,28 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<script src="js/tema.js"></script>
+<meta name="google-adsense-account" content="ca-pub-7347856722927942">
+<script src="js/tema.js?v=2"></script>
+<script src="js/preferencias.js?v=3"></script>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Subir contenido — ELOTROFÚTBOLTV</title>
+<meta property="og:image" content="https://elotrofutbol.media/img/og-default.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://elotrofutbol.media/img/og-default.png">
 <meta name="robots" content="noindex">
-<link rel="icon" href="/favicon.ico?v=2" sizes="any">
-<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=2">
-<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<link rel="icon" href="/favicon.ico?v=3" sizes="any">
+<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=3">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png?v=2">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=17">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://api.elotrofutbol.media" crossorigin>
+<link rel="preconnect" href="https://res.cloudinary.com">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&display=swap" onload="this.onload=null;this.rel='stylesheet'"><noscript><link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet"></noscript>
+<link rel="stylesheet" href="css/style.css?v=25">
+<link rel="stylesheet" href="css/accesibilidad.css?v=1">
+<script src="js/accesibilidad.js?v=1" defer></script>
+<link rel="stylesheet" href="css/foco.css?v=1">
 <style>
   .contenido-wrap{max-width:820px;margin:0 auto;}
   .contenido-intro{
@@ -220,7 +231,7 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
       <h2>Zona exclusiva para colaboradores</h2>
       <p>Esta sección es solo para el equipo de ELOTROFÚTBOLTV (redacción y fotografía). Inicia sesión con tu usuario para poder subir fotos y vídeos.</p>
-      <a href="acceso.html?modo=redactor&volver=contenido" class="btn-primari">Iniciar sesión</a>
+      <a href="/acceso?modo=redactor&volver=contenido" class="btn-primari">Iniciar sesión</a>
     </div>
   </div>
 
@@ -265,12 +276,13 @@
 
 <div id="site-footer"></div>
 
-<script src="js/ui-alertas.js?v=4"></script>
-<script src="js/config.js?v=15"></script>
-<script src="js/clubs.js?v=4"></script>
-<script src="js/layout.js?v=7"></script>
+<script src="js/ui-alertas.js?v=5"></script>
+<script src="js/foco.js?v=1"></script>
+<script src="js/config.js?v=25"></script>
+<script src="js/clubs.js?v=6"></script>
+<script src="js/layout.js?v=22"></script>
 <script src="js/cookies.js?v=2"></script>
-<script src="js/ads.js?v=2"></script>
+<script src="js/ads.js?v=3"></script>
 <script>
 // ---------- Comprobación de sesión (mismo login que el panel de redacción) ----------
 const TOKEN = localStorage.getItem("eof_token");

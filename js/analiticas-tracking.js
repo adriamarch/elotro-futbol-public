@@ -183,16 +183,19 @@
       }
     }
 
-    // Heartbeat: reenvía el tiempo acumulado cada 15s mientras la pestaña
+    // Heartbeat: reenvía el tiempo acumulado cada 30s mientras la pestaña
     // sigue visible, actualizando (no acumulando aparte) la misma fila de
     // article_reading en el servidor -- así una lectura larga que nunca
     // llega a un pagehide "limpio" (el usuario cierra el portátil, mata
     // el proceso del navegador, pierde la conexión) igualmente deja
     // registro parcial, en vez de depender de un único envío final que
     // puede no llegar a producirse nunca.
+    // 30 s (antes 15 s): cada latido es una escritura en D1 (con sus índices)
+    // por cada pestaña abierta; el cierre/ocultación sigue mandando el
+    // tiempo exacto, así que la precisión solo se pierde en cierres bruscos.
     let heartbeat = setInterval(() => {
       if (document.visibilityState === "visible") enviarLectura(false);
-    }, 15000);
+    }, 30000);
 
     function enviarCierre() {
       enviarLectura(true);

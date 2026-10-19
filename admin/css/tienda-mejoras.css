@@ -1,0 +1,205 @@
+/* =====================================================================
+   TIENDA — mejoras de interfaz (se carga después de admin.css)
+   - Barra del catálogo: buscador + ordenar + "solo disponibles"
+   - Pedidos agrupados por número de pedido (Mis pedidos y Gestión)
+   - Acciones rápidas, contadores con dinero, exportar CSV
+   - Pulido: foco visible, hover de tarjetas, reduced-motion, móvil
+   Usa los mismos tokens que el resto del panel (--rojo, --borde, --tarjeta,
+   --texto-suave...), así que el modo oscuro ya queda cubierto.
+   ===================================================================== */
+
+/* ---------- Barra del catálogo ---------- */
+.tienda-catalogo-barra{
+  display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin:0 0 18px;
+}
+.tienda-catalogo-barra .tienda-buscador{ margin:0; flex:1 1 220px; max-width:340px; }
+
+.tienda-orden-wrap{
+  display:inline-flex; align-items:center; gap:8px; font-size:.78rem; font-weight:700;
+  color:var(--texto-suave); text-transform:uppercase; letter-spacing:.03em; margin:0;
+}
+.tienda-orden-wrap select{
+  width:auto; margin:0; padding:8px 30px 8px 12px; border:1.5px solid var(--borde); border-radius:20px;
+  background-color:var(--gris-claro); color:var(--texto); font-size:.82rem; font-weight:600;
+  text-transform:none; letter-spacing:0; cursor:pointer;
+}
+.tienda-orden-wrap select:focus{ outline:none; border-color:var(--rojo); }
+
+.tienda-toggle-filtro{
+  display:inline-flex; align-items:center; gap:8px; padding:8px 16px; border-radius:20px; cursor:pointer;
+  border:1.5px solid var(--borde); background:var(--gris-claro); color:var(--texto-suave);
+  font-size:.8rem; font-weight:700; transition:background .15s, border-color .15s, color .15s;
+}
+.tienda-toggle-filtro::before{
+  content:""; width:14px; height:14px; border-radius:50%; border:2px solid currentColor; box-sizing:border-box;
+  transition:background .15s, border-color .15s;
+}
+.tienda-toggle-filtro:hover{ border-color:var(--rojo); color:var(--rojo); }
+.tienda-toggle-filtro[aria-pressed="true"]{ background:var(--rojo); border-color:var(--rojo); color:#fff; }
+.tienda-toggle-filtro[aria-pressed="true"]::before{ background:#fff; border-color:#fff; box-shadow:inset 0 0 0 2px var(--rojo); }
+
+.tienda-catalogo-contador{ margin-left:auto; font-size:.78rem; font-weight:600; color:var(--texto-suave); }
+.tienda-catalogo-contador:empty{ display:none; }
+
+/* ---------- Tarjetas de producto: hover más cuidado ---------- */
+.tienda-tarjeta-marco{ overflow:hidden; }
+.tienda-tarjeta-imagen{ transition:transform .35s cubic-bezier(.22,1,.36,1); }
+.tienda-tarjeta:hover .tienda-tarjeta-imagen{ transform:scale(1.04); }
+.tienda-tarjeta.agotado .tienda-tarjeta-imagen{ filter:grayscale(.85); opacity:.7; }
+.tienda-tarjeta.agotado:hover{ transform:none; box-shadow:0 2px 10px rgba(12,27,46,.06); }
+.tienda-tarjeta.agotado:hover .tienda-tarjeta-imagen{ transform:none; }
+
+/* ---------- Foco visible en toda la tienda (teclado) ---------- */
+#panel-tienda button:focus-visible,
+#panel-tienda select:focus-visible,
+#panel-tienda a:focus-visible,
+#panel-tienda textarea:focus-visible,
+#modalTiendaCheckout button:focus-visible,
+#modalTiendaCheckout select:focus-visible,
+#modalTiendaCheckout textarea:focus-visible,
+#modalTiendaCheckout input:focus-visible{
+  outline:2px solid var(--celeste); outline-offset:2px;
+}
+.tienda-tarjeta-clic:focus-visible{ outline:2px solid var(--celeste); outline-offset:-2px; }
+
+/* ---------- Filtros de "Mis pedidos" ---------- */
+.tienda-mis-filtros{ margin-bottom:16px; }
+.tienda-mis-filtros[hidden]{ display:none; }
+.tienda-filtro-n{
+  display:inline-block; min-width:20px; padding:1px 7px; margin-left:4px; border-radius:10px;
+  background:rgba(12,27,46,.08); font-size:.7rem; font-weight:800; text-align:center;
+}
+[data-theme="dark"] .tienda-filtro-n{ background:rgba(255,255,255,.12); }
+.tienda-gestion-filtros button.activo .tienda-filtro-n{ background:rgba(255,255,255,.25); color:#fff; }
+
+/* Aviso de lo que queda por pagar */
+.tienda-resumen-pago{
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:0 0 14px; padding:12px 16px;
+  border-radius:12px; border:1px solid #f1d58a; background:#fef7e0; color:#7a5a08; font-size:.85rem; line-height:1.4;
+}
+.tienda-resumen-pago strong{ font-size:1rem; }
+[data-theme="dark"] .tienda-resumen-pago{ background:#3a2f12; border-color:#5b4a1c; color:#f1c877; }
+
+/* ---------- Tarjeta de pedido agrupado ---------- */
+.tienda-orden{
+  display:flex; flex-direction:column; align-items:stretch; justify-content:flex-start; gap:8px;
+  padding:16px 18px; border-left:4px solid var(--borde); transition:box-shadow .15s, border-color .15s;
+}
+.tienda-orden:hover{ box-shadow:0 6px 18px rgba(12,27,46,.08); }
+.tienda-orden.estado-pendiente_pago{ border-left-color:#e0a21a; }
+.tienda-orden.estado-pagado{ border-left-color:#22a559; }
+.tienda-orden.estado-enviado{ border-left-color:#2b8fd0; }
+.tienda-orden.estado-cancelado{ border-left-color:#c24141; opacity:.82; }
+
+.tienda-orden-cab{ display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+.tienda-orden-codigo{ display:inline-flex; align-items:center; gap:8px; }
+.tienda-orden .tienda-chip.codigo{ font-size:.82rem; padding:3px 11px; }
+.tienda-orden .tienda-pedido-meta{ margin:0; }
+
+/* Líneas del pedido: producto · cantidad · importe */
+.tienda-orden-lineas{
+  list-style:none; margin:4px 0 0; padding:0; border-top:1px solid var(--borde);
+}
+.tienda-orden-lineas li{
+  display:grid; grid-template-columns:1fr auto auto; gap:12px; align-items:baseline;
+  padding:8px 0; border-bottom:1px dashed var(--borde); font-size:.88rem;
+}
+.tienda-orden-linea-nombre{ font-weight:700; color:var(--marino-texto); min-width:0; overflow-wrap:anywhere; }
+.tienda-orden-linea-nombre em{ font-style:normal; font-weight:500; color:var(--texto-suave); }
+.tienda-orden-linea-cant{ color:var(--texto-suave); font-variant-numeric:tabular-nums; }
+.tienda-orden-lineas strong{ font-variant-numeric:tabular-nums; color:var(--texto); }
+.tienda-orden-lineas .tienda-orden-linea-aviso{ display:block; font-size:.76rem; color:var(--texto-suave); border-bottom:0; font-style:italic; }
+
+.tienda-orden-total{
+  display:flex; justify-content:space-between; align-items:baseline; gap:12px; padding:2px 0 4px;
+}
+.tienda-orden-total span{ font-size:.74rem; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--texto-suave); }
+.tienda-orden-total strong{ font-family:var(--font-tit); font-size:1.25rem; color:var(--rojo); font-variant-numeric:tabular-nums; }
+.tienda-orden.estado-cancelado .tienda-orden-total strong{ color:var(--texto-suave); text-decoration:line-through; }
+
+.tienda-orden-mixto{
+  margin:2px 0; padding:6px 10px; border-radius:8px; font-size:.76rem;
+  background:#fef3da; color:#8a6100; border:1px solid #f1d58a;
+}
+[data-theme="dark"] .tienda-orden-mixto{ background:#3a2f12; color:#f1c877; border-color:#5b4a1c; }
+
+.tienda-orden-mail{ color:var(--celeste); text-decoration:none; overflow-wrap:anywhere; }
+.tienda-orden-mail:hover{ text-decoration:underline; }
+
+/* La línea de tiempo marca también el tramo ya recorrido */
+.tienda-pedido-timeline .linea{ transition:background .2s; }
+.tienda-pedido-timeline .linea.hecha{ background:#22a559; }
+
+/* ---------- Gestión: acciones rápidas ---------- */
+.tienda-orden-gestion-acciones{
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:4px; padding-top:12px;
+  border-top:1px solid var(--borde);
+}
+.tienda-orden-gestion-acciones .tienda-pedido-select{ margin-left:auto; }
+.tienda-orden-gestion-acciones .tienda-pedido-borrar{ margin:0; }
+
+.tienda-accion-rapida{
+  display:inline-flex; align-items:center; gap:6px; padding:8px 16px; border:none; border-radius:20px; cursor:pointer;
+  font-size:.8rem; font-weight:800; color:#fff; letter-spacing:.2px; transition:transform .15s, box-shadow .15s, opacity .15s;
+}
+.tienda-accion-rapida.pagado{ background:linear-gradient(135deg,#1f9d57,#168247); box-shadow:0 3px 10px rgba(31,157,87,.28); }
+.tienda-accion-rapida.enviado{ background:linear-gradient(135deg,#2b8fd0,#1c6ea4); box-shadow:0 3px 10px rgba(43,143,208,.28); }
+.tienda-accion-rapida:hover:not(:disabled){ transform:translateY(-2px); }
+.tienda-accion-rapida:disabled{ opacity:.6; cursor:progress; }
+.tienda-accion-rapida.pagado::before{ content:"✓"; font-weight:900; }
+.tienda-accion-rapida.enviado::before{ content:"📦"; }
+
+/* Botón "Copiar dirección" pegado a la dirección */
+.tienda-orden .tienda-pedido-direccion + .tienda-copiar-mini{ align-self:flex-start; margin:0 0 4px; }
+
+/* Nota interna a ancho completo dentro de la tarjeta */
+.tienda-orden .tienda-pedido-nota{ width:100%; box-sizing:border-box; margin-top:4px; }
+
+/* ---------- Contadores de gestión con dinero ---------- */
+.tienda-gestion-contador.aviso strong{ color:#c27f00; }
+.tienda-gestion-contador.dinero{ min-width:130px; }
+.tienda-gestion-contador.por-cobrar strong{ color:#c27f00; }
+.tienda-gestion-contador.cobrado strong{ color:#1f9d57; }
+[data-theme="dark"] .tienda-gestion-contador.aviso strong,
+[data-theme="dark"] .tienda-gestion-contador.por-cobrar strong{ color:#f1c877; }
+[data-theme="dark"] .tienda-gestion-contador.cobrado strong{ color:#7fe0a3; }
+
+/* Botón exportar */
+.tienda-exportar{ display:inline-flex; align-items:center; gap:8px; white-space:nowrap; }
+.tienda-exportar svg{ width:16px; height:16px; }
+.tienda-exportar:disabled{ opacity:.5; cursor:not-allowed; }
+
+/* ---------- Checkout: pie de la dirección ---------- */
+.tienda-direccion-pie{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:6px; }
+.tienda-recordar{
+  display:inline-flex; align-items:center; gap:8px; margin:0; font-size:.78rem; font-weight:600;
+  color:var(--texto-suave); cursor:pointer;
+}
+.tienda-recordar input{ width:auto; margin:0; accent-color:var(--rojo); }
+.tienda-direccion-contador{ font-size:.72rem; color:var(--texto-suave); font-variant-numeric:tabular-nums; }
+
+/* ---------- Móvil ---------- */
+@media (max-width:600px){
+  .tienda-catalogo-barra{ gap:10px; }
+  .tienda-catalogo-barra .tienda-buscador{ flex-basis:100%; max-width:none; }
+  .tienda-orden-wrap{ flex:1 1 auto; }
+  .tienda-orden-wrap select{ flex:1; }
+  .tienda-catalogo-contador{ flex-basis:100%; margin-left:0; }
+  .tienda-orden{ padding:14px; }
+  .tienda-orden-lineas li{ grid-template-columns:1fr auto; }
+  .tienda-orden-linea-cant{ grid-column:1; grid-row:2; font-size:.78rem; }
+  .tienda-orden-lineas li strong{ grid-column:2; grid-row:1 / span 2; align-self:center; }
+  .tienda-orden-gestion-acciones{ flex-direction:column; align-items:stretch; }
+  .tienda-orden-gestion-acciones .tienda-pedido-select{ margin-left:0; }
+  .tienda-accion-rapida{ justify-content:center; padding:11px 16px; }
+  .tienda-exportar{ justify-content:center; }
+  .tienda-gestion-contador{ flex:1 1 calc(50% - 10px); min-width:0; }
+}
+
+/* ---------- Respeta "reducir movimiento" ---------- */
+@media (prefers-reduced-motion:reduce){
+  .tienda-tarjeta, .tienda-tarjeta-imagen, .tienda-accion-rapida, .tienda-orden,
+  .tienda-pedido-timeline .linea{ transition:none; }
+  .tienda-tarjeta:hover, .tienda-tarjeta:hover .tienda-tarjeta-imagen, .tienda-accion-rapida:hover:not(:disabled){ transform:none; }
+  .tienda-skeleton{ animation:none; }
+}

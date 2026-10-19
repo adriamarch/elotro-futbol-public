@@ -1,0 +1,332 @@
+/* Estadísticas de jugadores, plantilla de club y buscador.
+   Reutiliza la tabla de clasificación (clasificacion-mejoras.css) y los
+   tokens de listados-ui.css; aquí solo lo propio de estas páginas.
+
+   Esta página usa data-page="estadisticas", que listados-ui.css no cubre:
+   por eso los filtros y desplegables se estilan aquí, con el mismo
+   aspecto que en Clasificación.
+
+   Regla del sitio: texto con --marino-texto, nunca --marino. */
+
+/* ---------- Cabecera de la página ---------- */
+.stats-top-chip{
+  display:inline-block;vertical-align:middle;margin-left:10px;white-space:nowrap;flex:none;padding:3px 12px;border-radius:999px;
+  font-family:var(--font-tit);font-size:.72rem;font-weight:500;letter-spacing:.8px;
+  color:#fff;background:linear-gradient(135deg,var(--rojo),var(--rojo-oscuro));
+  box-shadow:0 6px 14px -8px rgba(209,19,46,.8);
+}
+.stats-intro{margin:-6px 2px 20px;max-width:64ch;font-size:.94rem;line-height:1.6;color:var(--texto-suave);}
+.stats-nota{margin:14px 2px 0;font-size:.82rem;line-height:1.55;color:var(--texto-suave);max-width:80ch;}
+
+/* ---------- Filtros: competición (píldoras) ---------- */
+body[data-page="estadisticas"] .filtros{display:flex;gap:8px;margin-bottom:14px;}
+body[data-page="estadisticas"] #filtrosCompeticion button{
+  padding:10px 18px;border-radius:999px;border:1px solid var(--borde);background:var(--tarjeta);color:var(--marino-texto);
+  font-family:var(--font-text);font-size:.86rem;font-weight:600;cursor:pointer;
+  box-shadow:0 1px 2px rgba(12,27,46,.05);
+  transition:transform .15s,box-shadow .15s,border-color .15s,background .15s,color .15s;
+}
+body[data-page="estadisticas"] #filtrosCompeticion button:hover:not(.activo){border-color:var(--celeste);transform:translateY(-1px);box-shadow:0 6px 14px -8px rgba(12,27,46,.35);}
+body[data-page="estadisticas"] #filtrosCompeticion button.activo{
+  background:var(--ui-act-bg);border-color:var(--ui-act-bg);color:var(--ui-act-fg);
+  box-shadow:0 8px 18px -8px color-mix(in srgb,var(--ui-act-bg) 70%,transparent);
+}
+
+/* ---------- Filtros: grupo, club, temporada ---------- */
+.stats-filtros{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:18px;}
+body[data-page="estadisticas"] .select-filtro{
+  appearance:none;-webkit-appearance:none;max-width:100%;
+  padding:10px 40px 10px 18px;border-radius:999px;border:1px solid var(--borde);background-color:var(--tarjeta);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a93a6' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 14px center;background-size:16px;
+  color:var(--marino-texto);font-family:var(--font-text);font-size:.86rem;font-weight:600;cursor:pointer;
+  box-shadow:0 1px 2px rgba(12,27,46,.05);transition:border-color .15s,box-shadow .15s;
+}
+body[data-page="estadisticas"] .select-filtro:hover{border-color:var(--celeste);}
+body[data-page="estadisticas"] .select-filtro[hidden]{display:none;}
+body[data-page="estadisticas"] .filtros button:focus-visible,
+body[data-page="estadisticas"] .select-filtro:focus-visible{outline:none;box-shadow:var(--ui-anillo);border-color:var(--celeste);}
+.stats-plantilla-link{
+  display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:999px;
+  border:1px solid var(--celeste);color:var(--marino-texto);background:color-mix(in srgb,var(--celeste) 12%,transparent);
+  font-weight:700;font-size:.86rem;text-decoration:none;white-space:nowrap;transition:background .15s;
+}
+.stats-plantilla-link[hidden]{display:none;}
+.stats-plantilla-link:hover{background:color-mix(in srgb,var(--celeste) 24%,transparent);}
+
+/* ---------- Pestañas de ranking (control segmentado) ---------- */
+.stats-tabs{
+  display:flex;flex-wrap:nowrap;gap:2px;margin:6px 0 16px;padding:4px;width:fit-content;max-width:100%;
+  background:var(--fondo-alt);border:1px solid var(--borde);border-radius:14px;
+  overflow-x:auto;scrollbar-width:none;
+}
+.stats-tabs::-webkit-scrollbar{display:none;}
+body[data-page="estadisticas"] .stats-tabs button{
+  flex:none;padding:9px 16px;border:0;border-radius:10px;background:transparent;color:var(--texto-suave);
+  font-family:var(--font-text);font-size:.86rem;font-weight:600;cursor:pointer;white-space:nowrap;
+  transition:background .15s,color .15s,box-shadow .15s;
+}
+body[data-page="estadisticas"] .stats-tabs button:hover:not(.activo){color:var(--marino-texto);}
+body[data-page="estadisticas"] .stats-tabs button.activo{background:var(--tarjeta);color:var(--marino-texto);box-shadow:0 1px 3px rgba(12,27,46,.18),0 0 0 1px var(--borde);}
+
+/* ---------- Tabla de ranking ---------- */
+.stats-tabla tbody tr{transition:background .12s;}
+.stats-tabla tbody tr:hover td{background:var(--fondo-alt);}
+.stats-tabla td.col-jugador{white-space:nowrap;font-weight:700;color:var(--marino-texto);}
+.stats-tabla .stats-jugador{display:inline-flex;align-items:center;gap:10px;}
+.stats-dorsal{
+  display:inline-flex;align-items:center;justify-content:center;flex:none;
+  min-width:28px;height:28px;padding:0 6px;border-radius:8px;
+  background:color-mix(in srgb,var(--celeste) 16%,var(--tarjeta));color:var(--marino-texto);
+  font-family:var(--font-tit);font-size:.82rem;font-weight:700;font-variant-numeric:tabular-nums;
+}
+.stats-tabla .stats-sin-nombre{font-style:italic;font-weight:500;color:var(--texto-suave);}
+.stats-tabla td.col-club{white-space:nowrap;}
+.stats-tabla td.col-club .equipo-enlace{display:flex;align-items:center;gap:10px;color:var(--marino-texto);text-decoration:none;}
+.stats-tabla td.col-club .equipo-enlace:hover{color:var(--celeste);}
+.stats-tabla td.col-club .equipo-enlace > span{overflow:hidden;text-overflow:ellipsis;max-width:14rem;}
+.stats-tabla .stats-jugador-nombre{color:inherit;text-decoration:none;font-weight:700;}
+.stats-tabla a.stats-jugador-nombre:hover{color:var(--celeste);text-decoration:underline;}
+.stats-tabla .stats-jugador-nombre::after{content:"›";margin-left:6px;opacity:.35;font-weight:400;transition:transform .15s,opacity .15s;display:inline-block;}
+.stats-tabla a.stats-jugador-nombre:hover::after{opacity:1;transform:translateX(3px);}
+/* La cifra que ordena el ranking: la más grande de la fila */
+.stats-tabla td.col-puntos{font-family:var(--font-tit);font-size:1.15rem;font-weight:700;color:var(--marino-texto);}
+/* Podio */
+.stats-tabla tr.stats-top-1 td.col-pos .clas-pos,
+.stats-tabla tr.stats-top-2 td.col-pos .clas-pos,
+.stats-tabla tr.stats-top-3 td.col-pos .clas-pos{color:#fff;border-radius:50%;box-shadow:0 4px 10px -4px rgba(12,27,46,.45);}
+.stats-tabla tr.stats-top-1 td.col-pos .clas-pos{background:linear-gradient(135deg,#f6c945,#d49a0f);}
+.stats-tabla tr.stats-top-2 td.col-pos .clas-pos{background:linear-gradient(135deg,#b8c2cf,#8793a3);}
+.stats-tabla tr.stats-top-3 td.col-pos .clas-pos{background:linear-gradient(135deg,#d9955a,#a8602b);}
+.stats-tabla tr.stats-top-1 td{background:rgba(246,201,69,.09);}
+.stats-tabla tr.stats-top-1 td.col-pos{box-shadow:inset 4px 0 0 #f6c945;}
+.stats-tabla tr.stats-top-1 td.col-puntos{font-size:1.4rem;}
+.stats-tabla tr.stats-top-2 td.col-puntos,
+.stats-tabla tr.stats-top-3 td.col-puntos{font-size:1.25rem;}
+.stats-tabla tr.stats-top-1:hover td{background:rgba(246,201,69,.15);}
+@media (max-width:640px){
+  .stats-tabla td.col-club .equipo-enlace > span{display:none;}
+  .stats-tabla td.col-club .equipo-enlace{gap:0;}
+  body[data-page="estadisticas"] .stats-tabs button{padding:9px 13px;}
+  body[data-page="estadisticas"] #filtrosCompeticion{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-bottom:8px;}
+  body[data-page="estadisticas"] #filtrosCompeticion::-webkit-scrollbar{display:none;}
+  body[data-page="estadisticas"] #filtrosCompeticion button{flex:none;}
+}
+
+/* ---------- Plantilla: cabecera del club ---------- */
+/* Mismo lenguaje que la ficha de jugador: campo visto desde arriba. */
+.plantilla-cabecera{
+  --campo-x:90%;
+  position:relative;isolation:isolate;overflow:hidden;display:flex;align-items:center;gap:22px;
+  margin:6px 0 16px;padding:26px 30px;border-radius:var(--radio-lg,18px);color:#fff;
+  background:
+    radial-gradient(circle at var(--campo-x) 50%, transparent 0 70px, rgba(255,255,255,.09) 71px 73px, transparent 74px),
+    linear-gradient(90deg, transparent calc(var(--campo-x) - 1px), rgba(255,255,255,.09) calc(var(--campo-x) - 1px) calc(var(--campo-x) + 1px), transparent calc(var(--campo-x) + 1px)),
+    radial-gradient(70% 140% at 100% 0%, rgba(91,184,232,.28), transparent 60%),
+    radial-gradient(60% 120% at 0% 100%, rgba(209,19,46,.30), transparent 60%),
+    linear-gradient(135deg,var(--marino),var(--marino2));
+  box-shadow:var(--sombra-lg);
+}
+.plantilla-escudo{
+  width:88px;height:88px;flex:none;box-sizing:border-box;padding:12px;object-fit:contain;border-radius:50%;
+  background:#fff;box-shadow:0 0 0 5px rgba(255,255,255,.14),0 14px 26px -12px rgba(0,0,0,.7);
+}
+.plantilla-cabecera h1{margin:0;font-family:var(--font-headline,var(--font-tit));font-size:clamp(1.6rem,3.6vw,2.3rem);line-height:1.12;color:#fff;text-wrap:balance;}
+.plantilla-sub{margin:8px 0 0;font-size:.9rem;line-height:1.5;color:rgba(255,255,255,.78);}
+.plantilla-sub a{color:var(--celeste-claro);font-weight:600;text-decoration:none;}
+.plantilla-sub a:hover{text-decoration:underline;}
+
+/* ---------- Plantilla: resumen del equipo ---------- */
+.plantilla-resumen{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin:0 0 22px;}
+.plantilla-dato{
+  display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 12px 14px;text-align:center;
+  background:var(--tarjeta);border:1px solid var(--borde);border-radius:14px;box-shadow:var(--sombra-sm);
+}
+.plantilla-dato strong{font-family:var(--font-tit);font-size:1.9rem;line-height:1;color:var(--marino-texto);font-variant-numeric:tabular-nums;}
+.plantilla-dato span{font-size:.8rem;color:var(--texto-suave);}
+
+/* ---------- Plantilla: máximos del equipo (cada lista es un ranking) ---------- */
+.plantilla-tops{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px;margin:0 0 24px;}
+.plantilla-top{padding:16px 18px 10px;background:var(--tarjeta);border:1px solid var(--borde);border-radius:14px;box-shadow:var(--sombra-sm);}
+.plantilla-top h2{margin:0 0 6px;font-family:var(--font-tit);font-size:1.05rem;color:var(--marino-texto);}
+.plantilla-top ol{margin:0;padding:0;list-style:none;counter-reset:pos;}
+.plantilla-top li{counter-increment:pos;display:flex;align-items:center;gap:10px;padding:9px 0;font-size:.92rem;border-top:1px solid var(--borde);}
+.plantilla-top li:first-child{border-top:0;}
+.plantilla-top li::before{content:counter(pos);flex:none;width:18px;text-align:center;font-family:var(--font-tit);font-weight:700;color:var(--texto-suave);}
+.plantilla-top li:nth-child(1)::before{color:#d49a0f;}
+.plantilla-top li a{color:var(--marino-texto);font-weight:700;text-decoration:none;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.plantilla-top li a:hover{color:var(--celeste);}
+.plantilla-top li b{
+  flex:none;min-width:30px;padding:2px 9px;border-radius:8px;text-align:center;
+  background:var(--fondo-alt);color:var(--marino-texto);font-family:var(--font-tit);font-size:.95rem;
+}
+
+/* ---------- Plantilla: tabla ordenable ---------- */
+.plantilla-tabla td.num,.plantilla-tabla th.num{text-align:center;}
+.plantilla-tabla th.orden{cursor:pointer;user-select:none;white-space:nowrap;transition:color .12s;}
+.plantilla-tabla th.orden:hover{color:var(--celeste);}
+.plantilla-tabla th.orden:focus-visible{outline:2px solid var(--celeste);outline-offset:-2px;}
+.plantilla-tabla th.orden[aria-sort]{color:var(--marino-texto);}
+.plantilla-tabla th.orden[aria-sort]::after{content:" ▼";font-size:.7em;}
+.plantilla-tabla th.orden[aria-sort="ascending"]::after{content:" ▲";}
+.plantilla-tabla td.col-puntos{font-size:1.05rem;}
+
+/* ---------- Buscador de jugadores y clubes ---------- */
+.buscador-jug{position:relative;margin:0 0 22px;max-width:760px;}
+.buscador-jug-etiqueta{
+  display:flex;align-items:center;gap:9px;margin:0 4px 10px;
+  font-family:var(--font-tit);font-size:.8rem;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--texto-suave);
+}
+.buscador-jug-etiqueta::before{content:"";flex:none;width:4px;height:1.05em;border-radius:2px;background:var(--rojo);}
+/* La lista cuelga del campo; cuando el selector baja debajo (pantallas estrechas) cuelga de la fila entera para no taparlo. */
+.buscador-jug-fila{position:relative;display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;}
+.buscador-jug-caja{position:relative;flex:1 1 360px;min-width:0;}
+.buscador-jug-entrada{
+  width:100%;height:54px;padding:0 20px 0 52px;border:1.5px solid var(--borde);border-radius:999px;
+  background:var(--tarjeta) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%235bb8e8' stroke-width='2.4' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") no-repeat 19px 50%;
+  color:var(--texto);font:inherit;font-size:1rem;box-shadow:var(--sombra-sm);
+  transition:border-color .18s,box-shadow .18s;
+}
+.buscador-jug-entrada::placeholder{color:var(--texto-suave);opacity:.8;}
+.buscador-jug-entrada:hover{border-color:color-mix(in srgb,var(--celeste) 50%,var(--borde));}
+.buscador-jug-entrada:focus{outline:none;border-color:var(--celeste);box-shadow:0 0 0 4px rgba(91,184,232,.22),var(--sombra-md);}
+
+/* Selector de ámbito: «esta competición» | «Todas» (sustituye al checkbox suelto). */
+.buscador-jug-ambito{
+  position:relative;isolation:isolate;display:grid;grid-template-columns:1fr 1fr;flex:none;padding:4px;
+  border-radius:999px;background:var(--fondo-alt);border:1px solid var(--borde);box-shadow:inset 0 1px 2px rgba(12,27,46,.07);
+}
+.buscador-jug-ambito[hidden]{display:none;}
+.buscador-jug-ambito::before{
+  content:"";position:absolute;z-index:-1;top:4px;bottom:4px;left:4px;width:calc(50% - 4px);border-radius:999px;
+  background:linear-gradient(135deg,var(--marino),var(--marino2));box-shadow:0 8px 16px -8px rgba(12,27,46,.65);
+  transition:transform .32s cubic-bezier(.3,1.25,.4,1);
+}
+.buscador-jug-ambito[data-valor="todas"]::before{transform:translateX(100%);}
+.buscador-jug-ambito button{
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;min-width:108px;height:44px;padding:0 16px;
+  border:0;border-radius:999px;background:none;color:var(--texto-suave);cursor:pointer;white-space:nowrap;
+  font:inherit;font-size:.86rem;font-weight:700;transition:color .2s;
+}
+.buscador-jug-ambito button svg{flex:none;opacity:.85;}
+.buscador-jug-ambito button:hover{color:var(--marino-texto);}
+.buscador-jug-ambito button[aria-checked="true"]{color:#fff;}
+.buscador-jug-ambito button:focus-visible{outline:2px solid var(--celeste);outline-offset:2px;}
+[data-theme="dark"] .buscador-jug-ambito::before{background:linear-gradient(135deg,#2a7ab0,var(--celeste));box-shadow:0 8px 18px -8px rgba(91,184,232,.55);}
+[data-theme="dark"] .buscador-jug-ambito button[aria-checked="true"]{color:#07131f;}
+
+/* Línea «Buscando en…»: deja claro qué se está filtrando. */
+.buscador-jug-contexto{
+  display:flex;align-items:center;gap:8px;margin:10px 6px 0;font-size:.82rem;color:var(--texto-suave);
+}
+.buscador-jug-contexto::before{
+  content:"";flex:none;width:7px;height:7px;border-radius:50%;background:var(--celeste);
+  box-shadow:0 0 0 3px rgba(91,184,232,.22);
+}
+.buscador-jug-contexto b{font-weight:700;color:var(--marino-texto);}
+
+/* Lista desplegable de resultados. */
+.buscador-jug-lista{
+  position:absolute;z-index:30;left:0;right:0;top:calc(100% + 10px);margin:0;padding:8px;list-style:none;
+  max-height:min(70vh,480px);overflow-y:auto;background:var(--tarjeta);border:1px solid var(--borde);
+  border-radius:22px;box-shadow:var(--sombra-lg,0 18px 40px rgba(12,27,46,.22));
+  animation:buscador-jug-entra .16s ease-out;
+}
+@keyframes buscador-jug-entra{from{opacity:0;transform:translateY(-6px);}to{opacity:1;transform:none;}}
+.buscador-jug-lista[hidden]{display:none;}
+.buscador-jug-grupo{
+  display:flex;align-items:center;gap:10px;padding:10px 12px 6px;
+  font-family:var(--font-tit);font-size:.74rem;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--texto-suave);
+}
+.buscador-jug-grupo::after{content:"";flex:1;height:1px;background:var(--borde);}
+.buscador-jug-opcion a{
+  display:flex;align-items:center;gap:13px;padding:9px 12px;border-radius:14px;color:var(--texto);text-decoration:none;
+  transition:background .12s;
+}
+.buscador-jug-opcion[aria-selected="true"] a,.buscador-jug-opcion a:hover{background:var(--fondo-alt);}
+.buscador-jug-opcion[aria-selected="true"] a{box-shadow:inset 3px 0 0 var(--celeste);}
+.buscador-jug-opcion .stats-dorsal{min-width:34px;height:34px;border-radius:50%;font-size:.88rem;}
+.buscador-jug-opcion .stats-dorsal-vacio{color:var(--texto-suave);}
+.buscador-jug-escudo{width:34px;height:34px;object-fit:contain;flex:none;}
+.buscador-jug-texto{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1;line-height:1.2;}
+.buscador-jug-nombre{font-weight:700;color:var(--marino-texto);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.buscador-jug-detalle{display:flex;align-items:center;gap:8px;min-width:0;font-size:.8rem;color:var(--texto-suave);}
+.buscador-jug-club{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.buscador-jug-comp{
+  flex:none;padding:2px 9px;border-radius:999px;font-size:.68rem;font-weight:700;letter-spacing:.02em;line-height:1.5;
+  background:var(--fondo-alt);border:1px solid var(--borde);color:var(--texto-suave);
+}
+.buscador-jug-comp--hypermotion{background:color-mix(in srgb,var(--rojo) 12%,var(--tarjeta));border-color:color-mix(in srgb,var(--rojo) 35%,var(--borde));color:var(--rojo);}
+.buscador-jug-comp--primera_federacion{background:color-mix(in srgb,var(--celeste) 16%,var(--tarjeta));border-color:color-mix(in srgb,var(--celeste) 45%,var(--borde));color:var(--marino-texto);}
+.buscador-jug-comp--segunda_federacion{background:var(--fondo-alt);border-color:var(--borde);color:var(--marino-texto);}
+[data-theme="dark"] .buscador-jug-comp--hypermotion{color:#ff6b7f;}
+.buscador-jug-cifras{display:flex;flex:none;gap:6px;font-variant-numeric:tabular-nums;}
+.buscador-jug-cifra{padding:3px 9px;border-radius:999px;background:var(--fondo-alt);font-size:.72rem;font-weight:500;color:var(--texto-suave);white-space:nowrap;}
+.buscador-jug-cifra b{font-size:.84rem;font-weight:700;color:var(--marino-texto);}
+.buscador-jug-vacio{display:flex;flex-direction:column;align-items:flex-start;gap:12px;padding:18px 14px;font-size:.9rem;color:var(--texto-suave);}
+.buscador-jug-ampliar{
+  display:inline-flex;align-items:center;gap:8px;padding:9px 16px;border:1px solid var(--celeste);border-radius:999px;
+  background:color-mix(in srgb,var(--celeste) 12%,var(--tarjeta));color:var(--marino-texto);cursor:pointer;
+  font:inherit;font-size:.84rem;font-weight:700;transition:background .15s,transform .15s;
+}
+.buscador-jug-ampliar:hover{background:color-mix(in srgb,var(--celeste) 24%,var(--tarjeta));transform:translateY(-1px);}
+.buscador-jug-ampliar:focus-visible{outline:2px solid var(--celeste);outline-offset:2px;}
+.buscador-jug-sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;}
+@media (max-width:700px){
+  .buscador-jug-caja{position:static;}
+  .buscador-jug-ambito{width:100%;}
+  .buscador-jug-ambito button{min-width:0;}
+}
+@media (max-width:520px){
+  .buscador-jug-cifras{display:none;} /* el rótulo de competición se mantiene: en «Todas» es lo que distingue los resultados */
+  .buscador-jug-entrada{height:50px;}
+  .buscador-jug-ambito button{height:40px;}
+}
+@media (prefers-reduced-motion:reduce){
+  .buscador-jug-ambito::before,.buscador-jug-lista{transition:none;animation:none;}
+}
+
+/* ---------- Plantilla completa (fuente externa) ---------- */
+.plantilla-lp{margin-top:36px;}
+.plantilla-lp-titulo{
+  display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px;margin:0 0 8px;
+  font-family:var(--font-tit);font-size:1.35rem;font-weight:700;color:var(--marino-texto);
+}
+.plantilla-lp-titulo::before{content:"";flex:none;width:5px;height:1.15em;border-radius:3px;background:var(--rojo);}
+.plantilla-lp-meta{margin:0 0 14px;max-width:80ch;font-size:.86rem;line-height:1.55;color:var(--texto-suave);}
+.plantilla-lp-meta a{color:var(--celeste);font-weight:600;text-decoration:none;}
+.plantilla-lp-meta a:hover{text-decoration:underline;}
+.plantilla-lp-tabla thead th.num,.plantilla-lp-tabla td.num{text-align:center;}
+.plantilla-lp-tabla .plantilla-lp-grupo th{
+  padding:9px 14px;text-align:left;background:var(--fondo-alt);border-top:1px solid var(--borde);
+  font-family:var(--font-tit);font-size:.95rem;font-weight:500;color:var(--marino-texto);
+}
+.plantilla-lp-tabla td.col-jugador{white-space:normal;}
+.plantilla-lp-tabla td.col-jugador small{display:block;margin-top:2px;font-weight:400;font-size:.74rem;color:var(--texto-suave);}
+.plantilla-lp-tabla .lp-nombre{font-weight:700;color:var(--marino-texto);}
+.plantilla-lp-tabla .lp-enc small{font-family:var(--font-text);font-size:.68rem;font-weight:500;color:var(--texto-suave);}
+@media (max-width:640px){
+  .plantilla-lp-tabla th:nth-child(2),.plantilla-lp-tabla td:nth-child(2){display:none;}   /* la edad se omite en móvil */
+}
+
+/* ---------- Plantilla en móvil ---------- */
+@media (max-width:640px){
+  .plantilla-cabecera{flex-direction:column;align-items:flex-start;gap:14px;padding:22px 18px;
+    background:
+      radial-gradient(70% 140% at 100% 0%, rgba(91,184,232,.28), transparent 60%),
+      radial-gradient(60% 120% at 0% 100%, rgba(209,19,46,.30), transparent 60%),
+      linear-gradient(135deg,var(--marino),var(--marino2));}
+  .plantilla-escudo{width:72px;height:72px;padding:10px;}
+  .plantilla-resumen{grid-template-columns:repeat(2,1fr);}
+  .plantilla-resumen .plantilla-dato:last-child:nth-child(odd){grid-column:1 / -1;}
+}
+
+/* ---------- Modo oscuro ---------- */
+[data-theme="dark"] .stats-tabla tr.stats-top-1 td{background:rgba(246,201,69,.1);}
+[data-theme="dark"] .plantilla-top li:nth-child(1)::before{color:#f6c945;}
+[data-theme="dark"] body[data-page="estadisticas"] .stats-tabs button.activo{box-shadow:0 1px 3px rgba(0,0,0,.5),0 0 0 1px var(--borde);}
+
+@media (prefers-reduced-motion:reduce){
+  .stats-tabla tbody tr,.stats-tabla .stats-jugador-nombre::after,
+  body[data-page="estadisticas"] .filtros button{transition:none;}
+}

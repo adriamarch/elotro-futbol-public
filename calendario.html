@@ -1,25 +1,53 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<script src="js/tema.js"></script>
+<meta name="google-adsense-account" content="ca-pub-7347856722927942">
+<script src="js/tema.js?v=2"></script>
+<script src="js/preferencias.js?v=3"></script>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://api.elotrofutbol.media" crossorigin>
+<link rel="preconnect" href="https://res.cloudinary.com">
 <title id="pageTitle">Calendario — ELOTROFÚTBOLTV</title>
 <meta name="description" content="Calendario de partidos de LaLiga Hypermotion, Primera y Segunda Federación, jornada a jornada.">
-<link rel="canonical" href="https://elotrofutbol.media/calendario.html">
-<link rel="icon" href="/favicon.ico?v=2" sizes="any">
-<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=2">
-<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
-<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=17">
-<link rel="stylesheet" href="css/calendario-mejoras.css?v=1">
+<meta property="og:image" content="https://elotrofutbol.media/img/og-default.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://elotrofutbol.media/img/og-default.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ELOTROFÚTBOLTV">
+<meta property="og:locale" content="es_ES">
+<meta property="og:title" content="Calendario — ELOTROFÚTBOLTV">
+<meta property="og:description" content="Calendario de partidos de LaLiga Hypermotion, Primera y Segunda Federación, jornada a jornada.">
+<meta property="og:url" content="https://elotrofutbol.media/calendario">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="ELOTROFÚTBOLTV: noticias del fútbol no profesional">
+<meta name="twitter:title" content="Calendario — ELOTROFÚTBOLTV">
+<meta name="twitter:description" content="Calendario de partidos de LaLiga Hypermotion, Primera y Segunda Federación, jornada a jornada.">
+<meta name="twitter:site" content="@elotrofutbol">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+<meta name="theme-color" content="#0c1b2e">
+<link rel="alternate" type="application/rss+xml" title="ELOTROFÚTBOLTV" href="https://elotrofutbol.media/rss.xml">
+<script type="application/ld+json" id="seo-jsonld-pagina">{"@context":"https://schema.org","@type":"WebPage","@id":"https://elotrofutbol.media/calendario#pagina","url":"https://elotrofutbol.media/calendario","name":"Calendario — ELOTROFÚTBOLTV","description":"Calendario de partidos de LaLiga Hypermotion, Primera y Segunda Federación, jornada a jornada.","inLanguage":"es","isPartOf":{"@id":"https://elotrofutbol.media/#sitio"},"publisher":{"@id":"https://elotrofutbol.media/#organizacion"}}</script>
+<link rel="canonical" href="https://elotrofutbol.media/calendario">
+<link rel="icon" href="/favicon.ico?v=3" sizes="any">
+<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=3">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png?v=2">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&display=swap" onload="this.onload=null;this.rel='stylesheet'"><noscript><link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet"></noscript>
+<link rel="stylesheet" href="css/style.css?v=25">
+<link rel="stylesheet" href="css/accesibilidad.css?v=1">
+<script src="js/accesibilidad.js?v=1" defer></script>
+<link rel="stylesheet" href="css/foco.css?v=1">
+<link rel="stylesheet" href="css/calendario-mejoras.css?v=7">
 </head>
 <body data-page="calendario">
 
 <div id="site-header"></div>
 
 <main class="wrap">
-  <h2 class="section-title">Calendario</h2>
+  <h1 class="section-title">Calendario</h1>
   <div class="filtros">
     <button class="activo" data-cat="hypermotion">LaLiga Hypermotion</button>
     <button data-cat="primera_federacion">Primera Federación</button>
@@ -27,16 +55,39 @@
     <button data-cat="amistoso">Amistosos</button>
   </div>
   <div class="filtros-secundarios">
-    <select id="filtroGrupo" class="select-filtro" hidden></select>
+    <select id="filtroGrupo" class="select-filtro" aria-label="Filtrar por grupo" hidden></select>
+    <select id="filtroEquipo" class="select-filtro" aria-label="Filtrar por equipo" hidden></select>
+    <button type="button" id="btnTemporada" class="cal-toggle-btn" aria-pressed="false" hidden>Toda su temporada</button>
+    <div class="vista-toggle" id="vistaToggle" role="group" aria-label="Tipo de vista">
+      <button type="button" data-vista="tabla" class="activo" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/></svg>Tabla</button>
+      <button type="button" data-vista="lista" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Lista</button>
+    </div>
   </div>
 
   <div class="calendario-nav">
     <button id="btnJornadaAnterior" type="button" aria-label="Jornada anterior">&larr; Anterior</button>
-    <div class="calendario-nav-titulo">
+    <div class="calendario-nav-titulo" aria-live="polite" aria-atomic="true">
       <span id="calendarioJornadaTitulo">Jornada —</span>
       <small id="calendarioJornadaSubtitulo"></small>
     </div>
     <button id="btnJornadaSiguiente" type="button" aria-label="Jornada siguiente">Siguiente &rarr;</button>
+  </div>
+  <div class="cal-tira" id="calTira" role="group" aria-label="Elegir jornada" hidden></div>
+  <section class="cal-resumen" id="calResumen" aria-label="Resumen de la jornada" hidden>
+    <div class="cal-resumen-datos" id="calResumenDatos"></div>
+    <div class="cal-resumen-acciones">
+      <button type="button" id="btnJornadaActual" class="cal-accion" hidden>Ir a la jornada actual</button>
+      <button type="button" id="btnCompartir" class="cal-accion"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3A4 4 0 0 0 11 18.7l1-1"/></svg>Copiar enlace</button>
+    </div>
+    <div class="cal-progreso" id="calProgreso" role="progressbar" aria-label="Partidos jugados" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span></span></div>
+    <small id="calCompartirMsg" class="cal-compartir-msg" role="status" aria-live="polite"></small>
+  </section>
+  <div class="cal-export" id="calExport" hidden>
+    <svg class="cal-export-icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M12 14v4M10 16h4"/></svg>
+    <label class="cal-export-etiqueta" for="calExportSel">Añadir a mi calendario</label>
+    <select id="calExportSel" class="select-filtro" aria-describedby="calExportMsg"></select>
+    <button type="button" id="calExportBtn" class="cal-export-btn">Descargar .ics</button>
+    <small id="calExportMsg" class="cal-export-msg" role="status" aria-live="polite"></small>
   </div>
   <div id="calendarioCont"></div>
 </main>
@@ -74,20 +125,24 @@
 
 <div id="site-footer"></div>
 
-<script src="js/ui-alertas.js?v=4"></script>
-<script src="js/config.js?v=15"></script>
-<script src="js/seo.js?v=4"></script>
-<script src="js/clubs.js?v=4"></script>
+<script src="js/ui-alertas.js?v=5"></script>
+<script src="js/foco.js?v=1"></script>
+<script src="js/config.js?v=25"></script>
+<script src="js/seo.js?v=5"></script>
+<script src="js/clubs.js?v=6"></script>
 <script src="js/lector-auth.js?v=13"></script>
-<script src="js/layout.js?v=7"></script>
+<script src="js/lecturas.js?v=7"></script>
+<script src="js/layout.js?v=22"></script>
 <script src="js/cookies.js?v=2"></script>
-<script src="js/ads.js?v=2"></script>
-<script src="js/partidos.js?v=9"></script>
+<script src="js/ads.js?v=3"></script>
+<script src="js/partidos.js?v=14"></script>
+<script src="js/calendario-ics.js?v=1"></script>
+<script src="js/calendario-util.js?v=1"></script>
 <script>
 fijarSeoBasico({
   titulo: "Calendario — ELOTROFÚTBOLTV",
   descripcion: "Calendario de partidos de LaLiga Hypermotion, Primera y Segunda Federación, jornada a jornada.",
-  urlPath: "/calendario.html",
+  urlPath: "/calendario",
 });
 
 let competicionActual = "hypermotion";
@@ -99,6 +154,41 @@ let grupoActual = "";
 let RESULTADOS_COMPETICION = [];
 let jornadaSeleccionada = null; // se fija tras la primera carga
 
+// Filtro por equipo (resalta sus partidos y permite ver toda su temporada).
+let equipoActual = "";
+let modoTemporada = false;
+// Posición (1ª, 2ª…) de jornada leída de la URL, que se aplica al cargar.
+let jornadaPosPendiente = null;
+// La URL (hash) solo se reescribe cuando la persona ya ha interactuado, para
+// no ensuciarla en la primera visita.
+let hashActivo = false;
+const U = window.EOFCalUtil;
+
+(function leerEstadoInicialDeUrl() {
+  const h = U.leerHash(location.hash);
+  const validas = [...document.querySelectorAll(".filtros button")].map(b => b.dataset.cat);
+  if (!h.comp || !validas.includes(h.comp)) return;
+  competicionActual = h.comp;
+  grupoActual = h.grupo;
+  equipoActual = h.equipo;
+  modoTemporada = h.temp && !!h.equipo;
+  jornadaPosPendiente = h.j;
+  hashActivo = true;
+  document.querySelectorAll(".filtros button").forEach(b => b.classList.toggle("activo", b.dataset.cat === competicionActual));
+})();
+
+// Vista: "tabla" (horario con los días arriba y las horas a la izquierda)
+// o "lista" (tarjetas, una debajo de otra). Se recuerda la elección; si
+// nunca se ha elegido, en móvil se arranca en lista porque una tabla con
+// varias columnas obliga a desplazarse de lado.
+let vistaActual = (() => {
+  try {
+    const g = localStorage.getItem("eof_cal_vista");
+    if (g === "tabla" || g === "lista") return g;
+  } catch (e) {}
+  return window.matchMedia("(max-width: 700px)").matches ? "lista" : "tabla";
+})();
+
 document.querySelectorAll(".filtros button").forEach(btn => {
   btn.addEventListener("click", () => {
     document.querySelectorAll(".filtros button").forEach(b => b.classList.remove("activo"));
@@ -109,6 +199,10 @@ document.querySelectorAll(".filtros button").forEach(btn => {
     // competición), así que se resetea.
     grupoActual = "";
     jornadaSeleccionada = null;
+    equipoActual = "";
+    modoTemporada = false;
+    jornadaPosPendiente = null;
+    hashActivo = true;
     cargarTodo();
   });
 });
@@ -118,6 +212,10 @@ const selectGrupo = document.getElementById("filtroGrupo");
 selectGrupo.addEventListener("change", () => {
   grupoActual = selectGrupo.value;
   jornadaSeleccionada = null;
+  equipoActual = "";
+  modoTemporada = false;
+  jornadaPosPendiente = null;
+  hashActivo = true;
   cargarTodo();
 });
 
@@ -181,7 +279,9 @@ function inicioTemporadaActual() {
 // ---------- Carga de datos ----------
 async function cargarTodo() {
   const cont = document.getElementById("calendarioCont");
-  cont.innerHTML = spinnerHTML();
+  cont.innerHTML = esqueletoHTML();
+  document.getElementById("calTira").hidden = true;
+  document.getElementById("calResumen").hidden = true;
   try {
     const desdeFecha = inicioTemporadaActual();
 
@@ -193,7 +293,7 @@ async function cargarTodo() {
     // "limit=500" ya no tiene que cubrir el histórico completo de todas
     // las temporadas jugadas, solo la actual, y no se pierden nombres de
     // grupo ni jornadas bajas por culpa de partidos antiguos.
-    const paramsBase = new URLSearchParams({ competicion: competicionActual, desde_fecha: desdeFecha, limit: "500" });
+    const paramsBase = new URLSearchParams({ competicion: competicionActual, desde_fecha: desdeFecha, limit: "500", con_no_cubiertos: "1" });
     const paramsSinGrupo = paramsBase.toString();
     const { results: resultsParaGrupos } = await conReintento(() =>
       apiFetch(`/api/results?${paramsSinGrupo}`).then(r => r.json())
@@ -206,7 +306,7 @@ async function cargarTodo() {
     // dentro del grupo elegido y de la temporada actual, y no se pierde
     // ninguna jornada baja por culpa de partidos de otros grupos con
     // jornada más alta ni de temporadas anteriores acumuladas.
-    const paramsFinal = new URLSearchParams({ competicion: competicionActual, desde_fecha: desdeFecha, limit: "500" });
+    const paramsFinal = new URLSearchParams({ competicion: competicionActual, desde_fecha: desdeFecha, limit: "500", con_no_cubiertos: "1" });
     if (grupoActual) paramsFinal.set("grupo", grupoActual);
     const { results: todos } = grupoActual
       ? await conReintento(() => apiFetch(`/api/results?${paramsFinal.toString()}`).then(r => r.json()))
@@ -228,6 +328,8 @@ async function cargarTodo() {
     PARTIDOS_CACHE = {};
     RESULTADOS_COMPETICION.forEach(r => { PARTIDOS_CACHE[r.id] = r; });
 
+    poblarFiltroEquipo();
+    poblarExportacion();
     pintarCalendario();
   } catch (err) {
     cont.innerHTML = estadoHTML({
@@ -257,7 +359,7 @@ function elegirJornadaPorDefecto() {
   const jornadas = jornadasDisponibles();
   if (!jornadas.length) return null;
   const pendientes = RESULTADOS_COMPETICION
-    .filter(r => r.estado === "programado" || r.estado === "en_juego");
+    .filter(r => r.estado === "programado" || r.estado === "anulado" || r.estado === "en_juego");
   if (pendientes.length) {
     const ordenados = [...pendientes].sort((a, b) => {
       if (a.jornada !== b.jornada) return a.jornada - b.jornada;
@@ -271,7 +373,7 @@ function elegirJornadaPorDefecto() {
     return ordenados[0].jornada;
   }
   const disputados = ordenarPartidosCronologicamente(
-    RESULTADOS_COMPETICION.filter(r => r.estado !== "programado")
+    RESULTADOS_COMPETICION.filter(r => r.estado !== "programado" && r.estado !== "anulado")
   );
   return disputados.length ? disputados[0].jornada : jornadas[jornadas.length - 1];
 }
@@ -287,10 +389,224 @@ function esPestanaAmistosos() {
   return competicionActual === "amistoso";
 }
 
+const validoParaStats = (p) => !esFinalizadoSinCubrir(p);
+const hoyMadrid = () => new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Madrid" });
+const prefiereMenosMovimiento = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function temporadaActiva() { return modoTemporada && !!equipoActual && !esPestanaAmistosos(); }
+function esDeEquipo(p) { return !!equipoActual && (p.equipo_local === equipoActual || p.equipo_visitante === equipoActual); }
+
+function esqueletoHTML() {
+  const tarjeta = `<div class="cal-esqueleto-tarjeta" aria-hidden="true"><i></i><i></i><i></i></div>`;
+  return `<div class="tabla-jornada cal-esqueleto" role="status" aria-label="Cargando calendario">${tarjeta.repeat(5)}<span class="hz-sr">Cargando calendario…</span></div>`;
+}
+
+function agruparPorJornada() {
+  const m = new Map();
+  RESULTADOS_COMPETICION.forEach(r => {
+    let a = m.get(r.jornada);
+    if (!a) { a = []; m.set(r.jornada, a); }
+    a.push(r);
+  });
+  return m;
+}
+
+// ---------- Filtro por equipo ----------
+const selectEquipo = document.getElementById("filtroEquipo");
+const btnTemporada = document.getElementById("btnTemporada");
+
+function poblarFiltroEquipo() {
+  const equipos = [...new Set(RESULTADOS_COMPETICION.flatMap(r => [r.equipo_local, r.equipo_visitante]).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, "es"));
+  if (!equipos.length) {
+    selectEquipo.hidden = true;
+    selectEquipo.innerHTML = "";
+    equipoActual = "";
+    modoTemporada = false;
+    return;
+  }
+  if (equipoActual && !equipos.includes(equipoActual)) { equipoActual = ""; modoTemporada = false; }
+  selectEquipo.innerHTML = `<option value="">Todos los equipos</option>` +
+    equipos.map(e => `<option value="${escapeHtml(e)}">${escapeHtml(e)}</option>`).join("");
+  selectEquipo.value = equipoActual;
+  selectEquipo.hidden = false;
+}
+
+function actualizarBotonTemporada() {
+  const visible = !!equipoActual && !esPestanaAmistosos();
+  btnTemporada.hidden = !visible;
+  const activa = visible && modoTemporada;
+  btnTemporada.setAttribute("aria-pressed", activa ? "true" : "false");
+  btnTemporada.textContent = activa ? "Volver a la jornada" : "Toda su temporada";
+}
+
+selectEquipo.addEventListener("change", () => {
+  equipoActual = selectEquipo.value;
+  if (!equipoActual) modoTemporada = false;
+  hashActivo = true;
+  sincronizarExportEquipo();
+  pintarCalendario();
+});
+
+btnTemporada.addEventListener("click", () => {
+  modoTemporada = !modoTemporada;
+  hashActivo = true;
+  pintarCalendario();
+  if (modoTemporada) {
+    document.querySelector('#calendarioCont [data-proximo="1"]')
+      ?.scrollIntoView({ block: "center", behavior: prefiereMenosMovimiento() ? "auto" : "smooth" });
+  }
+});
+
+// ---------- Estado en la URL ----------
+function sincronizarHash() {
+  if (!hashActivo) return;
+  const pos = (jornadaSeleccionada === null || esPestanaAmistosos()) ? null : jornadasDisponibles().indexOf(jornadaSeleccionada) + 1;
+  const h = U.escribirHash({ comp: competicionActual, grupo: grupoActual, equipo: equipoActual, temp: modoTemporada, j: pos || null });
+  try { history.replaceState(null, "", location.pathname + location.search + h); } catch (e) {}
+}
+
+// ---------- Tira de jornadas ----------
+function datosChip(j, i, ps) {
+  const est = U.estadoJornada(ps);
+  const r = U.resumenJornada(ps, { esValido: validoParaStats });
+  const rango = U.formatRango(r.desde, r.hasta);
+  let res = "";
+  let extra = "";
+  if (equipoActual) {
+    const m = ps.find(esDeEquipo);
+    res = m ? U.resultadoEquipo(m, equipoActual, { esValido: validoParaStats }) : "";
+    const txt = { g: "victoria", e: "empate", p: "derrota" }[res];
+    if (txt) extra = ` · ${txt} de ${equipoActual}`;
+  }
+  const tip = `Jornada ${i + 1}${rango ? " · " + rango : ""} · ${r.jugados}/${r.total} jugados${extra}`;
+  return { est, res, tip };
+}
+
+function pintarTira(jornadas, porJornada) {
+  const tira = document.getElementById("calTira");
+  const defecto = elegirJornadaPorDefecto();
+  tira.innerHTML = jornadas.map((j, i) => {
+    const d = datosChip(j, i, porJornada.get(j) || []);
+    return `<button type="button" class="cal-chip" data-pos="${i + 1}" data-estado="${d.est}"${d.res ? ` data-res="${d.res}"` : ""}${j === defecto ? ' data-actual="1"' : ""}${j === jornadaSeleccionada ? ' aria-current="true"' : ""} title="${escapeHtml(d.tip)}" aria-label="${escapeHtml(d.tip)}">${i + 1}</button>`;
+  }).join("");
+  tira.hidden = jornadas.length < 2;
+  centrarChipSeleccionado();
+}
+
+function centrarChipSeleccionado() {
+  const tira = document.getElementById("calTira");
+  const c = tira.querySelector('[aria-current="true"]');
+  if (!c || tira.scrollWidth <= tira.clientWidth) return;
+  tira.scrollTo({ left: c.offsetLeft - (tira.clientWidth - c.offsetWidth) / 2, behavior: prefiereMenosMovimiento() ? "auto" : "smooth" });
+}
+
+document.getElementById("calTira").addEventListener("click", (e) => {
+  const b = e.target.closest(".cal-chip");
+  if (!b) return;
+  const j = jornadasDisponibles()[parseInt(b.dataset.pos, 10) - 1];
+  if (j === undefined || j === jornadaSeleccionada) return;
+  jornadaSeleccionada = j;
+  hashActivo = true;
+  pintarCalendario();
+});
+
+// ---------- Resumen ----------
+function dato(valor, etiqueta, clase = "") {
+  return `<span class="cal-dato${clase}"><b>${valor}</b><em>${etiqueta}</em></span>`;
+}
+
+function pintarResumen(partidos, { equipo = false } = {}) {
+  const el = document.getElementById("calResumen");
+  const r = U.resumenJornada(partidos, { esValido: validoParaStats });
+  const partes = [];
+  const rango = U.formatRango(r.desde, r.hasta);
+  if (rango) partes.push(dato(rango, equipo ? "temporada" : "fechas"));
+  partes.push(dato(`${r.jugados}/${r.total}`, "jugados"));
+  if (r.enVivo) partes.push(dato(`<i class="en-vivo-punto"></i>${r.enVivo}`, "en juego", " cal-dato-vivo"));
+  if (r.conMarcador) {
+    const media = r.mediaGoles.toLocaleString("es-ES", { maximumFractionDigits: 1 });
+    partes.push(dato(r.goles, `goles · ${media} por partido`));
+  }
+  if (equipoActual) {
+    const b = U.balanceEquipo(RESULTADOS_COMPETICION, equipoActual, { esValido: validoParaStats });
+    if (b.pj) partes.push(dato(`${b.g}-${b.e}-${b.p}`, `G-E-P · ${b.gf}:${b.gc} goles`, " cal-dato-equipo"));
+  }
+  document.getElementById("calResumenDatos").innerHTML = partes.join("");
+  const pct = Math.round(r.progreso * 100);
+  const barra = document.getElementById("calProgreso");
+  barra.setAttribute("aria-valuenow", String(pct));
+  barra.firstElementChild.style.width = pct + "%";
+  barra.hidden = !r.total;
+  const btnActual = document.getElementById("btnJornadaActual");
+  btnActual.hidden = equipo || jornadaSeleccionada === elegirJornadaPorDefecto();
+  el.hidden = false;
+}
+
+// Se llama tras cada refresco en vivo: actualiza chips y resumen sin
+// repintar la tira entera (así no se pierde su posición de scroll).
+function actualizarIndicadores() {
+  if (esPestanaAmistosos()) return;
+  if (temporadaActiva()) { pintarResumen(RESULTADOS_COMPETICION.filter(esDeEquipo), { equipo: true }); return; }
+  if (jornadaSeleccionada === null) return;
+  const porJornada = agruparPorJornada();
+  const jornadas = jornadasDisponibles();
+  document.querySelectorAll("#calTira .cal-chip").forEach(c => {
+    const i = parseInt(c.dataset.pos, 10) - 1;
+    const d = datosChip(jornadas[i], i, porJornada.get(jornadas[i]) || []);
+    c.dataset.estado = d.est;
+    if (d.res) c.dataset.res = d.res; else delete c.dataset.res;
+    c.title = d.tip;
+    c.setAttribute("aria-label", d.tip);
+  });
+  pintarResumen(porJornada.get(jornadaSeleccionada) || []);
+}
+
+// ---------- Lista agrupada por día ----------
+function listaPorDiaHTML(partidos) {
+  const grupos = U.agruparPorDia(partidos);
+  if (!grupos.some(g => g.dia)) {
+    return `<div class="tabla-jornada">${U.ordenarPorDia(partidos).map(p => partidoHTML(p)).join("")}</div>`;
+  }
+  const hoy = hoyMadrid();
+  return `<div class="tabla-jornada">` + grupos.map(g => {
+    const n = g.partidos.length;
+    return `<div class="cal-dia-titulo${g.dia === hoy ? " cal-dia-hoy" : ""}" role="heading" aria-level="2"><span>${escapeHtml(U.etiquetaDia(g.dia, hoy))}</span><small>${n} ${n === 1 ? "partido" : "partidos"}</small></div>` +
+      g.partidos.map(p => partidoHTML(p)).join("");
+  }).join("") + `</div>`;
+}
+
+// Toda la temporada de un equipo: sus partidos jornada a jornada.
+function temporadaEquipoHTML() {
+  const porJornada = agruparPorJornada();
+  const jornadas = jornadasDisponibles();
+  let proximo = null;
+  const trozos = [];
+  jornadas.forEach((j, i) => {
+    const mios = U.ordenarPorDia((porJornada.get(j) || []).filter(esDeEquipo));
+    if (!mios.length) return;
+    if (!proximo) proximo = mios.find(PARTIDO_PENDIENTE) || null;
+    const r = U.resumenJornada(porJornada.get(j) || []);
+    const rango = U.formatRango(r.desde, r.hasta);
+    trozos.push(`<div class="cal-dia-titulo cal-jornada-titulo" role="heading" aria-level="2"><span>Jornada ${i + 1}</span>${rango ? `<small>${rango}</small>` : ""}</div>` +
+      mios.map(p => partidoHTML(p)).join(""));
+  });
+  return { html: `<div class="tabla-jornada cal-temporada">${trozos.join("")}</div>`, proximoId: proximo ? proximo.id : null };
+}
+
 function pintarCalendario() {
   const cont = document.getElementById("calendarioCont");
   const navEl = document.querySelector(".calendario-nav");
+  const tiraEl = document.getElementById("calTira");
+  const resumenEl = document.getElementById("calResumen");
   const jornadas = jornadasDisponibles();
+  const sinNavegacion = esPestanaAmistosos() || temporadaActiva();
+  actualizarToggleVista(sinNavegacion);
+  actualizarBotonTemporada();
+  cont.classList.toggle("cal-con-equipo", !!equipoActual);
+  tiraEl.hidden = true;
+  resumenEl.hidden = true;
+  const contexto = `${categoriaLabel(competicionActual)}${grupoActual ? " · " + grupoActual : ""}`;
 
   if (esPestanaAmistosos()) {
     navEl.hidden = true;
@@ -301,29 +617,32 @@ function pintarCalendario() {
           ? "No hay partidos con los filtros seleccionados. Prueba a quitar algún filtro."
           : "Aún no se han publicado partidos para esta competición. Prueba con otra categoría o vuelve más tarde.",
       });
+      sincronizarHash();
       return;
     }
     // Dentro de Amistosos, los partidos programados (por jugar) van
     // arriba del todo y los ya disputados debajo: al contrario que el
     // orden habitual del resto de competiciones (que destaca primero lo
     // ya jugado), aquí interesa ver antes lo que queda por venir.
+    const base = equipoActual ? RESULTADOS_COMPETICION.filter(esDeEquipo) : RESULTADOS_COMPETICION;
     const programados = ordenarPartidosCronologicamente(
-      RESULTADOS_COMPETICION.filter(r => r.estado === "programado" || r.estado === "en_juego")
+      base.filter(r => r.estado === "programado" || r.estado === "anulado" || r.estado === "en_juego")
     );
     const disputados = ordenarPartidosCronologicamente(
-      RESULTADOS_COMPETICION.filter(r => r.estado !== "programado" && r.estado !== "en_juego")
+      base.filter(r => r.estado !== "programado" && r.estado !== "anulado" && r.estado !== "en_juego")
     );
     const partidos = [...programados, ...disputados];
     document.getElementById("calendarioJornadaTitulo").textContent = "Amistosos";
-    document.getElementById("calendarioJornadaSubtitulo").textContent =
-      `${categoriaLabel(competicionActual)}${grupoActual ? " · " + grupoActual : ""}`;
+    document.getElementById("calendarioJornadaSubtitulo").textContent = contexto;
     cont.innerHTML = `<div class="tabla-jornada">${partidos.map(p => partidoHTML(p)).join("")}</div>`;
     inicializarClicsPartidos("calendarioCont");
+    marcarEstadosPartidos();
+    sincronizarHash();
     return;
   }
 
-  navEl.hidden = false;
   if (!jornadas.length) {
+    navEl.hidden = false;
     document.getElementById("calendarioJornadaTitulo").textContent = "Sin calendario";
     document.getElementById("calendarioJornadaSubtitulo").textContent = "";
     document.getElementById("btnJornadaAnterior").disabled = true;
@@ -334,18 +653,38 @@ function pintarCalendario() {
         ? "No hay partidos con los filtros seleccionados. Prueba a quitar algún filtro."
         : "Aún no se han publicado partidos para esta competición. Prueba con otra categoría o vuelve más tarde.",
     });
+    sincronizarHash();
     return;
   }
+
   if (jornadaSeleccionada === null || !jornadas.includes(jornadaSeleccionada)) {
-    jornadaSeleccionada = elegirJornadaPorDefecto();
+    const deUrl = jornadaPosPendiente ? jornadas[jornadaPosPendiente - 1] : undefined;
+    jornadaSeleccionada = deUrl !== undefined ? deUrl : elegirJornadaPorDefecto();
+    jornadaPosPendiente = null;
   }
+
+  if (temporadaActiva()) {
+    navEl.hidden = true;
+    const { html, proximoId } = temporadaEquipoHTML();
+    cont.innerHTML = html;
+    inicializarClicsPartidos("calendarioCont");
+    marcarEstadosPartidos();
+    if (proximoId !== null) {
+      const el = cont.querySelector(`.partido[data-id="${proximoId}"]`);
+      if (el) el.dataset.proximo = "1";
+    }
+    pintarResumen(RESULTADOS_COMPETICION.filter(esDeEquipo), { equipo: true });
+    sincronizarHash();
+    return;
+  }
+
+  navEl.hidden = false;
   const idx = jornadas.indexOf(jornadaSeleccionada);
   document.getElementById("btnJornadaAnterior").disabled = idx <= 0;
   document.getElementById("btnJornadaSiguiente").disabled = idx >= jornadas.length - 1;
 
-  const partidosJornada = ordenarPartidosCronologicamente(
-    RESULTADOS_COMPETICION.filter(r => r.jornada === jornadaSeleccionada)
-  );
+  const porJornada = agruparPorJornada();
+  const partidosJornada = porJornada.get(jornadaSeleccionada) || [];
 
   // El número de "jornada" que guarda la base de datos no siempre
   // arranca en 1 dentro de un grupo (varios grupos regionales de
@@ -355,12 +694,102 @@ function pintarCalendario() {
   // jornada seleccionada dentro de las jornadas disponibles de este
   // grupo/competición (1ª, 2ª, 3ª...), no el número interno de la BD.
   document.getElementById("calendarioJornadaTitulo").textContent = `Jornada ${idx + 1}`;
-  document.getElementById("calendarioJornadaSubtitulo").textContent =
-    `${categoriaLabel(competicionActual)}${grupoActual ? " · " + grupoActual : ""}`;
+  document.getElementById("calendarioJornadaSubtitulo").textContent = contexto;
 
-  cont.innerHTML = `<div class="tabla-jornada">${partidosJornada.map(p => partidoHTML(p)).join("")}</div>`;
-  inicializarClicsPartidos("calendarioCont");
+  pintarTira(jornadas, porJornada);
+  pintarResumen(partidosJornada);
+
+  if (vistaActual === "tabla") {
+    cont.innerHTML = horarioHTML(partidosJornada);
+  } else {
+    cont.innerHTML = listaPorDiaHTML(partidosJornada);
+    inicializarClicsPartidos("calendarioCont");
+    marcarEstadosPartidos();
+  }
+  sincronizarHash();
 }
+
+// ---------- Navegación: botones, teclado, gesto, atajos ----------
+function irAJornada(delta) {
+  if (esPestanaAmistosos() || temporadaActiva()) return false;
+  const js = jornadasDisponibles();
+  const i = js.indexOf(jornadaSeleccionada);
+  const n = i + delta;
+  if (i < 0 || n < 0 || n >= js.length) return false;
+  jornadaSeleccionada = js[n];
+  hashActivo = true;
+  pintarCalendario();
+  return true;
+}
+
+document.addEventListener("keydown", (e) => {
+  if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+  if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+  const t = e.target;
+  if (t && t.closest && t.closest("input, select, textarea, [contenteditable], .horario-wrap")) return;
+  const modal = document.getElementById("modalPartido");
+  if (modal && modal.classList.contains("abierto")) return;
+  if (irAJornada(e.key === "ArrowLeft" ? -1 : 1)) e.preventDefault();
+});
+
+// Gesto horizontal en móvil sobre la barra de jornada y la lista de tarjetas
+// (la tabla tiene su propio scroll horizontal, así que queda fuera).
+(function () {
+  let x0 = null, y0 = 0, t0 = 0;
+  const zona = ".calendario-nav, .tabla-jornada";
+  document.addEventListener("touchstart", (e) => {
+    if (e.touches.length !== 1 || !e.target.closest || !e.target.closest(zona)) { x0 = null; return; }
+    x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; t0 = Date.now();
+  }, { passive: true });
+  document.addEventListener("touchend", (e) => {
+    if (x0 === null) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - x0, dy = t.clientY - y0;
+    x0 = null;
+    if (Date.now() - t0 > 700) return;
+    if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.8) irAJornada(dx < 0 ? 1 : -1);
+  }, { passive: true });
+})();
+
+document.getElementById("btnJornadaActual").addEventListener("click", () => {
+  jornadaSeleccionada = elegirJornadaPorDefecto();
+  hashActivo = true;
+  pintarCalendario();
+});
+
+// ---------- Compartir enlace ----------
+let _tCompartir = null;
+async function compartirVista() {
+  hashActivo = true;
+  sincronizarHash();
+  const url = location.href;
+  const msg = document.getElementById("calCompartirMsg");
+  const titulo = document.getElementById("calendarioJornadaTitulo").textContent;
+  const avisar = (txt) => {
+    msg.textContent = txt;
+    clearTimeout(_tCompartir);
+    _tCompartir = setTimeout(() => { msg.textContent = ""; }, 3500);
+  };
+  if (navigator.share && window.matchMedia("(pointer: coarse)").matches) {
+    try { await navigator.share({ title: `${titulo} — ELOTROFÚTBOLTV`, url }); return; }
+    catch (e) { if (e && e.name === "AbortError") return; }
+  }
+  try {
+    await navigator.clipboard.writeText(url);
+    avisar("Enlace copiado.");
+  } catch (e) {
+    const ta = document.createElement("textarea");
+    ta.value = url;
+    ta.style.cssText = "position:fixed;opacity:0;pointer-events:none";
+    document.body.appendChild(ta);
+    ta.select();
+    let ok = false;
+    try { ok = document.execCommand("copy"); } catch (_) {}
+    ta.remove();
+    avisar(ok ? "Enlace copiado." : url);
+  }
+}
+document.getElementById("btnCompartir").addEventListener("click", compartirVista);
 
 // Nota: antes había aquí una función que anulaba por JS el enlace de
 // .equipo a la ficha del club (para que en calendario.html el clic
@@ -370,16 +799,282 @@ function pintarCalendario() {
 // clic de toda la tarjeta y abre el modal, igual que en las demás
 // páginas.
 
-document.getElementById("btnJornadaAnterior").addEventListener("click", () => {
-  const jornadas = jornadasDisponibles();
-  const idx = jornadas.indexOf(jornadaSeleccionada);
-  if (idx > 0) { jornadaSeleccionada = jornadas[idx - 1]; pintarCalendario(); }
+// ---------- Añadir a mi calendario (.ics) ----------
+// Descarga un archivo .ics con los partidos PENDIENTES de la jornada
+// visible o de un equipo (todo lo que queda de temporada en la
+// competición/grupo elegidos). Se abre con la app de calendario del
+// móvil/ordenador. El UID de cada evento es fijo (partido-<id>), así que
+// volver a importarlo actualiza los eventos en vez de duplicarlos en la
+// mayoría de aplicaciones. Lógica del .ics en js/calendario-ics.js.
+const CLAVE_EQUIPO_EXPORT = "eof_cal_export_equipo";
+const PARTIDO_PENDIENTE = (r) => r.estado === "programado" || r.estado === "retrasado" || r.estado === "en_juego";
+
+function poblarExportacion() {
+  const caja = document.getElementById("calExport");
+  const sel = document.getElementById("calExportSel");
+  const msg = document.getElementById("calExportMsg");
+  if (!caja || !sel || !window.EOFCalendarioICS) return;
+  msg.textContent = "";
+  const pendientes = RESULTADOS_COMPETICION.filter(PARTIDO_PENDIENTE);
+  if (!pendientes.length) { caja.hidden = true; return; }
+
+  const equipos = [...new Set(pendientes.flatMap(r => [r.equipo_local, r.equipo_visitante]).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, "es"));
+  const primera = esPestanaAmistosos()
+    ? `<option value="todos">Todos los amistosos por jugar</option>`
+    : `<option value="jornada">Esta jornada</option>`;
+  sel.innerHTML = primera +
+    `<optgroup label="Próximos partidos de…">` +
+    equipos.map(e => `<option value="eq:${escapeHtml(e)}">${escapeHtml(e)}</option>`).join("") +
+    `</optgroup>`;
+
+  // Se recuerda el último equipo elegido (si juega en esta competición/grupo).
+  let recordado = "";
+  try { recordado = localStorage.getItem(CLAVE_EQUIPO_EXPORT) || ""; } catch (e) {}
+  if (equipoActual && equipos.includes(equipoActual)) recordado = equipoActual;
+  if (recordado && equipos.includes(recordado)) sel.value = "eq:" + recordado;
+  caja.hidden = false;
+}
+
+// Al elegir equipo en el filtro, el desplegable de "Añadir a mi calendario"
+// se coloca en ese equipo (o vuelve a lo habitual si se quita el filtro).
+function sincronizarExportEquipo() {
+  const sel = document.getElementById("calExportSel");
+  if (!sel) return;
+  const v = equipoActual ? "eq:" + equipoActual : (esPestanaAmistosos() ? "todos" : "jornada");
+  if ([...sel.options].some(o => o.value === v)) sel.value = v;
+}
+
+function descargarCalendarioIcs() {
+  const sel = document.getElementById("calExportSel");
+  const msg = document.getElementById("calExportMsg");
+  const v = sel.value;
+  let partidos, nombre;
+  if (v === "jornada") {
+    partidos = RESULTADOS_COMPETICION.filter(r => r.jornada === jornadaSeleccionada);
+    const n = jornadasDisponibles().indexOf(jornadaSeleccionada) + 1;
+    nombre = `${categoriaLabel(competicionActual)}${grupoActual ? " " + grupoActual : ""} · Jornada ${n}`;
+  } else if (v === "todos") {
+    partidos = RESULTADOS_COMPETICION;
+    nombre = "Amistosos";
+  } else {
+    const equipo = v.slice(3);
+    partidos = RESULTADOS_COMPETICION.filter(r => r.equipo_local === equipo || r.equipo_visitante === equipo);
+    nombre = equipo;
+    try { localStorage.setItem(CLAVE_EQUIPO_EXPORT, equipo); } catch (e) {}
+  }
+  const { ics, incluidos, sinFecha } = EOFCalendarioICS.construirICS(partidos, { nombre });
+  if (!incluidos) {
+    msg.textContent = sinFecha
+      ? "Estos partidos aún no tienen fecha: vuelve a probar cuando se confirmen."
+      : "No quedan partidos por jugar.";
+    return;
+  }
+  EOFCalendarioICS.descargar(ics, EOFCalendarioICS.nombreArchivo(nombre));
+  msg.textContent = `${incluidos} ${incluidos === 1 ? "partido descargado" : "partidos descargados"}` +
+    (sinFecha ? ` · ${sinFecha} sin fecha todavía (no incluidos)` : "") + ".";
+}
+document.getElementById("calExportBtn")?.addEventListener("click", descargarCalendarioIcs);
+document.getElementById("calExportSel")?.addEventListener("change", () => {
+  document.getElementById("calExportMsg").textContent = "";
 });
-document.getElementById("btnJornadaSiguiente").addEventListener("click", () => {
-  const jornadas = jornadasDisponibles();
-  const idx = jornadas.indexOf(jornadaSeleccionada);
-  if (idx < jornadas.length - 1) { jornadaSeleccionada = jornadas[idx + 1]; pintarCalendario(); }
+
+// ---------- Apoyo visual (solo CSS: ver calendario-mejoras.css) ----------
+// Anota en cada tarjeta el estado del partido y, si ya ha terminado con
+// ganador, quién ganó (por goles o, si hubo empate, por penaltis), para
+// que el CSS pueda diferenciar "por jugar", "retrasado", y resaltar al
+// ganador. No cambia el contenido ni el comportamiento de la tarjeta.
+function ganadorPartido(p) {
+  if (p.estado !== "finalizado" || esFinalizadoSinCubrir(p)) return "";
+  const gl = Number(p.goles_local), gv = Number(p.goles_visitante);
+  if (isNaN(gl) || isNaN(gv)) return "";
+  let dif = gl - gv;
+  if (dif === 0 && p.penaltis_local != null && p.penaltis_visitante != null) {
+    dif = Number(p.penaltis_local) - Number(p.penaltis_visitante);
+  }
+  return dif > 0 ? "local" : dif < 0 ? "visitante" : "";
+}
+
+function marcarEstadosPartidos() {
+  document.querySelectorAll("#calendarioCont .partido[data-id]").forEach(el => {
+    const p = PARTIDOS_CACHE[el.dataset.id];
+    if (!p) return;
+    el.dataset.estado = p.estado || "";
+    el.removeAttribute("data-ganador");
+    const g = ganadorPartido(p);
+    if (g) el.dataset.ganador = g;
+    if (esDeEquipo(p)) el.dataset.mio = "1"; else delete el.dataset.mio;
+  });
+}
+
+// ---------- Vista de tabla (horario) ----------
+// Día y hora de un partido tal y como ya los muestra formatFecha (config.js):
+// "YYYY-MM-DD" = solo día; "YYYY-MM-DDTHH:MM" = día y hora de España tal
+// cual se escribieron; cualquier otro formato = instante UTC pasado a
+// España (solo se usa el día, igual que formatFecha).
+const fechaHoraPartido = (p) => U.fechaHoraPartido(p);
+
+function miniPartidoHTML(p) {
+  const enJuego = p.estado === "en_juego";
+  const enDescanso = enJuego && p.cronometro_pausado_en !== null && p.cronometro_pausado_en !== undefined;
+  const mostrarGoles = p.estado === "finalizado" || enJuego;
+  const gl = p.goles_local ?? 0, gv = p.goles_visitante ?? 0;
+  const hayPen = p.penaltis_local != null && p.penaltis_visitante != null;
+  const pen = (v) => hayPen ? `<sup class="hz-pen">(${v})</sup>` : "";
+  const sinCubrir = esFinalizadoSinCubrir(p);
+  const etiquetas = { programado: "Por jugar", finalizado: sinCubrir ? "Jugado · sin cubrir" : "Final", anulado: "Por jugar", retrasado: "Retrasado" };
+  const estadoTxt = enJuego
+    ? `<span class="en-vivo-punto"></span>${enDescanso ? "Descanso" : "En juego"} <span data-minuto-en-vivo="${p.id}">${minutoEnVivoTexto(p)}</span>`
+    : (etiquetas[p.estado] || escapeHtml(p.estado));
+  const lugar = p.estado === "anulado"
+    ? `<span class="hz-lugar">· Pendiente de reprogramar</span>`
+    : (((p.estado === "programado" || p.estado === "finalizado") && p.ubicacion) ? `<span class="hz-lugar">· ${escapeHtml(p.ubicacion)}</span>` : "");
+  const g = ganadorPartido(p);
+  const fila = (lado, nombre, escudoNombre, escudoUrl, goles, penVal) => `
+      <div class="hz-equipo hz-${lado}">
+        <img class="escudo" src="${getEscudoUrl(escudoNombre, escudoUrl)}" alt="" loading="lazy" data-equipo="${escapeHtml(escudoNombre)}" onerror="manejarErrorEscudo(this);">
+        <span class="hz-nombre" title="${escapeHtml(nombre)}">${escapeHtml(nombre)}</span>
+        ${mostrarGoles ? `<b class="hz-goles">${goles}${pen(penVal)}</b>` : ""}
+      </div>`;
+  return `
+    <div class="hz-partido${enJuego ? " hz-en-vivo" : ""}" data-id="${p.id}" data-firma="${[p.estado, p.goles_local, p.goles_visitante, p.penaltis_local, p.penaltis_visitante, p.cronometro_pausado_en].join("|")}" data-estado="${escapeHtml(p.estado || "")}"${sinCubrir ? ' data-sin-cubrir="1" title="Ya se ha jugado, pero aún no se ha cubierto ni actualizado: no cuenta en la clasificación."' : ""}${g ? ` data-ganador="${g}"` : ""}${esPartidazo(p) ? ` data-partidazo="1"` : ""}${esDeEquipo(p) ? ` data-mio="1"` : ""} role="button" tabindex="0">
+      ${fila("local", p.equipo_local, p.equipo_local, p.escudo_local_url, gl, p.penaltis_local)}
+      ${fila("visitante", p.equipo_visitante, p.equipo_visitante, p.escudo_visitante_url, gv, p.penaltis_visitante)}
+      <div class="hz-pie"><span class="hz-estado">${estadoTxt}</span>${lugar}</div>
+    </div>`;
+}
+
+function horarioHTML(partidos) {
+  const info = partidos.map(p => ({ p, ...fechaHoraPartido(p) }));
+  const dias = [...new Set(info.map(i => i.dia).filter(Boolean))].sort();
+  const columnas = [...dias, ...(info.some(i => !i.dia) ? [null] : [])];
+  const horas = [...new Set(info.map(i => i.hora).filter(Boolean))].sort();
+  const filas = [...horas, ...(info.some(i => !i.hora) ? [null] : [])];
+  const hoy = new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Madrid" });
+
+  const cabeceraDia = (dia) => {
+    if (!dia) return `<th scope="col" class="hz-dia hz-dia-pendiente"><span class="hz-dia-sem">Fecha</span><span class="hz-dia-num">?</span><span class="hz-dia-mes">por confirmar</span></th>`;
+    const [y, m, d] = dia.split("-").map(Number);
+    const f = new Date(y, m - 1, d);
+    const sem = f.toLocaleDateString("es-ES", { weekday: "short" }).replace(".", "");
+    const mes = f.toLocaleDateString("es-ES", { month: "short" }).replace(".", "");
+    const n = info.filter(i => i.dia === dia).length;
+    return `<th scope="col" class="hz-dia${dia === hoy ? " hz-hoy" : ""}">
+      ${dia === hoy ? `<span class="hz-hoy-badge">Hoy</span>` : ""}
+      <span class="hz-dia-sem">${sem}</span><span class="hz-dia-num">${String(d).padStart(2, "0")}</span><span class="hz-dia-mes">${mes}</span>
+      <span class="hz-dia-n">${n} ${n === 1 ? "partido" : "partidos"}</span></th>`;
+  };
+
+  const cuerpo = filas.map(hora => `
+    <tr>
+      <th scope="row" class="hz-hora${hora ? "" : " hz-hora-pendiente"}"><span>${hora || "Hora por confirmar"}</span></th>
+      ${columnas.map(dia => {
+        const delCuadro = info.filter(i => i.dia === dia && i.hora === hora)
+          .sort((a, b) => a.p.equipo_local.localeCompare(b.p.equipo_local, "es"));
+        const claseHoy = dia && dia === hoy ? " hz-hoy-col" : "";
+        if (!delCuadro.length) return `<td class="hz-celda hz-vacia${claseHoy}"></td>`;
+        return `<td class="hz-celda${claseHoy}"><div class="hz-pila">${delCuadro.map(i => miniPartidoHTML(i.p)).join("")}</div></td>`;
+      }).join("")}
+    </tr>`).join("");
+
+  return `
+    <div class="horario-wrap">
+      <table class="horario" style="--hz-cols:${columnas.length}">
+        <caption class="hz-sr">Horario de la jornada: días en columnas, horas en filas</caption>
+        <thead><tr>
+          <th scope="col" class="hz-esquina"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Hora</span></th>
+          ${columnas.map(cabeceraDia).join("")}
+        </tr></thead>
+        <tbody>${cuerpo}</tbody>
+      </table>
+    </div>`;
+}
+
+// El auto-refresco en vivo (partidos.js) solo repinta las tarjetas ".partido"
+// de la lista; aquí se amplía para que también se actualicen los partidos de
+// la tabla, y solo cuando algo ha cambiado de verdad (evita parpadeos).
+const _actualizarPartidoOriginal = actualizarPartidoEnPantalla;
+actualizarPartidoEnPantalla = function (resultado, eventos) {
+  _actualizarPartidoOriginal(resultado, eventos);
+  // Se devuelve a la lista de la competición la versión actualizada, para
+  // que al cambiar de jornada no reaparezca el estado anterior del partido.
+  const actualizado = PARTIDOS_CACHE[resultado.id];
+  if (actualizado) {
+    const i = RESULTADOS_COMPETICION.findIndex(r => r.id === actualizado.id);
+    if (i >= 0) RESULTADOS_COMPETICION[i] = actualizado;
+  }
+  // El repintado de la tarjeta (partidos.js) pierde las marcas de estado.
+  marcarEstadosPartidos();
+  actualizarIndicadores();
+  const el = document.querySelector(`.hz-partido[data-id="${resultado.id}"]`);
+  const p = PARTIDOS_CACHE[resultado.id];
+  if (!el || !p) return;
+  const nuevo = miniPartidoHTML(p).trim();
+  const tmp = document.createElement("div");
+  tmp.innerHTML = nuevo;
+  if (tmp.firstElementChild && tmp.firstElementChild.dataset.firma !== el.dataset.firma) {
+    el.replaceWith(tmp.firstElementChild);
+  }
+};
+
+function actualizarToggleVista(ocultar) {
+  const t = document.getElementById("vistaToggle");
+  t.hidden = !!ocultar;
+  t.querySelectorAll("button").forEach(b => {
+    const act = b.dataset.vista === vistaActual;
+    b.classList.toggle("activo", act);
+    b.setAttribute("aria-pressed", act ? "true" : "false");
+  });
+}
+
+document.getElementById("vistaToggle").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-vista]");
+  if (!b || b.dataset.vista === vistaActual) return;
+  vistaActual = b.dataset.vista;
+  try { localStorage.setItem("eof_cal_vista", vistaActual); } catch (err) {}
+  pintarCalendario();
 });
+
+// Clic / teclado sobre un partido de la tabla -> mismo modal de detalle.
+(function () {
+  const cont = document.getElementById("calendarioCont");
+  const abrir = (el) => { if (el) abrirModalPartido(parseInt(el.dataset.id, 10)); };
+  cont.addEventListener("click", (e) => abrir(e.target.closest(".hz-partido")));
+  cont.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    const el = e.target.closest(".hz-partido");
+    if (!el) return;
+    e.preventDefault();
+    abrir(el);
+  });
+})();
+
+// La cabecera del sitio es "sticky" y su altura cambia según pantalla y
+// banners; se mide para que la barra de jornada se quede justo debajo de
+// ella en vez de quedar tapada.
+function ajustarAltoCabecera() {
+  const h = document.querySelector(".main-header");
+  if (!h) return;
+  document.body.style.setProperty("--cal-header-alto", Math.round(h.getBoundingClientRect().height + (parseFloat(getComputedStyle(h).top) || 0)) + "px");
+}
+window.addEventListener("resize", ajustarAltoCabecera);
+window.addEventListener("load", ajustarAltoCabecera);
+document.addEventListener("DOMContentLoaded", () => {
+  ajustarAltoCabecera();
+  // El header se inyecta con layout.js: se observa por si llega o cambia después.
+  const sh = document.getElementById("site-header");
+  if (sh && "MutationObserver" in window) new MutationObserver(ajustarAltoCabecera).observe(sh, { childList: true, subtree: true });
+  if ("ResizeObserver" in window) {
+    const t = setInterval(() => {
+      const h = document.querySelector(".main-header");
+      if (h) { new ResizeObserver(ajustarAltoCabecera).observe(h); clearInterval(t); }
+    }, 200);
+    setTimeout(() => clearInterval(t), 5000);
+  }
+});
+
+document.getElementById("btnJornadaAnterior").addEventListener("click", () => irAJornada(-1));
+document.getElementById("btnJornadaSiguiente").addEventListener("click", () => irAJornada(1));
 
 document.addEventListener("DOMContentLoaded", () => {
   cargarTodo();

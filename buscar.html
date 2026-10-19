@@ -1,16 +1,43 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<script src="js/tema.js"></script>
+<meta name="google-adsense-account" content="ca-pub-7347856722927942">
+<script src="js/tema.js?v=2"></script>
+<script src="js/preferencias.js?v=3"></script>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <title id="pageTitle">Buscar — ELOTROFÚTBOLTV</title>
+<meta property="og:image" content="https://elotrofutbol.media/img/og-default.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://elotrofutbol.media/img/og-default.png">
 <meta name="robots" content="noindex">
-<link rel="icon" href="/favicon.ico?v=2" sizes="any">
-<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=2">
-<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<link rel="icon" href="/favicon.ico?v=3" sizes="any">
+<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=3">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png?v=2">
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&family=Playfair+Display:wght@700;800&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=17">
+<link rel="stylesheet" href="css/style.css?v=25">
+<link rel="stylesheet" href="css/accesibilidad.css?v=1">
+<script src="js/accesibilidad.js?v=1" defer></script>
+<link rel="stylesheet" href="css/foco.css?v=1">
+<style>
+.busq-aviso{background:var(--fondo-alt);border:1px solid var(--borde);border-left:4px solid var(--rojo);border-radius:var(--radio-sm,6px);padding:.7rem 1rem;margin:0 0 1rem;font-size:.92rem;color:var(--texto);}
+.busq-aviso a{color:var(--rojo);font-weight:600;}
+.busq-filtros{margin:0 0 1.2rem;display:flex;flex-direction:column;gap:.7rem;}
+.busq-chips{display:flex;flex-wrap:wrap;gap:.4rem;}
+.busq-chip{border:1px solid var(--borde);background:var(--tarjeta);color:var(--texto);border-radius:999px;padding:.3rem .8rem;font-size:.82rem;cursor:pointer;font-family:var(--font-text);}
+.busq-chip:hover{border-color:var(--rojo);}
+.busq-chip[aria-pressed="true"]{background:var(--rojo);border-color:var(--rojo);color:#fff;}
+.busq-chip small{opacity:.7;margin-left:.25rem;}
+.busq-fila{display:flex;flex-wrap:wrap;gap:.8rem 1.2rem;align-items:center;font-size:.85rem;color:var(--texto-suave);}
+.busq-fila input,.busq-fila select{margin-left:.3rem;padding:.3rem .5rem;border:1px solid var(--borde);border-radius:var(--radio-sm,6px);background:var(--tarjeta);color:var(--texto);font:inherit;}
+.busq-limpiar{color:var(--rojo);font-weight:600;}
+.busq-extracto{margin:.35rem 0 0;font-size:.85rem;color:var(--texto-suave);line-height:1.4;}
+mark{background:rgba(209,19,46,.16);color:inherit;border-radius:3px;padding:0 .12em;}
+.busq-mas{text-align:center;margin:1.5rem 0;}
+.busq-mas button{cursor:pointer;border:0;}
+</style>
 </head>
 <body>
 
@@ -20,26 +47,202 @@
   <div id="ad-cabecera-buscar"></div>
   <h2 class="section-title" id="tituloBusqueda">Resultados de la búsqueda</h2>
   <div id="clubesBusqueda"></div>
+  <div id="avisoBusqueda" class="busq-aviso" hidden></div>
+  <form id="filtrosBusqueda" class="busq-filtros" hidden autocomplete="off">
+    <div class="busq-chips" id="chipsCategoria" role="group" aria-label="Filtrar por competición"></div>
+    <div class="busq-chips" id="chipsTipo" role="group" aria-label="Filtrar por tipo"></div>
+    <div class="busq-fila">
+      <label>Desde <input type="date" id="fDesde"></label>
+      <label>Hasta <input type="date" id="fHasta"></label>
+      <label>Ordenar por
+        <select id="fOrden">
+          <option value="relevancia">Relevancia</option>
+          <option value="fecha">Más recientes</option>
+        </select>
+      </label>
+      <a href="#" id="fLimpiar" class="busq-limpiar" hidden>Quitar filtros</a>
+    </div>
+  </form>
   <div class="grid-noticias" id="grid"></div>
+  <div class="busq-mas" id="busqMas" hidden><button type="button" id="btnMas" class="btn-volver">Cargar más resultados</button></div>
 </main>
 
 <div id="site-footer"></div>
 
-<script src="js/ui-alertas.js?v=4"></script>
-<script src="js/config.js?v=15"></script>
-<script src="js/seo.js?v=4"></script>
-<script src="js/clubs.js?v=4"></script>
+<script src="js/ui-alertas.js?v=5"></script>
+<script src="js/foco.js?v=1"></script>
+<script src="js/config.js?v=25"></script>
+<script src="js/seo.js?v=5"></script>
+<script src="js/clubs.js?v=6"></script>
 <script src="js/lector-auth.js?v=13"></script>
-<script src="js/layout.js?v=7"></script>
-<script src="js/main.js?v=10"></script>
+<script src="js/lecturas.js?v=7"></script>
+<script src="js/layout.js?v=22"></script>
+<script src="js/main.js?v=14"></script>
 <script src="js/cookies.js?v=2"></script>
-<script src="js/ads.js?v=2"></script>
+<script src="js/ads.js?v=3"></script>
 <script>
 document.getElementById("ad-cabecera-buscar").innerHTML = adSlot("cabecera");
 </script>
 <script>
+const TIPOS_BUSQUEDA = {
+  noticia: "Noticias", previa: "Previas", cronica: "Crónicas",
+  analisis: "Análisis", opinion: "Opinión", entrevista: "Entrevistas", uno_por_uno: "1x1 de jugadores",
+};
+const POR_PAGINA = 20;
+const FILTROS = ["categoria", "tipo", "desde", "hasta", "orden"];
+let busqFacetas = null;   // recuentos de la primera página (no cambian al paginar)
+let busqIntento = null;   // criterio con el que se resolvió la primera página
+let busqOffset = 0;
+let busqPeticion = 0;     // identifica la última búsqueda lanzada: las respuestas anteriores se descartan
+
+function parametrosBusqueda() { return new URLSearchParams(location.search); }
+
+// Cambia filtros en la URL (sin recargar) y repite la búsqueda desde cero.
+function cambiarFiltros(cambios) {
+  const ps = parametrosBusqueda();
+  for (const [k, v] of Object.entries(cambios)) { if (v) ps.set(k, v); else ps.delete(k); }
+  // Si el rango está al revés ("desde" posterior a "hasta") se le da la vuelta
+  // en vez de mostrar una página vacía sin explicación.
+  if (ps.get("desde") && ps.get("hasta") && ps.get("desde") > ps.get("hasta")) {
+    const d = ps.get("desde"); ps.set("desde", ps.get("hasta")); ps.set("hasta", d);
+  }
+  // pushState: el botón "Atrás" del navegador deshace el último filtro.
+  history.pushState(null, "", location.pathname + "?" + ps.toString());
+  cargarResultados(true);
+}
+window.addEventListener("popstate", () => { if (parametrosBusqueda().get("q")) cargarResultados(true); });
+
+function urlApiBusqueda(primera) {
+  const ps = parametrosBusqueda();
+  const api = new URLSearchParams({ q: ps.get("q") || "", limit: String(POR_PAGINA) });
+  for (const k of FILTROS) if (ps.get(k)) api.set(k, ps.get(k));
+  if (ps.get("exacto") === "1") api.set("exacto", "1");
+  if (primera) api.set("facetas", "1");
+  else { api.set("offset", String(busqOffset)); if (busqIntento !== null) api.set("intento", String(busqIntento)); }
+  return `/api/articles?${api.toString()}`;
+}
+
+function pintarFiltros(hayFiltrosActivos) {
+  const ps = parametrosBusqueda();
+  const form = document.getElementById("filtrosBusqueda");
+  const chips = (id, clave, etiquetas, conteos) => {
+    const el = document.getElementById(id);
+    const actual = ps.get(clave) || "";
+    const claves = Object.keys(conteos || {}).filter((c) => conteos[c] > 0).sort((a, b) => conteos[b] - conteos[a]);
+    if (!claves.length && !actual) { el.innerHTML = ""; return; }
+    const total = claves.reduce((n, c) => n + conteos[c], 0);
+    const boton = (valor, texto, n) =>
+      `<button type="button" class="busq-chip" data-k="${clave}" data-v="${escapeHtml(valor)}" aria-pressed="${actual === valor}">${escapeHtml(texto)}${n != null ? `<small>${n}</small>` : ""}</button>`;
+    el.innerHTML = boton("", "Todas", total || null) + claves.map((c) => boton(c, etiquetas(c), conteos[c])).join("");
+  };
+  chips("chipsCategoria", "categoria", (c) => categoriaLabel(c), busqFacetas && busqFacetas.categorias);
+  chips("chipsTipo", "tipo", (t) => TIPOS_BUSQUEDA[t] || t, busqFacetas && busqFacetas.tipos);
+  document.getElementById("fDesde").value = ps.get("desde") || "";
+  document.getElementById("fHasta").value = ps.get("hasta") || "";
+  document.getElementById("fOrden").value = ps.get("orden") === "fecha" ? "fecha" : "relevancia";
+  document.getElementById("fLimpiar").hidden = !hayFiltrosActivos;
+  form.hidden = false;
+}
+
+function pintarAviso(info, q) {
+  const el = document.getElementById("avisoBusqueda");
+  const ps = parametrosBusqueda();
+  const partes = [];
+  if (info && info.corregido) {
+    ps.set("exacto", "1");
+    partes.push(`Mostrando resultados para <strong>${escapeHtml(info.corregido)}</strong>. <a href="?${escapeHtml(ps.toString())}">Buscar "${escapeHtml(q)}" tal cual</a>`);
+  }
+  if (info && info.modo === "or") {
+    partes.push("Ninguna noticia contiene todas las palabras: se muestran las que contienen alguna de ellas.");
+  }
+  el.innerHTML = partes.join("<br>");
+  el.hidden = !partes.length;
+}
+
+function tarjetaResultado(a) {
+  const html = cardHTML(a);
+  if (!a.extracto_html) return html;
+  // extracto_html ya viene escapado por el servidor (solo contiene <mark>).
+  return html.replace(/<\/div>\s*<\/a>\s*$/, `<p class="busq-extracto">${a.extracto_html}</p></div></a>`);
+}
+
+async function cargarResultados(primera) {
+  const q = parametrosBusqueda().get("q") || "";
+  const grid = document.getElementById("grid");
+  const mas = document.getElementById("busqMas");
+  const hayFiltros = FILTROS.some((k) => k !== "orden" && parametrosBusqueda().get(k));
+  if (primera) {
+    busqOffset = 0; busqIntento = null;
+    mas.hidden = true;
+    grid.innerHTML = spinnerHTML("Buscando...");
+  }
+  const boton = document.getElementById("btnMas");
+  boton.disabled = true;
+  const miPeticion = ++busqPeticion;
+  try {
+    const data = await conReintento(async () => (await apiFetch(urlApiBusqueda(primera))).json());
+    if (miPeticion !== busqPeticion) return;   // llegó tarde: ya hay otra búsqueda en curso
+    const articles = data.articles || [];
+    const info = data.busqueda || null;
+    if (primera) {
+      busqFacetas = (info && info.facetas) || busqFacetas;
+      busqIntento = info ? info.intento : null;
+      pintarAviso(info, q);
+      pintarFiltros(hayFiltros);
+      grid.innerHTML = articles.length
+        ? articles.map(tarjetaResultado).join("")
+        : estadoHTML({
+            titulo: "Sin resultados",
+            texto: hayFiltros
+              ? `No hay resultados para "${q}" con esos filtros.`
+              : `No hemos encontrado ninguna noticia relacionada con "${q}". Prueba con otra palabra o menos palabras, revisa la ortografía, o usa comillas para una frase exacta ("real madrid") y un guion para excluir una palabra (-fichaje).`,
+            tipo: "busqueda",
+            cta: hayFiltros
+              ? `<a href="#" class="btn-volver" id="ctaQuitarFiltros">Quitar filtros</a>`
+              : `<a href="/" class="btn-volver">Ir a portada</a>`,
+          });
+      if (articles.length) insertarAdsEnGrid(grid);
+    } else {
+      grid.insertAdjacentHTML("beforeend", articles.map(tarjetaResultado).join(""));
+    }
+    busqOffset += articles.length;
+    mas.hidden = !data.hay_mas;
+  } catch (err) {
+    if (miPeticion !== busqPeticion) return;
+    if (primera) {
+      grid.innerHTML = estadoHTML({
+        titulo: "No se ha podido conectar",
+        texto: "Ha habido un problema al realizar la búsqueda. Comprueba tu conexión e inténtalo de nuevo.",
+        tipo: "error",
+        cta: `<a href="javascript:location.reload()" class="btn-volver">Reintentar</a>`,
+      });
+    }
+  } finally {
+    if (miPeticion === busqPeticion) boton.disabled = false;
+  }
+}
+
+function enlazarFiltros() {
+  const quitarTodo = (e) => {
+    e.preventDefault();
+    const sinFiltros = {}; for (const k of FILTROS) sinFiltros[k] = "";
+    cambiarFiltros(sinFiltros);
+  };
+  document.getElementById("filtrosBusqueda").addEventListener("click", (e) => {
+    const chip = e.target.closest(".busq-chip");
+    if (chip) cambiarFiltros({ [chip.dataset.k]: chip.dataset.v });
+  });
+  document.getElementById("filtrosBusqueda").addEventListener("submit", (e) => e.preventDefault());
+  document.getElementById("fDesde").addEventListener("change", (e) => cambiarFiltros({ desde: e.target.value }));
+  document.getElementById("fHasta").addEventListener("change", (e) => cambiarFiltros({ hasta: e.target.value }));
+  document.getElementById("fOrden").addEventListener("change", (e) => cambiarFiltros({ orden: e.target.value === "fecha" ? "fecha" : "" }));
+  document.getElementById("fLimpiar").addEventListener("click", quitarTodo);
+  document.getElementById("grid").addEventListener("click", (e) => { if (e.target.id === "ctaQuitarFiltros") quitarTodo(e); });
+  document.getElementById("btnMas").addEventListener("click", () => cargarResultados(false));
+}
+
 async function buscar() {
-  const q = new URLSearchParams(location.search).get("q") || "";
+  const q = parametrosBusqueda().get("q") || "";
 
   // Si lo buscado coincide con el nombre de uno o varios equipos: con
   // UN solo club encontrado, se redirige directamente a su ficha (igual
@@ -52,11 +255,17 @@ async function buscar() {
   // el primero que encontrara internamente la búsqueda. Se esperan los
   // clubes personalizados antes de comprobarlo, para que también
   // funcione con clubes añadidos a mano ("Otro equipo").
+  // No se redirige si la persona pidió expresamente ver los resultados
+  // ("Ver todos los resultados", todos=1), buscó "tal cual" (exacto=1) o ya
+  // aplicó filtros: en esos casos quiere artículos, no la ficha. El club
+  // aparece entonces como acceso directo encima de los resultados.
+  const ps0 = parametrosBusqueda();
+  const quiereResultados = ps0.get("todos") === "1" || ps0.get("exacto") === "1" || FILTROS.some((k) => ps0.get(k));
   let clubesEncontrados = [];
   if (q.trim()) {
     await cargarCustomClubs();
     clubesEncontrados = (typeof buscarClubesPorTexto === "function") ? buscarClubesPorTexto(q) : [];
-    if (clubesEncontrados.length === 1) {
+    if (clubesEncontrados.length === 1 && !quiereResultados) {
       const club = clubesEncontrados[0];
       location.replace(`categoria.html?cat=${encodeURIComponent(club.categoria)}&club=${encodeURIComponent(club.nombre)}`);
       return;
@@ -75,12 +284,12 @@ async function buscar() {
   // redirigido más arriba), se listan aquí como accesos directos antes
   // de los resultados de artículos.
   const clubesEl = document.getElementById("clubesBusqueda");
-  if (clubesEncontrados.length > 1) {
+  if (clubesEncontrados.length >= 1) {
     clubesEl.innerHTML = `
-      <h3 class="section-subtitle">Equipos que coinciden con "${escapeHtml(q)}"</h3>
+      <h3 class="section-subtitle">${clubesEncontrados.length === 1 ? "Equipo" : "Equipos"} que coinciden con "${escapeHtml(q)}"</h3>
       <div class="grid-clubes-busqueda">
         ${clubesEncontrados.map(club => `
-          <a class="search-item search-item-club" href="categoria.html?cat=${encodeURIComponent(club.categoria)}&club=${encodeURIComponent(club.nombre)}">
+          <a class="search-item search-item-club" href="/categoria?cat=${encodeURIComponent(club.categoria)}&club=${encodeURIComponent(club.nombre)}">
             <span class="search-item-cat">Ficha del equipo</span>
             <span class="search-item-titulo">${escapeHtml(club.nombre)}</span>
           </a>`).join("")}
@@ -96,29 +305,8 @@ async function buscar() {
     return;
   }
 
-  grid.innerHTML = spinnerHTML("Buscando...");
-  try {
-    const { articles } = await conReintento(async () => {
-      const res = await apiFetch(`/api/articles?q=${encodeURIComponent(q)}&limit=40`);
-      return res.json();
-    });
-    grid.innerHTML = articles.length
-      ? articles.map(cardHTML).join("")
-      : estadoHTML({
-          titulo: "Sin resultados",
-          texto: `No hemos encontrado ninguna noticia relacionada con "${q}". Prueba con otra palabra o revisa la ortografía.`,
-          tipo: "busqueda",
-          cta: `<a href="index.html" class="btn-volver">Ir a portada</a>`,
-        });
-    if (articles.length) insertarAdsEnGrid(grid);
-  } catch (err) {
-    grid.innerHTML = estadoHTML({
-      titulo: "No se ha podido conectar",
-      texto: "Ha habido un problema al realizar la búsqueda. Comprueba tu conexión e inténtalo de nuevo.",
-      tipo: "error",
-      cta: `<a href="javascript:location.reload()" class="btn-volver">Reintentar</a>`,
-    });
-  }
+  enlazarFiltros();
+  await cargarResultados(true);
 }
 document.addEventListener("DOMContentLoaded", buscar);
 </script>

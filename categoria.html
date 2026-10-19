@@ -1,15 +1,29 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<script src="js/tema.js"></script>
+<meta name="google-adsense-account" content="ca-pub-7347856722927942">
+<script src="js/tema.js?v=2"></script>
+<script src="js/preferencias.js?v=3"></script>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://api.elotrofutbol.media" crossorigin>
+<link rel="preconnect" href="https://res.cloudinary.com">
 <title id="pageTitle">Categoría — ELOTROFÚTBOLTV</title>
-<link rel="icon" href="/favicon.ico?v=2" sizes="any">
-<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=2">
-<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
-<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&family=Playfair+Display:wght@700;800&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=17">
+<meta property="og:image" content="https://elotrofutbol.media/img/og-default.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://elotrofutbol.media/img/og-default.png">
+<link rel="alternate" type="application/rss+xml" title="ELOTROFÚTBOLTV" href="https://elotrofutbol.media/rss.xml">
+<link rel="icon" href="/favicon.ico?v=3" sizes="any">
+<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=3">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png?v=2">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&family=Playfair+Display:wght@700;800&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" onload="this.onload=null;this.rel='stylesheet'"><noscript><link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&family=Playfair+Display:wght@700;800&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet"></noscript>
+<link rel="stylesheet" href="css/style.css?v=25">
+<link rel="stylesheet" href="css/accesibilidad.css?v=1">
+<script src="js/accesibilidad.js?v=1" defer></script>
+<link rel="stylesheet" href="css/foco.css?v=1">
+<link rel="stylesheet" href="css/plantilla-club.css?v=1">
 </head>
 <body>
 <script>document.body.dataset.page = new URLSearchParams(location.search).get("cat") || "general";</script>
@@ -27,7 +41,7 @@
       Comparar con otro equipo
     </button>
   </div>
-  <h2 class="section-title" id="tituloCategoria">Categoría</h2>
+  <h1 class="section-title" id="tituloCategoria">Categoría</h1>
   <p class="section-subtitle" id="subtituloCategoria" style="display:none"></p>
   <div id="infoClub" class="info-club" style="display:none"></div>
   <div id="partidosClub" class="partidos-club" style="display:none">
@@ -40,6 +54,7 @@
       <div id="proximosPartidosClub"></div>
     </div>
   </div>
+  <section class="pc" id="plantillaEquipo" aria-label="Plantilla del equipo" hidden></section>
   <div class="grid-noticias" id="grid"></div>
 </main>
 
@@ -172,16 +187,20 @@
 
 <div id="site-footer"></div>
 
-<script src="js/ui-alertas.js?v=4"></script>
-<script src="js/config.js?v=15"></script>
-<script src="js/seo.js?v=4"></script>
-<script src="js/clubs.js?v=4"></script>
+<script src="js/ui-alertas.js?v=5"></script>
+<script src="js/foco.js?v=1"></script>
+<script src="js/config.js?v=25"></script>
+<script src="js/seo.js?v=5"></script>
+<script src="js/clubs.js?v=6"></script>
 <script src="js/lector-auth.js?v=13"></script>
-<script src="js/layout.js?v=7"></script>
-<script src="js/partidos.js?v=9"></script>
-<script src="js/main.js?v=10"></script>
+<script src="js/lecturas.js?v=7"></script>
+<script src="js/layout.js?v=22"></script>
+<script src="js/partidos.js?v=14"></script>
+<script src="js/plantilla-lp.js?v=1"></script>
+<script src="js/plantilla-club.js?v=1"></script>
+<script src="js/main.js?v=14"></script>
 <script src="js/cookies.js?v=2"></script>
-<script src="js/ads.js?v=2"></script>
+<script src="js/ads.js?v=3"></script>
 <script>
 document.getElementById("ad-cabecera-categoria").innerHTML = adSlot("cabecera");
 async function cargaCategoria() {
@@ -208,7 +227,7 @@ async function cargaCategoria() {
 
     const cabecera = document.getElementById("cabeceraClub");
     const escudoImg = document.getElementById("escudoClub");
-    escudoImg.classList.remove("logo-competicion-cabecera");
+    escudoImg.classList.remove("logo-competicion-cabecera", "logo-competicion-invertir");
     escudoImg.src = getEscudoUrl(club);
     escudoImg.alt = `Escudo del ${club}`;
     escudoImg.onerror = () => {
@@ -224,6 +243,7 @@ async function cargaCategoria() {
     cabecera.hidden = false;
     cargaInfoClub(club);
     cargaPartidosClub(club);
+    if (typeof cargarPlantillaEquipo === "function") cargarPlantillaEquipo(club, cat);
 
     // Botón "Comparar": solo tiene sentido en la ficha de un club
     // concreto (no en la vista general de la competición).
@@ -239,6 +259,10 @@ async function cargaCategoria() {
       // oscuro (ver CSS más abajo): los de Primera y Segunda Federación
       // se dejan tal cual, a petición expresa.
       escudoImg.classList.toggle("logo-competicion-cabecera", cat === "hypermotion");
+      // Copa del Rey y Copa Federación (trofeo casi negro / azul marino con
+      // "RFEF" en negro) se pierden sobre fondo oscuro: en modo oscuro se
+      // invierte la luminosidad conservando el tono (ver CSS más abajo).
+      escudoImg.classList.toggle("logo-competicion-invertir", cat === "copa_del_rey" || cat === "copa_federacion");
       escudoImg.src = logoCat;
       escudoImg.alt = `Logo de ${titulo}`;
       escudoImg.onerror = () => { cabecera.hidden = true; };
@@ -282,6 +306,7 @@ async function cargaCategoria() {
       const res = await apiFetch(path);
       return res.json();
     });
+    if (!articles.length) _seoMeta("name", "robots", "noindex, follow");
     grid.innerHTML = articles.length
       ? articles.map(cardHTML).join("")
       : estadoHTML({
@@ -289,7 +314,7 @@ async function cargaCategoria() {
           texto: club
             ? `Aún no hemos publicado crónicas ni noticias sobre el ${club}. Vuelve pronto.`
             : `De momento no hay contenido publicado en ${titulo}. Estamos trabajando en ello.`,
-          cta: `<a href="index.html" class="btn-volver">Ir a portada</a>`,
+          cta: `<a href="/" class="btn-volver">Ir a portada</a>`,
         });
     if (articles.length) insertarAdsEnGrid(grid);
   } catch (err) {
@@ -426,14 +451,15 @@ async function cargaPartidosClub(club) {
   const contProximos = document.getElementById("proximosPartidosClub");
   try {
     const { results } = await conReintento(async () => {
-      const res = await apiFetch(`/api/results?club=${encodeURIComponent(club)}&limit=100`);
+      const res = await apiFetch(`/api/results?club=${encodeURIComponent(club)}&limit=100&con_no_cubiertos=1`);
       return res.json();
     });
     if (!results.length) return; // Sin partidos: el bloque se queda oculto, no es un error.
 
     const ordenados = ordenarPartidosCronologicamente(results);
-    const proximos = ordenados.filter(p => p.estado === "programado").slice(0, MAX_PARTIDOS_CLUB);
-    const jugados = ordenados.filter(p => p.estado !== "programado").slice(0, MAX_PARTIDOS_CLUB);
+    // Un partido anulado sigue "por jugar" (pendiente de reprogramar).
+    const proximos = ordenados.filter(p => p.estado === "programado" || p.estado === "anulado").slice(0, MAX_PARTIDOS_CLUB);
+    const jugados = ordenados.filter(p => p.estado !== "programado" && p.estado !== "anulado").slice(0, MAX_PARTIDOS_CLUB);
 
     contResultados.innerHTML = jugados.length
       ? jugados.map(p => partidoHTML(p, { mostrarCompeticion: true })).join("")
@@ -828,9 +854,9 @@ async function compararEquipos(nombreA, nombreB) {
       ? directos.slice(0, 6).map(p => {
           const fecha = p.fecha_partido ? p.fecha_partido.slice(0, 10).split("-").reverse().join("/") : "";
           return `<div class="comp-h2h-item">
-            <span>${p.equipo_local}</span>
+            <span>${escapeHtml(p.equipo_local)}</span>
             <span class="comp-h2h-marcador">${p.goles_local} - ${p.goles_visitante}</span>
-            <span>${p.equipo_visitante}</span>
+            <span>${escapeHtml(p.equipo_visitante)}</span>
             <span class="comp-h2h-fecha">${fecha}</span>
           </div>`;
         }).join("")
@@ -923,6 +949,10 @@ document.addEventListener("DOMContentLoaded", cargaCategoria);
      (no a Primera/Segunda Federación ni al escudo de un club), ver
      cargaCategoria en el script de arriba. */
   [data-theme="dark"] .logo-competicion-cabecera{filter:brightness(0) invert(1);}
+  /* Copa del Rey / Copa Federación: invierte el brillo pero no los colores
+     (invert + hue-rotate 180º): trofeo oscuro -> claro, rojo/azul se
+     mantienen reconocibles, a diferencia del blanco plano de Hypermotion. */
+  [data-theme="dark"] .logo-competicion-invertir{filter:invert(1) hue-rotate(180deg);}
 
   .info-club{
     background:var(--tarjeta); border:1px solid var(--borde); border-radius:var(--radio);
@@ -990,6 +1020,10 @@ document.addEventListener("DOMContentLoaded", cargaCategoria);
     letter-spacing:.02em; cursor:pointer; white-space:nowrap;
     transition:background-color .15s ease, color .15s ease;
   }
+  /* El atributo hidden lo anulaba el display:flex/inline-flex de arriba, y el
+     botón "Comparar con otro equipo" salía en TODAS las categorías (también
+     Arbitraje y Jurisdicción deportiva). Se fuerza el ocultado. */
+  .cabecera-club[hidden], .btn-comparar-equipo[hidden]{display:none !important;}
   .btn-comparar-equipo:hover{background:var(--rojo); color:#fff;}
   .btn-comparar-equipo svg{width:15px; height:15px; flex-shrink:0;}
   @media(max-width:480px){

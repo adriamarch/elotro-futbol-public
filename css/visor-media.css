@@ -1,0 +1,326 @@
+/* =====================================================================
+   VISOR DE FOTOS Y VÍDEOS (compartido)
+   Lo usan galeria.html, galerias.html y noticia.html a través de
+   js/visor-media.js. Todas las clases llevan el prefijo "vm-".
+   ===================================================================== */
+
+html.vm-abierto, html.vm-abierto body{overflow:hidden !important;}
+
+.vm{
+  --vm-acento:var(--celeste,#5bb8e8);
+  --vm-acento-2:var(--rojo,#d1132e);
+  --vm-vidrio:rgba(14,24,38,.62);
+  --vm-vidrio-borde:rgba(255,255,255,.16);
+  --vm-texto:#fff;
+  --vm-texto-suave:#9aa8ba;
+  position:fixed;inset:0;z-index:9000;display:grid;
+  grid-template-rows:auto minmax(0,1fr) auto;
+  color:var(--vm-texto);font-family:var(--font-text,'Inter',system-ui,sans-serif);
+  -webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;
+  animation:vmEntra .2s ease both;
+}
+.vm[hidden]{display:none;}
+@keyframes vmEntra{from{opacity:0;}to{opacity:1;}}
+
+.vm-fondo{
+  position:absolute;inset:0;z-index:0;
+  background:radial-gradient(ellipse at 50% 35%, rgba(18,34,54,.96), rgba(3,8,14,.985) 70%);
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+}
+
+/* ---------- Botones redondos / píldoras ---------- */
+.vm button, .vm a.vm-btn{font-family:inherit;}
+.vm-btn{
+  appearance:none;-webkit-appearance:none;border:1px solid var(--vm-vidrio-borde);
+  background:var(--vm-vidrio);color:#fff;cursor:pointer;text-decoration:none;
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  transition:background .15s ease,border-color .15s ease,transform .15s ease,opacity .15s ease;
+}
+.vm-btn svg{width:18px;height:18px;flex-shrink:0;}
+.vm-btn:hover{background:var(--vm-acento);border-color:var(--vm-acento);color:#06121f;}
+.vm-btn:active{transform:scale(.95);}
+.vm-btn:focus-visible, .vm-mini:focus-visible{outline:2px solid #fff;outline-offset:2px;}
+.vm-btn[disabled]{opacity:.35;pointer-events:none;}
+.vm-btn.vm-activo{background:var(--vm-acento);border-color:var(--vm-acento);color:#06121f;}
+.vm-btn.vm-ok{background:#1f9d55;border-color:#1f9d55;color:#fff;}
+.vm-redondo{width:42px;height:42px;border-radius:50%;padding:0;}
+.vm-pildora{height:40px;padding:0 15px;border-radius:999px;font-size:.78rem;font-weight:600;white-space:nowrap;}
+[hidden]{display:none !important;}
+
+/* ---------- Barra superior ---------- */
+.vm-top{
+  position:relative;z-index:4;display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:calc(12px + env(safe-area-inset-top,0px)) calc(16px + env(safe-area-inset-right,0px)) 8px calc(16px + env(safe-area-inset-left,0px));
+  background:linear-gradient(to bottom, rgba(3,8,14,.75), transparent);
+  transition:opacity .25s ease,transform .25s ease;
+}
+.vm-contador{
+  display:flex;align-items:baseline;gap:6px;font-weight:700;font-size:.92rem;letter-spacing:.03em;
+  font-variant-numeric:tabular-nums;min-width:0;
+}
+.vm-contador small{color:var(--vm-texto-suave);font-weight:600;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;}
+.vm-top-acciones{display:flex;align-items:center;gap:8px;}
+.vm-zoom-etiqueta{
+  min-width:50px;height:42px;padding:0 10px;border-radius:999px;font-size:.76rem;font-weight:700;
+  font-variant-numeric:tabular-nums;
+}
+.vm-sep{width:1px;height:22px;background:var(--vm-vidrio-borde);margin:0 2px;}
+
+/* ---------- Escena (zona del medio) ---------- */
+.vm-escena{
+  position:relative;z-index:1;overflow:hidden;display:grid;place-items:center;min-height:0;min-width:0;
+  /* Pista de tamaño FIJO (el hueco de la escena): sin esto la pista era "auto" y una foto
+     grande hacía crecer la caja más que la pantalla, dibujándose ampliada desde arriba-
+     izquierda aunque el zoom real fuera 100%. */
+  grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr);
+  touch-action:none;cursor:default;
+}
+.vm-escena.vm-zoomeada{cursor:grab;}
+.vm-escena.vm-zoomeada.vm-arrastrando{cursor:grabbing;}
+.vm-pista{
+  position:absolute;inset:0;width:auto;height:auto;min-width:0;min-height:0;overflow:hidden;
+  display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr);
+  place-items:center;padding:0 72px;box-sizing:border-box;
+  transition:transform .25s cubic-bezier(.2,.8,.2,1),opacity .25s ease;
+}
+.vm-pista.vm-arrastrando{transition:none;}
+.vm-media{
+  max-width:100%;max-height:100%;display:block;object-fit:contain;border-radius:6px;
+  box-shadow:0 24px 80px rgba(0,0,0,.6);background:#050b12;
+  transform-origin:center center;will-change:transform;
+  -webkit-user-drag:none;
+}
+/* La foto ocupa siempre todo el hueco y se ajusta con object-fit:contain:
+   así la miniatura provisional y la versión grande se ven exactamente del
+   mismo tamaño y no hay "salto de zoom" al terminar de cargar. */
+img.vm-media{
+  width:100%;height:100%;min-width:0;min-height:0;place-self:stretch;object-fit:contain;object-position:center center;
+  background:transparent;box-shadow:none;border-radius:0;
+  transition:transform .22s cubic-bezier(.2,.8,.2,1),filter .35s ease;
+}
+.vm-pista.vm-arrastrando img.vm-media{transition:none;}
+img.vm-media.vm-borroso{filter:blur(14px) saturate(1.1);}
+video.vm-media{width:min(100%,1400px);height:auto;max-height:100%;background:#000;outline:none;}
+.vm-entra-der .vm-media{animation:vmDer .28s cubic-bezier(.2,.8,.2,1) both;}
+.vm-entra-izq .vm-media{animation:vmIzq .28s cubic-bezier(.2,.8,.2,1) both;}
+.vm-entra-fade .vm-media{animation:vmAparece .2s ease both;}
+@keyframes vmDer{from{opacity:0;translate:46px 0;}to{opacity:1;translate:0 0;}}
+@keyframes vmIzq{from{opacity:0;translate:-46px 0;}to{opacity:1;translate:0 0;}}
+@keyframes vmAparece{from{opacity:0;}to{opacity:1;}}
+@keyframes vmFade{from{opacity:0;scale:.97;}to{opacity:1;scale:1;}}
+
+.vm-spinner{
+  position:absolute;top:50%;left:50%;width:38px;height:38px;margin:-19px 0 0 -19px;border-radius:50%;
+  border:3px solid rgba(255,255,255,.18);border-top-color:var(--vm-acento);
+  animation:vmGira .75s linear infinite;pointer-events:none;z-index:2;
+}
+@keyframes vmGira{to{transform:rotate(360deg);}}
+
+.vm-error{
+  position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:14px;text-align:center;padding:24px;color:var(--vm-texto-suave);font-size:.92rem;
+}
+.vm-error svg{width:46px;height:46px;color:#56667d;}
+.vm-error strong{color:#fff;font-size:1rem;}
+
+/* ---------- Flechas ---------- */
+.vm-nav{
+  position:absolute;top:50%;z-index:4;width:48px;height:48px;border-radius:50%;padding:0;
+  translate:0 -50%;transition:opacity .25s ease,background .15s ease,border-color .15s ease,scale .15s ease;
+}
+.vm-nav:hover{scale:1.07;}
+.vm-nav:active{scale:.94;}
+.vm-prev{left:calc(14px + env(safe-area-inset-left,0px));}
+.vm-next{right:calc(14px + env(safe-area-inset-right,0px));}
+
+/* ---------- Barra de progreso del pase de diapositivas ---------- */
+.vm-progreso{position:absolute;left:0;right:0;top:0;height:3px;z-index:5;background:transparent;pointer-events:none;}
+.vm-progreso i{display:block;height:100%;width:0;background:var(--vm-acento);box-shadow:0 0 10px var(--vm-acento);}
+.vm-progreso.vm-corre i{animation:vmProgreso var(--vm-duracion,4500ms) linear forwards;}
+@keyframes vmProgreso{from{width:0;}to{width:100%;}}
+
+/* ---------- Pie ---------- */
+.vm-pie{
+  position:relative;z-index:4;display:flex;flex-direction:column;gap:12px;
+  padding:14px calc(18px + env(safe-area-inset-right,0px)) calc(14px + env(safe-area-inset-bottom,0px)) calc(18px + env(safe-area-inset-left,0px));
+  background:linear-gradient(to top, rgba(3,8,14,.9) 40%, transparent);
+  transition:opacity .25s ease,transform .25s ease;
+}
+.vm-pie-fila{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+.vm-info{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1 1 260px;}
+.vm-titulo{font-size:.92rem;font-weight:700;line-height:1.3;overflow-wrap:anywhere;}
+.vm-credito{font-size:.78rem;color:var(--vm-texto-suave);font-weight:500;}
+.vm-enlace{font-size:.78rem;font-weight:600;color:var(--vm-acento);text-decoration:none;}
+.vm-enlace:hover{text-decoration:underline;}
+.vm-info:empty{display:none;}
+.vm-sin-info .vm-info{display:none;}
+.vm-acciones{display:flex;align-items:center;gap:8px;flex-wrap:wrap;position:relative;}
+
+/* Menú de compartir */
+.vm-menu{
+  position:absolute;right:0;bottom:calc(100% + 10px);min-width:220px;padding:8px;border-radius:14px;
+  background:rgba(16,27,42,.97);border:1px solid var(--vm-vidrio-borde);box-shadow:0 18px 50px rgba(0,0,0,.55);
+  display:flex;flex-direction:column;gap:2px;animation:vmFade .15s ease both;z-index:8;
+}
+.vm-menu a, .vm-menu button{
+  appearance:none;border:0;background:transparent;color:#fff;font:600 .82rem/1 var(--font-text,'Inter',sans-serif);
+  display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:9px;cursor:pointer;text-decoration:none;text-align:left;
+}
+.vm-menu a:hover, .vm-menu button:hover, .vm-menu a:focus-visible, .vm-menu button:focus-visible{background:rgba(255,255,255,.1);outline:none;}
+.vm-menu svg{width:17px;height:17px;flex-shrink:0;color:var(--vm-acento);}
+
+/* ---------- Tira de miniaturas ---------- */
+.vm-tira{
+  display:flex;gap:8px;overflow-x:auto;padding:2px 2px 4px;scrollbar-width:thin;
+  scrollbar-color:rgba(255,255,255,.25) transparent;scroll-snap-type:x proximity;
+  mask-image:linear-gradient(90deg,transparent,#000 18px,#000 calc(100% - 18px),transparent);
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 18px,#000 calc(100% - 18px),transparent);
+}
+.vm-tira::-webkit-scrollbar{height:5px;}
+.vm-tira::-webkit-scrollbar-thumb{background:rgba(255,255,255,.25);border-radius:5px;}
+.vm-mini{
+  appearance:none;border:2px solid transparent;padding:0;background:#0c1b2e;flex:0 0 auto;
+  width:74px;height:52px;border-radius:9px;overflow:hidden;cursor:pointer;position:relative;opacity:.55;
+  scroll-snap-align:center;transition:opacity .15s ease,transform .15s ease,border-color .15s ease;
+}
+.vm-mini img{width:100%;height:100%;object-fit:cover;display:block;}
+.vm-mini:hover{opacity:.95;transform:translateY(-2px);}
+.vm-mini.vm-actual{opacity:1;border-color:var(--vm-acento);}
+.vm-mini .vm-mini-play{
+  position:absolute;right:4px;bottom:4px;width:18px;height:18px;border-radius:50%;
+  background:rgba(3,8,14,.75);display:flex;align-items:center;justify-content:center;
+}
+.vm-mini .vm-mini-play svg{width:9px;height:9px;fill:#fff;margin-left:1px;}
+
+/* ---------- Ayuda de atajos ---------- */
+.vm-ayuda{
+  position:absolute;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;
+  background:rgba(3,8,14,.8);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);padding:20px;
+  animation:vmEntra .15s ease both;
+}
+.vm-ayuda-caja{
+  width:min(520px,100%);max-height:100%;overflow:auto;background:#101b2a;border:1px solid var(--vm-vidrio-borde);
+  border-radius:18px;padding:24px 26px;box-shadow:0 30px 80px rgba(0,0,0,.6);user-select:text;
+}
+.vm-ayuda-caja h2{margin:0 0 16px;font:700 1.1rem/1.2 var(--font-tit,'Oswald',sans-serif);letter-spacing:.04em;text-transform:uppercase;}
+.vm-ayuda-caja dl{display:grid;grid-template-columns:auto 1fr;gap:10px 18px;margin:0;font-size:.84rem;align-items:center;}
+.vm-ayuda-caja dt{display:flex;gap:5px;flex-wrap:wrap;}
+.vm-ayuda-caja dd{margin:0;color:var(--vm-texto-suave);}
+.vm-ayuda-caja kbd{
+  font:700 .72rem/1 var(--font-text,'Inter',sans-serif);background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
+  border-bottom-width:2px;border-radius:6px;padding:5px 8px;color:#fff;
+}
+.vm-ayuda-cerrar{margin-top:20px;width:100%;}
+
+/* ---------- Aviso (toast) ---------- */
+.vm-toast{
+  position:absolute;left:50%;bottom:calc(120px + env(safe-area-inset-bottom,0px));z-index:12;translate:-50% 0;
+  background:#fff;color:#0c1b2e;font-weight:700;font-size:.82rem;padding:10px 18px;border-radius:999px;
+  box-shadow:0 10px 30px rgba(0,0,0,.45);pointer-events:none;animation:vmFade .18s ease both;
+}
+
+/* ---------- Ocultar controles cuando el ratón se queda quieto ---------- */
+.vm.vm-quieto .vm-top{opacity:0;transform:translateY(-10px);pointer-events:none;}
+.vm.vm-quieto .vm-pie{opacity:0;transform:translateY(10px);pointer-events:none;}
+.vm.vm-quieto .vm-nav{opacity:0;pointer-events:none;}
+.vm.vm-quieto{cursor:none;}
+
+/* ---------- Un solo elemento: sin flechas, tira ni pase ---------- */
+.vm-solo .vm-nav, .vm-solo .vm-tira, .vm-solo [data-vm="pase"]{display:none !important;}
+.vm-es-video [data-vm="zoom-mas"], .vm-es-video [data-vm="zoom-menos"], .vm-es-video .vm-zoom-etiqueta, .vm-es-video [data-vm="pase"]{display:none !important;}
+.vm:not(.vm-es-video) .vm-solo-video{display:none !important;}
+
+/* ---------- Adaptación a pantallas pequeñas ---------- */
+@media (max-width:900px){
+  .vm-pista{padding:0 10px;}
+  .vm-nav{width:42px;height:42px;}
+  .vm-prev{left:8px;} .vm-next{right:8px;}
+}
+@media (max-width:640px){
+  .vm-pildora{width:42px;padding:0;}
+  .vm-pildora .vm-txt{display:none;}
+  .vm-top{padding-bottom:4px;}
+  .vm-zoom-etiqueta, .vm-top [data-vm="zoom-menos"], .vm-top [data-vm="zoom-mas"], .vm-top [data-vm="ayuda"]{display:none !important;}
+  .vm-pie{gap:8px;padding-top:10px;}
+  .vm-pie-fila{flex-direction:column;align-items:stretch;gap:10px;}
+  .vm-acciones{justify-content:center;}
+  .vm-mini{width:58px;height:42px;border-radius:8px;}
+  .vm-menu{right:50%;translate:50% 0;}
+  .vm-nav{opacity:.85;}
+}
+@media (max-height:520px) and (orientation:landscape){
+  .vm-tira{display:none;}
+  .vm-pie{padding-top:6px;}
+  .vm-pie-fila{flex-direction:row;}
+  .vm-info{display:none;}
+  .vm-acciones{flex:1;justify-content:flex-end;}
+}
+@media (prefers-reduced-motion:reduce){
+  .vm, .vm *{animation-duration:.01ms !important;transition-duration:.01ms !important;}
+}
+@media print{.vm{display:none !important;}}
+
+/* =====================================================================
+   Fotos de la noticia: ahora se pueden ampliar con el visor
+   ===================================================================== */
+.article-img, .article-collage-foto, .article-galeria-principal{cursor:zoom-in;}
+.article-img{position:relative;}
+.article-img::after, .article-collage-foto::after, .article-galeria-principal::after{
+  content:"";position:absolute;right:10px;top:10px;width:34px;height:34px;border-radius:50%;z-index:1;
+  background:rgba(6,16,28,.6) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7'/%3E%3C/svg%3E") center/17px no-repeat;
+  border:1px solid rgba(255,255,255,.22);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);
+  opacity:0;transform:scale(.85);transition:opacity .2s ease,transform .2s ease;pointer-events:none;
+}
+.article-img:hover::after, .article-collage-foto:hover::after, .article-galeria-principal:hover::after,
+.article-img:focus-within::after, .article-collage-foto:focus-within::after{opacity:1;transform:scale(1);}
+.article-img:hover img, .article-collage-foto:hover img{filter:brightness(1.05);}
+@media (hover:none){
+  .article-img::after, .article-collage-foto::after, .article-galeria-principal::after{opacity:.9;transform:scale(1);width:30px;height:30px;}
+}
+.article-img img:focus-visible, .article-collage-foto img:focus-visible, #fotoGaleriaPrincipal:focus-visible{
+  outline:3px solid var(--celeste,#5bb8e8);outline-offset:-3px;
+}
+
+/* =====================================================================
+   Mejoras compartidas de las miniaturas (galeria.html y galerias.html)
+   ===================================================================== */
+.gal-item, .gals-item{-webkit-tap-highlight-color:transparent;}
+.gal-item:focus-visible, .gals-item:focus-visible{
+  outline:3px solid var(--celeste,#5bb8e8);outline-offset:3px;z-index:4;
+  box-shadow:0 14px 34px rgba(12,27,46,.3);
+}
+/* Mientras el puntero esté dentro o el elemento tenga el foco, se ven las acciones */
+.gal-item:focus-visible .gal-item-overlay, .gals-item:focus-visible .gals-item-overlay,
+.gal-item:focus-within .gal-item-overlay, .gals-item:focus-within .gals-item-overlay{opacity:1;transform:none;}
+.gal-item:focus-visible::after, .gals-item:focus-visible::after{opacity:1;}
+/* En pantallas táctiles no existe el "hover": las acciones se dejan siempre visibles */
+@media (hover:none){
+  .gal-item-overlay, .gals-item-overlay{opacity:1 !important;transform:none !important;}
+  .gal-item::after, .gals-item::after{opacity:1 !important;}
+  .gal-item-accion, .gals-item-accion{width:34px;height:34px;}
+}
+/* Miniatura que no carga: fondo discreto en lugar de icono roto */
+.gal-item img.error, .gals-item img.error{opacity:0;}
+.gal-item:has(img.error), .gals-item:has(img.error){background:linear-gradient(135deg,#13243a,#0a1420);}
+.gal-item .gal-tipo-video, .gals-item .gals-tipo-video{
+  position:absolute;left:9px;bottom:9px;z-index:2;font:700 .66rem/1 var(--font-text,'Inter',sans-serif);
+  letter-spacing:.06em;text-transform:uppercase;color:#fff;background:rgba(209,19,46,.92);
+  padding:5px 8px;border-radius:6px;pointer-events:none;
+}
+.gal-item:hover .gal-tipo-video, .gals-item:hover .gals-tipo-video{opacity:0;}
+@media (hover:none){.gal-tipo-video, .gals-tipo-video{opacity:1 !important;}}
+
+/* Filtros Todo / Fotos / Vídeos */
+.vm-filtros{
+  display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin:0 auto 18px;padding-top:18px;
+}
+.vm-filtro{
+  appearance:none;border:1.5px solid var(--borde,#dbe2ea);background:var(--tarjeta,#fff);color:var(--texto-suave,#5b6b80);
+  font:600 .8rem/1 var(--font-text,'Inter',sans-serif);padding:9px 16px;border-radius:999px;cursor:pointer;
+  display:inline-flex;align-items:center;gap:8px;transition:all .15s ease;
+}
+.vm-filtro:hover{border-color:var(--celeste,#5bb8e8);color:var(--marino-texto,#0c1b2e);}
+.vm-filtro.activo{background:var(--marino,#0c1b2e);border-color:var(--marino,#0c1b2e);color:#fff;}
+.vm-filtro small{font-size:.68rem;font-weight:700;opacity:.75;}
+.vm-filtro:focus-visible{outline:2px solid var(--celeste,#5bb8e8);outline-offset:2px;}

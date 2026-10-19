@@ -16,6 +16,9 @@
 let MAM_RESULTADO = null; // resultado (partido) que se está gestionando ahora mismo
 let MAM_EVENTOS = [];     // caché de sus eventos, más recientes al final
 let MAM_TICK_INTERVAL = null;
+// Sincronización periódica con el servidor (ver mamSincronizarConServidor).
+let MAM_SYNC_INTERVAL = null;
+let MAM_SYNC_EN_CURSO = false;
 let MAM_EQUIPO_SELECCIONADO = null; // 'local' | 'visitante' | null, para los tipos que necesitan elegir equipo antes (tarjetas, cambios...)
 
 // La cruz de cerrar se regenera cada vez que se pinta el panel (con
@@ -79,6 +82,7 @@ const MAM_ETIQUETAS = {
   penalti_marcado: "Penalti (tanda)",
   penalti_fallado_tanda: "Penalti fallado (tanda)",
   fin_partido: "Final del partido",
+  anadido: "Tiempo añadido",
   otro: "Otra incidencia",
 };
 
@@ -107,7 +111,7 @@ const MAM_TIPOS_SIN_EQUIPO = [
   "inicio_partido", "descanso", "fin_descanso",
   "pausa_hidratacion", "fin_pausa_hidratacion",
   "partido_retrasado", "partido_anulado",
-  "fin_partido", "otro",
+  "fin_partido", "otro", "anadido",
 ];
 
 // Tipos de la tanda de penaltis: se registran con su propio botón/modal
@@ -200,6 +204,8 @@ function cerrarPanelMinutoAMinuto() {
     mamCerrarFormularioEvento();
     if (MAM_TICK_INTERVAL) clearInterval(MAM_TICK_INTERVAL);
     MAM_TICK_INTERVAL = null;
+    if (MAM_SYNC_INTERVAL) clearInterval(MAM_SYNC_INTERVAL);
+    MAM_SYNC_INTERVAL = null;
     document.removeEventListener("visibilitychange", mamAlCambiarVisibilidad);
     MAM_RESULTADO = null;
     MAM_EVENTOS = [];
@@ -232,7 +238,44 @@ function cerrarPanelMinutoAMinuto() {
 // para no tener que preguntar al servidor cada segundo. Si el cronómetro
 // está pausado (descanso o final), se queda fijo en
 // cronometro_pausado_en.
-function minutoEnVivo() {
+// ---------- Tiempo añadido anunciado ----------
+// El redactor puede anunciar el añadido en cuanto lo da el árbitro (botón
+// "Tiempo añadido"): se guarda en results.anadido_minutos / anadido_parte, la
+// web pública lo enseña y el cron para el reloj solo al terminar ese añadido
+// (descanso en 45+N, final en 90+N).
+function mamAnadidoAnunciado(parte) {
+  const r = MAM_RESULTADO;
+  if (!r) return 0;
+  const n = Number(r.anadido_minutos);
+  if (!Number.isInteger(n) || n <= 0 || n > 15) return 0;
+  return Number(r.anadido_parte) === parte ? n : 0;
+}
+
+// Minuto del reloj en el que termina el añadido anunciado (45+N o 90+N), o
+// null si no hay ninguno que aplique a la parte que se está jugando. El cron
+// para el reloj en ese minuto como mucho con un minuto de retraso; mientras
+// tanto el reloj no pasa de aquí, para que nadie vea un "45+4" con "+3".
+function mamParteDelAnadido() {
+  // La parte a la que pertenece el añadido sale del PROPIO añadido anunciado
+  // (results.anadido_parte), que es lo que usa el servidor para pararlo. Antes
+  // se deducía de los eventos cargados (descanso / fin_descanso): si el panel
+  // no los tenía (p. ej. el descanso se registró sin evento, o el partido se
+  // abrió ya empezada la 2ª parte), el límite salía null y el reloj nunca se
+  // paraba por su cuenta.
+  const parte = Number(MAM_RESULTADO?.anadido_parte);
+  return parte === 1 || parte === 2 ? parte : (mamEnSegundaParte() ? 2 : 1);
+}
+
+function mamLimiteAnadido() {
+  const parte = mamParteDelAnadido();
+  const n = mamAnadidoAnunciado(parte);
+  return n > 0 ? (parte === 2 ? 90 : 45) + n : null;
+}
+
+// Minuto del reloj SIN el tope del añadido anunciado (lo que marcaría el
+// servidor si nadie lo parase). Sirve para detectar que el añadido se ha
+// agotado y avisar al servidor al instante (ver mamComprobarFinAnadido).
+function mamMinutoBruto() {
   const r = MAM_RESULTADO;
   if (!r) return 0;
   if (r.cronometro_pausado_en !== null && r.cronometro_pausado_en !== undefined) {
@@ -260,8 +303,78 @@ function minutoEnVivo() {
   // que sumarlo aquí; si no, el reloj seguía mostrando el minuto de
   // antes de la corrección hasta que se reiniciaba el cronómetro.
   const ajuste = Number.isInteger(r.ajuste_cronometro_minutos) ? r.ajuste_cronometro_minutos : 0;
-  const minutos = Math.floor((Date.now() - inicio) / 60000) + ajuste;
-  return Math.max(0, minutos);
+  return Math.max(0, Math.floor((Date.now() - inicio) / 60000) + ajuste);
+}
+
+function minutoEnVivo() {
+  const r = MAM_RESULTADO;
+  if (!r) return 0;
+  const minutos = mamMinutoBruto();
+  if (r.cronometro_pausado_en !== null && r.cronometro_pausado_en !== undefined) return minutos;
+  const limite = mamLimiteAnadido();
+  return limite !== null ? Math.min(minutos, limite) : minutos;
+}
+
+// ---------- Fin automático del añadido ----------
+// El servidor (cron) pone el descanso en 45+N y el final en 90+N, pero solo
+// pasa una vez por minuto y el panel solo se entera cada 15 s: el reloj se
+// quedaba "congelado" en el límite hasta 75 s sin que nada se parase. Ahora,
+// en cuanto el reloj de ESTE panel llega al límite, se avisa al servidor
+// (acción "cerrar_anadido", que vuelve a comprobar el reloj real y es
+// idempotente, igual que el cron) y se repinta todo al momento. Si el aviso
+// falla (red) se reintenta cada 3 s; el cron sigue siendo la red de seguridad.
+let MAM_CIERRE_ANADIDO_EN_CURSO = false;
+let MAM_CIERRE_ANADIDO_ULTIMO = 0;
+let MAM_CIERRE_ANADIDO_ERROR_AVISADO = "";
+// Pausa entre reintentos. Corta (3 s) porque el reloj del navegador puede ir
+// unos segundos por delante del del servidor: el servidor responde "todavía no"
+// y basta con volver a preguntar enseguida, no esperar 8 s.
+const MAM_CIERRE_ANADIDO_REINTENTO_MS = 3000;
+
+function mamAnadidoAgotado() {
+  const r = MAM_RESULTADO;
+  if (!r || r.estado !== "en_juego" || !r.inicio_cronometro_at) return false;
+  if (r.cronometro_pausado_en !== null && r.cronometro_pausado_en !== undefined) return false;
+  const limite = mamLimiteAnadido();
+  return limite !== null && mamMinutoBruto() >= limite;
+}
+
+async function mamComprobarFinAnadido() {
+  if (MAM_CIERRE_ANADIDO_EN_CURSO || !mamAnadidoAgotado()) return;
+  if (Date.now() - MAM_CIERRE_ANADIDO_ULTIMO < MAM_CIERRE_ANADIDO_REINTENTO_MS) return;
+  MAM_CIERRE_ANADIDO_ULTIMO = Date.now();
+  MAM_CIERRE_ANADIDO_EN_CURSO = true;
+  const id = MAM_RESULTADO.id;
+  const parte = mamParteDelAnadido();
+  const n = mamAnadidoAnunciado(parte);
+  try {
+    const { resultado } = await apiFetch(`/api/results/${id}/cronometro`, { method: "POST", body: JSON.stringify({ accion: "cerrar_anadido" }) });
+    if (!MAM_RESULTADO || MAM_RESULTADO.id !== id) return;
+    if (resultado) MAM_RESULTADO = resultado;
+    await recargarResultadoYEventos();
+    if (!MAM_RESULTADO || MAM_RESULTADO.id !== id) return;
+    MAM_CIERRE_ANADIDO_ERROR_AVISADO = "";
+    renderBotoneraMinutoAMinuto();
+    renderTimelineMinutoAMinuto();
+    actualizarRelojEnPantalla();
+    const parado = MAM_RESULTADO.estado === "finalizado" || (MAM_RESULTADO.cronometro_pausado_en !== null && MAM_RESULTADO.cronometro_pausado_en !== undefined);
+    if (parado) {
+      EOF.toast(parte === 1
+        ? `Fin del añadido: descanso puesto automáticamente en el 45+${n}'`
+        : `Fin del añadido: partido finalizado automáticamente en el 90+${n}'`, "exito");
+    }
+  } catch (err) {
+    // Antes este fallo se tragaba en silencio y el reloj se quedaba clavado en
+    // el límite sin que nadie supiera por qué (sin permiso, fuera del día del
+    // partido, API caída...). Se avisa UNA vez por motivo y se sigue
+    // reintentando; el cron del servidor sigue de respaldo.
+    const motivo = err?.message || "error de red";
+    if (motivo !== MAM_CIERRE_ANADIDO_ERROR_AVISADO) {
+      MAM_CIERRE_ANADIDO_ERROR_AVISADO = motivo;
+      EOF.toast(`No se ha podido parar el reloj al acabar el añadido: ${motivo}. Se reintenta; si no, pita el ${parte === 1 ? "descanso" : "final"} a mano.`, "error");
+    }
+  }
+  finally { MAM_CIERRE_ANADIDO_EN_CURSO = false; }
 }
 
 // Los navegadores limitan (throttle) los setInterval de las pestañas en
@@ -280,7 +393,39 @@ function iniciarTickCronometro() {
   if (MAM_TICK_INTERVAL) clearInterval(MAM_TICK_INTERVAL);
   actualizarRelojEnPantalla();
   MAM_TICK_INTERVAL = setInterval(actualizarRelojEnPantalla, 1000);
+  if (MAM_SYNC_INTERVAL) clearInterval(MAM_SYNC_INTERVAL);
+  MAM_SYNC_INTERVAL = setInterval(mamSincronizarConServidor, 15000);
   document.addEventListener("visibilitychange", mamAlCambiarVisibilidad);
+}
+
+// El panel carga el partido UNA vez al abrirse y luego solo lo vuelve a
+// pedir cuando el propio redactor registra un evento. Pero el servidor
+// también cambia el estado por su cuenta: el cron pone el descanso solo
+// al llegar al 45' (pausa el cronómetro) y, a los 15 minutos, reanuda la
+// 2ª parte solo (arranca el cronómetro y añade "Comienza la 2ª parte").
+// Sin esta comprobación, el panel se quedaba con el estado viejo: el reloj
+// seguía corriendo durante el descanso automático y, al reanudarse el
+// partido en el servidor, el panel seguía enseñando "Comienza la 2ª parte"
+// y el reloj desfasado (parecía que el partido no se reanudaba solo).
+// Cada 15 s (igual que la página pública de minuto a minuto) se pide el
+// resultado y, solo si ha cambiado algo del cronómetro o del estado, se
+// recarga todo y se repinta la botonera.
+async function mamSincronizarConServidor() {
+  if (!MAM_RESULTADO || MAM_SYNC_EN_CURSO) return;
+  const id = MAM_RESULTADO.id;
+  MAM_SYNC_EN_CURSO = true;
+  try {
+    const { resultado } = await apiFetch(`/api/results/${id}`);
+    if (!resultado || !MAM_RESULTADO || MAM_RESULTADO.id !== id) return;
+    const campos = ["cronometro_pausado_en", "inicio_cronometro_at", "ajuste_cronometro_minutos", "estado", "anadido_minutos", "anadido_parte"];
+    const cambio = campos.some((k) => (MAM_RESULTADO[k] ?? null) !== (resultado[k] ?? null));
+    if (!cambio) return;
+    await recargarResultadoYEventos();
+    if (!MAM_RESULTADO || MAM_RESULTADO.id !== id) return;
+    renderBotoneraMinutoAMinuto();
+    actualizarRelojEnPantalla();
+  } catch { /* fallo de red puntual: se reintenta en el siguiente ciclo */ }
+  finally { MAM_SYNC_EN_CURSO = false; }
 }
 
 function mamAlCambiarVisibilidad() {
@@ -291,10 +436,70 @@ function mamAlCambiarVisibilidad() {
     actualizarRelojEnPantalla();
     clearInterval(MAM_TICK_INTERVAL);
     MAM_TICK_INTERVAL = setInterval(actualizarRelojEnPantalla, 1000);
+    // Al volver a la pestaña, ponerse al día al instante con el servidor
+    // (puede haber habido descanso/reanudación automáticos mientras tanto).
+    mamSincronizarConServidor();
   }
 }
 
 const MAM_MINUTO_DESCANSO_DISPONIBLE = 40;
+
+// ¿Va ya la 2ª parte? Sí en cuanto existe el evento "Comienza la 2ª parte"
+// (fin_descanso). Durante el descanso el reloj sigue siendo el de la 1ª.
+function mamEnSegundaParte() {
+  if (MAM_EVENTOS.some((ev) => ev.tipo === "fin_descanso")) return true;
+  // Añadido anunciado para la 2ª parte: solo se puede anunciar en ella.
+  if (MAM_RESULTADO && mamAnadidoAnunciado(2) > 0) return true;
+  // Descanso automatico: el cron reanuda la 2a parte solo. Si el panel aun no
+  // ha recargado el evento "fin_descanso" pero ya hubo descanso y el reloj
+  // corre de nuevo, es la 2a parte (46', 47'...), no un 45+1', 45+2'.
+  // Durante el propio descanso el reloj esta parado, asi que no entra aqui.
+  const r = MAM_RESULTADO;
+  const corriendo = !!(r && r.inicio_cronometro_at && (r.cronometro_pausado_en === null || r.cronometro_pausado_en === undefined));
+  return corriendo && MAM_EVENTOS.some((ev) => ev.tipo === "descanso");
+}
+
+// Minuto del reloj en texto: 93 => "90+3'", 47 en la 1ª => "45+2'".
+function mamTextoMinutoReloj(minuto) {
+  const d = dividirMinutoConAñadido(minuto, null, mamEnSegundaParte());
+  const texto = d.minutoExtra ? `${d.minuto}+${d.minutoExtra}'` : `${d.minuto}'`;
+  // Con añadido anunciado se ve también la cifra: "45+1' (+3)".
+  const anunciado = mamAnadidoAnunciado(mamEnSegundaParte() ? 2 : 1);
+  return anunciado > 0 ? `${texto} (+${anunciado})` : texto;
+}
+
+// Reloj de la cabecera: minuto grande (45) con el añadido jugado como
+// superíndice (+1) y, aparte, una pastilla con el añadido anunciado (+3).
+// El punto de la izquierda late solo mientras el reloj corre.
+function mamHtmlReloj(minuto, corriendo) {
+  const d = dividirMinutoConAñadido(minuto, null, mamEnSegundaParte());
+  const anunciado = mamAnadidoAnunciado(mamParteDelAnadido());
+  return `${corriendo ? '<span class="mam-reloj-punto" aria-hidden="true"></span>' : '<span class="mam-reloj-pausa" aria-hidden="true">❚❚</span>'}`
+    + `<span class="mam-reloj-min">${d.minuto}${d.minutoExtra ? `<sup>+${d.minutoExtra}</sup>` : ""}<small>'</small></span>`
+    + (anunciado > 0 ? `<span class="mam-reloj-anadido" title="Añadido anunciado">+${anunciado}</span>` : "");
+}
+
+// Etiqueta de fase y barra del añadido que acompañan al reloj.
+function mamActualizarCajaReloj({ corriendo, anulado, finalizado, previa }) {
+  const parte = document.getElementById("mamRelojParte");
+  const barra = document.getElementById("mamRelojBarra");
+  if (parte) {
+    let txt = "";
+    if (!anulado && !finalizado && !previa) {
+      if (corriendo) txt = mamEnSegundaParte() ? "2ª parte" : "1ª parte";
+      else {
+        const ultima = [...MAM_EVENTOS].reverse().find((ev) => ["descanso", "fin_descanso", "pausa_hidratacion", "fin_pausa_hidratacion"].includes(ev.tipo));
+        txt = ultima?.tipo === "pausa_hidratacion" ? "Pausa de hidratación" : ultima?.tipo === "descanso" ? "Descanso" : "Reloj parado";
+      }
+    }
+    if (parte.textContent !== txt) parte.textContent = txt;
+  }
+  if (barra) {
+    const n = corriendo ? mamAnadidoAnunciado(mamParteDelAnadido()) : 0;
+    barra.hidden = !n;
+    if (n) barra.firstElementChild.style.width = `${mamPorcentajeAnadido(mamParteDelAnadido(), n)}%`;
+  }
+}
 
 function actualizarRelojEnPantalla() {
   const el = document.getElementById("mamReloj");
@@ -308,11 +513,22 @@ function actualizarRelojEnPantalla() {
   const anulado = MAM_RESULTADO.estado === "anulado";
   const finalizado = !anulado && (MAM_RESULTADO.estado === "finalizado" || MAM_EVENTOS.some((ev) => ev.tipo === "fin_partido"));
   const previa = !anulado && !finalizado && !MAM_RESULTADO.inicio_cronometro_at;
-  el.textContent = anulado ? "Anulado" : finalizado ? "Final" : previa ? (MAM_RESULTADO.estado === "retrasado" ? "Retrasado" : "Por jugar") : `${minuto}'`;
+  if (anulado || finalizado || previa) {
+    el.textContent = anulado ? "Anulado" : finalizado ? "Final" : (MAM_RESULTADO.estado === "retrasado" ? "Retrasado" : "Por jugar");
+  } else {
+    const html = mamHtmlReloj(minuto, Boolean(corriendo));
+    if (el.dataset.html !== html) { el.innerHTML = html; el.dataset.html = html; }
+  }
+  if (anulado || finalizado || previa) delete el.dataset.html;
+  mamActualizarCajaReloj({ corriendo: Boolean(corriendo), anulado, finalizado, previa });
   el.classList.toggle("mam-reloj-previa", previa);
   el.classList.toggle("mam-reloj-final", finalizado);
   el.classList.toggle("mam-reloj-anulado", anulado);
-  el.classList.toggle("mam-reloj-corriendo", Boolean(corriendo) && !finalizado && !anulado);
+  const agotado = Boolean(corriendo) && !finalizado && !anulado && mamAnadidoAgotado();
+  el.classList.toggle("mam-reloj-corriendo", Boolean(corriendo) && !finalizado && !anulado && !agotado);
+  el.classList.toggle("mam-reloj-agotado", agotado);
+  if (agotado) mamComprobarFinAnadido();
+  mamActualizarEventoAnadido();
   // El botón de "Descanso" pasa de deshabilitado a habilitado justo al
   // llegar al minuto 40, sin esperar a que se repinte la botonera por
   // otro motivo (p.ej. al registrar un evento).
@@ -321,6 +537,8 @@ function actualizarRelojEnPantalla() {
     const yaDisponible = minuto >= MAM_MINUTO_DESCANSO_DISPONIBLE;
     if (yaDisponible === btnDescanso.disabled) renderBotoneraMinutoAMinuto();
   }
+  const btnAnadido = document.querySelector(".mam-boton-anadido");
+  if (btnAnadido && corriendo && btnAnadido.disabled === mamPuedeAnunciarAnadido()) renderBotoneraMinutoAMinuto();
 }
 
 async function mamIniciarPartido() {
@@ -375,13 +593,13 @@ async function mamPausarCronometro(minuto) {
 // "Reanudar" (p.ej. tras el descanso) retoma el cronómetro desde el
 // minuto en que estaba pausado, en vez de reiniciar a 0: se le pasa al
 // backend cuántos minutos ya jugados hay que respetar.
-async function mamReanudarCronometro(minutoInicial) {
+async function mamReanudarCronometro(minutoInicial, segundaParte = false) {
   if (!MAM_RESULTADO) {
     EOF.toast("El panel de Minuto a Minuto se ha cerrado. Ábrelo de nuevo para continuar.", "error");
     return false;
   }
   try {
-    const { resultado } = await apiFetch(`/api/results/${MAM_RESULTADO.id}/cronometro`, { method: "POST", body: JSON.stringify({ accion: "iniciar", minuto_inicial: minutoInicial }) });
+    const { resultado } = await apiFetch(`/api/results/${MAM_RESULTADO.id}/cronometro`, { method: "POST", body: JSON.stringify({ accion: "iniciar", minuto_inicial: minutoInicial, segunda_parte: segundaParte }) });
     if (resultado) MAM_RESULTADO = resultado;
     actualizarRelojEnPantalla();
     return true;
@@ -539,12 +757,16 @@ async function recargarEventosMinutoAMinuto() {
 // automáticamente si el tipo es "gol") y el timeline.
 async function registrarEventoMinutoAMinuto(tipo, equipo, opciones = {}) {
   if (!MAM_RESULTADO) return;
-  const minuto = opciones.minutoForzado ?? minutoEnVivo();
+  // 93' del reloj => minuto 90 + añadido 3 (no todo en el minuto). Si el
+  // minuto lo ha tecleado el redactor (minutoManual) solo se parte lo que
+  // pasa de 90; si viene del reloj, también la 1ª parte (47' => 45+2).
+  const { minuto, minutoExtra } = dividirMinutoConAñadido(
+    opciones.minutoForzado ?? minutoEnVivo(), opciones.minutoExtraForzado, opciones.minutoManual ? null : mamEnSegundaParte());
   const body = {
     tipo,
     equipo: MAM_TIPOS_SIN_EQUIPO.includes(tipo) ? "local" /* ignorado por el backend para estos tipos */ : equipo,
     minuto,
-    minuto_extra: opciones.minutoExtraForzado ?? null,
+    minuto_extra: minutoExtra,
     jugador: opciones.jugador || null,
     jugador_sale: opciones.jugadorSale || null,
     jugador_asistencia: opciones.jugadorAsistencia || null,
@@ -565,7 +787,7 @@ async function registrarEventoMinutoAMinuto(tipo, equipo, opciones = {}) {
     await apiFetch(`/api/results/${MAM_RESULTADO.id}/eventos`, { method: "POST", body: JSON.stringify(body) });
     await recargarResultadoYEventos();
     renderBotoneraMinutoAMinuto();
-    EOF.toast(`${MAM_ETIQUETAS[tipo] || tipo} registrado (${minuto}')`, "exito");
+    EOF.toast(`${MAM_ETIQUETAS[tipo] || tipo} registrado (${minutoExtra ? `${minuto}+${minutoExtra}` : minuto}')`, "exito");
   } catch (err) {
     EOF.toast("Error registrando el evento: " + err.message, "error");
   }
@@ -626,8 +848,9 @@ function mamAbrirFormularioEvento(tipo, equipo) {
   document.getElementById("mamFormTipo").value = tipo;
   document.getElementById("mamFormEquipo").value = equipo || "";
   document.getElementById("mamFormTitulo").textContent = `${MAM_ETIQUETAS[tipo] || tipo}${equipo ? " — " + (equipo === "local" ? MAM_RESULTADO.equipo_local : MAM_RESULTADO.equipo_visitante) : ""}`;
-  document.getElementById("mamFormMinuto").value = minutoEnVivo();
-  document.getElementById("mamFormMinutoExtra").value = "";
+  const minutoReloj = dividirMinutoConAñadido(minutoEnVivo(), null, mamEnSegundaParte());
+  document.getElementById("mamFormMinuto").value = minutoReloj.minuto;
+  document.getElementById("mamFormMinutoExtra").value = minutoReloj.minutoExtra ?? "";
   document.getElementById("mamFormDorsal").value = "";
   document.getElementById("mamFormJugador").value = "";
   document.getElementById("mamFormDorsalSale").value = "";
@@ -726,6 +949,8 @@ function mamAbrirFormularioEdicionEvento(ev) {
 function mamAbrirFormularioEdicionEventoPorId(eventoId) {
   const ev = MAM_EVENTOS.find((e) => e.id === eventoId);
   if (!ev) return EOF.toast("No se ha encontrado el evento", "error");
+  // "Tiempo añadido" no tiene formulario propio: se cambia con el selector de +N.
+  if (ev.tipo === "anadido") return mamAnunciarAnadido(ev.minuto === 45 ? 1 : 2);
   mamAbrirFormularioEdicionEvento(ev);
 }
 
@@ -784,7 +1009,7 @@ async function mamGuardarFormularioEvento(e) {
       minutoForzado: minuto, minutoExtraForzado: minutoExtra, jugador, jugadorSale, jugadorAsistencia, bajarGol, varMotivo, varDecision, orden: ordenEditando,
     });
   } else {
-    await registrarEventoMinutoAMinuto(tipo, equipo, { minutoForzado: minuto, minutoExtraForzado: minutoExtra, jugador, jugadorSale, jugadorAsistencia, bajarGol, varMotivo, varDecision });
+    await registrarEventoMinutoAMinuto(tipo, equipo, { minutoManual: true, minutoForzado: minuto, minutoExtraForzado: minutoExtra, jugador, jugadorSale, jugadorAsistencia, bajarGol, varMotivo, varDecision });
   }
 }
 
@@ -794,12 +1019,12 @@ async function mamGuardarFormularioEvento(e) {
 // original en el timeline.
 async function mamActualizarEvento(eventoId, tipo, equipo, opciones = {}) {
   if (!MAM_RESULTADO) return;
-  const minuto = opciones.minutoForzado ?? minutoEnVivo();
+  const { minuto, minutoExtra } = dividirMinutoConAñadido(opciones.minutoForzado ?? minutoEnVivo(), opciones.minutoExtraForzado, null);
   const body = {
     tipo,
     equipo: MAM_TIPOS_SIN_EQUIPO.includes(tipo) ? "local" : equipo,
     minuto,
-    minuto_extra: opciones.minutoExtraForzado ?? null,
+    minuto_extra: minutoExtra,
     jugador: opciones.jugador || null,
     jugador_sale: opciones.jugadorSale || null,
     jugador_asistencia: opciones.jugadorAsistencia || null,
@@ -816,7 +1041,7 @@ async function mamActualizarEvento(eventoId, tipo, equipo, opciones = {}) {
     await apiFetch(`/api/results/${MAM_RESULTADO.id}/eventos/${eventoId}`, { method: "PUT", body: JSON.stringify(body) });
     await recargarResultadoYEventos();
     renderBotoneraMinutoAMinuto();
-    EOF.toast(`${MAM_ETIQUETAS[tipo] || tipo} actualizado (${minuto}')`, "exito");
+    EOF.toast(`${MAM_ETIQUETAS[tipo] || tipo} actualizado (${minutoExtra ? `${minuto}+${minutoExtra}` : minuto}')`, "exito");
   } catch (err) {
     EOF.toast("Error actualizando el evento: " + err.message, "error");
   }
@@ -837,7 +1062,11 @@ function renderPanelMinutoAMinuto() {
           </div>
           <div class="mam-marcador-central">
             <span id="mamMarcador">${r.goles_local ?? 0} - ${r.goles_visitante ?? 0}</span>
-            <span id="mamReloj" class="mam-reloj" title="Toca para corregir el minuto" onclick="mamEditarMinuto()">0'</span>
+            <div class="mam-reloj-caja">
+              <span id="mamRelojParte" class="mam-reloj-parte"></span>
+              <span id="mamReloj" class="mam-reloj" title="Toca para corregir el minuto" onclick="mamEditarMinuto()">0'</span>
+              <span class="mam-reloj-barra" id="mamRelojBarra" hidden><i></i></span>
+            </div>
           </div>
           <div class="mam-equipo">
             <img src="${escudoUrlAdmin(r.equipo_visitante, r.escudo_visitante_url)}" alt="" onerror="this.src='${ESCUDO_GENERICO_ADMIN}';this.onerror=null;">
@@ -856,7 +1085,8 @@ function renderPanelMinutoAMinuto() {
       </div>
 
       <div class="mam-modal-overlay" id="mamModalEvento" onclick="if(event.target===this) mamCerrarFormularioEvento()">
-      <div class="mam-modal-caja">
+      <div class="mam-modal-caja" role="dialog" aria-modal="true" aria-labelledby="mamFormTitulo">
+        <button type="button" class="modal-cerrar" onclick="mamCerrarFormularioEvento()" aria-label="Cerrar">&times;</button>
         <h4 id="mamFormTitulo">Evento</h4>
         <form id="mamFormEvento" onsubmit="mamGuardarFormularioEvento(event)">
           <input type="hidden" id="mamFormTipo">
@@ -933,10 +1163,42 @@ function renderPanelMinutoAMinuto() {
       </div>
     </div>
 
+      <div class="mam-modal-overlay" id="mamModalAnadido" onclick="if(event.target===this) mamCerrarModalAnadido()">
+      <div class="mam-modal-caja" role="dialog" aria-modal="true" aria-labelledby="mamAnadidoTitulo">
+        <div class="mam-anadido-cabecera">
+          <span class="mam-anadido-parte" id="mamAnadidoParte">1ª parte</span>
+          <h4 id="mamAnadidoTitulo">Tiempo añadido</h4>
+          <p class="mam-anadido-sub" id="mamAnadidoSub">Los minutos que indica el árbitro</p>
+          <div class="mam-anadido-vista" id="mamAnadidoVista" aria-live="polite">45'</div>
+          <div class="mam-an-pista" id="mamAnadidoPista" aria-hidden="true"></div>
+        </div>
+        <div class="mam-anadido-cuerpo">
+          <div class="mam-an-stepper">
+            <button type="button" class="mam-an-paso" id="mamAnadidoMenos" onclick="mamAnadidoPaso(-1)" aria-label="Un minuto menos">−</button>
+            <div class="mam-an-valor">
+              <span class="mam-an-signo">+</span>
+              <input type="number" id="mamAnadidoOtro" min="0" max="15" inputmode="numeric" placeholder="0" oninput="mamAnadidoEscribir()" onkeydown="if(event.key==='Enter'){event.preventDefault();mamAnadidoConfirmar();}" aria-label="Minutos de añadido">
+              <span class="mam-an-unidad">min</span>
+            </div>
+            <button type="button" class="mam-an-paso" id="mamAnadidoMas" onclick="mamAnadidoPaso(1)" aria-label="Un minuto más">+</button>
+          </div>
+          <div class="mam-anadido-rejilla" id="mamAnadidoRejilla"></div>
+          <div class="mam-an-info" id="mamAnadidoInfo"></div>
+          <div class="mam-an-acciones">
+            <button type="button" class="btn-primari mam-an-confirmar" id="mamAnadidoConfirmar" onclick="mamAnadidoConfirmar()">Anunciar</button>
+            <div class="mam-an-secundarias">
+              <button type="button" class="btn-secundari" onclick="mamCerrarModalAnadido()">Cancelar</button>
+              <button type="button" class="btn-secundari mam-anadido-quitar" id="mamAnadidoQuitar" onclick="mamEnviarAnadido(0)">Quitar añadido</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
       <div class="mam-modal-overlay" id="mamModalTanda" onclick="if(event.target===this) mamCerrarTandaPenaltis()">
-      <div class="mam-modal-caja">
+      <div class="mam-modal-caja" role="dialog" aria-modal="true" aria-labelledby="mamTandaTitulo">
         <div class="mam-tanda-cabecera">
-          <h4>🥅⚽ Tanda de penaltis</h4>
+          <h4 id="mamTandaTitulo">🥅⚽ Tanda de penaltis</h4>
           <span id="mamTandaMarcador" class="mam-tanda-marcador-titulo">0 - 0</span>
         </div>
         <div class="mam-tanda-cuerpo">
@@ -1171,6 +1433,11 @@ function renderBotoneraMinutoAMinuto() {
   // para no permitir pitarlo por error a los 10 minutos de partido. La
   // pausa de hidratación, en cambio, puede pitarse en cualquier minuto.
   const puedeDescanso = minutoEnVivo() >= MAM_MINUTO_DESCANSO_DISPONIBLE;
+  const parteActual = mamEnSegundaParte() ? 2 : 1;
+  const anadidoActual = mamAnadidoAnunciado(parteActual);
+  const botonAnadido = mamPuedeAnunciarAnadido()
+    ? `<button type="button" class="mam-boton mam-boton-anadido" onclick="mamAnunciarAnadido()">⏱<br>Tiempo añadido<br><small>${anadidoActual ? `+${anadidoActual}' anunciado · cambiar` : "cuando lo dé el árbitro"}</small></button>`
+    : `<button type="button" class="mam-boton mam-boton-anadido" disabled title="Disponible a partir del minuto ${mamMinutoAnadidoDisponible()}">⏱<br>Tiempo añadido<br><small>(desde ${mamMinutoAnadidoDisponible()}')</small></button>`;
   const botonDescanso = puedeDescanso
     ? `<button type="button" class="mam-boton mam-boton-descanso" onclick="mamPitarDescanso()">⏸<br>Descanso</button>`
     : `<button type="button" class="mam-boton mam-boton-descanso" disabled title="Disponible a partir del minuto ${MAM_MINUTO_DESCANSO_DISPONIBLE}">⏸<br>Descanso<br><small>(desde ${MAM_MINUTO_DESCANSO_DISPONIBLE}')</small></button>`;
@@ -1192,6 +1459,7 @@ function renderBotoneraMinutoAMinuto() {
     <div class="mam-columna-central">
       <button type="button" class="mam-boton mam-boton-var" onclick="mamAbrirFormularioEvento('var', null)">📺<br>VAR</button>
       <button type="button" class="mam-boton mam-boton-otro" onclick="mamAbrirFormularioEvento('otro', null)">✏️<br>Otra incidencia</button>
+      ${botonAnadido}
       ${botonDescanso}
       <button type="button" class="mam-boton mam-boton-hidratacion" onclick="mamPitarPausaHidratacion()">💧<br>Pausa de hidratación</button>
       <button type="button" class="mam-boton mam-boton-tanda-penaltis" onclick="mamAbrirTandaPenaltis()">🥅⚽<br>Tanda de penaltis</button>
@@ -1225,13 +1493,169 @@ function renderBotoneraMinutoAMinuto() {
 // que "Se reanuda el partido" pareciera aparecer siempre en el 45,
 // coincidiendo con el propio descanso en vez de con lo que de verdad se
 // jugó de más-.
-async function mamPitarDescanso() {
-  const añadidoTexto = await EOF.preguntar("Minutos de tiempo añadido en la 1ª parte (déjalo en blanco si no hay):", "", { placeholder: "Ej. 2" });
-  if (añadidoTexto === null) return; // cancelado
-  const añadido = añadidoTexto.trim() === "" ? 0 : parseInt(añadidoTexto, 10);
-  if (isNaN(añadido) || añadido < 0 || añadido > 15) {
-    return EOF.toast("El tiempo añadido debe ser un número entre 0 y 15.", "error");
+// Minuto del reloj desde el que se puede anunciar el añadido de cada parte
+// (mismo criterio que el botón de Descanso: no ofrecerlo a los 10 minutos).
+function mamMinutoAnadidoDisponible() {
+  return mamEnSegundaParte() ? 85 : MAM_MINUTO_DESCANSO_DISPONIBLE;
+}
+function mamPuedeAnunciarAnadido() {
+  if (!MAM_RESULTADO) return false;
+  const parte = mamEnSegundaParte() ? 2 : 1;
+  // Si ya hay uno anunciado siempre se puede cambiar (el árbitro lo alarga).
+  return mamAnadidoAnunciado(parte) > 0 || minutoEnVivo() >= mamMinutoAnadidoDisponible();
+}
+
+// Anuncia el tiempo añadido en cuanto lo da el árbitro, sin parar el reloj.
+// La web pública lo enseña al momento y, al llegar el reloj al final de ese
+// añadido, el servidor pone solo el descanso (1ª parte) o el final (2ª). Si
+// el árbitro lo alarga hay que volver a pulsar con la cifra nueva ANTES de que
+// se agote; con 0 o en blanco se quita y todo vuelve a ser manual.
+// Estado del selector abierto. modo: "anunciar" (botón Tiempo añadido: se
+// envía al servidor y el reloj sigue) | "descanso" | "final" (pitar a mano:
+// el selector solo devuelve los minutos jugados, ver mamPedirAnadido).
+const MAM_AN = { parte: 1, n: 0, modo: "anunciar", resolver: null };
+// Se mantiene por compatibilidad con el resto del panel.
+let MAM_ANADIDO_PARTE = 1;
+
+// Abre el selector de tiempo añadido: contador −/+, atajos +1…+8 y barra con
+// los minutos. Elegir solo PREVISUALIZA; se envía al pulsar el botón grande
+// (o Enter). Con "Anunciar" el reloj sigue y pasa a 45+1', 45+2'… y el timeline
+// recibe un evento "Tiempo añadido +N'".
+function mamAnunciarAnadido(parteForzada) {
+  if (!MAM_RESULTADO) return;
+  const parte = parteForzada || (mamEnSegundaParte() ? 2 : 1);
+  mamAbrirModalAnadido(parte, "anunciar", mamAnadidoAnunciado(parte));
+}
+
+// Igual que el selector, pero para Descanso / Final del partido: devuelve una
+// promesa con los minutos jugados (0 = sin añadido) o null si se cancela.
+function mamPedirAnadido(parte, modo) {
+  return new Promise((resolve) => {
+    if (MAM_AN.resolver) MAM_AN.resolver(null);
+    MAM_AN.resolver = resolve;
+    mamAbrirModalAnadido(parte, modo, mamAnadidoAnunciado(parte));
+  });
+}
+
+function mamAbrirModalAnadido(parte, modo, inicial) {
+  MAM_AN.parte = parte; MAM_AN.modo = modo; MAM_AN.n = Math.max(0, Math.min(15, inicial || 0));
+  MAM_ANADIDO_PARTE = parte;
+  const pitar = modo !== "anunciar";
+  const actual = mamAnadidoAnunciado(parte);
+  document.getElementById("mamAnadidoParte").textContent = `${parte}ª parte`;
+  document.getElementById("mamAnadidoTitulo").textContent = modo === "descanso" ? "Pitar el descanso" : modo === "final" ? "Final del partido" : "Tiempo añadido";
+  document.getElementById("mamAnadidoSub").textContent = pitar
+    ? `¿Cuántos minutos de añadido se han jugado en la ${parte}ª parte?`
+    : "Los minutos que indica el árbitro";
+  document.getElementById("mamAnadidoRejilla").innerHTML = [1, 2, 3, 4, 5, 6, 7, 8].map((n) =>
+    `<button type="button" class="mam-anadido-chip" data-n="${n}" onclick="mamAnadidoElegir(${n})">+${n}</button>`).join("");
+  document.getElementById("mamAnadidoQuitar").style.display = !pitar && actual ? "" : "none";
+  // Si el campo conservaba el foco de la vez anterior, mamAnadidoPintar no
+  // lo repintaría (para no pisar lo que se está tecleando): se suelta antes.
+  document.getElementById("mamAnadidoOtro").blur();
+  mamAnadidoPintar();
+  document.getElementById("mamModalAnadido").classList.add("mam-abierto");
+  setTimeout(() => { const i = document.getElementById("mamAnadidoOtro"); if (i) { i.focus(); i.select(); } }, 60);
+}
+
+// Repinta marcador, barra, atajos, resumen y botón según MAM_AN.n.
+function mamAnadidoPintar() {
+  const { parte, n, modo } = MAM_AN;
+  const base = parte === 2 ? 90 : 45;
+  const pitar = modo !== "anunciar";
+  const actual = mamAnadidoAnunciado(parte);
+  const vista = document.getElementById("mamAnadidoVista");
+  vista.innerHTML = n > 0 ? `${base}<span class="mam-an-mas">+${n}</span>'` : `${base}'`;
+  // Barra: un punto por minuto de añadido; los ya jugados (si el reloj de
+  // esa parte sigue corriendo) salen rellenos y el actual late.
+  const enEstaParte = (mamEnSegundaParte() ? 2 : 1) === parte && MAM_RESULTADO && MAM_RESULTADO.inicio_cronometro_at;
+  const jugados = enEstaParte ? Math.max(0, Math.min(n, mamMinutoBruto() - base)) : 0;
+  const pista = document.getElementById("mamAnadidoPista");
+  pista.innerHTML = n > 0
+    ? `<span class="mam-an-pista-base">${base}'</span>` + Array.from({ length: n }, (_, i) =>
+        `<i class="mam-an-punto${i < jugados ? " hecho" : i === jugados && enEstaParte && !pitar ? " actual" : ""}"></i>`).join("")
+      + `<span class="mam-an-pista-fin">${base}+${n}'</span>`
+    : `<span class="mam-an-pista-vacia">Sin añadido</span>`;
+  const input = document.getElementById("mamAnadidoOtro");
+  if (document.activeElement !== input) input.value = n > 0 ? n : "";
+  document.querySelectorAll("#mamAnadidoRejilla .mam-anadido-chip").forEach((b) => b.classList.toggle("activo", Number(b.dataset.n) === n));
+  document.getElementById("mamAnadidoMenos").disabled = n <= 0;
+  document.getElementById("mamAnadidoMas").disabled = n >= 15;
+  const info = document.getElementById("mamAnadidoInfo");
+  const confirmar = document.getElementById("mamAnadidoConfirmar");
+  if (pitar) {
+    const que = modo === "descanso" ? "El descanso" : "El final";
+    info.className = "mam-an-info";
+    info.innerHTML = n > 0
+      ? `<span class="mam-an-info-icono">⏸</span><span>${que} quedará registrado en el <b>${base}+${n}'</b>.</span>`
+      : `<span class="mam-an-info-icono">⏸</span><span>${que} quedará registrado en el <b>${base}'</b>, sin añadido.</span>`;
+    confirmar.textContent = modo === "descanso"
+      ? (n > 0 ? `Pitar descanso (${base}+${n}')` : "Pitar descanso")
+      : (n > 0 ? `Pitar final (${base}+${n}')` : "Pitar final");
+  } else {
+    const cambia = actual > 0 && n !== actual;
+    info.className = "mam-an-info" + (n > 0 ? " mam-an-info-ok" : "");
+    info.innerHTML = n > 0
+      ? `<span class="mam-an-info-icono">⏱</span><span>El reloj <b>se parará solo</b> en el <b>${base}+${n}'</b> y pondrá ${parte === 1 ? "el descanso" : "el final del partido"}.${cambia ? ` <em>Ahora: +${actual}'.</em>` : ""}</span>`
+      : `<span class="mam-an-info-icono">⏱</span><span>Elige los minutos que ha indicado el árbitro. Si no anuncias nada, ${parte === 1 ? "el descanso" : "el final"} lo pitas tú a mano.</span>`;
+    confirmar.textContent = n > 0 ? (actual === n ? `Mantener +${n}'` : `Anunciar +${n}'`) : "Anunciar";
   }
+  confirmar.disabled = !pitar && n < 1;
+}
+
+function mamAnadidoElegir(n) { MAM_AN.n = n; mamAnadidoPintar(); }
+function mamAnadidoPaso(delta) { MAM_AN.n = Math.max(0, Math.min(15, MAM_AN.n + delta)); mamAnadidoPintar(); }
+function mamAnadidoEscribir() {
+  const v = parseInt(document.getElementById("mamAnadidoOtro").value, 10);
+  MAM_AN.n = isNaN(v) ? 0 : Math.max(0, Math.min(15, v));
+  mamAnadidoPintar();
+}
+
+function mamAnadidoConfirmar() {
+  const n = MAM_AN.n;
+  if (MAM_AN.modo === "anunciar") {
+    if (n < 1 || n > 15) return EOF.toast("El tiempo añadido debe ser un número entre 1 y 15.", "error");
+    return mamEnviarAnadido(n);
+  }
+  // Descanso / final: devuelve los minutos a quien abrió el selector.
+  const resolver = MAM_AN.resolver;
+  MAM_AN.resolver = null;
+  document.getElementById("mamModalAnadido")?.classList.remove("mam-abierto");
+  if (resolver) resolver(n);
+}
+
+function mamCerrarModalAnadido() {
+  document.getElementById("mamModalAnadido")?.classList.remove("mam-abierto");
+  // Cancelar en descanso/final: la promesa se resuelve con null.
+  if (MAM_AN.resolver) { const r = MAM_AN.resolver; MAM_AN.resolver = null; r(null); }
+}
+
+async function mamEnviarAnadido(minutos) {
+  if (!MAM_RESULTADO) return;
+  const parte = MAM_AN.parte;
+  try {
+    const { resultado } = await apiFetch(`/api/results/${MAM_RESULTADO.id}/cronometro`, {
+      method: "POST",
+      body: JSON.stringify({ accion: "anadido", parte, minutos }),
+    });
+    if (resultado) MAM_RESULTADO = resultado;
+    mamCerrarModalAnadido();
+    // Recarga también los eventos: se ve el nuevo "Tiempo añadido +N'" y, si
+    // el cron acababa de poner el descanso automático, el servidor lo retira.
+    await recargarResultadoYEventos();
+    renderBotoneraMinutoAMinuto();
+    actualizarRelojEnPantalla();
+    EOF.toast(minutos > 0
+      ? `Añadido de +${minutos}' anunciado: ${parte === 1 ? "el descanso" : "el final"} se pondrá solo en el ${parte === 1 ? 45 : 90}+${minutos}`
+      : "Añadido quitado", "exito");
+  } catch (err) {
+    EOF.toast("Error: " + err.message, "error");
+  }
+}
+
+async function mamPitarDescanso() {
+  const añadido = await mamPedirAnadido(1, "descanso");
+  if (añadido === null) return; // cancelado
   const minutoPausa = 45 + añadido;
   const ok = await mamPausarCronometro(minutoPausa);
   if (!ok) return; // si no se ha podido pausar en el servidor, no se registra el evento
@@ -1243,37 +1667,26 @@ async function mamPitarDescanso() {
 }
 
 async function mamComenzarSegundaParte() {
-  const minutoPausado = MAM_RESULTADO.cronometro_pausado_en ?? 45;
-  const ok = await mamReanudarCronometro(minutoPausado);
+  // La 2ª parte arranca SIEMPRE en el 45, aunque el descanso se pitara en 45+N.
+  const ok = await mamReanudarCronometro(45, true);
   if (!ok) return;
-  // El evento se etiqueta igual que el de "Descanso": minuto reglamentario
-  // 45 + el tiempo añadido de la 1ª parte (si lo hubo), como "45+2'", en
-  // vez del minuto real del cronómetro (p.ej. 47'), para que se lea bien
-  // en el timeline y para que quede claro que la 2ª parte arranca justo
-  // donde terminó el añadido de la 1ª. Se calcula restando 45 al minuto
-  // en el que se pausó el cronómetro (que ya incluye ese añadido).
-  const añadido = Math.max(0, minutoPausado - 45);
-  // "orden" se fuerza a 1 (por encima del 0 por defecto que llevan el
-  // resto de eventos, incluido "Descanso") para que, si por lo que sea
-  // ambos comparten minuto y minuto_extra (caso normal: los dos llevan
-  // "45+añadido"), el ORDER BY del backend (minuto, minuto_extra, orden)
-  // deje siempre "Comienza la 2ª parte" después de "Descanso" en el
-  // timeline, nunca antes ni mezclado.
+  // El evento "Comienza la 2ª parte" se etiqueta SIEMPRE como 45' (sin
+  // añadido), aunque el descanso se pitara en "45+2'": el reloj
+  // también retoma en el 45, y el descanso queda en el timeline en 45+2'. Para que aun así quede DESPUÉS del "Descanso" (45+N), el
+  // ORDER BY de los eventos del backend coloca siempre "fin_descanso"
+  // detrás de todo lo que lleve minuto 45 (con o sin añadido), y "orden: 1"
+  // lo mantiene detrás de "Descanso" cuando comparten minuto y extra.
   await registrarEventoMinutoAMinuto("fin_descanso", null, {
     minutoForzado: 45,
-    minutoExtraForzado: añadido > 0 ? añadido : null,
+    minutoExtraForzado: null,
     orden: 1,
   });
   renderBotoneraMinutoAMinuto();
 }
 
 async function mamPitarFinal() {
-  const añadidoTexto = await EOF.preguntar("Minutos de tiempo añadido en la 2ª parte (déjalo en blanco si no hay):", "", { placeholder: "Ej. 4" });
-  if (añadidoTexto === null) return; // cancelado
-  const añadido = añadidoTexto.trim() === "" ? 0 : parseInt(añadidoTexto, 10);
-  if (isNaN(añadido) || añadido < 0 || añadido > 15) {
-    return EOF.toast("El tiempo añadido debe ser un número entre 0 y 15.", "error");
-  }
+  const añadido = await mamPedirAnadido(2, "final");
+  if (añadido === null) return; // cancelado
   if (!(await EOF.confirmar("¿Dar el partido por finalizado? El resultado pasará a estado \"Finalizado\".", { textoConfirmar: "Finalizar" }))) return;
   if (!MAM_RESULTADO) {
     return EOF.toast("El panel de Minuto a Minuto se ha cerrado. Ábrelo de nuevo para continuar.", "error");
@@ -1281,9 +1694,12 @@ async function mamPitarFinal() {
   const minuto = minutoEnVivo();
   const ok = await mamPausarCronometro(minuto);
   if (!ok) return;
+  // Reloj en 94' y 4 de añadido => 90+4', no 94+4'.
+  const dividido = dividirMinutoConAñadido(minuto, null, true);
   await registrarEventoMinutoAMinuto("fin_partido", null, {
-    minutoForzado: minuto,
-    minutoExtraForzado: añadido > 0 ? añadido : null,
+    minutoForzado: dividido.minuto,
+    minutoExtraForzado: dividido.minutoExtra ?? (añadido > 0 ? añadido : null),
+    minutoManual: true,
   });
   if (MAM_RESULTADO) MAM_RESULTADO.estado = "finalizado";
   renderBotoneraMinutoAMinuto();
@@ -1353,6 +1769,37 @@ function actualizarCabeceraMinutoAMinuto() {
   actualizarRelojEnPantalla();
 }
 
+// Progreso del añadido anunciado (0-100) y texto del estado en vivo de la
+// tarjeta "Tiempo añadido". Se calculan con el reloj SIN tope (mamMinutoBruto)
+// para que el tramo ya jugado y los minutos que quedan sean reales.
+function mamPorcentajeAnadido(parte, n) {
+  if (!n) return 0;
+  const base = parte === 2 ? 90 : 45;
+  const jugados = Math.max(0, Math.min(n, mamMinutoBruto() - base));
+  return Math.round((jugados / n) * 100);
+}
+
+function mamTextoEstadoAnadido(parte, n) {
+  const base = parte === 2 ? 90 : 45;
+  const quedan = base + n - mamMinutoBruto();
+  if (quedan <= 0) return `Fin del añadido en el ${base}+${n}' · parando el reloj…`;
+  return `Se parará solo en el ${base}+${n}'`;
+}
+
+// Refresca (sin repintar toda la lista) la cuenta atrás y la barra de la
+// tarjeta de añadido activa. Se llama desde el tick del reloj.
+function mamActualizarEventoAnadido() {
+  const tarjeta = document.querySelector("#mamTimeline .mam-evento-anadido.activo");
+  if (!tarjeta) return;
+  const parte = Number(tarjeta.dataset.mamAnParte);
+  const n = Number(tarjeta.dataset.mamAnN);
+  const texto = tarjeta.querySelector("[data-mam-an-estado]");
+  const barra = tarjeta.querySelector("[data-mam-an-barra]");
+  const nuevoTexto = mamTextoEstadoAnadido(parte, n);
+  if (texto && texto.textContent !== nuevoTexto) texto.textContent = nuevoTexto;
+  if (barra) barra.style.width = `${mamPorcentajeAnadido(parte, n)}%`;
+}
+
 function renderTimelineMinutoAMinuto() {
   const cont = document.getElementById("mamTimeline");
   if (!cont) return;
@@ -1390,8 +1837,36 @@ function renderTimelineMinutoAMinuto() {
       const decision = MAM_VAR_DECISIONES[ev.var_decision] || "";
       const jugadorVar = ev.jugador ? escapeHtml(ev.jugador) : "";
       detalle = [motivo, decision, jugadorVar].filter(Boolean).join(" · ");
+    } else if (ev.tipo === "anadido") {
+      detalle = "";
     } else if (ev.jugador) {
       detalle = escapeHtml(ev.jugador);
+    }
+    if (ev.tipo === "anadido") {
+      // Tarjeta propia: minutos grandes, hasta dónde llega, cuánto queda (en
+      // vivo, ver mamActualizarEventoAnadido) y si ya ha terminado.
+      const parteEv = ev.minuto === 45 ? 1 : 2;
+      const nEv = parseInt(ev.jugador, 10) || 0;
+      const activo = mamAnadidoAnunciado(parteEv) === nEv && nEv > 0;
+      const corriendoEv = MAM_RESULTADO && MAM_RESULTADO.estado === "en_juego";
+      const vivo = activo && corriendoEv;
+      const estado = vivo
+        ? `<span class="mam-an-ev-estado vivo" data-mam-an-estado>${mamTextoEstadoAnadido(parteEv, nEv)}</span>`
+        : `<span class="mam-an-ev-estado cerrado">✔ ${parteEv}ª parte · terminó en el ${ev.minuto}+${nEv}'</span>`;
+      const barra = vivo
+        ? `<span class="mam-an-ev-barra" aria-hidden="true"><i data-mam-an-barra style="width:${mamPorcentajeAnadido(parteEv, nEv)}%"></i></span>`
+        : "";
+      return `
+      <div class="mam-evento-item mam-evento-anadido${vivo ? " activo" : " terminado"}" ${vivo ? `data-mam-an-parte="${parteEv}" data-mam-an-n="${nEv}"` : ""}>
+        <span class="mam-an-ev-icono" aria-hidden="true">⏱</span>
+        <span class="mam-evento-texto">
+          <b>Tiempo añadido</b><span class="mam-an-ev-n">+${nEv}'</span>
+          ${estado}
+          ${barra}
+        </span>
+        ${vivo ? `<button type="button" class="mam-evento-editar" title="Cambiar el añadido" onclick="mamAnunciarAnadido(${parteEv})">✎</button>` : ""}
+        <button type="button" class="mam-evento-eliminar" title="Eliminar" onclick="mamEliminarEvento(${ev.id})">✕</button>
+      </div>`;
     }
     return `
       <div class="mam-evento-item mam-evento-${ev.tipo}">

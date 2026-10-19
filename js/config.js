@@ -14,8 +14,47 @@ const API_URL = "https://api.elotrofutbol.media";
 // pero por defecto ya viene puesta aquí para que el failover funcione
 // nada más desplegar, sin tener que tocar cada HTML uno a uno.
 const API_URL_SECUNDARIA_POR_DEFECTO = "https://elotro-futbol-api-production.up.railway.app";
+
+// API SECUNDARIA DESACTIVADA (oct-2026): el servicio de Railway ya no se
+// usa. Con SECUNDARIA_ACTIVA = false, SECONDARY_API queda vacía y todo el
+// sitio habla SOLO con la primaria: no hay failover en el navegador y el
+// circuit breaker nunca se abre (ver eofRegistrarFalloPrimaria y apiFetch
+// más abajo). Para volver a activarla: poner SECUNDARIA_ACTIVA = true (y
+// revisar NOTAS-CAMBIOS.md, apartado "Desactivar API secundaria", que
+// lista el resto de interruptores: Worker, src-worker.js, CSP, wrangler).
+// window.EOF_SECONDARY_API_URL sigue funcionando como sobrescritura
+// explícita (lo usan los tests de worker-secondary/test/api-failover).
+const SECUNDARIA_ACTIVA = false;
+
+// INTERRUPTOR EN EL NAVEGADOR: permite activar/desactivar la secundaria sin
+// redesplegar. Se guarda en localStorage ("eof_secundaria": "1" = activada,
+// "0" = desactivada; ausente = vale SECUNDARIA_ACTIVA). Solo afecta a ESTE
+// navegador y se aplica al recargar la página. Desde el panel:
+// Ajustes de cuenta -> Preferencias. Desde la consola: EOF_SECUNDARIA(true|false).
+// Nota: el Worker principal tiene su propio interruptor (SECONDARY_ENABLED).
+function eofLeerInterruptorSecundaria() {
+  try {
+    const v = typeof localStorage !== "undefined" ? localStorage.getItem("eof_secundaria") : null;
+    if (v === "1") return true;
+    if (v === "0") return false;
+  } catch (e) { /* almacenamiento bloqueado: se usa el valor por defecto */ }
+  return SECUNDARIA_ACTIVA;
+}
 const PRIMARY_API = API_URL;
-const SECONDARY_API = (typeof window !== "undefined" && window.EOF_SECONDARY_API_URL) || API_URL_SECUNDARIA_POR_DEFECTO;
+const SECONDARY_API = (typeof window !== "undefined" && window.EOF_SECONDARY_API_URL)
+  || (eofLeerInterruptorSecundaria() ? API_URL_SECUNDARIA_POR_DEFECTO : "");
+// Guarda el interruptor (true/false) y, salvo recargar=false, recarga la página.
+function eofSetSecundaria(activa, recargar = true) {
+  try { localStorage.setItem("eof_secundaria", activa ? "1" : "0"); } catch (e) { return false; }
+  if (recargar && typeof location !== "undefined") location.reload();
+  return true;
+}
+if (typeof window !== "undefined") {
+  window.EOF_SECUNDARIA = function (activa) {
+    if (activa === undefined) return !!SECONDARY_API;
+    return eofSetSecundaria(!!activa);
+  };
+}
 
 // ---------- apiFetch(): failover PRIMARY -> SECONDARY para el sitio público ----------
 // Mismo diseño certificado para el panel de administración (ver FASE5-resultado.md):
@@ -47,7 +86,12 @@ const eofApiState = {
   ultimaRecuperacion: null,
 };
 
-function eofEsErrorDeTransporteOServidorCaido(status) {
+function eofEsErrorDeTransporteOServidorCaido(status, res) {
+  // 500, 520-530 y 404 SIN cuerpo JSON no los genera la app (sus errores
+  // siempre son JSON) sino la infraestructura: worker caído o sin ruta
+  // (Cloudflare 1101/52x/404). Es una caída, no un "no existe".
+  const ct = (res && res.headers && res.headers.get("Content-Type")) || "";
+  if ((status === 500 || status === 404 || (status >= 520 && status <= 530)) && !/application\/json/i.test(ct)) return true;
   // Errores de transporte (fetch rechaza la promesa: red caída, DNS, CORS,
   // timeout vía AbortController) se tratan aparte, en el catch. Aquí solo
   // clasificamos respuestas HTTP recibidas: 502/503/504 = servidor/gateway
@@ -70,7 +114,11 @@ function eofRegistrarFalloPrimaria(esFalloDeTransporte) {
   // exigiendo 3 fallos, porque ahí es más probable que sea un problema
   // puntual/transitorio y no una caída total.
   const debeAbrir = esFalloDeTransporte || eofApiState.fallosConsecutivos >= EOF_CIRCUIT_FAILS_TO_OPEN;
-  if (!eofApiState.circuitoAbierto && debeAbrir) {
+  // Sin secundaria no hay a dónde desviar las lecturas: abrir el circuito
+  // solo haría que durante 30 s ni siquiera se intentara la primaria (y
+  // activaría el modo "solo lectura por failover" del panel). Se sigue
+  // contando fallos para diagnóstico, pero el circuito se queda cerrado.
+  if (SECONDARY_API && !eofApiState.circuitoAbierto && debeAbrir) {
     eofApiState.circuitoAbierto = true;
     eofApiState.circuitoAbiertoDesde = Date.now();
     console.warn("[FAILOVER] PRIMARY unavailable - SECONDARY activated (circuit breaker OPEN)");
@@ -120,6 +168,15 @@ async function eofFetchConTimeout(url, options, timeoutMs) {
 // una caída de la primaria dejaría a todo el mundo fuera del panel.
 const EOF_ESCRITURAS_SEGURAS_PARA_FAILOVER = new Set([
   "/api/login",
+  // Verificación en dos pasos de los admins: solo comprueba un código (o
+  // genera el secreto la primera vez), no toca datos de negocio.
+  "/api/login/2fa",
+  "/api/login/2fa/setup",
+  "/api/login/2fa/activar",
+  // Solo comprueba el PIN del formulario de acreditaciones (no guarda nada).
+  "/api/acreditaciones/pin",
+  // Igual para el PIN de los formularios personalizados.
+  "/api/formularios-publicos/pin",
   "/api/forgot-password",
   "/api/forgot-password/confirmar",
   // Login/recuperación de lectores: mismo motivo que las de arriba (solo
@@ -142,6 +199,12 @@ function eofEscrituraSeguraParaFailover(path) {
 // `await fetch(...).then(r => r.json())` solo necesitan cambiar `fetch` por
 // `apiFetch` sin tocar el resto.
 async function apiFetch(path, options = {}) {
+  // options.timeoutMs (opcional): tiempo máximo de ESTA petición en vez de los 8 s por defecto.
+  // Solo para operaciones que tardan de verdad (p. ej. cada tanda del envío de anuncios por
+  // correo): con 8 s el navegador cortaba la petición a mitad del envío, el circuito de
+  // failover se abría y las lecturas siguientes se desviaban a la secundaria.
+  const timeoutPeticion = Number(options.timeoutMs) > 0 ? Number(options.timeoutMs) : EOF_API_TIMEOUT_MS;
+  if ("timeoutMs" in options) { options = { ...options }; delete options.timeoutMs; }
   const metodo = (options.method || "GET").toUpperCase();
   const esEscritura = metodo !== "GET" && metodo !== "HEAD" && !eofEscrituraSeguraParaFailover(path);
 
@@ -156,12 +219,18 @@ async function apiFetch(path, options = {}) {
     options = { ...options, cache: "no-store" };
   }
 
-  const debeIntentarPrimariaPrimero = !eofApiState.circuitoAbierto || eofCircuitoDebeProbarPrimariaOtraVez();
+  const debeIntentarPrimariaPrimero = !SECONDARY_API || !eofApiState.circuitoAbierto || eofCircuitoDebeProbarPrimariaOtraVez();
+
+  // Sin secundaria: si la primaria falla se devuelve su respuesta tal cual
+  // (p. ej. un 503 JSON con el motivo) o se relanza el error de red
+  // original, en vez de inventar un error genérico.
+  let respuestaPrimariaFallida = null;
+  let errorPrimario = null;
 
   if (debeIntentarPrimariaPrimero) {
     try {
-      const res = await eofFetchConTimeout(`${PRIMARY_API}${path}`, options, EOF_API_TIMEOUT_MS);
-      if (eofEsErrorDeTransporteOServidorCaido(res.status)) {
+      const res = await eofFetchConTimeout(`${PRIMARY_API}${path}`, options, timeoutPeticion);
+      if (eofEsErrorDeTransporteOServidorCaido(res.status, res)) {
         eofRegistrarFalloPrimaria(false);
         // Las escrituras no se repiten automáticamente en la secundaria:
         // se devuelve la respuesta (probablemente un error 502/503/504) tal
@@ -171,6 +240,7 @@ async function apiFetch(path, options = {}) {
           return res;
         }
         // Lectura: sí se reintenta en la secundaria si existe.
+        respuestaPrimariaFallida = res;
       } else {
         eofRegistrarExitoPrimaria();
         // El propio Worker primario tiene SU PROPIO mecanismo de
@@ -191,6 +261,7 @@ async function apiFetch(path, options = {}) {
     } catch (err) {
       // Error de transporte (red caída, DNS, timeout por AbortController).
       eofRegistrarFalloPrimaria(true);
+      errorPrimario = err;
       if (esEscritura) {
         // No hay respuesta que devolver: se propaga el error tal cual.
         // Quien llame debe tratarlo como "no se sabe si se guardó".
@@ -202,12 +273,15 @@ async function apiFetch(path, options = {}) {
 
   if (!SECONDARY_API) {
     // Sin secundaria configurada: no hay a dónde hacer failover. Se
-    // propaga el fallo de primaria tal cual (comportamiento previo).
-    throw new Error("PRIMARY unavailable and no SECONDARY_API configured");
+    // propaga el fallo de la primaria tal cual: su respuesta de error si
+    // llegó una, o el error de red original.
+    eofApiState.activa = "PRIMARY";
+    if (respuestaPrimariaFallida) return respuestaPrimariaFallida;
+    throw errorPrimario || new Error("PRIMARY unavailable and no SECONDARY_API configured");
   }
 
   eofApiState.activa = "SECONDARY";
-  return eofFetchConTimeout(`${SECONDARY_API}${path}`, options, EOF_API_TIMEOUT_MS);
+  return eofFetchConTimeout(`${SECONDARY_API}${path}`, options, timeoutPeticion);
 }
 
 // Se expone también como window.eofApiFetch (además de la función global
@@ -302,6 +376,8 @@ const CATEGORIES = {
   hypermotion: "LaLiga Hypermotion",
   primera_federacion: "Primera Federación",
   segunda_federacion: "Segunda Federación",
+  copa_del_rey: "Copa del Rey",
+  copa_federacion: "Copa Federación",
   general: "General",
   amistoso: "Amistoso",
   arbitraje: "Arbitraje",
@@ -387,6 +463,8 @@ const CATEGORY_LOGOS = {
   hypermotion: "img/competiciones/hypermotion.png",
   primera_federacion: "img/competiciones/primera-federacion.png",
   segunda_federacion: "img/competiciones/segunda-federacion.png",
+  copa_del_rey: "img/competiciones/copa-del-rey.png",
+  copa_federacion: "img/competiciones/copa-federacion.png",
 };
 
 function categoriaLogo(cat) {
@@ -472,6 +550,7 @@ const ETIQUETAS_EVENTO_PUBLICO = {
   penalti_marcado: "Penalti (tanda)",
   penalti_fallado_tanda: "Penalti fallado (tanda)",
   fin_partido: "Final del partido",
+  anadido: "Tiempo añadido",
   otro: "Incidencia",
   nota: "Nota",
 };
@@ -502,7 +581,7 @@ const TIPOS_EVENTO_SIN_EQUIPO_PUBLICO = [
   "inicio_partido", "descanso", "fin_descanso",
   "pausa_hidratacion", "fin_pausa_hidratacion",
   "partido_retrasado", "partido_anulado",
-  "fin_partido", "otro", "nota",
+  "fin_partido", "otro", "nota", "anadido",
 ];
 
 // Eventos de la tanda de penaltis: se pintan aparte, en su propio bloque
@@ -552,6 +631,9 @@ function iconoEventoPublico(tipo) {
   if (tipo === "descanso" || tipo === "fin_partido") {
     return `<svg class="mev-icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>`;
   }
+  if (tipo === "anadido") {
+    return `<svg class="mev-icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>`;
+  }
   if (tipo === "nota") {
     return `<svg class="mev-icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h9l3 3v13H6z"/><path d="M9 9h7M9 13h7M9 17h4"/></svg>`;
   }
@@ -572,6 +654,11 @@ function formatMinutoEventoPublico(ev) {
 // jugador si lo hay.
 function detalleJugadorEventoPublico(ev) {
   if (ev.tipo === "nota") return "";
+  // "Tiempo añadido": los minutos van en "jugador" (ver acción "anadido" del worker).
+  if (ev.tipo === "anadido") {
+    const n = parseInt(ev.jugador, 10);
+    return n > 0 ? ` · +${n}'` : "";
+  }
   if (ev.tipo === "cambio") {
     const entra = ev.jugador ? escapeHtml(ev.jugador) : "";
     const sale = ev.jugador_sale ? escapeHtml(ev.jugador_sale) : "";
@@ -609,7 +696,8 @@ function detalleJugadorEventoPublico(ev) {
 // tarjetas de partido (marcador compacto) como en el modal de detalle
 // (marcador más grande).
 function marcadorConPenaltisHTML(r, { claseGrande = "", claseChica = "penaltis-marcador" } = {}) {
-  const golesTexto = r.estado === "programado" ? "vs" : `${r.goles_local ?? 0} : ${r.goles_visitante ?? 0}`;
+  // Un partido anulado se ve como "por jugar" (aún sin nueva fecha): sin marcador.
+  const golesTexto = (r.estado === "programado" || r.estado === "anulado") ? "vs" : `${r.goles_local ?? 0} : ${r.goles_visitante ?? 0}`;
   const hayPenaltis = r.penaltis_local !== null && r.penaltis_local !== undefined && r.penaltis_visitante !== null && r.penaltis_visitante !== undefined;
   const penaltisTexto = hayPenaltis ? `<span class="${claseChica}">(${r.penaltis_local} - ${r.penaltis_visitante} p.)</span>` : "";
   return `<span class="${claseGrande}">${golesTexto}</span>${penaltisTexto}`;
@@ -621,24 +709,41 @@ function marcadorConPenaltisHTML(r, { claseGrande = "", claseChica = "penaltis-m
 // indicó) y el detalle de goles y tarjetas del partido (si ya se han
 // cargado en r.eventos).
 function marcadorArticuloHTML(r) {
-  const estados = { programado: "Por jugar", en_juego: "En juego", finalizado: "Finalizado" };
-  const hayMarcador = r.goles_local !== null && r.goles_local !== undefined && r.goles_visitante !== null && r.goles_visitante !== undefined;
+  const estados = { programado: "Por jugar", anulado: "Por jugar", en_juego: "En juego", finalizado: "Finalizado" };
+  const anuladoPendiente = r.estado === "anulado";
+  const hayMarcador = !anuladoPendiente && r.goles_local !== null && r.goles_local !== undefined && r.goles_visitante !== null && r.goles_visitante !== undefined;
   const ubicacionExtra = ((r.estado === "programado" || r.estado === "finalizado") && r.ubicacion) ? " · " + escapeHtml(r.ubicacion) : "";
+  // Clases solo de presentación (ver css/partido-articulo-mejoras.css): el
+  // estado del partido (para el punto de color y el marcador en vivo) y, en
+  // un partido terminado sin empate, quién ha ganado (la tanda de penaltis
+  // decide si el tiempo reglamentario acabó igualado).
+  const claseEstado = String(r.estado || "").replace(/[^a-z_]/gi, "");
+  let ganador = null;
+  let empate = false;
+  if (r.estado === "finalizado" && hayMarcador) {
+    const hayTanda = r.penaltis_local !== null && r.penaltis_local !== undefined && r.penaltis_visitante !== null && r.penaltis_visitante !== undefined;
+    const dif = r.goles_local !== r.goles_visitante ? r.goles_local - r.goles_visitante : (hayTanda ? r.penaltis_local - r.penaltis_visitante : 0);
+    ganador = dif > 0 ? "local" : dif < 0 ? "visitante" : null;
+    // Terminado, sin ganador (ni siquiera por tanda): empate => los dos
+    // escudos llevan la sombra amarilla.
+    empate = ganador === null;
+  }
+  const claseLado = (lado) => (ganador ? (ganador === lado ? " equipo-ganador" : " equipo-perdedor") : (empate ? " equipo-empate" : ""));
   return `
-    <div class="marcador-articulo">
+    <div class="marcador-articulo${claseEstado ? " marcador-" + claseEstado : ""}">
       <div class="comp">${categoriaLabel(r.competicion)}${r.grupo ? " · " + escapeHtml(r.grupo) : ""}${r.jornada ? " · Jornada " + r.jornada : ""}</div>
       <div class="equipos">
-        <span class="equipo">
+        <span class="equipo equipo-local${claseLado("local")}">
           <img class="escudo-articulo" src="${getEscudoUrl(r.equipo_local, r.escudo_local_url)}" alt="" loading="lazy" data-equipo="${escapeHtml(r.equipo_local)}" onerror="manejarErrorEscudo(this);">
           <span class="nombre-equipo-articulo">${escapeHtml(r.equipo_local)}</span>
         </span>
         <span class="goles">${hayMarcador ? marcadorConPenaltisHTML(r, { claseChica: "penaltis-marcador penaltis-marcador-articulo" }) : "vs"}</span>
-        <span class="equipo">
+        <span class="equipo equipo-visitante${claseLado("visitante")}">
           <img class="escudo-articulo" src="${getEscudoUrl(r.equipo_visitante, r.escudo_visitante_url)}" alt="" loading="lazy" data-equipo="${escapeHtml(r.equipo_visitante)}" onerror="manejarErrorEscudo(this);">
           <span class="nombre-equipo-articulo">${escapeHtml(r.equipo_visitante)}</span>
         </span>
       </div>
-      <div class="estado-badge">${estados[r.estado] || r.estado}${r.fecha_partido ? " · " + formatFecha(r.fecha_partido) : ""}${ubicacionExtra}</div>
+      <div class="estado-badge${claseEstado ? " estado-" + claseEstado : ""}">${estados[r.estado] || r.estado}${anuladoPendiente ? " · Pendiente de reprogramar" : (r.fecha_partido ? " · " + formatFecha(r.fecha_partido) : "")}${ubicacionExtra}</div>
       ${togglesArticuloHTML(r)}
     </div>`;
 }
@@ -674,17 +779,17 @@ function fichaTecnicaArticuloHTML(ficha) {
       </div>`)
     .join("");
 
-  const listaHTML = (titulo, items) => {
+  const listaHTML = (titulo, items, clase = "") => {
     if (!Array.isArray(items) || items.length === 0) return "";
     return `
-      <div>
+      <div class="ficha-lista${clase ? " " + clase : ""}">
         <p class="ficha-lista-titulo">${titulo}</p>
         <ul class="ficha-lista-items">
           ${items.map((linea) => `<li>${escapeHtml(linea)}</li>`).join("")}
         </ul>
       </div>`;
   };
-  const listasHTML = listaHTML("Goleadores", ficha.goleadores) + listaHTML("Tarjetas", ficha.tarjetas);
+  const listasHTML = listaHTML("Goleadores", ficha.goleadores, "ficha-lista-goleadores") + listaHTML("Tarjetas", ficha.tarjetas, "ficha-lista-tarjetas");
 
   const notasHTML = ficha.notas ? `<div class="ficha-tecnica-notas">${escapeHtml(ficha.notas)}</div>` : "";
 
@@ -918,7 +1023,8 @@ function alineacionesBotonYPanelHTML(alineaciones) {
 // la misma página (varias tarjetas de preview) sin que se pisen entre sí.
 let CONTADOR_EVENTOS_ARTICULO = 0;
 function eventosArticuloBotonYPanelHTML(r) {
-  if (r.estado === "programado") return { boton: "", panel: "" };
+  // Programado o anulado (se ve como "por jugar"): no hay eventos que mostrar.
+  if (r.estado === "programado" || r.estado === "anulado") return { boton: "", panel: "" };
   const eventos = Array.isArray(r.eventos) ? r.eventos : [];
   // Un partido finalizado sin cobertura en directo puede tener guardado
   // igualmente el evento automático "inicio_partido" (y a veces
@@ -930,7 +1036,7 @@ function eventosArticuloBotonYPanelHTML(r) {
   const TIPOS_SOLO_ESTRUCTURALES = [
     "inicio_partido", "descanso", "fin_descanso",
     "pausa_hidratacion", "fin_pausa_hidratacion",
-    "partido_retrasado", "fin_partido",
+    "partido_retrasado", "fin_partido", "anadido",
   ];
   const hayEventosReales = eventos.some((ev) => !TIPOS_SOLO_ESTRUCTURALES.includes(ev.tipo));
   if (!hayEventosReales) return { boton: "", panel: "" };
@@ -943,7 +1049,7 @@ function eventosArticuloBotonYPanelHTML(r) {
   const panel = `
     <div class="eventos-articulo" id="${idBloque}" hidden>
       ${eventos.map(ev => `
-        <div class="evento-articulo-item">
+        <div class="evento-articulo-item ea-${String(ev.tipo || "").replace(/[^a-z_]/gi, "")}${ev.equipo === "local" ? " ea-local" : ev.equipo === "visitante" ? " ea-visitante" : ""}">
           ${iconoEventoPublico(ev.tipo)}
           <span class="mev-minuto">${formatMinutoEventoPublico(ev)}</span>
           <span>${ev.tipo === "nota" ? escapeHtml(ev.jugador || "") : escapeHtml(ETIQUETAS_EVENTO_PUBLICO[ev.tipo] || ev.tipo) + detalleJugadorEventoPublico(ev)}</span>
@@ -993,15 +1099,25 @@ function resumText(html, n = 140) {
   // de entidad en crudo (p. ej. "Barça &amp; Real Madrid") porque luego
   // vuelve a pasar por escapeHtml() al insertarse en la tarjeta, que
   // escapa el "&" literal en vez de reconocer una entidad ya existente.
-  const text = html
+  // - Los cierres de bloque (</p>, <br>, <h2>...) se sustituyen por un espacio: sin él, "<p>Uno.</p><p>Dos.</p>"
+  //   salía como "Uno.Dos.". Las etiquetas en línea (<b>, <a>...) se quitan sin más para no partir palabras.
+  // - Una etiqueta cortada al final (el listado público solo trae el arranque del cuerpo) se descarta.
+  // - &amp; se decodifica el último para no decodificar dos veces ("&amp;lt;" es el texto "&lt;", no "<").
+  // - Se recorta por caracteres reales (no por unidades UTF-16) para no partir un emoji por la mitad.
+  const text = String(html)
+    .replace(/<[^>]*$/, "")
+    .replace(/<\/?(?:p|div|br|li|ul|ol|h[1-6]|blockquote|tr|td|th|figure|figcaption|section|article|hr)\b[^>]*>/gi, " ")
     .replace(/<[^>]+>/g, "")
     .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
-    .replace(/&#0?39;/g, "'");
-  return text.length > n ? text.slice(0, n) + "…" : text;
+    .replace(/&#0?39;/g, "'")
+    .replace(/&amp;/g, "&")
+    .replace(/\s+/g, " ")
+    .trim();
+  const caracteres = Array.from(text);
+  return caracteres.length > n ? caracteres.slice(0, n).join("") + "…" : text;
 }
 
 // ---------- Estados vacíos / carga / error reutilizables ----------
@@ -1050,6 +1166,105 @@ function escapeHtml(str) {
     .replace(/'/g, "&#39;");
 }
 
+// SEGURIDAD: URLs que vienen de la base de datos (redes sociales y fotos de
+// perfil, editables por cada redactor) y se meten en href="", src="" o
+// url('') sin pasar por un parser. Solo se admiten http(s); cualquier otra
+// cosa ("javascript:", "data:", etc.) devuelve "". El resultado ya va
+// escapado para atributos HTML.
+function urlExternaSegura(valor) {
+  try {
+    const u = new URL(String(valor ?? "").trim(), location.href);
+    return (u.protocol === "https:" || u.protocol === "http:") ? escapeHtml(u.href) : "";
+  } catch {
+    return "";
+  }
+}
+
+// Igual que urlExternaSegura, pero para usarla dentro de url('...') en un
+// atributo style="": además codifica comillas, paréntesis y barras para que
+// no puedan cerrar la cadena CSS.
+function urlSeguraParaCss(valor) {
+  try {
+    const u = new URL(String(valor ?? "").trim(), location.href);
+    if (u.protocol !== "https:" && u.protocol !== "http:") return "";
+    return escapeHtml(u.href.replace(/['"()\\\s<>]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase().padStart(2, "0")));
+  } catch {
+    return "";
+  }
+}
+
+
+// ---------- Saneado del HTML de artículos (anti XSS) ----------
+// El cuerpo de las noticias lo escribe la redacción con un editor de texto
+// enriquecido y se pinta con innerHTML. Para que una cuenta de redactor
+// comprometida (o un pegado malicioso) no pueda inyectar scripts que se
+// ejecuten en el navegador de lectores o de administradores, el HTML se
+// filtra con una LISTA BLANCA de etiquetas y atributos antes de pintarse.
+// Se parsea dentro de un <template> (documento inerte: no ejecuta scripts ni
+// descarga imágenes mientras se limpia).
+const SAN_ETIQUETAS_OK = new Set([
+  "p", "br", "hr", "strong", "b", "em", "i", "u", "s", "strike", "del", "ins", "mark", "small",
+  "sub", "sup", "span", "div", "h1", "h2", "h3", "h4", "h5", "h6", "ul", "ol", "li", "blockquote",
+  "a", "img", "figure", "figcaption", "pre", "code", "table", "thead", "tbody", "tfoot", "tr", "th", "td",
+]);
+const SAN_ETIQUETAS_BORRAR = new Set([
+  "script", "style", "iframe", "object", "embed", "noscript", "template", "svg", "math", "form", "textarea",
+  "select", "option", "button", "input", "link", "meta", "base", "frame", "frameset", "applet", "title", "audio", "video", "source",
+]);
+const SAN_ATTR_GLOBALES = new Set(["class", "title", "lang", "dir", "style"]);
+const SAN_ATTR_POR_ETIQUETA = {
+  a: ["href", "target"],
+  img: ["src", "alt", "width", "height", "loading"],
+  td: ["colspan", "rowspan"],
+  th: ["colspan", "rowspan", "scope"],
+  ol: ["start", "type"],
+};
+
+function sanearHtmlContenido(html) {
+  if (html === null || html === undefined || html === "") return "";
+  const plantilla = document.createElement("template");
+  plantilla.innerHTML = String(html);
+
+  const urlSegura = (valor, permitirDataImagen) => {
+    const limpio = String(valor).replace(/[\u0000-\u0020\u007f-\u009f\u200b-\u200f\u2028\u2029\ufeff]+/g, "");
+    if (!limpio) return false;
+    if (/^(https?:|mailto:|tel:)/i.test(limpio)) return true;
+    if (permitirDataImagen && /^data:image\/(png|jpe?g|gif|webp|avif);base64,[a-z0-9+\/=]+$/i.test(limpio)) return true;
+    return !/^[a-z][a-z0-9+.\-]*:/i.test(limpio); // ruta relativa / "#ancla"
+  };
+
+  const limpiar = (padre) => {
+    Array.from(padre.childNodes).forEach((nodo) => {
+      if (nodo.nodeType === 3) return; // texto
+      if (nodo.nodeType !== 1) { nodo.remove(); return; } // comentarios, etc.
+      const etiqueta = nodo.tagName.toLowerCase();
+      if (SAN_ETIQUETAS_BORRAR.has(etiqueta)) { nodo.remove(); return; }
+      if (!SAN_ETIQUETAS_OK.has(etiqueta)) {
+        // Etiqueta desconocida: se conserva su contenido, sin la etiqueta.
+        limpiar(nodo);
+        nodo.replaceWith(...Array.from(nodo.childNodes));
+        return;
+      }
+      const permitidos = SAN_ATTR_POR_ETIQUETA[etiqueta] || [];
+      Array.from(nodo.attributes).forEach((attr) => {
+        const nombre = attr.name.toLowerCase();
+        const valor = attr.value;
+        let conservar = SAN_ATTR_GLOBALES.has(nombre) || permitidos.includes(nombre);
+        if (nombre.startsWith("on")) conservar = false;
+        if (conservar && nombre === "href") conservar = urlSegura(valor, false);
+        if (conservar && nombre === "src") conservar = urlSegura(valor, true);
+        if (conservar && nombre === "style") conservar = !/expression|javascript:|vbscript:|behavior|@import|url\s*\(|\\|-moz-binding/i.test(valor);
+        if (conservar && nombre === "target") conservar = valor.toLowerCase() === "_blank";
+        if (!conservar) nodo.removeAttribute(attr.name);
+      });
+      if (etiqueta === "a" && nodo.getAttribute("target") === "_blank") nodo.setAttribute("rel", "noopener noreferrer");
+      limpiar(nodo);
+    });
+  };
+  limpiar(plantilla.content);
+  return plantilla.innerHTML;
+}
+
 // ---------- Bloque "Compártela" al final de cada noticia/crónica ----------
 
 const TIPOS_CONTENIDO = {
@@ -1059,6 +1274,7 @@ const TIPOS_CONTENIDO = {
   analisis: "análisis",
   opinion: "opinión",
   entrevista: "entrevista",
+  uno_por_uno: "1x1 de jugadores",
 };
 function tipoContenidoLabel(tipo) {
   return TIPOS_CONTENIDO[tipo] || "noticia";
@@ -1072,6 +1288,12 @@ function iconoFacebook() {
 }
 function iconoTelegram() {
   return `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.9 4.6 18.7 20c-.24 1.06-.87 1.32-1.76.82l-4.85-3.58-2.34 2.25c-.26.26-.48.48-.97.48l.35-4.94 9-8.13c.39-.35-.08-.54-.6-.2L6.4 12.9 1.62 11.4c-1.04-.32-1.06-1.04.22-1.55L20.6 3c.87-.32 1.63.2 1.3 1.6z"/></svg>`;
+}
+function iconoBluesky() {
+  return `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 10.8c-1.087-2.114-4.046-6.053-6.798-7.995C2.566.944 1.561 1.266.902 1.565.139 1.908 0 3.08 0 3.768c0 .69.378 5.65.624 6.479.815 2.736 3.713 3.66 6.383 3.364.136-.02.275-.039.415-.056-.138.022-.276.04-.415.056-3.912.58-7.387 2.005-2.83 7.078 5.013 5.19 6.87-1.113 7.823-4.308.953 3.195 2.05 9.271 7.733 4.308 4.267-4.308 1.172-6.498-2.74-7.078a8.741 8.741 0 0 1-.415-.056c.14.017.279.036.415.056 2.67.297 5.568-.628 6.383-3.364.246-.828.624-5.79.624-6.478 0-.69-.139-1.861-.902-2.206-.659-.298-1.664-.62-4.3 1.24C16.046 4.748 13.087 8.687 12 10.8Z"/></svg>`;
+}
+function iconoCorreo() {
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m4 7.5 8 6 8-6"/></svg>`;
 }
 function iconoInstagram() {
   return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="2.5" width="19" height="19" rx="5.5"/><circle cx="12" cy="12" r="4.3"/><circle cx="17.35" cy="6.65" r="1.05" fill="currentColor" stroke="none"/></svg>`;
@@ -1091,22 +1313,55 @@ function iconoCompartirNativo() {
 // visible debajo, tanto por si el share nativo falla/se cancela como
 // para quien esté en escritorio (donde navigator.share no suele existir,
 // y ahí directamente no se pinta el botón nativo).
+// Añade parámetros UTM al enlace que se manda a cada red, para poder ver en
+// analíticas cuánto tráfico llega de lo que comparten los lectores. El
+// canonical, el og:url y el sitemap NUNCA llevan UTM (los generan el worker y
+// seo.js a partir de la ruta limpia), así que buscadores y redes consolidan
+// todo en la URL de siempre. "Copiar enlace" y el compartir nativo mandan la
+// URL limpia, porque ahí no sabemos a dónde se pegará.
+function urlConUtmCompartir(url, fuente) {
+  try {
+    const u = new URL(url, location.href);
+    u.hash = "";
+    if (!u.searchParams.has("utm_source")) {
+      u.searchParams.set("utm_source", fuente);
+      u.searchParams.set("utm_medium", "social");
+      u.searchParams.set("utm_campaign", "compartir_web");
+    }
+    return u.toString();
+  } catch (e) {
+    return url || "";
+  }
+}
+
 function botonesCompartirHTML(url, titulo) {
-  const texto = encodeURIComponent(titulo || "");
-  const enlace = encodeURIComponent(url || "");
+  const titTxt = String(titulo || "");
+  const texto = encodeURIComponent(titTxt);
+  const via = (typeof SITE !== "undefined" && SITE.twitterUsuario) ? String(SITE.twitterUsuario).replace(/^@/, "") : "elotrofutbol";
+  const enlaceX = encodeURIComponent(urlConUtmCompartir(url, "x"));
+  const enlaceFb = encodeURIComponent(urlConUtmCompartir(url, "facebook"));
+  const enlaceTg = encodeURIComponent(urlConUtmCompartir(url, "telegram"));
+  const urlBsky = urlConUtmCompartir(url, "bluesky");
+  const urlMail = urlConUtmCompartir(url, "email");
+  const textoBsky = encodeURIComponent(`${titTxt} ${urlBsky}`.trim());
+  const asuntoMail = encodeURIComponent(titTxt);
+  const cuerpoMail = encodeURIComponent(`${titTxt}\n${urlMail}`);
   const urlAttr = escapeHtml(url || "");
-  const tituloAttr = escapeHtml(titulo || "");
+  const tituloAttr = escapeHtml(titTxt);
   // navigator.share existe sobre todo en navegadores móviles; se pinta el
   // botón solo si el propio navegador lo soporta (comprobado en tiempo de
   // ejecución más abajo, ver compartirNativo), así que aquí simplemente
   // se incluye siempre en el HTML y se oculta con JS si no aplica -- así
   // no hay que duplicar esta función para servidor/cliente.
+  // WhatsApp NO se incluye a propósito (se quitó de "compartir en redes").
   return `
     <div class="compartir-botones">
       <button type="button" class="btn-compartir btn-compartir-nativo" data-url="${urlAttr}" data-titulo="${tituloAttr}" onclick="compartirNativo(this)" aria-label="Compartir" hidden><span class="btn-compartir-icono">${iconoCompartirNativo()}</span><span>Compartir</span></button>
-      <a class="btn-compartir btn-x" href="https://twitter.com/intent/tweet?text=${texto}&url=${enlace}" target="_blank" rel="noopener noreferrer" aria-label="Compartir en X"><span class="btn-compartir-icono">${iconoX()}</span><span>X</span></a>
-      <a class="btn-compartir btn-facebook" href="https://www.facebook.com/sharer/sharer.php?u=${enlace}" target="_blank" rel="noopener noreferrer" aria-label="Compartir en Facebook"><span class="btn-compartir-icono">${iconoFacebook()}</span><span>Facebook</span></a>
-      <a class="btn-compartir btn-telegram" href="https://t.me/share/url?url=${enlace}&text=${texto}" target="_blank" rel="noopener noreferrer" aria-label="Compartir en Telegram"><span class="btn-compartir-icono">${iconoTelegram()}</span><span>Telegram</span></a>
+      <a class="btn-compartir btn-x" href="https://twitter.com/intent/tweet?text=${texto}&url=${enlaceX}&via=${encodeURIComponent(via)}" target="_blank" rel="noopener noreferrer" aria-label="Compartir en X"><span class="btn-compartir-icono">${iconoX()}</span><span>X</span></a>
+      <a class="btn-compartir btn-facebook" href="https://www.facebook.com/sharer/sharer.php?u=${enlaceFb}" target="_blank" rel="noopener noreferrer" aria-label="Compartir en Facebook"><span class="btn-compartir-icono">${iconoFacebook()}</span><span>Facebook</span></a>
+      <a class="btn-compartir btn-telegram" href="https://t.me/share/url?url=${enlaceTg}&text=${texto}" target="_blank" rel="noopener noreferrer" aria-label="Compartir en Telegram"><span class="btn-compartir-icono">${iconoTelegram()}</span><span>Telegram</span></a>
+      <a class="btn-compartir btn-bluesky" href="https://bsky.app/intent/compose?text=${textoBsky}" target="_blank" rel="noopener noreferrer" aria-label="Compartir en Bluesky"><span class="btn-compartir-icono">${iconoBluesky()}</span><span>Bluesky</span></a>
+      <a class="btn-compartir btn-correo" href="mailto:?subject=${asuntoMail}&body=${cuerpoMail}" aria-label="Enviar por correo"><span class="btn-compartir-icono">${iconoCorreo()}</span><span>Correo</span></a>
       <a class="btn-compartir btn-instagram" href="${SITE.redes.instagram}" target="_blank" rel="noopener noreferrer" aria-label="Síguenos en Instagram"><span class="btn-compartir-icono">${iconoInstagram()}</span><span>Instagram</span></a>
       <button type="button" class="btn-compartir btn-copiar" data-url="${urlAttr}" onclick="copiarEnlaceCompartir(this)" aria-label="Copiar enlace"><span class="btn-compartir-icono">${iconoEnlace()}</span><span>Copiar enlace</span></button>
     </div>`;
@@ -1146,6 +1401,17 @@ function compartirArticuloHTML(article, url = location.href) {
     texto: `Si te ha gustado esta ${etiqueta}, ¡compártela!`,
     tipo: "compartir",
     cta: botonesCompartirHTML(url, article && article.titulo),
+  });
+}
+
+// Bloque de compartir para páginas que no son una noticia (galería de un
+// partido, minuto a minuto...). Mismo diseño que el del final de la noticia.
+function compartirPaginaHTML({ titulo = "¿Lo compartes?", texto = "", url = location.href, tituloCompartido = document.title } = {}) {
+  return estadoHTML({
+    titulo,
+    texto,
+    tipo: "compartir",
+    cta: botonesCompartirHTML(url, tituloCompartido),
   });
 }
 

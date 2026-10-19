@@ -1,0 +1,478 @@
+/* =====================================================================
+   PORTADA — mejoras visuales (solo index.html, body[data-page="inicio"])
+   Se carga DESPUÉS de style.css y noticias-rapidas.css. No cambia el
+   HTML ni el JS: solo estilos sobre las clases que ya pinta main.js.
+   ===================================================================== */
+body[data-page="inicio"]{
+  --pt-radio:16px;
+  --pt-ease:cubic-bezier(.22,.8,.3,1);
+}
+
+/* ---------- Hero ---------- */
+body[data-page="inicio"] .hero{gap:24px;margin-bottom:44px;align-items:stretch;}
+body[data-page="inicio"] .hero-principal{
+  border-radius:var(--pt-radio);min-height:480px;
+  box-shadow:0 18px 44px -12px rgba(12,27,46,.45);
+  transition:box-shadow .3s var(--pt-ease),transform .3s var(--pt-ease);
+}
+body[data-page="inicio"] .hero-principal:hover{transform:translateY(-3px);box-shadow:0 26px 56px -14px rgba(12,27,46,.55);}
+body[data-page="inicio"] .hero-principal img{opacity:1;transition:transform .9s var(--pt-ease);}
+body[data-page="inicio"] .hero-principal:hover img{transform:scale(1.05);}
+body[data-page="inicio"] .hero-principal .overlay{
+  background:
+    linear-gradient(to top, rgba(8,17,31,.96) 0%, rgba(8,17,31,.72) 32%, rgba(8,17,31,.12) 70%, transparent 100%);
+  padding:34px;
+}
+body[data-page="inicio"] .hero-principal .badge{
+  padding:6px 14px;margin-bottom:14px;letter-spacing:.9px;
+  box-shadow:0 6px 16px rgba(209,19,46,.45);
+}
+body[data-page="inicio"] .hero-principal h1,
+body[data-page="inicio"] .hero-principal h2{
+  font-size:clamp(1.6rem,3.6vw,2.4rem);line-height:1.14;margin-bottom:12px;
+  text-shadow:0 2px 14px rgba(0,0,0,.45);text-wrap:balance;
+}
+body[data-page="inicio"] .hero-principal p{
+  font-size:1rem;line-height:1.55;color:rgba(255,255,255,.86);max-width:62ch;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;
+}
+
+/* Secundarias: tarjetas con borde y acento rojo al pasar el ratón */
+body[data-page="inicio"] .hero-secundarias{gap:12px;}
+body[data-page="inicio"] .mini-card{
+  position:relative;flex:1;align-items:center;gap:14px;padding:12px;
+  background:var(--tarjeta);border:1px solid var(--borde);border-radius:14px;
+  transition:transform .22s var(--pt-ease),box-shadow .22s,border-color .22s;
+}
+body[data-page="inicio"] .mini-card::before{
+  content:"";position:absolute;left:0;top:14px;bottom:14px;width:4px;border-radius:0 4px 4px 0;
+  background:linear-gradient(180deg,var(--rojo),var(--celeste));
+  transform:scaleY(0);transition:transform .25s var(--pt-ease);
+}
+body[data-page="inicio"] .mini-card:hover{
+  background:var(--tarjeta);transform:translateX(4px);border-color:transparent;
+  box-shadow:0 10px 26px -8px rgba(12,27,46,.28);
+}
+body[data-page="inicio"] .mini-card:hover::before{transform:scaleY(1);}
+body[data-page="inicio"] .mini-card img{width:104px;height:78px;border-radius:10px;}
+body[data-page="inicio"] .mini-card .cat{font-size:.68rem;letter-spacing:.7px;}
+body[data-page="inicio"] .mini-card h3{
+  font-size:.98rem;margin-top:4px;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;
+}
+
+/* ---------- Títulos de sección ---------- */
+body[data-page="inicio"] .section-title{
+  position:relative;border-left:0;padding-left:0;font-size:1.4rem;letter-spacing:.6px;
+  margin:48px 0 22px;padding-bottom:12px;
+}
+body[data-page="inicio"] .section-title::after{
+  content:"";position:absolute;left:0;bottom:0;width:100%;height:3px;border-radius:3px;
+  background:var(--rojo);
+}
+body[data-page="inicio"] .section-title-row{margin:48px 0 22px;}
+body[data-page="inicio"] .section-title-row .section-title{margin:0;flex:1;}
+body[data-page="inicio"] .section-title-en-vivo{color:var(--rojo);}
+body[data-page="inicio"] .section-title-en-vivo::after{background:var(--rojo);}
+
+/* ---------- Noticias recientes ---------- */
+body[data-page="inicio"] .grid-noticias{gap:26px;}
+body[data-page="inicio"] .card{
+  border-radius:var(--pt-radio);border-color:var(--borde);
+  transition:transform .25s var(--pt-ease),box-shadow .25s,border-color .25s;
+}
+body[data-page="inicio"] .card:hover{transform:translateY(-6px);box-shadow:0 20px 40px -14px rgba(12,27,46,.35);border-color:transparent;}
+body[data-page="inicio"] .card img{height:auto;aspect-ratio:16/10;transition:transform .6s var(--pt-ease);}
+body[data-page="inicio"] .card:hover img{transform:scale(1.06);}
+body[data-page="inicio"] .card{overflow:hidden;}
+body[data-page="inicio"] .card .cbody{padding:18px 18px 16px;gap:8px;position:relative;background:var(--tarjeta);}
+body[data-page="inicio"] .card .cat{letter-spacing:.8px;}
+body[data-page="inicio"] .card h3{
+  transition:color .2s;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;
+}
+body[data-page="inicio"] .card:hover h3{color:var(--rojo);}
+body[data-page="inicio"] .card .meta{
+  border-top:1px solid var(--borde);padding-top:10px;margin-top:auto;color:var(--texto-suave);
+}
+
+/* ---------- Partidos (en vivo / próximos / resultados) ---------- */
+body[data-page="inicio"] .resultados-home{margin-top:0;}
+body[data-page="inicio"] .resultados-home .tabla-jornada{
+  background:var(--tarjeta);border:1px solid var(--borde);border-radius:var(--pt-radio);
+  overflow:hidden;box-shadow:var(--sombra-sm,0 1px 2px rgba(12,27,46,.06));margin-bottom:18px;
+}
+body[data-page="inicio"] .resultados-home .tabla-jornada h3{
+  margin:0;padding:12px 16px;font-size:.82rem;letter-spacing:.9px;border-bottom:1px solid var(--borde);
+  color:var(--texto-suave);background:var(--fondo-alt);
+}
+body[data-page="inicio"] .resultados-home .partido{
+  padding:14px 16px;border-bottom:1px solid var(--borde);
+  transition:background .18s,padding-left .18s var(--pt-ease);
+}
+body[data-page="inicio"] .resultados-home .partido:last-child{border-bottom:0;}
+body[data-page="inicio"] .resultados-home .partido:hover{background:var(--fondo-alt);padding-left:20px;}
+body[data-page="inicio"] .resultados-home .partido .marcador{
+  background:linear-gradient(135deg,var(--marino),var(--marino2,var(--marino)));
+  border-radius:10px;min-width:82px;padding:8px 14px;
+  box-shadow:0 4px 12px rgba(12,27,46,.25);
+}
+body[data-page="inicio"] .resultados-home .partido .escudo{width:34px;height:34px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.18));}
+body[data-page="inicio"] .resultados-home .partido-en-vivo{background:linear-gradient(90deg,rgba(209,19,46,.07),transparent 60%);}
+
+body[data-page="inicio"] .ver-resultados-link{
+  display:inline-flex;align-items:center;gap:6px;margin:6px 0 4px;padding:9px 18px;border-radius:999px;
+  border:1.5px solid var(--rojo);color:var(--rojo);font-size:.78rem;letter-spacing:.7px;
+  transition:background .2s,color .2s,transform .2s var(--pt-ease),box-shadow .2s;
+}
+body[data-page="inicio"] .ver-resultados-link:hover{
+  text-decoration:none;background:var(--rojo);color:#fff;transform:translateY(-2px);
+  box-shadow:0 8px 18px rgba(209,19,46,.35);
+}
+
+/* ---------- Encuestas ---------- */
+body[data-page="inicio"] .encuesta-widget{border-radius:var(--pt-radio);box-shadow:var(--sombra-sm,none);}
+
+/* ---------- Síguenos ---------- */
+body[data-page="inicio"] .redes-section{
+  position:relative;overflow:hidden;border-radius:20px;padding:36px 26px;margin-top:56px;
+  background:
+    radial-gradient(500px 220px at 12% 0%,rgba(91,184,232,.28),transparent 70%),
+    radial-gradient(500px 220px at 90% 100%,rgba(209,19,46,.30),transparent 70%),
+    var(--marino);
+}
+body[data-page="inicio"] .redes-section h3{color:#fff;font-size:1.15rem;letter-spacing:1.2px;margin-bottom:18px;}
+body[data-page="inicio"] .redes-icons{gap:14px;}
+body[data-page="inicio"] .redes-icons a{
+  width:50px;height:50px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.22);
+  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+}
+body[data-page="inicio"] .redes-icons a:hover{background:var(--rojo);border-color:var(--rojo);transform:translateY(-4px);box-shadow:0 10px 22px rgba(209,19,46,.45);}
+
+/* ---------- Foco de teclado ---------- */
+body[data-page="inicio"] .hero-principal:focus-visible,
+body[data-page="inicio"] .mini-card:focus-visible,
+body[data-page="inicio"] .card:focus-visible,
+body[data-page="inicio"] .ver-resultados-link:focus-visible,
+body[data-page="inicio"] .redes-icons a:focus-visible{outline:3px solid var(--celeste);outline-offset:3px;}
+
+/* ---------- Modo oscuro ---------- */
+[data-theme="dark"] body[data-page="inicio"] .hero-principal{box-shadow:0 18px 44px -12px rgba(0,0,0,.7);}
+[data-theme="dark"] body[data-page="inicio"] .mini-card:hover,
+[data-theme="dark"] body[data-page="inicio"] .card:hover{box-shadow:0 20px 40px -14px rgba(0,0,0,.7);}
+[data-theme="dark"] body[data-page="inicio"] .redes-section{background:
+    radial-gradient(500px 220px at 12% 0%,rgba(91,184,232,.22),transparent 70%),
+    radial-gradient(500px 220px at 90% 100%,rgba(209,19,46,.26),transparent 70%),
+    #0c1b2e;}
+
+/* ---------- Responsive ---------- */
+@media(max-width:900px){
+  body[data-page="inicio"] .hero-principal{min-height:400px;}
+  body[data-page="inicio"] .hero-secundarias{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  body[data-page="inicio"] .mini-card:hover{transform:translateY(-3px);}
+}
+@media(max-width:600px){
+  body[data-page="inicio"] .hero{gap:16px;margin-bottom:32px;}
+  body[data-page="inicio"] .hero-principal{min-height:340px;border-radius:14px;}
+  body[data-page="inicio"] .hero-principal .overlay{padding:20px;}
+  body[data-page="inicio"] .hero-principal h1{font-size:1.4rem;}
+  body[data-page="inicio"] .hero-principal p{font-size:.9rem;-webkit-line-clamp:2;}
+  body[data-page="inicio"] .hero-secundarias{grid-template-columns:1fr;}
+  body[data-page="inicio"] .mini-card img{width:92px;height:68px;}
+  body[data-page="inicio"] .section-title,
+  body[data-page="inicio"] .section-title-row{margin-top:36px;}
+  body[data-page="inicio"] .section-title{font-size:1.2rem;}
+  body[data-page="inicio"] .resultados-home .partido{padding:12px;}
+  body[data-page="inicio"] .redes-section{padding:28px 18px;margin-top:40px;}
+}
+
+/* ---------- Movimiento reducido ---------- */
+@media(prefers-reduced-motion:reduce){
+  body[data-page="inicio"] *{transition-duration:.01ms !important;}
+  body[data-page="inicio"] .hero-principal:hover,
+  body[data-page="inicio"] .hero-principal:hover img,
+  body[data-page="inicio"] .card:hover,
+  body[data-page="inicio"] .card:hover img,
+  body[data-page="inicio"] .mini-card:hover{transform:none;}
+}
+
+/* ---------- Partidazo de la jornada (portada) ---------- */
+body[data-page="inicio"] .resultados-home .partidazo-cinta{margin:-14px -16px 10px;padding:7px 16px;}
+body[data-page="inicio"] .resultados-home .partido-partidazo{background:linear-gradient(100deg,rgba(245,179,1,.14),transparent 65%);}
+@media (max-width:600px){
+  body[data-page="inicio"] .resultados-home .partidazo-cinta{margin:-12px -12px 8px;padding:6px 10px;}
+}
+
+/* =====================================================================
+   PORTADA — módulos nuevos (Última hora, Cargar más, Entrevista/reportaje
+   destacado, Más leídas + Tendencias, Bloques por competición).
+   Los rellena main.js; todos salen ocultos hasta tener datos.
+   ===================================================================== */
+body[data-page="inicio"] #portada-diferida{height:1px;margin:0;}
+
+/* ---------- Última hora ---------- */
+body[data-page="inicio"] .ultima-hora{
+  margin:-12px 0 8px;border:1px solid var(--borde);border-radius:var(--pt-radio);
+  background:var(--tarjeta);overflow:hidden;box-shadow:var(--sombra-sm,0 1px 2px rgba(12,27,46,.06));
+}
+body[data-page="inicio"] .ultima-hora[hidden]{display:none;}
+body[data-page="inicio"] .uh-cabecera{
+  display:flex;align-items:center;gap:10px;margin:0;padding:11px 18px;
+  background:var(--rojo);color:#fff;font-family:var(--font-tit);font-size:.82rem;
+  letter-spacing:1.3px;text-transform:uppercase;
+}
+body[data-page="inicio"] .uh-cabecera .en-vivo-punto{background:#fff;}
+body[data-page="inicio"] .uh-lista{list-style:none;margin:0;padding:0;}
+body[data-page="inicio"] .uh-item + .uh-item{border-top:1px solid var(--borde);}
+body[data-page="inicio"] .uh-item a{
+  display:grid;grid-template-columns:104px minmax(0,1fr) auto;align-items:baseline;gap:14px;
+  padding:12px 18px;color:inherit;text-decoration:none;
+  transition:background .18s,padding-left .18s var(--pt-ease);
+}
+body[data-page="inicio"] .uh-item a:hover{background:var(--fondo-alt);padding-left:22px;}
+body[data-page="inicio"] .uh-hora{font-size:.78rem;font-weight:700;color:var(--rojo);white-space:nowrap;}
+body[data-page="inicio"] .uh-titulo{
+  font-family:var(--font-headline);font-weight:700;font-size:1rem;line-height:1.35;color:var(--marino-texto);
+}
+body[data-page="inicio"] .uh-item a:hover .uh-titulo{color:var(--rojo);}
+body[data-page="inicio"] .uh-cat{
+  font-size:.68rem;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--texto-suave);white-space:nowrap;
+}
+body[data-page="inicio"] .uh-urgente{background:linear-gradient(90deg,rgba(209,19,46,.10),transparent 70%);}
+body[data-page="inicio"] .uh-sello{
+  display:inline-block;padding:3px 8px;border-radius:5px;background:var(--rojo);color:#fff;
+  font-size:.64rem;letter-spacing:.8px;
+}
+
+/* ---------- Cargar más ---------- */
+body[data-page="inicio"] .cargar-mas{display:flex;flex-direction:column;align-items:center;gap:10px;margin:30px 0 4px;}
+body[data-page="inicio"] .cargar-mas[hidden]{display:none;}
+body[data-page="inicio"] .btn-cargar-mas{
+  position:relative;display:inline-flex;align-items:center;justify-content:center;gap:10px;min-width:240px;
+  padding:13px 30px;border-radius:999px;border:2px solid var(--marino-texto);background:transparent;
+  color:var(--marino-texto);font-family:var(--font-tit);font-size:.84rem;letter-spacing:1px;text-transform:uppercase;
+  cursor:pointer;transition:background .2s,color .2s,transform .2s var(--pt-ease),box-shadow .2s,border-color .2s;
+}
+body[data-page="inicio"] .btn-cargar-mas:hover:not(:disabled){
+  background:var(--rojo);border-color:var(--rojo);color:#fff;transform:translateY(-2px);
+  box-shadow:0 10px 22px rgba(209,19,46,.35);
+}
+body[data-page="inicio"] .btn-cargar-mas:disabled{cursor:progress;opacity:.75;}
+body[data-page="inicio"] .btn-cargar-mas.cargando::after{
+  content:"";width:15px;height:15px;border-radius:50%;
+  border:2px solid currentColor;border-right-color:transparent;animation:pt-giro .7s linear infinite;
+}
+@keyframes pt-giro{to{transform:rotate(360deg);}}
+body[data-page="inicio"] .cargar-mas-aviso{margin:0;min-height:1em;font-size:.85rem;color:var(--rojo);}
+body[data-page="inicio"] .cargar-mas-aviso:empty{display:none;}
+
+/* ---------- Entrevista / reportaje destacado ---------- */
+body[data-page="inicio"] .entrevista-portada{margin:56px 0 0;}
+body[data-page="inicio"] .entrevista-portada[hidden]{display:none;}
+body[data-page="inicio"] .entrevista-tarjeta{
+  display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);overflow:hidden;
+  border-radius:20px;background:
+    radial-gradient(520px 260px at 100% 0%,rgba(91,184,232,.22),transparent 70%),
+    radial-gradient(420px 240px at 0% 100%,rgba(209,19,46,.22),transparent 70%),
+    var(--marino);
+  color:#fff;text-decoration:none;box-shadow:0 18px 44px -14px rgba(12,27,46,.5);
+  transition:transform .3s var(--pt-ease),box-shadow .3s var(--pt-ease);
+}
+body[data-page="inicio"] .entrevista-tarjeta:hover{transform:translateY(-4px);box-shadow:0 26px 56px -16px rgba(12,27,46,.6);text-decoration:none;}
+body[data-page="inicio"] .entrevista-foto{position:relative;min-height:340px;overflow:hidden;}
+body[data-page="inicio"] .entrevista-foto img{
+  position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .9s var(--pt-ease);
+}
+body[data-page="inicio"] .entrevista-tarjeta:hover .entrevista-foto img{transform:scale(1.05);}
+body[data-page="inicio"] .entrevista-cuerpo{display:flex;flex-direction:column;justify-content:center;gap:14px;padding:38px 40px;}
+body[data-page="inicio"] .entrevista-etiqueta{
+  align-self:flex-start;padding:6px 14px;border-radius:999px;background:var(--rojo);color:#fff;
+  font-family:var(--font-tit);font-size:.72rem;letter-spacing:1.1px;text-transform:uppercase;
+  box-shadow:0 6px 16px rgba(209,19,46,.45);
+}
+body[data-page="inicio"] .entrevista-cuerpo h2{
+  margin:0;font-family:var(--font-headline);font-weight:800;font-size:clamp(1.4rem,2.8vw,2.1rem);
+  line-height:1.16;text-wrap:balance;color:#fff;
+}
+body[data-page="inicio"] .entrevista-cuerpo p{
+  margin:0;font-size:1rem;line-height:1.6;color:rgba(255,255,255,.84);
+  display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;
+}
+body[data-page="inicio"] .entrevista-cuerpo .meta{font-size:.78rem;color:var(--celeste-claro);}
+body[data-page="inicio"] .entrevista-cta{
+  align-self:flex-start;margin-top:4px;font-family:var(--font-tit);font-size:.82rem;letter-spacing:.9px;
+  text-transform:uppercase;color:#fff;border-bottom:2px solid var(--rojo);padding-bottom:3px;
+}
+
+/* ---------- Más leídas + Tendencias ---------- */
+body[data-page="inicio"] .ranking-portada{margin:8px 0 0;}
+body[data-page="inicio"] .ranking-portada[hidden]{display:none;}
+body[data-page="inicio"] .ranking-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:34px;}
+body[data-page="inicio"] .ranking-col .section-title{margin-bottom:6px;}
+body[data-page="inicio"] .ranking-sub{margin:0 0 16px;font-size:.84rem;color:var(--texto-suave);}
+body[data-page="inicio"] .ranking-lista{display:flex;flex-direction:column;gap:12px;}
+body[data-page="inicio"] .ranking-una .ranking-lista{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px;
+}
+body[data-page="inicio"] .ranking-una{grid-template-columns:minmax(0,1fr);}
+
+/* Fila compacta (ranking y bloques por competición) */
+body[data-page="inicio"] .fila-noticia{
+  position:relative;display:flex;align-items:center;gap:14px;padding:10px 14px 10px 12px;
+  background:var(--tarjeta);border:1px solid var(--borde);border-radius:14px;color:inherit;text-decoration:none;
+  transition:transform .22s var(--pt-ease),box-shadow .22s,border-color .22s;
+}
+body[data-page="inicio"] .fila-noticia:hover{
+  transform:translateX(4px);border-color:transparent;box-shadow:0 10px 26px -8px rgba(12,27,46,.28);text-decoration:none;
+}
+body[data-page="inicio"] .fila-num{
+  flex:0 0 auto;min-width:30px;text-align:center;font-family:var(--font-tit);font-size:1.9rem;line-height:1;
+  color:var(--rojo);
+}
+body[data-page="inicio"] .fila-icono{
+  flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;
+  border-radius:50%;background:var(--rojo);color:#fff;
+}
+body[data-page="inicio"] .fila-icono svg{width:16px;height:16px;}
+body[data-page="inicio"] .fila-noticia img{
+  flex:0 0 auto;width:96px;height:72px;object-fit:cover;border-radius:10px;background:var(--fondo-alt);
+}
+body[data-page="inicio"] .fila-texto{display:flex;flex-direction:column;gap:3px;min-width:0;}
+body[data-page="inicio"] .fila-noticia .cat{
+  font-size:.66rem;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--rojo);font-family:var(--font-tit);
+}
+body[data-page="inicio"] .fila-noticia h3{
+  margin:0;font-family:var(--font-headline);font-weight:700;font-size:.96rem;line-height:1.3;color:var(--marino-texto);
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;transition:color .2s;
+}
+body[data-page="inicio"] .fila-noticia:hover h3{color:var(--rojo);}
+body[data-page="inicio"] .fila-noticia .meta{font-size:.72rem;color:var(--texto-suave);}
+
+/* ---------- Bloques por competición ---------- */
+body[data-page="inicio"] .bloque-comp-cab{
+  display:flex;align-items:flex-end;gap:16px;margin:52px 0 22px;padding-bottom:10px;border-bottom:3px solid var(--rojo);
+}
+body[data-page="inicio"] .bloque-comp-cab .section-title{
+  display:flex;align-items:center;gap:12px;flex:1;margin:0;padding-bottom:0;
+}
+body[data-page="inicio"] .bloque-comp-cab .section-title::after{display:none;}
+body[data-page="inicio"] .bloque-comp-logo{width:34px;height:34px;object-fit:contain;flex:0 0 auto;}
+/* Modo oscuro: logos de Copa del Rey y LaLiga 2 (Hypermotion) en blanco
+   plano, conservando la transparencia del PNG. */
+[data-theme="dark"] body[data-page="inicio"] .bloque-comp-logo[src*="copa-del-rey"],
+[data-theme="dark"] body[data-page="inicio"] .bloque-comp-logo[src*="hypermotion"]{filter:brightness(0) invert(1);}
+body[data-page="inicio"] .bloque-comp-ver{
+  flex:0 0 auto;font-family:var(--font-tit);font-size:.76rem;letter-spacing:.8px;text-transform:uppercase;
+  color:var(--rojo);text-decoration:none;white-space:nowrap;padding-bottom:2px;
+}
+body[data-page="inicio"] .bloque-comp-ver:hover{text-decoration:underline;}
+body[data-page="inicio"] .bloque-comp-grid{
+  display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:24px;align-items:stretch;
+}
+body[data-page="inicio"] .bloque-comp-solo{grid-template-columns:minmax(0,420px);}
+body[data-page="inicio"] .bloque-comp-principal{display:flex;}
+body[data-page="inicio"] .bloque-comp-principal .card{flex:1;}
+body[data-page="inicio"] .bloque-comp-lista{display:flex;flex-direction:column;gap:12px;}
+body[data-page="inicio"] .bloque-comp-lista .fila-noticia{flex:1;}
+
+/* ---------- Foco de teclado (módulos nuevos) ---------- */
+body[data-page="inicio"] .uh-item a:focus-visible,
+body[data-page="inicio"] .entrevista-tarjeta:focus-visible,
+body[data-page="inicio"] .fila-noticia:focus-visible,
+body[data-page="inicio"] .bloque-comp-ver:focus-visible,
+body[data-page="inicio"] .btn-cargar-mas:focus-visible{outline:3px solid var(--celeste);outline-offset:3px;}
+
+/* ---------- Modo oscuro (módulos nuevos) ---------- */
+[data-theme="dark"] body[data-page="inicio"] .entrevista-tarjeta{
+  box-shadow:0 18px 44px -14px rgba(0,0,0,.75);border:1px solid rgba(255,255,255,.08);
+}
+[data-theme="dark"] body[data-page="inicio"] .fila-noticia:hover{box-shadow:0 10px 26px -8px rgba(0,0,0,.7);}
+[data-theme="dark"] body[data-page="inicio"] .btn-cargar-mas{border-color:var(--celeste-claro);color:var(--celeste-claro);}
+[data-theme="dark"] body[data-page="inicio"] .btn-cargar-mas:hover:not(:disabled){border-color:var(--rojo);color:#fff;}
+
+/* ---------- Responsive (módulos nuevos) ---------- */
+@media(max-width:900px){
+  body[data-page="inicio"] .entrevista-tarjeta{grid-template-columns:minmax(0,1fr);}
+  body[data-page="inicio"] .entrevista-foto{min-height:0;aspect-ratio:16/9;}
+  body[data-page="inicio"] .entrevista-cuerpo{padding:26px 24px 30px;}
+  body[data-page="inicio"] .ranking-grid{grid-template-columns:minmax(0,1fr);gap:8px;}
+  body[data-page="inicio"] .bloque-comp-grid{grid-template-columns:minmax(0,1fr);}
+  body[data-page="inicio"] .bloque-comp-solo{grid-template-columns:minmax(0,1fr);}
+  body[data-page="inicio"] .fila-noticia:hover{transform:translateY(-2px);}
+}
+@media(max-width:600px){
+  body[data-page="inicio"] .ultima-hora{margin-top:-4px;}
+  body[data-page="inicio"] .uh-cabecera{padding:10px 14px;}
+  body[data-page="inicio"] .uh-item a{grid-template-columns:minmax(0,1fr);gap:3px;padding:11px 14px;}
+  body[data-page="inicio"] .uh-item a:hover{padding-left:14px;}
+  body[data-page="inicio"] .uh-cat{order:3;}
+  body[data-page="inicio"] .btn-cargar-mas{width:100%;}
+  body[data-page="inicio"] .entrevista-portada{margin-top:40px;}
+  body[data-page="inicio"] .bloque-comp-cab{margin-top:40px;}
+  body[data-page="inicio"] .bloque-comp-logo{width:28px;height:28px;}
+  body[data-page="inicio"] .fila-noticia img{width:84px;height:64px;}
+  body[data-page="inicio"] .fila-num{font-size:1.5rem;min-width:24px;}
+}
+
+@media(prefers-reduced-motion:reduce){
+  body[data-page="inicio"] .btn-cargar-mas.cargando::after{animation:none;}
+  body[data-page="inicio"] .entrevista-tarjeta:hover,
+  body[data-page="inicio"] .entrevista-tarjeta:hover .entrevista-foto img,
+  body[data-page="inicio"] .fila-noticia:hover{transform:none;}
+}
+
+/* =====================================================================
+   RENDIMIENTO Y CARGA (portada)
+   ===================================================================== */
+
+/* Texto solo para lectores de pantalla (el aviso "Cargando lo último..." del
+   esqueleto del hero). */
+body[data-page="inicio"] .sr-solo-lectores{
+  position:absolute;width:1px;height:1px;margin:-1px;padding:0;border:0;
+  overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;
+}
+
+/* La cabecera la pinta layout.js después de cargar: se reserva su alto mínimo
+   (la barra principal en móvil mide ~78px) para que el contenido no salte hacia
+   abajo cuando aparece. */
+body[data-page="inicio"] #site-header{min-height:78px;}
+
+/* Esqueleto del hero: mismas medidas que el hero real (480px la principal,
+   4 filas a la derecha), así no hay salto de diseño al llegar las noticias. */
+body[data-page="inicio"] .hero-esqueleto{
+  position:relative;overflow:hidden;pointer-events:none;
+  background:var(--gris-claro);border:1px solid var(--borde);
+}
+body[data-page="inicio"] .hero-principal.hero-esqueleto{box-shadow:none;}
+body[data-page="inicio"] .mini-card.hero-esqueleto{min-height:94px;border-radius:14px;}
+body[data-page="inicio"] .hero-esqueleto::after{
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(100deg,transparent 20%,rgba(255,255,255,.55) 50%,transparent 80%);
+  transform:translateX(-100%);animation:hero-brillo 1.4s ease-in-out infinite;
+}
+[data-theme="dark"] body[data-page="inicio"] .hero-esqueleto::after{
+  background:linear-gradient(100deg,transparent 20%,rgba(255,255,255,.07) 50%,transparent 80%);
+}
+@keyframes hero-brillo{to{transform:translateX(100%);}}
+
+/* Lo que queda por debajo de la primera pantalla no se pinta hasta que el
+   lector se acerca (content-visibility). contain-intrinsic-size "auto" recuerda
+   el alto real una vez visto, así la barra de scroll no baila. Si algún día
+   recorta una sombra en el borde de una sección, basta con borrar este bloque. */
+body[data-page="inicio"] #bloques-competicion,
+body[data-page="inicio"] .encuestas-portada,
+body[data-page="inicio"] .resultados-home,
+body[data-page="inicio"] .redes-section,
+body[data-page="inicio"] #site-footer{
+  content-visibility:auto;contain-intrinsic-size:auto 560px;
+}
+body[data-page="inicio"] .redes-section{contain-intrinsic-size:auto 160px;}
+body[data-page="inicio"] #site-footer{contain-intrinsic-size:auto 420px;}
+
+/* Miniaturas con color de fondo mientras llegan (evita el hueco blanco). */
+body[data-page="inicio"] .fila-noticia img,
+body[data-page="inicio"] .entrevista-foto img{background:var(--gris-claro);}
+
+@media (prefers-reduced-motion:reduce){
+  body[data-page="inicio"] .hero-esqueleto::after{animation:none;display:none;}
+}

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta name="google-adsense-account" content="ca-pub-7347856722927942">
+<script src="js/tema.js?v=2"></script>
+<script src="js/preferencias.js?v=3"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://api.elotrofutbol.media" crossorigin>
+<link rel="preconnect" href="https://res.cloudinary.com">
+<title id="pageTitle">Estadísticas de jugadores — ELOTROFÚTBOLTV</title>
+<meta name="description" content="Top 10 de máximos goleadores, asistentes y jugadores más sancionados de LaLiga Hypermotion, Primera y Segunda Federación, calculados con el minuto a minuto.">
+<meta property="og:image" content="https://elotrofutbol.media/img/og-default.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://elotrofutbol.media/img/og-default.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ELOTROFÚTBOLTV">
+<meta property="og:locale" content="es_ES">
+<meta property="og:title" content="Estadísticas de jugadores — ELOTROFÚTBOLTV">
+<meta property="og:description" content="Top 10 de máximos goleadores, asistentes y jugadores más sancionados de LaLiga Hypermotion, Primera y Segunda Federación, calculados con el minuto a minuto.">
+<meta property="og:url" content="https://elotrofutbol.media/estadisticas">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="ELOTROFÚTBOLTV: noticias del fútbol no profesional">
+<meta name="twitter:title" content="Estadísticas de jugadores — ELOTROFÚTBOLTV">
+<meta name="twitter:description" content="Top 10 de máximos goleadores, asistentes y jugadores más sancionados de LaLiga Hypermotion, Primera y Segunda Federación, calculados con el minuto a minuto.">
+<meta name="twitter:site" content="@elotrofutbol">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+<meta name="theme-color" content="#0c1b2e">
+<link rel="alternate" type="application/rss+xml" title="ELOTROFÚTBOLTV" href="https://elotrofutbol.media/rss.xml">
+<script type="application/ld+json" id="seo-jsonld-pagina">{"@context":"https://schema.org","@type":"WebPage","@id":"https://elotrofutbol.media/estadisticas#pagina","url":"https://elotrofutbol.media/estadisticas","name":"Estadísticas de jugadores — ELOTROFÚTBOLTV","description":"Top 10 de máximos goleadores, asistentes y jugadores más sancionados de LaLiga Hypermotion, Primera y Segunda Federación, calculados con el minuto a minuto.","inLanguage":"es","isPartOf":{"@id":"https://elotrofutbol.media/#sitio"},"publisher":{"@id":"https://elotrofutbol.media/#organizacion"}}</script>
+<link rel="canonical" href="https://elotrofutbol.media/estadisticas">
+<link rel="icon" href="/favicon.ico?v=3" sizes="any">
+<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=3">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png?v=2">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&display=swap" onload="this.onload=null;this.rel='stylesheet'"><noscript><link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet"></noscript>
+<link rel="stylesheet" href="css/style.css?v=25">
+<link rel="stylesheet" href="css/accesibilidad.css?v=1">
+<script src="js/accesibilidad.js?v=1" defer></script>
+<link rel="stylesheet" href="css/foco.css?v=1">
+<link rel="stylesheet" href="css/listados-ui.css?v=1">
+<link rel="stylesheet" href="css/clasificacion-mejoras.css?v=3">
+<link rel="stylesheet" href="css/estadisticas.css?v=7">
+<link rel="stylesheet" href="css/estadisticas-mejoras.css?v=2">
+</head>
+<body data-page="estadisticas">
+
+<div id="site-header"></div>
+
+<main class="wrap">
+  <header class="stats-hero">
+    <h1 class="section-title">Estadísticas de jugadores <span class="stats-top-chip">Top 10</span></h1>
+    <p class="stats-intro">Los tops se calculan solos con el minuto a minuto de cada partido y se actualizan en cuanto se registra un gol, una tarjeta o un MVP. Filtra por club o temporada y pulsa en un jugador para ver su ficha.</p>
+  </header>
+  <div id="buscadorJugadores"></div>
+  <div class="filtros" id="filtrosCompeticion">
+    <button class="activo" data-cat="hypermotion">LaLiga Hypermotion</button>
+    <button data-cat="primera_federacion">Primera Federación</button>
+    <button data-cat="segunda_federacion">Segunda Federación</button>
+  </div>
+  <div class="filtros-secundarios stats-filtros">
+    <select id="filtroGrupo" class="select-filtro" aria-label="Grupo" hidden></select>
+    <select id="filtroClub" class="select-filtro" aria-label="Club"><option value="">Todos los clubes</option></select>
+    <select id="filtroTemporada" class="select-filtro" aria-label="Temporada">
+      <option value="">Temporada en curso</option>
+      <option value="todas">Histórico acumulado</option>
+    </select>
+    <a class="stats-plantilla-link" id="enlacePlantilla" href="#" hidden>Ver plantilla →</a>
+  </div>
+  <div class="filtros stats-tabs" id="filtrosTipo" role="tablist" aria-label="Tipo de estadística">
+    <button class="activo" role="tab" data-tipo="goleadores">Goleadores</button>
+    <button role="tab" data-tipo="asistentes">Asistentes</button>
+    <button role="tab" data-tipo="participacion">Goles + asist.</button>
+    <button role="tab" data-tipo="tarjetas">Tarjetas</button>
+    <button role="tab" data-tipo="mvps">MVP</button>
+    <button role="tab" data-tipo="mas_partidos">Partidos</button>
+  </div>
+
+  <div id="estadisticasCont"></div>
+  <p class="stats-nota" id="statsNota" hidden></p>
+</main>
+
+<div id="site-footer"></div>
+
+<script src="js/ui-alertas.js?v=5"></script>
+<script src="js/foco.js?v=1"></script>
+<script src="js/config.js?v=25"></script>
+<script src="js/seo.js?v=5"></script>
+<script src="js/clubs.js?v=6"></script>
+<script src="js/lector-auth.js?v=13"></script>
+<script src="js/lecturas.js?v=7"></script>
+<script src="js/layout.js?v=22"></script>
+<script src="js/cookies.js?v=2"></script>
+<script src="js/ads.js?v=3"></script>
+<script src="js/buscador-jugadores.js?v=2"></script>
+<script src="js/estadisticas.js?v=7"></script>
+</body>
+</html>

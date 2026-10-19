@@ -1,0 +1,672 @@
+/* ============================================================
+   Porras — diseño moderno
+   Se carga después de style.css, listados-ui.css y porras.css, solo en
+   predicciones.html. Solo CSS: el marcado lo genera porras.js.
+
+   - Tarjeta de partido tipo marcador: equipos a cada lado del resultado,
+     fecha centrada arriba, estado en una franja superior de color.
+   - Responsive con container queries (según el ancho de la lista, no
+     del viewport).
+   - Resumen de jornada como banner oscuro; resumen de temporada en
+     tarjetas con cifra en degradado.
+   - Pestañas segmentadas, jornadas como pastillas.
+   - Ranking: medallas oro/plata/bronce, fila propia resaltada.
+   ============================================================ */
+
+/* ---------- Texto introductorio ---------- */
+.porras-intro{
+  max-width:620px;
+  margin:-8px 0 24px;
+  font-size:.96rem;
+  line-height:1.55;
+  text-wrap:pretty;
+}
+
+/* ---------- Resumen de temporada ---------- */
+.porras-temporada{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(130px,1fr));
+  gap:12px;
+  max-width:880px;
+  margin-bottom:28px;
+}
+.porras-temporada-item{
+  position:relative;
+  overflow:hidden;
+  gap:6px;
+  padding:16px 18px 16px 20px;
+  background:var(--tarjeta);
+  border:1px solid var(--borde);
+  border-radius:16px;
+  box-shadow:var(--ui-sombra);
+}
+.porras-temporada-item::before{       /* acento lateral */
+  content:"";
+  position:absolute;
+  left:0;
+  top:14px;
+  bottom:14px;
+  width:4px;
+  border-radius:0 4px 4px 0;
+  background:linear-gradient(180deg,var(--rojo),#ff7a45);
+}
+.porras-temporada-valor{
+  font-size:2rem;
+  line-height:1;
+  background:linear-gradient(135deg,var(--rojo),#ff7a45);
+  -webkit-background-clip:text;
+  background-clip:text;
+  -webkit-text-fill-color:transparent;
+  color:transparent;
+}
+[data-theme="dark"] .porras-temporada-valor{
+  background:linear-gradient(135deg,#ff6b7d,#ffb067);
+  -webkit-background-clip:text;
+  background-clip:text;
+}
+.porras-temporada-etiqueta{
+  font-size:.7rem;
+  font-weight:600;
+  letter-spacing:.07em;
+}
+
+/* ---------- Pestañas Mi jornada / Ranking (segmentadas) ---------- */
+.porras-tabs{
+  display:flex;
+  width:fit-content;
+  max-width:100%;
+  gap:4px;
+  padding:4px;
+  margin-bottom:20px;
+  background:var(--fondo-alt);
+  border:1px solid var(--borde);
+  border-radius:999px;
+}
+.porras-tabs .porras-tab{
+  margin:0;
+  padding:10px 22px;
+  border:0;
+  border-radius:999px;
+  background:transparent;
+  color:var(--texto-suave);
+  font-family:var(--font-text);
+  font-size:.88rem;
+  font-weight:600;
+  transition:background .18s, color .18s, box-shadow .18s;
+}
+.porras-tabs .porras-tab + .porras-tab{margin-left:0;}
+.porras-tabs .porras-tab:hover:not(.activo){color:var(--marino-texto);}
+.porras-tabs .porras-tab.activo{
+  background:var(--ui-act-bg);
+  color:var(--ui-act-fg);
+  border-bottom-color:transparent;
+  box-shadow:0 6px 14px -6px color-mix(in srgb, var(--ui-act-bg) 75%, transparent);
+}
+
+/* ---------- Fila de jornadas ---------- */
+.porras-jornadas{
+  max-width:908px;
+  gap:8px;
+  padding:4px 14px 14px;
+  margin:0 -14px 14px;
+  scroll-snap-type:x proximity;
+  scrollbar-width:none;
+  -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 14px,#000 calc(100% - 28px),transparent 100%);
+  mask-image:linear-gradient(90deg,transparent 0,#000 14px,#000 calc(100% - 28px),transparent 100%);
+}
+.porras-jornadas::-webkit-scrollbar{display:none;}
+.porras-jornada-btn{
+  min-width:46px;
+  height:46px;
+  padding:0 10px;
+  border-radius:14px;
+  border:1px solid var(--borde);
+  background:var(--tarjeta);
+  font-family:var(--font-tit);
+  font-size:.95rem;
+  font-weight:600;
+  scroll-snap-align:center;
+  box-shadow:0 1px 2px rgba(12,27,46,.05);
+  transition:transform .15s, box-shadow .15s, border-color .15s, background .15s, color .15s;
+}
+.porras-jornada-btn:hover:not(:disabled):not(.activo){
+  border-color:var(--celeste);
+  transform:translateY(-2px);
+  box-shadow:0 8px 14px -8px rgba(12,27,46,.35);
+}
+.porras-jornada-btn.activo{
+  background:var(--ui-act-bg);
+  border-color:var(--ui-act-bg);
+  color:var(--ui-act-fg);
+  box-shadow:0 10px 18px -8px color-mix(in srgb, var(--ui-act-bg) 80%, transparent);
+}
+.porras-jornada-btn.jugada:not(:disabled):not(.activo){
+  border-style:dashed;
+  color:var(--texto-suave);
+}
+.porras-jornada-btn .pj-candado{opacity:.75;}
+.porras-jornada-btn:disabled{opacity:.45;box-shadow:none;}
+
+/* ---------- Foco visible ---------- */
+.porras-tab:focus-visible,
+.porras-jornada-btn:focus-visible,
+.porras-btn-compartir:focus-visible,
+.porras-acceso-aviso a:focus-visible{
+  outline:none;
+  box-shadow:var(--ui-anillo);
+}
+
+/* ---------- Resumen de jornada (banner) ---------- */
+.porras-resumen{
+  position:relative;
+  overflow:hidden;
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
+  gap:8px;
+  max-width:880px;
+  padding:8px;
+  margin-bottom:18px;
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:20px;
+  background:
+    radial-gradient(120% 140% at 0% 0%, rgba(91,184,232,.28), transparent 55%),
+    linear-gradient(135deg,#17365c,#0c1b2e);
+  box-shadow:var(--ui-sombra);
+}
+.porras-resumen-item{
+  gap:4px;
+  padding:14px 16px;
+  background:rgba(255,255,255,.06);
+  border-radius:14px;
+}
+.porras-resumen-valor{
+  font-size:2rem;
+  line-height:1;
+  color:#fff;
+}
+.porras-resumen-item:first-child .porras-resumen-valor{color:var(--celeste-claro);}
+.porras-resumen-etiqueta{
+  font-size:.68rem;
+  font-weight:600;
+  letter-spacing:.08em;
+  color:rgba(255,255,255,.68);
+}
+
+/* ---------- Botones Descargar / Compartir ---------- */
+.porras-btns-imagen{max-width:880px;gap:10px;margin-bottom:22px;}
+.porras-btn-compartir{
+  padding:12px 24px;
+  border-radius:999px;
+  background:linear-gradient(135deg,var(--marino2),var(--marino));
+  font-family:var(--font-text);
+  font-size:.86rem;
+  font-weight:700;
+  letter-spacing:.1px;
+  box-shadow:0 10px 20px -10px rgba(12,27,46,.6);
+  transition:transform .15s, box-shadow .15s, background .15s;
+}
+.porras-btn-compartir:hover:not(:disabled){
+  background:linear-gradient(135deg,#1d3b60,var(--marino2));
+  transform:translateY(-1px);
+}
+.porras-btn-compartir-solo{
+  background:transparent;
+  color:var(--marino-texto);
+  border:1.5px solid var(--borde);
+  box-shadow:none;
+}
+.porras-btn-compartir-solo:hover:not(:disabled){
+  background:var(--fondo-alt);
+  border-color:var(--marino-texto);
+}
+[data-theme="dark"] .porras-btn-compartir:not(.porras-btn-compartir-solo){
+  background:linear-gradient(135deg,var(--celeste-claro),var(--celeste));
+  color:var(--marino);
+  box-shadow:0 10px 20px -10px rgba(91,184,232,.6);
+}
+[data-theme="dark"] .porras-btn-compartir:not(.porras-btn-compartir-solo):hover:not(:disabled){
+  background:linear-gradient(135deg,#c4e8fa,var(--celeste-claro));
+}
+
+/* ---------- Lista de partidos ---------- */
+.porras-lista{
+  display:grid;
+  grid-template-columns:minmax(0,1fr);
+  gap:14px;
+  max-width:880px;
+  margin-bottom:20px;
+  container:porras / inline-size;
+}
+
+/* ---------- Tarjeta de partido ---------- */
+.porras-lista .porra-partido,
+.porras-lista .porra-partido[data-tiene-puntos]{
+  --acento:var(--borde);
+  position:relative;
+  display:flex;
+  align-items:center;
+  gap:16px;
+  padding:40px 24px 22px;
+  border:1px solid var(--borde);
+  border-radius:20px;
+  background-color:var(--tarjeta);
+  background-image:linear-gradient(180deg,color-mix(in srgb,var(--acento) 9%,transparent),transparent 65%);
+  box-shadow:var(--ui-sombra);
+  transition:transform .18s, box-shadow .18s;
+}
+.porras-lista .porra-partido::before{       /* franja de estado superior */
+  content:"";
+  position:absolute;
+  top:-1px;
+  left:24px;
+  right:24px;
+  height:4px;
+  border-radius:0 0 6px 6px;
+  background:var(--acento);
+}
+.porras-lista .porra-partido:hover{transform:translateY(-2px);}
+
+/* Estado → color de acento (misma especificidad que la tarjeta con
+   data-tiene-puntos y declarado después, para que no lo pise) */
+.porras-lista .porra-partido[data-estado-porra="abierto"]{--acento:var(--celeste);}
+.porras-lista .porra-partido[data-estado-porra="bloqueado"]{--acento:color-mix(in srgb,var(--texto-suave) 55%,transparent);}
+.porras-lista .porra-partido[data-estado-porra="exacto"]{--acento:var(--ui-verde);}
+.porras-lista .porra-partido[data-estado-porra="acierto"]{--acento:var(--celeste);}
+.porras-lista .porra-partido[data-estado-porra="fallo"]{--acento:var(--rojo);}
+.porras-lista .porra-partido[data-estado-porra="en_vivo"]{--acento:var(--rojo);}
+.porras-lista .porra-partido[data-estado-porra]{border-left-color:var(--borde);}   /* neutraliza el borde de porras.css */
+
+/* Partido en juego: halo pulsante en lugar de parpadeo de fondo */
+@keyframes porraVivoHalo{
+  0%{box-shadow:var(--ui-sombra),0 0 0 0 rgba(209,19,46,.35);}
+  70%,100%{box-shadow:var(--ui-sombra),0 0 0 9px rgba(209,19,46,0);}
+}
+.porras-lista .porra-partido[data-estado-porra="en_vivo"]{
+  animation:porraVivoHalo 1.8s ease-out infinite;
+  border-color:color-mix(in srgb,var(--rojo) 40%,var(--borde));
+}
+@media (prefers-reduced-motion: reduce){
+  .porras-lista .porra-partido[data-estado-porra="en_vivo"]{animation:none;}
+  .porras-lista .porra-partido,
+  .porras-jornada-btn,
+  .porras-btn-compartir{transition:none;}
+  .porras-lista .porra-partido:hover{transform:none;}
+}
+
+/* Cabecera de la tarjeta: estado · fecha · puntos */
+.porras-lista .porra-partido .porra-partido-fecha{
+  position:absolute;
+  top:14px;
+  left:50%;
+  transform:translateX(-50%);
+  padding:0;
+  background:none;
+  font-size:.7rem;
+  font-weight:700;
+  letter-spacing:.09em;
+  text-transform:uppercase;
+  white-space:nowrap;
+  color:var(--texto-suave);
+}
+.porras-lista .porra-partido .porra-estado-icono{
+  position:absolute;
+  top:11px;
+  left:18px;
+  width:auto;
+  height:auto;
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+}
+.porra-partido .porra-estado-icono svg{width:17px;height:17px;}
+.porra-partido[data-estado-porra="en_vivo"] .porra-estado-icono::after{
+  content:"En vivo";
+  font-size:.68rem;
+  font-weight:800;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:var(--ui-rojo-txt);
+}
+.porras-lista .porra-partido[data-tiene-puntos] .porra-puntos-badge,
+.porras-lista .porra-partido .porra-puntos-badge{
+  position:absolute;
+  top:10px;
+  right:16px;
+  transform:none;
+  display:inline-flex;
+  align-items:center;
+  padding:4px 12px;
+  border-radius:999px;
+  font-family:var(--font-tit);
+  font-size:.76rem;
+  font-weight:700;
+  letter-spacing:.3px;
+}
+.porra-puntos-badge[data-tipo="exacto"]{background:color-mix(in srgb,var(--ui-verde) 18%,transparent);color:var(--ui-verde);}
+.porra-puntos-badge[data-tipo="acierto"]{background:color-mix(in srgb,var(--celeste) 22%,transparent);color:#2a80ab;}
+.porra-puntos-badge[data-tipo="fallo"]{background:color-mix(in srgb,var(--rojo) 14%,transparent);color:var(--ui-rojo-txt);}
+[data-theme="dark"] .porra-puntos-badge[data-tipo="acierto"]{color:var(--celeste-claro);}
+
+/* Equipos: hacia el marcador, local a la izquierda, visitante a la derecha */
+.porras-lista .porra-equipo{
+  flex:1 1 0;
+  min-width:0;
+  display:flex;
+  flex-direction:row-reverse;
+  justify-content:flex-start;
+  align-items:center;
+  gap:12px;
+  text-align:right;
+}
+.porras-lista .porra-equipo--visitante{
+  flex-direction:row;
+  text-align:left;
+}
+.porra-escudo{
+  width:42px;
+  height:42px;
+  object-fit:contain;
+  flex-shrink:0;
+  filter:drop-shadow(0 2px 4px rgba(12,27,46,.22));
+}
+.porra-nombre-equipo{
+  font-size:1rem;
+  font-weight:700;
+  line-height:1.2;
+  white-space:normal;
+  text-wrap:balance;
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+}
+
+/* Marcador / inputs */
+.porras-lista .porra-marcador{gap:10px;flex-shrink:0;}
+.porra-input-gol{
+  width:54px;
+  height:54px;
+  border:2px solid var(--borde);
+  border-radius:16px;
+  background:var(--fondo-alt);
+  font-size:1.5rem;
+  font-weight:700;
+  line-height:1;
+  box-shadow:inset 0 2px 4px rgba(12,27,46,.05);
+  transition:border-color .15s, box-shadow .15s, background .15s, transform .15s;
+}
+.porra-input-gol:hover:not(:disabled):not(:focus){border-color:color-mix(in srgb,var(--celeste) 55%,var(--borde));}
+.porra-input-gol:focus{
+  border-color:var(--celeste);
+  background:var(--tarjeta);
+  box-shadow:var(--ui-anillo);
+  transform:scale(1.04);
+}
+.porra-input-gol:disabled{opacity:.6;}
+.porra-marcador-separador{font-size:1.3rem;font-weight:700;color:var(--texto-suave);}
+.porra-marcador-real{
+  min-width:100px;
+  padding:10px 18px;
+  border-radius:16px;
+  background:var(--fondo-alt);
+  border:1px solid var(--borde);
+  font-size:1.5rem;
+  font-weight:700;
+  line-height:1;
+  letter-spacing:.04em;
+  font-variant-numeric:tabular-nums;
+}
+.porra-marcador-real-en-vivo{
+  color:var(--ui-rojo-txt);
+  background:color-mix(in srgb,var(--rojo) 10%,var(--tarjeta));
+  border-color:color-mix(in srgb,var(--rojo) 35%,var(--borde));
+}
+
+/* Guardado automático (estados que pone porras.js) */
+.porra-guardando{opacity:1;}
+.porra-guardando::after{
+  content:"Guardando…";
+  position:absolute;
+  bottom:7px;
+  left:50%;
+  transform:translateX(-50%);
+  padding:0;
+  background:none;
+  font-size:.68rem;
+  font-weight:700;
+  letter-spacing:.06em;
+  color:var(--texto-suave);
+}
+.porras-lista .porra-partido .porra-aviso-guardado{
+  left:50%;
+  bottom:6px;
+  transform:translateX(-50%);
+  padding:0;
+  background:none;
+  font-size:.72rem;
+  font-weight:700;
+  white-space:nowrap;
+}
+
+/* Contenedor estrecho (móvil o columna angosta): escudo sobre el nombre */
+@container porras (max-width:540px){
+  .porras-lista .porra-partido,
+  .porras-lista .porra-partido[data-tiene-puntos]{
+    gap:8px;
+    padding:38px 12px 18px;
+    border-radius:18px;
+  }
+  .porras-lista .porra-partido::before{left:18px;right:18px;}
+  .porras-lista .porra-equipo,
+  .porras-lista .porra-equipo--visitante{
+    flex-direction:column;
+    justify-content:flex-start;
+    align-items:center;
+    gap:6px;
+    text-align:center;
+  }
+  .porra-escudo{width:36px;height:36px;}
+  .porra-nombre-equipo{font-size:.78rem;text-align:center;}
+  .porras-lista .porra-marcador{gap:6px;}
+  .porra-input-gol{width:44px;height:48px;border-radius:13px;font-size:1.25rem;}
+  .porra-marcador-real{min-width:78px;padding:9px 12px;font-size:1.25rem;}
+  .porras-lista .porra-partido[data-tiene-puntos] .porra-puntos-badge,
+  .porras-lista .porra-partido .porra-puntos-badge{right:12px;font-size:.7rem;padding:3px 10px;}
+  .porras-lista .porra-partido .porra-estado-icono{left:12px;}
+}
+
+/* ---------- Marca de agua en pantalla ---------- */
+.porras-marca-agua-pantalla{
+  max-width:880px;
+  margin:6px 0 30px;
+  padding:20px 26px;
+  border-radius:20px;
+  background:
+    radial-gradient(90% 160% at 100% 0%, rgba(91,184,232,.22), transparent 60%),
+    linear-gradient(135deg,#17365c,#0c1b2e);
+  border:1px solid rgba(255,255,255,.08);
+}
+.porras-marca-agua-pantalla img{box-shadow:0 0 0 3px rgba(255,255,255,.12);}
+
+/* ---------- Aviso de acceso ---------- */
+.porras-acceso-aviso{
+  max-width:880px;
+  gap:16px;
+  padding:18px 22px;
+  margin-bottom:24px;
+  border-radius:20px;
+  border:1px solid rgba(255,255,255,.08);
+  background:
+    radial-gradient(100% 160% at 0% 0%, rgba(209,19,46,.35), transparent 55%),
+    linear-gradient(135deg,#17365c,#0c1b2e);
+  box-shadow:var(--ui-sombra);
+}
+.porras-acceso-aviso p{font-size:.9rem;line-height:1.5;max-width:56ch;text-wrap:pretty;}
+.porras-acceso-aviso a{
+  padding:11px 20px;
+  background:#fff;
+  color:var(--marino);
+  border-radius:999px;
+  font-weight:700;
+  box-shadow:0 8px 16px -8px rgba(0,0,0,.5);
+  transition:transform .15s, opacity .15s;
+}
+.porras-acceso-aviso a:hover{opacity:1;transform:translateY(-1px);}
+
+/* ---------- Ranking: textos ---------- */
+.porras-ranking-jornada-titulo{
+  max-width:880px;
+  margin:0 0 6px;
+  font-size:1.15rem;
+  letter-spacing:.2px;
+}
+.porras-ranking-participantes{max-width:880px;margin:0 0 14px;font-size:.84rem;}
+.porras-ranking-ayuda{max-width:880px;}
+.porras-ranking-provisional{
+  max-width:880px;
+  padding:12px 16px;
+  border-radius:14px;
+  border:1px solid var(--borde);
+  border-left:4px solid var(--rojo);
+  background:var(--tarjeta);
+  box-shadow:var(--ui-sombra);
+}
+
+/* ---------- Ranking: tabla ---------- */
+.porras-ranking-tabla-wrap{max-width:880px;}
+.porras-ranking-tabla{min-width:520px;}
+.porras-ranking-tabla tbody td:nth-child(n+3):not(.col-puntos){color:var(--texto-suave);font-weight:500;}
+.porras-ranking-tabla tbody td.col-nombre{
+  max-width:15rem;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-weight:600;
+  color:var(--marino-texto);
+}
+.porras-ranking-tabla thead th.col-nombre{text-align:left;}
+.porras-ranking-tabla tbody td.col-pos{
+  font-family:var(--font-tit);
+  font-weight:700;
+  color:var(--marino-texto);
+}
+.porras-ranking-tabla tbody td.col-puntos{color:var(--ui-rojo-txt);}
+
+/* Tinte de fila propia y medallas: capas de fondo compartidas, así las
+   celdas fijas (opacas) no pierden ninguna de las dos. */
+.porras-ranking-tabla tbody td{background-image:var(--tinte,none);}
+.porras-ranking-tabla tbody td.col-pos{background-image:var(--medalla,none),var(--tinte,none);}
+.porras-ranking-tabla tbody tr:nth-child(1){--medalla:radial-gradient(circle,var(--ui-oro) 0 15px,transparent 15.5px);}
+.porras-ranking-tabla tbody tr:nth-child(2){--medalla:radial-gradient(circle,var(--ui-plata) 0 15px,transparent 15.5px);}
+.porras-ranking-tabla tbody tr:nth-child(3){--medalla:radial-gradient(circle,var(--ui-bronce) 0 15px,transparent 15.5px);}
+.porras-ranking-tabla tbody tr:nth-child(-n+3) td.col-pos{color:#2b2000;font-size:1rem;}
+.porras-ranking-tabla tbody tr.porras-ranking-fila-propia{
+  --tinte:linear-gradient(rgba(91,184,232,.2),rgba(91,184,232,.2));
+}
+.porras-ranking-tabla tbody tr.porras-ranking-fila-propia td.col-pos{box-shadow:inset 4px 0 0 var(--celeste);}
+.porras-ranking-tabla tbody tr.porras-ranking-fila-propia td.col-nombre{font-weight:800;}
+
+.porras-ranking-fuera-top{
+  max-width:880px;
+  padding:14px 18px;
+  border:1px dashed color-mix(in srgb,var(--celeste) 60%,var(--borde));
+  border-radius:14px;
+  background:color-mix(in srgb,var(--celeste) 8%,var(--tarjeta));
+}
+
+/* ---------- Móvil ---------- */
+@media(max-width:600px){
+  .porras-intro{margin-top:-4px;}
+  .porras-temporada{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
+  .porras-temporada-item{padding:12px 10px 12px 16px;}
+  .porras-temporada-valor{font-size:1.55rem;}
+  .porras-temporada-etiqueta{font-size:.62rem;letter-spacing:.05em;}
+  .porras-tabs{width:100%;}
+  .porras-tabs .porras-tab{flex:1;padding:10px 12px;}
+  .porras-resumen{gap:6px;padding:6px;}
+  .porras-resumen-item{padding:12px 12px;}
+  .porras-resumen-valor{font-size:1.6rem;}
+  .porras-acceso-aviso a{flex:1 1 100%;text-align:center;}
+  .porras-marca-agua-pantalla{padding:16px 18px;}
+  .porras-ranking-tabla{min-width:480px;}
+  .porras-ranking-tabla tbody td.col-nombre{max-width:8.5rem;}
+}
+
+/* ============================================================
+   Tarjetas compactas
+   Más pequeñas para que una jornada completa quepa en una sola
+   pantalla y se pueda hacer captura. Va al final para ganar a las
+   reglas anteriores (incluida la @container de contenedor estrecho).
+   ============================================================ */
+.porras-lista{gap:7px;margin-bottom:14px;}
+
+.porras-lista .porra-partido,
+.porras-lista .porra-partido[data-tiene-puntos]{
+  gap:10px;
+  padding:20px 14px 8px;
+  border-radius:12px;
+}
+.porras-lista .porra-partido::before{left:16px;right:16px;height:3px;}
+.porras-lista .porra-partido:hover{transform:none;}
+
+/* Cabecera: estado · fecha · puntos, más fina */
+.porras-lista .porra-partido .porra-partido-fecha{top:5px;font-size:.6rem;letter-spacing:.07em;}
+.porras-lista .porra-partido .porra-estado-icono{top:4px;left:12px;gap:5px;}
+.porra-partido .porra-estado-icono svg{width:13px;height:13px;}
+.porra-partido[data-estado-porra="en_vivo"] .porra-estado-icono::after{font-size:.58rem;}
+.porras-lista .porra-partido[data-tiene-puntos] .porra-puntos-badge,
+.porras-lista .porra-partido .porra-puntos-badge{top:3px;right:10px;padding:1px 8px;font-size:.62rem;}
+
+/* Equipos: siempre en fila (escudo junto al marcador) */
+.porras-lista .porra-equipo,
+.porras-lista .porra-equipo--visitante{gap:8px;}
+.porras-lista .porra-equipo{flex-direction:row-reverse;text-align:right;}
+.porras-lista .porra-equipo--visitante{flex-direction:row;text-align:left;}
+.porra-escudo{width:28px;height:28px;filter:drop-shadow(0 1px 2px rgba(12,27,46,.2));}
+.porra-nombre-equipo{font-size:.82rem;line-height:1.15;}
+
+/* Marcador / inputs */
+.porras-lista .porra-marcador{gap:6px;}
+.porra-input-gol{width:36px;height:36px;border-radius:10px;border-width:1.5px;font-size:1.1rem;}
+.porra-input-gol:focus{transform:none;}
+.porra-marcador-separador{font-size:1rem;}
+.porra-marcador-real{min-width:70px;padding:7px 10px;border-radius:10px;font-size:1.1rem;}
+
+.porra-guardando::after{bottom:2px;font-size:.58rem;}
+.porras-lista .porra-partido .porra-aviso-guardado{bottom:1px;font-size:.6rem;}
+
+/* Contenedor estrecho (móvil): mantener la fila, solo reducir un poco */
+@container porras (max-width:540px){
+  .porras-lista .porra-partido,
+  .porras-lista .porra-partido[data-tiene-puntos]{
+    gap:6px;
+    padding:18px 10px 7px;
+    border-radius:11px;
+  }
+  .porras-lista .porra-partido::before{left:14px;right:14px;}
+  .porras-lista .porra-equipo,
+  .porras-lista .porra-equipo--visitante{gap:6px;justify-content:flex-start;align-items:center;}
+  .porras-lista .porra-equipo{flex-direction:row-reverse;text-align:right;}
+  .porras-lista .porra-equipo--visitante{flex-direction:row;text-align:left;}
+  .porra-escudo{width:24px;height:24px;}
+  .porra-nombre-equipo{font-size:.68rem;text-align:inherit;}
+  .porras-lista .porra-marcador{gap:4px;}
+  .porra-input-gol{width:32px;height:32px;border-radius:9px;font-size:1rem;}
+  .porra-marcador-real{min-width:58px;padding:6px 8px;font-size:1rem;}
+  .porras-lista .porra-partido[data-tiene-puntos] .porra-puntos-badge,
+  .porras-lista .porra-partido .porra-puntos-badge{right:8px;font-size:.58rem;padding:1px 7px;}
+  .porras-lista .porra-partido .porra-estado-icono{left:10px;}
+}
+
+/* Banner de marca de agua y resumen, también más bajos */
+.porras-marca-agua-pantalla{margin:2px 0 14px;padding:10px 18px;border-radius:14px;}
+.porras-marca-agua-pantalla img{width:34px;height:34px;}
+.porras-marca-agua-textos strong{font-size:.92rem;}
+.porras-marca-agua-textos span{font-size:.72rem;}
+.porras-resumen{margin-bottom:12px;padding:6px;border-radius:14px;}
+.porras-resumen-item{padding:8px 12px;border-radius:10px;}
+.porras-resumen-valor{font-size:1.4rem;}
+@media(max-width:600px){
+  .porras-resumen-item{padding:8px 10px;}
+  .porras-resumen-valor{font-size:1.2rem;}
+}

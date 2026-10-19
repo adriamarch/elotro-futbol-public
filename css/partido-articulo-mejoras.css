@@ -1,0 +1,399 @@
+/* =========================================================================
+   Mejoras de estilo — partido / resultado vinculado dentro de una noticia
+   Hoja adicional cargada tras style.css (solo en noticia.html). Todo va
+   acotado a .marcador-articulo y .ficha-tecnica-articulo para NO tocar el
+   modal de resultados, que comparte algunas clases (toggle-eventos-articulo,
+   alineaciones-wrap, cartel-galeria-articulo...). Solo presentación: las
+   clases nuevas (marcador-<estado>, equipo-ganador/perdedor, ea-<tipo>,
+   ea-local/ea-visitante, ficha-lista-*) las pone config.js.
+   Usa las variables de tema, así que funciona en modo claro y oscuro.
+   ========================================================================= */
+
+/* ---------- Tarjeta del marcador ---------- */
+.marcador-articulo{
+  position:relative;overflow:hidden;isolation:isolate;
+  max-width:780px;margin:0 auto 30px;
+  padding:22px 26px 20px;
+  border-radius:var(--radio-lg, 18px);
+  color:#fff;
+  background:
+    radial-gradient(120% 90% at 100% 0%, rgba(91,184,232,.20), transparent 55%),
+    radial-gradient(90% 80% at 0% 100%, rgba(209,19,46,.16), transparent 60%),
+    linear-gradient(160deg, var(--marino2) 0%, var(--marino) 100%);
+  border:1px solid rgba(255,255,255,.10);
+  box-shadow:var(--sombra-lg, 0 10px 30px rgba(12,27,46,.18));
+}
+/* Franja de color arriba, con los colores de marca. */
+.marcador-articulo::before{
+  content:"";position:absolute;left:0;right:0;top:0;height:4px;z-index:1;
+  background:linear-gradient(90deg, var(--rojo) 0%, var(--celeste) 100%);
+}
+/* Partido en juego: la franja respira para dar sensación de directo. */
+.marcador-articulo.marcador-en_juego::before{
+  background:linear-gradient(90deg, var(--rojo), #ff5a6e, var(--rojo));
+  background-size:200% 100%;
+  animation:marcadorFranjaVivo 2.4s linear infinite;
+}
+@keyframes marcadorFranjaVivo{from{background-position:0 0;}to{background-position:200% 0;}}
+
+/* ---------- Competición · grupo · jornada ---------- */
+.marcador-articulo .comp{
+  display:flex;align-items:center;justify-content:center;gap:12px;
+  margin:4px 0 18px;
+  font-family:var(--font-tit);font-weight:500;text-transform:uppercase;
+  font-size:.74rem;letter-spacing:.9px;color:var(--celeste-claro);text-align:center;
+}
+.marcador-articulo .comp::before,
+.marcador-articulo .comp::after{
+  content:"";flex:1;max-width:90px;height:1px;
+  background:linear-gradient(90deg, transparent, rgba(168,220,245,.45));
+}
+.marcador-articulo .comp::after{transform:scaleX(-1);}
+
+/* ---------- Equipos y marcador ---------- */
+.marcador-articulo .equipos{
+  grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+  gap:14px;
+}
+.marcador-articulo .equipo{
+  gap:12px;min-width:0;
+  font-family:var(--font-tit);font-weight:500;font-size:1.02rem;
+  letter-spacing:.3px;text-transform:uppercase;
+  transition:opacity .2s ease,filter .2s ease;
+}
+.marcador-articulo .nombre-equipo-articulo{
+  line-height:1.2;text-wrap:balance;overflow-wrap:anywhere;hyphens:auto;
+}
+/* Escudo con un halo de luz detrás (degradado radial que se desvanece, sin
+   bordes ni recortes redondos: los escudos no son círculos y así no se les
+   cortan las esquinas) y sombra que sigue la silueta del propio escudo. */
+.marcador-articulo .escudo-articulo{
+  box-sizing:content-box;width:56px;height:56px;padding:12px;border-radius:0;
+  background:radial-gradient(circle at 50% 50%, rgba(255,255,255,.22) 0, rgba(255,255,255,.07) 45%, transparent 70%);
+  filter:drop-shadow(0 4px 8px rgba(0,0,0,.4));
+}
+/* Partido terminado: la sombra del ESCUDO dice cómo acabó. Verde = ganador,
+   rojo = perdedor, amarillo en los dos = empate. La sombra (drop-shadow)
+   sigue la silueta del escudo, no un círculo. El halo de fondo se tiñe del
+   mismo color para que se note también con escudos oscuros. */
+.marcador-articulo .equipo-ganador .nombre-equipo-articulo{color:#fff;}
+.marcador-articulo .equipo-ganador .escudo-articulo{
+  background:radial-gradient(circle at 50% 50%, rgba(60,207,122,.26) 0, rgba(60,207,122,.08) 45%, transparent 70%);
+  filter:drop-shadow(0 0 5px rgba(60,207,122,.95)) drop-shadow(0 0 14px rgba(60,207,122,.6)) drop-shadow(0 4px 8px rgba(0,0,0,.4));
+}
+.marcador-articulo .equipo-perdedor .nombre-equipo-articulo{color:rgba(255,255,255,.75);}
+.marcador-articulo .equipo-perdedor .escudo-articulo{
+  background:radial-gradient(circle at 50% 50%, rgba(235,64,64,.26) 0, rgba(235,64,64,.08) 45%, transparent 70%);
+  filter:drop-shadow(0 0 5px rgba(235,64,64,.95)) drop-shadow(0 0 14px rgba(235,64,64,.6)) drop-shadow(0 4px 8px rgba(0,0,0,.4));
+}
+.marcador-articulo .equipo-empate .escudo-articulo{
+  background:radial-gradient(circle at 50% 50%, rgba(242,192,74,.26) 0, rgba(242,192,74,.08) 45%, transparent 70%);
+  filter:drop-shadow(0 0 5px rgba(242,192,74,.95)) drop-shadow(0 0 14px rgba(242,192,74,.6)) drop-shadow(0 4px 8px rgba(0,0,0,.4));
+}
+
+/* Marcador central estilo "cartel luminoso". */
+.marcador-articulo .goles{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-width:128px;padding:10px 22px;border-radius:16px;
+  font-family:var(--font-tit);font-weight:700;font-size:2.5rem;line-height:1;
+  letter-spacing:2px;font-variant-numeric:tabular-nums;white-space:nowrap;
+  background:linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,.06));
+  border:1px solid rgba(255,255,255,.18);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.22), 0 8px 22px rgba(0,0,0,.28);
+}
+/* Por jugar: sin goles, solo "vs", mucho más discreto. */
+.marcador-articulo.marcador-programado .goles,
+.marcador-articulo.marcador-anulado .goles{
+  min-width:72px;padding:8px 14px;font-size:1.25rem;letter-spacing:1px;
+  text-transform:uppercase;color:var(--celeste-claro);
+  background:rgba(255,255,255,.07);box-shadow:none;
+}
+/* En juego: el marcador brilla con el rojo de marca. */
+.marcador-articulo.marcador-en_juego .goles{
+  border-color:rgba(255,90,110,.55);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.22), 0 0 0 3px rgba(209,19,46,.16), 0 8px 22px rgba(0,0,0,.28);
+}
+/* Resultado de la tanda de penaltis, como etiqueta bajo el marcador. */
+.marcador-articulo .penaltis-marcador-articulo{
+  display:inline-block;margin-top:8px;padding:3px 10px;border-radius:20px;
+  font-family:var(--font-text);font-size:.68rem;font-weight:600;letter-spacing:.3px;
+  color:var(--celeste-claro);background:rgba(0,0,0,.25);opacity:1;
+}
+
+/* ---------- Estado · fecha · estadio ---------- */
+.marcador-articulo .estado-badge{
+  display:block;text-align:center;
+  margin-top:18px;padding-top:14px;
+  border-top:1px solid rgba(255,255,255,.12);
+  font-size:.8rem;letter-spacing:.2px;line-height:1.4;color:rgba(255,255,255,.78);
+}
+/* Punto de color según el estado. */
+/* El punto va EN LÍNEA con el texto (no como elemento flex aparte): si el
+   texto es largo y salta de línea, el punto se queda pegado a su primera
+   línea en vez de quedarse solo arriba. */
+.marcador-articulo .estado-badge::before{
+  content:"";display:inline-block;vertical-align:middle;margin:-2px 8px 0 0;
+  width:8px;height:8px;border-radius:50%;
+  background:var(--celeste);box-shadow:0 0 0 3px rgba(91,184,232,.22);
+}
+.marcador-articulo .estado-badge.estado-programado::before,
+.marcador-articulo .estado-badge.estado-anulado::before{background:#f2c04a;box-shadow:0 0 0 3px rgba(242,192,74,.22);}
+/* Partido finalizado: punto verde FIJO. Solo "en juego" puede animarse.
+   !important a propósito: ninguna otra regla (ni .en-vivo-punto, ni una
+   versión antigua de este CSS) debe poder hacerlo parpadear en móvil. */
+.marcador-articulo .estado-badge.estado-finalizado::before{
+  background:#3ccf7a;box-shadow:0 0 0 3px rgba(60,207,122,.20);
+  animation:none !important;transition:none !important;opacity:1 !important;
+}
+.marcador-articulo .estado-badge.estado-en_juego{color:#fff;font-weight:600;}
+.marcador-articulo .estado-badge.estado-en_juego::before{
+  background:#ff3b52;box-shadow:0 0 0 3px rgba(255,59,82,.28);
+  animation:marcadorPuntoVivo 1.4s ease-in-out infinite;
+}
+@keyframes marcadorPuntoVivo{
+  0%,100%{box-shadow:0 0 0 3px rgba(255,59,82,.28);}
+  50%{box-shadow:0 0 0 7px rgba(255,59,82,0);}
+}
+
+/* ---------- Pestañas "Ver alineaciones" / "Ver goles y tarjetas" ----------
+   Control segmentado: una sola pastilla oscura con dos botones dentro; el
+   abierto se rellena de celeste. (La línea de arriba ya la pone el estado.) */
+.marcador-articulo .toggles-articulo-fila{
+  gap:4px;margin-top:16px;padding:4px;border-top:none;
+  border-radius:999px;background:rgba(0,0,0,.28);
+  border:1px solid rgba(255,255,255,.08);
+}
+.marcador-articulo .toggle-eventos-articulo{
+  gap:8px;padding:10px 14px;border:none;border-radius:999px;
+  background:transparent;color:rgba(255,255,255,.82);
+  font-size:.72rem;font-weight:500;letter-spacing:.5px;line-height:1.2;text-align:center;
+  transition:background .18s ease,color .18s ease,box-shadow .18s ease;
+}
+.marcador-articulo .toggle-eventos-articulo:hover{background:rgba(255,255,255,.10);color:#fff;border:none;}
+.marcador-articulo .toggle-eventos-articulo.toggle-eventos-abierto{
+  background:var(--celeste);color:#0d1f34;font-weight:700;
+  box-shadow:0 4px 12px rgba(91,184,232,.35);
+}
+.marcador-articulo .toggle-eventos-articulo:focus-visible{outline:2px solid #fff;outline-offset:2px;}
+.marcador-articulo .toggle-eventos-flecha{width:13px;height:13px;}
+/* Icono propio de cada pestaña (se distinguen por el panel que controlan). */
+.marcador-articulo .toggle-eventos-articulo::before{
+  content:"";flex:none;width:15px;height:15px;background:currentColor;opacity:.9;
+  -webkit-mask:var(--ico-toggle) center/contain no-repeat;mask:var(--ico-toggle) center/contain no-repeat;
+}
+.marcador-articulo .toggle-eventos-articulo[aria-controls^="alineaciones-"]{
+  --ico-toggle:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='16' rx='2'/%3E%3Cpath d='M12 4v16M3 12h18'/%3E%3Ccircle cx='12' cy='12' r='2.5'/%3E%3C/svg%3E");
+}
+.marcador-articulo .toggle-eventos-articulo[aria-controls^="eventos-articulo-"]{
+  --ico-toggle:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 7v5l3 2'/%3E%3C/svg%3E");
+}
+
+/* Los paneles desplegables aparecen con un pequeño deslizamiento. */
+.marcador-articulo .alineaciones-wrap:not([hidden]),
+.marcador-articulo .eventos-articulo:not([hidden]){animation:marcadorPanelEntra .24s ease-out;}
+@keyframes marcadorPanelEntra{from{opacity:0;transform:translateY(-6px);}to{opacity:1;transform:none;}}
+
+/* ---------- Goles y tarjetas: línea de tiempo ---------- */
+.marcador-articulo .eventos-articulo{
+  position:relative;gap:6px;margin-top:16px;padding-left:2px;
+}
+.marcador-articulo .evento-articulo-item{
+  position:relative;gap:10px;padding:10px 14px 10px 12px;border-radius:12px;
+  background:rgba(255,255,255,.06);color:rgba(255,255,255,.92);
+  border:1px solid rgba(255,255,255,.07);border-left:3px solid rgba(255,255,255,.22);
+  font-size:.86rem;line-height:1.35;
+}
+.marcador-articulo .evento-articulo-item.ea-local{border-left-color:var(--celeste);}
+.marcador-articulo .evento-articulo-item.ea-visitante{border-left-color:#ff6b7d;}
+.marcador-articulo .evento-articulo-item .mev-icono{width:19px;height:19px;color:rgba(255,255,255,.9);}
+.marcador-articulo .evento-articulo-item .mev-minuto{
+  flex:none;min-width:44px;margin-right:2px;padding:2px 8px;border-radius:20px;
+  font-family:var(--font-tit);font-weight:500;font-size:.78rem;letter-spacing:.3px;text-align:center;
+  font-variant-numeric:tabular-nums;color:var(--celeste-claro);background:rgba(0,0,0,.28);
+}
+.marcador-articulo .evento-articulo-item .ea-equipo-tag{
+  max-width:42%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  color:rgba(255,255,255,.9);background:rgba(255,255,255,.12);
+  border:1px solid rgba(255,255,255,.14);
+}
+/* Los goles destacan sobre el resto de jugadas. */
+.marcador-articulo .evento-articulo-item.ea-gol,
+.marcador-articulo .evento-articulo-item.ea-gol_pp,
+.marcador-articulo .evento-articulo-item.ea-penalti_marcado{
+  background:linear-gradient(90deg, rgba(91,184,232,.20), rgba(255,255,255,.06) 70%);
+  color:#fff;font-weight:600;
+}
+.marcador-articulo .evento-articulo-item.ea-gol_var,
+.marcador-articulo .evento-articulo-item.ea-penalti_fallado_tanda{opacity:.78;}
+.marcador-articulo .evento-articulo-item.ea-roja,
+.marcador-articulo .evento-articulo-item.ea-doble_amarilla{
+  background:linear-gradient(90deg, rgba(209,19,46,.24), rgba(255,255,255,.05) 70%);
+}
+
+/* ---------- Alineaciones ---------- */
+/* Dos equipos lado a lado cuando hay sitio; uno debajo del otro si no. */
+.marcador-articulo .alineaciones-wrap{
+  display:grid;grid-template-columns:repeat(auto-fit, minmax(270px, 1fr));
+  gap:16px;margin-top:16px;
+}
+.marcador-articulo .alineacion-bloque{
+  padding:14px 14px 16px;border-radius:16px;
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);
+}
+.marcador-articulo .alineacion-cabecera{gap:10px;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,.10);}
+.marcador-articulo .alineacion-escudo{width:34px;height:34px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.35));}
+.marcador-articulo .alineacion-equipo{
+  min-width:0;font-weight:500;font-size:.98rem;letter-spacing:.3px;text-transform:uppercase;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.marcador-articulo .alineacion-formacion{
+  flex:none;padding:3px 11px;font-family:var(--font-tit);font-weight:500;letter-spacing:.6px;
+  color:#0d1f34;background:var(--celeste-claro);border:none;
+}
+.marcador-articulo .alineacion-campo{max-width:320px;}
+.marcador-articulo .alineacion-jugador{width:50px;}
+.marcador-articulo .alineacion-jugador .alineacion-dorsal{width:24px;height:24px;font-size:.7rem;}
+.marcador-articulo .alineacion-jugador .alineacion-nombre{
+  font-size:.6rem;font-weight:600;line-height:1.1;
+  text-shadow:0 1px 2px rgba(0,0,0,.85), 0 0 4px rgba(0,0,0,.5);
+}
+/* Suplentes como "chips". */
+.marcador-articulo .alineacion-suplentes{margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.12);}
+.marcador-articulo .alineacion-suplentes-titulo{font-family:var(--font-tit);font-weight:500;letter-spacing:.8px;}
+.marcador-articulo .alineacion-suplentes ul{gap:6px;}
+.marcador-articulo .alineacion-suplentes li{
+  padding:3px 10px 3px 4px;border-radius:20px;font-size:.76rem;
+  background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.08);
+}
+.marcador-articulo .alineacion-sale-tag{color:#ff8a98;border-color:rgba(255,138,152,.5);}
+
+/* ---------- Cartel de la galería del partido ---------- */
+.marcador-articulo .cartel-galeria-articulo{margin-top:16px;border-radius:16px;padding:18px 20px;}
+.marcador-articulo .toggles-articulo-fila + .cartel-galeria-articulo,
+.marcador-articulo .eventos-articulo + .cartel-galeria-articulo,
+.marcador-articulo .alineaciones-wrap + .cartel-galeria-articulo{margin-top:16px;}
+
+/* =========================================================================
+   FICHA TÉCNICA
+   ========================================================================= */
+.ficha-tecnica-articulo{
+  position:relative;margin:36px auto 30px;
+  border-radius:var(--radio-lg, 18px);border:1px solid var(--borde);
+  box-shadow:var(--sombra-md, var(--sombra));
+}
+.ficha-tecnica-articulo .ficha-tecnica-cabecera{
+  position:relative;padding:15px 24px;gap:12px;
+  background:linear-gradient(160deg, var(--marino2) 0%, var(--marino) 100%);
+}
+.ficha-tecnica-articulo .ficha-tecnica-cabecera::after{
+  content:"";position:absolute;left:0;right:0;bottom:0;height:3px;
+  background:linear-gradient(90deg, var(--rojo), var(--celeste));
+}
+.ficha-tecnica-articulo .ficha-tecnica-cabecera svg{width:21px;height:21px;}
+.ficha-tecnica-articulo .ficha-tecnica-titulo{font-size:.9rem;letter-spacing:.9px;}
+.ficha-tecnica-articulo .ficha-tecnica-cuerpo{padding:22px 24px 24px;background:var(--fondo-alt);}
+
+/* Cada dato es una pequeña tarjeta. */
+.ficha-tecnica-articulo .ficha-tecnica-datos{
+  grid-template-columns:repeat(auto-fit, minmax(170px, 1fr));gap:12px;margin-bottom:0;
+}
+.ficha-tecnica-articulo .ficha-dato{
+  gap:4px;padding:12px 14px;border-radius:12px;
+  background:var(--tarjeta);border:1px solid var(--borde);
+  box-shadow:var(--sombra-sm, none);
+  border-left:3px solid var(--celeste);
+}
+.ficha-tecnica-articulo .ficha-dato-etiqueta{font-size:.66rem;letter-spacing:.7px;}
+.ficha-tecnica-articulo .ficha-dato-valor{font-size:.98rem;line-height:1.3;overflow-wrap:anywhere;}
+
+/* Goleadores y tarjetas: dos columnas con su marcador propio. */
+.ficha-tecnica-articulo .ficha-tecnica-listas{
+  grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:14px;margin-top:16px;padding-top:0;border-top:none;
+}
+.ficha-tecnica-articulo .ficha-lista{
+  padding:14px 16px;border-radius:12px;background:var(--tarjeta);border:1px solid var(--borde);
+  box-shadow:var(--sombra-sm, none);
+}
+.ficha-tecnica-articulo .ficha-lista-titulo{
+  margin:0 0 8px;padding-bottom:8px;border-bottom:2px solid var(--rojo);
+  display:inline-block;font-size:.74rem;letter-spacing:.8px;
+}
+.ficha-tecnica-articulo .ficha-lista-items li{
+  position:relative;padding:6px 0 6px 22px;font-size:.92rem;line-height:1.35;
+}
+.ficha-tecnica-articulo .ficha-lista-items li::before{
+  content:"";position:absolute;left:2px;top:50%;transform:translateY(-50%);
+  width:9px;height:9px;border-radius:50%;background:var(--celeste);
+}
+.ficha-tecnica-articulo .ficha-lista-goleadores .ficha-lista-items li::before{
+  background:radial-gradient(circle at 50% 50%, var(--texto) 0 28%, transparent 30%), var(--tarjeta);
+  box-shadow:inset 0 0 0 1.5px var(--texto);width:10px;height:10px;
+}
+.ficha-tecnica-articulo .ficha-lista-tarjetas .ficha-lista-items li::before{
+  width:8px;height:11px;border-radius:2px;background:#e8b923;
+  box-shadow:0 1px 2px rgba(0,0,0,.25);
+}
+
+/* Notas: como una cita. */
+.ficha-tecnica-articulo .ficha-tecnica-notas{
+  margin-top:16px;padding:14px 18px;border-top:none;border-radius:0 12px 12px 0;
+  border-left:4px solid var(--celeste);background:var(--tarjeta);
+  font-size:.92rem;line-height:1.55;color:var(--texto-suave);
+}
+
+/* =========================================================================
+   MÓVIL
+   ========================================================================= */
+@media (max-width:600px){
+  .marcador-articulo{padding:18px 14px 16px;margin-bottom:24px;border-radius:16px;}
+  .marcador-articulo .comp{font-size:.68rem;letter-spacing:.6px;margin-bottom:14px;}
+  .marcador-articulo .comp::before,.marcador-articulo .comp::after{max-width:34px;}
+  .marcador-articulo .equipos{gap:8px;}
+  .marcador-articulo .equipo{gap:9px;font-size:.84rem;letter-spacing:.1px;}
+  .marcador-articulo .escudo-articulo{width:42px;height:42px;padding:8px;}
+  .marcador-articulo .goles{min-width:84px;padding:8px 12px;font-size:1.85rem;letter-spacing:1px;border-radius:13px;}
+  .marcador-articulo.marcador-programado .goles,
+  .marcador-articulo.marcador-anulado .goles{min-width:54px;font-size:1.05rem;}
+  .marcador-articulo .estado-badge{font-size:.74rem;margin-top:14px;padding-top:12px;}
+  .marcador-articulo .toggles-articulo-fila{border-radius:20px;}
+  .marcador-articulo .toggle-eventos-articulo{padding:9px 8px;font-size:.66rem;gap:6px;}
+  .marcador-articulo .toggle-eventos-articulo::before{width:13px;height:13px;}
+  .marcador-articulo .evento-articulo-item{flex-wrap:wrap;padding:9px 10px;font-size:.8rem;gap:6px 8px;}
+  .marcador-articulo .evento-articulo-item .ea-equipo-tag{max-width:100%;margin-left:auto;}
+  .marcador-articulo .alineacion-bloque{padding:12px 10px 14px;}
+  .marcador-articulo .alineacion-campo{max-width:300px;}
+  .ficha-tecnica-articulo{margin:28px auto 24px;}
+  .ficha-tecnica-articulo .ficha-tecnica-cabecera{padding:13px 16px;}
+  .ficha-tecnica-articulo .ficha-tecnica-cuerpo{padding:16px;}
+  .ficha-tecnica-articulo .ficha-tecnica-datos{grid-template-columns:1fr 1fr;gap:10px;}
+  .ficha-tecnica-articulo .ficha-dato{padding:10px 12px;}
+  .ficha-tecnica-articulo .ficha-tecnica-listas{grid-template-columns:1fr;}
+}
+/* Pantallas muy estrechas: las pestañas se apilan para que el texto no se parta. */
+@media (max-width:380px){
+  .marcador-articulo .toggles-articulo-fila{flex-direction:column;}
+  .marcador-articulo .escudo-articulo{width:36px;height:36px;padding:6px;}
+  .marcador-articulo .goles{min-width:72px;font-size:1.6rem;}
+  .ficha-tecnica-articulo .ficha-tecnica-datos{grid-template-columns:1fr;}
+}
+
+/* Sin animaciones si el usuario las ha desactivado. */
+@media (prefers-reduced-motion:reduce){
+  .marcador-articulo.marcador-en_juego::before,
+  .marcador-articulo .estado-badge.estado-en_juego::before,
+  .marcador-articulo .alineaciones-wrap:not([hidden]),
+  .marcador-articulo .eventos-articulo:not([hidden]){animation:none;}
+}
+
+/* Al imprimir: sin sombras ni animaciones, y conservando los colores. */
+@media print{
+  .marcador-articulo,.ficha-tecnica-articulo{box-shadow:none;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+}
+
+/* Enlace a la previa/crónica del mismo partido (debajo del marcador). */
+.partido-relacionado{display:flex;flex-direction:column;gap:8px;margin:14px 0 18px;}
+.partido-relacionado-enlace{display:flex;flex-direction:column;gap:2px;padding:10px 14px;background:var(--tarjeta);border:1px solid var(--borde);border-left:4px solid var(--celeste);border-radius:10px;text-decoration:none;color:var(--texto);transition:border-color .15s,transform .15s;}
+.partido-relacionado-enlace:hover{border-left-color:var(--rojo);transform:translateX(2px);}
+.partido-relacionado-tipo{font-family:var(--font-tit);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--celeste);}
+.partido-relacionado-titulo{font-weight:600;line-height:1.3;}
+@media (prefers-reduced-motion:reduce){.partido-relacionado-enlace{transition:none;}.partido-relacionado-enlace:hover{transform:none;}}

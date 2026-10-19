@@ -1,0 +1,369 @@
+/* =========================================================================
+   Mejoras de estilo y responsive — noticia.html
+   Hoja adicional cargada tras style.css y partido-articulo-mejoras.css.
+   Solo presentación: no cambia ni el HTML ni el JS de la página.
+
+   OJO con el scoping: en noticia.html, <body data-page> toma el valor de la
+   CATEGORÍA de la noticia (ver renderizaArticulo), así que no sirve para
+   acotar. Todo va bajo #contenidoArticulo (exclusivo de esta página), salvo
+   la barra de progreso de lectura, que vive fuera y solo existe aquí.
+
+   Usa las variables de tema (--fondo, --texto, --borde...), así que funciona
+   en modo claro y oscuro. No toca .marcador-articulo ni .ficha-tecnica-articulo
+   (ya tienen su propia hoja: partido-articulo-mejoras.css) ni la cuenta atrás
+   de noticias programadas (.programada-caja).
+   ========================================================================= */
+
+#contenidoArticulo{
+  --art-col:780px;                 /* ancho de la columna de lectura */
+  --art-enlace:#1a78b3;            /* azul con contraste AA sobre blanco */
+  --art-acento-suave:rgba(209,19,46,.09);
+}
+[data-theme="dark"] #contenidoArticulo{
+  --art-enlace:var(--celeste-claro);
+  --art-acento-suave:rgba(255,90,110,.14);
+}
+main#contenidoArticulo{padding-top:36px;}
+
+/* ---------- Sin zoom por doble toque (iPhone/móvil) ----------
+   "manipulation" desactiva el zoom con doble toque (y el retardo de 300ms)
+   pero mantiene el scroll y el zoom con pellizco, que sí es útil y accesible.
+   touch-action se combina con el de los ancestros, así que basta con ponerlo
+   en la raíz y en el artículo; el visor de fotos (visor-media.css) conserva
+   su propio touch-action:none. */
+html,body,#contenidoArticulo,#contenidoArticulo *{touch-action:manipulation;}
+
+/* ---------- Barra de progreso de lectura ---------- */
+.barra-progreso-lectura{height:4px;}
+/* App instalada en iPhone: la barra se apoya debajo de la barra de estado
+   (transparente) en vez de quedar pegada/oculta detras de ella. */
+@media (display-mode: standalone){
+  .barra-progreso-lectura{top:env(safe-area-inset-top,0px);}
+}
+.barra-progreso-lectura-relleno{
+  background:linear-gradient(90deg, var(--rojo), #ff5a6e 60%, var(--celeste));
+  border-radius:0 4px 4px 0;
+  box-shadow:0 0 12px rgba(209,19,46,.45);
+}
+
+/* =========================================================================
+   CABECERA
+   ========================================================================= */
+#contenidoArticulo .article-header{max-width:var(--art-col);margin:0 auto 28px;}
+
+/* Categoría · club: etiqueta tipo "kicker" con punto de color */
+#contenidoArticulo .article-header .cat{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:5px 13px 5px 11px;border-radius:999px;
+  background:var(--art-acento-suave);color:var(--rojo);
+  font-size:.74rem;font-weight:500;letter-spacing:.9px;line-height:1.2;
+}
+[data-theme="dark"] #contenidoArticulo .article-header .cat{color:#ff7a8b;}
+#contenidoArticulo .article-header .cat::before{
+  content:"";width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0;
+}
+
+/* Categorías adicionales: chips discretos con borde */
+#contenidoArticulo .article-header .cats-adicionales{gap:6px;margin-top:12px;}
+#contenidoArticulo .article-header .cat-adicional{
+  padding:3px 10px;border-radius:999px;background:transparent;
+  border:1px solid var(--borde);color:var(--texto-suave);
+  font-size:.66rem;letter-spacing:.6px;
+}
+
+/* Titular */
+#contenidoArticulo .article-header h1{
+  margin:16px 0 14px;
+  font-size:clamp(1.85rem, 1.3rem + 2.6vw, 2.95rem);
+  font-weight:800;line-height:1.14;letter-spacing:-.012em;
+  text-wrap:balance;overflow-wrap:break-word;
+}
+
+/* Subtítulo: entradilla destacada con filete celeste */
+#contenidoArticulo .article-header .subtitulo{
+  margin:18px 0 0;padding-left:16px;border-left:3px solid var(--celeste);
+  font-style:normal;font-size:clamp(1.06rem, 1rem + .35vw, 1.27rem);line-height:1.55;
+  color:var(--texto-suave);text-wrap:pretty;
+}
+
+/* Línea de autoría: fecha · editado · firmantes, entre dos filetes */
+#contenidoArticulo .article-header .meta{
+  margin-top:22px;padding:13px 0;
+  border-top:1px solid var(--borde);border-bottom:1px solid var(--borde);
+  font-family:var(--font-text);font-size:.83rem;line-height:1.7;color:var(--texto-suave);
+}
+#contenidoArticulo .meta a.autor-link{
+  color:var(--marino-texto);font-weight:700;
+  text-decoration:underline;text-decoration-color:transparent;text-underline-offset:3px;
+  transition:color .15s,text-decoration-color .15s;
+}
+#contenidoArticulo .meta a.autor-link:hover{color:var(--rojo);text-decoration-color:currentColor;}
+#contenidoArticulo .fecha-editado{opacity:1;}
+
+/* ---------- Selector de idioma y aviso ---------- */
+#contenidoArticulo .selector-idioma-noticia{
+  max-width:var(--art-col);margin:0 auto 20px;justify-content:flex-start;gap:6px;
+}
+#contenidoArticulo .selector-idioma-noticia::before{
+  content:"Idioma";margin-right:4px;
+  font-family:var(--font-tit);font-size:.68rem;text-transform:uppercase;letter-spacing:.8px;color:var(--texto-suave);
+}
+#contenidoArticulo .idioma-noticia-btn{
+  font-family:var(--font-text);font-size:.76rem;padding:5px 12px;
+  transition:background .15s,border-color .15s,color .15s,transform .15s;
+}
+#contenidoArticulo .idioma-noticia-btn .cod-idioma{display:none;}
+#contenidoArticulo .idioma-noticia-btn:hover:not(:disabled){transform:translateY(-1px);}
+#contenidoArticulo .idioma-noticia-btn.activo{
+  background:linear-gradient(135deg,var(--marino2),var(--marino));
+  box-shadow:0 4px 12px -6px rgba(12,27,46,.6);
+}
+[data-theme="dark"] #contenidoArticulo .idioma-noticia-btn.activo{background:var(--celeste);border-color:var(--celeste);color:var(--marino);}
+#contenidoArticulo .aviso-idioma-noticia{
+  max-width:var(--art-col);margin:0 auto 20px;padding:10px 14px;
+  background:var(--fondo-alt);border-left:3px solid var(--celeste);border-radius:0 var(--radio) var(--radio) 0;
+  font-style:normal;font-size:.82rem;color:var(--texto-suave);
+}
+
+/* =========================================================================
+   FOTOS
+   ========================================================================= */
+#contenidoArticulo .article-img,
+#contenidoArticulo .article-body .foto-articulo{
+  max-width:var(--art-col);margin:0 auto 30px;
+  border-radius:var(--radio-lg);box-shadow:var(--sombra-md);
+  border:1px solid var(--borde);background:var(--tarjeta);
+}
+#contenidoArticulo .article-body .foto-articulo{margin:34px auto;}
+#contenidoArticulo .credito-foto{
+  padding:7px 14px;background:var(--fondo-alt);border-top:1px solid var(--borde);
+  font-family:var(--font-text);font-style:normal;font-size:.72rem;letter-spacing:.2px;color:var(--texto-suave);
+}
+#contenidoArticulo .article-body .foto-articulo figcaption{
+  padding:10px 14px 12px;font-family:var(--font-text);font-size:.8rem;font-style:normal;
+  line-height:1.5;color:var(--texto-suave);text-align:left;border-top:1px solid var(--borde);background:var(--fondo-alt);
+}
+#contenidoArticulo .article-galeria .credito-foto-galeria{border-top:0;background:transparent;}
+#contenidoArticulo .article-galeria{border-radius:var(--radio-lg);overflow:hidden;box-shadow:var(--sombra-lg);}
+#contenidoArticulo .article-tweet{margin:32px auto;}
+
+/* =========================================================================
+   CUERPO DEL TEXTO
+   ========================================================================= */
+#contenidoArticulo .article-body{
+  max-width:var(--art-col);
+  font-size:clamp(1.04rem, .98rem + .3vw, 1.16rem);
+  line-height:1.82;letter-spacing:.003em;
+  overflow-wrap:break-word;hyphens:manual;
+}
+#contenidoArticulo .article-body p{margin-bottom:1.2em;text-wrap:pretty;}
+
+/* Entradilla en negrita: más aire y filete inferior que la separa del cuerpo */
+#contenidoArticulo .article-body p.entradilla{
+  font-size:1.14em;font-weight:700;line-height:1.6;color:var(--marino-texto);
+  padding-bottom:22px;margin-bottom:30px;border-bottom:1px solid var(--borde);
+}
+
+/* Intertítulos con la barra roja de marca, igual que las cabeceras de sección del sitio */
+#contenidoArticulo .article-body h2{
+  margin:2.1em 0 .75em;padding-left:14px;border-left:5px solid var(--rojo);
+  font-size:clamp(1.28rem, 1.1rem + .8vw, 1.6rem);line-height:1.25;letter-spacing:.3px;
+}
+#contenidoArticulo .article-body h3{
+  margin:1.9em 0 .6em;font-size:clamp(1.1rem, 1rem + .4vw, 1.25rem);letter-spacing:.3px;
+  display:flex;align-items:center;gap:10px;
+}
+#contenidoArticulo .article-body h3::before{
+  content:"";width:18px;height:3px;border-radius:2px;background:var(--celeste);flex-shrink:0;
+}
+#contenidoArticulo .article-body h2:first-child,
+#contenidoArticulo .article-body h3:first-child{margin-top:0;}
+
+/* Enlaces: azul con contraste, subrayado fino que se engrosa al pasar el ratón */
+#contenidoArticulo .article-body a{
+  color:var(--art-enlace);font-weight:500;
+  text-decoration:underline;text-decoration-thickness:1.5px;text-underline-offset:3px;
+  text-decoration-color:color-mix(in srgb, var(--art-enlace) 40%, transparent);
+  transition:color .15s,text-decoration-color .15s;
+}
+#contenidoArticulo .article-body a:hover{color:var(--rojo);text-decoration-color:currentColor;}
+#contenidoArticulo .article-body a:focus-visible{outline:2px solid var(--celeste);outline-offset:2px;border-radius:3px;}
+
+/* Citas: serif titular, fondo suave y barra roja */
+#contenidoArticulo .article-body blockquote{
+  margin:2em 0;padding:20px 26px 20px 28px;
+  background:var(--fondo-alt);border-left:4px solid var(--rojo);
+  border-radius:0 var(--radio-md) var(--radio-md) 0;
+  font-family:var(--font-headline);font-style:italic;font-size:1.16em;line-height:1.55;color:var(--marino-texto);
+}
+#contenidoArticulo .article-body blockquote p:last-child{margin-bottom:0;}
+#contenidoArticulo .article-body blockquote cite,
+#contenidoArticulo .article-body blockquote footer{
+  display:block;margin-top:10px;font-family:var(--font-text);font-style:normal;
+  font-size:.78rem;letter-spacing:.5px;text-transform:uppercase;color:var(--texto-suave);
+}
+
+/* Listas con viñetas de color */
+#contenidoArticulo .article-body ul,
+#contenidoArticulo .article-body ol{margin:0 0 1.3em 1.5em;padding-left:.4em;}
+#contenidoArticulo .article-body li{margin-bottom:.55em;padding-left:.2em;}
+#contenidoArticulo .article-body li::marker{color:var(--rojo);font-weight:700;}
+
+/* Separador */
+#contenidoArticulo .article-body hr{
+  height:1px;border:0;margin:2.4em 0;
+  background:linear-gradient(90deg, transparent, var(--borde) 20%, var(--borde) 80%, transparent);
+}
+
+#contenidoArticulo .article-body img{border-radius:var(--radio-md);}
+#contenidoArticulo .article-body iframe,
+#contenidoArticulo .article-body video{border-radius:var(--radio-md);}
+
+/* Tablas: cabecera marcada y filas alternas */
+#contenidoArticulo .article-body table{
+  margin:1.8em 0;font-family:var(--font-text);font-size:.92rem;line-height:1.45;
+  border:1px solid var(--borde);border-radius:var(--radio-md);
+}
+/* En pantallas anchas la tabla ocupa toda la columna y respeta el radio;
+   en móvil se mantiene el scroll horizontal de style.css (display:block). */
+@media(min-width:641px){
+  #contenidoArticulo .article-body table{display:table;border-collapse:separate;border-spacing:0;overflow:hidden;}
+}
+#contenidoArticulo .article-body table th,
+#contenidoArticulo .article-body table td{padding:10px 14px;border:0;border-bottom:1px solid var(--borde);}
+#contenidoArticulo .article-body table th{
+  background:var(--fondo-alt);font-family:var(--font-tit);font-weight:500;font-size:.74rem;
+  text-transform:uppercase;letter-spacing:.7px;color:var(--marino-texto);white-space:nowrap;
+}
+#contenidoArticulo .article-body table tbody tr:nth-child(even) td{background:var(--fondo-alt);}
+#contenidoArticulo .article-body table tr:last-child td{border-bottom:0;}
+
+/* =========================================================================
+   BLOQUE "¿TE HA GUSTADO?" (compartir)
+   Reutiliza .estado-info (tarjeta de aviso); se distingue por contener los botones.
+   ========================================================================= */
+#contenidoArticulo .estado-info:has(.compartir-botones){
+  max-width:var(--art-col);margin:48px auto 0;padding:34px 24px 32px;gap:10px;
+  background:
+    radial-gradient(90% 120% at 100% 0%, rgba(91,184,232,.14), transparent 55%),
+    radial-gradient(80% 120% at 0% 100%, rgba(209,19,46,.08), transparent 60%),
+    var(--fondo-alt);
+  border:1px solid var(--borde);border-radius:var(--radio-lg);
+}
+/* Solo el icono grande de la cabecera (hijo directo): los SVG de los botones
+   llevan su propio tamaño en style.css y no deben heredar este. */
+#contenidoArticulo .estado-info:has(.compartir-botones) > svg{width:38px;height:38px;}
+/* .estado-info svg pinta de celeste todos los SVG; dentro de los botones el
+   icono debe heredar el blanco del círculo (.btn-compartir-icono). */
+#contenidoArticulo .btn-compartir-icono svg{color:inherit;width:16px;height:16px;}
+#contenidoArticulo .btn-compartir.btn-copiar .btn-compartir-icono svg{width:24px;height:24px;}
+@media(max-width:480px){
+  #contenidoArticulo .btn-compartir-icono svg{width:14px;height:14px;}
+  #contenidoArticulo .btn-compartir.btn-copiar .btn-compartir-icono svg{width:20px;height:20px;}
+}
+#contenidoArticulo .estado-info:has(.compartir-botones) h3{font-size:1.25rem;}
+#contenidoArticulo .estado-info:has(.compartir-botones) p{margin-bottom:6px;}
+#contenidoArticulo .estado-info:has(.compartir-botones) .compartir-botones{margin-top:4px;}
+[data-theme="dark"] #contenidoArticulo .btn-compartir.btn-compartir-nativo{color:#ff7a8b;}
+#contenidoArticulo .btn-compartir:focus-visible{outline:2px solid var(--celeste);outline-offset:3px;}
+
+/* Encuesta de la noticia: ver css/encuestas.css */
+
+/* =========================================================================
+   COMENTARIOS
+   (los estilos base están en el <style> de noticia.html; aquí se refinan y se
+   sustituyen los grises fijos por variables de tema para que se lean en oscuro)
+   ========================================================================= */
+#contenidoArticulo .comentarios-seccion{max-width:var(--art-col);margin-top:56px;padding-top:34px;border-top:1px solid var(--borde);}
+#contenidoArticulo .comentarios-contador,
+#contenidoArticulo .comentario-fecha,
+#contenidoArticulo .comentarios-vacio,
+#contenidoArticulo .comentario-ayuda{color:var(--texto-suave);}
+#contenidoArticulo .acceso-lector{border:1px solid var(--borde);background:var(--fondo-alt);border-radius:var(--radio-md);}
+#contenidoArticulo .form-comentario{
+  background:var(--fondo-alt);border:1px solid var(--borde);border-radius:var(--radio-lg);padding:22px 24px;
+}
+#contenidoArticulo .form-comentario input,
+#contenidoArticulo .form-comentario textarea{background:var(--tarjeta);border-radius:10px;}
+#contenidoArticulo .form-comentario input::placeholder,
+#contenidoArticulo .form-comentario textarea::placeholder{color:var(--texto-suave);opacity:.7;}
+#contenidoArticulo .btn-enviar-comentario{box-shadow:0 8px 18px -10px rgba(209,19,46,.7);}
+#contenidoArticulo .comentario-avatar{background:linear-gradient(135deg,var(--marino2),var(--marino));box-shadow:0 0 0 2px var(--fondo),0 0 0 3px var(--borde);}
+[data-theme="dark"] #contenidoArticulo .comentario-avatar{background:linear-gradient(135deg,#2a4a73,#1c3355);}
+#contenidoArticulo .comentario-cuerpo{border-radius:14px;box-shadow:var(--sombra-sm);padding:14px 18px;}
+#contenidoArticulo .comentario-voto{color:var(--texto-suave);transition:border-color .15s,color .15s,background .15s;}
+#contenidoArticulo .comentario-voto:hover:not(:disabled){border-color:var(--texto-suave);color:var(--marino-texto);}
+#contenidoArticulo .comentario-denunciar{color:var(--texto-suave);opacity:.8;}
+[data-theme="dark"] #contenidoArticulo .acceso-lector-link{color:#ff7a8b;}
+[data-theme="dark"] #contenidoArticulo .comentario-voto-like.activo{color:#86efac;border-color:rgba(134,239,172,.45);background:rgba(34,197,94,.14);}
+[data-theme="dark"] #contenidoArticulo .comentario-voto-dislike.activo{color:#fca5a5;border-color:rgba(252,165,165,.45);background:rgba(239,68,68,.14);}
+[data-theme="dark"] #contenidoArticulo .comentario-msg-ok{color:#86efac;background:rgba(34,197,94,.14);}
+[data-theme="dark"] #contenidoArticulo .comentario-msg-error{color:#fca5a5;background:rgba(239,68,68,.14);}
+
+/* =========================================================================
+   NOTICIAS SIMILARES
+   ========================================================================= */
+#contenidoArticulo .noticias-similares{margin-top:60px;padding-top:36px;border-top:1px solid var(--borde);}
+#contenidoArticulo .similares-cabecera{margin-bottom:22px;}
+
+/* =========================================================================
+   RESPONSIVE
+   ========================================================================= */
+@media(max-width:820px){
+  #contenidoArticulo .article-header,
+  #contenidoArticulo .article-img,
+  #contenidoArticulo .article-body,
+  #contenidoArticulo .selector-idioma-noticia,
+  #contenidoArticulo .aviso-idioma-noticia,
+  #contenidoArticulo .comentarios-seccion{max-width:100%;}
+}
+@media(max-width:600px){
+  main#contenidoArticulo{padding-top:22px;}
+  /* Barra de progreso en móvil: sin esquina redondeada ni brillo (al llegar
+     al 100% se veía un extremo redondeado/azul cortado en el borde de la
+     pantalla) y en su propia capa para que no tiemble con el scroll. */
+  .barra-progreso-lectura{height:3px;transform:translateZ(0);}
+  .barra-progreso-lectura-relleno{
+    border-radius:0;box-shadow:none;will-change:width;
+    background:linear-gradient(90deg, var(--rojo), #ff5a6e);
+  }
+  /* Selector de idioma en móvil: SIEMPRE los 5 idiomas visibles en una sola
+     fila, sin scroll. "Idioma" + 5 chips del mismo ancho que muestran el
+     código (ES, EU, CA, GL, EN) en vez del nombre largo. */
+  #contenidoArticulo .selector-idioma-noticia{
+    display:flex;flex-wrap:nowrap;align-items:center;gap:6px;
+    max-width:100%;margin:0 0 16px;padding:0;overflow:visible;
+  }
+  #contenidoArticulo .selector-idioma-noticia::before{flex:none;margin:0 2px 0 0;}
+  #contenidoArticulo .idioma-noticia-btn{
+    flex:1 1 0;min-width:0;min-height:36px;padding:7px 4px;
+    font-size:.8rem;letter-spacing:.4px;text-align:center;white-space:nowrap;
+  }
+  #contenidoArticulo .idioma-noticia-btn .nombre-idioma{display:none;}
+  #contenidoArticulo .idioma-noticia-btn .cod-idioma{display:inline;}
+  #contenidoArticulo .article-header{margin-bottom:22px;}
+  #contenidoArticulo .article-header .subtitulo{padding-left:13px;}
+  #contenidoArticulo .article-header .meta{margin-top:18px;font-size:.8rem;}
+  #contenidoArticulo .article-img,
+  #contenidoArticulo .article-body .foto-articulo{border-radius:var(--radio-md);margin-bottom:24px;}
+  #contenidoArticulo .article-body{line-height:1.75;}
+  #contenidoArticulo .article-body p.entradilla{padding-bottom:18px;margin-bottom:24px;}
+  #contenidoArticulo .article-body h2{padding-left:11px;border-left-width:4px;}
+  #contenidoArticulo .article-body blockquote{padding:16px 18px 16px 20px;margin:1.6em 0;}
+  #contenidoArticulo .estado-info:has(.compartir-botones){margin-top:36px;padding:28px 16px 26px;}
+  #contenidoArticulo .comentarios-seccion{margin-top:44px;}
+  #contenidoArticulo .form-comentario{padding:16px;}
+  #contenidoArticulo .noticias-similares{margin-top:44px;}
+}
+
+/* ---------- Accesibilidad y otros medios ---------- */
+@media(prefers-reduced-motion:reduce){
+  #contenidoArticulo *,.barra-progreso-lectura-relleno{transition:none !important;}
+}
+@media print{
+  .barra-progreso-lectura,#site-header,#site-footer,#ad-final-noticia,.selector-idioma-noticia,
+  #contenidoArticulo .estado-info:has(.compartir-botones),#contenidoArticulo .comentarios-seccion,
+  #contenidoArticulo .noticias-similares,#contenidoArticulo .encuesta-widget{display:none !important;}
+  #contenidoArticulo .article-body{font-size:11.5pt;line-height:1.6;}
+  #contenidoArticulo .article-img,#contenidoArticulo .article-body .foto-articulo{box-shadow:none;}
+}

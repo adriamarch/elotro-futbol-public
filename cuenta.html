@@ -1,17 +1,29 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<script src="js/tema.js"></script>
+<meta name="google-adsense-account" content="ca-pub-7347856722927942">
+<script src="js/tema.js?v=2"></script>
+<script src="js/preferencias.js?v=3"></script>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://api.elotrofutbol.media" crossorigin>
+<link rel="preconnect" href="https://res.cloudinary.com">
 <title id="pageTitle">Mi cuenta — ELOTROFÚTBOLTV</title>
+<meta property="og:image" content="https://elotrofutbol.media/img/og-default.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://elotrofutbol.media/img/og-default.png">
 <meta name="robots" content="noindex, follow">
-<link rel="canonical" href="https://elotrofutbol.media/cuenta.html">
-<link rel="icon" href="/favicon.ico?v=2" sizes="any">
-<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=2">
-<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
-<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=17">
+<link rel="canonical" href="https://elotrofutbol.media/cuenta">
+<link rel="icon" href="/favicon.ico?v=3" sizes="any">
+<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=3">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png?v=2">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&display=swap" onload="this.onload=null;this.rel='stylesheet'"><noscript><link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet"></noscript>
+<link rel="stylesheet" href="css/style.css?v=25">
+<link rel="stylesheet" href="css/accesibilidad.css?v=1">
+<script src="js/accesibilidad.js?v=1" defer></script>
+<link rel="stylesheet" href="css/foco.css?v=1">
 <style>
   /* Estilos propios de "Mi cuenta", con las mismas variables de marca que
      el resto del sitio público (ver css/style.css). Deliberadamente NO se
@@ -43,6 +55,8 @@
     padding:24px 26px;
   }
   .cuenta-tarjeta h3{margin:0 0 4px;font-size:1.05rem;color:var(--marino-texto);}
+  .cuenta-check{display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:.92rem;line-height:1.45;color:var(--texto);}
+  .cuenta-check input{width:18px;height:18px;margin-top:2px;flex-shrink:0;accent-color:var(--rojo);cursor:pointer;}
   .cuenta-tarjeta .cuenta-ayuda{margin:0 0 18px;color:var(--texto-suave);font-size:.86rem;line-height:1.5;}
 
   #formPerfilLector label,
@@ -152,6 +166,11 @@
     .fila-sesion-cuenta{flex-wrap:wrap;}
     .btn-cerrar-sesion-cuenta{margin-left:auto;}
   }
+  /* Con seis pestañas ya no caben en una línea en pantallas estrechas. */
+  @media(max-width:760px){
+    .cuenta-tabs{flex-wrap:wrap;width:100%;}
+    .cuenta-tab{flex:1 1 auto;padding:9px 12px;}
+  }
 </style>
 </head>
 <body data-page="cuenta">
@@ -169,7 +188,10 @@
 
   <div class="cuenta-tabs" id="cuentaTabs">
     <button type="button" class="cuenta-tab activa" data-tab="perfil">Mi perfil</button>
-    <button type="button" class="cuenta-tab" data-tab="password">Contraseña</button>
+    <button type="button" class="cuenta-tab" data-tab="guardadas">Guardadas</button>
+    <button type="button" class="cuenta-tab" data-tab="historial">Historial</button>
+    <button type="button" class="cuenta-tab" data-tab="preferencias">Preferencias</button>
+    <button type="button" class="cuenta-tab" data-tab="password">Seguridad</button>
     <button type="button" class="cuenta-tab" data-tab="sesiones">Dispositivos</button>
   </div>
 
@@ -233,6 +255,25 @@
         <p id="msgPerfilLector" class="cuenta-msg"></p>
       </form>
     </div>
+
+    <div class="cuenta-tarjeta">
+      <h3>Avisos por correo</h3>
+      <p class="cuenta-ayuda">Te escribimos cuando la redacción publica un comentario tuyo y cuando alguien responde a uno de tus comentarios. Solo te avisamos de eso, nada más.</p>
+      <label class="cuenta-check" for="chkAvisosComentarios">
+        <input type="checkbox" id="chkAvisosComentarios" checked>
+        <span>Avisarme por correo de mis comentarios y de las respuestas que reciban</span>
+      </label>
+      <p id="msgAvisosComentarios" class="cuenta-msg"></p>
+    </div>
+  </div>
+
+  <!-- ===================== PREFERENCIAS (animaciones, texto, etc.) ===================== -->
+  <div class="cuenta-panel" id="cuentaPanel-preferencias">
+    <div class="cuenta-tarjeta">
+      <h3>Preferencias de visualización</h3>
+      <p class="cuenta-ayuda">Adapta la web a cómo te resulta más cómoda. Se guardan en este dispositivo.</p>
+      <div id="contenedorPreferenciasLector"></div>
+    </div>
   </div>
 
   <!-- ===================== CONTRASEÑA (bonus, ya construido en el backend) ===================== -->
@@ -255,6 +296,23 @@
     </div>
   </div>
 
+  <!-- ===================== GUARDADAS E HISTORIAL DE LECTURA (punto 5) ===================== -->
+  <div class="cuenta-panel" id="cuentaPanel-guardadas">
+    <div class="cuenta-tarjeta">
+      <h3>Noticias guardadas</h3>
+      <p class="cuenta-ayuda">Las noticias que has guardado para leer luego. Puedes tener hasta 200.</p>
+      <div id="contenedorGuardadasLector"></div>
+    </div>
+  </div>
+
+  <div class="cuenta-panel" id="cuentaPanel-historial">
+    <div class="cuenta-tarjeta">
+      <h3>Historial de lectura</h3>
+      <p class="cuenta-ayuda">Las últimas 100 noticias que has abierto con la sesión iniciada, de la más reciente a la más antigua.</p>
+      <div id="contenedorHistorialLector"></div>
+    </div>
+  </div>
+
   <!-- ===================== PARTE 2B: DISPOSITIVOS CONECTADOS ===================== -->
   <div class="cuenta-panel" id="cuentaPanel-sesiones">
     <div class="cuenta-tarjeta">
@@ -270,24 +328,26 @@
     </div>
   </div>
 
-  <a href="index.html" style="display:inline-block;margin-top:24px;color:var(--celeste);font-size:.88rem;">← Volver a la portada</a>
+  <a href="/" style="display:inline-block;margin-top:24px;color:var(--celeste);font-size:.88rem;">← Volver a la portada</a>
 </main>
 
 <div id="site-footer"></div>
 
-<script src="js/ui-alertas.js?v=4"></script>
-<script src="js/config.js?v=15"></script>
-<script src="js/seo.js?v=4"></script>
+<script src="js/ui-alertas.js?v=5"></script>
+<script src="js/foco.js?v=1"></script>
+<script src="js/config.js?v=25"></script>
+<script src="js/seo.js?v=5"></script>
 <script src="js/lector-auth.js?v=13"></script>
-<script src="js/layout.js?v=7"></script>
+<script src="js/lecturas.js?v=7"></script>
+<script src="js/layout.js?v=22"></script>
 <script src="js/cookies.js?v=2"></script>
-<script src="js/ads.js?v=2"></script>
-<script src="js/main.js?v=10"></script>
+<script src="js/ads.js?v=3"></script>
+<script src="js/main.js?v=14"></script>
 <script>
 fijarSeoBasico({
   titulo: "Mi cuenta — ELOTROFÚTBOLTV",
   descripcion: "Gestiona los datos de tu cuenta de lector en ELOTROFÚTBOLTV.",
-  urlPath: "/cuenta.html",
+  urlPath: "/cuenta",
 });
 
 // ---------- Guard: hace falta sesión de lector para ver esta página ----------
@@ -352,6 +412,16 @@ function pintarAvatarCabeceraLector(reader) {
   }
 }
 
+// ---------- Preferencias de visualización ----------
+// El panel lo dibuja js/preferencias.js (el mismo que usan los
+// redactores en el panel de admin). Se monta una sola vez.
+let preferenciasLectorMontadas = false;
+function montarPreferenciasLector() {
+  if (preferenciasLectorMontadas || !window.EOFPrefs) return;
+  preferenciasLectorMontadas = true;
+  window.EOFPrefs.montarPanel(document.getElementById("contenedorPreferenciasLector"));
+}
+
 // ---------- Pestañas ----------
 function activarPestanaCuenta(tab) {
   const btnDestino = document.querySelector(`.cuenta-tab[data-tab="${tab}"]`);
@@ -362,6 +432,17 @@ function activarPestanaCuenta(tab) {
   btnDestino.classList.add("activa");
   panelDestino.classList.add("activo");
   if (tab === "sesiones") cargaSesionesLector();
+  if (tab === "preferencias") montarPreferenciasLector();
+  if (tab === "guardadas") montarGuardadasCuenta();
+  if (tab === "historial") montarHistorialCuenta();
+}
+
+// Se vuelve a pintar cada vez que se abre la pestaña (js/lecturas.js).
+function montarGuardadasCuenta() {
+  if (window.EOFLecturas) EOFLecturas.montarLista(document.getElementById("contenedorGuardadasLector"), "guardadas");
+}
+function montarHistorialCuenta() {
+  if (window.EOFLecturas) EOFLecturas.montarLista(document.getElementById("contenedorHistorialLector"), "historial");
 }
 
 document.querySelectorAll(".cuenta-tab").forEach((btn) => {
@@ -444,6 +525,9 @@ async function cargarMiPerfilLector() {
     pintarAvatarCabeceraLector(reader);
     comprobarEmailPendienteX(reader.email);
     comprobarVerificacionEmailLector(reader);
+    if (typeof reader.avisos_comentarios === "boolean") {
+      document.getElementById("chkAvisosComentarios").checked = reader.avisos_comentarios;
+    }
   } catch (err) {
     // Si falla, el formulario se queda con lo que ya había en la sesión
     // guardada localmente; la persona puede seguir editando igualmente.
@@ -457,6 +541,30 @@ async function cargarMiPerfilLector() {
   await Promise.all([window.eofRetornoXListo, window.eofRetornoDiscordListo]);
   cargarMiPerfilLector();
 })();
+
+// ---------- Avisos por correo de comentarios ----------
+document.getElementById("chkAvisosComentarios").addEventListener("change", async (e) => {
+  const chk = e.currentTarget;
+  const msg = document.getElementById("msgAvisosComentarios");
+  msg.className = "cuenta-msg";
+  chk.disabled = true;
+  try {
+    await apiLector("/api/readers/me/avisos-comentarios", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ activo: chk.checked }),
+    });
+    msg.textContent = chk.checked ? "Avisos activados." : "Avisos desactivados.";
+    msg.classList.add("cuenta-msg-ok");
+    setTimeout(() => { msg.className = "cuenta-msg"; }, 3000);
+  } catch (err) {
+    chk.checked = !chk.checked; // no se guardó: se deja como estaba
+    msg.textContent = err.message || "No se pudo guardar el cambio.";
+    msg.classList.add("cuenta-msg-error");
+  } finally {
+    chk.disabled = false;
+  }
+});
 
 // ---------- Reenviar correo de verificación ----------
 document.getElementById("btnReenviarVerificacionCuenta").addEventListener("click", async (e) => {

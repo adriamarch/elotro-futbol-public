@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta name="google-adsense-account" content="ca-pub-7347856722927942">
+<script src="js/tema.js?v=2"></script>
+<script src="js/preferencias.js?v=3"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://api.elotrofutbol.media" crossorigin>
+<link rel="preconnect" href="https://res.cloudinary.com">
+<title id="pageTitle">Mis guardadas — ELOTROFÚTBOLTV</title>
+<meta name="description" content="Las noticias que has guardado para leer luego en ELOTROFÚTBOLTV.">
+<meta property="og:image" content="https://elotrofutbol.media/img/og-default.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://elotrofutbol.media/img/og-default.png">
+<meta name="robots" content="noindex, follow">
+<link rel="canonical" href="https://elotrofutbol.media/guardadas">
+<link rel="icon" href="/favicon.ico?v=3" sizes="any">
+<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=3">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png?v=2">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&display=swap"></noscript>
+<link rel="stylesheet" href="css/style.css?v=25">
+<link rel="stylesheet" href="css/accesibilidad.css?v=1">
+<script src="js/accesibilidad.js?v=1" defer></script>
+<link rel="stylesheet" href="css/foco.css?v=1">
+<style>
+  .guardadas-pagina{padding:28px 20px 56px;}
+  .guardadas-hero{position:relative;overflow:hidden;margin:0 0 28px;padding:34px 38px;border-radius:var(--radio-lg,18px);color:#fff;background:linear-gradient(135deg,var(--marino,#0c1b2e) 0%,var(--marino2,#152b46) 60%,#1d3c63 100%);box-shadow:var(--sombra-md,0 8px 26px rgba(12,27,46,.22));}
+  .guardadas-hero::before{content:"";position:absolute;left:0;top:0;bottom:0;width:6px;background:linear-gradient(180deg,var(--rojo,#d1132e),var(--rojo-oscuro,#9c0e23));}
+  .guardadas-hero-icono{position:absolute;right:-18px;top:50%;width:210px;height:210px;transform:translateY(-50%) rotate(8deg);color:rgba(255,255,255,.07);pointer-events:none;}
+  .guardadas-hero-texto{position:relative;max-width:640px;}
+  .guardadas-kicker{display:inline-block;margin-bottom:10px;padding:4px 12px;border-radius:999px;background:rgba(209,19,46,.9);font-family:var(--font-tit);font-size:.72rem;font-weight:500;letter-spacing:.8px;text-transform:uppercase;}
+  .guardadas-hero h1{margin:0 0 8px;font-family:var(--font-tit);font-size:2.3rem;font-weight:700;line-height:1.1;color:#fff;}
+  .guardadas-hero p{margin:0;font-size:.97rem;line-height:1.6;color:rgba(255,255,255,.82);}
+  @media(min-width:601px){
+    .guardadas-pagina{padding:36px 28px 72px;}
+    .guardadas-hero{display:flex;align-items:center;min-height:150px;margin-bottom:30px;padding:30px 44px 30px 48px;}
+    .guardadas-hero::after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 85% 20%,rgba(91,184,232,.16),transparent 55%);pointer-events:none;}
+    .guardadas-hero-texto{max-width:700px;}
+    .guardadas-hero h1{font-size:2.5rem;letter-spacing:-.3px;}
+    .guardadas-hero p{max-width:600px;font-size:1rem;}
+    .guardadas-hero-icono{right:34px;width:170px;height:170px;transform:translateY(-50%) rotate(6deg);color:rgba(255,255,255,.09);}
+  }
+  @media(max-width:600px){
+    .guardadas-pagina{padding:14px max(16px,env(safe-area-inset-right,0px)) calc(40px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));}
+    .guardadas-hero{padding:18px 18px 18px 22px;margin-bottom:16px;border-radius:14px;}
+    .guardadas-hero::before{width:5px;}
+    .guardadas-kicker{margin-bottom:8px;padding:3px 10px;font-size:.66rem;}
+    .guardadas-hero h1{font-size:1.5rem;margin-bottom:6px;}
+    .guardadas-hero p{display:none;}
+    .guardadas-hero-icono{width:96px;height:96px;right:-14px;top:50%;}
+  }
+</style>
+</head>
+<body data-page="guardadas">
+
+<div id="site-header"></div>
+
+<main class="wrap guardadas-pagina">
+  <section class="guardadas-hero">
+    <svg class="guardadas-hero-icono" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+    <div class="guardadas-hero-texto">
+      <span class="guardadas-kicker">Tu lista de lectura</span>
+      <h1>Mis guardadas</h1>
+      <p>Las noticias que has guardado para leer luego. Si no has iniciado sesión, se guardan solo en este navegador; al iniciarla se añaden a tu cuenta.</p>
+    </div>
+  </section>
+  <div id="contenedorGuardadas"></div>
+</main>
+
+<div id="site-footer"></div>
+
+<script src="js/ui-alertas.js?v=5"></script>
+<script src="js/foco.js?v=1"></script>
+<script src="js/config.js?v=25"></script>
+<script src="js/seo.js?v=5"></script>
+<script src="js/lector-auth.js?v=13"></script>
+<script src="js/lecturas.js?v=7"></script>
+<script src="js/layout.js?v=22"></script>
+<script src="js/cookies.js?v=2"></script>
+<script src="js/ads.js?v=3"></script>
+<script src="js/main.js?v=14"></script>
+<script>
+EOFLecturas.montarLista(document.getElementById("contenedorGuardadas"), "guardadas");
+</script>
+</body>
+</html>

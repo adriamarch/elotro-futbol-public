@@ -1,0 +1,158 @@
+/* Plantilla del equipo en su página (categoria?club=…). Lo pinta js/plantilla-club.js.
+   Regla del sitio: texto con --marino-texto, nunca --marino (en oscuro no se vería). */
+
+.pc{
+  --pc-por:#e0a100;--pc-def:#2b8ad1;--pc-med:#25a56a;--pc-del:#d1132e;--pc-otros:#7a8497;
+  margin:34px 0 14px;
+}
+.pc[hidden]{display:none;}
+[data-theme="dark"] .pc{--pc-por:#f0b429;--pc-def:#4aa3e8;--pc-med:#3dc588;--pc-del:#ff4d63;--pc-otros:#9aa4b8;}
+
+/* ---------- Cabecera ---------- */
+.pc-cab{display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:10px 20px;margin:0 0 18px;}
+.pc-titulo{
+  display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px;margin:0;
+  font-family:var(--font-tit);font-size:1.7rem;font-weight:700;line-height:1.1;color:var(--marino-texto);
+}
+.pc-titulo::before{content:"";flex:none;width:5px;height:1.1em;border-radius:3px;background:var(--rojo);}
+.pc-temp{
+  padding:3px 12px;border-radius:999px;font-family:var(--font-body,inherit);font-size:.74rem;font-weight:700;letter-spacing:.04em;
+  background:color-mix(in srgb,var(--celeste) 18%,var(--tarjeta));border:1px solid color-mix(in srgb,var(--celeste) 45%,var(--borde));color:var(--marino-texto);
+}
+.pc-sub{margin:6px 0 0 17px;font-size:.92rem;color:var(--texto-suave);}
+.pc-enlace{
+  display:inline-flex;align-items:center;gap:8px;padding:9px 16px;border:1px solid var(--borde);border-radius:999px;
+  background:var(--tarjeta);color:var(--marino-texto);font-size:.85rem;font-weight:700;text-decoration:none;box-shadow:var(--sombra-sm);
+  transition:border-color .15s,transform .15s;
+}
+.pc-enlace:hover{border-color:var(--celeste);transform:translateX(2px);}
+.pc-enlace:focus-visible{outline:2px solid var(--celeste);outline-offset:2px;}
+
+/* ---------- Resumen del equipo ---------- */
+.pc-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:0 0 20px;}
+.pc-kpi{
+  position:relative;display:flex;flex-direction:column;gap:2px;padding:14px 18px;border-radius:16px;overflow:hidden;
+  background:var(--fondo-alt);border:1px solid var(--borde);
+}
+.pc-kpi::after{
+  content:"";position:absolute;right:-18px;top:-18px;width:70px;height:70px;border-radius:50%;
+  background:radial-gradient(circle,color-mix(in srgb,var(--celeste) 26%,transparent),transparent 70%);
+}
+.pc-kpi-valor{font-family:var(--font-tit);font-size:1.9rem;font-weight:700;line-height:1.1;color:var(--marino-texto);font-variant-numeric:tabular-nums;}
+.pc-kpi-et{font-size:.78rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--texto-suave);}
+.pc-kpi-det{font-size:.84rem;font-weight:700;color:var(--rojo);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+[data-theme="dark"] .pc-kpi-det{color:#ff6b7f;}
+
+/* ---------- Pestañas por posición ---------- */
+.pc-tabs{
+  display:flex;flex-wrap:wrap;gap:4px;margin:0 0 22px;padding:5px;border-radius:16px;
+  background:var(--fondo-alt);box-shadow:inset 0 1px 2px rgba(12,27,46,.06);
+}
+.pc-tab{
+  display:inline-flex;align-items:center;gap:8px;padding:9px 16px;border:0;border-radius:12px;background:none;cursor:pointer;
+  font:inherit;font-size:.88rem;font-weight:700;color:var(--texto-suave);transition:background .15s,color .15s,box-shadow .15s;
+}
+.pc-tab span{
+  min-width:22px;padding:1px 7px;border-radius:999px;background:var(--borde);font-size:.72rem;text-align:center;font-variant-numeric:tabular-nums;
+}
+.pc-tab:hover{color:var(--marino-texto);}
+.pc-tab.activo{background:var(--tarjeta);color:var(--marino-texto);box-shadow:var(--sombra-sm),inset 0 -3px 0 var(--rojo);}
+.pc-tab.activo span{background:var(--rojo);color:#fff;}
+.pc-tab:focus-visible{outline:2px solid var(--celeste);outline-offset:2px;}
+
+/* ---------- Grupos y rejilla ---------- */
+.pc-grupo-bloque + .pc-grupo-bloque{margin-top:26px;}
+.pc-grupo{
+  display:flex;align-items:center;gap:10px;margin:0 0 14px;
+  font-family:var(--font-tit);font-size:1.05rem;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--texto-suave);
+}
+.pc-grupo::before{content:"";flex:none;width:10px;height:10px;border-radius:50%;background:var(--pc-c,var(--pc-otros));box-shadow:0 0 0 4px color-mix(in srgb,var(--pc-c,var(--pc-otros)) 22%,transparent);}
+.pc-grupo::after{content:"";flex:1;height:1px;background:var(--borde);order:3;}
+.pc-grupo span{order:2;padding:1px 9px;border-radius:999px;background:var(--fondo-alt);border:1px solid var(--borde);font-family:var(--font-body,inherit);font-size:.72rem;letter-spacing:0;}
+.pc-grupo--por{--pc-c:var(--pc-por);}.pc-grupo--def{--pc-c:var(--pc-def);}
+.pc-grupo--med{--pc-c:var(--pc-med);}.pc-grupo--del{--pc-c:var(--pc-del);}.pc-grupo--otros{--pc-c:var(--pc-otros);}
+.pc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;margin:0;padding:0;list-style:none;}
+
+/* ---------- Tarjeta de jugador ---------- */
+.pc-card{
+  --pc-c:var(--pc-otros);
+  position:relative;border-radius:20px;background:var(--tarjeta);border:1px solid var(--borde);box-shadow:var(--sombra-sm);overflow:hidden;
+  animation:pc-entra .45s cubic-bezier(.2,.8,.2,1) backwards;animation-delay:calc(var(--i,0) * 35ms);
+  transition:transform .22s cubic-bezier(.2,.8,.2,1),box-shadow .22s,border-color .22s;
+}
+.pc-pos-por{--pc-c:var(--pc-por);}.pc-pos-def{--pc-c:var(--pc-def);}
+.pc-pos-med{--pc-c:var(--pc-med);}.pc-pos-del{--pc-c:var(--pc-del);}.pc-pos-otros{--pc-c:var(--pc-otros);}
+.pc-card::before{ /* franja de color de la posición + halo suave */
+  content:"";position:absolute;inset:0 0 auto 0;height:96px;pointer-events:none;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--pc-c) 17%,transparent),transparent),
+             linear-gradient(90deg,var(--pc-c),color-mix(in srgb,var(--pc-c) 55%,#fff));
+  background-size:100% 100%,100% 4px;background-repeat:no-repeat;
+}
+.pc-card:hover{transform:translateY(-4px);border-color:color-mix(in srgb,var(--pc-c) 55%,var(--borde));box-shadow:var(--sombra-hover,var(--sombra-md));}
+.pc-card-in{position:relative;display:flex;flex-direction:column;gap:12px;height:100%;padding:20px 18px 16px;color:inherit;text-decoration:none;}
+a.pc-card-in:focus-visible{outline:2px solid var(--celeste);outline-offset:-3px;border-radius:20px;}
+
+.pc-top{display:flex;align-items:center;gap:14px;min-width:0;}
+.pc-avatar{
+  position:relative;display:inline-flex;align-items:center;justify-content:center;flex:none;width:58px;height:58px;border-radius:50%;
+  background:linear-gradient(145deg,color-mix(in srgb,var(--pc-c) 70%,#fff),var(--pc-c) 60%,color-mix(in srgb,var(--pc-c) 80%,#000));
+  color:#fff;font-family:var(--font-tit);font-size:1.25rem;font-weight:700;letter-spacing:.02em;text-shadow:0 1px 2px rgba(0,0,0,.28);
+  box-shadow:0 8px 16px -8px var(--pc-c),0 0 0 3px var(--tarjeta),0 0 0 5px color-mix(in srgb,var(--pc-c) 38%,transparent);
+}
+.pc-pos-por .pc-avatar{color:#2a2000;text-shadow:none;}
+.pc-dorsal{
+  position:absolute;right:-8px;bottom:-6px;min-width:26px;height:26px;padding:0 6px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;
+  background:var(--marino);color:#fff;border:2px solid var(--tarjeta);font-family:var(--font-tit);font-size:.74rem;font-weight:700;text-shadow:none;font-variant-numeric:tabular-nums;
+}
+[data-theme="dark"] .pc-dorsal{background:var(--celeste);color:#07131f;}
+.pc-id{min-width:0;}
+.pc-nombre{
+  margin:0;font-family:var(--font-tit);font-size:1.18rem;font-weight:700;line-height:1.15;color:var(--marino-texto);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.pc-real{margin:3px 0 0;font-size:.78rem;color:var(--texto-suave);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pc-meta{display:flex;flex-wrap:wrap;gap:6px;margin:0;}
+.pc-pos,.pc-edad{padding:3px 10px;border-radius:999px;font-size:.72rem;font-weight:700;line-height:1.5;}
+.pc-pos{background:color-mix(in srgb,var(--pc-c) 14%,var(--tarjeta));border:1px solid color-mix(in srgb,var(--pc-c) 40%,var(--borde));color:var(--marino-texto);}
+.pc-edad{background:var(--fondo-alt);border:1px solid var(--borde);color:var(--texto-suave);}
+
+.pc-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0;}
+.pc-stats div{display:flex;flex-direction:column;align-items:center;gap:1px;padding:8px 4px 7px;border-radius:12px;background:var(--fondo-alt);}
+.pc-stats dt{font-size:.66rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--texto-suave);}
+.pc-stats dd{margin:0;font-family:var(--font-tit);font-size:1.12rem;font-weight:700;line-height:1.2;color:var(--marino-texto);font-variant-numeric:tabular-nums;}
+
+.pc-red{
+  display:flex;align-items:center;gap:6px;margin:auto 0 0;padding:9px 10px;border-radius:12px;font-size:.76rem;color:var(--texto-suave);white-space:nowrap;
+  background:color-mix(in srgb,var(--celeste) 11%,var(--tarjeta));border:1px dashed color-mix(in srgb,var(--celeste) 50%,var(--borde));
+}
+.pc-red b{color:var(--marino-texto);}
+.pc-red > span:nth-child(2){min-width:0;overflow:hidden;text-overflow:ellipsis;}
+.pc-red-et{font-size:.66rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--texto-suave);}
+.pc-red-ir{margin-left:auto;font-weight:700;color:var(--marino-texto);transition:transform .15s;}
+.pc-card-enlace:hover .pc-red-ir{transform:translateX(3px);color:var(--rojo);}
+
+.pc-nota{margin:20px 2px 0;font-size:.8rem;line-height:1.55;color:var(--texto-suave);}
+.pc-nota a{color:var(--marino-texto);font-weight:700;}
+
+/* ---------- Carga ---------- */
+.pc-esqueleto{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;}
+.pc-esq-card{
+  height:210px;border-radius:20px;border:1px solid var(--borde);
+  background:linear-gradient(100deg,var(--fondo-alt) 30%,color-mix(in srgb,var(--celeste) 10%,var(--fondo-alt)) 50%,var(--fondo-alt) 70%) 0 0/200% 100%;
+  animation:pc-brillo 1.4s linear infinite;
+}
+@keyframes pc-brillo{to{background-position:-200% 0;}}
+@keyframes pc-entra{from{opacity:0;transform:translateY(14px) scale(.98);}to{opacity:1;transform:none;}}
+
+@media (max-width:560px){
+  .pc-titulo{font-size:1.45rem;}
+  .pc-sub{margin-left:0;}
+  .pc-tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;}
+  .pc-tabs::-webkit-scrollbar{display:none;}
+  .pc-tab{flex:none;}
+  .pc-grid,.pc-esqueleto{grid-template-columns:1fr;}
+}
+@media (prefers-reduced-motion:reduce){
+  .pc-card,.pc-esq-card{animation:none;}
+  .pc-card,.pc-enlace,.pc-red-ir{transition:none;}
+}

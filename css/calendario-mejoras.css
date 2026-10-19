@@ -1,218 +1,1622 @@
 /* =========================================================================
-   Mejoras de estilo y responsive — calendario.html
-   Hoja de estilos adicional, cargada DESPUÉS de style.css y limitada a
-   body[data-page="calendario"], para no afectar a ninguna otra página del
-   sitio. Solo retoca presentación (espaciados, jerarquía visual,
-   comportamiento responsive, estados de foco/hover); no cambia HTML ni JS.
+   Calendario — rediseño visual completo (v2)
+   Se carga DESPUÉS de style.css y está limitada a body[data-page="calendario"],
+   así que no afecta a ninguna otra página (aunque comparta clases como
+   .partido o .modal-partido-*). Respeta el modo claro/oscuro del sitio
+   (variables de style.css + [data-theme="dark"]).
    ========================================================================= */
 
-body[data-page="calendario"] .wrap{
-  padding-top: 4px;
+body[data-page="calendario"]{
+  --cal-radio: 16px;
+  --cal-header-alto: 76px;            /* lo ajusta calendario.html con JS */
+  --cal-chip-bg: var(--tarjeta);
+  --cal-marcador-bg: linear-gradient(160deg, var(--marino), var(--marino2));
+  --cal-marcador-borde: rgba(255,255,255,.06);
+  --cal-hero-bg: linear-gradient(145deg, #0c1b2e 0%, #152b46 55%, #1b3a5f 100%);
+  background: linear-gradient(180deg, var(--fondo-alt) 0, var(--fondo) 380px);
+}
+[data-theme="dark"] body[data-page="calendario"]{
+  --cal-marcador-bg: linear-gradient(160deg, #27406a, #1b2f50);
+  --cal-marcador-borde: rgba(255,255,255,.14);
+  --cal-hero-bg: linear-gradient(145deg, #13233b 0%, #1a3150 55%, #20406a 100%);
+  background: linear-gradient(180deg, #0d121a 0, var(--fondo) 380px);
 }
 
-/* ---------- Cabecera de sección ---------- */
+/* ---------- Título de página ---------- */
+body[data-page="calendario"] .wrap{ padding-top: 6px; }
 body[data-page="calendario"] .section-title{
-  margin-bottom: 18px;
+  font-size: clamp(1.6rem, 3.4vw, 2.3rem);
+  letter-spacing: .6px;
+  margin: 30px 0 22px;
+  border-left-width: 7px;
+  padding-left: 14px;
+  line-height: 1.05;
+}
+body[data-page="calendario"] .section-title::after{
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--borde), transparent);
 }
 
-/* ---------- Filtros principales (competición) ---------- */
+/* ---------- Filtros de competición (pestañas en píldora) ---------- */
 body[data-page="calendario"] .filtros{
-  margin-bottom: 16px;
+  gap: 8px;
+  margin-bottom: 14px;
 }
 body[data-page="calendario"] .filtros button{
+  position: relative;
   font-family: var(--font-tit);
-  letter-spacing: .3px;
-  box-shadow: 0 1px 2px rgba(12,27,46,.05);
+  text-transform: uppercase;
+  letter-spacing: .7px;
+  font-size: .8rem;
+  font-weight: 500;
+  padding: 11px 20px;
+  border-radius: 999px;
+  border: 1px solid var(--borde);
+  background: var(--cal-chip-bg);
+  color: var(--marino-texto);
+  box-shadow: 0 1px 2px rgba(12,27,46,.06);
+  transition: transform .16s, box-shadow .16s, border-color .16s, background .16s, color .16s;
 }
+body[data-page="calendario"] .filtros button:hover:not(.activo){
+  transform: translateY(-2px);
+  border-color: var(--celeste);
+  box-shadow: 0 6px 14px rgba(12,27,46,.10);
+}
+body[data-page="calendario"] .filtros button.activo{
+  background: linear-gradient(135deg, var(--marino), var(--marino2));
+  border-color: transparent;
+  color: #fff;
+  padding-left: 30px;
+  box-shadow: 0 6px 16px rgba(12,27,46,.28);
+}
+body[data-page="calendario"] .filtros button.activo::before{
+  content: "";
+  position: absolute;
+  left: 14px; top: 50%;
+  width: 7px; height: 7px;
+  margin-top: -3.5px;
+  border-radius: 50%;
+  background: var(--rojo);
+  box-shadow: 0 0 0 3px rgba(209,19,46,.28);
+}
+[data-theme="dark"] body[data-page="calendario"] .filtros button.activo{
+  background: linear-gradient(135deg, #27406a, #1b2f50);
+  border-color: rgba(91,184,232,.45);
+}
+body[data-page="calendario"] .filtros button:active{ transform: scale(.97); }
 body[data-page="calendario"] .filtros button:focus-visible,
 body[data-page="calendario"] .select-filtro:focus-visible,
 body[data-page="calendario"] .calendario-nav button:focus-visible{
   outline: 2px solid var(--celeste);
-  outline-offset: 2px;
-}
-body[data-page="calendario"] .filtros button.activo{
-  box-shadow: 0 2px 8px rgba(12,27,46,.25);
+  outline-offset: 3px;
 }
 
-/* ---------- Filtro secundario (grupo) ---------- */
-body[data-page="calendario"] .filtros-secundarios{
-  margin-bottom: 18px;
-}
+/* ---------- Desplegable de grupo ---------- */
+body[data-page="calendario"] .filtros-secundarios{ margin-bottom: 18px; }
+body[data-page="calendario"] .filtros-secundarios{ align-items: center; }
 body[data-page="calendario"] .select-filtro{
-  transition: border-color .15s;
+  -webkit-appearance: none;
+  appearance: none;
+  min-height: 44px;
+  padding: 10px 42px 10px 18px;
+  border-radius: 999px;
+  border: 1px solid var(--borde);
+  background-color: var(--cal-chip-bg);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235a6270' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 16px;
+  font-family: var(--font-tit);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  font-size: .8rem;
+  box-shadow: 0 1px 2px rgba(12,27,46,.06);
+  transition: border-color .15s, box-shadow .15s;
+}
+[data-theme="dark"] body[data-page="calendario"] .select-filtro{
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239aa4b8' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
 }
 body[data-page="calendario"] .select-filtro:hover{
   border-color: var(--celeste);
+  box-shadow: 0 6px 14px rgba(12,27,46,.08);
 }
+body[data-page="calendario"] .select-filtro[hidden]{ display: none; }
 
-/* ---------- Barra de navegación de jornada ---------- */
-/* Se fija bajo la cabecera al hacer scroll, para poder cambiar de jornada
-   sin tener que volver arriba en listados largos. */
+/* ---------- Barra de jornada (pegajosa bajo la cabecera) ---------- */
 body[data-page="calendario"] .calendario-nav{
   position: sticky;
-  top: 8px;
-  z-index: 5;
-  box-shadow: 0 2px 10px rgba(12,27,46,.08);
-  margin-bottom: 22px;
+  top: calc(var(--cal-header-alto) + 10px);
+  z-index: 20;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  margin-bottom: 20px;
+  border-radius: 20px;
+  border: 1px solid var(--borde);
+  background: var(--tarjeta);
+  box-shadow: 0 8px 24px rgba(12,27,46,.10);
 }
+@supports (background: color-mix(in srgb, red 50%, transparent)){
+  body[data-page="calendario"] .calendario-nav{
+    background: color-mix(in srgb, var(--tarjeta) 86%, transparent);
+    -webkit-backdrop-filter: saturate(1.4) blur(12px);
+    backdrop-filter: saturate(1.4) blur(12px);
+  }
+}
+body[data-page="calendario"] .calendario-nav[hidden]{ display: none; }
 body[data-page="calendario"] .calendario-nav button{
-  min-width: 108px;
-  box-shadow: 0 1px 3px rgba(12,27,46,.18);
+  min-width: 112px;
+  padding: 11px 20px;
+  border-radius: 999px;
+  border: 1px solid var(--borde);
+  background: var(--fondo-alt);
+  color: var(--marino-texto);
+  font-family: var(--font-tit);
+  font-weight: 500;
+  font-size: .8rem;
+  letter-spacing: .6px;
+  text-transform: uppercase;
+  box-shadow: none;
+  transition: background .16s, color .16s, transform .16s, border-color .16s, box-shadow .16s;
+}
+body[data-page="calendario"] .calendario-nav button:hover:not(:disabled){
+  background: var(--marino);
+  border-color: var(--marino);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(12,27,46,.25);
+}
+[data-theme="dark"] body[data-page="calendario"] .calendario-nav button:hover:not(:disabled){
+  background: #27406a;
+  border-color: rgba(91,184,232,.5);
+}
+body[data-page="calendario"] .calendario-nav button:active:not(:disabled){ transform: scale(.97); }
+body[data-page="calendario"] .calendario-nav button:disabled{
+  opacity: .35;
+  cursor: not-allowed;
 }
 body[data-page="calendario"] .calendario-nav-titulo{
-  letter-spacing: .5px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+body[data-page="calendario"] .calendario-nav-titulo > span{
+  position: relative;
+  display: block;
+  font-family: var(--font-tit);
+  font-weight: 700;
+  font-size: 1.45rem;
+  line-height: 1.1;
+  letter-spacing: 1.2px;
+  padding-bottom: 8px;
+  white-space: nowrap;
+  color: var(--marino-texto);
+}
+body[data-page="calendario"] .calendario-nav-titulo > span::after{
+  content: "";
+  position: absolute;
+  left: 50%; bottom: 0;
+  width: 30px; height: 3px;
+  margin-left: -15px;
+  border-radius: 3px;
+  background: var(--rojo);
+}
+body[data-page="calendario"] .calendario-nav-titulo small{
+  margin: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-tit);
+  font-size: .7rem;
+  font-weight: 500;
+  letter-spacing: .9px;
+  text-transform: uppercase;
+  color: var(--texto-suave);
+}
+body[data-page="calendario"] .calendario-nav-titulo small:empty{ display: none; }
+
+/* ---------- Lista de partidos: tarjetas independientes ---------- */
+body[data-page="calendario"] #calendarioCont{
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: visible;
+}
+body[data-page="calendario"] .tabla-jornada{
+  display: grid;
+  gap: 12px;
+  margin-bottom: 36px;
 }
 
-/* ---------- Filas de partido: más aire y mejor jerarquía ---------- */
-body[data-page="calendario"] #calendarioCont{
-  background: var(--tarjeta);
-  border: 1px solid var(--borde);
-  border-radius: var(--radio);
-  overflow: hidden;
-  box-shadow: var(--sombra);
-}
 body[data-page="calendario"] .partido{
-  padding: 16px 18px;
-}
-body[data-page="calendario"] .partido:last-child{
-  border-bottom: none;
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0,1fr) auto minmax(0,1fr);
+  align-items: center;
+  column-gap: 14px;
+  row-gap: 0;
+  padding: 0;
+  font-size: .98rem;
+  border: 1px solid var(--borde);
+  border-bottom: 1px solid var(--borde);
+  border-radius: var(--cal-radio);
+  background: var(--tarjeta);
+  box-shadow: 0 1px 2px rgba(12,27,46,.05), 0 4px 14px rgba(12,27,46,.05);
+  overflow: hidden;
+  transition: transform .18s, box-shadow .18s, border-color .18s, background .18s;
+  animation: calCardIn .38s cubic-bezier(.2,.8,.3,1) both;
 }
 body[data-page="calendario"] .partido:hover{
-  background: var(--fondo-alt);
+  background: var(--tarjeta);
+  border-color: var(--celeste);
+  transform: translateY(-3px);
+  box-shadow: 0 10px 28px rgba(12,27,46,.14);
 }
+body[data-page="calendario"] .partido:active{ transform: translateY(-1px) scale(.995); }
 body[data-page="calendario"] .partido:focus-visible{
   outline: 2px solid var(--celeste);
-  outline-offset: -2px;
-}
-body[data-page="calendario"] .partido .escudo{
-  width: 34px;
-  height: 34px;
-  transition: transform .15s;
-}
-body[data-page="calendario"] .partido:hover .escudo{
-  transform: scale(1.06);
-}
-body[data-page="calendario"] .partido .nombre-equipo{
-  font-size: .96rem;
-}
-body[data-page="calendario"] .partido .marcador{
-  min-width: 80px;
-  font-size: 1.02rem;
+  outline-offset: 2px;
 }
 
-/* Cabeceras de día/agrupación dentro del calendario, si las inserta el
-   JS (p. ej. un separador de fecha entre bloques de partidos). */
-body[data-page="calendario"] #calendarioCont > .calendario-dia-titulo,
-body[data-page="calendario"] #calendarioCont > [class*="dia-titulo"],
-body[data-page="calendario"] #calendarioCont > [class*="grupo-titulo"]{
-  font-family: var(--font-tit);
-  text-transform: uppercase;
-  font-size: .78rem;
-  letter-spacing: .6px;
-  color: var(--texto-suave);
-  padding: 12px 18px 6px;
+/* Banda superior con estado · jornada · fecha · estadio */
+body[data-page="calendario"] .partido .estado-badge{
+  order: -1;
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 9px 16px;
   background: var(--fondo-alt);
   border-bottom: 1px solid var(--borde);
+  color: var(--texto-suave);
+  font-family: var(--font-tit);
+  font-size: .7rem;
+  font-weight: 500;
+  letter-spacing: .8px;
+  line-height: 1.35;
+  text-transform: uppercase;
+  text-align: center;
 }
 
-/* ---------- Modal de detalle: pulido visual ---------- */
+/* Equipos */
+body[data-page="calendario"] .partido .equipo{
+  gap: 14px;
+  padding-top: 20px;
+  padding-bottom: 20px;
+}
+body[data-page="calendario"] .partido .equipo-local{ padding-left: 22px; }
+body[data-page="calendario"] .partido .equipo-visitante{ padding-right: 22px; }
+body[data-page="calendario"] .partido .nombre-equipo{
+  font-family: var(--font-tit);
+  font-weight: 500;
+  font-size: 1.08rem;
+  letter-spacing: .3px;
+  line-height: 1.2;
+  color: var(--marino-texto);
+  transition: color .15s, opacity .15s;
+}
+body[data-page="calendario"] .partido .escudo{
+  width: 44px;
+  height: 44px;
+  filter: drop-shadow(0 2px 3px rgba(12,27,46,.18));
+  transition: transform .2s cubic-bezier(.2,.8,.3,1.3);
+}
+body[data-page="calendario"] .partido:hover .escudo{ transform: scale(1.1) rotate(-2deg); }
+
+/* Ganador resaltado / perdedor atenuado (lo marca el JS con data-ganador) */
+body[data-page="calendario"] .partido[data-ganador="local"] .equipo-local .nombre-equipo,
+body[data-page="calendario"] .partido[data-ganador="visitante"] .equipo-visitante .nombre-equipo{
+  font-weight: 700;
+}
+body[data-page="calendario"] .partido[data-ganador="local"] .equipo-visitante .nombre-equipo,
+body[data-page="calendario"] .partido[data-ganador="visitante"] .equipo-local .nombre-equipo{
+  opacity: .62;
+}
+
+/* Marcador */
+body[data-page="calendario"] .partido .marcador{
+  align-self: center;
+  min-width: 92px;
+  padding: 9px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--cal-marcador-borde);
+  background: var(--cal-marcador-bg);
+  color: #fff;
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  font-variant-numeric: tabular-nums;
+  box-shadow: inset 0 -3px 0 rgba(0,0,0,.22), 0 4px 10px rgba(12,27,46,.22);
+}
+body[data-page="calendario"] .partido .marcador .penaltis-marcador{
+  margin-top: 2px;
+  font-family: var(--font-text);
+  font-size: .64rem;
+  font-weight: 500;
+  letter-spacing: .2px;
+  color: rgba(255,255,255,.78);
+}
+
+/* Por jugar: marcador discreto "vs" */
+body[data-page="calendario"] .partido[data-estado="programado"] .marcador,
+body[data-page="calendario"] .partido[data-estado="retrasado"] .marcador{
+  background: transparent;
+  border: 1.5px dashed var(--borde);
+  color: var(--texto-suave);
+  font-size: .95rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  box-shadow: none;
+  min-width: 78px;
+}
+body[data-page="calendario"] .partido[data-estado="retrasado"]{ border-color: #d99a1b; }
+body[data-page="calendario"] .partido[data-estado="retrasado"] .estado-badge{
+  background: rgba(217,154,27,.12);
+  color: #a86f00;
+}
+[data-theme="dark"] body[data-page="calendario"] .partido[data-estado="retrasado"] .estado-badge{ color: #f2c35a; }
+
+/* En directo */
+body[data-page="calendario"] .partido-en-vivo{
+  padding: 0;
+  border-left: 1px solid rgba(209,19,46,.4);
+  border-color: rgba(209,19,46,.4);
+  background:
+    linear-gradient(90deg, rgba(209,19,46,.08), rgba(209,19,46,0) 45%),
+    var(--tarjeta);
+  box-shadow: inset 5px 0 0 var(--rojo), 0 6px 22px rgba(209,19,46,.14);
+}
+body[data-page="calendario"] .partido-en-vivo:hover{
+  background:
+    linear-gradient(90deg, rgba(209,19,46,.12), rgba(209,19,46,.02) 50%),
+    var(--tarjeta);
+  border-color: var(--rojo);
+}
+body[data-page="calendario"] .partido-en-vivo .estado-badge,
+body[data-page="calendario"] .partido .estado-badge-en-vivo{
+  background: rgba(209,19,46,.10);
+  border-bottom-color: rgba(209,19,46,.22);
+  color: var(--rojo);
+  font-weight: 600;
+}
+[data-theme="dark"] body[data-page="calendario"] .partido .estado-badge-en-vivo{ color: #ff6b80; }
+body[data-page="calendario"] .partido .marcador-en-vivo{
+  background: linear-gradient(135deg, var(--rojo), var(--rojo-oscuro)) !important;
+  border-color: rgba(255,255,255,.2);
+}
+
+/* Anulado (se ve como "Por jugar" pendiente de reprogramar) */
+body[data-page="calendario"] .partido-anulado{
+  border-style: dashed;
+}
+body[data-page="calendario"] .partido-aplazado-cinta{
+  order: -2;
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 7px 10px;
+  font-size: .74rem;
+  letter-spacing: 1px;
+}
+body[data-page="calendario"] .partido-anulado .marcador{ min-width: 54px; font-size: .82rem; }
+
+/* Partido finalizado sin cubrir (ver style.css): ajustes del calendario */
+body[data-page="calendario"] .partido-sin-cubrir{ border-style: dashed; }
+body[data-page="calendario"] .partido-sin-cubrir-cinta{
+  order: -2; grid-column: 1 / -1; margin: 0; padding: 6px 10px; font-size: .7rem;
+}
+body[data-page="calendario"] .hz-partido[data-sin-cubrir="1"]{ border-style: dashed; border-color: rgba(100,116,139,.7); }
+body[data-page="calendario"] .hz-partido[data-sin-cubrir="1"] .hz-estado{ color: #64748b; }
+body[data-page="calendario"] .hz-partido[data-sin-cubrir="1"] .hz-goles{ opacity: .6; }
+[data-theme="dark"] body[data-page="calendario"] .hz-partido[data-sin-cubrir="1"] .hz-estado{ color: #cbd5e1; }
+
+/* Entrada escalonada de las tarjetas */
+@keyframes calCardIn{
+  from{ opacity: 0; transform: translateY(12px); }
+  to{ opacity: 1; transform: translateY(0); }
+}
+body[data-page="calendario"] .tabla-jornada > .partido:nth-child(2){ animation-delay: .04s; }
+body[data-page="calendario"] .tabla-jornada > .partido:nth-child(3){ animation-delay: .08s; }
+body[data-page="calendario"] .tabla-jornada > .partido:nth-child(4){ animation-delay: .12s; }
+body[data-page="calendario"] .tabla-jornada > .partido:nth-child(5){ animation-delay: .16s; }
+body[data-page="calendario"] .tabla-jornada > .partido:nth-child(6){ animation-delay: .20s; }
+body[data-page="calendario"] .tabla-jornada > .partido:nth-child(7){ animation-delay: .24s; }
+body[data-page="calendario"] .tabla-jornada > .partido:nth-child(8){ animation-delay: .28s; }
+body[data-page="calendario"] .tabla-jornada > .partido:nth-child(n+9){ animation-delay: .32s; }
+
+/* Separadores de día/grupo, por si el JS los inserta */
+body[data-page="calendario"] .tabla-jornada > .calendario-dia-titulo,
+body[data-page="calendario"] .tabla-jornada > [class*="dia-titulo"],
+body[data-page="calendario"] .tabla-jornada > [class*="grupo-titulo"]{
+  margin: 10px 4px 0;
+  font-family: var(--font-tit);
+  font-size: .8rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--texto-suave);
+}
+
+/* ---------- Estados: cargando / vacío / error ---------- */
+body[data-page="calendario"] .estado-info{
+  padding: 64px 24px;
+  border: 1.5px dashed var(--borde);
+  border-radius: 20px;
+  background: var(--tarjeta);
+}
+body[data-page="calendario"] .estado-info > svg{
+  box-sizing: content-box;
+  width: 44px;
+  height: 44px;
+  padding: 16px;
+  border-radius: 50%;
+  background: rgba(91,184,232,.14);
+}
+body[data-page="calendario"] .estado-info.estado-error > svg{ background: rgba(209,19,46,.10); }
+body[data-page="calendario"] .estado-info h3{ font-size: 1.3rem; letter-spacing: .6px; }
+body[data-page="calendario"] .spinner{
+  width: 40px;
+  height: 40px;
+  border-width: 4px;
+}
+[data-theme="dark"] body[data-page="calendario"] .spinner{ border-color: rgba(255,255,255,.12); border-top-color: var(--rojo); }
+
+/* =========================================================================
+   MODAL DE DETALLE
+   ========================================================================= */
+body[data-page="calendario"] .modal-partido-fondo{
+  background: rgba(8,16,28,.68);
+  -webkit-backdrop-filter: blur(5px);
+  backdrop-filter: blur(5px);
+}
 body[data-page="calendario"] .modal-partido-caja{
-  box-shadow: 0 20px 50px rgba(12,27,46,.35);
+  max-width: 560px;
+  padding: 0 26px 30px;
+  border-radius: 24px;
+  border-top-width: 0;
+  box-shadow: 0 30px 80px rgba(8,16,28,.5);
+  scrollbar-width: thin;
 }
+/* Cabecera "hero" a sangre */
+body[data-page="calendario"] .modal-partido-cabecera{
+  position: relative;
+  margin: 0 -26px 0;
+  padding: 40px 26px 26px;
+  border-bottom: 0;
+  border-radius: 24px 24px 0 0;
+  background: var(--cal-hero-bg);
+  overflow: hidden;
+  gap: 14px;
+}
+body[data-page="calendario"] .modal-partido-cabecera::before{
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(91,184,232,.28), transparent 45%),
+    radial-gradient(circle at 100% 100%, rgba(209,19,46,.22), transparent 50%);
+}
+body[data-page="calendario"] .modal-partido-cabecera > *{ position: relative; }
 body[data-page="calendario"] .modal-partido-escudo{
-  transition: transform .2s;
+  width: 66px;
+  height: 66px;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,.4));
+  transition: transform .25s cubic-bezier(.2,.8,.3,1.3);
 }
+body[data-page="calendario"] .modal-partido-equipo:hover .modal-partido-escudo{ transform: scale(1.08); }
+body[data-page="calendario"] .modal-partido-nombre{
+  font-family: var(--font-tit);
+  font-weight: 500;
+  font-size: 1rem;
+  letter-spacing: .4px;
+  color: #fff;
+}
+body[data-page="calendario"] .modal-partido-nombre-link:hover{ color: var(--celeste-claro); }
+body[data-page="calendario"] .modal-partido-marcador span:first-child{
+  padding: 8px 20px;
+  border-radius: 14px;
+  background: rgba(255,255,255,.12);
+  border: 1px solid rgba(255,255,255,.2);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  color: #fff;
+  font-size: 2rem;
+  letter-spacing: 2px;
+  font-variant-numeric: tabular-nums;
+}
+/* El marcador lleva un <span> anidado: sin esto se dibujaría una caja doble */
+body[data-page="calendario"] .modal-partido-marcador span:first-child span{
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  font-size: inherit;
+  letter-spacing: inherit;
+  animation: none !important;
+}
+body[data-page="calendario"] .modal-partido-marcador .penaltis-marcador{
+  display: block;
+  font-family: var(--font-text);
+  font-size: .62rem;
+  letter-spacing: .2px;
+  font-weight: 500;
+  color: rgba(255,255,255,.8);
+}
+body[data-page="calendario"] .modal-partido-estado{
+  color: var(--celeste-claro);
+  font-family: var(--font-tit);
+  font-weight: 500;
+  letter-spacing: 1px;
+}
+body[data-page="calendario"] .modal-partido-caja-en-vivo .modal-partido-cabecera{ border-bottom: 0; }
+body[data-page="calendario"] .modal-partido-caja-en-vivo{
+  border-top-width: 0;
+  animation: none;
+  box-shadow: 0 30px 80px rgba(8,16,28,.5), 0 0 0 2px rgba(209,19,46,.55);
+}
+body[data-page="calendario"] .modal-partido-cerrar{
+  top: 14px; right: 14px;
+  z-index: 3;
+  width: 36px; height: 36px;
+  background: rgba(255,255,255,.16);
+  color: #fff;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+body[data-page="calendario"] .modal-partido-cerrar:hover{ background: rgba(255,255,255,.3); }
 body[data-page="calendario"] .modal-partido-cerrar:focus-visible{
-  outline: 2px solid var(--celeste);
+  outline: 2px solid var(--celeste-claro);
   outline-offset: 2px;
+}
+body[data-page="calendario"] .modal-partido-subtitulo{
+  margin: 18px 0 16px;
+  font-family: var(--font-tit);
+  font-size: .78rem;
+  letter-spacing: .9px;
+  text-transform: uppercase;
+  color: var(--texto-suave);
+}
+/* Botones de acción */
+body[data-page="calendario"] .modal-partido-caja .enlace-flashscore,
+body[data-page="calendario"] .modal-partido-caja .enlace-minuto-a-minuto{
+  padding: 12px 22px;
+  margin-top: 10px;
+}
+body[data-page="calendario"] .modal-partido-caja .enlace-flashscore{
+  border-width: 1.5px;
+  background: var(--fondo-alt);
+}
+/* Eventos */
+body[data-page="calendario"] .modal-partido-eventos{ gap: 8px; margin-top: 8px; }
+body[data-page="calendario"] .modal-evento-contenido{
+  border: 1px solid var(--borde);
+  background: var(--fondo-alt);
+  border-radius: 12px;
+  transition: transform .15s, border-color .15s;
+}
+body[data-page="calendario"] .modal-evento-contenido:hover{
+  transform: translateY(-1px);
+  border-color: var(--celeste);
+}
+body[data-page="calendario"] .modal-evento-centro .modal-evento-contenido{
+  border: 0;
+  background: transparent;
+}
+body[data-page="calendario"] .mev-minuto{ font-family: var(--font-tit); letter-spacing: .3px; }
+
+
+/* =========================================================================
+   VISTA DE TABLA (HORARIO): días en columnas, horas a la izquierda
+   ========================================================================= */
+body[data-page="calendario"] .vista-toggle{
+  margin-left: auto;
+  display: inline-flex;
+  gap: 2px;
+  padding: 4px;
+  border: 1px solid var(--borde);
+  border-radius: 999px;
+  background: var(--cal-chip-bg);
+  box-shadow: 0 1px 2px rgba(12,27,46,.06);
+}
+body[data-page="calendario"] .vista-toggle[hidden]{ display: none; }
+body[data-page="calendario"] .vista-toggle button{
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 16px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--texto-suave);
+  font-family: var(--font-tit);
+  font-size: .76rem;
+  letter-spacing: .7px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background .16s, color .16s;
+}
+body[data-page="calendario"] .vista-toggle button svg{ width: 15px; height: 15px; }
+body[data-page="calendario"] .vista-toggle button:hover:not(.activo){ color: var(--marino-texto); }
+body[data-page="calendario"] .vista-toggle button.activo{
+  background: linear-gradient(135deg, var(--marino), var(--marino2));
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(12,27,46,.25);
+}
+[data-theme="dark"] body[data-page="calendario"] .vista-toggle button.activo{
+  background: linear-gradient(135deg, #27406a, #1b2f50);
+}
+body[data-page="calendario"] .vista-toggle button:focus-visible{ outline: 2px solid var(--celeste); outline-offset: 2px; }
+
+body[data-page="calendario"] .hz-sr{
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+body[data-page="calendario"] .horario-wrap{
+  overflow-x: auto;
+  margin-bottom: 36px;
+  border: 1px solid var(--borde);
+  border-radius: 22px;
+  background: var(--tarjeta);
+  box-shadow: 0 2px 4px rgba(12,27,46,.05), 0 14px 36px rgba(12,27,46,.09);
+  animation: calCardIn .4s cubic-bezier(.2,.8,.3,1) both;
+  scrollbar-width: thin;
+}
+body[data-page="calendario"] .horario{
+  width: 100%;
+  min-width: calc(92px + var(--hz-cols, 4) * 184px);
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+/* --- Cabecera: los días --- */
+body[data-page="calendario"] .horario thead th{
+  position: relative;
+  padding: 16px 8px 14px;
+  background: var(--cal-hero-bg);
+  color: #fff;
+  text-align: center;
+  font-weight: 400;
+  border-left: 1px solid rgba(255,255,255,.09);
+}
+body[data-page="calendario"] .horario thead th::before{
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 0%, rgba(91,184,232,.22), transparent 65%);
+}
+body[data-page="calendario"] .horario thead th > *{ position: relative; }
+body[data-page="calendario"] .horario thead th:first-child{ border-top-left-radius: 21px; border-left: 0; }
+body[data-page="calendario"] .horario thead th:last-child{ border-top-right-radius: 21px; }
+body[data-page="calendario"] .hz-dia{ line-height: 1.1; }
+body[data-page="calendario"] .hz-dia > span{ display: block; }
+body[data-page="calendario"] .hz-dia-sem{
+  font-family: var(--font-tit);
+  font-size: .78rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--celeste-claro);
+}
+body[data-page="calendario"] .hz-dia-num{
+  margin: 3px 0 1px;
+  font-family: var(--font-tit);
+  font-size: 2.2rem;
+  font-weight: 700;
+  line-height: 1;
+}
+body[data-page="calendario"] .hz-dia-mes{
+  font-family: var(--font-tit);
+  font-size: .72rem;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  opacity: .8;
+}
+body[data-page="calendario"] .hz-dia-n{
+  display: inline-block !important;
+  margin-top: 9px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.12);
+  font-size: .62rem;
+  letter-spacing: .6px;
+  text-transform: uppercase;
+}
+body[data-page="calendario"] .hz-dia-pendiente .hz-dia-num{ opacity: .55; }
+body[data-page="calendario"] .hz-hoy{ box-shadow: inset 0 -4px 0 var(--rojo); }
+body[data-page="calendario"] .hz-hoy-badge{
+  position: absolute !important;
+  top: 8px; right: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--rojo);
+  font-family: var(--font-tit);
+  font-size: .58rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  box-shadow: 0 2px 8px rgba(209,19,46,.5);
+}
+
+/* --- Esquina y columna izquierda: las horas --- */
+body[data-page="calendario"] .horario thead th.hz-esquina,
+body[data-page="calendario"] .horario tbody th.hz-hora{
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  width: 92px;
+}
+body[data-page="calendario"] .horario thead th.hz-esquina{
+  z-index: 3;
+  display: table-cell;
+  vertical-align: middle;
+  font-family: var(--font-tit);
+  font-size: .72rem;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  color: var(--celeste-claro);
+}
+body[data-page="calendario"] .hz-esquina svg{ display: block; width: 22px; height: 22px; margin: 0 auto 5px; }
+body[data-page="calendario"] .horario tbody th.hz-hora{
+  padding: 18px 8px;
+  vertical-align: top;
+  text-align: center;
+  background: var(--fondo-alt);
+  border-top: 1px solid var(--borde);
+  box-shadow: 1px 0 0 var(--borde);
+}
+body[data-page="calendario"] .hz-hora span{
+  position: sticky;
+  top: calc(var(--cal-header-alto) + 96px);
+  display: inline-block;
+  padding: 6px 11px;
+  border: 1px solid var(--borde);
+  border-left: 3px solid var(--rojo);
+  border-radius: 10px;
+  background: var(--tarjeta);
+  color: var(--marino-texto);
+  font-family: var(--font-tit);
+  font-size: 1.12rem;
+  font-weight: 600;
+  letter-spacing: .8px;
+  box-shadow: 0 2px 6px rgba(12,27,46,.08);
+}
+body[data-page="calendario"] .hz-hora-pendiente span{
+  border-left-color: var(--borde);
+  font-size: .68rem;
+  font-weight: 500;
+  line-height: 1.25;
+  letter-spacing: .6px;
+  text-transform: uppercase;
+  color: var(--texto-suave);
+}
+body[data-page="calendario"] .horario tbody tr:last-child th.hz-hora{ border-bottom-left-radius: 21px; }
+
+/* --- Celdas --- */
+body[data-page="calendario"] .hz-celda{
+  padding: 10px;
+  vertical-align: top;
+  border-top: 1px solid var(--borde);
+  border-left: 1px solid var(--borde);
+}
+body[data-page="calendario"] .horario tbody tr:nth-child(even) .hz-celda{ background: rgba(12,27,46,.022); }
+[data-theme="dark"] body[data-page="calendario"] .horario tbody tr:nth-child(even) .hz-celda{ background: rgba(255,255,255,.025); }
+body[data-page="calendario"] .hz-celda.hz-hoy-col{ background: rgba(209,19,46,.045) !important; }
+body[data-page="calendario"] .hz-vacia{
+  background-image: repeating-linear-gradient(135deg, transparent 0 9px, rgba(12,27,46,.04) 9px 10px);
+}
+[data-theme="dark"] body[data-page="calendario"] .hz-vacia{
+  background-image: repeating-linear-gradient(135deg, transparent 0 9px, rgba(255,255,255,.04) 9px 10px);
+}
+body[data-page="calendario"] .hz-pila{ display: flex; flex-direction: column; gap: 10px; }
+
+/* --- Mini partido --- */
+body[data-page="calendario"] .hz-partido{
+  position: relative;
+  padding: 10px 12px 8px;
+  border: 1px solid var(--borde);
+  border-radius: 14px;
+  background: var(--tarjeta);
+  box-shadow: 0 1px 2px rgba(12,27,46,.06), 0 4px 12px rgba(12,27,46,.05);
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform .16s, box-shadow .16s, border-color .16s;
+}
+body[data-page="calendario"] .hz-partido:hover{
+  transform: translateY(-2px);
+  border-color: var(--celeste);
+  box-shadow: 0 10px 24px rgba(12,27,46,.15);
+}
+body[data-page="calendario"] .hz-partido:active{ transform: scale(.985); }
+body[data-page="calendario"] .hz-partido:focus-visible{ outline: 2px solid var(--celeste); outline-offset: 2px; }
+body[data-page="calendario"] .hz-equipo{
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 4px 0;
+}
+body[data-page="calendario"] .hz-equipo + .hz-equipo{ border-top: 1px solid var(--borde); }
+body[data-page="calendario"] .hz-equipo .escudo{
+  width: 26px; height: 26px;
+  flex-shrink: 0;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 2px rgba(12,27,46,.2));
+}
+body[data-page="calendario"] .hz-nombre{
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-tit);
+  font-size: .95rem;
+  font-weight: 500;
+  letter-spacing: .2px;
+  line-height: 1.15;
+  color: var(--marino-texto);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+body[data-page="calendario"] .hz-goles{
+  flex-shrink: 0;
+  min-width: 22px;
+  padding: 2px 5px;
+  border-radius: 8px;
+  background: var(--fondo-alt);
+  text-align: center;
+  font-family: var(--font-tit);
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--marino-texto);
+  font-variant-numeric: tabular-nums;
+}
+body[data-page="calendario"] .hz-pen{
+  margin-left: 1px;
+  font-family: var(--font-text);
+  font-size: .5rem;
+  font-weight: 500;
+  vertical-align: top;
+  opacity: .8;
+}
+body[data-page="calendario"] .hz-partido[data-ganador="local"] .hz-visitante .hz-nombre,
+body[data-page="calendario"] .hz-partido[data-ganador="visitante"] .hz-local .hz-nombre,
+body[data-page="calendario"] .hz-partido[data-ganador="local"] .hz-visitante .escudo,
+body[data-page="calendario"] .hz-partido[data-ganador="visitante"] .hz-local .escudo{ opacity: .55; }
+body[data-page="calendario"] .hz-partido[data-ganador="local"] .hz-local .hz-nombre,
+body[data-page="calendario"] .hz-partido[data-ganador="visitante"] .hz-visitante .hz-nombre{ font-weight: 700; }
+body[data-page="calendario"] .hz-partido[data-ganador="local"] .hz-local .hz-goles,
+body[data-page="calendario"] .hz-partido[data-ganador="visitante"] .hz-visitante .hz-goles{
+  background: var(--marino);
+  color: #fff;
+}
+[data-theme="dark"] body[data-page="calendario"] .hz-partido[data-ganador="local"] .hz-local .hz-goles,
+[data-theme="dark"] body[data-page="calendario"] .hz-partido[data-ganador="visitante"] .hz-visitante .hz-goles{
+  background: #27406a;
+}
+body[data-page="calendario"] .hz-pie{
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--borde);
+  font-family: var(--font-tit);
+  font-size: .62rem;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+  color: var(--texto-suave);
+  white-space: nowrap;
+  overflow: hidden;
+}
+body[data-page="calendario"] .hz-estado{ display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; font-weight: 600; }
+body[data-page="calendario"] .hz-lugar{ overflow: hidden; text-overflow: ellipsis; }
+body[data-page="calendario"] .hz-partido[data-estado="finalizado"] .hz-estado{ color: var(--marino-texto); }
+body[data-page="calendario"] .hz-partido[data-estado="programado"] .hz-estado{ color: var(--celeste); }
+body[data-page="calendario"] .hz-partido[data-estado="retrasado"]{ border-color: #d99a1b; }
+body[data-page="calendario"] .hz-partido[data-estado="retrasado"] .hz-estado{ color: #b57a00; }
+[data-theme="dark"] body[data-page="calendario"] .hz-partido[data-estado="retrasado"] .hz-estado{ color: #f2c35a; }
+
+body[data-page="calendario"] .hz-en-vivo{
+  border-color: rgba(209,19,46,.45);
+  background: linear-gradient(90deg, rgba(209,19,46,.09), rgba(209,19,46,0) 55%), var(--tarjeta);
+  box-shadow: inset 4px 0 0 var(--rojo), 0 6px 18px rgba(209,19,46,.16);
+}
+body[data-page="calendario"] .hz-en-vivo .hz-estado{ color: var(--rojo); }
+[data-theme="dark"] body[data-page="calendario"] .hz-en-vivo .hz-estado{ color: #ff6b80; }
+body[data-page="calendario"] .hz-en-vivo .hz-goles{ background: linear-gradient(135deg, var(--rojo), var(--rojo-oscuro)); color: #fff; }
+
+body[data-page="calendario"] .hz-partido[data-estado="anulado"]{ border-style: dashed; border-color: rgba(245,179,1,.7); }
+body[data-page="calendario"] .hz-partido[data-estado="anulado"] .hz-estado{ color: #8a5d00; font-weight: 600; }
+[data-theme="dark"] body[data-page="calendario"] .hz-partido[data-estado="anulado"] .hz-estado{ color: #ffd23f; }
+
+@media (max-width: 700px){
+  body[data-page="calendario"] .horario-wrap{ scroll-snap-type: x proximity; scroll-padding-left: 76px; }
+  body[data-page="calendario"] .hz-dia,
+  body[data-page="calendario"] .hz-celda{ scroll-snap-align: start; }
+  body[data-page="calendario"] .hz-hora-pendiente span{ font-size: .56rem; padding: 4px 5px; }
+  body[data-page="calendario"] .vista-toggle{ width: 100%; margin-left: 0; }
+  body[data-page="calendario"] .vista-toggle button{ flex: 1; justify-content: center; }
+  body[data-page="calendario"] .horario{ min-width: calc(76px + var(--hz-cols, 4) * 210px); }
+  body[data-page="calendario"] .horario thead th.hz-esquina,
+  body[data-page="calendario"] .horario tbody th.hz-hora{ width: 76px; }
+  body[data-page="calendario"] .horario tbody th.hz-hora{ padding: 14px 4px; }
+  body[data-page="calendario"] .hz-hora span{ padding: 5px 7px; font-size: .95rem; top: calc(var(--cal-header-alto) + 70px); }
+  body[data-page="calendario"] .hz-dia-num{ font-size: 1.8rem; }
+  body[data-page="calendario"] .horario-wrap{ border-radius: 18px; }
+}
+@media (prefers-reduced-motion: reduce){
+  body[data-page="calendario"] .horario-wrap,
+  body[data-page="calendario"] .hz-partido{ animation: none !important; transition: none !important; }
 }
 
 /* =========================================================================
    RESPONSIVE
    ========================================================================= */
-
-/* Tablet */
 @media (max-width: 860px){
-  body[data-page="calendario"] .calendario-nav{
-    top: 4px;
-  }
+  body[data-page="calendario"]{ --cal-header-alto: 112px; }
 }
 
-/* Móvil grande */
 @media (max-width: 600px){
-  body[data-page="calendario"] .section-title{
-    margin-bottom: 14px;
+  body[data-page="calendario"] .section-title{ margin: 22px 0 16px; border-left-width: 5px; padding-left: 10px; }
+
+  /* Pestañas en una sola línea con scroll horizontal */
+  body[data-page="calendario"] .filtros{
+    margin: 0 -16px 12px;
+    padding: 4px 16px 8px;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
   }
+  body[data-page="calendario"] .filtros::-webkit-scrollbar{ display: none; }
+  body[data-page="calendario"] .filtros button{ padding: 10px 16px; font-size: .76rem; scroll-snap-align: start; }
+  body[data-page="calendario"] .filtros button.activo{ padding-left: 26px; }
+  body[data-page="calendario"] .filtros button.activo::before{ left: 12px; }
+  body[data-page="calendario"] .select-filtro{ width: 100%; }
+
   body[data-page="calendario"] .calendario-nav{
-    padding: 8px 10px;
+    grid-template-columns: auto minmax(0,1fr) auto;
     gap: 6px;
+    padding: 8px;
+    border-radius: 18px;
+    top: calc(var(--cal-header-alto) + 6px);
   }
-  body[data-page="calendario"] .calendario-nav button{
-    padding: 8px 10px;
-    font-size: .78rem;
-    min-width: 0;
-    flex: 0 0 auto;
+  body[data-page="calendario"] .calendario-nav button{ min-width: 0; padding: 10px 14px; font-size: .72rem; }
+  body[data-page="calendario"] .calendario-nav-titulo > span{ font-size: 1.15rem; }
+  body[data-page="calendario"] .calendario-nav-titulo small{ font-size: .62rem; }
+
+  body[data-page="calendario"] .tabla-jornada{ gap: 10px; }
+  body[data-page="calendario"] .partido{ column-gap: 8px; border-radius: 14px; }
+  body[data-page="calendario"] .partido .estado-badge{ padding: 8px 10px; font-size: .64rem; letter-spacing: .5px; }
+  body[data-page="calendario"] .partido .marcador{ min-width: 66px; padding: 8px 10px; font-size: 1.05rem; }
+  body[data-page="calendario"] .partido[data-estado="programado"] .marcador{ min-width: 54px; font-size: .82rem; }
+  body[data-page="calendario"] .partido-aplazado-cinta{ font-size: .66rem; letter-spacing: .4px; padding: 6px; }
+  body[data-page="calendario"] .partido-anulado .marcador{ min-width: 54px; font-size: .82rem; }
+
+  /* Escudo arriba, nombre debajo, centrados */
+  body[data-page="calendario"] .partido .equipo{
+    flex-direction: column;
+    justify-content: center;
+    gap: 7px;
+    padding: 16px 4px;
+    text-align: center;
   }
-  body[data-page="calendario"] .calendario-nav-titulo{
+  body[data-page="calendario"] .partido .equipo-local{ flex-direction: column-reverse; padding-left: 10px; }
+  body[data-page="calendario"] .partido .equipo-visitante{ padding-right: 10px; }
+  body[data-page="calendario"] .partido .escudo{ width: 38px; height: 38px; }
+  body[data-page="calendario"] .partido .nombre-equipo{
     font-size: .86rem;
-  }
-  body[data-page="calendario"] .calendario-nav-titulo small{
-    font-size: .66rem;
-  }
-  body[data-page="calendario"] .partido{
-    padding: 12px 10px;
-    gap: 6px;
-    font-size: .85rem;
-  }
-  body[data-page="calendario"] .partido .escudo{
-    width: 26px;
-    height: 26px;
-  }
-  body[data-page="calendario"] .partido .nombre-equipo{
-    font-size: .82rem;
-  }
-  body[data-page="calendario"] .partido .marcador{
-    min-width: 58px;
-    padding: 6px 8px;
-    font-size: .88rem;
-  }
-  body[data-page="calendario"] #calendarioCont{
-    border-radius: 6px;
-    margin: 0 -4px;
-    width: calc(100% + 8px);
-  }
-}
-
-/* Móvil pequeño: los nombres largos de equipo pueden desbordar el hueco
-   disponible junto al escudo; se reduce aún más y se permite salto en dos
-   líneas en vez de recortarse con puntos suspensivos ilegibles. */
-@media (max-width: 380px){
-  body[data-page="calendario"] .partido{
-    grid-template-columns: 1fr auto 1fr;
-    padding: 10px 6px;
-  }
-  body[data-page="calendario"] .partido .nombre-equipo{
-    font-size: .74rem;
-    white-space: normal;
     line-height: 1.15;
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
-  body[data-page="calendario"] .partido .escudo{
-    width: 22px;
-    height: 22px;
+
+  /* Modal tipo "hoja" inferior */
+  body[data-page="calendario"] .modal-partido-caja{
+    padding: 0 16px 26px;
+    border-radius: 24px 24px 0 0;
+    max-height: 92vh;
   }
-  body[data-page="calendario"] .partido .marcador{
-    min-width: 48px;
-    font-size: .8rem;
-    padding: 5px 6px;
+  body[data-page="calendario"] .modal-partido-cabecera{
+    margin: 0 -16px 0;
+    padding: 34px 14px 20px;
+    gap: 8px;
   }
+  body[data-page="calendario"] .modal-partido-caja::before{
+    content: "";
+    position: sticky;
+    top: 8px;
+    display: block;
+    width: 42px; height: 4px;
+    margin: 8px auto -12px;
+    border-radius: 4px;
+    background: rgba(255,255,255,.4);
+    z-index: 4;
+  }
+  body[data-page="calendario"] .modal-partido-escudo{ width: 50px; height: 50px; }
+  body[data-page="calendario"] .modal-partido-nombre{ font-size: .84rem; }
+  body[data-page="calendario"] .modal-partido-marcador span:first-child{ font-size: 1.5rem; padding: 6px 14px; }
 }
 
-/* Accesibilidad: respeta la preferencia de reducir movimiento */
+@media (max-width: 380px){
+  body[data-page="calendario"] .calendario-nav button{ padding: 9px 10px; font-size: .66rem; }
+  body[data-page="calendario"] .partido .nombre-equipo{ font-size: .78rem; }
+  body[data-page="calendario"] .partido .escudo{ width: 32px; height: 32px; }
+  body[data-page="calendario"] .partido .marcador{ min-width: 56px; font-size: .95rem; padding: 7px 8px; }
+}
+
+/* Accesibilidad: sin movimiento si el usuario lo prefiere */
 @media (prefers-reduced-motion: reduce){
   body[data-page="calendario"] .partido,
   body[data-page="calendario"] .partido .escudo,
-  body[data-page="calendario"] .select-filtro,
-  body[data-page="calendario"] .modal-partido-escudo{
-    transition: none;
+  body[data-page="calendario"] .filtros button,
+  body[data-page="calendario"] .calendario-nav button,
+  body[data-page="calendario"] .modal-partido-escudo,
+  body[data-page="calendario"] .modal-evento-contenido{
+    animation: none !important;
+    transition: none !important;
   }
+}
+
+/* ---------- Partidazo de la jornada (calendario) ---------- */
+body[data-page="calendario"] .partidazo-cinta{ order: -2; margin: 0; padding: 8px 16px; }
+body[data-page="calendario"] .partido-partidazo{
+  border-color: var(--pz-oro, #f5b301);
+  background: linear-gradient(180deg, rgba(245,179,1,.12), var(--tarjeta) 55%);
+  box-shadow: 0 0 0 1px rgba(245,179,1,.55), 0 8px 22px var(--pz-halo, rgba(245,179,1,.22));
+  overflow: hidden;
+}
+body[data-page="calendario"] .partido-partidazo:hover{
+  background: linear-gradient(180deg, rgba(245,179,1,.18), var(--tarjeta) 55%);
+  border-color: var(--pz-oro-vivo, #ffd23f);
+  box-shadow: 0 0 0 1px var(--pz-oro-vivo, #ffd23f), 0 12px 30px var(--pz-halo, rgba(245,179,1,.32));
+  transform: translateY(-1px);
+}
+/* Vista de tabla (horario): el mini-partido no lleva cinta, así que se
+   marca con la misma barra dorada y un velo suave, en claro y oscuro. */
+body[data-page="calendario"] .hz-partido[data-partidazo="1"]{
+  border-color: var(--pz-oro, #f5b301);
+  background: linear-gradient(135deg, rgba(245,179,1,.16), transparent 70%);
+  box-shadow: inset 3px 0 0 var(--pz-oro, #f5b301), 0 4px 12px -4px var(--pz-halo, rgba(245,179,1,.3));
+}
+@media (max-width: 560px){ body[data-page="calendario"] .partidazo-cinta{ padding: 7px 10px; } }
+@media (prefers-reduced-motion: reduce){
+  body[data-page="calendario"] .partido-partidazo:hover{ transform: none; }
+}
+
+/* ---------- Añadir a mi calendario (.ics) ---------- */
+body[data-page="calendario"] .cal-export{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+  margin: -6px 0 20px;
+  padding: 10px 14px;
+  border-radius: 16px;
+  border: 1px dashed var(--borde);
+  background: var(--tarjeta);
+}
+body[data-page="calendario"] .cal-export[hidden]{ display: none; }
+body[data-page="calendario"] .cal-export-icono{
+  width: 22px;
+  height: 22px;
+  flex: none;
+  color: var(--celeste);
+}
+body[data-page="calendario"] .cal-export-etiqueta{
+  font-family: var(--font-tit);
+  font-weight: 500;
+  font-size: .8rem;
+  letter-spacing: .6px;
+  text-transform: uppercase;
+  color: var(--marino-texto);
+}
+body[data-page="calendario"] .cal-export .select-filtro{
+  flex: 1 1 220px;
+  min-width: 0;
+  max-width: 340px;
+}
+body[data-page="calendario"] .cal-export-btn{
+  min-height: 44px;
+  padding: 10px 20px;
+  border-radius: 999px;
+  border: 1px solid var(--marino);
+  background: var(--marino);
+  color: #fff;
+  font-family: var(--font-tit);
+  font-weight: 500;
+  font-size: .8rem;
+  letter-spacing: .6px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background .16s, transform .16s, box-shadow .16s;
+}
+[data-theme="dark"] body[data-page="calendario"] .cal-export-btn{
+  background: #27406a;
+  border-color: rgba(91,184,232,.5);
+}
+body[data-page="calendario"] .cal-export-btn:hover{
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(12,27,46,.25);
+}
+body[data-page="calendario"] .cal-export-btn:active{ transform: scale(.97); }
+body[data-page="calendario"] .cal-export-btn:focus-visible{ outline: 2px solid var(--celeste); outline-offset: 2px; }
+body[data-page="calendario"] .cal-export-msg{
+  flex-basis: 100%;
+  color: var(--texto-suave);
+  font-size: .8rem;
+}
+body[data-page="calendario"] .cal-export-msg:empty{ display: none; }
+@media (max-width: 560px){
+  body[data-page="calendario"] .cal-export{ padding: 12px; }
+  body[data-page="calendario"] .cal-export-etiqueta{ flex: 1 1 calc(100% - 40px); }
+  body[data-page="calendario"] .cal-export .select-filtro{ flex-basis: 100%; max-width: none; }
+  body[data-page="calendario"] .cal-export-btn{ width: 100%; }
+}
+@media (prefers-reduced-motion: reduce){
+  body[data-page="calendario"] .cal-export-btn:hover{ transform: none; }
+}
+
+
+/* =========================================================================
+   v7 — Utilidad de jornadas: tira de jornadas, resumen, filtro por equipo,
+   cabeceras de día, esqueleto de carga, impresión y pulido general.
+   ========================================================================= */
+body[data-page="calendario"]{
+  --cal-verde: #1f9d55;
+  --cal-ambar: #d99a1b;
+  --cal-derrota: var(--rojo);
+  --cal-sombra-suave: 0 1px 2px rgba(12,27,46,.05), 0 6px 18px rgba(12,27,46,.06);
+}
+[data-theme="dark"] body[data-page="calendario"]{
+  --cal-verde: #3ecf7e;
+  --cal-ambar: #f2c35a;
+  --cal-derrota: #ff6b80;
+}
+
+/* ---------- Pulido general ---------- */
+body[data-page="calendario"] .partido,
+body[data-page="calendario"] .hz-partido{ scroll-margin-top: calc(var(--cal-header-alto) + 96px); }
+body[data-page="calendario"] .partido .nombre-equipo,
+body[data-page="calendario"] .hz-nombre{ text-wrap: balance; overflow-wrap: anywhere; }
+body[data-page="calendario"] .partido .estado-badge{ text-wrap: balance; }
+body[data-page="calendario"] .filtros button,
+body[data-page="calendario"] .vista-toggle button,
+body[data-page="calendario"] .calendario-nav button,
+body[data-page="calendario"] .cal-accion,
+body[data-page="calendario"] .cal-toggle-btn,
+body[data-page="calendario"] .cal-chip{ -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+body[data-page="calendario"] .calendario-nav{ margin-bottom: 10px; }
+body[data-page="calendario"] .cal-export{ margin-top: 0; }
+body[data-page="calendario"] .calendario-nav-titulo > span{ font-variant-numeric: tabular-nums; }
+
+/* Fila de filtros secundarios: grupo · equipo · temporada · vista */
+body[data-page="calendario"] .filtros-secundarios{ gap: 10px 12px; }
+body[data-page="calendario"] .filtros-secundarios .select-filtro{ max-width: min(100%, 300px); text-overflow: ellipsis; }
+body[data-page="calendario"] .select-filtro:focus-visible{ border-color: var(--celeste); }
+
+body[data-page="calendario"] .cal-toggle-btn{
+  min-height: 44px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  border: 1px solid var(--borde);
+  background: var(--cal-chip-bg);
+  color: var(--marino-texto);
+  font-family: var(--font-tit);
+  font-size: .8rem;
+  font-weight: 500;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+  box-shadow: 0 1px 2px rgba(12,27,46,.06);
+  cursor: pointer;
+  transition: background .16s, color .16s, border-color .16s, box-shadow .16s;
+}
+body[data-page="calendario"] .cal-toggle-btn[hidden]{ display: none; }
+body[data-page="calendario"] .cal-toggle-btn:hover{ border-color: var(--celeste); }
+body[data-page="calendario"] .cal-toggle-btn[aria-pressed="true"]{
+  background: linear-gradient(135deg, var(--marino), var(--marino2));
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(12,27,46,.25);
+}
+[data-theme="dark"] body[data-page="calendario"] .cal-toggle-btn[aria-pressed="true"]{
+  background: linear-gradient(135deg, #27406a, #1b2f50);
+  border-color: rgba(91,184,232,.45);
+}
+body[data-page="calendario"] .cal-toggle-btn:focus-visible{ outline: 2px solid var(--celeste); outline-offset: 3px; }
+
+/* ---------- Tira de jornadas ---------- */
+body[data-page="calendario"] .cal-tira{
+  position: relative;
+  display: flex;
+  gap: 8px;
+  margin: 0 0 6px;
+  padding: 6px 4px 9px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+  scrollbar-color: var(--borde) transparent;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
+}
+body[data-page="calendario"] .cal-tira[hidden]{ display: none; }
+body[data-page="calendario"] .cal-chip{
+  position: relative;
+  flex: 0 0 auto;
+  min-width: 44px;
+  height: 42px;
+  padding: 0 11px;
+  border-radius: 13px;
+  border: 1px solid var(--borde);
+  background: var(--cal-chip-bg);
+  color: var(--marino-texto);
+  font-family: var(--font-tit);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: .3px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  scroll-snap-align: center;
+  transition: transform .16s, border-color .16s, background .16s, color .16s, box-shadow .16s;
+}
+/* Puntito de estado bajo el número */
+body[data-page="calendario"] .cal-chip::after{
+  content: "";
+  position: absolute;
+  left: 50%; bottom: 5px;
+  width: 6px; height: 6px;
+  margin-left: -3px;
+  border-radius: 50%;
+  border: 1.5px solid var(--texto-suave);
+  background: transparent;
+  opacity: .8;
+}
+body[data-page="calendario"] .cal-chip[data-estado="completa"]::after{ background: var(--texto-suave); }
+body[data-page="calendario"] .cal-chip[data-estado="parcial"]::after{
+  background: linear-gradient(90deg, var(--texto-suave) 50%, transparent 50%);
+}
+body[data-page="calendario"] .cal-chip[data-estado="vivo"]::after{
+  border-color: var(--rojo);
+  background: var(--rojo);
+  opacity: 1;
+  animation: calPulso 1.4s ease-in-out infinite;
+}
+/* Con equipo elegido, el punto pasa a ser su resultado (G / E / P) */
+body[data-page="calendario"] .cal-chip[data-res="g"]::after{ background: var(--cal-verde); border-color: var(--cal-verde); opacity: 1; }
+body[data-page="calendario"] .cal-chip[data-res="e"]::after{ background: var(--cal-ambar); border-color: var(--cal-ambar); opacity: 1; }
+body[data-page="calendario"] .cal-chip[data-res="p"]::after{ background: var(--cal-derrota); border-color: var(--cal-derrota); opacity: 1; }
+/* Marca de "jornada actual" */
+body[data-page="calendario"] .cal-chip[data-actual="1"]{ border-color: var(--rojo); }
+body[data-page="calendario"] .cal-chip[data-actual="1"]::before{
+  content: "";
+  position: absolute;
+  top: -4px; left: 50%;
+  width: 14px; height: 4px;
+  margin-left: -7px;
+  border-radius: 0 0 4px 4px;
+  background: var(--rojo);
+}
+@media (hover: hover){
+  body[data-page="calendario"] .cal-chip:hover:not([aria-current="true"]){
+    transform: translateY(-2px);
+    border-color: var(--celeste);
+    box-shadow: 0 6px 14px rgba(12,27,46,.12);
+  }
+}
+body[data-page="calendario"] .cal-chip:active{ transform: scale(.95); }
+body[data-page="calendario"] .cal-chip[aria-current="true"]{
+  background: linear-gradient(135deg, var(--marino), var(--marino2));
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(12,27,46,.28);
+}
+body[data-page="calendario"] .cal-chip[aria-current="true"]::after{ border-color: #fff; opacity: 1; }
+body[data-page="calendario"] .cal-chip[aria-current="true"][data-estado="completa"]::after{ background: #fff; }
+body[data-page="calendario"] .cal-chip[aria-current="true"][data-estado="parcial"]::after{ background: linear-gradient(90deg, #fff 50%, transparent 50%); }
+body[data-page="calendario"] .cal-chip[aria-current="true"][data-res]::after{ box-shadow: 0 0 0 2px rgba(255,255,255,.9); }
+[data-theme="dark"] body[data-page="calendario"] .cal-chip[aria-current="true"]{
+  background: linear-gradient(135deg, #27406a, #1b2f50);
+  border-color: rgba(91,184,232,.5);
+}
+body[data-page="calendario"] .cal-chip:focus-visible{ outline: 2px solid var(--celeste); outline-offset: 2px; }
+@keyframes calPulso{
+  0%, 100%{ box-shadow: 0 0 0 0 rgba(209,19,46,.5); }
+  50%{ box-shadow: 0 0 0 5px rgba(209,19,46,0); }
+}
+
+/* ---------- Resumen de la jornada ---------- */
+body[data-page="calendario"] .cal-resumen{
+  display: grid;
+  grid-template-columns: minmax(0,1fr) auto;
+  align-items: center;
+  gap: 8px 16px;
+  position: relative;
+  overflow: hidden;
+  margin: 0 0 14px;
+  padding: 11px 16px 15px;
+  border: 1px solid var(--borde);
+  border-radius: 18px;
+  background: var(--tarjeta);
+  box-shadow: var(--cal-sombra-suave);
+}
+body[data-page="calendario"] .cal-resumen[hidden]{ display: none; }
+body[data-page="calendario"] .cal-resumen-datos{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  min-width: 0;
+}
+body[data-page="calendario"] .cal-dato{
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  min-width: 0;
+}
+body[data-page="calendario"] .cal-dato b{
+  font-family: var(--font-tit);
+  font-size: 1.2rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: .3px;
+  font-variant-numeric: tabular-nums;
+  color: var(--marino-texto);
+}
+body[data-page="calendario"] .cal-dato em{
+  font-style: normal;
+  font-family: var(--font-tit);
+  font-size: .66rem;
+  font-weight: 500;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+  color: var(--texto-suave);
+}
+body[data-page="calendario"] .cal-dato-vivo b{ color: var(--rojo); display: inline-flex; align-items: center; gap: 6px; }
+[data-theme="dark"] body[data-page="calendario"] .cal-dato-vivo b{ color: #ff6b80; }
+body[data-page="calendario"] .cal-dato-equipo b{
+  color: var(--marino-texto);
+  padding-bottom: 3px;
+  border-bottom: 3px solid var(--celeste);
+}
+body[data-page="calendario"] .cal-resumen-acciones{ display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+body[data-page="calendario"] .cal-accion{
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--borde);
+  background: var(--fondo-alt);
+  color: var(--marino-texto);
+  font-family: var(--font-tit);
+  font-size: .72rem;
+  font-weight: 500;
+  letter-spacing: .6px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background .16s, color .16s, border-color .16s;
+}
+body[data-page="calendario"] .cal-accion[hidden]{ display: none; }
+body[data-page="calendario"] .cal-accion svg{ width: 15px; height: 15px; flex: none; }
+body[data-page="calendario"] .cal-accion:hover{ border-color: var(--celeste); }
+body[data-page="calendario"] .cal-accion:focus-visible{ outline: 2px solid var(--celeste); outline-offset: 2px; }
+body[data-page="calendario"] #btnJornadaActual{
+  border-color: var(--rojo);
+  color: var(--rojo);
+  background: transparent;
+}
+[data-theme="dark"] body[data-page="calendario"] #btnJornadaActual{ color: #ff6b80; border-color: #ff6b80; }
+body[data-page="calendario"] #btnJornadaActual:hover{ background: var(--rojo); color: #fff; }
+
+/* La barra de progreso es el filo inferior de la tarjeta (no ocupa fila) */
+body[data-page="calendario"] .cal-progreso{
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 4px;
+  background: var(--fondo-alt);
+  overflow: hidden;
+}
+body[data-page="calendario"] .cal-progreso[hidden]{ display: none; }
+body[data-page="calendario"] .cal-progreso > span{
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--celeste), var(--marino2));
+  transition: width .45s cubic-bezier(.2,.8,.3,1);
+}
+body[data-page="calendario"] .cal-compartir-msg{
+  grid-column: 1 / -1;
+  margin: -2px 0 0;
+  font-size: .78rem;
+  color: var(--texto-suave);
+}
+body[data-page="calendario"] .cal-compartir-msg:empty{ display: none; }
+
+/* ---------- Cabeceras de día / de jornada en la lista ---------- */
+body[data-page="calendario"] .tabla-jornada > .cal-dia-titulo{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 14px 2px 0;
+  font-family: var(--font-tit);
+  font-size: .86rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--marino-texto);
+}
+body[data-page="calendario"] .tabla-jornada > .cal-dia-titulo:first-child{ margin-top: 0; }
+body[data-page="calendario"] .tabla-jornada > .cal-dia-titulo::after{
+  content: "";
+  order: 3;
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--borde), transparent);
+}
+body[data-page="calendario"] .tabla-jornada > .cal-dia-titulo small{
+  order: 2;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--fondo-alt);
+  border: 1px solid var(--borde);
+  font-size: .62rem;
+  font-weight: 500;
+  letter-spacing: .6px;
+  color: var(--texto-suave);
+}
+body[data-page="calendario"] .tabla-jornada > .cal-dia-hoy{ color: var(--rojo); }
+[data-theme="dark"] body[data-page="calendario"] .tabla-jornada > .cal-dia-hoy{ color: #ff6b80; }
+body[data-page="calendario"] .tabla-jornada > .cal-dia-hoy small{
+  background: var(--rojo);
+  border-color: var(--rojo);
+  color: #fff;
+}
+body[data-page="calendario"] .tabla-jornada > .cal-jornada-titulo{ border-left: 4px solid var(--rojo); padding-left: 10px; }
+
+/* ---------- Filtro por equipo ---------- */
+body[data-page="calendario"] .cal-con-equipo .partido:not([data-mio]),
+body[data-page="calendario"] .cal-con-equipo .hz-partido:not([data-mio]){ opacity: .5; }
+body[data-page="calendario"] .cal-con-equipo .partido:not([data-mio]):hover,
+body[data-page="calendario"] .cal-con-equipo .partido:not([data-mio]):focus-visible,
+body[data-page="calendario"] .cal-con-equipo .hz-partido:not([data-mio]):hover,
+body[data-page="calendario"] .cal-con-equipo .hz-partido:not([data-mio]):focus-visible{ opacity: 1; }
+body[data-page="calendario"] .cal-con-equipo .partido[data-mio],
+body[data-page="calendario"] .cal-con-equipo .hz-partido[data-mio]{
+  border-color: var(--celeste);
+  box-shadow: 0 0 0 1px var(--celeste), 0 10px 26px rgba(91,184,232,.22);
+}
+/* En la vista de toda la temporada TODOS son del equipo: sin atenuar */
+body[data-page="calendario"] .cal-temporada .partido{ opacity: 1 !important; }
+body[data-page="calendario"] .cal-temporada .partido[data-mio]{ box-shadow: var(--cal-sombra-suave); border-color: var(--borde); }
+body[data-page="calendario"] .cal-temporada .partido[data-mio]:hover{ border-color: var(--celeste); }
+/* Próximo partido del equipo (la 2ª regla gana a la de .cal-temporada) */
+body[data-page="calendario"] .partido[data-proximo="1"],
+body[data-page="calendario"] .cal-temporada .partido[data-mio][data-proximo="1"]{
+  border-color: var(--celeste);
+  box-shadow: 0 0 0 2px var(--celeste), 0 12px 30px rgba(91,184,232,.25);
+}
+body[data-page="calendario"] .partido[data-proximo="1"]::before{
+  content: "Próximo partido";
+  position: absolute;
+  top: 0; right: 0;
+  z-index: 2;
+  padding: 3px 12px 4px;
+  border-radius: 0 0 0 10px;
+  background: var(--celeste);
+  color: #08213a;
+  font-family: var(--font-tit);
+  font-size: .6rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* ---------- Esqueleto de carga ---------- */
+body[data-page="calendario"] .cal-esqueleto{ pointer-events: none; }
+body[data-page="calendario"] .cal-esqueleto-tarjeta{
+  display: grid;
+  grid-template-columns: minmax(0,1fr) 88px minmax(0,1fr);
+  align-items: center;
+  gap: 16px;
+  height: 118px;
+  padding: 0 24px;
+  border: 1px solid var(--borde);
+  border-radius: var(--cal-radio);
+  background: var(--tarjeta);
+  overflow: hidden;
+}
+body[data-page="calendario"] .cal-esqueleto-tarjeta > i{
+  display: block;
+  height: 20px;
+  border-radius: 10px;
+  background: linear-gradient(90deg, var(--fondo-alt) 25%, var(--borde) 50%, var(--fondo-alt) 75%);
+  background-size: 220% 100%;
+  animation: calBrillo 1.3s linear infinite;
+}
+body[data-page="calendario"] .cal-esqueleto-tarjeta > i:nth-child(2){ height: 40px; border-radius: 12px; }
+body[data-page="calendario"] .cal-esqueleto-tarjeta:nth-child(2) > i{ animation-delay: .1s; }
+body[data-page="calendario"] .cal-esqueleto-tarjeta:nth-child(3) > i{ animation-delay: .2s; }
+body[data-page="calendario"] .cal-esqueleto-tarjeta:nth-child(4) > i{ animation-delay: .3s; }
+@keyframes calBrillo{ from{ background-position: 120% 0; } to{ background-position: -120% 0; } }
+
+/* ---------- Tabla: pulido ---------- */
+body[data-page="calendario"] .horario tbody tr:hover .hz-hora span{ border-left-color: var(--celeste); }
+body[data-page="calendario"] .hz-celda{ transition: background .15s; }
+body[data-page="calendario"] .hz-partido:focus-visible{ border-color: var(--celeste); }
+body[data-page="calendario"] .hz-nombre{ font-variant-ligatures: none; }
+body[data-page="calendario"] .horario-wrap{ overscroll-behavior-x: contain; }
+
+/* ---------- Dispositivos táctiles: sin "hover pegajoso" ---------- */
+@media (hover: none){
+  body[data-page="calendario"] .partido:hover,
+  body[data-page="calendario"] .partido-partidazo:hover,
+  body[data-page="calendario"] .hz-partido:hover,
+  body[data-page="calendario"] .filtros button:hover:not(.activo),
+  body[data-page="calendario"] .cal-export-btn:hover,
+  body[data-page="calendario"] .calendario-nav button:hover:not(:disabled){ transform: none; }
+  body[data-page="calendario"] .partido:hover .escudo{ transform: none; }
+  body[data-page="calendario"] .calendario-nav button:hover:not(:disabled){
+    background: var(--fondo-alt);
+    border-color: var(--borde);
+    color: var(--marino-texto);
+    box-shadow: none;
+  }
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 700px){
+  body[data-page="calendario"] .filtros-secundarios .select-filtro,
+  body[data-page="calendario"] .cal-toggle-btn{ flex: 1 1 100%; max-width: none; }
+  body[data-page="calendario"] .cal-resumen{ grid-template-columns: 1fr; padding: 11px 14px 14px; }
+  body[data-page="calendario"] .cal-resumen-acciones{ justify-content: flex-start; }
+  body[data-page="calendario"] .cal-resumen-datos{ gap: 8px 18px; }
+  body[data-page="calendario"] .cal-tira{ margin-left: -16px; margin-right: -16px; padding-left: 16px; padding-right: 16px; }
+  body[data-page="calendario"] .cal-esqueleto-tarjeta{ grid-template-columns: minmax(0,1fr) 60px minmax(0,1fr); gap: 10px; padding: 0 14px; height: 104px; }
+}
+@media (max-width: 380px){
+  body[data-page="calendario"] .cal-chip{ min-width: 40px; height: 40px; padding: 0 8px; }
+  body[data-page="calendario"] .cal-dato b{ font-size: 1.05rem; }
+}
+
+/* ---------- Movimiento reducido ---------- */
+@media (prefers-reduced-motion: reduce){
+  body[data-page="calendario"] .cal-chip,
+  body[data-page="calendario"] .cal-progreso > span,
+  body[data-page="calendario"] .cal-accion,
+  body[data-page="calendario"] .cal-toggle-btn{ transition: none !important; }
+  body[data-page="calendario"] .cal-chip[data-estado="vivo"]::after,
+  body[data-page="calendario"] .cal-esqueleto-tarjeta > i{ animation: none !important; }
+}
+
+/* ---------- Impresión: la jornada en limpio, sin controles ---------- */
+@media print{
+  body[data-page="calendario"]{ background: #fff !important; }
+  body[data-page="calendario"] .main-header,
+  body[data-page="calendario"] #site-header,
+  body[data-page="calendario"] #site-footer,
+  body[data-page="calendario"] .filtros,
+  body[data-page="calendario"] .filtros-secundarios,
+  body[data-page="calendario"] .calendario-nav button,
+  body[data-page="calendario"] .cal-tira,
+  body[data-page="calendario"] .cal-resumen-acciones,
+  body[data-page="calendario"] .cal-export,
+  body[data-page="calendario"] .modal-partido{ display: none !important; }
+  body[data-page="calendario"] .calendario-nav{ position: static; box-shadow: none; border: 0; background: none; display: block; text-align: center; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  body[data-page="calendario"] .partido,
+  body[data-page="calendario"] .hz-partido,
+  body[data-page="calendario"] .cal-resumen{ break-inside: avoid; box-shadow: none !important; animation: none !important; opacity: 1 !important; }
+  body[data-page="calendario"] .horario-wrap{ overflow: visible; box-shadow: none; }
+  body[data-page="calendario"] .horario{ min-width: 0; }
 }

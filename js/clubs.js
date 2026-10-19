@@ -171,7 +171,7 @@ const CLUBS_BY_CATEGORY = {
     "UD San Sebastián de los Reyes",
     "UD Tamaraceite",
     "UE Olot",
-    "Utebo",
+    "Utebo FC",
     "Valencia Mestalla",
     "Xerez CD",
     "Yeclano Deportivo",
@@ -180,7 +180,7 @@ const CLUBS_BY_CATEGORY = {
 
 // ---------- Clubes de Segunda Federación cubiertos editorialmente ----------
 // De los 90 clubes de Segunda RFEF (arriba), ElOtroFútbol solo cubre
-// estos 7 con noticias/crónicas. Es la única lista que debe consultarse
+// estos 9 con noticias/crónicas. Es la única lista que debe consultarse
 // para decidir qué partidos de Segunda Federación aparecen en "Próximos
 // partidos" de portada (ver filtrarParaPortada() en main.js): el resto
 // de los 90 solo deben verse en Calendario y Clasificación, nunca en
@@ -195,6 +195,8 @@ const CLUBS_SEGUNDA_FEDERACION_CUBIERTOS_PORTADA = [
   "Recreativo de Huelva",
   "CF Talavera de la Reina",
   "CD Badajoz",
+  "Utebo FC",
+  "Reus FC Reddis",
 ];
 
 // ---------- LOS 90 CLUBES DE SEGUNDA FEDERACIÓN (5 GRUPOS COMPLETOS) ----------
@@ -211,7 +213,7 @@ const CLUBS_SEGUNDA_FEDERACION_CUBIERTOS_PORTADA = [
 //     referencia para dar de alta partidos en el panel de admin con el
 //     nombre "oficial" correcto de cada equipo.
 //   - Escudos (getEscudoUrl más abajo): el nombre de cada club aquí usa
-//     el mismo formato que ya usan los 7 clubes cubiertos (sin
+//     el mismo formato que ya usan los 9 clubes cubiertos (sin
 //     "de Soria", sin comillas raras, con tildes), para que
 //     slugEquipo(nombre) dé el nombre de archivo esperado en
 //     img/escudos/. Si un partido se guarda en el panel con un nombre
@@ -254,7 +256,7 @@ const TODOS_LOS_CLUBES_SEGUNDA_FEDERACION = {
     "UE Olot",                       // ue-olot.png
     "CD Ebro",                       // cd-ebro.png
     "Peña Sport",                    // pena-sport.png
-    "Utebo",                         // utebo.png
+    "Utebo FC",                      // utebo-fc.png
     "Reus FC Reddis",                // reus-fc-reddis.png
     "Atlético Osasuna B",            // atletico-osasuna-b.png
     "SD Logroñés",                   // sd-logrones.png
@@ -332,19 +334,137 @@ const TODOS_LOS_CLUBES_SEGUNDA_FEDERACION = {
 // comprobar pertenencia sin tener que recorrer el objeto por grupos.
 const TODOS_LOS_CLUBES_SEGUNDA_FEDERACION_PLANO = Object.values(TODOS_LOS_CLUBES_SEGUNDA_FEDERACION).flat();
 
-// Devuelve el grupo oficial ("Grupo 1".."Grupo 5") de un club de
-// Segunda Federación a partir de TODOS_LOS_CLUBES_SEGUNDA_FEDERACION, o
-// null si no se reconoce el nombre (por ejemplo, si en el panel se ha
-// guardado con una grafía distinta a la de esta lista). Útil para
-// futuras pantallas (p.ej. la ficha de un club) que quieran mostrar en
-// qué grupo juega sin depender de que el campo "grupo" del partido esté
-// siempre bien puesto en la base de datos.
-function grupoSegundaFederacionDeClub(nombreEquipo) {
-  for (const [grupo, equipos] of Object.entries(TODOS_LOS_CLUBES_SEGUNDA_FEDERACION)) {
-    if (equipos.includes(nombreEquipo)) return grupo;
-  }
-  return null;
-}
+// ---------- Clubes de la Copa del Rey 2025/26 ----------
+// Todos los clubes que aparecen en la lista de emparejamientos de la
+// Copa del Rey 25/26 (4 bloques de cruces), ordenados alfabéticamente.
+// Se usan nombres tal cual están ya en CLUBS_BY_CATEGORY / Segunda
+// Federación cuando el club ya existía (para que escudos, fichas y
+// noticias ya guardadas sigan coincidiendo); el resto se dan de alta
+// aquí con su nombre habitual. Los cruces "A/B" del sorteo (AE Prat /
+// San Rafael y Atlético Güímar / Sporting Hortaleza) se han separado en
+// dos clubes cada uno.
+// OJO: esta lista NO está en CLUBS_BY_CATEGORY a propósito: así no
+// entra en el buscador de clubes, el comparador ni la importación
+// rápida (que recorren CLUBS_BY_CATEGORY y duplicarían clubes ya
+// existentes en Hypermotion/Primera/Segunda). Solo la devuelve
+// getClubsForCategoria("copa_del_rey"), que es lo que alimenta el
+// desplegable "Club" del panel de administración.
+const CLUBS_COPA_DEL_REY = [
+  "AD Ceuta FC",
+  "AE Prat",
+  "Águilas FC",
+  "Albacete Balompié",
+  "Anaitasuna",
+  "Antequera CF",
+  "Arosa SC",
+  "Athletic Club",
+  "Atlético Calatayud",
+  "Atlético Güímar",
+  "Atlético Tordesillas",
+  "Auriense",
+  "Barakaldo CF",
+  "Burgos CF",
+  "CA Osasuna",
+  "Cádiz CF",
+  "Calvo Sotelo Puertollano",
+  "CD Alcoyano",
+  "CD Atlético Baleares",
+  "CD Atlético Paso",
+  "CD Badajoz",
+  "CD Castellón",
+  "CD Cieza",
+  "CD Ciudad de Lucena",
+  "CD Coria",
+  "CD Don Benito",
+  "CD Eldense",
+  "CD Extremadura",
+  "CD Leganés",
+  "CD Minera",
+  "CD Mirandés",
+  "CD Numancia",
+  "CD Pamplona",
+  "CD Tenerife",
+  "CD Tudelano",
+  "CDA Navalcarnero",
+  "CE Europa",
+  "CE Manresa",
+  "CE Sabadell",
+  "Celta de Vigo",
+  "CF Calamocha",
+  "CF Rayo Majadahonda",
+  "Club Portugalete",
+  "Córdoba CF",
+  "Coruxo",
+  "Covadonga",
+  "Cuarte",
+  "Cultural Leonesa",
+  "Deportivo Alavés",
+  "Elche CF",
+  "FC Andorra",
+  "FC Cartagena",
+  "Getafe CF",
+  "Gimnástica Segoviana",
+  "Girona FC",
+  "Granada CF",
+  "Guijuelo",
+  "Laredo",
+  "Levante UD",
+  "Málaga CF",
+  "Manacor",
+  "Mijas",
+  "Peña Sport",
+  "Pinatar",
+  "Poblense",
+  "Pontevedra CF",
+  "Racing de Santander",
+  "Rayo Vallecano",
+  "RC Deportivo",
+  "RCD Espanyol",
+  "RCD Mallorca",
+  "Real Ávila",
+  "Real Betis",
+  "Real Jaén CF",
+  "Real Oviedo",
+  "Real Sporting",
+  "Real Unión Club",
+  "Real Valladolid CF",
+  "Real Zaragoza",
+  "Recreativo de Huelva",
+  "Reus FC Reddis",
+  "Ribadesella",
+  "RS Gimnástica de Torrelavega",
+  "RSD Alcalá",
+  "Salamanca UDS",
+  "San Rafael",
+  "SD Amorebieta",
+  "SD Eibar",
+  "SD Huesca",
+  "SD Ponferradina",
+  "Sestao River",
+  "Sevilla FC",
+  "Sporting Alcázar",
+  "Sporting Hortaleza",
+  "Tarancón",
+  "Tavernes",
+  "Trival Valderas",
+  "UB Conquense",
+  "UB Lebrijana",
+  "UD Almería",
+  "UD Castellonense",
+  "UD Las Palmas",
+  "UD Llanera",
+  "UD Logroñés",
+  "UD Ourense",
+  "UD San Sebastián de los Reyes",
+  "UE Sant Andreu",
+  "Unionistas de Salamanca CF",
+  "Utebo FC",
+  "Valencia CF",
+  "Varea",
+  "Villarreal CF",
+  "Xerez CD",
+  "Zamora CF",
+];
 
 // Devuelve el listado de clubes de una categoría (p.ej. "hypermotion",
 // "primera_federacion", "segunda_federacion"). Si la categoría no existe
@@ -355,7 +475,13 @@ function grupoSegundaFederacionDeClub(nombreEquipo) {
 // Incluye también los clubes "personalizados" (ver más abajo) que se
 // hayan cargado para esa categoría desde el servidor.
 function getClubsForCategoria(categoria) {
-  const fijos = CLUBS_BY_CATEGORY[categoria] || [];
+  // Copa del Rey: lista propia (ver CLUBS_COPA_DEL_REY), fuera de
+  // CLUBS_BY_CATEGORY a propósito. Al devolver clubes, el desplegable
+  // "Club" del panel deja de estar bloqueado (poblarClubs en admin.js)
+  // y ofrece "General" + un club por opción.
+  const fijos = categoria === "copa_del_rey"
+    ? CLUBS_COPA_DEL_REY
+    : (CLUBS_BY_CATEGORY[categoria] || []);
   const personalizados = (CUSTOM_CLUBS_BY_CATEGORY[categoria] || []).map(c => c.nombre);
   // Evita duplicados por si un club personalizado coincide (por nombre)
   // con uno que ya estaba fijo en clubs.js.
@@ -382,7 +508,7 @@ function normalizarTextoBusquedaClub(texto) {
 // los que coinciden con el texto que ha escrito el usuario en el
 // buscador. Se usa para que, si alguien busca el nombre de un equipo en
 // vez de una noticia, se le ofrezcan accesos directos a la ficha de
-// cada club que encaje (categoria.html?club=...), además de los
+// cada club que encaje (categoria?club=...), además de los
 // resultados de búsqueda de artículos. Devuelve un array (vacío si no
 // hay ninguna coincidencia razonable), con las coincidencias exactas
 // primero y luego las parciales, sin duplicar un mismo club aunque
@@ -423,14 +549,6 @@ function buscarClubesPorTexto(textoBusqueda) {
   return [...exactas, ...parciales];
 }
 
-// Compatibilidad: versión que devuelve solo la primera coincidencia
-// (coincidencia exacta si la hay, si no la primera parcial). La usa
-// quien solo necesita UN club, como el atajo de la tecla "Intro" en el
-// buscador, donde hay que elegir un único destino al que navegar.
-function buscarClubPorTexto(textoBusqueda) {
-  return buscarClubesPorTexto(textoBusqueda)[0] || null;
-}
-
 // ---------- CLUBES PERSONALIZADOS ("Otro equipo") ----------
 // Clubes que se han añadido a mano desde "Otro equipo (no está en la
 // lista)" al crear un resultado o una noticia, guardados en el
@@ -463,7 +581,7 @@ async function cargarCustomClubs() {
 }
 
 // ---------- ENLACE A LA FICHA DE EQUIPO ----------
-// La "ficha de equipo" es categoria.html?cat=<competicion>&club=<nombre>:
+// La "ficha de equipo" es categoria?cat=<competicion>&club=<nombre>:
 // ya muestra escudo, info del club, últimos resultados/próximos
 // partidos y noticias. Se centraliza aquí la construcción de esa URL
 // para que clasificación, calendario y resultados enlacen todos igual
@@ -471,7 +589,7 @@ async function cargarCustomClubs() {
 // la plantilla en cada página.
 function enlaceEquipoHref(nombreEquipo, categoria) {
   if (!nombreEquipo || !categoria) return "";
-  return `${baseHref()}categoria.html?cat=${encodeURIComponent(categoria)}&club=${encodeURIComponent(nombreEquipo)}`;
+  return `${baseHref()}categoria?cat=${encodeURIComponent(categoria)}&club=${encodeURIComponent(nombreEquipo)}`;
 }
 
 // ---------- ESCUDOS ----------
@@ -495,6 +613,21 @@ function slugEquipo(nombre) {
 // real del archivo en img/escudos/.
 const ALIAS_ESCUDOS = {
   "albacete": "albacete-balompie",
+  // Nombre antiguo "Utebo" (sin FC) que pueda quedar en la BD.
+  "utebo": "utebo-fc",
+  // Celta Fortuna / Celta B: mismo escudo (filial del Celta).
+  "celta-b": "celta-fortuna",
+  "celta-de-vigo-b": "celta-fortuna",
+  "celta-vigo-b": "celta-fortuna",
+  "rc-celta-b": "celta-fortuna",
+  // Real Sporting con el nombre largo/antiguo.
+  "sporting-de-gijon": "real-sporting",
+  "sporting-gijon": "real-sporting",
+  "real-sporting-de-gijon": "real-sporting",
+  // Segunda RFEF, Grupo 1: nombres antiguos sin sigla.
+  "arosa": "arosa-sc",
+  "gimnastica-de-torrelavega": "rs-gimnastica-de-torrelavega",
+  "gimnastica-torrelavega": "rs-gimnastica-de-torrelavega",
 };
 
 // Filiales cuyo escudo debe ser SIEMPRE el del primer equipo. La clave
@@ -716,7 +849,7 @@ const ESTADIO_POR_CLUB = {
   "UD Barbastro": "Municipal de Deportes de Barbastro",
   "UD Logroñés B": "Ciudad Deportiva UD Logroñés",
   "UE Olot": "Municipal d'Olot",
-  "Utebo": "Municipal de Utebo",
+  "Utebo FC": "Municipal de Utebo",
 
   // Segunda Federación · Grupo 3
   "CD Alcoyano": "El Collao",
@@ -879,7 +1012,7 @@ const GRUPO_POR_CLUB = {
   "UD Barbastro": "Grupo 2",
   "UD Logroñés B": "Grupo 2",
   "UE Olot": "Grupo 2",
-  "Utebo": "Grupo 2",
+  "Utebo FC": "Grupo 2",
 
   // Segunda Federación · Grupo 3
   "CD Alcoyano": "Grupo 3",
@@ -946,5 +1079,13 @@ const GRUPO_POR_CLUB = {
 // está en GRUPO_POR_CLUB: club de una competición sin grupos, o club
 // personalizado).
 function getGrupoClub(nombreEquipo) {
-  return GRUPO_POR_CLUB[nombreEquipo] || "";
+  if (GRUPO_POR_CLUB[nombreEquipo]) return GRUPO_POR_CLUB[nombreEquipo];
+  // Nombre con otra grafía (p.ej. "Arosa", "Gimnástica de Torrelavega"):
+  // se busca por el slug del escudo, que ya resuelve los alias.
+  const slugCanonico = ALIAS_ESCUDOS[slugEquipo(nombreEquipo)];
+  if (slugCanonico) {
+    const oficial = Object.keys(GRUPO_POR_CLUB).find((n) => slugEquipo(n) === slugCanonico);
+    if (oficial) return GRUPO_POR_CLUB[oficial];
+  }
+  return "";
 }

@@ -1,3 +1,13 @@
+// SEGURIDAD: valor para pasar como argumento JS dentro de un atributo HTML
+// (onclick="fn(${argJs(x)})" o onclick='fn(${argJs(x)})'). JSON.stringify da un
+// literal JS válido y escapeHtml lo protege para el atributo: el navegador
+// decodifica las entidades ANTES de ejecutar el JS, así que una comilla en el dato
+// no puede cerrar ni el atributo ni la cadena. Vive aquí (y no en config.js) para
+// no depender de la copia en caché de config.js.
+function argJs(valor) {
+  return escapeHtml(JSON.stringify(valor === undefined ? null : valor));
+}
+
 // Caché en memoria de los resultados cargados en el listado (id -> resultado).
 // Declarada aquí arriba, antes de cualquier uso, para evitar el error de
 // "temporal dead zone" de `let` (ReferenceError: Cannot access
@@ -165,8 +175,19 @@ function TOKEN_ACTUAL() {
   return localStorage.getItem("eof_token");
 }
 const USER = JSON.parse(localStorage.getItem("eof_user") || "null");
-const NOTIF_CLAVE = `eof_notif_visto_${USER ? USER.username : ""}`;
-let ultimaVisitaNotifServidor = null;
+// Estado de la campanita de avisos push (se declara aquí arriba porque
+// inicializarNotificaciones() se llama durante la carga, antes del bloque de funciones).
+const STAFF_PUSH_NIVEL_MINIMO = 4;
+const STAFF_PUSH = {
+  categorias: [],          // [{ id, etiqueta }] tal como las manda el servidor
+  activas: new Set(),      // categorías marcadas
+  dispositivoSuscrito: false,
+  dispositivos: 0,
+  puedeTienda: false,
+  cargado: false,
+  ocupado: false,
+  temporizadorPrefs: null,
+};
 const selectClub = document.getElementById("club");
 
 // Mismo emoji/nombre que NIVELES_INFO en el Worker, para pintar la
@@ -219,6 +240,7 @@ async function refrescarNivelUsuario() {
       localStorage.setItem("eof_user", JSON.stringify(USER));
       // Un ascenso/descenso de nivel recién llegado puede cambiar si toca
       // mostrar el bloque de "Programar publicación" (ver más abajo).
+      if (typeof aplicarFechaPreferenciaObligatoria === "function") aplicarFechaPreferenciaObligatoria();
       if (typeof bloqueProgramarNoticia !== "undefined" && bloqueProgramarNoticia) {
         bloqueProgramarNoticia.style.display = puedeProgramarNoticia() ? "" : "none";
       }
@@ -288,7 +310,7 @@ function pintarCuentaAvatar(user) {
       el.textContent = "";
       el.style.backgroundImage = `url('${user.avatar_url}')`;
       el.style.backgroundSize = "cover";
-      el.style.backgroundPosition = user.avatar_foco || "50% 50%";
+      el.style.backgroundPosition = EOF_FOCO.texto(user.avatar_foco);
       el.classList.add("user-avatar-foto");
     } else {
       el.style.backgroundImage = "none";
@@ -356,6 +378,13 @@ if (USER) {
     if (tabUsuarios) tabUsuarios.style.display = "none";
     const subtabFuncNewsletter = document.getElementById("subtabFuncNewsletter_btn");
     if (subtabFuncNewsletter) subtabFuncNewsletter.style.display = "none";
+    const subtabFuncAnuncios = document.getElementById("subtabFuncAnuncios_btn");
+    if (subtabFuncAnuncios) subtabFuncAnuncios.style.display = "none";
+    // Los formularios (acreditaciones incluidas, dentro de "Solicitudes") solo los gestiona un admin.
+    const subtabSolFormularios = document.getElementById("subtabSolFormularios_btn");
+    if (subtabSolFormularios) subtabSolFormularios.style.display = "none";
+    const subtabFuncJugadores = document.getElementById("subtabFuncJugadores_btn");
+    if (subtabFuncJugadores) subtabFuncJugadores.style.display = "none";
     const subtabFuncHistorial = document.getElementById("subtabFuncHistorial_btn");
     if (subtabFuncHistorial) subtabFuncHistorial.style.display = "none";
     const subtabFuncComentarios = document.getElementById("subtabFuncComentarios_btn");
@@ -476,14 +505,9 @@ if (USER) {
   });
   reiniciarTemporizadorInactividad();
 
-  // ---------- Notificaciones (contenido subido / crónicas publicadas /
-  // pedidos de la tienda) ----------
-  // Antes solo se activaba para admin, porque solo ellos tenían novedades
-  // que ver aquí. Ahora cualquier redactor puede recibir un aviso de "tu
-  // pedido en la tienda ha cambiado de estado" (ver cargarNotificaciones),
-  // así que se activa para todo el mundo; para quien no sea admin ni
-  // gestor de tienda, simplemente esa será la única fuente de novedades
-  // que pueda llegar a ver.
+  // ---------- Campanita: avisos push de la redacción ----------
+  // Solo la ven admins y redactores de Nivel 4 (el servidor lo vuelve a
+  // comprobar en cada petición y en cada envío). Ya no hay lista de novedades.
   inicializarNotificaciones();
 
   // ---------- Aviso de solicitudes de edición pendientes de mi respuesta ----------
@@ -496,6 +520,7 @@ if (USER) {
   // directamente para un fotógrafo.
   if (USER.rol !== "fotografo") {
     actualizarBadgeSolicitudesPendientes();
+    cargarBadgeAnuladosInicial();
   }
 
   // ---------- Desplegable de cuenta ----------
@@ -517,246 +542,297 @@ function irAAjustesCuenta(seccion) {
   const menu = document.getElementById("cuentaMenu");
   if (menu) menu.classList.remove("abierto");
   document.getElementById("tabAjustesOculto").click();
-  const subtab = seccion === "password" ? "password" : (seccion === "sesiones" ? "sesiones" : (seccion === "progreso" ? "progreso" : "perfil"));
+  // "password" ya no es una pestaña: cambiar la contraseña vive dentro de Seguridad (los enlaces antiguos siguen funcionando).
+  if (seccion === "password") seccion = "seguridad";
+  const subtab = ["sesiones", "seguridad", "progreso", "preferencias"].includes(seccion) ? seccion : "perfil";
   const btnSubtab = document.querySelector(`#subtabsAjustes button[data-subtab="${subtab}"]`);
   if (btnSubtab) btnSubtab.click();
 }
 
 
-// Se guarda tanto en localStorage (para pintar algo al instante, sin
-// esperar a la API) como en el servidor (para que sobreviva a perder la
-// sesión o borrar las cookies/datos del navegador). El servidor manda:
-// en cuanto responde, se usa su valor y se sincroniza localStorage con él.
+// ---------- Campanita: avisos push de la redacción ----------
+// Solo admins y redactores de Nivel 4. Backend: /api/staff-push/* (estado,
+// prefs, suscribir, baja, prueba). Un navegador tiene una sola suscripción
+// push por sitio: la del equipo comparte dispositivo con la de la web pública,
+// por eso al desactivar aquí solo se da de baja en el servidor (staff) y NO se
+// cancela la suscripción del navegador (así no se cortan los avisos públicos).
+
+const STAFF_PUSH_CAT_INFO = {
+  contenido: { ico: "🖼️", ayuda: "Fotos, vídeos y enlaces que suben" },
+  acreditaciones: { ico: "🪪", ayuda: "Solicitudes que llegan por el formulario" },
+  incorporaciones: { ico: "👋", ayuda: "Respuestas del formulario de incorporación" },
+  noticias: { ico: "📰", ayuda: "Publicadas y borradores terminados" },
+  fichas: { ico: "🛡️", ayuda: "Propuestas de redactores de nivel 1" },
+  tienda: { ico: "🛍️", ayuda: "Pedidos nuevos en la tienda" },
+  ediciones: { ico: "✏️", ayuda: "Alguien quiere editar algo tuyo" },
+  comentarios: { ico: "💬", ayuda: "Comentarios nuevos en la web" },
+  anuncios: { ico: "📣", ayuda: "Anuncios dirigidos a ti" },
+};
+
+function staffPushElegible() {
+  return !!USER && (USER.rol === "admin" || (USER.rol === "redactor" && (Number(USER.nivel) || 1) >= STAFF_PUSH_NIVEL_MINIMO));
+}
+
+function staffPushEsIos() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
+function staffPushEsPwa() {
+  return window.navigator.standalone === true || (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches);
+}
+
+// "ok" | "ios" (iPhone/iPad sin instalar en la pantalla de inicio) | "no" (navegador sin push) | "denegado"
+function staffPushSoporte() {
+  if (staffPushEsIos() && !staffPushEsPwa()) return "ios";
+  if (!("serviceWorker" in navigator && "PushManager" in window && "Notification" in window)) return "no";
+  if (Notification.permission === "denied") return "denegado";
+  return "ok";
+}
+
+function staffPushClaveABytes(b64url) {
+  const relleno = "=".repeat((4 - (b64url.length % 4)) % 4);
+  const bin = atob((b64url + relleno).replace(/-/g, "+").replace(/_/g, "/"));
+  return Uint8Array.from(bin, (c) => c.charCodeAt(0));
+}
+
+function staffPushMismosBytes(a, b) {
+  const x = new Uint8Array(a), y = new Uint8Array(b);
+  if (x.length !== y.length) return false;
+  for (let i = 0; i < x.length; i++) if (x[i] !== y[i]) return false;
+  return true;
+}
+
+function staffPushConTimeout(promesa, ms) {
+  return Promise.race([promesa, new Promise((_, rej) => setTimeout(() => rej(new Error("Tiempo de espera agotado")), ms))]);
+}
+
+async function staffPushSuscripcionActual() {
+  try {
+    if (!("serviceWorker" in navigator)) return null;
+    const reg = await navigator.serviceWorker.getRegistration("/");
+    return reg && reg.pushManager ? await reg.pushManager.getSubscription() : null;
+  } catch { return null; }
+}
+
+function staffPushMensaje(texto, tipo) {
+  const el = document.getElementById("staffPushMsg");
+  if (!el) return;
+  el.textContent = texto || "";
+  el.className = "staff-push-msg" + (tipo ? ` is-${tipo}` : "");
+  el.style.display = texto ? "block" : "none";
+}
+
+function staffPushPintar() {
+  const chk = document.getElementById("staffPushActivar");
+  const prueba = document.getElementById("staffPushPrueba");
+  const cont = document.getElementById("staffPushCategorias");
+  const punto = document.getElementById("notifPunto");
+  if (!chk || !cont) return;
+
+  const soporte = staffPushSoporte();
+  const bloqueado = soporte !== "ok";
+  chk.checked = STAFF_PUSH.dispositivoSuscrito && !bloqueado;
+  chk.disabled = bloqueado || STAFF_PUSH.ocupado || !STAFF_PUSH.cargado;
+  if (prueba) prueba.disabled = !STAFF_PUSH.dispositivoSuscrito || STAFF_PUSH.ocupado || bloqueado;
+  if (punto) punto.style.display = STAFF_PUSH.dispositivoSuscrito && !bloqueado ? "block" : "none";
+
+  const pildora = document.getElementById("staffPushPildora");
+  if (pildora) {
+    const activo = STAFF_PUSH.dispositivoSuscrito && !bloqueado;
+    pildora.textContent = activo ? "Activo aquí" : (bloqueado ? "No disponible" : "Desactivado");
+    pildora.className = "sp-pildora" + (activo ? " is-activo" : (bloqueado ? " is-bloqueado" : ""));
+  }
+  cont.classList.toggle("is-inactivo", !STAFF_PUSH.dispositivoSuscrito && STAFF_PUSH.dispositivos === 0);
+
+  cont.innerHTML = STAFF_PUSH.categorias
+    .filter((c) => c.id !== "tienda" || STAFF_PUSH.puedeTienda)
+    .map((c) => {
+      const info = STAFF_PUSH_CAT_INFO[c.id] || { ico: "🔔", ayuda: "" };
+      return `
+      <label class="staff-push-cat">
+        <span class="staff-push-cat-ico" aria-hidden="true">${info.ico}</span>
+        <span class="staff-push-cat-textos">
+          <span class="staff-push-cat-nombre">${escapeHtml(c.etiqueta)}</span>
+          ${info.ayuda ? `<span class="staff-push-cat-ayuda">${escapeHtml(info.ayuda)}</span>` : ""}
+        </span>
+        <input type="checkbox" data-cat="${escapeHtml(c.id)}" ${STAFF_PUSH.activas.has(c.id) ? "checked" : ""}>
+        <span class="staff-push-mini" aria-hidden="true"></span>
+      </label>`;
+    }).join("");
+  cont.querySelectorAll("input[data-cat]").forEach((inp) => {
+    inp.addEventListener("change", () => staffPushCambioCategoria(inp.dataset.cat, inp.checked));
+  });
+}
+
+function staffPushMensajeSoporte() {
+  const soporte = staffPushSoporte();
+  if (soporte === "ios") {
+    staffPushMensaje("En iPhone y iPad los avisos solo funcionan con el panel instalado: abre esta página en Safari, pulsa Compartir → «Añadir a pantalla de inicio», abre el panel desde ese icono y activa los avisos desde ahí.", "aviso");
+  } else if (soporte === "no") {
+    staffPushMensaje("Este navegador no admite notificaciones push. Prueba con Chrome, Edge, Firefox o Safari actualizados.", "aviso");
+  } else if (soporte === "denegado") {
+    staffPushMensaje("Has bloqueado las notificaciones de este sitio. Para activarlas, permítelas en los ajustes del navegador (el candado junto a la dirección) y recarga la página.", "error");
+  } else {
+    staffPushMensaje("");
+  }
+}
+
+async function staffPushCargarEstado() {
+  const sub = staffPushSoporte() === "ios" ? null : await staffPushSuscripcionActual();
+  const q = sub && sub.endpoint ? `?endpoint=${encodeURIComponent(sub.endpoint)}` : "";
+  const d = await apiFetch(`/api/staff-push/estado${q}`);
+  if (!d || !Array.isArray(d.categorias)) throw new Error("Respuesta no válida");
+  STAFF_PUSH.categorias = d.categorias;
+  STAFF_PUSH.dispositivoSuscrito = !!d.dispositivo_suscrito;
+  STAFF_PUSH.dispositivos = Number(d.dispositivos) || 0;
+  STAFF_PUSH.puedeTienda = !!d.puede_gestionar_tienda;
+  let activas = new Set(Array.isArray(d.activas) ? d.activas : []);
+  // Primera activación (ningún dispositivo y nada elegido): salen marcadas todas.
+  if (STAFF_PUSH.dispositivos === 0 && activas.size === 0) activas = new Set(d.categorias.map((c) => c.id));
+  STAFF_PUSH.activas = activas;
+  STAFF_PUSH.cargado = true;
+}
+
+async function staffPushRefrescar(conservarMensaje) {
+  try {
+    await staffPushCargarEstado();
+    if (!conservarMensaje) staffPushMensajeSoporte();
+  } catch (err) {
+    if (err && err.status === 403) {
+      const wrap = document.getElementById("notifWrap");
+      if (wrap) wrap.style.display = "none";
+      return;
+    }
+    staffPushMensaje("No se han podido cargar los ajustes de avisos. Inténtalo de nuevo en unos segundos.", "error");
+  }
+  staffPushPintar();
+}
+
+function staffPushCambioCategoria(id, marcada) {
+  if (marcada) STAFF_PUSH.activas.add(id); else STAFF_PUSH.activas.delete(id);
+  // Sin ningún dispositivo todavía, la elección se queda aquí y se envía al activar.
+  if (STAFF_PUSH.dispositivos === 0 && !STAFF_PUSH.dispositivoSuscrito) return;
+  clearTimeout(STAFF_PUSH.temporizadorPrefs);
+  STAFF_PUSH.temporizadorPrefs = setTimeout(async () => {
+    try {
+      const r = await apiFetch("/api/staff-push/prefs", { method: "PUT", body: JSON.stringify({ categorias: [...STAFF_PUSH.activas] }) });
+      if (r && Array.isArray(r.activas)) STAFF_PUSH.activas = new Set(r.activas);
+      staffPushMensaje("Guardado.", "ok");
+    } catch (err) {
+      staffPushMensaje(err.message || "No se han podido guardar las categorías.", "error");
+      await staffPushRefrescar(true);
+    }
+  }, 400);
+}
+
+async function staffPushAlternar(activar) {
+  if (STAFF_PUSH.ocupado) return;
+  STAFF_PUSH.ocupado = true;
+  staffPushPintar();
+  try {
+    if (activar) {
+      // requestPermission va lo primero: tiene que salir del gesto de la persona.
+      const permiso = await Notification.requestPermission();
+      if (permiso !== "granted") {
+        staffPushMensajeSoporte();
+        if (permiso !== "denied") staffPushMensaje("No se han activado los avisos: hace falta aceptar el permiso del navegador.", "aviso");
+        return;
+      }
+      await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+      const reg = await staffPushConTimeout(navigator.serviceWorker.ready, 10000);
+      const claveRes = await apiFetch("/api/push/clave");
+      if (!claveRes || !claveRes.clave) throw new Error("Los avisos push no están disponibles ahora mismo.");
+      const clave = staffPushClaveABytes(claveRes.clave);
+      let sub = await reg.pushManager.getSubscription();
+      // Si la clave del servidor cambió, la suscripción vieja no sirve: se crea otra.
+      if (sub && sub.options && sub.options.applicationServerKey && !staffPushMismosBytes(sub.options.applicationServerKey, clave)) {
+        await sub.unsubscribe();
+        sub = null;
+      }
+      if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: clave });
+      const r = await apiFetch("/api/staff-push/suscribir", {
+        method: "POST",
+        body: JSON.stringify({ suscripcion: sub.toJSON(), categorias: [...STAFF_PUSH.activas] }),
+      });
+      if (r && Array.isArray(r.activas)) STAFF_PUSH.activas = new Set(r.activas);
+      staffPushMensaje("Avisos activados en este dispositivo.", "ok");
+    } else {
+      const sub = await staffPushSuscripcionActual();
+      if (sub && sub.endpoint) {
+        await apiFetch("/api/staff-push/baja", { method: "POST", body: JSON.stringify({ endpoint: sub.endpoint }) });
+      }
+      staffPushMensaje("Avisos desactivados en este dispositivo.", "ok");
+    }
+  } catch (err) {
+    staffPushMensaje(err && err.message ? err.message : "No se ha podido completar la acción.", "error");
+  } finally {
+    STAFF_PUSH.ocupado = false;
+    await staffPushRefrescar(true);
+  }
+}
+
+async function staffPushProbar() {
+  if (STAFF_PUSH.ocupado) return;
+  STAFF_PUSH.ocupado = true;
+  staffPushPintar();
+  try {
+    const r = await apiFetch("/api/staff-push/prueba", { method: "POST" });
+    const detalle = Array.isArray(r && r.detalle) ? r.detalle : [];
+    const n = Number(r && r.enviados) || 0;
+    if (n > 0) {
+      staffPushMensaje("El servicio de notificaciones del navegador ha aceptado la prueba. Si en unos segundos no ves nada: revisa que el sistema (Windows, macOS, Android o iOS) permita notificaciones del navegador y que no esté activo «No molestar» o «Concentración». Si el panel está abierto y en primer plano, algunos navegadores no la muestran.", "ok");
+    } else {
+      const estados = detalle.map((d) => d.estado);
+      let texto = "El servicio de notificaciones no ha aceptado la prueba.";
+      if (estados.includes(404) || estados.includes(410)) texto = "Este dispositivo tenía la suscripción caducada y se ha eliminado. Desactiva y vuelve a activar los avisos.";
+      else if (estados.includes(401) || estados.includes(403)) texto = "El servicio push ha rechazado la clave del servidor (error " + estados.find((x) => x === 401 || x === 403) + "). Hay que revisar VAPID_PRIVATE_JWK en el worker.";
+      else if (estados.length) texto += " Código: " + estados.join(", ") + ".";
+      staffPushMensaje(texto, "error");
+    }
+  } catch (err) {
+    staffPushMensaje(err && err.message ? err.message : "No se ha podido enviar la prueba.", "error");
+  } finally {
+    STAFF_PUSH.ocupado = false;
+    staffPushPintar();
+  }
+}
 
 function inicializarNotificaciones() {
   const wrap = document.getElementById("notifWrap");
   const btn = document.getElementById("notifBtn");
   if (!wrap || !btn) return;
+  if (!staffPushElegible()) { wrap.style.display = "none"; return; }
   wrap.style.display = "block";
 
-  apiFetch(`/api/me/notif-visto`).then((data) => {
-    if (data && data.visto) {
-      ultimaVisitaNotifServidor = data.visto;
-      localStorage.setItem(NOTIF_CLAVE, data.visto);
-    }
-    cargarNotificaciones();
-  }).catch(() => cargarNotificaciones());
-  setInterval(cargarNotificaciones, 60000);
-
+  const cerrar = () => { wrap.classList.remove("abierto"); btn.setAttribute("aria-expanded", "false"); };
   btn.addEventListener("click", (e) => {
     e.stopPropagation();
     const abriendo = !wrap.classList.contains("abierto");
     wrap.classList.toggle("abierto");
-    if (abriendo) marcarNotificacionesVistas();
+    btn.setAttribute("aria-expanded", abriendo ? "true" : "false");
+    if (abriendo) staffPushRefrescar();
   });
-  document.addEventListener("click", (e) => {
-    if (!e.target.closest("#notifWrap")) wrap.classList.remove("abierto");
-  });
-  const notifOverlay = document.getElementById("notifOverlay");
-  if (notifOverlay) {
-    notifOverlay.addEventListener("click", () => wrap.classList.remove("abierto"));
-  }
-}
+  document.addEventListener("click", (e) => { if (!e.target.closest("#notifWrap")) cerrar(); });
+  const overlay = document.getElementById("notifOverlay");
+  if (overlay) overlay.addEventListener("click", cerrar);
 
-function ultimaVisitaNotif() {
-  return ultimaVisitaNotifServidor || localStorage.getItem(NOTIF_CLAVE) || "1970-01-01T00:00:00";
-}
+  const chk = document.getElementById("staffPushActivar");
+  if (chk) chk.addEventListener("change", () => staffPushAlternar(chk.checked));
+  const prueba = document.getElementById("staffPushPrueba");
+  if (prueba) prueba.addEventListener("click", staffPushProbar);
 
-async function cargarNotificaciones() {
-  const lista = document.getElementById("notifLista");
-  const contador = document.getElementById("notifContador");
-  if (!lista) return;
-  try {
-    // Un fotógrafo no gestiona nada editorial (noticias, artículos,
-    // resultados pendientes de actualizar): esas son notificaciones "de
-    // administrador/redactor" que no le corresponden y que, además, su
-    // rol ni siquiera tiene permiso para abrir (ver Fase 6 en admin.js,
-    // donde se le ocultan esas pestañas). Para él solo tiene sentido
-    // enterarse de sus propios pedidos en la tienda, así que ni se piden
-    // artículos/resultados: así tampoco arriesga un 403 de fondo cada 60s.
-    const ES_FOTOGRAFO_NOTIF = USER && USER.rol === "fotografo";
-    const [{ media = [] }, { articles = [] }, { results: resultadosPendientes = [] }, misPedidosTienda, pedidosTiendaGestion] = await Promise.all([
-      ES_FOTOGRAFO_NOTIF ? Promise.resolve({ media: [] }) : apiFetch(`/api/media`),
-      ES_FOTOGRAFO_NOTIF ? Promise.resolve({ articles: [] }) : apiFetch(`/api/articles?admin=1&limit=15`),
-      ES_FOTOGRAFO_NOTIF ? Promise.resolve({ results: [] }) : apiFetch(`/api/results?limit=200`),
-      apiFetch(`/api/tienda/mis-pedidos`).catch(() => ({ pedidos: [] })),
-      // Solo quien gestiona la tienda puede ver todos los pedidos; para
-      // el resto esta petición devolvería 403, así que directamente no
-      // se intenta si ya sabemos que no tiene permiso (evita un error en
-      // consola en cada usuario normal, cada 60s).
-      (TIENDA_PUEDE_GESTIONAR ? apiFetch(`/api/tienda/pedidos?estado=pendiente_pago`) : Promise.resolve({ pedidos: [] })).catch(() => ({ pedidos: [] })),
-    ]);
-
-    const TIPO_LABEL = { noticia: "Noticia", previa: "Previa", cronica: "Crónica", analisis: "Análisis", opinion: "Opinión", entrevista: "Entrevista" };
-
-    // Partidos que se marcaron como "Por jugar" (programado) pero cuya
-    // fecha ya ha pasado: hace falta que un admin entre y actualice el
-    // resultado (marcador, o pasarlo a "En juego"/"Finalizado"). La
-    // notificación "nace" justo al empezar el día siguiente a la fecha
-    // del partido (p. ej. partido el 8 de agosto -> avisa desde las 00:00
-    // del 9 de agosto), usando esa medianoche como fecha de la novedad
-    // para que encaje con el mismo criterio de "leída/no leída" que el
-    // resto y no aparezca antes de tiempo.
-    const hoyStr = new Date().toISOString().slice(0, 10);
-    const partidosSinActualizar = resultadosPendientes
-      .filter(r => r.estado === "programado" && r.fecha_partido && r.fecha_partido < hoyStr)
-      .map(r => {
-        const fechaAviso = new Date(r.fecha_partido + "T00:00:00Z");
-        fechaAviso.setUTCDate(fechaAviso.getUTCDate() + 1);
-        return {
-          tipo: "Resultado pendiente",
-          titulo: `${r.equipo_local} - ${r.equipo_visitante}: necesita actualización`,
-          autor: "",
-          fecha: fechaAviso.toISOString().slice(0, 19).replace("T", " "),
-          tab: "resultados",
-          resultadoId: r.id,
-        };
-      });
-
-    // Pedidos nuevos de la tienda (pendientes de pago), solo para quien
-    // puede gestionarla: aviso de que hay que confirmar un Bizum.
-    const TIENDA_ETIQUETAS_ESTADO_NOTIF = { pendiente_pago: "Pendiente de pago", pagado: "Pagado", enviado: "Enviado", cancelado: "Cancelado" };
-    const pedidosNuevosTienda = (pedidosTiendaGestion.pedidos || []).map(p => ({
-      tipo: "Pedido en la tienda",
-      titulo: `${p.redactor_nombre || "Alguien"} ha pedido "${p.producto_nombre}"${p.variante ? " (" + p.variante + ")" : ""}`,
-      autor: "",
-      fecha: p.created_at,
-      tab: "tienda",
-      subtab: "tiendaGestion",
-    }));
-
-    // Cambios de estado en MIS propios pedidos de la tienda (p.ej. "tu
-    // pedido ha pasado a Pagado"). Solo se avisa de pedidos que ya han
-    // sido gestionados (gestionado_en no nulo) y no están en su estado
-    // inicial, para no repetir el aviso de "lo acabas de pedir tú mismo".
-    const cambiosMisPedidosTienda = (misPedidosTienda.pedidos || [])
-      .filter(p => p.gestionado_en && p.estado !== "pendiente_pago")
-      .map(p => ({
-        tipo: "Tu pedido en la tienda",
-        titulo: `"${p.producto_nombre}"${p.variante ? " (" + p.variante + ")" : ""}: ${TIENDA_ETIQUETAS_ESTADO_NOTIF[p.estado] || p.estado}`,
-        autor: "",
-        fecha: p.gestionado_en,
-        tab: "tienda",
-        subtab: "tiendaMisPedidos",
-      }));
-
-    const novedades = [
-      ...media.map(m => ({
-        tipo: "Contenido",
-        titulo: m.titulo,
-        autor: m.autor_nombre,
-        fecha: m.created_at,
-        tab: "contenido",
-      })),
-      ...articles.map(a => ({
-        tipo: TIPO_LABEL[a.tipo] || "Artículo",
-        titulo: a.titulo,
-        autor: a.autor_nombre,
-        fecha: a.created_at,
-        tab: "lista",
-        slug: a.slug,
-        categoria: a.categoria,
-        publicado: a.publicado,
-      })),
-      ...partidosSinActualizar,
-      ...pedidosNuevosTienda,
-      ...cambiosMisPedidosTienda,
-    ]
-      .filter(n => n.fecha)
-      .sort((a, b) => new Date(b.fecha.replace(" ", "T")) - new Date(a.fecha.replace(" ", "T")))
-      .slice(0, 20);
-
-    // Las fechas de la BD vienen como "YYYY-MM-DD HH:MM:SS" en UTC sin
-    // zona horaria, y "visto" es un ISO string con milisegundos y "Z"
-    // (de toISOString()). Comparar esos dos formatos como texto es
-    // incorrecto (p. ej. "12:32:48" resulta "menor" que "12:32:48.100Z"
-    // aunque el primer instante sea posterior), así que se comparan como
-    // fechas reales para que ninguna notificación se marque como vista
-    // por error.
-    const vistoStr = ultimaVisitaNotif();
-    const visto = new Date(vistoStr.includes("Z") ? vistoStr : vistoStr.replace(" ", "T") + "Z").getTime();
-    const esNoLeida = (n) => new Date(n.fecha.replace(" ", "T") + "Z").getTime() > visto;
-    const noLeidas = novedades.filter(esNoLeida).length;
-
-    if (contador) {
-      contador.textContent = noLeidas > 9 ? "9+" : String(noLeidas);
-      contador.style.display = noLeidas > 0 ? "flex" : "none";
-    }
-
-    lista.innerHTML = novedades.length
-      ? novedades.map(n => `
-        <a href="javascript:void(0)" class="notif-item ${esNoLeida(n) ? "no-leida" : ""}" onclick='irANotificacion(${escapeHtml(JSON.stringify(n)).replace(/'/g, "&#39;")})'>
-          <div class="notif-tipo">${n.tipo}</div>
-          <div class="notif-titulo">${escapeHtml(n.titulo)}</div>
-          <div class="notif-meta">${escapeHtml(n.autor || "")} · ${formatFechaNotif(n.fecha)}</div>
-        </a>`).join("")
-      : `<p class="notif-vacio">Todavía no hay novedades.</p>`;
-  } catch (err) {
-    lista.innerHTML = `<p class="notif-vacio">No se han podido cargar las novedades.</p>`;
-  }
-}
-
-function formatFechaNotif(fechaStr) {
-  // La fecha viene de la BD en UTC (formato "YYYY-MM-DD HH:MM:SS" sin
-  // zona horaria); hay que decirle a Date que es UTC (añadiendo "Z") y
-  // luego pedirle que la muestre en la hora de España, si no, el
-  // navegador la interpreta como si ya fuera hora local y sale mal.
-  const d = new Date(fechaStr.replace(" ", "T") + "Z");
-  return d.toLocaleDateString("es-ES", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Madrid" });
-}
-
-function irANotificacion(n) {
-  document.getElementById("notifWrap").classList.remove("abierto");
-
-  // Las noticias/crónicas/etc. publicadas se abren directamente como las
-  // vería cualquier lector, en una pestaña nueva, en vez de llevar al
-  // listado del panel. Los borradores (no publicados) no existen todavía
-  // en la web pública, así que para esos sí se cae al listado del admin.
-  if (n.tab === "lista" && n.slug && n.publicado) {
-    window.open(urlNoticia(n.categoria, n.slug), "_blank");
-    return;
+  // Pulsar una notificación con el panel ya abierto: el service worker avisa
+  // en vez de recargar, y aquí se abre la pestaña que toca.
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.addEventListener("message", (e) => {
+      const d = e.data;
+      if (d && d.tipo === "staff-ir" && typeof d.ir === "string") eofIrASeccion(d.ir, new URLSearchParams());
+    });
+    if (navigator.serviceWorker.startMessages) navigator.serviceWorker.startMessages();
   }
 
-  // "lista" y "contenido" ya no son pestañas principales por sí solas:
-  // hay que activar la pestaña principal y luego su subpestaña. Comentarios,
-  // Encuestas, Newsletter, Historial y Redes sociales tampoco: ahora viven
-  // como subpestañas de "Funcionalidades".
-  const destinos = {
-    lista: { tab: "noticias", subtab: "lista" },
-    contenido: { tab: "contenido", subtab: "ver" },
-    resultados: { tab: "resultados", subtab: "resultado" },
-    comentarios: { tab: "funcionalidades", subtab: "comentarios" },
-    encuestas: { tab: "funcionalidades", subtab: "encuestas" },
-    newsletter: { tab: "funcionalidades", subtab: "newsletter" },
-    historial: { tab: "funcionalidades", subtab: "historial" },
-    redes: { tab: "funcionalidades", subtab: "redesSociales" },
-  };
-  const destino = destinos[n.tab] || { tab: n.tab, subtab: n.subtab };
-  const btnTab = document.querySelector(`.tabs button[data-tab="${destino.tab}"]`);
-  if (btnTab) btnTab.click();
-  if (destino.subtab) {
-    const btnSubtab = document.querySelector(`#panel-${destino.tab} .subtabs button[data-subtab="${destino.subtab}"]`);
-    if (btnSubtab) btnSubtab.click();
-  }
-
-  // Para "resultado pendiente" se abre directamente ese partido en el
-  // formulario de edición, igual que si se pulsara "Editar" en la lista.
-  if (n.tab === "resultados" && n.resultadoId) {
-    apiFetch(`/api/results?limit=200`).then(({ results = [] }) => {
-      const r = results.find(res => String(res.id) === String(n.resultadoId));
-      if (r) editarResultado(r);
-    }).catch(() => {});
-  }
-}
-
-function marcarNotificacionesVistas() {
-  const ahora = new Date().toISOString();
-  ultimaVisitaNotifServidor = ahora;
-  localStorage.setItem(NOTIF_CLAVE, ahora);
-  apiFetch(`/api/me/notif-visto`, { method: "PUT" }).catch(() => {});
-  const contador = document.getElementById("notifContador");
-  if (contador) contador.style.display = "none";
-  document.querySelectorAll("#notifLista .notif-item.no-leida").forEach(el => el.classList.remove("no-leida"));
+  // Carga inicial silenciosa: solo para pintar el puntito de "activo en este dispositivo".
+  staffPushRefrescar();
 }
 
 function logout() {
@@ -792,15 +868,44 @@ function authHeaders() {
 // a los pocos segundos: se guarda la marca de tiempo del login y, dentro
 // de este margen, un 401 nunca ejecuta logout().
 const EOF_MARGEN_GRACIA_LOGIN_MS = 15000;
-function eofRegistrarLoginReciente() {
-  try { sessionStorage.setItem("eof_login_en", String(Date.now())); } catch {}
-}
 function eofDentroDeMargenGraciaLogin() {
   try {
     const en = Number(sessionStorage.getItem("eof_login_en") || 0);
     return en > 0 && (Date.now() - en) < EOF_MARGEN_GRACIA_LOGIN_MS;
   } catch { return false; }
 }
+
+// La tienda no puede dar por buena una respuesta vacía ({}) cuando la API
+// ha devuelto 401: se vería un catálogo vacío sin ningún aviso. Para sus
+// rutas, apiFetch lanza un error legible en vez de devolver {}.
+function eofErrorSesionTienda(path) {
+  if (!String(path).startsWith("/api/tienda/")) return null;
+  const err = new Error("Tu sesión no es válida o aún se está sincronizando. Pulsa en Tienda de nuevo en unos segundos o cierra sesión y vuelve a entrar.");
+  err.status = 401;
+  return err;
+}
+
+// ---------- Failover para llamadas que NO pasan por apiFetch ----------
+// Las subidas de archivos (multipart/XHR), el aviso de lote y los enlaces de
+// descarga iban SIEMPRE a la API principal: con la principal caída el panel
+// "funcionaba" para todo menos para subir fotos/vídeos o descargar. Estas
+// funciones eligen la base según el estado del circuito de config.js.
+function eofBaseApiParaSubida() {
+  const abierto = typeof eofApiState !== "undefined" && eofApiState.circuitoAbierto;
+  if (abierto && SECONDARY_API && !eofCircuitoDebeProbarPrimariaOtraVez()) return SECONDARY_API;
+  return PRIMARY_API;
+}
+// ¿Esta respuesta/estado indica que la API principal está caída (no un error de la app)?
+function eofEsCaidaDePrimaria(status, contentType) {
+  if (status === 0) return true;
+  const esJson = /application\/json/i.test(contentType || "");
+  if (status === 502 || status === 503 || status === 504) return true;
+  return (status === 500 || status === 404 || (status >= 520 && status <= 530)) && !esJson;
+}
+
+// Acciones de creación/guardado en curso: si una ya está ejecutándose, un segundo
+// clic (o Enter) se ignora en vez de crear el mismo dato otra vez.
+const EOF_ACCIONES_EN_CURSO = new Set();
 
 async function apiFetch(path, options = {}) {
   const esEscrituraAdmin = ["POST", "PUT", "PATCH", "DELETE"].includes(String(options.method || "GET").toUpperCase());
@@ -843,6 +948,7 @@ async function apiFetch(path, options = {}) {
       // devolver {} como si hubiera ido bien: el llamador recargaría la
       // lista y parecería que no ha pasado nada. Se avisa con un error.
       if (esEscrituraAdmin) throw new Error("No se pudo contactar con la API principal. La acción no se ha realizado: inténtalo de nuevo en unos segundos.");
+      { const e = eofErrorSesionTienda(path); if (e) throw e; }
       return {};
     }
   }
@@ -879,6 +985,7 @@ async function apiFetch(path, options = {}) {
     }
     if (eofDentroDeMargenGraciaLogin() || (typeof eofApiState !== "undefined" && eofApiState.circuitoAbierto)) {
       if (esEscrituraAdmin) throw new Error("La sesión se está estabilizando. La acción no se ha realizado: inténtalo de nuevo en unos segundos.");
+      { const e = eofErrorSesionTienda(path); if (e) throw e; }
       return {};
     }
     logout();
@@ -902,9 +1009,12 @@ async function apiFetch(path, options = {}) {
   const contentType = res.headers.get("Content-Type") || "";
   if (!contentType.includes("application/json")) {
     const err = new Error(
-      "La API principal no está respondiendo ahora mismo. Esta acción no se reintenta " +
-      "automáticamente en la secundaria para no duplicar datos: espera a que la principal " +
-      "se recupere y vuelve a intentarlo."
+      SECONDARY_API
+        ? "La API principal no está respondiendo ahora mismo. Esta acción no se reintenta " +
+          "automáticamente en la secundaria para no duplicar datos: espera a que la principal " +
+          "se recupere y vuelve a intentarlo."
+        : "La API no está respondiendo ahora mismo. La acción no se ha realizado: " +
+          "espera unos segundos y vuelve a intentarlo."
     );
     err.status = res.status;
     err.data = null;
@@ -955,35 +1065,49 @@ let SUBIDAS_IMAGEN_EN_CURSO = 0;
 async function subirImagenSuelta(file) {
   SUBIDAS_IMAGEN_EN_CURSO++;
   try {
-    const formData = new FormData();
-    formData.append("imagen", file, file.name);
-    let res;
-    try {
-      res = await fetch(`${API_URL}/api/subir-imagen`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${TOKEN_ACTUAL()}` },
-        body: formData,
-      });
-    } catch (err) {
-      // fetch() solo lanza si la petición ni siquiera ha llegado a tener
-      // respuesta (sin conexión, DNS caído, CORS...); se distingue de un
-      // error del servidor para no decir "no se pudo subir la imagen" a
-      // secas cuando en realidad es un problema de conexión del navegador.
-      throw new Error("No se ha podido conectar con el servidor. Comprueba tu conexión e inténtalo de nuevo.");
+    // Subir una imagen suelta solo devuelve una URL de Cloudinary (no crea datos
+    // de negocio), así que repetirla en la secundaria no puede duplicar nada
+    // importante. Se intenta la base elegida por el circuito y, si es una caída
+    // de la principal, la otra.
+    const bases = [eofBaseApiParaSubida()];
+    if (SECONDARY_API && !bases.includes(SECONDARY_API)) bases.push(SECONDARY_API);
+    for (let i = 0; i < bases.length; i++) {
+      const base = bases[i];
+      const esUltima = i === bases.length - 1;
+      const formData = new FormData();
+      formData.append("imagen", file, file.name);
+      let res;
+      try {
+        res = await eofFetchConTimeout(`${base}/api/subir-imagen`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${TOKEN_ACTUAL()}` },
+          body: formData,
+        }, 120000);
+      } catch (err) {
+        // fetch() solo lanza si la petición ni siquiera ha llegado a tener
+        // respuesta (sin conexión, DNS caído, CORS, timeout...).
+        if (base === PRIMARY_API) eofRegistrarFalloPrimaria(true);
+        if (!esUltima) continue;
+        throw new Error("No se ha podido conectar con el servidor. Comprueba tu conexión e inténtalo de nuevo.");
+      }
+      if (!esUltima && eofEsCaidaDePrimaria(res.status, res.headers.get("Content-Type"))) {
+        if (base === PRIMARY_API) eofRegistrarFalloPrimaria(true);
+        continue;
+      }
+      let data = {};
+      try {
+        data = await res.json();
+      } catch {
+        // Respuesta no-JSON: normalmente un 413 (archivo demasiado grande
+        // para el servidor) o una caída a medio subir.
+        if (res.status === 413) throw new Error("El archivo es demasiado grande para el servidor");
+        if (res.status >= 500) throw new Error("Error del servidor. Inténtalo de nuevo en unos minutos");
+        throw new Error(`No se pudo subir la imagen (error ${res.status})`);
+      }
+      if (!res.ok) throw new Error(data.error || `No se pudo subir la imagen (error ${res.status})`);
+      if (base === PRIMARY_API) eofRegistrarExitoPrimaria();
+      return data.url;
     }
-    let data = {};
-    try {
-      data = await res.json();
-    } catch {
-      // Respuesta no-JSON: normalmente un 413 (archivo demasiado grande
-      // para el servidor) o una caída a medio subir, casos en los que el
-      // cuerpo de la respuesta no es JSON parseable.
-      if (res.status === 413) throw new Error("El archivo es demasiado grande para el servidor");
-      if (res.status >= 500) throw new Error("Error del servidor. Inténtalo de nuevo en unos minutos");
-      throw new Error(`No se pudo subir la imagen (error ${res.status})`);
-    }
-    if (!res.ok) throw new Error(data.error || `No se pudo subir la imagen (error ${res.status})`);
-    return data.url;
   } finally {
     SUBIDAS_IMAGEN_EN_CURSO--;
   }
@@ -1017,7 +1141,10 @@ document.querySelectorAll(".tabs button").forEach(btn => {
     }
     if (btn.dataset.tab === "contenido" && document.getElementById("subpanel-ver").classList.contains("activo")) cargaContenido();
     if (btn.dataset.tab === "usuarios") cargaUsuarios();
-    if (btn.dataset.tab === "solicitudes") cargaSolicitudesEdicion();
+    if (btn.dataset.tab === "solicitudes") {
+      const subtabSolActivo = document.querySelector("#subtabsSolicitudes button.activo");
+      cargaSubtabSolicitudes(subtabSolActivo ? subtabSolActivo.dataset.subtab : "solicitudesRecibidas");
+    }
     if (btn.dataset.tab === "tienda") {
       const subtabActivo = document.querySelector("#subtabsTienda button.activo");
       if (subtabActivo) cargaSubtabTienda(subtabActivo.dataset.subtab);
@@ -1031,16 +1158,27 @@ document.querySelectorAll(".tabs button").forEach(btn => {
   });
 });
 
+// Carga los datos de cada subpestaña de "Solicitudes": ediciones (recibidas
+// y mías), propuestas de fichas de equipo y formularios (acreditaciones incluidas).
+function cargaSubtabSolicitudes(subtab) {
+  if (subtab === "solicitudesRecibidas" || subtab === "solicitudesMias") cargaSolicitudesEdicion();
+  if (subtab === "propuestasEquipos") cargaEquiposInfoPendientes();
+  if (subtab === "formularios") cargaFormularios();
+}
+
 // Carga los datos correspondientes al abrir cada subtab de nivel 2 dentro
 // de "Funcionalidades" (Comentarios, Encuestas, Newsletter, Historial,
-// Redes sociales, Equipos), igual que antes hacía cada tab de primer nivel.
+// Redes sociales, Equipos, Información), igual que antes hacía cada tab de primer nivel.
 function cargaSubtabFuncionalidades(subtab) {
   if (subtab === "comentarios") cargaComentarios("pendiente");
   if (subtab === "encuestas") cargaEncuestas();
   if (subtab === "newsletter") cargaNewsletter();
+  if (subtab === "anuncios") cargaAnuncios();
   if (subtab === "historial") cargaHistorial();
   if (subtab === "redesSociales") cargaRedesSociales();
   if (subtab === "equipos") cargaEquiposInfo();
+  if (subtab === "jugadores" && window.EOFJugadores) window.EOFJugadores.cargar();
+  if (subtab === "informacion" && window.EOFOrganigrama) window.EOFOrganigrama.cargar();
 }
 
 // Un colaborador (redactor o fotógrafo) no tiene el subtab "Redes
@@ -1074,11 +1212,12 @@ document.querySelectorAll(".subtabs button").forEach(btn => {
     if (btn.dataset.subtab === "ver") cargaContenido();
     if (btn.dataset.subtab === "galeriaPartido") cargaSubtabGaleriaPartido();
     if (btn.dataset.subtab === "lista") cargaListaArticulos();
+    if (btn.dataset.subtab === "noticiasRapidas") cargaNoticiasRapidas();
     if (btn.dataset.subtab === "listaResultados") cargaListaResultados();
     if (btn.dataset.subtab === "sesiones") cargaSesiones();
+    if (btn.dataset.subtab === "seguridad") cargaSeguridad2fa();
     if (btn.dataset.subtab === "progreso") cargaMiProgreso();
-    if (btn.dataset.subtab === "solicitudesRecibidas") cargaSolicitudesEdicion();
-    if (btn.dataset.subtab === "solicitudesMias") cargaSolicitudesEdicion();
+    if (contenedor.id === "panel-solicitudes") cargaSubtabSolicitudes(btn.dataset.subtab);
     if (btn.dataset.subtab === "lectores") cargaLectores();
     if (["tiendaCatalogo", "tiendaMisPedidos", "tiendaGestion", "tiendaProductos"].includes(btn.dataset.subtab)) cargaSubtabTienda(btn.dataset.subtab);
     // Subtabs de nivel 2 dentro de "Funcionalidades" (Comentarios,
@@ -1106,44 +1245,82 @@ function listaTodosLosClubesFederativos() {
   ];
 }
 
+// Competiciones federativas, en el orden en que se muestran en los
+// desplegables de club "agrupados" (Arbitraje, Jurisdicción, Amistoso).
+const COMPETICIONES_CLUB_AGRUPADO = [
+  { clave: "hypermotion", etiqueta: "LaLiga Hypermotion" },
+  { clave: "primera_federacion", etiqueta: "Primera Federación" },
+  { clave: "segunda_federacion", etiqueta: "Segunda Federación" },
+];
+
+// Añade al select un <optgroup> con la etiqueta dada y las opciones
+// indicadas (cada una es un string, o un par { valor, texto }).
+function anadirGrupoOpciones(select, etiqueta, opciones) {
+  if (!opciones.length) return;
+  const grupo = document.createElement("optgroup");
+  grupo.label = etiqueta;
+  opciones.forEach((o) => {
+    const opt = document.createElement("option");
+    opt.value = typeof o === "string" ? o : o.valor;
+    opt.textContent = typeof o === "string" ? o : o.texto;
+    grupo.appendChild(opt);
+  });
+  select.appendChild(grupo);
+}
+
+// Rellena el select de club con TODOS los clubes federativos, agrupados
+// por competición (un <optgroup> por liga, clubes ordenados A-Z). Si
+// `conCompeticiones` es true, antes de los clubes se ofrece también un
+// grupo "Competición completa" con las tres ligas, para las noticias que
+// no hablan de un club concreto sino de toda una liga.
+function poblarClubsAgrupadosPorCompeticion(clubSeleccionado, conCompeticiones) {
+  const valoresValidos = new Set([""]);
+  if (conCompeticiones) {
+    const comps = COMPETICIONES_CLUB_AGRUPADO.map((c) => c.etiqueta);
+    comps.forEach((c) => valoresValidos.add(c));
+    anadirGrupoOpciones(selectClub, "Competición completa", comps);
+  }
+  COMPETICIONES_CLUB_AGRUPADO.forEach(({ clave, etiqueta }) => {
+    const clubes = (typeof getClubsForCategoria === "function" ? getClubsForCategoria(clave) : [])
+      .slice()
+      .sort((a, b) => a.localeCompare(b, "es"));
+    clubes.forEach((c) => valoresValidos.add(c));
+    anadirGrupoOpciones(selectClub, etiqueta, clubes);
+  });
+  // Si el valor guardado ya no está en la lista (club descendido, nombre
+  // antiguo...) se añade suelto para no perder el dato al editar.
+  if (clubSeleccionado && !valoresValidos.has(clubSeleccionado)) {
+    const opt = document.createElement("option");
+    opt.value = clubSeleccionado;
+    opt.textContent = clubSeleccionado + " (no está en la lista actual)";
+    selectClub.appendChild(opt);
+  }
+  selectClub.value = clubSeleccionado || "";
+  selectClub.disabled = false;
+}
+
 function poblarClubs(categoria, clubSeleccionado) {
   selectClub.innerHTML = '<option value="">General</option>';
 
   if (categoria === "arbitraje" || categoria === "jurisdiccion") {
-    // Una noticia de "Arbitraje" o "Jurisdicción deportiva" no está atada
-    // a un club concreto, sino a una competición completa (puede hablar
-    // en general o de una liga específica), así que el desplegable
-    // ofrece únicamente las tres competiciones federativas, además de
-    // "General".
-    const competiciones = ["LaLiga Hypermotion", "Primera Federación", "Segunda Federación"];
-    competiciones.forEach((nombre) => {
-      const opt = document.createElement("option");
-      opt.value = nombre;
-      opt.textContent = nombre;
-      selectClub.appendChild(opt);
-    });
-    // Si el valor guardado no es "General" ni ninguna de las tres
-    // competiciones (p. ej. venía de un club concreto de cuando el
-    // desplegable listaba clubes), se añade suelto para no perder el dato
-    // al editar.
-    if (clubSeleccionado && !competiciones.includes(clubSeleccionado)) {
-      const opt = document.createElement("option");
-      opt.value = clubSeleccionado;
-      opt.textContent = clubSeleccionado + " (no está en la lista actual)";
-      selectClub.appendChild(opt);
-    }
-    selectClub.value = clubSeleccionado || "";
-    selectClub.disabled = false;
+    // Una noticia de "Arbitraje" o "Jurisdicción deportiva" puede hablar
+    // en general, de una competición entera o de un club concreto (un
+    // castigo, una sanción, un árbitro con un equipo...). Por eso el
+    // desplegable ofrece "General", las tres competiciones y, debajo, los
+    // clubes agrupados por liga.
+    poblarClubsAgrupadosPorCompeticion(clubSeleccionado, true);
     return;
   }
 
-  // Un amistoso no pertenece a ninguna competición concreta, así que en
-  // vez de dejar el desplegable de club vacío/bloqueado (como pasaba
-  // antes, sin sentido para una crónica de amistoso) se ofrecen los
-  // clubes de todas las categorías para poder elegir cualquiera de ellos.
-  const clubes = categoria === "amistoso"
-    ? listaTodosLosClubesFederativos().sort((a, b) => a.localeCompare(b))
-    : (typeof getClubsForCategoria === "function" ? getClubsForCategoria(categoria) : []);
+  // Un amistoso no pertenece a ninguna competición concreta: se ofrecen
+  // los clubes de todas las categorías (agrupados por liga) para poder
+  // elegir cualquiera de ellos.
+  if (categoria === "amistoso") {
+    poblarClubsAgrupadosPorCompeticion(clubSeleccionado, false);
+    return;
+  }
+
+  const clubes = typeof getClubsForCategoria === "function" ? getClubsForCategoria(categoria) : [];
   clubes.forEach((club) => {
     const opt = document.createElement("option");
     opt.value = club;
@@ -1172,23 +1349,18 @@ selectCategoria.addEventListener("change", () => poblarClubs(selectCategoria.val
 selectCategoria.addEventListener("change", () => {
   if (categoriasAdicionalesPicker) {
     categoriasAdicionalesPicker.actualizarOpciones(
-      categoriasFijasDeAutor(selectAutor ? selectAutor.value : USER.id).length
-        ? categoriasFijasDeAutor(selectAutor ? selectAutor.value : USER.id)
-        : Object.keys(CATEGORIES),
+      categoriasParaAdicionales(null),
       selectCategoria.value
     );
   }
 });
 poblarClubs(selectCategoria.value, "");
 
-// ---------- ARTÍCULOS: categoría según categoría(s) fija(s) del autor ----------
-// Un redactor "sin equipo, con categoría fija" (p. ej. de Arbitraje) solo
-// puede firmar noticias de esa categoría. Si el autor elegido en el
-// formulario (él mismo, o quien elija un admin en "autor_id") tiene
-// alguna categoría fija, el desplegable de Categoría se repuebla solo con
-// esas opciones; si no tiene ninguna, se muestra la lista completa de
-// siempre. Con una sola categoría fija queda fija de facto (desplegable
-// bloqueado); con varias, el redactor elige entre ellas.
+// ---------- ARTÍCULOS: categoría del autor ----------
+// Las categorías complementarias de un redactor (p. ej. Arbitraje) ya no
+// limitan sobre qué puede escribir: el desplegable de Categoría y las
+// categorías adicionales muestran siempre la lista completa. Se mantiene
+// la función porque se llama al cambiar de autor y al cargar una noticia.
 function categoriasFijasDeAutor(autorId) {
   const idNum = parseInt(autorId, 10);
   if (idNum === USER.id) return USER.categorias_fijas || [];
@@ -1196,36 +1368,19 @@ function categoriasFijasDeAutor(autorId) {
   return (autor && autor.categorias_fijas) || [];
 }
 function poblarCategoriaSegunAutor(autorId, categoriaSeleccionada) {
-  const fijas = categoriasFijasDeAutor(autorId);
   const valorPrevio = categoriaSeleccionada !== undefined ? categoriaSeleccionada : selectCategoria.value;
-  if (!fijas.length) {
-    // Redactor normal: se restaura la lista completa de categorías (por
-    // si antes se había repoblado con las fijas de otro autor).
-    selectCategoria.innerHTML = Object.entries(CATEGORIES).map(([valor, etiqueta]) =>
-      `<option value="${valor}">${escapeHtml(etiqueta)}</option>`
-    ).join("");
-    selectCategoria.disabled = false;
-    selectCategoria.value = valorPrevio || "hypermotion";
-    if (selectCategoria.value !== (valorPrevio || "hypermotion")) selectCategoria.value = "hypermotion";
-  } else {
-    selectCategoria.innerHTML = fijas.map((valor) =>
-      `<option value="${valor}">${escapeHtml(categoriaLabel(valor))}</option>`
-    ).join("");
-    selectCategoria.value = fijas.includes(valorPrevio) ? valorPrevio : fijas[0];
-    // Con una única categoría fija no tiene sentido dejar elegir: se
-    // bloquea el desplegable (mismo criterio que con Club en "General").
-    selectCategoria.disabled = fijas.length === 1;
-  }
+  selectCategoria.innerHTML = Object.entries(CATEGORIES).map(([valor, etiqueta]) =>
+    `<option value="${valor}">${escapeHtml(etiqueta)}</option>`
+  ).join("");
+  selectCategoria.disabled = false;
+  selectCategoria.value = valorPrevio || "hypermotion";
+  if (selectCategoria.value !== (valorPrevio || "hypermotion")) selectCategoria.value = "hypermotion";
   // Se conserva el club que ya estuviera seleccionado (p. ej. el que
-  // acaba de rellenar editarArticulo() al cargar una noticia existente):
-  // esta función solo tiene que ajustar la lista de categorías según el
-  // autor, no debe borrar el club ya elegido.
+  // acaba de rellenar editarArticulo() al cargar una noticia existente).
   poblarClubs(selectCategoria.value, selectClub.value);
-  // Las categorías adicionales también quedan restringidas a las fijas
-  // del autor (si tiene), igual que la principal, y nunca pueden repetir
-  // la que acabe de quedar seleccionada como principal.
+  // Las categorías adicionales nunca pueden repetir la principal.
   if (categoriasAdicionalesPicker) {
-    categoriasAdicionalesPicker.actualizarOpciones(fijas.length ? fijas : Object.keys(CATEGORIES), selectCategoria.value);
+    categoriasAdicionalesPicker.actualizarOpciones(categoriasParaAdicionales(null), selectCategoria.value);
   }
 }
 
@@ -1241,6 +1396,18 @@ const checkDestacado = document.getElementById("destacado");
 const checkPublicado = document.getElementById("publicado");
 const checkBannerUrgente = document.getElementById("bannerUrgente");
 
+// banner_urgente_hasta llega del servidor en UTC y con formato SQLite
+// ("2026-10-04 20:00:00", sin zona horaria). new Date() de ese texto lo
+// interpretaría como hora LOCAL (en España, 1-2h antes de la real), lo que
+// hacía ver el banner como ya caducado nada más activarlo. Se fuerza UTC
+// igual que en el resto del panel.
+function parsearFechaBannerUrgente(valor) {
+  if (!valor) return NaN;
+  const raw = String(valor).trim();
+  if (/[zZ]$|[+-]\d{2}:?\d{2}$/.test(raw)) return new Date(raw).getTime();
+  return new Date(raw.replace(" ", "T") + "Z").getTime();
+}
+
 // Pinta, junto al checkbox de "Última hora", cuánto tiempo le queda
 // activo (dato que solo llega al cargar una noticia ya guardada con el
 // banner encendido: banner_urgente_hasta lo calcula siempre el
@@ -1255,7 +1422,7 @@ function actualizarEstadoBannerUrgente(articulo) {
     span.textContent = "";
     return;
   }
-  const restanteMs = new Date(articulo.banner_urgente_hasta).getTime() - Date.now();
+  const restanteMs = parsearFechaBannerUrgente(articulo.banner_urgente_hasta) - Date.now();
   if (restanteMs <= 0) {
     checkBannerUrgente.checked = false;
     span.style.display = "none";
@@ -1267,7 +1434,7 @@ function actualizarEstadoBannerUrgente(articulo) {
   const minutos = minutosTotales % 60;
   const restanteLabel = horas > 0 ? `${horas}h ${minutos}min` : `${minutos}min`;
   span.style.display = "";
-  span.textContent = `🔴 Activo — quedan ${restanteLabel}`;
+  span.textContent = `Activo — quedan ${restanteLabel}`;
 }
 function sincronizarDestacadoConPublicado() {
   const programada = Boolean(checkProgramarNoticia?.checked);
@@ -1348,6 +1515,7 @@ function sincronizarCampoFechaProgramada() {
   campoFechaProgramada.style.display = activo ? "" : "none";
   ayudaProgramarNoticia.style.display = activo ? "" : "none";
   if (!activo) inputProgramadoPara.value = "";
+  if (typeof window.refrescarProgramarUI === "function") window.refrescarProgramarUI();
 }
 checkProgramarNoticia?.addEventListener("change", () => { sincronizarCampoFechaProgramada(); actualizarTextoBotonGuardar(); sincronizarDestacadoConPublicado(); });
 inputProgramadoPara?.addEventListener("change", actualizarTextoBotonGuardar);
@@ -1370,26 +1538,53 @@ function sincronizarCampoFechaPreferencia() {
     rellenarFechaYHora(null, "prefFechaDesde", "prefHoraDesde");
     rellenarFechaYHora(null, "prefFechaHasta", "prefHoraHasta");
   }
+  if (typeof window.refrescarFechaPreferenciaUI === "function") window.refrescarFechaPreferenciaUI();
 }
 checkFechaPreferenciaActiva?.addEventListener("change", sincronizarCampoFechaPreferencia);
 sincronizarCampoFechaPreferencia();
 
 // La "fecha de preferencia" es una sugerencia para quien todavía tiene
-// que revisar/publicar la noticia; en una noticia que ya está publicada
-// no pinta nada, así que el bloque entero se oculta (y se desmarca y
-// limpia, para no dejar un valor fantasma guardado si se vuelve a
-// desmarcar "Publicada" más tarde sin que el redactor se dé cuenta).
+// que revisar/publicar la noticia. Deja de pintar algo en cuanto la noticia
+// ya está publicada o PROGRAMADA (ya tiene fecha y hora de publicación
+// definitivas), así que el bloque entero desaparece (y se desmarca y
+// limpia, para no dejar un valor fantasma guardado si más tarde se quita
+// la programación o se desmarca "Publicada" sin que el redactor se dé cuenta).
 function sincronizarFechaPreferenciaConPublicado() {
   if (!bloqueFechaPreferencia) return;
   const yaPublicada = Boolean(checkPublicado?.checked);
-  bloqueFechaPreferencia.style.display = yaPublicada ? "none" : "";
-  if (yaPublicada && checkFechaPreferenciaActiva?.checked) {
+  const programada = Boolean(checkProgramarNoticia?.checked);
+  const ocultar = yaPublicada || programada;
+  bloqueFechaPreferencia.style.display = ocultar ? "none" : "";
+  if (ocultar && checkFechaPreferenciaActiva?.checked) {
     checkFechaPreferenciaActiva.checked = false;
     sincronizarCampoFechaPreferencia();
   }
 }
 checkPublicado?.addEventListener("change", sincronizarFechaPreferenciaConPublicado);
+checkProgramarNoticia?.addEventListener("change", sincronizarFechaPreferenciaConPublicado);
 sincronizarFechaPreferenciaConPublicado();
+
+// Nivel 1 (redactor sin permiso de publicar directo): la fecha de
+// preferencia es obligatoria al mandar la noticia a revisión.
+function esRedactorNivel1() {
+  return Boolean(USER) && USER.rol !== "admin" && (USER.nivel || 1) < 2;
+}
+function aplicarFechaPreferenciaObligatoria() {
+  const obligatoria = esRedactorNivel1();
+  const titulo = bloqueFechaPreferencia?.querySelector(".opcion-toggle-titulo");
+  const sub = bloqueFechaPreferencia?.querySelector(".opcion-toggle-sub");
+  if (titulo) titulo.textContent = obligatoria ? "Fecha de preferencia (obligatoria)" : "Fecha de preferencia";
+  if (sub) sub.textContent = obligatoria ? "Indica cuándo te gustaría que se publique (no programa nada)" : "Sugiere cuándo publicarla (no programa nada). Desaparece al programarla";
+  if (obligatoria && checkFechaPreferenciaActiva && !checkPublicado?.checked) {
+    checkFechaPreferenciaActiva.checked = true;
+    checkFechaPreferenciaActiva.disabled = true;
+    sincronizarCampoFechaPreferencia();
+  } else if (checkFechaPreferenciaActiva) {
+    checkFechaPreferenciaActiva.disabled = false;
+  }
+}
+checkPublicado?.addEventListener("change", aplicarFechaPreferenciaObligatoria);
+aplicarFechaPreferenciaObligatoria();
 
 // Convierte el valor del <input type="datetime-local"> a un ISO string en
 // UTC para mandarlo al backend. El valor del input ("YYYY-MM-DDTHH:MM") es
@@ -1572,6 +1767,13 @@ function iniciarEquiposPicker({ contadorEl, buscadorEl, listaEl, ayudaEl }, equi
 // categoría principal, ver poblarCategoriaSegunAutor), en vez de a la
 // lista completa.
 const MAX_CATEGORIAS_ADICIONALES = 4;
+// Copa del Rey y Copa Federación solo se pueden elegir como categoría
+// PRINCIPAL (desplegable "Categoría"), nunca como adicional.
+const CATEGORIAS_SOLO_PRINCIPAL = [];
+
+function categoriasParaAdicionales(lista) {
+  return (lista || Object.keys(CATEGORIES)).filter((c) => !CATEGORIAS_SOLO_PRINCIPAL.includes(c));
+}
 let categoriasAdicionalesPicker = null;
 function iniciarCategoriasAdicionalesPicker({ contadorEl, buscadorEl, listaEl, ayudaEl }, categoriasIniciales = [], opcionesDisponibles, categoriaPrincipal) {
   let seleccionados = new Set((categoriasIniciales || []).filter((c) => c !== categoriaPrincipal));
@@ -1654,7 +1856,7 @@ categoriasAdicionalesPicker = iniciarCategoriasAdicionalesPicker({
   buscadorEl: document.getElementById("categorias_adicionales_buscador"),
   listaEl: document.getElementById("categorias_adicionales_lista"),
   ayudaEl: document.getElementById("categorias_adicionales_ayuda"),
-}, [], Object.keys(CATEGORIES), selectCategoria.value);
+}, [], categoriasParaAdicionales(), selectCategoria.value);
 
 // ---------- CATEGORÍA(S) FIJA(S) DE UN USUARIO (crear usuario / tabla) ----------
 // Mismo widget de chips con buscador que iniciarEquiposPicker(), pero
@@ -1674,7 +1876,7 @@ function iniciarCategoriasFijasPicker({ contadorEl, buscadorEl, listaEl, ayudaEl
     const n = seleccionados.size;
     contadorEl.textContent = `${n} seleccionada${n === 1 ? "" : "s"}`;
     ayudaEl.textContent = n
-      ? "Este redactor no tendrá equipo y solo podrá publicar en la(s) categoría(s) elegida(s)."
+      ? "Se suma a sus equipos; no limita lo que puede publicar."
       : "Puedes dejarlo sin especificar.";
   }
 
@@ -1760,7 +1962,8 @@ async function cargarAutoresSelect(autorSeleccionado, coautorSeleccionado) {
       }
     }
   } catch (err) {
-    selectAutor.innerHTML = `<option value="${USER.id}">${escapeHtml(USER.nombre)} (tú)</option>`;
+    const equiposYo = Array.isArray(USER.equipo) ? USER.equipo : (USER.equipo ? [USER.equipo] : []);
+    selectAutor.innerHTML = `<option value="${USER.id}">${escapeHtml(USER.nombre)}${equiposYo.length ? ` — ${escapeHtml(equiposYo.join(" / "))}` : ""} (tú)</option>`;
     if (selectCoautor) selectCoautor.innerHTML = `<option value="">— Sin segundo autor —</option>`;
   }
 }
@@ -1817,7 +2020,7 @@ function crearFilaImagen(valor = "", esPortada = false, posicion = "galeria", fo
       </div>
     </div>
     <div class="fila-imagen-credito">
-      <input type="text" class="imagen-credito-input" placeholder="Crédito de la foto (ej. © Nombre Apellido / ELOTROFÚTBOLTV)" value="${credito ? escapeHtml(credito) : ""}">
+      <input type="text" class="imagen-credito-input" placeholder="Crédito (© Nombre / ELOTROFÚTBOLTV)" value="${credito ? escapeHtml(credito) : ""}">
     </div>
   `;
   fila.dataset.trasParrafo = trasParrafo || 1;
@@ -1836,27 +2039,28 @@ function crearFilaImagen(valor = "", esPortada = false, posicion = "galeria", fo
   });
   btnElegirParrafo.addEventListener("click", () => abrirSelectorParrafo(fila));
 
-  const focoPanel = document.createElement("div");
-  focoPanel.className = "foco-panel oculto";
-  focoPanel.innerHTML = `
-    <div class="foco-preview"><div class="foco-marcador"></div></div>
-    <div class="foco-texto">
-      <p>Esta foto se muestra siempre con la misma proporción que el ancho del texto; si hace falta recortarla, haz clic en el punto de la imagen que quieres que se vea siempre.</p>
-      <button type="button" class="foco-reset">Centrar de nuevo</button>
-    </div>
-  `;
-
-  const preview = focoPanel.querySelector(".foco-preview");
-  const marcador = focoPanel.querySelector(".foco-marcador");
+  // Selector de foco único (admin/js/foco-selector.js): una ventana con la
+  // foto grande y el punto a arrastrar. Al poner una foto nueva (subida o
+  // URL escrita) se abre sola y no deja seguir sin encuadrarla. El foco de
+  // cada foto vive en fila.dataset.foco.
   const miniatura = fila.querySelector(".preview-imagen-fila");
   const urlInput = fila.querySelector(".imagen-url-input");
+  const selectorFoco = EOF_FOCO_SELECTOR.montar({
+    boton: fila.querySelector(".btn-foco"),
+    obtenerUrl: () => urlInput.value,
+    obtenerValor: () => fila.dataset.foco,
+    fijarValor: (v) => { fila.dataset.foco = v; },
+    alQuitar: () => {
+      urlInput.value = "";
+      fila.dataset.foco = "50% 50%";
+      actualizarMiniatura();
+      pintarFoco();
+    },
+    proporciones: ["16x9", "1x1", "4x5"],
+  });
 
   function pintarFoco() {
-    const [fx, fy] = fila.dataset.foco.split(" ");
-    marcador.style.left = fx;
-    marcador.style.top = fy;
-    const urlActual = urlInput.value.trim();
-    preview.style.backgroundImage = urlActual ? `url("${urlActual}")` : "none";
+    selectorFoco.pintar();
   }
 
   // Mantiene la miniatura pequeña de la fila sincronizada con la URL
@@ -1872,26 +2076,14 @@ function crearFilaImagen(valor = "", esPortada = false, posicion = "galeria", fo
     }
   }
 
-  preview.addEventListener("click", (e) => {
-    const rect = preview.getBoundingClientRect();
-    const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
-    const y = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
-    fila.dataset.foco = `${Math.round(x)}% ${Math.round(y)}%`;
-    pintarFoco();
-  });
-  focoPanel.querySelector(".foco-reset").addEventListener("click", () => {
-    fila.dataset.foco = "50% 50%";
-    pintarFoco();
-  });
-
   urlInput.addEventListener("input", () => {
     pintarFoco();
     actualizarMiniatura();
   });
-  fila.querySelector(".btn-foco").addEventListener("click", (btn) => {
-    focoPanel.classList.toggle("oculto");
-    fila.querySelector(".btn-foco").classList.toggle("activo");
-    if (!focoPanel.classList.contains("oculto")) pintarFoco();
+  // URL escrita o pegada a mano: al salir del campo se pide el encuadre.
+  urlInput.addEventListener("change", () => {
+    fila.dataset.foco = "50% 50%";
+    selectorFoco.exigirSiNueva();
   });
 
   // Permite elegir una foto directamente del dispositivo: se sube a
@@ -1909,7 +2101,9 @@ function crearFilaImagen(valor = "", esPortada = false, posicion = "galeria", fo
     try {
       const url = await subirImagenSuelta(file);
       urlInput.value = url;
+      fila.dataset.foco = "50% 50%";
       urlInput.dispatchEvent(new Event("input"));
+      selectorFoco.exigirSiNueva();
     } catch (err) {
       EOF.toast(err.message || "No se pudo subir la foto", "error");
     } finally {
@@ -1931,14 +2125,15 @@ function crearFilaImagen(valor = "", esPortada = false, posicion = "galeria", fo
     } else {
       urlInput.value = "";
       fila.dataset.foco = "50% 50%";
+      selectorFoco.reiniciar();
       actualizarMiniatura();
+      pintarFoco();
     }
   });
 
   actualizarMiniatura();
   pintarFoco();
   grupo.appendChild(fila);
-  grupo.appendChild(focoPanel);
   imagenesLista.appendChild(grupo);
   return fila;
 }
@@ -2286,6 +2481,25 @@ const btnAnadirTarjeta = document.getElementById("btnAnadirTarjeta");
 function actualizarVisibilidadFichaTecnica() {
   if (!bloqueFichaTecnica || !selectTipoArticulo) return;
   bloqueFichaTecnica.style.display = selectTipoArticulo.value === "cronica" ? "" : "none";
+  actualizarEtiquetaBotonPlantilla();
+}
+
+// Nombre de cada tipo tal como se escribe en los mensajes y en el botón de
+// la barra del editor ("Plantilla de crónica"). El botón se actualiza desde
+// aquí porque esta función se ejecuta siempre que cambia el tipo, también
+// cuando se cambia por código (al cargar una noticia o al vincular un
+// resultado) y el "change" del desplegable no salta.
+const NOMBRE_TIPO_PLANTILLA = {
+  noticia: "noticia", previa: "previa", cronica: "crónica",
+  analisis: "análisis", opinion: "opinión", entrevista: "entrevista",
+  uno_por_uno: "1x1 de jugadores",
+};
+function actualizarEtiquetaBotonPlantilla() {
+  const btn = document.querySelector('#editorToolbar [data-accion="plantilla"]');
+  if (!btn || !selectTipoArticulo) return;
+  const nombre = NOMBRE_TIPO_PLANTILLA[selectTipoArticulo.value] || "noticia";
+  btn.textContent = `↻ Plantilla de ${nombre}`;
+  btn.title = `Vuelve a poner la estructura estándar de ${nombre}`;
 }
 selectTipoArticulo?.addEventListener("change", actualizarVisibilidadFichaTecnica);
 
@@ -2358,8 +2572,15 @@ function actualizarClubAutomatico() {
     // (visible solo para "cronica"); se actualiza aquí, ya que este
     // cambio de valor no dispara el "change" del desplegable a mano.
     actualizarVisibilidadFichaTecnica();
+    aplicarPlantillaSegunTipo({ silencioso: true });
   }
   const esAutomatico = esTipoConClubAutomatico(selectTipoArticulo?.value);
+  // Para previa/crónica el resultado vinculado es OBLIGATORIO: el rótulo
+  // no debe decir "(opcional)" en ese caso (sí en el resto de tipos).
+  const etiquetaResultado = document.getElementById("resultadoVinculadoLabel");
+  if (etiquetaResultado) etiquetaResultado.textContent = esAutomatico ? "Resultado vinculado *" : "Resultado vinculado (opcional)";
+  const avisoResultado = document.getElementById("resultadoVinculadoObligatorioAviso");
+  if (avisoResultado) avisoResultado.style.display = esAutomatico ? "" : "none";
   clubWrapNormal.style.display = esAutomatico ? "none" : "";
   clubWrapAutomatico.style.display = esAutomatico ? "" : "none";
   if (categoriaWrapNormal && categoriaWrapAutomatico) {
@@ -2453,6 +2674,8 @@ function obtenerFichaTecnicaFormulario() {
 // editar una crónica existente), o lo deja vacío si no tiene ninguna.
 function cargarFichaTecnicaFormulario(ficha) {
   const f = ficha || {};
+  const avisoPrecarga = document.getElementById("fichaPrecargadaAviso");
+  if (avisoPrecarga) { avisoPrecarga.hidden = true; avisoPrecarga.textContent = ""; }
   document.getElementById("fichaCompeticion").value = f.competicion || "";
   document.getElementById("fichaJornada").value = f.jornada || "";
   document.getElementById("fichaFechaHora").value = f.fecha_hora || "";
@@ -2777,7 +3000,7 @@ async function cargarResultadosSelect(seleccionado) {
     // por encima de 500 se ignora y cae en el default de 100), así que
     // en la práctica esta llamada se estaba quedando en 100 igualmente.
     // Se ajusta a 500, que es el máximo que el backend admite de verdad.
-    const { results = [] } = await apiFetch(`/api/results?limit=500`);
+    const { results = [] } = await apiFetch(`/api/results?limit=0`);
     RESULTADOS_ARTICULO_TODOS = results;
     const actual = seleccionado ? results.find((r) => String(r.id) === String(seleccionado)) : null;
     fijarResultadoArticulo(seleccionado || "", actual ? etiquetaResultado(actual) : "", false);
@@ -2885,6 +3108,96 @@ selectResultadoArticulo?.addEventListener("change", () => {
   if (selectResultadoArticulo.value === "__nuevo__") abrirModalNuevoResultado();
 });
 
+// ---------- Ficha técnica: la última crónica sustituye a las anteriores ----------
+// Cuando se escribe una crónica de un partido que ya tiene otra crónica con ficha técnica
+// (la última publicada con ficha, que es la que se muestra al fusionarlas), el formulario arranca con
+// SU ficha para no volver a teclear estadio, árbitro, goleadores... El redactor puede
+// editarla libremente. Solo se rellena si la ficha está VACÍA (nunca pisa lo escrito) y
+// no se toca una crónica ya publicada. Servidor: GET /api/ficha-partido.
+let PRECARGA_FICHA_PETICION = 0;
+async function precargarFichaDelPrimero() {
+  const tipoSel = document.getElementById("tipo");
+  const resultadoId = selectResultadoArticulo ? selectResultadoArticulo.value : "";
+  if (!tipoSel || tipoSel.value !== "cronica" || !/^\d+$/.test(String(resultadoId))) return;
+  if (obtenerFichaTecnicaFormulario()) return; // ya hay algo escrito: no se pisa
+  const idActual = document.getElementById("articleId")?.value || "";
+  if (idActual && document.getElementById("publicado")?.checked) return; // ya publicada: no se toca sola
+  const peticion = ++PRECARGA_FICHA_PETICION;
+  let r;
+  try {
+    r = await apiFetch(`/api/ficha-partido?resultado_id=${encodeURIComponent(resultadoId)}&excluir=${encodeURIComponent(idActual || 0)}`);
+  } catch { return; } // sin red o sin permiso: el formulario sigue como estaba
+  // Se vuelve a comprobar todo tras la espera (cambió de partido/tipo, escribió algo, abrió otra noticia...).
+  if (peticion !== PRECARGA_FICHA_PETICION || !r || !r.ficha_tecnica) return;
+  if (tipoSel.value !== "cronica" || String(selectResultadoArticulo.value) !== String(resultadoId)) return;
+  if ((document.getElementById("articleId")?.value || "") !== idActual) return;
+  if (obtenerFichaTecnicaFormulario()) return;
+  cargarFichaTecnicaFormulario(r.ficha_tecnica);
+  const aviso = document.getElementById("fichaPrecargadaAviso");
+  if (aviso) {
+    const a = r.articulo || {};
+    aviso.textContent = `Ficha precargada de la crónica de este partido${a.titulo ? ` «${a.titulo}»` : ""}${a.autor_nombre ? ` (${a.autor_nombre})` : ""}. Revísala y cámbiala si hace falta: al fusionarse las crónicas, la ficha de la tuya sustituye a la anterior.`;
+    aviso.hidden = false;
+  }
+}
+const precargarFichaDiferida = () => setTimeout(precargarFichaDelPrimero, 0);
+selectResultadoArticulo?.addEventListener("change", precargarFichaDiferida);
+document.getElementById("tipo")?.addEventListener("change", precargarFichaDiferida);
+
+// Aviso al guardar: como la ficha de la última crónica SUSTITUYE a la anterior, si la tuya trae
+// bastante menos datos que la de la crónica anterior (p. ej. se vació casi todo o se escribió
+// desde cero), se pregunta antes de guardar. Una ficha totalmente vacía no avisa (al fusionar se
+// conserva la anterior). Regla: faltan 3 o más datos Y la tuya tiene la mitad o menos.
+const FICHA_CAMPOS_SUELTOS = { competicion: "competición", jornada: "jornada", fecha_hora: "fecha y hora", estadio: "estadio", ciudad: "ciudad", asistencia: "asistencia", arbitro: "árbitro", mvp: "MVP", notas: "notas" };
+let FICHA_AVISO_ACEPTADO = ""; // "partido:ficha" que ya se aceptó guardar así (no se vuelve a preguntar)
+function contarDatosFicha(f) {
+  if (!f || typeof f !== "object") return 0;
+  let n = Object.keys(FICHA_CAMPOS_SUELTOS).filter((k) => String(f[k] ?? "").trim() !== "").length;
+  if (Array.isArray(f.goleadores)) n += f.goleadores.length;
+  if (Array.isArray(f.tarjetas)) n += f.tarjetas.length;
+  return n;
+}
+function describirFaltantesFicha(previa, nueva) {
+  const partes = Object.keys(FICHA_CAMPOS_SUELTOS)
+    .filter((k) => String(previa[k] ?? "").trim() !== "" && String(nueva[k] ?? "").trim() === "")
+    .map((k) => FICHA_CAMPOS_SUELTOS[k]);
+  const lista = (clave, uno, varios) => {
+    const dif = (Array.isArray(previa[clave]) ? previa[clave].length : 0) - (Array.isArray(nueva[clave]) ? nueva[clave].length : 0);
+    if (dif > 0) partes.push(`${dif} ${dif === 1 ? uno : varios}`);
+  };
+  lista("goleadores", "goleador", "goleadores");
+  lista("tarjetas", "tarjeta", "tarjetas");
+  return partes.join(", ");
+}
+// Devuelve true si se puede seguir guardando; false si el redactor quiere revisar la ficha.
+async function confirmarFichaNoPierdeDatos() {
+  const tipo = document.getElementById("tipo")?.value;
+  const resultadoId = selectResultadoArticulo ? selectResultadoArticulo.value : "";
+  if (tipo !== "cronica" || !/^\d+$/.test(String(resultadoId))) return true;
+  const nueva = obtenerFichaTecnicaFormulario();
+  if (!nueva) return true;
+  const idActual = document.getElementById("articleId")?.value || "";
+  let r;
+  try {
+    r = await apiFetch(`/api/ficha-partido?resultado_id=${encodeURIComponent(resultadoId)}&excluir=${encodeURIComponent(idActual || 0)}`);
+  } catch { return true; } // sin red o sin permiso: nunca se bloquea el guardado por esto
+  const previa = r && r.ficha_tecnica;
+  if (!previa) return true;
+  const np = contarDatosFicha(previa);
+  const nn = contarDatosFicha(nueva);
+  if (!(np - nn >= 3 && nn * 2 <= np)) return true;
+  const huella = `${resultadoId}:${JSON.stringify(nueva)}`;
+  if (huella === FICHA_AVISO_ACEPTADO) return true;
+  const a = r.articulo || {};
+  const falta = describirFaltantesFicha(previa, nueva);
+  const mensaje = `La ficha técnica de esta crónica tiene bastantes menos datos (${nn}) que la de la crónica anterior de este partido${a.titulo ? ` «${a.titulo}»` : ""}${a.autor_nombre ? ` (${a.autor_nombre})` : ""} (${np}).${falta ? ` Faltan: ${falta}.` : ""} Al fusionarse, la tuya sustituye a la anterior y esos datos dejarán de verse en la web. ¿Guardar así?`;
+  const seguir = await EOF.confirmar(mensaje, { textoConfirmar: "Guardar así", textoCancelar: "Revisar la ficha" });
+  if (seguir) { FICHA_AVISO_ACEPTADO = huella; return true; }
+  const bloque = document.getElementById("bloqueFichaTecnica");
+  if (bloque) { bloque.open = true; bloque.scrollIntoView({ behavior: "smooth", block: "center" }); }
+  return false;
+}
+
 
 // ---------- ARTÍCULOS: editor de contenido (WYSIWYG) ----------
 
@@ -2910,8 +3223,8 @@ function normalizarHTMLParaComparar(html) {
 // recién abierto sin tocar.
 function hayTrabajoRealEnFormulario(titulo, contenidoHTML) {
   if ((titulo || "").trim()) return true;
-  const contenidoVacio = !contenidoHTML || contenidoHTML.replace(/<[^>]*>/g, "").trim() === "";
-  if (!contenidoVacio && normalizarHTMLParaComparar(contenidoHTML) !== normalizarHTMLParaComparar(PLANTILLA_ESTANDAR)) {
+  // Una plantilla (de cualquier tipo) sin tocar no cuenta como trabajo real.
+  if (!contenidoEsPlantillaSinTocar(contenidoHTML)) {
     return true;
   }
   // Aunque el título/contenido en castellano estén vacíos (o intactos con
@@ -2955,6 +3268,13 @@ function guardarBorradorLocalDeEmergencia() {
       titulo,
       subtitulo: document.getElementById("subtitulo")?.value || "",
       tipo: document.getElementById("tipo")?.value || "",
+      // Resultado vinculado: obligatorio en previas y crónicas, así que
+      // también se guarda aquí para que al recuperar el borrador no se
+      // pierda el partido elegido ("__nuevo__" es solo la opción de crear).
+      resultado_id: (() => {
+        const v = document.getElementById("resultado_id")?.value || "";
+        return v === "__nuevo__" ? "" : v;
+      })(),
       categoria: document.getElementById("categoria")?.value || "",
       club: document.getElementById("club")?.value || "",
       contenido: contenidoHTML,
@@ -3042,6 +3362,16 @@ function comprobarBorradorLocalDeEmergencia() {
       document.getElementById("titulo").value = borrador.titulo || "";
       document.getElementById("subtitulo").value = borrador.subtitulo || "";
       if (borrador.tipo) document.getElementById("tipo").value = borrador.tipo;
+      // Poner el tipo por código no dispara "change": se refresca a mano lo
+      // que depende de él (ficha técnica y, en previa/crónica, el rótulo
+      // "Resultado vinculado *" obligatorio, el club y la categoría
+      // automáticos). Si el borrador traía resultado vinculado, se vuelve
+      // a elegir antes de recalcular.
+      actualizarVisibilidadFichaTecnica();
+      if (borrador.resultado_id) {
+        try { await cargarResultadosSelect(borrador.resultado_id); } catch { /* sin resultado: se avisará al guardar */ }
+      }
+      actualizarClubAutomatico();
       // categoria/club se ponen DESPUÉS de restaurar imágenes/ficha
       // técnica (más abajo), no aquí: cuando el borrador venía de una
       // noticia ya existente, editarArticulo() de arriba ya ha lanzado
@@ -3051,7 +3381,7 @@ function comprobarBorradorLocalDeEmergencia() {
       // dejar la categoría/club tal cual los había cargado el servidor,
       // no lo que había en el borrador local (de ahí que se perdiera
       // "a veces": dependía de qué llegara antes).
-      contenidoEditor.innerHTML = borrador.contenido || "";
+      contenidoEditor.innerHTML = sanearHtmlContenido(borrador.contenido || "");
       document.getElementById("destacado").checked = !!borrador.destacado;
       document.getElementById("publicado").checked = !!borrador.publicado;
       // Restaura también las traducciones que se estuvieran escribiendo,
@@ -3097,20 +3427,32 @@ function longitudContenidoActual() {
   return contenidoEditor.innerText.replace(/\s+/g, " ").trim().length;
 }
 
+// Una noticia de "última hora" (interruptor "Marcar como última hora", o
+// publicada con el PIN de última hora) puede ser muy corta: no se le exige
+// el mínimo de caracteres. El máximo sí se mantiene. El worker aplica la
+// misma excepción al guardar.
+function esUltimaHoraSinMinimo(ultimaHoraPin) {
+  return !!ultimaHoraPin || !!(checkBannerUrgente && checkBannerUrgente.checked);
+}
+
 function actualizarContadorCaracteres() {
   if (!contadorCaracteres) return;
   const n = longitudContenidoActual();
-  contadorCaracteres.textContent = `${n} caracteres (mínimo ${CONTENIDO_MIN}, máximo ${CONTENIDO_MAX})`;
+  const sinMinimo = esUltimaHoraSinMinimo(null);
+  contadorCaracteres.textContent = sinMinimo
+    ? `${n} caracteres (última hora: sin mínimo, máximo ${CONTENIDO_MAX})`
+    : `${n} caracteres (mínimo ${CONTENIDO_MIN}, máximo ${CONTENIDO_MAX})`;
   contadorCaracteres.classList.remove("aviso", "error", "ok");
   if (n === 0) {
     // sin marcar, para no mostrar error nada más abrir el formulario
-  } else if (n < CONTENIDO_MIN || n > CONTENIDO_MAX) {
+  } else if ((!sinMinimo && n < CONTENIDO_MIN) || n > CONTENIDO_MAX) {
     contadorCaracteres.classList.add("error");
   } else {
     contadorCaracteres.classList.add("ok");
   }
 }
 contenidoEditor.addEventListener("input", actualizarContadorCaracteres);
+if (checkBannerUrgente) checkBannerUrgente.addEventListener("change", actualizarContadorCaracteres);
 contenidoEditor.addEventListener("paste", () => setTimeout(actualizarContadorCaracteres, 0));
 contenidoEditor.addEventListener("keyup", actualizarContadorCaracteres);
 contenidoEditor.addEventListener("blur", actualizarContadorCaracteres);
@@ -3122,24 +3464,163 @@ new MutationObserver(actualizarContadorCaracteres).observe(contenidoEditor, {
   childList: true, subtree: true, characterData: true,
 });
 
-// Estructura estándar de una noticia: entradilla en negrita + cuerpo,
-// para que todas las noticias salgan con un formato bonito y homogéneo.
-const PLANTILLA_ESTANDAR = `
+// Estructura de partida de cada tipo de artículo. Al elegir el tipo en el
+// desplegable, el editor se rellena con la suya (siempre que el redactor
+// todavía no haya escrito nada: ver aplicarPlantillaSegunTipo). Todas
+// empiezan por la entradilla en negrita y usan solo lo que ofrece la barra
+// del editor (párrafo, H3, cita, lista), así que salen con el mismo formato
+// que el resto de noticias de la web.
+const PLANTILLAS_POR_TIPO = {
+  noticia: `
   <p class="entradilla">Escribe aquí la <b>entradilla</b>: dos o tres líneas que resuman lo más importante de la noticia.</p>
   <p>Continúa aquí con el desarrollo de la información: qué ha pasado, cuándo y por qué es relevante.</p>
   <p>Añade las declaraciones, el contexto o los datos que hagan falta. Puedes crear tantos párrafos como quieras.</p>
-`.trim();
+`,
+  previa: `
+  <p class="entradilla">Escribe aquí la <b>entradilla</b> de la previa: quién juega contra quién, dónde, cuándo y qué se juega cada equipo.</p>
+  <h3>Así llega el equipo local</h3>
+  <p>Racha de resultados, posición en la clasificación y estado de forma. Cuenta cómo afronta el partido.</p>
+  <h3>Así llega el equipo visitante</h3>
+  <p>Lo mismo para el rival: últimos partidos, momento de juego y objetivos de la temporada.</p>
+  <h3>Bajas y dudas</h3>
+  <ul>
+    <li>Lesionados y sancionados del equipo local.</li>
+    <li>Lesionados y sancionados del equipo visitante.</li>
+    <li>Jugadores con molestias que aún pueden llegar a tiempo.</li>
+  </ul>
+  <h3>Posibles onces</h3>
+  <p>La alineación que se espera de cada equipo y las dudas que todavía tenga cada entrenador.</p>
+  <h3>Claves del partido</h3>
+  <p>Los duelos y los detalles tácticos que pueden decidir el encuentro.</p>
+  <h3>Cuándo y dónde verlo</h3>
+  <p>Estadio, fecha, hora y árbitro designado. Añade dónde se puede seguir el partido si lo sabes.</p>
+`,
+  cronica: `
+  <p class="entradilla">Escribe aquí la <b>entradilla</b> de la crónica: resultado final, quién marcó y la clave que explica el partido.</p>
+  <h3>Primera parte</h3>
+  <p>Cómo empezó el partido, quién dominó, las ocasiones y los goles antes del descanso, con el minuto de cada acción.</p>
+  <h3>Segunda parte</h3>
+  <p>Los cambios, los momentos decisivos, los goles y las tarjetas, y cómo se cerró el encuentro.</p>
+  <h3>La clave del partido</h3>
+  <p>Lo que decidió el resultado: un jugador, un cambio táctico o una acción concreta.</p>
+  <blockquote>Escribe aquí una declaración destacada del entrenador o de un jugador tras el partido.</blockquote>
+  <h3>Lo que viene</h3>
+  <p>Qué supone el resultado en la clasificación y cuál es el próximo compromiso de cada equipo.</p>
+`,
+  analisis: `
+  <p class="entradilla">Escribe aquí la <b>entradilla</b> del análisis: la idea principal que vas a defender, en dos o tres líneas.</p>
+  <h3>El contexto</h3>
+  <p>Qué ha pasado y por qué merece un análisis ahora.</p>
+  <h3>Los datos</h3>
+  <p>Cifras, estadísticas y comparaciones que sostienen tu tesis.</p>
+  <h3>Qué está pasando de verdad</h3>
+  <p>La lectura táctica, deportiva o económica que hay detrás de los números.</p>
+  <h3>Qué puede pasar ahora</h3>
+  <p>Los escenarios posibles y qué habría que ver para confirmarlos.</p>
+  <h3>Conclusión</h3>
+  <p>Cierra con lo más importante que se lleva el lector.</p>
+`,
+  opinion: `
+  <p class="entradilla">Escribe aquí tu <b>tesis</b>: tu postura en una o dos frases, sin rodeos.</p>
+  <p>Primer argumento: tu razón más sólida, con un dato o un ejemplo concreto.</p>
+  <p>Segundo argumento: otra razón que refuerce tu postura.</p>
+  <p>La otra cara: el mejor argumento en contra y por qué no te hace cambiar de opinión.</p>
+  <p>Cierra con una conclusión clara que deje al lector con tu idea final.</p>
+`,
+  entrevista: `
+  <p class="entradilla">Escribe aquí la <b>entradilla</b>: quién es el entrevistado, por qué es noticia ahora y la frase más llamativa de la conversación.</p>
+  <p>Contexto breve: dónde y cuándo se hizo la entrevista, y cualquier detalle que ayude a situar al lector.</p>
+  <p><b>Primera pregunta</b></p>
+  <p>Respuesta del entrevistado.</p>
+  <p><b>Segunda pregunta</b></p>
+  <p>Respuesta del entrevistado.</p>
+  <p><b>Tercera pregunta</b></p>
+  <p>Respuesta del entrevistado.</p>
+  <p><b>Última pregunta</b></p>
+  <p>Respuesta del entrevistado.</p>
+`,
+  uno_por_uno: `
+  <p class="entradilla">Escribe aquí la <b>entradilla</b>: resultado del partido y una lectura rápida de lo que han rendido los jugadores de cada equipo.</p>
+  <h3>Equipo local</h3>
+  <p><b>Portero (nombre) — 0</b>: breve comentario sobre su actuación.</p>
+  <p><b>Defensa (nombre) — 0</b>: breve comentario sobre su actuación.</p>
+  <p><b>Centrocampista (nombre) — 0</b>: breve comentario sobre su actuación.</p>
+  <p><b>Delantero (nombre) — 0</b>: breve comentario sobre su actuación.</p>
+  <h3>Equipo visitante</h3>
+  <p><b>Portero (nombre) — 0</b>: breve comentario sobre su actuación.</p>
+  <p><b>Defensa (nombre) — 0</b>: breve comentario sobre su actuación.</p>
+  <p><b>Centrocampista (nombre) — 0</b>: breve comentario sobre su actuación.</p>
+  <p><b>Delantero (nombre) — 0</b>: breve comentario sobre su actuación.</p>
+  <h3>Mejor y peor del partido</h3>
+  <p>Quién ha sido el jugador más destacado y quién se ha quedado por debajo de su nivel.</p>
+`,
+};
+// Sigue existiendo con este nombre porque la plantilla de "noticia" es la
+// estándar de siempre.
+const PLANTILLA_ESTANDAR = PLANTILLAS_POR_TIPO.noticia.trim();
+
+function tipoActualArticulo() {
+  return (selectTipoArticulo && selectTipoArticulo.value) || "noticia";
+}
+function plantillaDelTipo(tipo) {
+  return (PLANTILLAS_POR_TIPO[tipo] || PLANTILLA_ESTANDAR).trim();
+}
+
+// El navegador reescribe un poco el HTML al ponerlo en el editor (comillas,
+// etiquetas...), así que para saber si el contenido sigue siendo una
+// plantilla sin tocar se compara pasando antes cada plantilla por el mismo
+// proceso, no su texto original.
+let _plantillasNormalizadas = null;
+function plantillasNormalizadas() {
+  if (!_plantillasNormalizadas) {
+    const tmp = document.createElement("div");
+    _plantillasNormalizadas = Object.values(PLANTILLAS_POR_TIPO).map((p) => {
+      tmp.innerHTML = p.trim();
+      return normalizarHTMLParaComparar(tmp.innerHTML);
+    });
+  }
+  return _plantillasNormalizadas;
+}
+// true si el editor está vacío o todavía tiene una plantilla (de cualquier
+// tipo) sin una sola letra cambiada.
+function contenidoEsPlantillaSinTocar(html) {
+  if (!html || html.replace(/<[^>]*>/g, "").trim() === "") return true;
+  return plantillasNormalizadas().includes(normalizarHTMLParaComparar(html));
+}
 
 async function insertarPlantilla(forzar) {
+  const tipo = tipoActualArticulo();
   if (!forzar && contenidoEditor.innerText.trim() !== "") {
-    const ok = await EOF.confirmar("Esto sustituirá el contenido actual del editor por la plantilla estándar. ¿Continuar?", { peligroso: true });
+    const nombre = NOMBRE_TIPO_PLANTILLA[tipo] || "noticia";
+    const ok = await EOF.confirmar(`Esto sustituirá el contenido actual del editor por la plantilla de ${nombre}. ¿Continuar?`, { peligroso: true });
     if (!ok) return;
   }
-  contenidoEditor.innerHTML = PLANTILLA_ESTANDAR;
+  contenidoEditor.innerHTML = plantillaDelTipo(tipo);
 }
+
+// Al cambiar el tipo: si el editor está vacío o con una plantilla sin tocar,
+// se pone la estructura del tipo nuevo. Si ya hay texto escrito NO se pisa
+// (se perdería trabajo): se deja como está y se avisa de que la estructura
+// del tipo se puede poner con el botón "Plantilla de ..." del editor.
+function aplicarPlantillaSegunTipo(opciones) {
+  const silencioso = Boolean(opciones && opciones.silencioso);
+  if (!contenidoEditor) return;
+  const tipo = tipoActualArticulo();
+  if (contenidoEsPlantillaSinTocar(contenidoEditor.innerHTML)) {
+    contenidoEditor.innerHTML = plantillaDelTipo(tipo);
+    return;
+  }
+  const editandoExistente = Boolean(document.getElementById("articleId")?.value);
+  if (!silencioso && !editandoExistente && window.EOF && typeof EOF.toast === "function") {
+    const nombre = NOMBRE_TIPO_PLANTILLA[tipo] || "noticia";
+    EOF.toast(`Se ha mantenido lo que ya habías escrito. Si quieres la estructura de ${nombre}, usa «Plantilla de ${nombre}» en el editor.`, "info", 6000);
+  }
+}
+selectTipoArticulo?.addEventListener("change", () => aplicarPlantillaSegunTipo());
 
 // El editor empieza siempre con la plantilla estándar en una noticia nueva.
 insertarPlantilla(true);
+actualizarEtiquetaBotonPlantilla();
 
 function editorEsBloqueValido(el) {
   // Encuentra el párrafo/bloque contenedor de la selección actual dentro
@@ -3567,7 +4048,7 @@ function restaurarTraduccionesDesdeBorrador(traducciones) {
     const t = traducciones[cod] || {};
     traduccionPaneles.querySelector(`[data-trad="titulo"][data-lang="${cod}"]`).value = t.titulo || "";
     traduccionPaneles.querySelector(`[data-trad="subtitulo"][data-lang="${cod}"]`).value = t.subtitulo || "";
-    traduccionPaneles.querySelector(`[data-trad="contenido"][data-lang="${cod}"]`).innerHTML = t.contenido || "";
+    traduccionPaneles.querySelector(`[data-trad="contenido"][data-lang="${cod}"]`).innerHTML = sanearHtmlContenido(t.contenido || "");
     actualizarEstadoIdioma(cod);
   }
   actualizarProgresoTraducciones();
@@ -3616,6 +4097,9 @@ let SNAPSHOT_ARTICULO_ORIGINAL = null;
 // un PIN de "Última hora" (redactor publicando directamente), se manda
 // junto al resto de campos para que el backend lo compruebe.
 async function guardarArticulo(ultimaHoraPin, estadoBorrador, preferenciaFechas) {
+  if (EOF_ACCIONES_EN_CURSO.has("L4074")) return;
+  EOF_ACCIONES_EN_CURSO.add("L4074");
+  try {
   // Si se pulsa "Guardar" mientras alguna foto todavía se está subiendo a
   // Cloudinary (el botón de subir queda con la clase "subiendo" hasta que
   // termina), esa foto en concreto todavía no tiene URL en su campo
@@ -3628,13 +4112,26 @@ async function guardarArticulo(ultimaHoraPin, estadoBorrador, preferenciaFechas)
     EOF.toast("Espera a que termine de subirse la foto antes de guardar.", "error");
     return false;
   }
+  // Redactor de Nivel 1: al mandar la noticia a revisión ("terminado") la
+  // fecha de preferencia es obligatoria (el backend también lo exige).
+  if (esRedactorNivel1() && estadoBorrador === "terminado" && !preferenciaFechas?.fecha_preferencia_desde) {
+    EOF.toast("Indica una fecha de preferencia para que quien revise la noticia sepa cuándo publicarla.", "error");
+    if (checkFechaPreferenciaActiva && !checkFechaPreferenciaActiva.checked) {
+      checkFechaPreferenciaActiva.checked = true;
+      sincronizarCampoFechaPreferencia();
+    }
+    if (typeof window.abrirSelectorFecha === "function") window.abrirSelectorFecha("preferencia");
+    return false;
+  }
   if (checkProgramarNoticia?.checked) {
     if (!inputProgramadoPara.value) {
       EOF.toast("Elige la fecha y hora en la que quieres que se publique la noticia.", "error");
+      if (typeof window.abrirSelectorFecha === "function") window.abrirSelectorFecha("programar");
       return false;
     }
     if (!programadoParaISO()) {
       EOF.toast("La fecha de publicación programada debe ser futura.", "error");
+      if (typeof window.abrirSelectorFecha === "function") window.abrirSelectorFecha("programar");
       return false;
     }
   }
@@ -3656,7 +4153,7 @@ async function guardarArticulo(ultimaHoraPin, estadoBorrador, preferenciaFechas)
   // publicar/marcar como terminado.
   if (estadoBorrador !== "en_proceso") {
     const longitudContenido = longitudContenidoActual();
-    if (longitudContenido < CONTENIDO_MIN) {
+    if (longitudContenido < CONTENIDO_MIN && !esUltimaHoraSinMinimo(ultimaHoraPin)) {
       EOF.toast(`El contenido debe tener al menos ${CONTENIDO_MIN} caracteres (tiene ${longitudContenido}).`, "error");
       contenidoEditor.focus();
       return false;
@@ -3692,6 +4189,9 @@ async function guardarArticulo(ultimaHoraPin, estadoBorrador, preferenciaFechas)
     EOF.toast("Una previa o crónica debe tener un resultado vinculado (con sus dos equipos y su competición) para poder guardarse. Vincúlalo en \"Resultado vinculado\" más abajo.", "error");
     return false;
   }
+  // Aviso si la ficha técnica trae bastantes menos datos que la de la crónica anterior (ver
+  // confirmarFichaNoPierdeDatos). Los guardados de borrador "en proceso" no preguntan.
+  if (estadoBorrador !== "en_proceso" && !(await confirmarFichaNoPierdeDatos())) return false;
   const id = document.getElementById("articleId").value;
   const imagenes = obtenerImagenesFormulario().concat(collagesArticuloAImagenes()).concat(obtenerTweetsFormulario());
   const body = {
@@ -3763,6 +4263,7 @@ async function guardarArticulo(ultimaHoraPin, estadoBorrador, preferenciaFechas)
     let slugResultado = null;
     let avisosTraduccion = [];
     let publicadoFinal = body.publicado;
+    let fueraCalendario = false;
     if (id) {
       const resp = await apiFetch(`/api/articles/${id}`, { method: "PUT", body: JSON.stringify(body) }).catch((err) => {
         err.message = `${err.message} (editando noticia id=${id})`;
@@ -3770,11 +4271,13 @@ async function guardarArticulo(ultimaHoraPin, estadoBorrador, preferenciaFechas)
       });
       avisosTraduccion = (resp && resp.avisos_traduccion) || [];
       if (resp && typeof resp.publicado !== "undefined") publicadoFinal = !!resp.publicado;
+      fueraCalendario = !!(resp && resp.fuera_calendario);
     } else {
       const resp = await apiFetch(`/api/articles`, { method: "POST", body: JSON.stringify(body) });
       slugResultado = resp && resp.slug;
       avisosTraduccion = (resp && resp.avisos_traduccion) || [];
       if (resp && typeof resp.publicado !== "undefined") publicadoFinal = !!resp.publicado;
+      fueraCalendario = !!(resp && resp.fuera_calendario);
     }
     // Si se ha pedido publicar con un PIN de "Última hora" pero el
     // backend ha terminado guardándolo como borrador, es que el PIN era
@@ -3797,19 +4300,23 @@ async function guardarArticulo(ultimaHoraPin, estadoBorrador, preferenciaFechas)
     // de quedarse en el formulario, para ver de un vistazo que ha quedado
     // bien guardada junto con el resto.
     document.querySelector('#panel-noticias .subtabs button[data-subtab="lista"]').click();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    EOF.toast(id ? "Noticia guardada" : "Noticia creada", "exito");
     // Si es una noticia nueva y se ha publicado (no un borrador), se ofrece
     // directamente el texto para compartirla en redes. Si se ha programado,
     // también se ofrece: el texto se puede preparar ya, aunque el enlace no
     // funcionará hasta que la noticia se publique sola a su hora (ver
     // abrirModalCompartir).
-    if (!id && (publicadoFinal || programadoParaValor) && slugResultado) {
-      abrirModalCompartir({ slug: slugResultado, titulo: body.titulo, subtitulo: body.subtitulo, categoria: body.categoria, tipo: body.tipo, programado_para: programadoParaValor });
+    if (!id && (publicadoFinal || programadoParaValor) && slugResultado && !fueraCalendario) {
+      abrirModalCompartir({ slug: slugResultado, titulo: body.titulo, subtitulo: body.subtitulo, categoria: body.categoria, tipo: body.tipo, club: body.club, programado_para: programadoParaValor, banner_urgente: body.banner_urgente === true });
     }
     return true;
   } catch (err) {
     EOF.toast("Error: " + err.message, "error");
     return false;
   }
+
+  } finally { EOF_ACCIONES_EN_CURSO.delete("L4074"); }
 }
 
 // Cambia el texto del botón de guardar según si se está programando la
@@ -3937,11 +4444,13 @@ function rellenarFechaYHora(valor, idFecha, idHora) {
   if (!valor) {
     if (inputFecha) inputFecha.value = "";
     if (inputHora) inputHora.value = "";
+    if (typeof window.refrescarFechaPreferenciaUI === "function") window.refrescarFechaPreferenciaUI();
     return;
   }
   const [fecha, hora] = valor.split("T");
   if (inputFecha) inputFecha.value = fecha || "";
   if (inputHora) inputHora.value = hora || "";
+  if (typeof window.refrescarFechaPreferenciaUI === "function") window.refrescarFechaPreferenciaUI();
 }
 document.getElementById("btnBorradorTerminado")?.addEventListener("click", async () => {
   const preferencia = preferenciaFechasDelModal();
@@ -4054,18 +4563,63 @@ async function construirArticleParaPreview() {
 const CANAL_PREVIEW = ("BroadcastChannel" in window) ? new BroadcastChannel("eof_preview_articulo") : null;
 let previewAbierta = false; // solo se activa el envío en vivo tras abrir la preview al menos una vez
 let timeoutPreviewEnVivo = null;
+// Identificador único de la sesión de edición actual. Cada noticia que se
+// edita/crea tiene el suyo, y la pestaña de preview lo recibe por URL
+// (?pid=...). Así dos pestañas de preview, o dos pestañas del panel con
+// noticias distintas, ya no se pisan entre sí (antes todas compartían una
+// única clave y un único canal, y la última en escribir ganaba).
+let idPreviewActual = null;
+const PREFIJO_CLAVE_PREVIEW = "eof_preview_articulo:";
+
+function obtenerIdPreview() {
+  if (!idPreviewActual) {
+    idPreviewActual = (window.crypto && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : Date.now().toString(36) + Math.random().toString(36).slice(2);
+  }
+  return idPreviewActual;
+}
+
+// Se llama al cargar otra noticia (o una nueva) en el formulario: corta el
+// envío en vivo, cancela el temporizador pendiente y borra los datos de la
+// sesión anterior.
+function reiniciarPreview() {
+  previewAbierta = false;
+  clearTimeout(timeoutPreviewEnVivo);
+  timeoutPreviewEnVivo = null;
+  if (idPreviewActual) {
+    try { localStorage.removeItem(PREFIJO_CLAVE_PREVIEW + idPreviewActual); } catch {}
+    try { sessionStorage.removeItem(PREFIJO_CLAVE_PREVIEW + idPreviewActual); } catch {}
+  }
+  idPreviewActual = null;
+}
+
+function guardarDatosPreview(article, id) {
+  const datos = JSON.stringify(article);
+  const clave = PREFIJO_CLAVE_PREVIEW + id;
+  // sessionStorage NO se comparte con la pestaña nueva que abre la preview.
+  // localStorage sí, y además nos permite usar el evento "storage" como
+  // respaldo cuando BroadcastChannel no está disponible.
+  try { localStorage.setItem(clave, datos); } catch {}
+  try { sessionStorage.setItem(clave, datos); } catch {}
+}
 
 function enviarPreviewEnVivo() {
-  if (!previewAbierta || !CANAL_PREVIEW) return;
+  if (!previewAbierta) return;
   clearTimeout(timeoutPreviewEnVivo);
   // Pequeño debounce: mientras se está escribiendo no tiene sentido
   // reconstruir y emitir el artículo en cada pulsación de tecla.
+  const idAlProgramar = idPreviewActual;
   timeoutPreviewEnVivo = setTimeout(async () => {
+    // Si mientras esperaba se cargó otra noticia en el formulario, no se envía.
+    if (!previewAbierta || !idAlProgramar || idAlProgramar !== idPreviewActual) return;
     if (contenidoEditor.innerText.trim() === "") return;
     try {
       const article = await construirArticleParaPreview();
-      sessionStorage.setItem("eof_preview_articulo", JSON.stringify(article));
-      CANAL_PREVIEW.postMessage(article);
+      // Comprobar de nuevo: construirArticleParaPreview hace peticiones (await).
+      if (!previewAbierta || idAlProgramar !== idPreviewActual) return;
+      guardarDatosPreview(article, idAlProgramar);
+      if (CANAL_PREVIEW) CANAL_PREVIEW.postMessage({ id: idAlProgramar, article });
     } catch { /* si algo falla al armar el preview en vivo, no interrumpe la edición */ }
   }, 500);
 }
@@ -4077,16 +4631,13 @@ contenidoEditor?.addEventListener("input", enviarPreviewEnVivo);
 
 document.getElementById("btnPrevisualizar").addEventListener("click", async () => {
   // Si la noticia que se está editando ya está publicada Y no se ha
-  // tocado nada desde que se cargó en el formulario, no tiene sentido
-  // abrir una vista previa aparte: se abre directamente la noticia ya
-  // publicada (con su slug real), que es exactamente lo que el autor va a
-  // ver. En cuanto hay al menos un cambio sin guardar (aunque sea uno
-  // solo), se abre la previsualización de verdad, para no enseñar una
-  // versión desactualizada de la noticia.
+  // tocado nada desde que se cargó en el formulario, se abre la noticia
+  // pública directamente.
   const slugExistente = document.getElementById("articleSlug").value;
   const categoriaExistente = document.getElementById("categoria").value;
   const publicadoOriginal = document.getElementById("articlePublicadoOriginal").value === "1";
   const hayCambiosSinGuardar = snapshotFormularioArticulo() !== SNAPSHOT_ARTICULO_ORIGINAL;
+
   if (slugExistente && publicadoOriginal && !hayCambiosSinGuardar) {
     window.open(urlNoticia(categoriaExistente, slugExistente), "_blank");
     return;
@@ -4097,10 +4648,30 @@ document.getElementById("btnPrevisualizar").addEventListener("click", async () =
     return;
   }
 
-  const article = await construirArticleParaPreview();
-  sessionStorage.setItem("eof_preview_articulo", JSON.stringify(article));
-  previewAbierta = true;
-  window.open("../noticia.html?preview=1", "_blank");
+  // IMPORTANTE: abrir la pestaña ANTES del await. Si se hace después,
+  // Chrome puede considerar que ya no procede de la pulsación del botón
+  // y bloquear la ventana emergente.
+  const ventanaPreview = window.open("about:blank", "_blank");
+  if (!ventanaPreview) {
+    EOF.toast("El navegador ha bloqueado la ventana de previsualización. Permite las ventanas emergentes para este sitio.", "error");
+    return;
+  }
+
+  try {
+    const article = await construirArticleParaPreview();
+
+    // Guardamos en localStorage porque se comparte entre pestañas.
+    // sessionStorage queda también como respaldo.
+    const pid = obtenerIdPreview();
+    guardarDatosPreview(article, pid);
+    previewAbierta = true;
+
+    ventanaPreview.location.href = "../noticia.html?preview=1&pid=" + encodeURIComponent(pid);
+  } catch (err) {
+    try { ventanaPreview.close(); } catch {}
+    EOF.toast("No se ha podido preparar la previsualización.", "error");
+    console.error("Error preparando la previsualización:", err);
+  }
 });
 
 // ---------- Modal PIN "Última hora" ----------
@@ -4181,6 +4752,7 @@ function cancelarEdicion() {
   rellenarFechaYHora(null, "prefFechaHasta", "prefHoraHasta");
   if (checkFechaPreferenciaActiva) checkFechaPreferenciaActiva.checked = false;
   sincronizarCampoFechaPreferencia();
+  aplicarFechaPreferenciaObligatoria();
   // Un redactor de Nivel 1 no puede publicar directamente (el backend lo
   // guardaría como borrador salvo que use el PIN de "Última hora"): se le
   // deja el checkbox "Publicada" desmarcado por defecto al abrir una
@@ -4210,7 +4782,7 @@ function cancelarEdicion() {
   cargarFichaTecnicaFormulario(null);
   SNAPSHOT_ARTICULO_ORIGINAL = snapshotFormularioArticulo();
   actualizarBloqueAlineacionesArticulo("");
-  previewAbierta = false; // se deja de reenviar en vivo a la pestaña de preview: era de otra noticia
+  reiniciarPreview(); // se deja de reenviar en vivo a la pestaña de preview: era de otra noticia
 }
 
 // Cache en memoria de los artículos listados, para no tener que volcar el
@@ -4297,6 +4869,114 @@ function puedeGestionarResultado(r) {
 let ARTICULOS_LISTA_COMPLETA = [];
 let ARTICULOS_PAGINA_ACTUAL = 1;
 const ARTICULOS_POR_PAGINA = 20;
+
+// Filtros de estado del listado de noticias (solo Nivel 4 y admin):
+// "revision" = borradores terminados, sin programar, esperando que alguien
+// los revise y los publique; "proceso" = borradores que su autor aún está
+// escribiendo. "" = sin filtro. Solo hay uno activo a la vez.
+let FILTRO_ESTADO_NOTICIAS = "";
+function articuloEnRevision(a) {
+  return !a.publicado && !a.programado_para && a.estado_borrador === "terminado";
+}
+function articuloBorradorEnProceso(a) {
+  return !a.publicado && !a.programado_para && a.estado_borrador !== "terminado";
+}
+
+// ---------- Organización para redes (carruseles de Instagram) ----------
+// Las noticias y crónicas menos importantes se suben a X sin portada y a
+// Instagram juntas en carrusel (uno por la mañana y otro por la tarde). Cada
+// noticia PROGRAMADA o ya PUBLICADA se puede etiquetar como Carrusel 1,
+// Carrusel 2 o Individual (redes_destino). Al publicarse conserva la etiqueta
+// (el servidor deja de verla pasadas 48 h) para poder seguir seleccionándola y
+// abrir el modal de compartir. Solo admin y redactores Nivel 4+ (el Worker
+// lo vuelve a comprobar).
+const REDES_NIVEL_MINIMO = 4;
+const REDES_DESTINOS = {
+  carousel_1: { etiqueta: "Carrusel 1 · mañana", corta: "Carrusel 1", sub: "Mañana" },
+  carousel_2: { etiqueta: "Carrusel 2 · tarde", corta: "Carrusel 2", sub: "Tarde" },
+  individual: { etiqueta: "Individual", corta: "Individual", sub: "Suelta" },
+};
+// Orden en que se muestran las ligas dentro de cada carrusel (el resto, después, por nombre).
+const ORDEN_CATEGORIAS_CARRUSEL = ["hypermotion", "primera_federacion", "segunda_federacion"];
+let SELECCION_REDES = new Set(); // ids marcados con la casilla del listado
+let FILTRO_REDES = "";           // "" | carousel_1 | carousel_2 | individual
+let FILTRO_REDES_CAT = "";       // "" = todas las ligas de la etiqueta; o una categoría
+function puedeOrganizarRedes() {
+  return USER.rol === "admin" || nivelUsuarioConectado() >= REDES_NIVEL_MINIMO;
+}
+// Se puede etiquetar lo programado y lo publicado hace poco (o que aún conserva
+// etiqueta). Los borradores no.
+const REDES_VENTANA_PUBLICADA_MS = 48 * 3600 * 1000;
+function publicadaRecienteRedes(a) {
+  if (!a || !a.publicado || !a.fecha_publicacion) return false;
+  const t = String(a.fecha_publicacion).trim().replace(" ", "T");
+  const d = new Date(/Z$|[+-]\d\d:\d\d$/.test(t) ? t : (t.length <= 10 ? t + "T00:00:00Z" : t + "Z"));
+  return !isNaN(d.getTime()) && Date.now() - d.getTime() <= REDES_VENTANA_PUBLICADA_MS;
+}
+function articuloEtiquetableRedes(a) {
+  if (!a) return false;
+  if (a.publicado) return !!a.redes_destino || publicadaRecienteRedes(a);
+  return !!a.programado_para;
+}
+
+// ---------- Horario automático de subida a redes ----------
+// Regla: en X cada noticia se sube a su hora normal de publicación; en
+// Instagram el carrusel de una liga se sube UNA sola vez, a la hora de la
+// ÚLTIMA noticia de esa liga (así todas están ya publicadas en la web cuando
+// el post sale). Todo se calcula en hora de Madrid, como el resto del panel.
+function instanteProgramado(a) {
+  if (!a || !a.programado_para) return null;
+  const t = String(a.programado_para).trim().replace(" ", "T");
+  const d = new Date(/Z$|[+-]\d\d:\d\d$/.test(t) ? t : t + "Z");
+  return isNaN(d.getTime()) ? null : d;
+}
+function partesMadrid(d) {
+  const p = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Europe/Madrid", hourCycle: "h23",
+    year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
+  }).formatToParts(d).reduce((acc, x) => (acc[x.type] = x.value, acc), {});
+  return { dia: `${p.year}-${p.month}-${p.day}`, hora: `${p.hour}:${p.minute}` };
+}
+// "hoy", "mañana" o "lun 12/10" para un día "YYYY-MM-DD" (hora de Madrid).
+function etiquetaDiaMadrid(dia, ahora = new Date()) {
+  const hoy = partesMadrid(ahora).dia;
+  const manana = partesMadrid(new Date(ahora.getTime() + 86400000)).dia;
+  if (dia === hoy) return "hoy";
+  if (dia === manana) return "mañana";
+  const [y, m, d] = dia.split("-").map(Number);
+  const nombre = new Date(Date.UTC(y, m - 1, d, 12)).toLocaleDateString("es-ES", { weekday: "short", timeZone: "UTC" }).replace(".", "");
+  return `${nombre} ${String(d).padStart(2, "0")}/${String(m).padStart(2, "0")}`;
+}
+// Plan de subida de un grupo de noticias (normalmente una liga dentro de un
+// carrusel). Devuelve null si ninguna tiene fecha válida.
+//  items:  [{ a, hora, dia, ms }] ordenadas por hora
+//  ig:     { hora, dia, ms, articulo } = la de la ÚLTIMA noticia
+//  variosDias: las noticias caen en días distintos (casi seguro un error)
+//  margenMin:  minutos entre la primera y la última (avisa si es muy larga la espera)
+function planSubidaGrupo(arts) {
+  const items = (arts || []).map((a) => {
+    const d = instanteProgramado(a);
+    if (!d) return null;
+    const m = partesMadrid(d);
+    return { a, hora: m.hora, dia: m.dia, ms: d.getTime() };
+  }).filter(Boolean).sort((x, y) => x.ms - y.ms);
+  if (!items.length) return null;
+  const ultima = items[items.length - 1];
+  return {
+    items,
+    ig: { hora: ultima.hora, dia: ultima.dia, ms: ultima.ms, articulo: ultima.a },
+    variosDias: new Set(items.map((i) => i.dia)).size > 1,
+    margenMin: Math.round((ultima.ms - items[0].ms) / 60000),
+    sinOrden: items.length > 1 && items[0].ms === ultima.ms,
+  };
+}
+function badgeRedesDestino(a) {
+  if (!puedeOrganizarRedes()) return "";
+  const d = REDES_DESTINOS[a.redes_destino];
+  if (!d) return "";
+  const liga = a.redes_destino !== "individual" && a.categoria ? ` · ${escapeHtml(categoriaLabel(a.categoria))}` : "";
+  return ` <span class="badge-redes badge-redes-${a.redes_destino}" title="Marcada para subir a redes: ${d.etiqueta}${liga ? " (" + escapeHtml(categoriaLabel(a.categoria)) + ")" : ""}. ${a.publicado ? "La noticia ya está publicada: sigue en su carrusel para poder compartirlo." : "Al publicarse seguirá en su carrusel 48 h para poder compartirlo."}">${d.corta}${liga}</span>`;
+}
 
 // Pinta los controles «Anterior / números / Siguiente» dentro del
 // contenedor indicado, y engancha el click de cada botón a onCambioPagina.
@@ -4476,7 +5156,7 @@ async function cargaListaArticulos() {
   // pantalla mientras se refresca por detrás y solo se sustituye cuando
   // llegan los datos nuevos.
   if (!ARTICULOS_LISTA_COMPLETA || !ARTICULOS_LISTA_COMPLETA.length) {
-    cos.innerHTML = "<tr><td colspan='5'>Cargando...</td></tr>";
+    cos.innerHTML = "<tr><td colspan='6'>Cargando...</td></tr>";
   }
   try {
     await cargarPermisosTemporalesVigentes();
@@ -4494,7 +5174,7 @@ async function cargaListaArticulos() {
     ARTICULOS_PAGINA_ACTUAL = 1;
     pintarListaArticulos();
   } catch (err) {
-    cos.innerHTML = `<tr><td colspan="5">Error cargando: ${err.message}</td></tr>`;
+    cos.innerHTML = `<tr><td colspan="6">Error cargando: ${err.message}</td></tr>`;
   }
 }
 
@@ -4510,13 +5190,13 @@ async function cargaListaArticulos() {
 // haga) para que el minutaje se vaya actualizando.
 function badgeBannerUrgente(a) {
   if (!a.banner_urgente || !a.banner_urgente_hasta) return "";
-  const restanteMs = new Date(a.banner_urgente_hasta).getTime() - Date.now();
+  const restanteMs = parsearFechaBannerUrgente(a.banner_urgente_hasta) - Date.now();
   if (restanteMs <= 0) return "";
   const minutosTotales = Math.round(restanteMs / 60000);
   const horas = Math.floor(minutosTotales / 60);
   const minutos = minutosTotales % 60;
   const restanteLabel = horas > 0 ? `${horas}h ${minutos}min` : `${minutos}min`;
-  return ` <span class="badge-estado badge-ultima-hora" title="Banner activo en toda la web">🔴 ÚLTIMA HORA — quedan ${restanteLabel}</span>`;
+  return ` <span class="badge-estado badge-ultima-hora" title="Banner activo en toda la web"><span class="uh-punto" aria-hidden="true"></span><span class="uh-etiqueta">Última hora</span><span class="uh-resta">quedan ${restanteLabel}</span></span>`;
 }
 
 async function quitarBannerUrgente(a) {
@@ -4540,11 +5220,53 @@ async function quitarBannerUrgente(a) {
   }
 }
 
+// Insignia de previas/crónicas que la web muestra fusionadas en una sola
+// página con otras del mismo partido (el Worker devuelve fusion_total en el
+// listado del panel; ver SQL_OCULTAR_SEGUNDO_DE_FUSION en worker/src/index.js).
+function badgeFusionPartido(a) {
+  const n = Number(a.fusion_total) || 0;
+  if (n < 2) return "";
+  const que = a.tipo === "cronica" ? "crónicas" : "previas";
+  return ` <span class="badge-autoria otro" title="Hay ${n} ${que} publicadas de este partido: en la web se muestran juntas en una sola página, con una sección para cada una. Aquí se siguen editando por separado.">🔗 Fusionada ×${n}</span>`;
+}
+
 function pintarListaArticulos() {
   const cos = document.getElementById("tablaArticulos");
   const inputBuscador = document.getElementById("buscadorArticulos");
   const textoBusqueda = (inputBuscador?.value || "").trim().toLowerCase();
-  const articulosFiltrados = ARTICULOS_LISTA_COMPLETA.filter(a => articuloCoincideBusqueda(a, textoBusqueda));
+  // Los filtros de estado solo existen para Nivel 4 (y admin, que cuenta
+  // como 4). Si el usuario no cumple, el filtro nunca puede quedar activo.
+  const puedeFiltrarPorEstado = nivelUsuarioConectado() >= 4;
+  if (!puedeFiltrarPorEstado) FILTRO_ESTADO_NOTICIAS = "";
+  const barraFiltros = document.getElementById("filtrosNoticias");
+  if (barraFiltros) {
+    barraFiltros.style.display = puedeFiltrarPorEstado ? "" : "none";
+    barraFiltros.querySelectorAll("[data-filtro-noticias]").forEach((btn) => {
+      const activo = btn.dataset.filtroNoticias === FILTRO_ESTADO_NOTICIAS;
+      btn.classList.toggle("activo", activo);
+      btn.setAttribute("aria-pressed", activo ? "true" : "false");
+    });
+    const nRev = document.getElementById("contadorEnRevision");
+    if (nRev) nRev.textContent = String(ARTICULOS_LISTA_COMPLETA.filter(articuloEnRevision).length);
+    const nProc = document.getElementById("contadorEnProceso");
+    if (nProc) nProc.textContent = String(ARTICULOS_LISTA_COMPLETA.filter(articuloBorradorEnProceso).length);
+  }
+  const pasaFiltroEstado = (a) =>
+    !FILTRO_ESTADO_NOTICIAS
+    || (FILTRO_ESTADO_NOTICIAS === "revision" && articuloEnRevision(a))
+    || (FILTRO_ESTADO_NOTICIAS === "proceso" && articuloBorradorEnProceso(a));
+  // Organización para redes: resumen/filtro por etiqueta y barra de acciones.
+  const puedeRedes = puedeOrganizarRedes();
+  if (!puedeRedes) { FILTRO_REDES = ""; FILTRO_REDES_CAT = ""; SELECCION_REDES.clear(); }
+  // Lo que ya no se puede etiquetar (se publicó, se borró...) sale de la selección.
+  SELECCION_REDES.forEach((id) => {
+    const x = ARTICULOS_CACHE[id];
+    if (!x || !articuloEtiquetableRedes(x)) SELECCION_REDES.delete(id);
+  });
+  const pasaFiltroRedes = (a) => !FILTRO_REDES
+    || (a.redes_destino === FILTRO_REDES && (!FILTRO_REDES_CAT || a.categoria === FILTRO_REDES_CAT));
+  const articulosFiltrados = ARTICULOS_LISTA_COMPLETA.filter(a =>
+    pasaFiltroEstado(a) && pasaFiltroRedes(a) && articuloCoincideBusqueda(a, textoBusqueda));
 
   const totalPaginas = Math.max(1, Math.ceil(articulosFiltrados.length / ARTICULOS_POR_PAGINA));
   if (ARTICULOS_PAGINA_ACTUAL > totalPaginas) ARTICULOS_PAGINA_ACTUAL = totalPaginas;
@@ -4553,12 +5275,14 @@ function pintarListaArticulos() {
 
   const contador = document.getElementById("contadorArticulos");
   if (contador) {
-    contador.textContent = textoBusqueda
+    contador.textContent = (textoBusqueda || FILTRO_ESTADO_NOTICIAS || FILTRO_REDES)
       ? `${articulosFiltrados.length} de ${ARTICULOS_LISTA_COMPLETA.length} noticias`
       : `${ARTICULOS_LISTA_COMPLETA.length} noticias`;
   }
 
   try {
+    const tablaNoticias = document.getElementById("tablaArticulos")?.closest("table");
+    if (tablaNoticias) tablaNoticias.classList.toggle("sin-seleccion-redes", !puedeRedes);
     cos.innerHTML = articles.map(a => {
       const esMio = a.autor_id === USER.id || a.coautor_id === USER.id;
       const puedeGestionar = puedeGestionarArticulo(a);
@@ -4616,29 +5340,223 @@ function pintarListaArticulos() {
       const badgeUrgenciaPreferencia = msRestantesFechas !== null
         ? `<span class="badge-estado badge-urgencia-preferencia" data-hasta-ms="${instanteDePreferencia(a.fecha_preferencia_hasta, false)}" title="Preferencia del redactor: ${rangoLegible}. Quedan menos de 10h para que expire sin publicarse.">${formatoCronometro(msRestantesFechas)}</span>`
         : "";
+      const etiquetable = puedeRedes && articuloEtiquetableRedes(a);
+      const seleccionada = etiquetable && SELECCION_REDES.has(a.id);
       return `
-      <tr class="${!esMio && USER.rol !== "admin" ? "fila-de-otro" : ""}">
-        <td data-label="Título">${escapeHtml(a.titulo)} ${badgeAutoria}</td>
+      <tr class="${!esMio && USER.rol !== "admin" ? "fila-de-otro" : ""}${seleccionada ? " fila-sel-redes" : ""}">
+        <td class="col-sel" data-label="">${etiquetable ? `<input type="checkbox" class="chk-redes" data-id="${a.id}" ${seleccionada ? "checked" : ""} aria-label="Seleccionar para organizar en redes" title="Seleccionar para marcar como carrusel, individual o abrir el modal de compartir">` : ""}</td>
+        <td data-label="Título">${escapeHtml(a.titulo)} ${badgeAutoria}${badgeFusionPartido(a)}</td>
         <td data-label="Categoría">${categoriaLabel(a.categoria)}${(a.categorias_adicionales && a.categorias_adicionales.length) ? ` <span class="badge-cats-adicionales" title="${escapeHtml(a.categorias_adicionales.map(categoriaLabel).join(', '))}">+${a.categorias_adicionales.length}</span>` : ""}</td>
         <td data-label="Fecha">${formatFecha(a.fecha_publicacion)}</td>
         <td data-label="Estado"><div class="celda-estado-noticia">${a.programado_para
             ? `<span class="badge-estado programado" title="Se publicará sola el ${formatFechaConHora(a.programado_para)}">Programada · ${formatFechaConHora(a.programado_para)}</span>`
             : `<span class="badge-estado ${a.publicado ? "publicado" : (a.estado_borrador === "terminado" ? "borrador-terminado" : "borrador-proceso")}">${a.publicado ? "Publicada" : (a.estado_borrador === "terminado" ? "En revisión" : "Borrador (en proceso)")}</span>`
-          }${badgePreferenciaFechas}${badgeUrgenciaPreferencia}${badgeBannerUrgente(a)}</div></td>
+          }${badgePreferenciaFechas}${badgeUrgenciaPreferencia}${badgeBannerUrgente(a)}${badgeRedesDestino(a)}</div></td>
         <td class="acciones" data-label="">${botonesAccion}${(a.banner_urgente && puedeGestionar) ? `<button class="btn-quitar-uh" data-accion="quitar-banner-urgente" data-id="${a.id}" title="Quita el banner de última hora antes de que expire por sí solo">✕ Última hora</button>` : ""}</td>
       </tr>`;
-    }).join("") || `<tr><td colspan='5'>${textoBusqueda ? "Ninguna noticia coincide con la búsqueda." : "Todavía no hay noticias."}</td></tr>`;
+    }).join("") || `<tr><td colspan='6'>${FILTRO_REDES && !textoBusqueda ? "Ninguna noticia tiene esa etiqueta ahora mismo." : FILTRO_ESTADO_NOTICIAS && !textoBusqueda ? (FILTRO_ESTADO_NOTICIAS === "revision" ? "No hay noticias en revisión ahora mismo." : "No hay borradores en proceso ahora mismo.") : (textoBusqueda ? "Ninguna noticia coincide con la búsqueda." : "Todavía no hay noticias.")}</td></tr>`;
   } catch (err) {
-    cos.innerHTML = `<tr><td colspan="5">Error mostrando el listado: ${err.message}</td></tr>`;
+    cos.innerHTML = `<tr><td colspan="6">Error mostrando el listado: ${err.message}</td></tr>`;
   }
 
   pintarPaginacion("paginacionArticulos", ARTICULOS_PAGINA_ACTUAL, totalPaginas, (pagina) => {
     ARTICULOS_PAGINA_ACTUAL = pagina;
     pintarListaArticulos();
   });
+  pintarOrganizacionRedes(articles);
 }
 
+// Resumen por etiqueta (también filtra), barra de acciones de la selección y
+// casilla «seleccionar todas» de la página. "visibles" = filas de la página.
+// Noticias programadas con una etiqueta, agrupadas por liga/categoría (cada liga
+// de un carrusel es un post distinto de Instagram). [{ cat, arts }]
+function gruposRedes(clave) {
+  const porCat = new Map();
+  ARTICULOS_LISTA_COMPLETA.filter((a) => a.redes_destino === clave && articuloEtiquetableRedes(a)).forEach((a) => {
+    const c = a.categoria || "";
+    if (!porCat.has(c)) porCat.set(c, []);
+    porCat.get(c).push(a);
+  });
+  const rango = (c) => { const i = ORDEN_CATEGORIAS_CARRUSEL.indexOf(c); return i === -1 ? 99 : i; };
+  return [...porCat.entries()]
+    .sort((x, y) => rango(x[0]) - rango(y[0]) || String(x[0]).localeCompare(String(y[0])))
+    .map(([cat, arts]) => ({ cat, arts }));
+}
+
+function pintarOrganizacionRedes(visibles) {
+  const caja = document.getElementById("redesOrg");
+  if (!caja) return;
+  const puede = puedeOrganizarRedes();
+  caja.style.display = puede ? "" : "none";
+  if (!puede) return;
+  const cont = document.getElementById("redesTarjetas");
+  const totales = {};
+  if (cont) {
+    cont.innerHTML = Object.keys(REDES_DESTINOS).map((clave) => {
+      const d = REDES_DESTINOS[clave];
+      const esCarrusel = clave !== "individual";
+      const grupos = gruposRedes(clave);
+      const total = grupos.reduce((n, g) => n + g.arts.length, 0);
+      totales[clave] = total;
+      const chips = grupos.map((g) => {
+        const activa = FILTRO_REDES === clave && FILTRO_REDES_CAT === g.cat;
+        const liga = escapeHtml(categoriaLabel(g.cat));
+        const plan = esCarrusel ? planSubidaGrupo(g.arts) : null;
+        const horaIg = plan
+          ? `<span class="redes-fila-hora${plan.variosDias ? " aviso" : ""}" title="Instagram se sube a la hora de la última noticia de esta liga (${plan.ig.hora}, ${etiquetaDiaMadrid(plan.ig.dia)})${plan.variosDias ? ". OJO: hay noticias en días distintos." : ""}">IG ${plan.ig.hora}${plan.variosDias ? " ⚠" : ""}</span>`
+          : "";
+        return `<span class="redes-fila${activa ? " activa" : ""}">
+          <button type="button" class="redes-fila-filtro" data-filtro-redes="${clave}" data-filtro-cat="${escapeHtml(g.cat)}" aria-pressed="${activa}" title="Ver solo: ${d.corta} - ${liga}">
+            <span class="redes-fila-liga">${liga}</span><span class="redes-fila-n">${g.arts.length}</span>${horaIg}
+          </button>
+          ${esCarrusel ? `<button type="button" class="redes-fila-compartir" data-redes-compartir="${clave}" data-redes-cat="${escapeHtml(g.cat)}" title="Compartir ${d.corta} - ${liga}" aria-label="Compartir ${d.corta} - ${liga}">Compartir</button>` : ""}
+        </span>`;
+      }).join("") || `<span class="redes-vacio">Sin noticias programadas</span>`;
+      return `<section class="redes-tarjeta redes-tarjeta-${clave}">
+        <header class="redes-tarjeta-cab">
+          <span class="redes-tarjeta-tit"><strong>${d.corta}</strong><small>${d.sub}</small></span>
+          <span class="redes-tarjeta-total">${total}</span>
+        </header>
+        <div class="redes-tarjeta-filas">${chips}</div>
+        ${esCarrusel && total ? `<button type="button" class="redes-tarjeta-btn" data-redes-compartir="${clave}" title="Compartir ${d.corta} completo">Compartir todo</button>` : ""}
+      </section>`;
+    }).join("");
+  }
+  // Resumen siempre visible aunque el bloque esté plegado.
+  const resumen = document.getElementById("redesResumen");
+  if (resumen) {
+    resumen.innerHTML = Object.keys(REDES_DESTINOS).map((clave) =>
+      `<span class="redes-cont redes-cont-${clave}"><i aria-hidden="true"></i>${REDES_DESTINOS[clave].corta}<b>${totales[clave] || 0}</b></span>`
+    ).join("");
+  }
+  const filtro = document.getElementById("redesFiltroActivo");
+  if (filtro) {
+    if (FILTRO_REDES) {
+      const d = REDES_DESTINOS[FILTRO_REDES];
+      filtro.hidden = false;
+      filtro.innerHTML = `<span>Viendo: <strong>${d.corta}${FILTRO_REDES_CAT ? " - " + escapeHtml(categoriaLabel(FILTRO_REDES_CAT)) : ""}</strong></span><button type="button" data-redes-quitar-filtro>✕ Quitar filtro</button>`;
+    } else {
+      filtro.hidden = true;
+      filtro.innerHTML = "";
+    }
+  }
+  const barra = document.getElementById("redesOrgBarra");
+  const n = SELECCION_REDES.size;
+  if (barra) {
+    barra.hidden = n === 0;
+    const txt = document.getElementById("redesOrgSel");
+    if (txt) txt.textContent = n === 1 ? "1 noticia seleccionada" : `${n} noticias seleccionadas`;
+  }
+  const todas = document.getElementById("chkTodasRedes");
+  if (todas) {
+    const elegibles = (visibles || []).filter(articuloEtiquetableRedes);
+    const marcadas = elegibles.filter((a) => SELECCION_REDES.has(a.id)).length;
+    todas.disabled = elegibles.length === 0;
+    todas.checked = elegibles.length > 0 && marcadas === elegibles.length;
+    todas.indeterminate = marcadas > 0 && marcadas < elegibles.length;
+  }
+}
+
+// Marca (o quita, con destino = null) la etiqueta de redes de la selección.
+// El servidor solo etiqueta noticias programadas y devuelve las que omite.
+async function marcarSeleccionRedes(destino) {
+  const ids = [...SELECCION_REDES];
+  if (!ids.length) return;
+  const barra = document.getElementById("redesOrgBarra");
+  barra?.querySelectorAll("button").forEach((b) => { b.disabled = true; });
+  try {
+    const r = await apiFetch("/api/articles/redes-destino", { method: "PUT", body: JSON.stringify({ ids, destino }) });
+    const hechas = new Set(r.actualizadas || []);
+    const aplicar = (a) => { if (a && hechas.has(a.id)) a.redes_destino = destino; };
+    Object.values(ARTICULOS_CACHE).forEach(aplicar);
+    ARTICULOS_LISTA_COMPLETA.forEach(aplicar);
+    const omitidas = r.omitidas || [];
+    omitidas.forEach((o) => SELECCION_REDES.delete(o.id));
+    if (hechas.size) {
+      EOF.toast(destino
+        ? `${hechas.size} ${hechas.size === 1 ? "noticia marcada" : "noticias marcadas"} como ${REDES_DESTINOS[destino].etiqueta}.`
+        : `Etiqueta quitada de ${hechas.size} ${hechas.size === 1 ? "noticia" : "noticias"}.`, "exito");
+    }
+    if (omitidas.length) {
+      EOF.toast(`${omitidas.length} ${omitidas.length === 1 ? "noticia no se ha podido etiquetar" : "noticias no se han podido etiquetar"}: ${omitidas[0].motivo}`, "error", 6000);
+    }
+  } catch (err) {
+    EOF.toast(err.message || "No se ha podido guardar la etiqueta.", "error", 6000);
+  } finally {
+    barra?.querySelectorAll("button").forEach((b) => { b.disabled = false; });
+    pintarListaArticulos();
+  }
+}
+
+// Casillas de cada fila, «seleccionar todas», chips de filtro y barra de acciones.
+document.getElementById("tablaArticulos")?.addEventListener("change", (ev) => {
+  const chk = ev.target.closest(".chk-redes");
+  if (!chk) return;
+  const id = Number(chk.dataset.id);
+  if (chk.checked) SELECCION_REDES.add(id); else SELECCION_REDES.delete(id);
+  chk.closest("tr")?.classList.toggle("fila-sel-redes", chk.checked);
+  const filas = [...document.querySelectorAll("#tablaArticulos .chk-redes")].map((c) => ARTICULOS_CACHE[Number(c.dataset.id)]).filter(Boolean);
+  pintarOrganizacionRedes(filas);
+});
+document.getElementById("chkTodasRedes")?.addEventListener("change", (ev) => {
+  document.querySelectorAll("#tablaArticulos .chk-redes").forEach((c) => {
+    const id = Number(c.dataset.id);
+    if (ev.target.checked) SELECCION_REDES.add(id); else SELECCION_REDES.delete(id);
+  });
+  pintarListaArticulos();
+});
+// Un solo manejador para el bloque plegable (#redesOrg) Y para la barra de acciones (#redesOrgBarra):
+// la barra es hermana del <details>, no hija, así que escuchar solo en #redesOrg dejaba sus botones sin función.
+function manejarClicRedes(ev) {
+  if (ev.target.closest("[data-redes-quitar-filtro]")) {
+    FILTRO_REDES = ""; FILTRO_REDES_CAT = "";
+    ARTICULOS_PAGINA_ACTUAL = 1;
+    pintarListaArticulos();
+    return;
+  }
+  const chip = ev.target.closest("[data-filtro-redes]");
+  if (chip) {
+    const clave = chip.dataset.filtroRedes;
+    const cat = chip.dataset.filtroCat || "";
+    const igual = FILTRO_REDES === clave && FILTRO_REDES_CAT === cat;
+    FILTRO_REDES = igual ? "" : clave;
+    FILTRO_REDES_CAT = igual ? "" : cat;
+    ARTICULOS_PAGINA_ACTUAL = 1;
+    pintarListaArticulos();
+    return;
+  }
+  const compartir = ev.target.closest("[data-redes-compartir]");
+  if (compartir) {
+    const clave = compartir.dataset.redesCompartir;
+    const cat = compartir.dataset.redesCat || "";
+    if (clave === "seleccion") {
+      abrirModalCompartirCarrusel([...SELECCION_REDES].map((id) => ARTICULOS_CACHE[id]).filter(Boolean), "Selección");
+    } else if (REDES_DESTINOS[clave]) {
+      const arts = ARTICULOS_LISTA_COMPLETA.filter((a) => a.redes_destino === clave && articuloEtiquetableRedes(a) && (!cat || a.categoria === cat));
+      abrirModalCompartirCarrusel(arts, cat ? `${REDES_DESTINOS[clave].corta} - ${categoriaLabel(cat)}` : REDES_DESTINOS[clave].etiqueta);
+    }
+    return;
+  }
+  const marcar = ev.target.closest("[data-redes-marcar]");
+  if (marcar) { marcarSeleccionRedes(marcar.dataset.redesMarcar || null); return; }
+  if (ev.target.closest("[data-redes-cancelar]")) {
+    SELECCION_REDES.clear();
+    pintarListaArticulos();
+  }
+}
+document.getElementById("redesOrg")?.addEventListener("click", manejarClicRedes);
+document.getElementById("redesOrgBarra")?.addEventListener("click", manejarClicRedes);
+
 document.getElementById("buscadorArticulos")?.addEventListener("input", () => {
+  ARTICULOS_PAGINA_ACTUAL = 1;
+  pintarListaArticulos();
+});
+
+document.getElementById("filtrosNoticias")?.addEventListener("click", (ev) => {
+  const btn = ev.target.closest("[data-filtro-noticias]");
+  if (!btn) return;
+  // Pulsar el filtro ya activo lo quita; pulsar el otro cambia de uno a otro.
+  FILTRO_ESTADO_NOTICIAS = FILTRO_ESTADO_NOTICIAS === btn.dataset.filtroNoticias ? "" : btn.dataset.filtroNoticias;
   ARTICULOS_PAGINA_ACTUAL = 1;
   pintarListaArticulos();
 });
@@ -4774,6 +5692,7 @@ async function editarArticulo(a) {
     checkFechaPreferenciaActiva.checked = Boolean(a.fecha_preferencia_desde || a.fecha_preferencia_hasta);
   }
   sincronizarCampoFechaPreferencia();
+  aplicarFechaPreferenciaObligatoria();
   document.getElementById("titulo").value = a.titulo;
   document.getElementById("subtitulo").value = a.subtitulo || "";
   document.getElementById("tipo").value = a.tipo;
@@ -4833,7 +5752,7 @@ async function editarArticulo(a) {
   resetImagenes(imagenesSinCollage, a.imagen_url || "");
   resetGaleriaArticulo(a.id);
   cargarResultadosSelect(a.resultado_id || "");
-  contenidoEditor.innerHTML = a.contenido || "";
+  contenidoEditor.innerHTML = sanearHtmlContenido(a.contenido || "");
   actualizarContadorCaracteres();
   resetTraducciones(a);
   let fichaTecnicaGuardada = null;
@@ -4864,6 +5783,7 @@ async function editarArticulo(a) {
     checkProgramarNoticia.checked = programadaPendiente;
     if (programadaPendiente) inputProgramadoPara.value = isoAProgramadoParaInput(a.programado_para);
     else inputProgramadoPara.value = "";
+    if (typeof window.refrescarProgramarUI === "function") window.refrescarProgramarUI();
   }
   sincronizarDestacadoConPublicado();
   sincronizarProgramarConPublicado();
@@ -4874,7 +5794,7 @@ async function editarArticulo(a) {
   window.scrollTo(0, 0);
   SNAPSHOT_ARTICULO_ORIGINAL = snapshotFormularioArticulo();
   actualizarBloqueAlineacionesArticulo(a.id);
-  previewAbierta = false; // se deja de reenviar en vivo a la pestaña de preview: era de otra noticia
+  reiniciarPreview(); // se deja de reenviar en vivo a la pestaña de preview: era de otra noticia
 }
 
 async function eliminarArticulo(id) {
@@ -5009,10 +5929,6 @@ function crearTeamPicker(contenedor, { onChange } = {}) {
   // debe poder colar un equipo fuera de ella. poblarSelectsEquipo() fija
   // este flag cada vez que cambia la competición seleccionada.
   let permitirOtro = true;
-
-  function nombreMostrado(v) {
-    return v === VALOR_OTRO_EQUIPO ? "Otro equipo (no está en la lista)" : v;
-  }
 
   function actualizarBoton() {
     if (valor === VALOR_OTRO_EQUIPO) {
@@ -5659,6 +6575,9 @@ document.querySelector('#panel-resultados .subtabs button[data-subtab="resultado
 });
 
 formResultado.addEventListener("submit", async (e) => {
+  if (EOF_ACCIONES_EN_CURSO.has("L6497")) return;
+  EOF_ACCIONES_EN_CURSO.add("L6497");
+  try {
   e.preventDefault();
   const id = document.getElementById("resultadoId").value;
 
@@ -5841,37 +6760,20 @@ formResultado.addEventListener("submit", async (e) => {
       return;
     }
 
-    // Si el partido ya tiene marcador (estado "en juego" o "finalizado"),
-    // se deja el formulario en modo edición de ese mismo resultado (en
-    // vez de vaciarlo) para poder añadir a continuación, sin pasos
-    // extra, los goles y tarjetas del partido. Si sigue "Por jugar" se
-    // vacía el formulario como antes, ya que todavía no tiene sentido
-    // añadir eventos.
-    if (resultadoId && body.estado !== "programado") {
-      document.getElementById("resultadoId").value = resultadoId;
-      document.getElementById("btnCancelarResultado").style.display = "inline-block";
-      document.getElementById("bloqueEventosPartido").style.display = "block";
-      document.getElementById("bloqueTandaPenaltis").style.display = "block";
-      cancelarEdicionEvento();
-      cancelarEdicionTandaPenaltis();
-      await cargarEventosPartido(resultadoId);
-      await cargarTandaPenaltis(resultadoId);
-      await cargaListaResultados();
-      document.getElementById("bloqueEventosPartido").scrollIntoView({ behavior: "smooth", block: "start" });
-      // El botón para abrir el panel de Minuto a Minuto desde aquí solo
-      // tiene sentido si el partido no está ya finalizado ni anulado y
-      // es el día del partido (mismo criterio que en el listado).
-      const btnMaM = document.getElementById("btnAbrirMinutoAMinutoDesdeForm");
-      const rActual = RESULTADOS_CACHE[resultadoId];
-      const puedeAbrirMaM = body.estado !== "finalizado" && body.estado !== "anulado" && dentroDelDiaDelPartidoFrontend(body.fecha_partido);
-      btnMaM.style.display = puedeAbrirMaM ? "inline-block" : "none";
-      btnMaM.onclick = () => abrirPanelMinutoAMinuto(resultadoId);
-    } else {
-      cancelarEdicionResultado();
-    }
+    // Al guardar un resultado (tanto si se ha CREADO como si se ha EDITADO)
+    // se sale del formulario y se vuelve a "Ver resultados" con la lista
+    // actualizada. Los goles, tarjetas y demás eventos se añaden después
+    // desde "Editar" en el listado.
+    cancelarEdicionResultado();
+    document.querySelector('#panel-resultados .subtabs button[data-subtab="listaResultados"]').click(); // el clic ya recarga la lista (ver línea de subtabs)
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    EOF.toast(id ? "Resultado guardado" : "Resultado creado", "exito");
+    return;
   } catch (err) {
     EOF.toast("Error: " + err.message, "error");
   }
+
+  } finally { EOF_ACCIONES_EN_CURSO.delete("L6497"); }
 });
 
 function cancelarEdicionResultado() {
@@ -6007,6 +6909,21 @@ function resultadoEstaSinCubrir(r) {
 }
 
 let filtroSoloSinCubrirResultadosActivo = false;
+// Filtro "🔥 Solo partidazos": deja solo el partido marcado como partidazo
+// de cada liga y jornada (results.partidazo = 1, lo marca el cron).
+let filtroSoloPartidazosResultadosActivo = false;
+// Partidazo "vigente" de cada competición: el de la jornada que toca (el
+// que aún está por jugar o en juego) y, si no queda ninguno pendiente, el
+// de la última jornada disputada. Así el filtro enseña UN partidazo por
+// liga y no el histórico de todas las jornadas.
+function esPartidazoVigenteAdmin(r) {
+  if (Number(r.partidazo) !== 1 || r.estado === "anulado") return false;
+  const marcados = RESULTADOS_LISTA_COMPLETA.filter(x => Number(x.partidazo) === 1 && x.estado !== "anulado" && x.competicion === r.competicion);
+  const pendientes = marcados.filter(x => x.estado !== "finalizado");
+  const referencia = pendientes.length ? pendientes : marcados;
+  const jornadaVigente = referencia.reduce((m, x) => (pendientes.length ? Math.min(m, x.jornada) : Math.max(m, x.jornada)), pendientes.length ? Infinity : -Infinity);
+  return r.jornada === jornadaVigente;
+}
 
 // Copia local de timestampFechaPartido (ver public/js/partidos.js): este
 // panel no carga ese script, así que se replica aquí solo para poder
@@ -6041,28 +6958,35 @@ function ahoraMadridEscalaFechaPartido() {
 
 // Estados agrupados para ordenar y filtrar el listado de resultados.
 const ESTADOS_RESULTADO_POR_JUGAR = ["programado", "retrasado"];
-const ESTADOS_RESULTADO_TERMINADOS = ["finalizado", "anulado"];
+const ESTADOS_RESULTADO_TERMINADOS = ["finalizado"];
+// Los anulados NO son "terminados": casi siempre acaban jugándose otro día,
+// así que tienen grupo propio (chip "⛔ Anulados"), van arriba en el orden y
+// se avisan con un contador para que no se queden olvidados.
+const ESTADOS_RESULTADO_ANULADOS = ["anulado"];
 
 // Devuelve el grupo de un estado: "en_juego", "por_jugar", "terminados",
 // o "" si el estado no se reconoce.
 function grupoEstadoResultado(estado) {
   if (estado === "en_juego") return "en_juego";
+  if (ESTADOS_RESULTADO_ANULADOS.includes(estado)) return "anulados";
   if (ESTADOS_RESULTADO_POR_JUGAR.includes(estado)) return "por_jugar";
   if (ESTADOS_RESULTADO_TERMINADOS.includes(estado)) return "terminados";
   return "";
 }
 
-// Prioridad de orden: 0 en juego, 1 por jugar (programado/retrasado),
-// 2 terminados y cualquier estado desconocido.
+// Prioridad de orden: 0 en juego, 1 anulados (pendientes de reprogramar),
+// 2 por jugar (programado/retrasado), 3 terminados y cualquier estado
+// desconocido.
 function prioridadEstadoResultado(estado) {
   const g = grupoEstadoResultado(estado);
-  return g === "en_juego" ? 0 : g === "por_jugar" ? 1 : 2;
+  return g === "en_juego" ? 0 : g === "anulados" ? 1 : g === "por_jugar" ? 2 : 3;
 }
 
 // Ordena los resultados de arriba a abajo en tres niveles:
 //  1) EN JUEGO, siempre arriba del todo.
-//  2) POR JUGAR (programados y retrasados), justo debajo.
-//  3) TERMINADOS (finalizados y anulados) y el resto, al final.
+//  2) ANULADOS (pendientes de reprogramar: acaban jugándose), debajo.
+//  3) POR JUGAR (programados y retrasados).
+//  4) TERMINADOS (finalizados) y el resto, al final.
 // Dentro de cada nivel se ordena por cercanía a la hora actual (el que
 // empieza dentro de un minuto, el primero; cuanto más lejos en el pasado
 // o el futuro, más abajo). A igual distancia va antes el que todavía no
@@ -6115,9 +7039,25 @@ function estadoResultadoBadgeHTML(r) {
 }
 
 // Contenido de la celda "Partido": equipos, avisos y fecha/hora legible.
+// Partidazo de la jornada: lo marca solo el cron del backend (uno por
+// liga y jornada). results.partidazo_motivos es un JSON con las etiquetas.
+function badgePartidazoAdminHTML(r) {
+  if (Number(r.partidazo) !== 1 || r.estado === "anulado") return "";
+  let motivos = [];
+  try {
+    const m = typeof r.partidazo_motivos === "string" ? JSON.parse(r.partidazo_motivos) : r.partidazo_motivos;
+    if (Array.isArray(m)) motivos = m.filter(Boolean).map(String);
+  } catch (e) {}
+  const titulo = motivos.length ? `Partidazo de la jornada: ${motivos.join(" · ")}` : "Partidazo de la jornada";
+  return `<span class="badge-partidazo" title="${escapeHtml(titulo)}">🔥 PARTIDAZO</span>` +
+    (motivos.length ? `<br><small class="partidazo-motivos-admin">${motivos.map(escapeHtml).join(" · ")}</small>` : "");
+}
+
 function celdaPartidoResultadoHTML(r) {
   const fecha = fechaPartidoLegibleAdmin(r.fecha_partido);
-  return `<span class="partido-equipos">${escapeHtml(r.equipo_local)} <span class="partido-vs">-</span> ${escapeHtml(r.equipo_visitante)}</span> ${avisoDatosFaltantesResultadoHTML(r)}${avisoPartidoDesatendidoHTML(r)}` +
+  const badgePartidazo = badgePartidazoAdminHTML(r);
+  return (badgePartidazo ? `<div class="partidazo-bloque-admin">${badgePartidazo}</div>` : "") +
+    `<span class="partido-equipos">${escapeHtml(r.equipo_local)} <span class="partido-vs">-</span> ${escapeHtml(r.equipo_visitante)}</span> ${avisoDatosFaltantesResultadoHTML(r)}${avisoPartidoDesatendidoHTML(r)}` +
     (fecha ? `<br><small class="resultado-fecha">${escapeHtml(fecha)}</small>` : "");
 }
 
@@ -6126,7 +7066,7 @@ const CLAVE_FILTRO_ESTADO_RESULTADOS = "eof_filtro_estado_resultados";
 let filtroEstadoResultados = (() => {
   try {
     const v = localStorage.getItem(CLAVE_FILTRO_ESTADO_RESULTADOS) || "";
-    return ["en_juego", "por_jugar", "terminados"].includes(v) ? v : "";
+    return ["en_juego", "anulados", "por_jugar", "terminados"].includes(v) ? v : "";
   } catch (e) { return ""; }
 })();
 
@@ -6138,7 +7078,8 @@ function resultadosFiltradosActuales({ incluirEstado = true } = {}) {
   const equipoElegido = document.getElementById("filtroEquipoResultados")?.value || "";
   let lista = RESULTADOS_LISTA_COMPLETA
     .filter(r => resultadoCoincideFiltros(r, competicionElegida, equipoElegido))
-    .filter(r => resultadoCoincideBusqueda(r, textoBusqueda));
+    .filter(r => resultadoCoincideBusqueda(r, textoBusqueda))
+    .filter(r => !filtroSoloPartidazosResultadosActivo || esPartidazoVigenteAdmin(r));
   if (incluirEstado && filtroEstadoResultados) {
     lista = lista.filter(r => grupoEstadoResultado(r.estado) === filtroEstadoResultados);
   }
@@ -6147,7 +7088,7 @@ function resultadosFiltradosActuales({ incluirEstado = true } = {}) {
 
 function actualizarChipsEstadoResultados() {
   const base = resultadosFiltradosActuales({ incluirEstado: false });
-  const cuenta = { "": base.length, en_juego: 0, por_jugar: 0, terminados: 0 };
+  const cuenta = { "": base.length, en_juego: 0, anulados: 0, por_jugar: 0, terminados: 0 };
   base.forEach((r) => { const g = grupoEstadoResultado(r.estado); if (g) cuenta[g]++; });
   document.querySelectorAll("#filtrosEstadoResultados [data-filtro-estado]").forEach((btn) => {
     const clave = btn.dataset.filtroEstado;
@@ -6156,7 +7097,92 @@ function actualizarChipsEstadoResultados() {
     btn.setAttribute("aria-pressed", String(activo));
     const n = btn.querySelector(".chip-estado-n");
     if (n) n.textContent = cuenta[clave];
+    // Chip de anulados con aviso rojo mientras haya alguno sin resolver.
+    if (clave === "anulados") btn.classList.toggle("hay-pendientes", cuenta.anulados > 0);
   });
+  actualizarAvisoAnuladosResultados();
+}
+
+// ---------- Partidos anulados: que no se olviden nunca ----------
+// Un partido anulado acaba jugándose otro día. Para no dejarlo olvidado:
+//  · chip "⛔ Anulados N" propio en el listado (arriba en el orden),
+//  · aviso fijo encima del listado con el total (ignora los filtros),
+//  · numerito rojo en la pestaña "Resultados" y en "Ver resultados",
+//  · en cada fila, "Sin reprogramar" + días desde la fecha original y
+//    botón "📅 Reprogramar".
+const CLAVE_CACHE_ANULADOS = "eof_anulados_pendientes";
+function totalAnuladosPendientes() {
+  return RESULTADOS_LISTA_COMPLETA.filter((r) => r.estado === "anulado").length;
+}
+
+function pintarBadgesAnulados(n) {
+  ["badgeResultadosAnulados", "badgeSubtabAnulados"].forEach((id) => {
+    const b = document.getElementById(id);
+    if (!b) return;
+    b.textContent = String(n);
+    b.style.display = n > 0 ? "inline-flex" : "none";
+    b.title = n > 0 ? `${n} partido${n === 1 ? "" : "s"} anulado${n === 1 ? "" : "s"} pendiente${n === 1 ? "" : "s"} de reprogramar` : "";
+  });
+}
+
+function actualizarAvisoAnuladosResultados() {
+  const n = totalAnuladosPendientes();
+  pintarBadgesAnulados(n);
+  try { sessionStorage.setItem(CLAVE_CACHE_ANULADOS, JSON.stringify({ n, t: Date.now() })); } catch (e) {}
+  const aviso = document.getElementById("avisoAnuladosResultados");
+  if (!aviso) return;
+  aviso.hidden = n === 0;
+  const txt = document.getElementById("avisoAnuladosTexto");
+  if (txt) {
+    txt.textContent = n === 1
+      ? "Hay 1 partido anulado pendiente de reprogramar."
+      : `Hay ${n} partidos anulados pendientes de reprogramar.`;
+  }
+  const btn = document.getElementById("btnVerAnulados");
+  if (btn) btn.hidden = filtroEstadoResultados === "anulados";
+}
+
+// Al abrir el panel (sin esperar a entrar en Resultados): numerito en la
+// pestaña. Una sola consulta filtrada por estado y guardada 10 minutos en
+// sessionStorage para no repetirla en cada recarga.
+async function cargarBadgeAnuladosInicial() {
+  if (USER.rol === "fotografo") return;
+  try {
+    const c = JSON.parse(sessionStorage.getItem(CLAVE_CACHE_ANULADOS) || "null");
+    if (c && typeof c.n === "number" && Date.now() - c.t < 10 * 60 * 1000) { pintarBadgesAnulados(c.n); return; }
+  } catch (e) {}
+  try {
+    const { results = [] } = await apiFetch(`/api/results?estado=anulado&limit=0`);
+    pintarBadgesAnulados(results.length);
+    try { sessionStorage.setItem(CLAVE_CACHE_ANULADOS, JSON.stringify({ n: results.length, t: Date.now() })); } catch (e) {}
+  } catch (e) { /* el numerito es un extra: si falla, no pasa nada */ }
+}
+
+// Aviso en la fila: "Sin reprogramar" y, si la fecha original ya pasó,
+// cuántos días lleva así.
+function avisoAnuladoPendienteHTML(r) {
+  if (r.estado !== "anulado") return "";
+  let detalle = "Partido anulado: acaba jugándose otro día. Ponle la nueva fecha cuando se sepa.";
+  let dias = "";
+  const t = timestampFechaPartidoAdmin(r);
+  if (!isNaN(t)) {
+    const n = Math.floor((ahoraMadridEscalaFechaPartido() - t) / 86400000);
+    if (n >= 1) dias = ` · hace ${n} día${n === 1 ? "" : "s"}`;
+  }
+  return `<span class="aviso-anulado-pendiente" title="${escapeHtml(detalle)}">📅 Sin reprogramar${dias}</span>`;
+}
+
+// "Reprogramar": abre el formulario del partido ya en estado "Por jugar" y
+// con el foco en la fecha, para poner la nueva fecha y guardar. Los goles y
+// eventos que hubiera se conservan (por si el partido se reanuda); se pueden
+// retocar en el mismo formulario.
+function reprogramarPartidoAnulado(r) {
+  editarResultado(r);
+  const est = document.getElementById("r_estado");
+  if (est) { est.value = "programado"; est.dispatchEvent(new Event("change", { bubbles: true })); }
+  const f = document.getElementById("r_fecha");
+  setTimeout(() => { try { f?.scrollIntoView({ block: "center", behavior: "smooth" }); f?.focus(); } catch (e) {} }, 150);
+  EOF.toast("Pon la nueva fecha y hora, y pulsa «Guardar resultado».", "info");
 }
 
 async function cargaListaResultados() {
@@ -6184,7 +7210,7 @@ async function cargaListaResultados() {
     // cualquier "limit" por encima de 500 se ignora y cae en el default
     // de 100), así que "2000" se estaba quedando, en la práctica, en 100.
     // Se ajusta a 500, el máximo real que el backend admite.
-    const { results = [] } = await apiFetch(`/api/results?limit=500`);
+    const { results = [] } = await apiFetch(`/api/results?limit=0`);
     RESULTADOS_CACHE = {};
     results.forEach((r) => { RESULTADOS_CACHE[r.id] = r; });
     // Orden (ver ordenarResultadosPorCercaniaAhora): los partidos en
@@ -6236,7 +7262,7 @@ function pintarListaResultados() {
 
   const contador = document.getElementById("contadorResultados");
   if (contador) {
-    contador.textContent = (textoBusqueda || filtroSoloSinCubrirResultadosActivo || filtroEstadoResultados || competicionElegida || equipoElegido)
+    contador.textContent = (textoBusqueda || filtroSoloSinCubrirResultadosActivo || filtroSoloPartidazosResultadosActivo || filtroEstadoResultados || competicionElegida || equipoElegido)
       ? `${resultadosFiltrados.length} de ${RESULTADOS_LISTA_COMPLETA.length} resultados`
       : `${RESULTADOS_LISTA_COMPLETA.length} resultados`;
   }
@@ -6271,19 +7297,25 @@ function pintarListaResultados() {
         ? `<button class="btn-retrasar-partido" data-accion="retrasar-partido" data-id="${r.id}" title="Marcar como retrasado">🕒 Retrasar</button>
            <button class="btn-anular-partido" data-accion="anular-partido" data-id="${r.id}" title="Anular partido">🚫 Anular</button>`
         : "";
+      const botonReprogramar = puedeGestionar && r.estado === "anulado"
+        ? `<button class="btn-reprogramar-partido" data-accion="reprogramar-partido" data-id="${r.id}" title="Ponerle nueva fecha: vuelve a Por jugar">📅 Reprogramar</button>`
+        : "";
       return `
-      <tr class="${!esMio && USER.rol !== "admin" ? "fila-de-otro" : ""}" data-resultado-id="${r.id}">
+      <tr class="${!esMio && USER.rol !== "admin" ? "fila-de-otro" : ""}${Number(r.partidazo) === 1 && r.estado !== "anulado" ? " fila-partidazo" : ""}" data-resultado-id="${r.id}">
         <td data-label="Competición"><span class="competicion-celda">${categoriaLogo(r.competicion) ? `<img class="competicion-celda-logo${r.competicion === "hypermotion" ? " competicion-celda-logo-hypermotion" : ""}" src="../${categoriaLogo(r.competicion)}" alt="" loading="lazy">` : ""}${categoriaLabel(r.competicion)}</span> ${badgeAutoria}</td>
         <td data-label="Jornada">${r.jornada}</td>
         <td data-label="Partido">${celdaPartidoResultadoHTML(r)}</td>
         <td data-label="Resultado"><span class="marcador-lista${r.estado === "programado" ? " marcador-lista-vs" : ""}">${r.estado === "programado" ? "vs" : `${r.goles_local ?? 0} : ${r.goles_visitante ?? 0}`}</span>${(r.penaltis_local !== null && r.penaltis_local !== undefined && r.penaltis_visitante !== null && r.penaltis_visitante !== undefined) ? `<br><small class="penaltis-tag-admin">(${r.penaltis_local} - ${r.penaltis_visitante} pen.)</small>` : ""}</td>
-        <td data-label="Estado">${estadoResultadoBadgeHTML(r)} ${avisoFinalizadoNoCubiertoHTML(r)}</td>
-        <td class="acciones" data-label="">${botonMinutoAMinuto}${botonesEstadoPartido}${botonesAccion}</td>
+        <td data-label="Estado">${estadoResultadoBadgeHTML(r)} ${avisoAnuladoPendienteHTML(r)} ${avisoFinalizadoNoCubiertoHTML(r)}</td>
+        <td class="acciones" data-label="">${botonMinutoAMinuto}${botonesEstadoPartido}${botonReprogramar}${botonesAccion}</td>
       </tr>`;
     }).join("") || `<tr><td colspan='6'>${
-      filtroSoloSinCubrirResultadosActivo
+      filtroSoloPartidazosResultadosActivo
+        ? "No hay ningún partidazo marcado con los filtros actuales. Se calculan solos para la próxima jornada de cada liga."
+        : filtroSoloSinCubrirResultadosActivo
         ? "No hay ningún partido sin cubrir ahora mismo."
-        : (filtroEstadoResultados ? "No hay partidos en este estado con los filtros actuales."
+        : (filtroEstadoResultados === "anulados" ? "No hay ningún partido anulado pendiente con los filtros actuales. 🎉"
+          : filtroEstadoResultados ? "No hay partidos en este estado con los filtros actuales."
           : (textoBusqueda || competicionElegida || equipoElegido) ? "Ningún resultado coincide con los filtros." : "Todavía no hay resultados.")
     }</td></tr>`;
   } catch (err) {
@@ -6312,6 +7344,14 @@ document.getElementById("filtroCompeticionResultados")?.addEventListener("change
   pintarListaResultados();
 });
 
+document.getElementById("filtroSoloPartidazosResultados")?.addEventListener("click", (ev) => {
+  filtroSoloPartidazosResultadosActivo = !filtroSoloPartidazosResultadosActivo;
+  ev.currentTarget.classList.toggle("activo", filtroSoloPartidazosResultadosActivo);
+  ev.currentTarget.setAttribute("aria-pressed", String(filtroSoloPartidazosResultadosActivo));
+  RESULTADOS_PAGINA_ACTUAL = 1;
+  pintarListaResultados();
+});
+
 document.getElementById("filtroSoloSinCubrirResultados")?.addEventListener("click", (ev) => {
   filtroSoloSinCubrirResultadosActivo = !filtroSoloSinCubrirResultadosActivo;
   ev.currentTarget.classList.toggle("activo", filtroSoloSinCubrirResultadosActivo);
@@ -6325,6 +7365,26 @@ document.getElementById("filtrosEstadoResultados")?.addEventListener("click", (e
   if (!btn) return;
   filtroEstadoResultados = btn.dataset.filtroEstado;
   try { localStorage.setItem(CLAVE_FILTRO_ESTADO_RESULTADOS, filtroEstadoResultados); } catch (e) {}
+  RESULTADOS_PAGINA_ACTUAL = 1;
+  pintarListaResultados();
+});
+
+// Aviso "Hay N partidos anulados": salta al filtro de anulados quitando
+// cualquier otro filtro que pudiera esconderlos, para que la cuenta cuadre.
+document.getElementById("btnVerAnulados")?.addEventListener("click", () => {
+  filtroEstadoResultados = "anulados";
+  try { localStorage.setItem(CLAVE_FILTRO_ESTADO_RESULTADOS, "anulados"); } catch (e) {}
+  const busc = document.getElementById("buscadorResultados"); if (busc) busc.value = "";
+  const comp = document.getElementById("filtroCompeticionResultados");
+  if (comp) { comp.value = ""; localStorage.setItem(CLAVE_FILTRO_COMPETICION_RESULTADOS, ""); poblarFiltroEquipoResultados(); }
+  const eq = document.getElementById("filtroEquipoResultados");
+  if (eq) { eq.value = ""; localStorage.setItem(CLAVE_FILTRO_EQUIPO_RESULTADOS, ""); }
+  filtroSoloSinCubrirResultadosActivo = false;
+  filtroSoloPartidazosResultadosActivo = false;
+  ["filtroSoloSinCubrirResultados", "filtroSoloPartidazosResultados"].forEach((id) => {
+    const b = document.getElementById(id);
+    if (b) { b.classList.remove("activo"); b.setAttribute("aria-pressed", "false"); }
+  });
   RESULTADOS_PAGINA_ACTUAL = 1;
   pintarListaResultados();
 });
@@ -6500,7 +7560,7 @@ setInterval(async () => {
   const tabla = document.getElementById("tablaResultados");
   if (!tabla || !tabla.querySelector("tr[data-resultado-id]")) return;
   try {
-    const { results = [] } = await apiFetch(`/api/results?limit=500`);
+    const { results = [] } = await apiFetch(`/api/results?limit=0`);
     results.forEach((r) => { RESULTADOS_CACHE[r.id] = r; });
     // Reordena con los datos frescos (un partido que pasa a "en juego"
     // sube solo) y repinta únicamente si lo que se ve en la página
@@ -6580,6 +7640,7 @@ document.getElementById("tablaResultados")?.addEventListener("click", (ev) => {
   else if (btn.dataset.accion === "minuto-a-minuto") abrirPanelMinutoAMinuto(r.id);
   else if (btn.dataset.accion === "retrasar-partido") retrasarPartidoDesdeLista(r);
   else if (btn.dataset.accion === "anular-partido") anularPartidoDesdeLista(r);
+  else if (btn.dataset.accion === "reprogramar-partido") reprogramarPartidoAnulado(r);
 });
 document.addEventListener("click", (e) => {
   if (!e.target.closest(".resultado-aviso-datos")) {
@@ -6709,6 +7770,7 @@ const ETIQUETAS_EVENTO = {
   partido_retrasado: "Partido retrasado",
   partido_anulado: "Partido anulado",
   fin_partido: "Final del partido",
+  anadido: "Tiempo añadido",
   otro: "Otra incidencia",
 };
 
@@ -6952,7 +8014,7 @@ const TIPOS_EVENTO_SIN_EQUIPO = [
   "inicio_partido", "descanso", "fin_descanso",
   "pausa_hidratacion", "fin_pausa_hidratacion",
   "partido_retrasado", "partido_anulado",
-  "fin_partido", "otro",
+  "fin_partido", "otro", "anadido",
 ];
 
 // De los anteriores, los que además arrancan/pausan/reanudan el
@@ -7134,13 +8196,17 @@ document.getElementById("formEventoPartido").addEventListener("submit", async (e
   if (esTextoLibre && !document.getElementById("ev_nota").value.trim()) {
     return EOF.toast(esOtro ? "Escribe la descripción de la incidencia" : "Escribe el texto de la nota", "error");
   }
+  // Un minuto > 90 (del reloj o tecleado) se guarda como 90 + añadido.
+  const minutoDividido = tocaCronometro
+    ? dividirMinutoConAñadido(minutoForzado, minutoExtraForzado)
+    : dividirMinutoConAñadido(parseInt(minutoStr, 10), document.getElementById("ev_minuto_extra").value === "" ? null : parseInt(document.getElementById("ev_minuto_extra").value, 10));
+  minutoForzado = minutoDividido.minuto;
+  minutoExtraForzado = minutoDividido.minutoExtra;
   const body = {
     equipo: esSinEquipoNiJugador ? "ninguno" : document.getElementById("ev_equipo").value,
     tipo: tipoEvento,
-    minuto: tocaCronometro ? minutoForzado : parseInt(minutoStr, 10),
-    minuto_extra: tocaCronometro
-      ? minutoExtraForzado
-      : (document.getElementById("ev_minuto_extra").value === "" ? null : parseInt(document.getElementById("ev_minuto_extra").value, 10)),
+    minuto: minutoDividido.minuto,
+    minuto_extra: minutoDividido.minutoExtra,
     jugador: esTextoLibre
       ? document.getElementById("ev_nota").value.trim()
       : (esSinEquipoNiJugador ? null : combinarDorsalYJugador(document.getElementById("ev_dorsal").value, document.getElementById("ev_jugador").value)),
@@ -7363,6 +8429,24 @@ async function retrasarPartidoDesdeLista(r) {
   }
 }
 
+// El reloj cuenta de corrido (93', 47'...), pero en el partido el minuto se
+// parte en reglamentario + añadido: 90+3', 45+2'. Esta función hace esa
+// partición para guardar el evento con minuto=90 y minuto_extra=3 en vez de
+// minuto=93 y añadido vacío.
+//  - Si ya viene un añadido explícito, se respeta tal cual.
+//  - Pasado el 90 siempre se parte (no hay ambigüedad).
+//  - Pasado el 45 solo se parte si se sabe que es la 1ª parte
+//    (segundaParte === false); con null no se toca (p. ej. un minuto 60
+//    tecleado a mano en un partido que nunca se llevó en directo).
+function dividirMinutoConAñadido(minuto, minutoExtra, segundaParte = null) {
+  const m = parseInt(minuto, 10);
+  const extra = minutoExtra ? parseInt(minutoExtra, 10) : null;
+  if (!Number.isFinite(m) || (extra && extra > 0)) return { minuto, minutoExtra: extra };
+  if (m > 90) return { minuto: 90, minutoExtra: m - 90 };
+  if (segundaParte === false && m > 45) return { minuto: 45, minutoExtra: m - 45 };
+  return { minuto: m, minutoExtra: null };
+}
+
 // Calcula el minuto en vivo de un resultado cualquiera (no solo el que
 // tenga abierto el panel de Minuto a Minuto), para poder pasarlo al
 // pausar el cronómetro al anular un partido desde el listado. panel.html
@@ -7414,9 +8498,9 @@ async function actualizarEstadoCronometroDesdeEventoResultado(tipo) {
       return false;
     }
   };
-  const reanudar = async (minutoInicial) => {
+  const reanudar = async (minutoInicial, segundaParte = false) => {
     try {
-      const { resultado } = await apiFetch(`/api/results/${id}/cronometro`, { method: "POST", body: JSON.stringify({ accion: "iniciar", minuto_inicial: minutoInicial }) });
+      const { resultado } = await apiFetch(`/api/results/${id}/cronometro`, { method: "POST", body: JSON.stringify({ accion: "iniciar", minuto_inicial: minutoInicial, segunda_parte: segundaParte }) });
       if (resultado) EVENTOS_PARTIDO_RESULTADO_OBJ = resultado;
       return true;
     } catch (err) {
@@ -7463,13 +8547,12 @@ async function actualizarEstadoCronometroDesdeEventoResultado(tipo) {
   }
 
   if (tipo === "fin_descanso") {
-    const minutoPausado = EVENTOS_PARTIDO_RESULTADO_OBJ.cronometro_pausado_en ?? 45;
-    const ok = await reanudar(minutoPausado);
+    // La 2ª parte arranca SIEMPRE en el 45, aunque el descanso fuera en 45+N.
+    const ok = await reanudar(45, true);
     if (!ok) return { ok: false };
-    const añadido = Math.max(0, minutoPausado - 45);
-    // "orden: 1" para quedar siempre después de "Descanso" en el
-    // timeline si comparten minuto/minuto_extra, igual que en MAM.
-    return { ok: true, minutoForzado: 45, minutoExtraForzado: añadido > 0 ? añadido : null, orden: 1 };
+    // Siempre 45' (sin añadido), igual que en MAM; el backend lo ordena
+    // después de "Descanso" (45+N) aunque no lleve minuto_extra.
+    return { ok: true, minutoForzado: 45, minutoExtraForzado: null, orden: 1 };
   }
 
   if (tipo === "pausa_hidratacion") {
@@ -7537,7 +8620,9 @@ async function actualizarEstadoCronometroDesdeEventoResultado(tipo) {
       EOF.toast("Error: " + err.message, "error");
       return { ok: false };
     }
-    return { ok: true, minutoForzado: minuto, minutoExtraForzado: añadido > 0 ? añadido : null };
+    // Reloj en 94' y 4 de añadido => 90+4', no 94+4'.
+    const dividido = dividirMinutoConAñadido(minuto, null);
+    return { ok: true, minutoForzado: dividido.minuto, minutoExtraForzado: dividido.minutoExtra ?? (añadido > 0 ? añadido : null) };
   }
 
   return { ok: true };
@@ -7648,19 +8733,17 @@ async function cargaEquiposInfo() {
   try {
     const { fichas = [] } = await apiFetch(`/api/admin/club-info`);
     lista.innerHTML = fichas.length
-      ? fichas.map(f => `
-          <div class="solicitud-card">
-            <div class="solicitud-card-cabecera">
-              <p class="solicitud-card-titulo">${escapeHtml(f.club)}</p>
-              <button class="editar" data-editar-equipo="${f.club.replace(/"/g, "&quot;")}">Editar</button>
-            </div>
-            <div class="solicitud-card-detalle">
-              <div class="solicitud-card-fila"><span class="solicitud-card-fila-etiqueta">Entrenador</span><span>${f.entrenador ? escapeHtml(f.entrenador) : "—"}</span></div>
-              <div class="solicitud-card-fila"><span class="solicitud-card-fila-etiqueta">Estadio</span><span>${f.estadio ? escapeHtml(f.estadio) : "—"}</span></div>
-              <div class="solicitud-card-fila"><span class="solicitud-card-fila-etiqueta">Fundación</span><span>${f.fundacion || "—"}</span></div>
-              <div class="solicitud-card-fila"><span class="solicitud-card-fila-etiqueta">Ciudad</span><span>${f.ciudad ? escapeHtml(f.ciudad) : "—"}</span></div>
-            </div>
-          </div>`).join("")
+      ? `<div class="func-grid-equipos">${fichas.map(f => `
+          <article class="func-equipo">
+            <div class="func-equipo-cab"><span class="func-equipo-escudo"><img src="${escapeHtml(escudoUrlAdmin(f.club))}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:this.dataset.i}))" data-i="${escapeHtml((Array.from(String(f.club))[0]||'?').toUpperCase())}"></span><div class="func-equipo-nombre">${escapeHtml(f.club)}</div></div>
+            <dl class="func-equipo-datos">
+              <div><dt>Entrenador</dt><dd class="${f.entrenador ? "" : "vacio"}">${f.entrenador ? escapeHtml(f.entrenador) : "—"}</dd></div>
+              <div><dt>Estadio</dt><dd class="${f.estadio ? "" : "vacio"}">${f.estadio ? escapeHtml(f.estadio) : "—"}</dd></div>
+              <div><dt>Fundación</dt><dd class="${f.fundacion ? "" : "vacio"}">${f.fundacion || "—"}</dd></div>
+              <div><dt>Ciudad</dt><dd class="${f.ciudad ? "" : "vacio"}">${f.ciudad ? escapeHtml(f.ciudad) : "—"}</dd></div>
+            </dl>
+            <button class="func-btn editar" data-editar-equipo="${f.club.replace(/"/g, "&quot;")}">Editar ficha</button>
+          </article>`).join("")}</div>`
       : `<p class="solicitudes-vacio">Todavía no hay ninguna ficha de equipo guardada.</p>`;
   } catch (err) {
     lista.innerHTML = `<p class="solicitudes-vacio">No se han podido cargar los equipos.</p>`;
@@ -7677,11 +8760,16 @@ async function cargaEquiposInfoPendientes() {
   const listaMias = document.getElementById("listaEquiposInfoMisPendientes");
   const bloque = document.getElementById("bloqueEquiposInfoPendientes");
   const lista = document.getElementById("listaEquiposInfoPendientes");
+  const vacio = document.getElementById("equiposInfoSolVacio");
   if (!bloque || !lista) return;
   try {
     const { solicitudes = [], puede_resolver } = await apiFetch(`/api/admin/club-info/solicitudes`);
     EQUIPOS_INFO_PENDIENTES_CACHE = {};
     solicitudes.forEach((s) => { EQUIPOS_INFO_PENDIENTES_CACHE[s.id] = s; });
+    // Mensaje cuando un colaborador no tiene ninguna propuesta pendiente
+    // (quien puede resolver ya ve su propio "No hay propuestas pendientes").
+    if (vacio) vacio.style.display = (!puede_resolver && !solicitudes.length) ? "block" : "none";
+    actualizarBadgePropuestasEquipos(puede_resolver ? solicitudes.length : 0);
 
     if (puede_resolver) {
       if (bloqueMias) bloqueMias.style.display = "none";
@@ -7701,29 +8789,36 @@ async function cargaEquiposInfoPendientes() {
   }
 }
 
+// Numerito de la subpestaña "Propuestas de equipos" dentro de Solicitudes.
+function actualizarBadgePropuestasEquipos(n) {
+  const b = document.getElementById("badgeSolPropuestasEquipos");
+  if (!b) return;
+  b.textContent = String(n);
+  b.style.display = n > 0 ? "inline-flex" : "none";
+}
+
 function pintarTarjetaEquipoInfoPendiente(s, { conBotones }) {
   const botones = conBotones
-    ? `<div class="solicitud-card-botones">
+    ? `<div class="func-item-acc">
          <button class="aprobar" data-accion-equipo-info="aprobar" data-id="${s.id}">Aprobar</button>
          <button class="rechazar" data-accion-equipo-info="rechazar" data-id="${s.id}">Rechazar</button>
        </div>`
     : "";
+  const dato = (et, v) => `<div><dt>${et}</dt><dd class="${v ? "" : "vacio"}">${v ? escapeHtml(String(v)) : "—"}</dd></div>`;
   return `
-    <div class="solicitud-card">
-      <div class="solicitud-card-cabecera">
-        <div>
-          <p class="solicitud-card-titulo">${escapeHtml(s.club)}</p>
-          <p class="solicitud-card-meta">${conBotones ? `Propuesta por ${escapeHtml(s.solicitante_nombre || "—")} · ` : ""}${formatFechaSolicitud(s.created_at)}</p>
+    <article class="func-item func-propuesta estado-pendiente">
+      <div class="func-item-main">
+        <div class="func-item-top">
+          <strong>${escapeHtml(s.club)}</strong>
+          <span class="func-chip ambar">Pendiente</span>
+          <time>${conBotones ? `Propuesta por ${escapeHtml(s.solicitante_nombre || "—")} · ` : ""}${formatFechaSolicitud(s.created_at)}</time>
         </div>
-      </div>
-      <div class="solicitud-card-detalle">
-        <div class="solicitud-card-fila"><span class="solicitud-card-fila-etiqueta">Entrenador</span><span>${s.entrenador ? escapeHtml(s.entrenador) : "—"}</span></div>
-        <div class="solicitud-card-fila"><span class="solicitud-card-fila-etiqueta">Estadio</span><span>${s.estadio ? escapeHtml(s.estadio) : "—"}</span></div>
-        <div class="solicitud-card-fila"><span class="solicitud-card-fila-etiqueta">Fundación</span><span>${s.fundacion || "—"}</span></div>
-        <div class="solicitud-card-fila"><span class="solicitud-card-fila-etiqueta">Ciudad</span><span>${s.ciudad ? escapeHtml(s.ciudad) : "—"}</span></div>
+        <dl class="func-equipo-datos" style="margin-top:12px;">
+          ${dato("Entrenador", s.entrenador)}${dato("Estadio", s.estadio)}${dato("Fundación", s.fundacion)}${dato("Ciudad", s.ciudad)}
+        </dl>
       </div>
       ${botones}
-    </div>`;
+    </article>`;
 }
 
 document.getElementById("listaEquiposInfoPendientes")?.addEventListener("click", async (ev) => {
@@ -7821,27 +8916,68 @@ document.getElementById("btnBorrarEquipoInfo")?.addEventListener("click", async 
 });
 
 // ---------- COMENTARIOS de lectores (moderación) ----------
+// ---------- Helpers visuales de "Funcionalidades" ----------
+const FUNC_ICO_MAIL = `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>`;
+const FUNC_ICO_RELOJ = `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>`;
+const FUNC_ICO_FLAG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg>`;
+
+// Avatar con la inicial; el color sale de un hash del nombre para que
+// la misma persona tenga siempre el mismo color.
+function funcAvatarHTML(nombre) {
+  const t = String(nombre || "?").trim();
+  let h = 0;
+  for (const ch of t) h = (h * 31 + ch.codePointAt(0)) >>> 0;
+  const inicial = escapeHtml((Array.from(t)[0] || "?").toUpperCase());
+  return `<span class="func-avatar c${(h % 6) + 1}" aria-hidden="true">${inicial}</span>`;
+}
+
+// "10 oct 2026" + "14:32" por separado (hora de España; en BD es UTC).
+function funcFechaDosLineas(fechaStr) {
+  if (!fechaStr) return { dia: "—", hora: "" };
+  const d = new Date(String(fechaStr).replace(" ", "T") + "Z");
+  if (isNaN(d.getTime())) return { dia: "—", hora: "" };
+  return {
+    dia: d.toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric", timeZone: "Europe/Madrid" }),
+    hora: d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Madrid" }),
+  };
+}
+
+const FUNC_CHIP_COMENTARIO = {
+  pendiente: ["ambar", "Pendiente"],
+  aprobado: ["verde", "Aprobado"],
+  rechazado: ["rojo", "Rechazado"],
+};
+
+// Línea "↳ Respuesta a <nombre>" para los comentarios que contestan a otro.
+function comentarioRespuestaAdminHTML(c) {
+  if (!c.parent_id) return "";
+  const a = c.responde_a_nombre ? ` a <strong>${escapeHtml(c.responde_a_nombre)}</strong>` : "";
+  return `<div class="func-item-link">↳ Respuesta${a}</div>`;
+}
+
 function comentarioAdminItemHTML(c) {
-  const fecha = new Date(c.created_at.replace(" ", "T") + "Z").toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Madrid" });
   const botones = [];
   if (c.estado !== "aprobado") botones.push(`<button class="aprobar" data-comentario-accion="aprobado" data-id="${c.id}">Aprobar</button>`);
   if (c.estado !== "rechazado") botones.push(`<button class="rechazar" data-comentario-accion="rechazado" data-id="${c.id}">Rechazar</button>`);
-  botones.push(`<button class="rechazar" data-comentario-borrar="${c.id}">Borrar</button>`);
+  botones.push(`<button class="borrar" data-comentario-borrar="${c.id}">Borrar</button>`);
+  const [colorChip, textoChip] = FUNC_CHIP_COMENTARIO[c.estado] || ["", escapeHtml(c.estado || "")];
 
   return `
-    <div class="solicitud-card">
-      <div class="solicitud-card-cabecera">
-        <div>
-          <p class="solicitud-card-titulo">${escapeHtml(c.nombre)}</p>
-          <p class="solicitud-card-meta">En <a href="${urlNoticia(c.articulo_categoria, c.articulo_slug)}" target="_blank">${escapeHtml(c.articulo_titulo)}</a> · ${formatFechaSolicitud(c.created_at)}</p>
+    <article class="func-item estado-${escapeHtml(c.estado || "pendiente")}">
+      ${funcAvatarHTML(c.nombre)}
+      <div class="func-item-main">
+        <div class="func-item-top">
+          <strong>${escapeHtml(c.nombre)}</strong>
+          <span class="func-chip ${colorChip}">${textoChip}</span>
+          <time>${formatFechaSolicitud(c.created_at)}</time>
         </div>
+        <div class="func-item-link">En <a href="${urlNoticia(c.articulo_categoria, c.articulo_slug)}" target="_blank" rel="noopener">${escapeHtml(c.articulo_titulo)}</a></div>
+        ${comentarioRespuestaAdminHTML(c)}
+        <blockquote class="func-quote">${escapeHtml(c.texto)}</blockquote>
+        <div class="func-item-meta"><span>${FUNC_ICO_MAIL}${escapeHtml(c.email)}</span>${c.reader_id ? "<span>Cuenta de lector</span>" : ""}</div>
       </div>
-      <div class="solicitud-card-detalle">
-        <div class="solicitud-card-fila"><span class="solicitud-card-fila-etiqueta">Comentario</span><span>${escapeHtml(c.texto)}</span></div>
-        <div class="solicitud-card-fila"><span class="solicitud-card-fila-etiqueta">Email</span><span>${escapeHtml(c.email)}</span></div>
-      </div>
-      <div class="solicitud-card-botones">${botones.join("")}</div>
-    </div>`;
+      <div class="func-item-acc">${botones.join("")}</div>
+    </article>`;
 }
 
 async function cargaComentarios(estado) {
@@ -7911,25 +9047,27 @@ function comentarioDenunciadoItemHTML(c) {
     c.oculto_por_denuncia
       ? `<button class="aprobar" data-comentario-mostrar="${c.id}">Volver a mostrar</button>`
       : "",
-    `<button class="rechazar" data-comentario-borrar="${c.id}">Borrar</button>`,
+    `<button class="borrar" data-comentario-borrar="${c.id}">Borrar</button>`,
   ].filter(Boolean);
+  const n = Number(c.denuncias) || 0;
 
   return `
-    <div class="solicitud-card">
-      <div class="solicitud-card-cabecera">
-        <div>
-          <p class="solicitud-card-titulo">${escapeHtml(c.nombre)}
-            ${c.oculto_por_denuncia ? '<span style="color:#991b1b;font-weight:600;font-size:.78rem;margin-left:8px;">Oculto en la web</span>' : ""}
-          </p>
-          <p class="solicitud-card-meta">En <a href="${urlNoticia(c.articulo_categoria, c.articulo_slug)}" target="_blank">${escapeHtml(c.articulo_titulo)}</a> · ${formatFechaSolicitud(c.created_at)} · ${c.denuncias} denuncia${c.denuncias === 1 ? "" : "s"}</p>
+    <article class="func-item ${c.oculto_por_denuncia ? "estado-oculto" : "estado-pendiente"}">
+      ${funcAvatarHTML(c.nombre)}
+      <div class="func-item-main">
+        <div class="func-item-top">
+          <strong>${escapeHtml(c.nombre)}</strong>
+          <span class="func-chip rojo">${n} denuncia${n === 1 ? "" : "s"}</span>
+          ${c.oculto_por_denuncia ? '<span class="func-chip violeta">Oculto en la web</span>' : ""}
+          <time>${formatFechaSolicitud(c.created_at)}</time>
         </div>
+        <div class="func-item-link">En <a href="${urlNoticia(c.articulo_categoria, c.articulo_slug)}" target="_blank" rel="noopener">${escapeHtml(c.articulo_titulo)}</a></div>
+        ${comentarioRespuestaAdminHTML(c)}
+        <blockquote class="func-quote">${escapeHtml(c.texto)}</blockquote>
+        <div class="func-item-meta"><span>${FUNC_ICO_FLAG}Estado del comentario: ${escapeHtml(c.estado)}</span></div>
       </div>
-      <div class="solicitud-card-detalle">
-        <div class="solicitud-card-fila"><span class="solicitud-card-fila-etiqueta">Comentario</span><span>${escapeHtml(c.texto)}</span></div>
-        <div class="solicitud-card-fila"><span class="solicitud-card-fila-etiqueta">Estado</span><span>${escapeHtml(c.estado)}</span></div>
-      </div>
-      <div class="solicitud-card-botones">${botones.join("")}</div>
-    </div>`;
+      <div class="func-item-acc">${botones.join("")}</div>
+    </article>`;
 }
 
 async function cargaComentariosDenunciados() {
@@ -8055,7 +9193,7 @@ function formatearFechaSesion(iso) {
 // ---------- MI PROGRESO (sistema de niveles) ----------
 // Nombres de cada tipo de contenido tal y como se muestran en el
 // desglose de progreso (coinciden con articles.tipo en el Worker).
-const NIVELES_TIPO_LABEL = { noticia: "Noticias", previa: "Previas", cronica: "Crónicas", analisis: "Análisis", opinion: "Artículos de opinión", entrevista: "Entrevistas" };
+const NIVELES_TIPO_LABEL = { noticia: "Noticias", previa: "Previas", cronica: "Crónicas", analisis: "Análisis", opinion: "Artículos de opinión", entrevista: "Entrevistas", uno_por_uno: "1x1 de jugadores" };
 
 // Iconos (SVG, en vez de emoji de tipo de contenido) para el desglose
 // de publicaciones de "Mi progreso".
@@ -8069,6 +9207,7 @@ const NIVELES_TIPO_ICONO = {
   analisis: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 16v-4M12 16V8M17 16v-7"/></svg>',
   opinion: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/></svg>',
   entrevista: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/></svg>',
+  uno_por_uno: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3 20v-1a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v1"/><path d="M17 11l2 2 3-3"/></svg>',
 };
 
 // Construye el bloque de la insignia de nivel (icono + número + nombre
@@ -8080,8 +9219,8 @@ function nivelInsigniaHTML(nivel, info, extra = "") {
       <div class="nivel-insignia-icono">${NIVEL_ICONO_SVG[nivel] || NIVEL_ICONO_SVG[1]}</div>
       <div class="nivel-insignia-texto">
         <span class="nivel-insignia-eyebrow">Nivel ${nivel}</span>
-        <strong>${info.nombre}</strong>
-        <p>${info.descripcion}</p>
+        <strong>${escapeHtml(info.nombre)}</strong>
+        <p>${escapeHtml(info.descripcion)}</p>
         ${extra}
       </div>
     </div>`;
@@ -8095,6 +9234,108 @@ const NIVEL_ICONO_SVG = {
   3: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 9.3 8.6 2 9.3l5.5 4.8L5.8 21 12 17.3 18.2 21l-1.7-6.9L22 9.3l-7.3-.7L12 2Z"/></svg>',
   4: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 6v6c0 5 3.4 8.4 8 10 4.6-1.6 8-5 8-10V6l-8-4Z"/><path d="m9 12 2 2 4-4"/></svg>',
 };
+
+// Requisitos por nivel de respaldo, por si la API (p. ej. una versión
+// antigua del backend tras un failover) no devuelve la lista "niveles".
+// La fuente buena son NIVELES_REQUISITOS/NIVELES_INFO del Worker.
+const PASE_NIVELES_RESPALDO = [
+  { nivel: 1, nombre: "Principiante", descripcion: "Todo el contenido pasa por revisión de un administrador antes de publicarse.", requisitos: null },
+  { nivel: 2, nombre: "Aprendiz", descripcion: "Publica noticias, crónicas y artículos de opinión sin revisión previa.", requisitos: { noticia: 20, cronica: 10, opinion: 2, entrevista: 1 } },
+  { nivel: 3, nombre: "Maestro", descripcion: "Publicación sin revisión + puede publicar contenido del medio en Instagram y TikTok.", requisitos: { noticia: 30, cronica: 15, opinion: 3, entrevista: 1 } },
+  { nivel: 4, nombre: "Experto", descripcion: "Puede revisar y corregir noticias de otros, optar al consejo de administración y a coordinaciones.", requisitos: { noticia: 40, cronica: 20, opinion: 4, entrevista: 2 } },
+];
+const PASE_ICONO_CANDADO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
+const PASE_ICONO_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg>';
+
+// «Pase de niveles» estilo pase de batalla: una pista con todos los
+// niveles, marcando los superados, dónde está la persona ahora, el
+// siguiente, y los que quedan bloqueados, con los requisitos de cada uno
+// y lo que le falta de cada tipo de publicación.
+// Nivel que la persona ha elegido ver en la vista compacta (móvil). Se
+// guarda aparte porque "Mi progreso" se vuelve a pintar solo cada 30 s y,
+// si no, la selección volvería a la de por defecto.
+let PASE_NIVEL_SELECCIONADO = null;
+
+function pasePasoNivelesHTML(data) {
+  const { nivel_actual, publicaciones = {}, niveles, es_admin } = data;
+  const lista = (Array.isArray(niveles) && niveles.length ? niveles : PASE_NIVELES_RESPALDO)
+    .slice().sort((x, y) => x.nivel - y.nivel);
+  const maximo = lista[lista.length - 1]?.nivel || 4;
+  // Por defecto, en móvil se enseña el siguiente nivel (lo que falta); si ya
+  // está en el máximo, el actual.
+  const porDefecto = Math.min(maximo, nivel_actual + 1);
+  const sel = lista.some((n) => n.nivel === PASE_NIVEL_SELECCIONADO) ? PASE_NIVEL_SELECCIONADO : porDefecto;
+  const estadoDe = (nv) => nv < nivel_actual ? "hecho" : (nv === nivel_actual ? "actual" : (nv === nivel_actual + 1 ? "siguiente" : "bloqueado"));
+
+  const tarjetas = lista.map((n) => {
+    const estado = estadoDe(n.nivel);
+    // Un admin no tiene que demostrar nada con cifras: no se le muestran
+    // barras de requisitos (saldrían incompletas en niveles que ya cuentan
+    // como superados), solo dónde está en el pase.
+    const reqs = !es_admin && n.requisitos ? Object.entries(n.requisitos) : [];
+    let faltan = 0;
+    const filas = reqs.map(([tipo, necesarios]) => {
+      const actual = publicaciones[tipo] || 0;
+      const cumple = actual >= necesarios;
+      faltan += Math.max(0, necesarios - actual);
+      const pct = Math.min(100, Math.round((actual / necesarios) * 100));
+      return `
+        <li class="pase-req ${cumple ? "cumple" : ""}">
+          <span class="pase-req-ico">${NIVELES_TIPO_ICONO[tipo] || ""}</span>
+          <span class="pase-req-cuerpo">
+            <span class="pase-req-fila"><span class="pase-req-tipo">${NIVELES_TIPO_LABEL[tipo] || tipo}</span><span class="pase-req-cifra">${cumple ? PASE_ICONO_CHECK : `${Math.min(actual, necesarios)} / ${necesarios}`}</span></span>
+            <span class="pase-req-pista"><span class="pase-req-relleno" style="width:${pct}%"></span></span>
+          </span>
+        </li>`;
+    }).join("");
+
+    let pie;
+    if (es_admin) pie = estado === "actual"
+      ? `<div class="pase-pie pase-pie-ok">👑 Tu nivel · fijo por ser administrador</div>`
+      : `<div class="pase-pie pase-pie-ok">✅ Superado</div>`;
+    else if (!n.requisitos) pie = `<div class="pase-pie pase-pie-ok">🌱 Nivel inicial: se empieza aquí</div>`;
+    else if (estado === "hecho") pie = `<div class="pase-pie pase-pie-ok">✅ Superado</div>`;
+    else if (estado === "actual") pie = `<div class="pase-pie pase-pie-ok">⭐ Tu nivel actual</div>`;
+    else if (faltan === 0) pie = `<div class="pase-pie pase-pie-ok">🎯 Ya cumples las cifras · lo decide un administrador</div>`;
+    else pie = `<div class="pase-pie">Te faltan <strong>${faltan}</strong> publicaci${faltan === 1 ? "ón" : "ones"} en total</div>`;
+
+    const etiqueta = estado === "actual" ? "ESTÁS AQUÍ" : (estado === "siguiente" ? "SIGUIENTE" : "");
+    const iconoNodo = estado === "bloqueado" ? PASE_ICONO_CANDADO : (NIVEL_ICONO_SVG[n.nivel] || NIVEL_ICONO_SVG[1]);
+    return `
+      <article class="pase-nivel pase-nivel-${n.nivel} pase-${estado} ${n.nivel === sel ? "pase-sel" : ""}" data-nivel="${n.nivel}">
+        <div class="pase-nodo">${iconoNodo}${estado === "hecho" ? `<span class="pase-nodo-check">${PASE_ICONO_CHECK}</span>` : ""}</div>
+        ${etiqueta ? `<span class="pase-etiqueta">${etiqueta}</span>` : ""}
+        <span class="pase-eyebrow">Nivel ${n.nivel}</span>
+        <h4 class="pase-nombre">${escapeHtml(n.nombre)}</h4>
+        <p class="pase-desc">${escapeHtml(n.descripcion)}</p>
+        ${reqs.length ? `<span class="pase-req-titulo">Requisitos para optar</span><ul class="pase-reqs">${filas}</ul>` : ""}
+        ${pie}
+      </article>`;
+  }).join("");
+
+  // Fila de pasos (solo se ve en móvil / contenedor estrecho): los niveles
+  // como un "stepper" que se pulsa para ver cada uno sin scroll lateral.
+  const pasos = lista.map((n) => {
+    const estado = estadoDe(n.nivel);
+    const icono = estado === "bloqueado" ? PASE_ICONO_CANDADO : (NIVEL_ICONO_SVG[n.nivel] || NIVEL_ICONO_SVG[1]);
+    return `
+      <button type="button" class="pase-paso pase-paso-${n.nivel} pase-${estado} ${n.nivel === sel ? "sel" : ""}" data-pase-sel="${n.nivel}" role="tab" aria-selected="${n.nivel === sel}" aria-label="Nivel ${n.nivel}: ${escapeHtml(n.nombre)}">
+        <span class="pase-paso-nodo">${icono}${estado === "hecho" ? `<span class="pase-nodo-check">${PASE_ICONO_CHECK}</span>` : ""}</span>
+        <span class="pase-paso-txt">Nivel ${n.nivel}</span>
+      </button>`;
+  }).join("");
+  const avance = lista.length > 1 ? Math.max(0, Math.min(1, (nivel_actual - lista[0].nivel) / (lista.length - 1))) : 0;
+
+  return `
+    <section class="pase">
+      <div class="pase-cab">
+        <h3 class="titulo-subseccion" style="margin:0;">Pase de niveles</h3>
+        <span class="pase-resumen">Nivel ${nivel_actual} de ${maximo}</span>
+      </div>
+      <div class="pase-pasos" role="tablist" style="--p:${avance};--pc:var(--nivel-${Math.min(4, Math.max(1, nivel_actual))});">${pasos}</div>
+      <div class="pase-pista">${tarjetas}</div>
+    </section>`;
+}
 
 function pintarProgresoNivel(cont, data) {
   const { nivel_actual, nivel_info, nivel_nota, publicaciones, nivel_maximo, siguiente_nivel, siguiente_nivel_info, progreso, es_admin } = data;
@@ -8164,10 +9405,27 @@ function pintarProgresoNivel(cont, data) {
   cont.innerHTML = `
     <h3 class="titulo-subseccion nivel-titulo-principal" style="margin-top:0;">Mi progreso</h3>
     ${nivelInsigniaHTML(nivel_actual, nivel_info, nivel_nota ? `<div class="nivel-nota">📝 Nota del administrador: ${escapeHtml(nivel_nota)}</div>` : "")}
+    ${pasePasoNivelesHTML(data)}
     ${bloquePublicaciones}
     ${bloqueSiguiente}
   `;
 }
+
+// Elegir qué nivel ver en la vista compacta (móvil): se cambia la tarjeta
+// visible sin volver a pintar todo ni pedir nada al servidor.
+document.addEventListener("click", (ev) => {
+  const btn = ev.target.closest("[data-pase-sel]");
+  if (!btn) return;
+  PASE_NIVEL_SELECCIONADO = Number(btn.dataset.paseSel);
+  const pase = btn.closest(".pase");
+  if (!pase) return;
+  pase.querySelectorAll("[data-pase-sel]").forEach((b) => {
+    const activo = b === btn;
+    b.classList.toggle("sel", activo);
+    b.setAttribute("aria-selected", activo ? "true" : "false");
+  });
+  pase.querySelectorAll(".pase-nivel").forEach((c) => c.classList.toggle("pase-sel", Number(c.dataset.nivel) === PASE_NIVEL_SELECCIONADO));
+});
 
 let progresoNivelCargando = false;
 async function cargaMiProgreso() {
@@ -8246,6 +9504,21 @@ async function cargaSesiones() {
   }
 }
 
+// Interruptor de la API secundaria (por navegador, ver eofSetSecundaria en config.js).
+(function () {
+  const chk = document.getElementById("chkSecundariaActiva");
+  if (!chk) return;
+  const estado = document.getElementById("estadoSecundaria");
+  chk.checked = !!SECONDARY_API;
+  if (estado) estado.textContent = SECONDARY_API ? "Estado: ACTIVADA en este navegador." : "Estado: desactivada.";
+  chk.addEventListener("change", () => {
+    if (!eofSetSecundaria(chk.checked)) {
+      chk.checked = !chk.checked;
+      if (estado) estado.textContent = "No se pudo guardar: el navegador bloquea el almacenamiento local.";
+    }
+  });
+})();
+
 const btnCerrarOtrasSesiones = document.getElementById("btnCerrarOtrasSesiones");
 if (btnCerrarOtrasSesiones) {
   btnCerrarOtrasSesiones.addEventListener("click", async () => {
@@ -8260,6 +9533,248 @@ if (btnCerrarOtrasSesiones) {
   });
 }
 
+// ---------- SEGURIDAD: VERIFICACIÓN EN DOS PASOS ----------
+// Obligatoria para administradores (se configura al iniciar sesión; aquí solo se
+// consulta su estado). OPCIONAL para todos los colaboradores (redactores y
+// fotógrafos): la activan o la quitan desde esta pestaña.
+// API: GET /api/me/2fa · POST /api/me/2fa/setup | activar | desactivar
+const seg2fa = { estado: null, flujo: "inicio", secreto: "", otpauth: "", codigos: [] };
+
+// La pestaña Seguridad se ve siempre (lleva el cambio de contraseña); la tarjeta del 2FA
+// solo aparece si el rol puede usarlo (el servidor lo dice en "disponible").
+async function iniciarSeguridad2fa() {
+  if (!USER) return;
+  try {
+    const e = await apiFetch(`/api/me/2fa`);
+    if (!e || !e.disponible) return;
+    seg2fa.estado = e;
+    const tarjeta = document.getElementById("seguridad2faCont");
+    if (tarjeta) tarjeta.style.display = "";
+  } catch { /* sin API: la tarjeta del 2FA sigue oculta */ }
+}
+
+async function cargaSeguridad2fa() {
+  // Si se abre en mitad del proceso (p. ej. se vuelve a la pestaña), no se pierde el paso.
+  if (seg2fa.flujo === "configurar" || seg2fa.flujo === "codigos") { pintarSeguridad2fa(); return; }
+  seg2fa.flujo = "inicio";
+  pintarSeguridad2fa();
+  try {
+    const e = await apiFetch(`/api/me/2fa`);
+    if (e && typeof e.activo === "boolean") {
+      seg2fa.estado = e;
+      const tarjeta = document.getElementById("seguridad2faCont");
+      if (tarjeta && e.disponible) tarjeta.style.display = "";
+    }
+  } catch { /* se pinta con el último estado conocido */ }
+  pintarSeguridad2fa();
+}
+
+function seg2faErrorHTML() {
+  return `<p class="seg2fa-error" id="seg2faError" role="alert" hidden></p>`;
+}
+function seg2faMostrarError(texto) {
+  const p = document.getElementById("seg2faError");
+  if (!p) return;
+  p.textContent = texto;
+  p.hidden = false;
+}
+
+function pintarSeguridad2fa() {
+  const cont = document.getElementById("seguridad2faCont");
+  if (!cont) return;
+  const e = seg2fa.estado;
+  if (!e) { cont.innerHTML = `<p class="sesiones-vacio">Cargando…</p>`; return; }
+  const insignia = e.activo
+    ? `<span class="badge-2fa badge-2fa-ok seg2fa-insignia">Activada</span>`
+    : `<span class="badge-2fa badge-2fa-pend seg2fa-insignia">Desactivada</span>`;
+  let html = `<h3 class="titulo-subseccion" style="margin-top:0;">Verificación en dos pasos ${insignia}</h3>`;
+  const restantes = Number(e.codigos_restantes) || 0;
+  const avisoCodigos = restantes <= 2
+    ? `<p class="seg2fa-aviso">Te quedan pocos códigos de recuperación.${e.obligatorio ? " Pídele a otro administrador que restablezca tu verificación para generar códigos nuevos." : " Para generar códigos nuevos, desactiva la verificación y vuelve a activarla."}</p>`
+    : "";
+
+  if (e.obligatorio) {
+    html += `
+      <p class="ayuda-editor seg2fa-txt">En tu rol es <b>obligatoria</b>: además de la contraseña, al iniciar sesión se te pide el código de 6 dígitos de tu app de autenticación.</p>
+      <p class="ayuda-editor seg2fa-txt">Códigos de recuperación sin usar: <b>${restantes}</b>. Si pierdes el móvil y los códigos, otro administrador puede restablecerla desde <b>Usuarios</b>.</p>
+      ${avisoCodigos}`;
+  } else if (seg2fa.flujo === "password") {
+    html += `
+      <p class="ayuda-editor seg2fa-txt">Para empezar, confirma tu contraseña.</p>
+      <form id="formSeg2faPassword" autocomplete="off">
+        <label for="seg2faPassword">Contraseña actual</label>
+        <input type="password" id="seg2faPassword" required autocomplete="current-password">
+        ${seg2faErrorHTML()}
+        <div class="barra-acciones-form">
+          <button type="submit" class="btn-primari">Continuar</button>
+          <button type="button" class="btn-secundari" data-seg="cancelar">Cancelar</button>
+        </div>
+      </form>`;
+  } else if (seg2fa.flujo === "configurar") {
+    html += `
+      <ol class="seg2fa-pasos">
+        <li>Instala una app de autenticación en tu móvil (Google Authenticator, Microsoft Authenticator, Authy…).</li>
+        <li>Escanea este código QR, o escribe la clave a mano en la app.</li>
+        <li>Escribe aquí el código de 6 dígitos que te muestra la app.</li>
+      </ol>
+      <div id="seg2faQr" class="seg2fa-qr" aria-label="Código QR para la app de autenticación"></div>
+      <code class="seg2fa-clave">${escapeHtml((seg2fa.secreto || "").replace(/(.{4})/g, "$1 ").trim())}</code>
+      <form id="formSeg2faActivar" autocomplete="off">
+        <label for="seg2faCodigo">Código de 6 dígitos</label>
+        <input type="text" id="seg2faCodigo" class="seg2fa-codigo" inputmode="numeric" pattern="[0-9 ]*" maxlength="8" autocomplete="one-time-code" required>
+        ${seg2faErrorHTML()}
+        <div class="barra-acciones-form">
+          <button type="submit" class="btn-primari">Activar</button>
+          <button type="button" class="btn-secundari" data-seg="cancelar">Cancelar</button>
+        </div>
+      </form>`;
+  } else if (seg2fa.flujo === "codigos") {
+    html += `
+      <p class="seg2fa-exito">✔ Verificación en dos pasos activada. Se han cerrado tus sesiones abiertas en otros dispositivos.</p>
+      <p class="ayuda-editor seg2fa-txt"><b>Guarda ahora estos ${seg2fa.codigos.length} códigos de recuperación.</b> Si pierdes el móvil, cada uno te deja entrar una sola vez. No volverán a mostrarse.</p>
+      <div class="seg2fa-codigos">${seg2fa.codigos.map((c) => `<code>${escapeHtml(c)}</code>`).join("")}</div>
+      <div class="seg2fa-botones">
+        <button type="button" class="btn-secundari" data-seg="copiar">Copiar todos</button>
+        <button type="button" class="btn-secundari" data-seg="descargar">Descargar</button>
+      </div>
+      <label class="seg2fa-check"><input type="checkbox" id="seg2faGuardados"> Ya los he guardado en un lugar seguro</label>
+      <div class="barra-acciones-form">
+        <button type="button" class="btn-primari" data-seg="hecho" id="seg2faBtnHecho" disabled>Terminar</button>
+      </div>`;
+  } else if (seg2fa.flujo === "desactivar") {
+    html += `
+      <p class="ayuda-editor seg2fa-txt">Para desactivarla, confirma tu contraseña y escribe un código de tu app (o uno de recuperación).</p>
+      <form id="formSeg2faQuitar" autocomplete="off">
+        <label for="seg2faQuitarPassword">Contraseña actual</label>
+        <input type="password" id="seg2faQuitarPassword" required autocomplete="current-password">
+        <label for="seg2faQuitarCodigo">Código de 6 dígitos o de recuperación</label>
+        <input type="text" id="seg2faQuitarCodigo" class="seg2fa-codigo" maxlength="20" autocomplete="one-time-code" required>
+        ${seg2faErrorHTML()}
+        <div class="barra-acciones-form">
+          <button type="submit" class="btn-primari">Desactivar</button>
+          <button type="button" class="btn-secundari" data-seg="cancelar">Cancelar</button>
+        </div>
+      </form>`;
+  } else if (e.activo) {
+    html += `
+      <p class="ayuda-editor seg2fa-txt">Tu cuenta está protegida: además de la contraseña, al iniciar sesión se te pide el código de tu app de autenticación.</p>
+      <p class="ayuda-editor seg2fa-txt">Códigos de recuperación sin usar: <b>${restantes}</b> (cada uno vale una sola vez, por si pierdes el móvil).</p>
+      ${avisoCodigos}
+      <div class="barra-acciones-form">
+        <button type="button" class="btn-secundari" data-seg="quitar" style="margin-left:0;">Desactivar verificación en dos pasos</button>
+      </div>`;
+  } else {
+    html += `
+      <p class="ayuda-editor seg2fa-txt">Añade una capa extra de seguridad a tu cuenta: además de la contraseña, al iniciar sesión se te pedirá un código de 6 dígitos de una app de autenticación en tu móvil (Google Authenticator, Microsoft Authenticator, Authy…).</p>
+      <p class="ayuda-editor seg2fa-txt">Es <b>opcional</b>: puedes activarla ahora y quitarla cuando quieras. Al activarla se cerrarán tus sesiones abiertas en otros dispositivos.</p>
+      <div class="barra-acciones-form">
+        <button type="button" class="btn-primari" data-seg="empezar" style="margin-top:0;">Activar verificación en dos pasos</button>
+      </div>`;
+  }
+  cont.innerHTML = html;
+
+  if (seg2fa.flujo === "configurar") {
+    try {
+      const qr = qrcode(0, "M");
+      qr.addData(seg2fa.otpauth);
+      qr.make();
+      document.getElementById("seg2faQr").innerHTML = qr.createSvgTag({ cellSize: 6, margin: 2, scalable: true });
+    } catch { /* sin QR queda la clave escrita */ }
+  }
+  const enfoque = { password: "seg2faPassword", configurar: "seg2faCodigo", desactivar: "seg2faQuitarPassword" }[seg2fa.flujo];
+  if (enfoque) document.getElementById(enfoque)?.focus();
+}
+
+async function copiarTextoSeg2fa(texto) {
+  try { await navigator.clipboard.writeText(texto); return true; }
+  catch {
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = texto; ta.setAttribute("readonly", "");
+      ta.style.cssText = "position:fixed;top:-1000px;opacity:0;";
+      document.body.appendChild(ta); ta.select();
+      const ok = document.execCommand("copy");
+      ta.remove();
+      return ok;
+    } catch { return false; }
+  }
+}
+
+(function enlazarSeguridad2fa() {
+  const cont = document.getElementById("seguridad2faCont");
+  if (!cont) return;
+
+  cont.addEventListener("change", (ev) => {
+    if (ev.target && ev.target.id === "seg2faGuardados") {
+      const b = document.getElementById("seg2faBtnHecho");
+      if (b) b.disabled = !ev.target.checked;
+    }
+  });
+
+  cont.addEventListener("click", async (ev) => {
+    const boton = ev.target.closest("[data-seg]");
+    if (!boton) return;
+    const accion = boton.dataset.seg;
+    if (accion === "empezar") { seg2fa.flujo = "password"; pintarSeguridad2fa(); }
+    else if (accion === "quitar") { seg2fa.flujo = "desactivar"; pintarSeguridad2fa(); }
+    else if (accion === "cancelar") { seg2fa.flujo = "inicio"; seg2fa.secreto = ""; seg2fa.otpauth = ""; pintarSeguridad2fa(); }
+    else if (accion === "copiar") {
+      const ok = await copiarTextoSeg2fa(seg2fa.codigos.join("\n"));
+      EOF.toast(ok ? "Códigos copiados." : "No se han podido copiar: cópialos a mano.", ok ? "exito" : "error");
+    } else if (accion === "descargar") {
+      const fecha = new Date().toLocaleDateString("es-ES");
+      const cabecera = `Códigos de recuperación de ElOtroFútbol (${fecha})\nCada código sirve para entrar UNA sola vez. Guárdalo en un lugar seguro.\n\n`;
+      const blob = new Blob([cabecera + seg2fa.codigos.map((c, i) => `${i + 1}. ${c}`).join("\n") + "\n"], { type: "text/plain;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "elotrofutbol-codigos-recuperacion.txt";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    } else if (accion === "hecho") {
+      seg2fa.codigos = []; seg2fa.secreto = ""; seg2fa.otpauth = ""; seg2fa.flujo = "inicio";
+      pintarSeguridad2fa();
+      EOF.toast("Verificación en dos pasos activada.", "exito");
+    }
+  });
+
+  cont.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const form = ev.target;
+    const enviar = form.querySelector("button[type=submit]");
+    if (enviar) enviar.disabled = true;
+    try {
+      if (form.id === "formSeg2faPassword") {
+        const r = await apiFetch(`/api/me/2fa/setup`, { method: "POST", body: JSON.stringify({ password: document.getElementById("seg2faPassword").value }) });
+        seg2fa.secreto = r.secreto || ""; seg2fa.otpauth = r.otpauth || ""; seg2fa.flujo = "configurar";
+        pintarSeguridad2fa();
+      } else if (form.id === "formSeg2faActivar") {
+        const r = await apiFetch(`/api/me/2fa/activar`, { method: "POST", body: JSON.stringify({ codigo: document.getElementById("seg2faCodigo").value }) });
+        seg2fa.codigos = r.codigos_recuperacion || [];
+        // Este dispositivo acaba de demostrar que tiene la app: queda de confianza (no pedirá el código al volver a entrar).
+        try { const u = JSON.parse(localStorage.getItem("eof_user") || "null"); if (r.dispositivo && u && u.username) localStorage.setItem("eof_td_" + encodeURIComponent(u.username), r.dispositivo); } catch {}
+        seg2fa.estado = { ...seg2fa.estado, activo: true, codigos_restantes: seg2fa.codigos.length };
+        seg2fa.secreto = ""; seg2fa.otpauth = ""; seg2fa.flujo = "codigos";
+        pintarSeguridad2fa();
+      } else if (form.id === "formSeg2faQuitar") {
+        await apiFetch(`/api/me/2fa/desactivar`, { method: "POST", body: JSON.stringify({
+          password: document.getElementById("seg2faQuitarPassword").value,
+          codigo: document.getElementById("seg2faQuitarCodigo").value,
+        }) });
+        try { const u = JSON.parse(localStorage.getItem("eof_user") || "null"); if (u && u.username) localStorage.removeItem("eof_td_" + encodeURIComponent(u.username)); } catch {}
+        seg2fa.estado = { ...seg2fa.estado, activo: false, codigos_restantes: 0 };
+        seg2fa.flujo = "inicio";
+        pintarSeguridad2fa();
+        EOF.toast("Verificación en dos pasos desactivada.", "exito");
+      }
+    } catch (err) {
+      seg2faMostrarError(err.message || "No se ha podido completar la operación.");
+      if (enviar) enviar.disabled = false;
+    }
+  });
+})();
+
+iniciarSeguridad2fa();
+
 // Rellena el formulario "Mis datos" con la biografía, foto y redes que
 // ya tuviera guardadas (el JWT no las lleva, solo lo básico, así que se
 // piden aparte).
@@ -8268,7 +9783,7 @@ async function cargarMiPerfilCompleto() {
     const { user } = await apiFetch(`/api/me/perfil`);
     if (!user) return;
     document.getElementById("perfil_avatar").value = user.avatar_url || "";
-    document.getElementById("perfil_avatar_foco").value = user.avatar_foco || "50% 50%";
+    document.getElementById("perfil_avatar_foco").value = EOF_FOCO.texto(user.avatar_foco);
     actualizarPreviewAvatar(user.avatar_url || "");
     document.getElementById("perfil_bio").value = user.bio || "";
     document.getElementById("perfil_experiencia").value = user.experiencia || "";
@@ -8296,9 +9811,24 @@ const inputAvatarUrl = document.getElementById("perfil_avatar");
 const inputAvatarFoco = document.getElementById("perfil_avatar_foco");
 const btnQuitarAvatar = document.getElementById("btnQuitarAvatar");
 const btnFocoAvatar = document.getElementById("btnFocoAvatar");
-const focoPanelAvatar = document.getElementById("focoPanelAvatar");
-const focoPreviewAvatar = document.getElementById("focoPreviewAvatar");
-const focoMarcadorAvatar = document.getElementById("focoMarcadorAvatar");
+// Selector de foco único (admin/js/foco-selector.js). "var" para que
+// pintarFocoAvatar() pueda llamarse antes de que se ejecute esta línea.
+var selectorFocoAvatar = null;
+if (btnFocoAvatar && window.EOF_FOCO_SELECTOR) {
+  selectorFocoAvatar = EOF_FOCO_SELECTOR.montar({
+    boton: btnFocoAvatar,
+    obtenerUrl: () => inputAvatarUrl.value,
+    obtenerValor: () => inputAvatarFoco.value,
+    fijarValor: (v) => { inputAvatarFoco.value = v; },
+    alQuitar: () => {
+      inputAvatarUrl.value = "";
+      inputAvatarFoco.value = "50% 50%";
+      actualizarPreviewAvatar("");
+    },
+    proporciones: ["circulo", "1x1"],
+    texto: "Tu foto se muestra dentro de un círculo. Marca el punto (normalmente la cara) que quieres que se vea siempre.",
+  });
+}
 
 function actualizarPreviewAvatar(url) {
   const preview = document.getElementById("previewAvatar");
@@ -8314,12 +9844,7 @@ function actualizarPreviewAvatar(url) {
 }
 
 function pintarFocoAvatar() {
-  if (!focoPreviewAvatar) return;
-  const [fx, fy] = (inputAvatarFoco.value || "50% 50%").split(" ");
-  focoMarcadorAvatar.style.left = fx;
-  focoMarcadorAvatar.style.top = fy;
-  const urlActual = inputAvatarUrl.value.trim();
-  focoPreviewAvatar.style.backgroundImage = urlActual ? `url("${urlActual}")` : "none";
+  if (selectorFocoAvatar) selectorFocoAvatar.pintar();
 }
 
 if (btnSubirAvatar && inputAvatarArchivo) {
@@ -8336,7 +9861,9 @@ if (btnSubirAvatar && inputAvatarArchivo) {
     try {
       const url = await subirImagenSuelta(file);
       inputAvatarUrl.value = url;
+      inputAvatarFoco.value = "50% 50%";
       actualizarPreviewAvatar(url);
+      if (selectorFocoAvatar) selectorFocoAvatar.exigirSiNueva();
     } catch (err) {
       EOF.toast(err.message || "No se pudo subir la foto", "error");
     } finally {
@@ -8350,36 +9877,10 @@ if (btnSubirAvatar && inputAvatarArchivo) {
       inputAvatarUrl.value = "";
       inputAvatarFoco.value = "50% 50%";
       actualizarPreviewAvatar("");
-      if (focoPanelAvatar) focoPanelAvatar.classList.add("oculto");
-      if (btnFocoAvatar) btnFocoAvatar.classList.remove("activo");
+      if (selectorFocoAvatar) { selectorFocoAvatar.cerrar(); selectorFocoAvatar.reiniciar(); }
     });
   }
 
-  if (btnFocoAvatar && focoPanelAvatar) {
-    btnFocoAvatar.addEventListener("click", () => {
-      focoPanelAvatar.classList.toggle("oculto");
-      btnFocoAvatar.classList.toggle("activo");
-      if (!focoPanelAvatar.classList.contains("oculto")) pintarFocoAvatar();
-    });
-  }
-
-  if (focoPreviewAvatar) {
-    focoPreviewAvatar.addEventListener("click", (e) => {
-      const rect = focoPreviewAvatar.getBoundingClientRect();
-      const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
-      const y = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
-      inputAvatarFoco.value = `${Math.round(x)}% ${Math.round(y)}%`;
-      pintarFocoAvatar();
-    });
-  }
-
-  const btnFocoResetAvatar = document.getElementById("btnFocoResetAvatar");
-  if (btnFocoResetAvatar) {
-    btnFocoResetAvatar.addEventListener("click", () => {
-      inputAvatarFoco.value = "50% 50%";
-      pintarFocoAvatar();
-    });
-  }
 }
 
 // Pinta el bloque de "Mis datos" > Equipo como una lista de chips fijos
@@ -8412,7 +9913,7 @@ if (formPerfil) {
 const nombre = document.getElementById("perfil_nombre").value.trim();
     const email = document.getElementById("perfil_email").value.trim();
     const avatar_url = document.getElementById("perfil_avatar").value.trim();
-    const avatar_foco = document.getElementById("perfil_avatar_foco").value.trim() || "50% 50%";
+    const avatar_foco = EOF_FOCO.texto(document.getElementById("perfil_avatar_foco").value);
     const bio = document.getElementById("perfil_bio").value.trim();
     const experiencia = document.getElementById("perfil_experiencia").value.trim();
     // El equipo NO se envía desde aquí: es de solo lectura en "Mis datos"
@@ -8597,7 +10098,132 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
     selectorVisibilidad.querySelectorAll(".opcion-visibilidad").forEach((boton) => {
       boton.addEventListener("click", () => {
         activarSelectorVisibilidad(selectorVisibilidad, inputVisibilidadSubida, boton.dataset.visibilidad);
+        sincronizarCarpetaSubida();
       });
+    });
+  }
+
+  // ---- Carpeta del contenido privado ----
+  // Solo se muestra con visibilidad "Privado". Las carpetas son compartidas
+  // por el equipo (GET/POST /api/media/carpetas). Si el servidor aún no tiene
+  // la migración, la lista llega vacía y el formulario sigue funcionando.
+  const carpetaSubidaWrap = document.getElementById("carpetaSubidaWrap");
+  const selectCarpetaSubida = document.getElementById("carpetaSubida");
+  const carpetaNuevaWrap = document.getElementById("carpetaNuevaWrap");
+  const inputCarpetaNueva = document.getElementById("carpetaNuevaNombre");
+  const btnCrearCarpeta = document.getElementById("btnCrearCarpeta");
+  const btnCancelarCarpeta = document.getElementById("btnCancelarCarpeta");
+  const errCarpetaNueva = document.getElementById("errCarpetaNueva");
+  let carpetasCargadas = false;
+  let carpetaEnCurso = null; // carpeta fijada al pulsar "Subir contenido"
+
+  function mostrarErrorCarpeta(texto) {
+    if (!errCarpetaNueva) return;
+    errCarpetaNueva.textContent = texto || "";
+    errCarpetaNueva.style.display = texto ? "block" : "none";
+  }
+
+  function pintarOpcionesCarpeta(carpetas, seleccionarId) {
+    if (!selectCarpetaSubida) return;
+    const previo = seleccionarId !== undefined ? String(seleccionarId) : selectCarpetaSubida.value;
+    selectCarpetaSubida.innerHTML = "";
+    const optNinguna = document.createElement("option");
+    optNinguna.value = "";
+    optNinguna.textContent = "— Sin carpeta —";
+    selectCarpetaSubida.appendChild(optNinguna);
+    carpetas.forEach((c) => {
+      const o = document.createElement("option");
+      o.value = String(c.id);
+      o.textContent = c.nombre;
+      selectCarpetaSubida.appendChild(o);
+    });
+    const optNueva = document.createElement("option");
+    optNueva.value = "__nueva__";
+    optNueva.textContent = "+ Nueva carpeta…";
+    selectCarpetaSubida.appendChild(optNueva);
+    const existe = Array.from(selectCarpetaSubida.options).some((o) => o.value === previo);
+    selectCarpetaSubida.value = existe && previo !== "__nueva__" ? previo : "";
+  }
+
+  async function cargarCarpetasSubida(forzar) {
+    if (!selectCarpetaSubida || (carpetasCargadas && !forzar)) return;
+    try {
+      const { carpetas = [] } = await apiFetch("/api/media/carpetas");
+      pintarOpcionesCarpeta(carpetas);
+      carpetasCargadas = true;
+    } catch (err) {
+      // Sin lista, "Sin carpeta" y "+ Nueva carpeta…" siguen disponibles.
+      console.error("No se pudieron cargar las carpetas:", err);
+    }
+  }
+
+  function cerrarNuevaCarpeta() {
+    if (carpetaNuevaWrap) carpetaNuevaWrap.style.display = "none";
+    if (inputCarpetaNueva) inputCarpetaNueva.value = "";
+    mostrarErrorCarpeta("");
+    if (selectCarpetaSubida && selectCarpetaSubida.value === "__nueva__") selectCarpetaSubida.value = "";
+  }
+
+  // Muestra u oculta el campo según la visibilidad elegida. Al volver a
+  // "Público" se descarta la carpeta (el servidor también la ignoraría).
+  function sincronizarCarpetaSubida() {
+    if (!carpetaSubidaWrap || !inputVisibilidadSubida) return;
+    const privado = inputVisibilidadSubida.value === "privado";
+    carpetaSubidaWrap.style.display = privado ? "block" : "none";
+    if (privado) {
+      cargarCarpetasSubida(false);
+    } else {
+      if (selectCarpetaSubida) selectCarpetaSubida.value = "";
+      cerrarNuevaCarpeta();
+    }
+  }
+
+  async function crearCarpetaDesdeFormulario() {
+    const nombre = (inputCarpetaNueva ? inputCarpetaNueva.value : "").replace(/\s+/g, " ").trim();
+    if (!nombre) { mostrarErrorCarpeta("Escribe un nombre para la carpeta."); inputCarpetaNueva && inputCarpetaNueva.focus(); return; }
+    if (nombre.length > 60) { mostrarErrorCarpeta("El nombre es demasiado largo (máximo 60 caracteres)."); return; }
+    btnCrearCarpeta.disabled = true;
+    mostrarErrorCarpeta("");
+    try {
+      const { carpeta } = await apiFetch("/api/media/carpetas", {
+        method: "POST",
+        body: JSON.stringify({ nombre }),
+      });
+      if (!carpeta || !carpeta.id) throw new Error("No se pudo crear la carpeta.");
+      // Se recarga la lista completa (otra persona pudo crear carpetas) y
+      // se deja elegida la recién creada (o la ya existente con ese nombre).
+      let lista = [];
+      try { lista = (await apiFetch("/api/media/carpetas")).carpetas || []; } catch {}
+      if (!lista.some((c) => c.id === carpeta.id)) lista.push(carpeta);
+      pintarOpcionesCarpeta(lista, carpeta.id);
+      carpetasCargadas = true;
+      if (carpetaNuevaWrap) carpetaNuevaWrap.style.display = "none";
+      if (inputCarpetaNueva) inputCarpetaNueva.value = "";
+    } catch (err) {
+      mostrarErrorCarpeta(err.message || "No se pudo crear la carpeta.");
+    } finally {
+      btnCrearCarpeta.disabled = false;
+    }
+  }
+
+  if (selectCarpetaSubida) {
+    selectCarpetaSubida.addEventListener("change", () => {
+      const nueva = selectCarpetaSubida.value === "__nueva__";
+      if (carpetaNuevaWrap) carpetaNuevaWrap.style.display = nueva ? "block" : "none";
+      mostrarErrorCarpeta("");
+      if (nueva && inputCarpetaNueva) inputCarpetaNueva.focus();
+    });
+  }
+  if (btnCrearCarpeta) btnCrearCarpeta.addEventListener("click", crearCarpetaDesdeFormulario);
+  // Se renombró, creó o eliminó una carpeta desde "Ver contenido subido".
+  document.addEventListener("eof-carpetas-cambiadas", () => {
+    carpetasCargadas = false;
+    if (carpetaSubidaWrap && carpetaSubidaWrap.style.display !== "none") cargarCarpetasSubida(true);
+  });
+  if (btnCancelarCarpeta) btnCancelarCarpeta.addEventListener("click", cerrarNuevaCarpeta);
+  if (inputCarpetaNueva) {
+    inputCarpetaNueva.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); crearCarpetaDesdeFormulario(); }
     });
   }
 
@@ -8608,6 +10234,7 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
     emSelectorVisibilidad.querySelectorAll(".opcion-visibilidad").forEach((boton) => {
       boton.addEventListener("click", () => {
         activarSelectorVisibilidad(emSelectorVisibilidad, emInputVisibilidad, boton.dataset.visibilidad);
+        sincronizarCarpetaEdicion();
       });
     });
   }
@@ -8724,17 +10351,37 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
     resumenTipo.textContent = hayFotos && hayVideos ? "Fotos y vídeos" : hayVideos ? "Vídeos" : "Fotos";
   }
 
+  // ¿Este archivo hay que subirlo a mano a MediaFire (u otro) y pegar el enlace?
+  // Vídeos de más de 90 MB, o archivos que Cloudinary ha rechazado por peso.
+  function pideEnlace(item) {
+    return !!item.necesitaEnlace || (esVideoArchivo(item.file) && item.file.size > LIMITE_VIDEO_BYTES_CLIENTE);
+  }
+  function htmlCampoEnlace(id, valor) {
+    return `<div class="enlace-pesado">
+              <label for="enlace-pesado-${id}"><b>Archivo muy pesado (más de 90 MB).</b> Súbelo tú a <a href="https://www.mediafire.com" target="_blank" rel="noopener noreferrer">MediaFire</a> (o Drive, Mega...), copia su enlace para compartir y pégalo aquí. No se sube desde este panel.</label>
+              <input type="url" id="enlace-pesado-${id}" class="input-enlace-pesado" data-enlace="${id}" placeholder="https://www.mediafire.com/file/..." value="${escapeHtml(valor || "")}" autocomplete="off">
+            </div>`;
+  }
+  function mostrarCampoEnlace(id) {
+    const info = listaArchivos.querySelector(`.item-archivo[data-id="${id}"] .info`);
+    if (!info || info.querySelector(".enlace-pesado")) return;
+    const item = archivos.find((a) => a.id == id);
+    info.insertAdjacentHTML("beforeend", htmlCampoEnlace(id, item && item.enlace));
+  }
+
   function pintarLista() {
-    listaArchivos.innerHTML = archivos.map(({ id, file, portadaSegundo }) => {
+    listaArchivos.innerHTML = archivos.map((item) => {
+      const { id, file, portadaSegundo, foco } = item;
       const esFoto = file.type.startsWith("image/");
       return `
         <div class="item-archivo${esFoto ? "" : " es-video"}" data-id="${id}">
           <div class="icono-tipo">${iconoTipoArchivoSubida(esFoto)}</div>
           <div class="info">
-            <div class="nombre">${file.name}</div>
+            <div class="nombre">${escapeHtml(file.name)}</div>
             <div class="peso">${formatoTamanoSubida(file.size)}</div>
             <div class="barra-progreso"><i style="width:0%"></i></div>
-            <div class="estado-txt">Pendiente de subir</div>
+            <div class="estado-txt">${pideEnlace(item) ? "Pendiente de pegar el enlace" : "Pendiente de subir"}${foco ? " · encuadre elegido ✓" : ""}</div>
+            ${pideEnlace(item) ? htmlCampoEnlace(id, item.enlace) : ""}
           </div>
           ${!esFoto ? `<button type="button" class="btn-portada-subida" data-portada="${id}" title="Elegir portada">${Number.isFinite(portadaSegundo) ? "Portada elegida ✓" : "Elegir portada"}</button>` : ""}
           <button type="button" class="quitar" data-quitar="${id}" title="Quitar">✕</button>
@@ -8742,6 +10389,15 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
     }).join("");
     actualizarResumen();
   }
+
+  // Guarda lo que se escribe en el campo del enlace sin repintar la lista
+  // (repintar haría perder el foco al escribir).
+  listaArchivos.addEventListener("input", (e) => {
+    const idEnlace = e.target.dataset && e.target.dataset.enlace;
+    if (!idEnlace) return;
+    const item = archivos.find((a) => a.id == idEnlace);
+    if (item) item.enlace = e.target.value.trim();
+  });
 
   // ---------- Elegir portada de un vídeo antes de subirlo ----------
   // Reutiliza el mismo modal reproductor de la galería de "Ver contenido
@@ -8798,6 +10454,9 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
   // el último segundo de que el servidor lo va a rechazar (ver
   // LIMITE_VIDEO_BYTES en worker/src/index.js; se mantiene el mismo
   // valor aquí a propósito).
+  // Hasta 90 MB se sube como siempre (vía Cloudinary). Por encima, el vídeo NO
+  // se sube desde aquí: la persona lo sube a mano a MediaFire (u otro servicio)
+  // y pega el enlace en su fila (ver subirEnlaceExterno).
   const LIMITE_VIDEO_MB = 90;
   const LIMITE_VIDEO_BYTES_CLIENTE = LIMITE_VIDEO_MB * 1024 * 1024;
 
@@ -8836,12 +10495,43 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
     return nombre.includes(".") ? nombre.split(".").pop().toLowerCase() : "";
   }
 
+  // Encuadre obligatorio de las fotos recién añadidas (admin/js/foco-selector.js).
+  // Se pide una a una, con la foto local (aún no subida). El foco elegido se
+  // manda al servidor junto con el archivo (campo portadaFoco). Los vídeos
+  // siguen con su "Elegir portada" de siempre.
+  async function encuadrarFotosNuevas(items) {
+    const fotos = items.filter((it) => it.file.type.startsWith("image/"));
+    for (let i = 0; i < fotos.length; i++) {
+      const it = fotos[i];
+      if (!archivos.includes(it)) continue;
+      const urlLocal = URL.createObjectURL(it.file);
+      let r = null;
+      try {
+        r = await EOF_FOCO_SELECTOR.pedir({
+          url: urlLocal,
+          forzado: true,
+          permitirQuitar: true,
+          proporciones: ["16x9", "1x1", "4x5"],
+          contador: { n: i + 1, total: fotos.length },
+        });
+      } catch (err) {
+        console.warn("No se pudo abrir el selector de foco:", err);
+      } finally {
+        URL.revokeObjectURL(urlLocal);
+      }
+      if (r && r.quitar) archivos = archivos.filter((a) => a !== it);
+      else if (r && r.valor) it.foco = r.valor;
+    }
+    pintarLista();
+    actualizarBotonSubir();
+  }
+
   function agregarArchivos(fileList) {
     errMsg.style.display = "none";
     const duplicadosEnCola = [];
-    const demasiadoPesados = [];
     const formatoNoAdmitido = [];
     const vacios = [];
+    const nuevosEnEstaTanda = [];
 
     [...fileList].forEach((file) => {
       const ext = extensionDe(file.name);
@@ -8882,18 +10572,15 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
         return;
       }
 
-      // 4) Aviso temprano de vídeos que el servidor rechazaría igualmente
-      // por peso, para no hacer esperar la subida en vano.
-      if (esVideoAdmitido && file.size > LIMITE_VIDEO_BYTES_CLIENTE) {
-        demasiadoPesados.push(`${file.name} (${formatoTamanoSubida(file.size)})`);
-        return;
-      }
-
-      archivos.push({ id: ++idSeq, file, portadaSegundo: null });
+      const nuevo = { id: ++idSeq, file, portadaSegundo: null, foco: null, enlace: "", necesitaEnlace: false };
+      archivos.push(nuevo);
+      nuevosEnEstaTanda.push(nuevo);
     });
 
     pintarLista();
     actualizarBotonSubir();
+    // Cada foto nueva se encuadra ahora (obligatorio), antes de subirla.
+    encuadrarFotosNuevas(nuevosEnEstaTanda);
 
     // Se muestran todos los avisos que apliquen (formato, peso, vacíos,
     // duplicados) en vez de solo el primero que se encuentre, para que
@@ -8912,13 +10599,6 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
         vacios.length === 1
           ? `"${vacios[0]}" está vacío (0 bytes) y no se ha añadido.`
           : `Estos archivos están vacíos (0 bytes) y no se han añadido: ${vacios.join(", ")}.`
-      );
-    }
-    if (demasiadoPesados.length) {
-      partesAviso.push(
-        demasiadoPesados.length === 1
-          ? `El vídeo "${demasiadoPesados[0]}" no puede superar los ${LIMITE_VIDEO_MB} MB.`
-          : `Estos vídeos superan los ${LIMITE_VIDEO_MB} MB permitidos: ${demasiadoPesados.join(", ")}.`
       );
     }
     if (duplicadosEnCola.length) {
@@ -9032,6 +10712,8 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
   // subirArchivoCrudo (la subida de siempre). El resultado se guarda en el
   // propio item para no recomprimir en los reintentos.
   async function subirArchivo(item, ...args) {
+    // Vídeo muy pesado: no se sube, se registra el enlace pegado a mano.
+    if (pideEnlace(item)) return subirEnlaceExterno(item, ...args);
     if (!item.ajustado) {
       const pesaDemasiado = item.file.size > LIMITE_FOTO_CLOUDINARY_BYTES && item.file.type.startsWith("image/");
       if (pesaDemasiado) {
@@ -9041,10 +10723,88 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
       }
       item.ajustado = await ajustarFotoAlLimite(item.file);
     }
-    return subirArchivoCrudo({ ...item, file: item.ajustado }, ...args);
+    const f = item.ajustado;
+    const itemFinal = { ...item, file: f };
+    try {
+      return await subirArchivoCrudo(itemFinal, ...args);
+    } catch (err) {
+      if (!esRechazoPorPeso(err)) throw err;
+      // Cloudinary (o el servidor) rechaza el archivo por pesado: se pide el
+      // enlace manual en su fila y se avisa de qué hacer.
+      item.necesitaEnlace = true;
+      mostrarCampoEnlace(item.id);
+      const aviso = "Este archivo es demasiado pesado para subirlo directamente. Súbelo tú a MediaFire (o similar), pega el enlace en su fila y pulsa «Subir contenido» otra vez";
+      const fila = listaArchivos.querySelector(`.item-archivo[data-id="${item.id}"]`);
+      if (fila) {
+        fila.classList.add("error");
+        const estadoTxt = fila.querySelector(".estado-txt");
+        if (estadoTxt) estadoTxt.textContent = aviso;
+      }
+      const e = new Error(aviso);
+      e.status = err.status;
+      throw e;
+    }
   }
 
-  function subirArchivoCrudo({ id, file, portadaSegundo }, titulo, descripcion, club, resultId, equipo, visibilidad, avisoLote) {
+  // ¿El fallo se debe al peso del archivo (y no a la sesión, la red o un duplicado)?
+  function esRechazoPorPeso(err) {
+    if (!err || err.esDuplicado || err.caidaPrimaria) return false;
+    if (err.status === 413) return true;
+    return err.status === 400 && /cloudinary ha rechazado|too large|demasiado pesad|file size|maximum|no puede superar/i.test(err.message || "");
+  }
+
+  // Contenido MUY pesado: no se sube nada desde aquí. La persona sube el archivo
+  // a mano a MediaFire (u otro servicio) y pega el enlace; aquí solo se registra
+  // en la mediateca (siempre como contenido privado, visible solo en el panel).
+  async function subirEnlaceExterno(item, titulo, descripcion, club, resultId, equipo, visibilidad, avisoLote) {
+    const { id, file } = item;
+    const fila = listaArchivos.querySelector(`.item-archivo[data-id="${id}"]`);
+    const barra = fila.querySelector(".barra-progreso i");
+    const estadoTxt = fila.querySelector(".estado-txt");
+    const fallo = (mensaje, status, esDuplicado = false) => {
+      if (status === 401) mensaje = "No se ha podido verificar tu sesión. Vuelve a iniciar sesión y pulsa «Subir contenido» otra vez (los archivos pendientes se conservan)";
+      fila.classList.add(esDuplicado ? "duplicado" : "error");
+      estadoTxt.textContent = esDuplicado ? `Ya registrado antes: ${mensaje}` : mensaje;
+      const e = new Error(mensaje);
+      e.status = status;
+      e.esDuplicado = esDuplicado;
+      return e;
+    };
+    const enlace = (item.enlace || "").trim();
+    if (!/^https:\/\/\S+$/i.test(enlace)) {
+      mostrarCampoEnlace(id);
+      throw fallo("Falta el enlace (debe empezar por https://). Sube el archivo a MediaFire y pega aquí su enlace", 0);
+    }
+    estadoTxt.textContent = "Registrando enlace...";
+    barra.style.width = "50%";
+    const formData = new FormData();
+    formData.append("enlaceExterno", enlace);
+    formData.append("enlaceNombre", file.name);
+    formData.append("enlaceTamano", file.size);
+    formData.append("enlaceTipo", esVideoArchivo(file) ? "video" : "foto");
+    formData.append("titulo", titulo);
+    formData.append("descripcion", descripcion);
+    formData.append("club", club);
+    if (carpetaEnCurso) formData.append("carpeta_id", carpetaEnCurso);
+    if (avisoLote) formData.append("avisoLote", "1");
+    let r;
+    try {
+      r = await fetch(`${eofBaseApiParaSubida()}/api/media`, { method: "POST", headers: { Authorization: `Bearer ${TOKEN_ACTUAL()}` }, body: formData });
+    } catch {
+      throw fallo("No se ha podido conectar con el servidor", 0);
+    }
+    if (!r.ok) {
+      let mensaje = "No se pudo guardar el enlace", duplicado = false;
+      try { const c = await r.json(); mensaje = (c.error || mensaje) + (c.detail ? ` (${c.detail})` : ""); duplicado = !!c.duplicado; } catch {}
+      throw fallo(mensaje, r.status, duplicado);
+    }
+    barra.style.width = "100%";
+    fila.classList.add("completado");
+    estadoTxt.textContent = "Enlace guardado (privado: solo se ve en el panel)";
+    return null;
+  }
+
+  function subirArchivoCrudo({ id, file, portadaSegundo, foco }, titulo, descripcion, club, resultId, equipo, visibilidad, avisoLote) {
     return new Promise((resolve, reject) => {
       const fila = listaArchivos.querySelector(`.item-archivo[data-id="${id}"]`);
       const barra = fila.querySelector(".barra-progreso i");
@@ -9056,15 +10816,18 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
       formData.append("descripcion", descripcion);
       formData.append("club", club);
       formData.append("visibilidad", visibilidad === "privado" ? "privado" : "publico");
+      if (visibilidad === "privado" && carpetaEnCurso) formData.append("carpeta_id", carpetaEnCurso);
       // Tanda de varios archivos: el servidor no manda correo por cada uno;
       // el resumen se manda una sola vez al terminar (ver enviarAvisoLote).
       if (avisoLote) formData.append("avisoLote", "1");
       if (resultId) formData.append("resultId", resultId);
       if (equipo) formData.append("equipo", equipo);
       if (Number.isFinite(portadaSegundo)) formData.append("portadaSegundo", portadaSegundo);
+      if (foco) formData.append("portadaFoco", foco);
 
       const xhr = new XMLHttpRequest();
-      xhr.open("POST", `${API_URL}/api/media`);
+      const baseSubida = eofBaseApiParaSubida();
+      xhr.open("POST", `${baseSubida}/api/media`);
       xhr.setRequestHeader("Authorization", `Bearer ${TOKEN_ACTUAL()}`);
 
       xhr.upload.addEventListener("progress", (e) => {
@@ -9104,6 +10867,10 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
           // Un 401 aquí es "No autorizado" a secas, que no dice nada útil
           // a quien sube fotos: se traduce a algo entendible. (Antes de
           // llegar aquí ya se ha reintentado solo, ver subirConReintento.)
+          // Caída de la principal (gateway/Cloudflare, no un error de la app):
+          // se abre el circuito para que el reintento vaya a la secundaria.
+          const caidaPrimaria = baseSubida === PRIMARY_API && eofEsCaidaDePrimaria(xhr.status, xhr.getResponseHeader("Content-Type"));
+          if (caidaPrimaria) eofRegistrarFalloPrimaria(true);
           if (xhr.status === 401) {
             mensaje = "No se ha podido verificar tu sesión. Vuelve a iniciar sesión y pulsa «Subir contenido» otra vez (los archivos pendientes se conservan)";
           }
@@ -9112,13 +10879,16 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
           const error = new Error(mensaje);
           error.esDuplicado = esDuplicado;
           error.status = xhr.status;
+          error.caidaPrimaria = caidaPrimaria;
           reject(error);
         }
       });
       xhr.addEventListener("error", () => {
         fila.classList.add("error");
         estadoTxt.textContent = "No se ha podido conectar con el servidor";
-        reject(new Error("Error de red: no se ha podido conectar con el servidor"));
+        const errRed = new Error("Error de red: no se ha podido conectar con el servidor");
+        if (baseSubida === PRIMARY_API) { eofRegistrarFalloPrimaria(true); errRed.caidaPrimaria = true; }
+        reject(errRed);
       });
       xhr.addEventListener("timeout", () => {
         fila.classList.add("error");
@@ -9150,7 +10920,10 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
       try {
         return await subirArchivo(item, ...args);
       } catch (err) {
-        if (err.status !== 401 || intento >= MAX_INTENTOS) throw err;
+        // 401 pasajero, o caída de la principal (el circuito ya se ha abierto y
+        // el siguiente intento irá a la secundaria; si la subida sí llegó a
+        // aplicarse, el servidor la detecta como "ya subido" y no duplica).
+        if ((err.status !== 401 && !err.caidaPrimaria) || intento >= MAX_INTENTOS) throw err;
         const fila = listaArchivos.querySelector(`.item-archivo[data-id="${item.id}"]`);
         if (fila) {
           fila.classList.remove("error");
@@ -9178,7 +10951,7 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
     if (enSegundoPlano) {
       // Al cerrar la pestaña: fetch con keepalive para que el navegador lo termine de enviar.
       try {
-        fetch(`${API_URL}/api/media/aviso-lote`, { method: "POST", headers: authHeaders(), body: JSON.stringify(datos), keepalive: true });
+        fetch(`${eofBaseApiParaSubida()}/api/media/aviso-lote`, { method: "POST", headers: authHeaders(), body: JSON.stringify(datos), keepalive: true });
       } catch {}
       return Promise.resolve();
     }
@@ -9210,6 +10983,15 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
     const resultIdElegido = selectPartidoSubida.value || null;
     const equipoElegido = resultIdElegido ? (selectEquipoSubida.value || null) : null;
     const visibilidadElegida = inputVisibilidadSubida ? inputVisibilidadSubida.value : "publico";
+    // Carpeta (solo contenido privado). Si dejó "+ Nueva carpeta…" sin crear,
+    // se avisa en vez de subir en silencio sin carpeta.
+    if (visibilidadElegida === "privado" && selectCarpetaSubida && selectCarpetaSubida.value === "__nueva__") {
+      errMsg.textContent = "Termina de crear la carpeta (pulsa «Crear carpeta») o elige «Sin carpeta» antes de subir.";
+      errMsg.style.display = "block";
+      if (inputCarpetaNueva) inputCarpetaNueva.focus();
+      return;
+    }
+    carpetaEnCurso = (visibilidadElegida === "privado" && selectCarpetaSubida && selectCarpetaSubida.value) || null;
 
     // Aviso extra por si, a pesar del filtro al añadirlos, dos archivos
     // idénticos han llegado a convivir en la cola (p. ej. arrastrando la
@@ -9222,6 +11004,19 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
     }
     if (duplicadosDetectados.length) {
       mostrarAvisoDuplicado(duplicadosDetectados);
+      return;
+    }
+
+    // Los archivos muy pesados necesitan su enlace (MediaFire, Drive...) antes de empezar.
+    const sinEnlace = archivos.filter((a) => pideEnlace(a) && !/^https:\/\/\S+$/i.test(a.enlace || ""));
+    if (sinEnlace.length) {
+      sinEnlace.forEach((a) => mostrarCampoEnlace(a.id));
+      errMsg.textContent = sinEnlace.length === 1
+        ? `"${sinEnlace[0].file.name}" es muy pesado: súbelo a MediaFire (o similar) y pega su enlace (https://...) en la fila del archivo antes de continuar.`
+        : `Estos archivos son muy pesados: ${sinEnlace.map((a) => a.file.name).join(", ")}. Súbelos a MediaFire (o similar) y pega el enlace de cada uno en su fila antes de continuar.`;
+      errMsg.style.display = "block";
+      const primero = listaArchivos.querySelector(`.input-enlace-pesado[data-enlace="${sinEnlace[0].id}"]`);
+      if (primero) primero.focus();
       return;
     }
 
@@ -9273,6 +11068,7 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
       // form.reset() no toca los botones del selector Público/Privado
       // (no son inputs nativos): se vuelve a dejar en "Público" a mano.
       activarSelectorVisibilidad(selectorVisibilidad, inputVisibilidadSubida, "publico");
+      sincronizarCarpetaSubida();
       archivos = [];
       pintarLista();
       // Si quien sube tiene la galería de abajo cargada (la suya propia,
@@ -9286,7 +11082,7 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
       // se subieron bien desaparecen), para poder corregir el problema
       // y pulsar "Subir contenido" otra vez sin tener que volver a
       // seleccionar todo desde cero.
-      archivos = fallidos.map(({ id, file }) => ({ id, file }));
+      archivos = fallidos.map(({ id, file, enlace, necesitaEnlace }) => ({ id, file, enlace: enlace || "", necesitaEnlace: !!necesitaEnlace }));
       pintarLista();
 
       const duplicados = fallidos.filter((f) => f.esDuplicado);
@@ -9311,10 +11107,62 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
 // ---------- CONTENIDO SUBIDO POR COLABORADORES (solo admins) ----------
 let mediaActual = [];
 let filtroMediaActivo = "todos";
+// Vista por carpetas de "Ver contenido subido" (solo el contenido PRIVADO se
+// organiza en carpetas; el público se ve como siempre).
+//   vistaMedia: null = inicio (carpetas + contenido público)
+//               "sin" = contenido privado sin carpeta
+//               número = id de una carpeta
+let carpetasMedia = [];      // [{ id, nombre, total }] (GET /api/media/carpetas)
+let vistaMedia = null;
+let modoSeleccionMedia = false;
+const seleccionMedia = new Set();
 
 const iconoFotoAdmin = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="9" r="1.5"/><path d="M21 15l-5-5-9 9"/></svg>';
 const iconoVideoAdmin = '<svg viewBox="0 0 24 24" class="icono-video" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="5" width="14" height="14" rx="2"/><path d="M16.5 10.5l5-3v9l-5-3z"/></svg>';
 const iconoPlayAdmin = '<svg viewBox="0 0 24 24"><path d="M6 4l14 8-14 8V4z"/></svg>';
+
+// Contenido registrado como enlace externo (MediaFire, Drive, Mega...): no hay
+// miniatura de Cloudinary, así que la tarjeta muestra el servicio, el tipo de
+// archivo y, si el servicio lo permite (Drive), la miniatura real.
+const iconoEnlaceAdmin = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>';
+function infoEnlaceExterno(m) {
+  let host = "";
+  let u = null;
+  try { u = new URL(m.cloudinary_url || ""); host = u.hostname.replace(/^www\./, ""); } catch {}
+  const servicios = [
+    [/(^|\.)mediafire\.com$/, "MediaFire"],
+    [/(^|\.)(drive|docs)\.google\.com$/, "Google Drive"],
+    [/(^|\.)mega\.(nz|io)$/, "Mega"],
+    [/(^|\.)dropbox\.com$/, "Dropbox"],
+    [/(^|\.)(onedrive\.live\.com|1drv\.ms|sharepoint\.com)$/, "OneDrive"],
+    [/(^|\.)wetransfer\.com$|(^|\.)we\.tl$/, "WeTransfer"],
+    [/(^|\.)(youtube\.com|youtu\.be)$/, "YouTube"],
+    [/(^|\.)vimeo\.com$/, "Vimeo"],
+  ];
+  const encontrado = servicios.find(([re]) => re.test(host));
+  const servicio = encontrado ? encontrado[1] : (host || "Enlace externo");
+  // Solo Drive publica una miniatura sin API (si el archivo es público).
+  let miniatura = null;
+  if (u && /(^|\.)drive\.google\.com$/.test(host)) {
+    const id = (u.pathname.match(/\/d\/([\w-]{10,})/) || [])[1] || u.searchParams.get("id");
+    if (id) miniatura = `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w640`;
+  }
+  const ext = ((m.nombre_archivo || "").match(/\.([A-Za-z0-9]{2,5})$/) || [])[1];
+  return { servicio, host, miniatura, ext: ext ? ext.toUpperCase() : "" };
+}
+function previewEnlaceExternoHtml(m, esFoto) {
+  const info = infoEnlaceExterno(m);
+  const img = info.miniatura
+    ? `<img src="${escapeHtml(info.miniatura)}" alt="" loading="lazy" referrerpolicy="no-referrer" class="preview-miniatura-media" onerror="this.remove()">`
+    : "";
+  return `${img}
+          <span class="preview-enlace-externo">
+            <span class="pee-icono">${iconoEnlaceAdmin}</span>
+            <span class="pee-servicio">${escapeHtml(info.servicio)}</span>
+            <span class="pee-archivo">${escapeHtml(info.ext ? `${esFoto ? "Foto" : "Vídeo"} · ${info.ext}` : (esFoto ? "Foto" : "Vídeo"))}</span>
+            <span class="pee-abrir">Abrir enlace ↗</span>
+          </span>`;
+}
 
 // A partir de la URL de Cloudinary genera una miniatura ligera y recortada:
 // para fotos, la propia imagen redimensionada; para vídeos, un fotograma
@@ -9388,8 +11236,20 @@ async function cargaContenido() {
       : "Aquí ves las fotos y vídeos que has subido tú. Puedes editar el título, el club y la descripción cuando quieras.";
   }
   try {
-    const { media = [] } = await apiFetch(`/api/media`);
+    // Las carpetas se piden aparte y toleran fallos: sin ellas (o sin la
+    // migración) todo el contenido privado cae en "Sin carpeta".
+    const [{ media = [] }, resCarpetas] = await Promise.all([
+      apiFetch(`/api/media`),
+      apiFetch(`/api/media/carpetas`).catch(() => ({ carpetas: [] })),
+    ]);
     mediaActual = media;
+    carpetasMedia = (resCarpetas && resCarpetas.carpetas) || [];
+    // Si otra persona borró la carpeta que tenías abierta, vuelves al inicio.
+    if (typeof vistaMedia === "number" && !carpetasMedia.some((c) => c.id === vistaMedia)) {
+      vistaMedia = null;
+      modoSeleccionMedia = false;
+    }
+    for (const idSel of [...seleccionMedia]) if (!mediaActual.some((m) => m.id === idSel)) seleccionMedia.delete(idSel);
     pintarGaleriaContenido();
   } catch (err) {
     cont.innerHTML = `<p>Error cargando el contenido: ${err.message}</p>`;
@@ -9433,34 +11293,30 @@ function desactivarPreviewVideoMedia(previewEl) {
   if (video) video.remove();
 }
 
-function pintarGaleriaContenido() {
-  const cont = document.getElementById("galeriaContenido");
-  const lista = mediaActual.filter((m) => filtroMediaActivo === "todos" || m.tipo === filtroMediaActivo);
-
-  if (!lista.length) {
-    cont.innerHTML = USER.rol === "admin"
-      ? "<p>Todavía no hay contenido subido por los colaboradores.</p>"
-      : "<p>Todavía no has subido ningún contenido.</p>";
-    return;
-  }
-
-  cont.innerHTML = lista.map((m) => {
+// HTML de UNA tarjeta de contenido (la misma en el inicio, en "Sin carpeta" y
+// dentro de cada carpeta). En modo selección las tarjetas que puedes mover
+// llevan un check; el resto se atenúan.
+function tarjetaMediaHtml(m) {
+    const seleccionable = m.visibilidad === "privado" && (USER.rol === "admin" || m.autor_id === USER.id);
     const esFoto = m.tipo === "foto";
-    const urlDescarga = `${API_URL}/api/media/${m.id}/descargar?token=${encodeURIComponent(TOKEN_ACTUAL())}`;
+    const urlDescarga = m.content_type === "enlace/externo" ? (m.cloudinary_url || "#") : `${eofBaseApiParaSubida()}/api/media/${m.id}/descargar?token=${encodeURIComponent(TOKEN_ACTUAL())}`;
     const urlMiniatura = miniaturaCloudinary(m.cloudinary_url, esFoto ? "image" : "video", m.portada_segundo, m.portada_foco);
     const iconoRespaldo = esFoto ? iconoFotoAdmin : iconoVideoAdmin;
     // La persona que subió el archivo puede editarlo; un admin puede
     // editar cualquier archivo, aunque sea de otra persona (coincide
     // con lo que ya permite el backend).
     const esMio = m.autor_id === USER.id;
+    // Contenido muy pesado registrado como enlace externo (MediaFire, Drive...).
+    const esEnlace = m.content_type === "enlace/externo";
+    const accionAbrir = esEnlace ? `abrirEnlaceExternoMedia(${m.id})` : `abrirModalReproductorMedia(${m.id})`;
     const botones = [];
     if (esMio || USER.rol === "admin") botones.push(`<button class="btn-accion-media btn-editar-media" onclick="editarMedia(${m.id})" title="Editar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><span>Editar</span></button>`);
     // Compartir enlaza a la galería PÚBLICA del partido: no tiene sentido
     // (ni debe aparecer) si este contenido está marcado como privado,
     // aunque esté vinculado a un partido.
     if (m.galeria_url && m.visibilidad !== "privado") botones.push(`<button class="btn-accion-media btn-compartir-media" onclick="compartirMedia(${m.id})" title="Compartir"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5 15.4 17.5M15.4 6.5 8.6 10.5"/></svg><span>Compartir</span></button>`);
-    if (USER.rol === "admin") {
-      botones.push(`<a href="${urlDescarga}" class="btn-accion-media btn-descargar" download="${escapeHtml(m.nombre_archivo)}" title="Descargar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13"/><path d="m7 11 5 5 5-5"/><path d="M5 20h14"/></svg><span>Descargar</span></a>`);
+    if (USER.rol === "admin" || (esEnlace && esMio)) {
+      botones.push(`<a href="${urlDescarga}"${esEnlace ? ' target="_blank" rel="noopener noreferrer"' : ""} class="btn-accion-media btn-descargar" download="${escapeHtml(m.nombre_archivo)}" title="Descargar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13"/><path d="m7 11 5 5 5-5"/><path d="M5 20h14"/></svg><span>Descargar</span></a>`);
     }
     // Eliminar: un admin puede borrar cualquier contenido; el resto solo
     // el suyo propio (coincide con lo que ya permite el backend).
@@ -9468,21 +11324,25 @@ function pintarGaleriaContenido() {
       botones.push(`<button class="btn-accion-media btn-eliminar-media" onclick="eliminarMedia(${m.id})" title="Eliminar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg><span>Eliminar</span></button>`);
     }
     return `
-      <div class="tarjeta-media">
-        <div class="preview clicable-reproducir-media"${!esFoto ? ` data-video-preview-url="${escapeHtml(m.cloudinary_url || "")}" onmouseenter="activarPreviewVideoMedia(this)" onmouseleave="desactivarPreviewVideoMedia(this)"` : ""} onclick="abrirModalReproductorMedia(${m.id})">
+      <div class="tarjeta-media${modoSeleccionMedia && seleccionMedia.has(m.id) ? " seleccionada" : ""}" data-media-id="${m.id}"${seleccionable ? ' data-seleccionable="1"' : ""}>
+        <div class="preview clicable-reproducir-media"${!esFoto && !esEnlace ? ` data-video-preview-url="${escapeHtml(m.cloudinary_url || "")}" onmouseenter="activarPreviewVideoMedia(this)" onmouseleave="desactivarPreviewVideoMedia(this)"` : ""} onclick="${accionAbrir}">
+          ${modoSeleccionMedia && seleccionable ? '<span class="check-seleccion"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>' : ""}
           <span class="badge-tipo">${esFoto ? "Foto" : "Vídeo"}</span>
-          ${m.visibilidad === "privado" ? `<span class="badge-privado">Privado</span>` : ""}
-          ${esMio ? `<span class="badge-mia">Tuyo</span>` : ""}
-          ${
-            urlMiniatura
+          ${(m.visibilidad === "privado" || esEnlace || esMio) ? `<div class="badges-estado-media">
+            ${esMio ? `<span class="badge-mia">Tuyo</span>` : ""}
+            ${m.visibilidad === "privado" ? `<span class="badge-privado">Privado</span>` : ""}
+            ${esEnlace ? `<span class="badge-privado badge-enlace-externo">Enlace externo</span>` : ""}
+          </div>` : ""}
+          ${esEnlace
+            ? previewEnlaceExternoHtml(m, esFoto)
+            : `${urlMiniatura
               ? `<img src="${urlMiniatura}" alt="" loading="lazy" class="preview-miniatura-media" onerror="const p=this.parentElement;this.remove();p.querySelector('.icono-generico')?.classList.remove('oculto');">`
-              : ""
-          }
-          <span class="icono-generico ${urlMiniatura ? "oculto" : ""}">${iconoRespaldo}</span>
-          ${!esFoto ? `<span class="play-overlay">${iconoPlayAdmin}</span>` : ""}
+              : ""}
+          <span class="icono-generico ${urlMiniatura ? "oculto" : ""}">${iconoRespaldo}</span>`}
+          ${!esFoto && !esEnlace ? `<span class="play-overlay">${iconoPlayAdmin}</span>` : ""}
         </div>
         <div class="cuerpo">
-          <div class="titulo-media titulo-media-clicable" onclick="abrirModalReproductorMedia(${m.id})">${escapeHtml(m.titulo)}</div>
+          <div class="titulo-media titulo-media-clicable" onclick="${accionAbrir}">${escapeHtml(m.titulo)}</div>
           ${m.descripcion ? `<div class="desc-media">${escapeHtml(m.descripcion)}</div>` : ""}
           <div class="meta-media">
             <span class="meta-item meta-autor"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.9 3.1-7 7-7s7 3.1 7 7"/></svg><span>${escapeHtml(m.autor_nombre || "—")}</span></span>
@@ -9495,7 +11355,362 @@ function pintarGaleriaContenido() {
         </div>
         ${botones.length ? `<div class="acciones-media">${botones.join("")}</div>` : ""}
       </div>`;
-  }).join("");
+}
+
+// ---------- Contenido privado por carpetas: vistas, gestión y selección ----------
+const iconoCarpetaAdmin = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>';
+const iconoCarpetaMasAdmin = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/><path d="M12 10.5v5M9.5 13h5"/></svg>';
+
+const esMediaPrivado = (m) => m.visibilidad === "privado";
+const textoArchivos = (n) => `${n} ${n === 1 ? "archivo" : "archivos"}`;
+const carpetaMediaPorId = (id) => carpetasMedia.find((c) => c.id === id) || null;
+const contarMediaDeCarpeta = (id) => mediaActual.filter((m) => esMediaPrivado(m) && m.carpeta_id === id).length;
+const contarMediaSinCarpeta = () => mediaActual.filter((m) => esMediaPrivado(m) && !m.carpeta_id).length;
+
+function mediaDeLaVista() {
+  let lista;
+  if (vistaMedia === null) lista = mediaActual.filter((m) => !esMediaPrivado(m));
+  else if (vistaMedia === "sin") lista = mediaActual.filter((m) => esMediaPrivado(m) && !m.carpeta_id);
+  else lista = mediaActual.filter((m) => esMediaPrivado(m) && m.carpeta_id === vistaMedia);
+  return lista.filter((m) => filtroMediaActivo === "todos" || m.tipo === filtroMediaActivo);
+}
+
+// Tarjetas de carpetas (inicio) o cabecera con ruta y acciones (dentro de una carpeta).
+function pintarCabeceraCarpetasMedia() {
+  const cab = document.getElementById("carpetasContenido");
+  const subtitulo = document.getElementById("subtituloMedia");
+  if (!cab) return;
+  const esAdmin = USER.rol === "admin";
+
+  if (vistaMedia === null) {
+    const sueltos = contarMediaSinCarpeta();
+    const tarjetas = [];
+    if (sueltos > 0) {
+      tarjetas.push(`<button type="button" class="tarjeta-carpeta tarjeta-carpeta-sin" data-carpeta="sin">
+        <span class="tarjeta-carpeta-icono">${iconoCarpetaAdmin}</span>
+        <span class="tarjeta-carpeta-texto"><b>Sin carpeta</b><small>${textoArchivos(sueltos)} · privado</small></span></button>`);
+    }
+    carpetasMedia.forEach((c) => {
+      tarjetas.push(`<button type="button" class="tarjeta-carpeta" data-carpeta="${c.id}" title="${escapeHtml(c.nombre)}">
+        <span class="tarjeta-carpeta-icono">${iconoCarpetaAdmin}</span>
+        <span class="tarjeta-carpeta-texto"><b>${escapeHtml(c.nombre)}</b><small>${textoArchivos(contarMediaDeCarpeta(c.id))}</small></span></button>`);
+    });
+    tarjetas.push(`<button type="button" class="tarjeta-carpeta tarjeta-carpeta-nueva" data-accion="nueva">
+      <span class="tarjeta-carpeta-icono">${iconoCarpetaMasAdmin}</span>
+      <span class="tarjeta-carpeta-texto"><b>Nueva carpeta</b><small>Para contenido privado</small></span></button>`);
+    cab.innerHTML = `<div class="carpetas-grid">${tarjetas.join("")}</div>`;
+    if (subtitulo) {
+      const nPublico = mediaActual.filter((m) => !esMediaPrivado(m)).length;
+      subtitulo.innerHTML = `Contenido público <span>· ${textoArchivos(nPublico)}</span>`;
+      subtitulo.style.display = "block";
+    }
+    return;
+  }
+
+  const carpeta = vistaMedia === "sin" ? null : carpetaMediaPorId(vistaMedia);
+  const nombre = vistaMedia === "sin" ? "Sin carpeta" : (carpeta ? carpeta.nombre : "Carpeta");
+  const botones = [];
+  if (!modoSeleccionMedia) botones.push(`<button type="button" data-accion="seleccionar">Seleccionar</button>`);
+  // Renombrar y eliminar: solo admins (el servidor también lo exige).
+  if (esAdmin && carpeta) {
+    botones.push(`<button type="button" data-accion="renombrar">Renombrar</button>`);
+    botones.push(`<button type="button" class="peligro" data-accion="eliminar">Eliminar carpeta</button>`);
+  }
+  cab.innerHTML = `<div class="carpeta-cabecera">
+    <button type="button" class="carpeta-volver" data-accion="volver">← Volver</button>
+    <nav class="carpeta-ruta" aria-label="Ruta"><a data-accion="volver">Contenido</a> › <strong>${escapeHtml(nombre)}</strong></nav>
+    <div class="carpeta-acciones">${botones.join("")}</div>
+  </div>`;
+  if (subtitulo) subtitulo.style.display = "none";
+}
+
+function pintarGaleriaContenido() {
+  const cont = document.getElementById("galeriaContenido");
+  if (!cont) return;
+  const lista = mediaDeLaVista();
+
+  pintarCabeceraCarpetasMedia();
+  cont.classList.toggle("galeria-contenido-seleccionable", modoSeleccionMedia);
+  actualizarBarraSeleccionMedia();
+
+  if (!lista.length) {
+    let msg;
+    if (filtroMediaActivo !== "todos" && (vistaMedia !== null || mediaActual.length)) {
+      msg = "No hay contenido de este tipo aquí.";
+    } else if (vistaMedia === "sin") {
+      msg = "No hay contenido privado fuera de carpetas.";
+    } else if (vistaMedia !== null) {
+      msg = "Esta carpeta está vacía. Sube contenido privado eligiéndola, o muévelo aquí con «Seleccionar» desde otra vista o con «Editar».";
+    } else if (mediaActual.length) {
+      msg = "No hay contenido público.";
+    } else {
+      msg = USER.rol === "admin"
+        ? "Todavía no hay contenido subido por los colaboradores."
+        : "Todavía no has subido ningún contenido.";
+    }
+    cont.innerHTML = `<p>${msg}</p>`;
+    return;
+  }
+
+  cont.innerHTML = lista.map((m) => tarjetaMediaHtml(m)).join("");
+}
+
+function abrirVistaMedia(vista) {
+  vistaMedia = vista;
+  modoSeleccionMedia = false;
+  seleccionMedia.clear();
+  pintarGaleriaContenido();
+}
+
+// Avisa al formulario de subida de que la lista de carpetas cambió.
+function avisarCarpetasCambiadas() {
+  document.dispatchEvent(new CustomEvent("eof-carpetas-cambiadas"));
+}
+
+// ---- Selección múltiple y "Mover a…" ----
+function poblarDestinoMoverMedia() {
+  const sel = document.getElementById("moverASelectMedia");
+  if (!sel) return;
+  const previo = sel.value;
+  sel.innerHTML = "";
+  const add = (valor, texto) => { const o = document.createElement("option"); o.value = valor; o.textContent = texto; sel.appendChild(o); };
+  if (vistaMedia !== "sin") add("", "— Sin carpeta —");
+  carpetasMedia.forEach((c) => { if (c.id !== vistaMedia) add(String(c.id), c.nombre); });
+  add("__nueva__", "+ Nueva carpeta…");
+  if (Array.from(sel.options).some((o) => o.value === previo)) sel.value = previo;
+}
+
+function actualizarBarraSeleccionMedia() {
+  const barra = document.getElementById("barraSeleccionMedia");
+  if (!barra) return;
+  barra.style.display = modoSeleccionMedia ? "flex" : "none";
+  if (!modoSeleccionMedia) return;
+  const n = seleccionMedia.size;
+  document.getElementById("textoSeleccionMedia").textContent = n === 1 ? "1 seleccionado" : `${n} seleccionados`;
+  document.getElementById("btnMoverSeleccionMedia").disabled = n === 0;
+}
+
+function iniciarSeleccionMedia() {
+  modoSeleccionMedia = true;
+  seleccionMedia.clear();
+  poblarDestinoMoverMedia();
+  pintarGaleriaContenido();
+}
+
+function salirSeleccionMedia() {
+  modoSeleccionMedia = false;
+  seleccionMedia.clear();
+  pintarGaleriaContenido();
+}
+
+function alternarSeleccionMedia(id) {
+  if (seleccionMedia.has(id)) seleccionMedia.delete(id); else seleccionMedia.add(id);
+  const tarjeta = document.querySelector(`#galeriaContenido .tarjeta-media[data-media-id="${id}"]`);
+  if (tarjeta) tarjeta.classList.toggle("seleccionada", seleccionMedia.has(id));
+  actualizarBarraSeleccionMedia();
+}
+
+function seleccionarTodoMedia() {
+  const seleccionables = mediaDeLaVista().filter((m) => esMediaPrivado(m) && (USER.rol === "admin" || m.autor_id === USER.id));
+  const todos = seleccionables.length > 0 && seleccionables.every((m) => seleccionMedia.has(m.id));
+  seleccionables.forEach((m) => { if (todos) seleccionMedia.delete(m.id); else seleccionMedia.add(m.id); });
+  pintarGaleriaContenido();
+}
+
+async function enviarMoverMedia(ids, carpetaId) {
+  const r = await apiFetch(`/api/media/mover`, { method: "POST", body: JSON.stringify({ ids, carpeta_id: carpetaId || "" }) });
+  const movidos = r.movidos || 0;
+  if (movidos && !r.omitidos) EOF.toast(movidos === 1 ? "Archivo movido." : `${movidos} archivos movidos.`, "exito");
+  else if (movidos) EOF.toast(`${movidos} movido(s). ${r.omitidos} no se han movido (son públicos o de otra persona).`, "info");
+  else EOF.toast("No se ha movido ningún archivo (son públicos o de otra persona).", "error");
+  avisarCarpetasCambiadas();
+  salirSeleccionMedia();
+  await cargaContenido();
+}
+
+async function moverSeleccionMedia() {
+  const ids = [...seleccionMedia];
+  if (!ids.length) return;
+  const sel = document.getElementById("moverASelectMedia");
+  const destino = sel ? sel.value : "";
+  if (destino === "__nueva__") {
+    // Crea la carpeta y mueve ahí lo seleccionado, todo en un paso.
+    abrirModalNombreCarpeta({
+      titulo: "Nueva carpeta",
+      textoBoton: "Crear y mover",
+      alEnviar: async (nombre) => {
+        const { carpeta } = await apiFetch(`/api/media/carpetas`, { method: "POST", body: JSON.stringify({ nombre }) });
+        if (!carpeta || !carpeta.id) throw new Error("No se pudo crear la carpeta.");
+        await enviarMoverMedia(ids, String(carpeta.id));
+      },
+    });
+    return;
+  }
+  const btn = document.getElementById("btnMoverSeleccionMedia");
+  btn.disabled = true;
+  try {
+    await enviarMoverMedia(ids, destino);
+  } catch (err) {
+    EOF.toast("No se pudo mover: " + err.message, "error");
+    btn.disabled = seleccionMedia.size === 0;
+  }
+}
+
+// ---- Crear, renombrar y eliminar carpetas ----
+function crearCarpetaDesdeVista() {
+  abrirModalNombreCarpeta({
+    titulo: "Nueva carpeta",
+    textoBoton: "Crear",
+    alEnviar: async (nombre) => {
+      const { carpeta, existente } = await apiFetch(`/api/media/carpetas`, { method: "POST", body: JSON.stringify({ nombre }) });
+      EOF.toast(existente ? "Ya existía una carpeta con ese nombre." : "Carpeta creada.", existente ? "info" : "exito");
+      avisarCarpetasCambiadas();
+      await cargaContenido();
+      if (carpeta && carpeta.id) abrirVistaMedia(carpeta.id);
+    },
+  });
+}
+
+function renombrarCarpetaMedia(id) {
+  const carpeta = carpetaMediaPorId(id);
+  if (!carpeta) return;
+  abrirModalNombreCarpeta({
+    titulo: "Renombrar carpeta",
+    textoBoton: "Guardar",
+    valorInicial: carpeta.nombre,
+    alEnviar: async (nombre) => {
+      await apiFetch(`/api/media/carpetas/${id}`, { method: "PUT", body: JSON.stringify({ nombre }) });
+      EOF.toast("Carpeta renombrada.", "exito");
+      avisarCarpetasCambiadas();
+      await cargaContenido();
+    },
+  });
+}
+
+async function eliminarCarpetaMedia(id) {
+  const carpeta = carpetaMediaPorId(id);
+  if (!carpeta) return;
+  const n = contarMediaDeCarpeta(id);
+  const aviso = n
+    ? `Sus ${textoArchivos(n)} NO se borran: pasarán a «Sin carpeta».`
+    : "Está vacía.";
+  if (!(await EOF.confirmar(`¿Eliminar la carpeta «${carpeta.nombre}»? ${aviso}`, { peligroso: true, textoConfirmar: "Eliminar carpeta" }))) return;
+  try {
+    await apiFetch(`/api/media/carpetas/${id}`, { method: "DELETE" });
+    EOF.toast(n ? `Carpeta eliminada. ${textoArchivos(n)} pasan a «Sin carpeta».` : "Carpeta eliminada.", "exito");
+    vistaMedia = null;
+    modoSeleccionMedia = false;
+    seleccionMedia.clear();
+    avisarCarpetasCambiadas();
+    await cargaContenido();
+  } catch (err) {
+    EOF.toast("No se pudo eliminar la carpeta: " + err.message, "error");
+  }
+}
+
+// ---- Modal de nombre de carpeta (crear / renombrar / crear desde "Editar") ----
+const modalNombreCarpeta = document.getElementById("modalNombreCarpeta");
+let alEnviarNombreCarpeta = null;
+let alCancelarNombreCarpeta = null;
+
+function abrirModalNombreCarpeta({ titulo, textoBoton, valorInicial, alEnviar, alCancelar }) {
+  if (!modalNombreCarpeta) return;
+  alEnviarNombreCarpeta = alEnviar;
+  alCancelarNombreCarpeta = alCancelar || null;
+  document.getElementById("modalNombreCarpetaTitulo").textContent = titulo || "Carpeta";
+  document.getElementById("btnGuardarNombreCarpeta").textContent = textoBoton || "Guardar";
+  const input = document.getElementById("nombreCarpetaInput");
+  input.value = valorInicial || "";
+  const err = document.getElementById("errNombreCarpeta");
+  err.style.display = "none";
+  err.textContent = "";
+  modalNombreCarpeta.classList.add("abierto");
+  setTimeout(() => { input.focus(); input.select(); }, 50);
+}
+
+function cerrarModalNombreCarpeta() {
+  if (!modalNombreCarpeta) return;
+  const cancelar = alCancelarNombreCarpeta;
+  modalNombreCarpeta.classList.remove("abierto");
+  alEnviarNombreCarpeta = null;
+  alCancelarNombreCarpeta = null;
+  if (cancelar) cancelar();
+}
+
+(function iniciarModalNombreCarpeta() {
+  const form = document.getElementById("formNombreCarpeta");
+  if (!modalNombreCarpeta || !form) return;
+  modalNombreCarpeta.addEventListener("click", (ev) => { if (ev.target === modalNombreCarpeta) cerrarModalNombreCarpeta(); });
+  document.addEventListener("keydown", (ev) => {
+    if (ev.key === "Escape" && modalNombreCarpeta.classList.contains("abierto")) cerrarModalNombreCarpeta();
+  });
+  form.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const err = document.getElementById("errNombreCarpeta");
+    const btn = document.getElementById("btnGuardarNombreCarpeta");
+    const mostrar = (t) => { err.textContent = t; err.style.display = t ? "block" : "none"; };
+    const nombre = document.getElementById("nombreCarpetaInput").value.replace(/\s+/g, " ").trim();
+    if (!nombre) return mostrar("Escribe un nombre para la carpeta.");
+    if (nombre.length > 60) return mostrar("El nombre es demasiado largo (máximo 60 caracteres).");
+    const enviar = alEnviarNombreCarpeta;
+    if (!enviar) return;
+    btn.disabled = true;
+    mostrar("");
+    try {
+      await enviar(nombre);
+      // Éxito: se cierra SIN disparar "cancelar".
+      alCancelarNombreCarpeta = null;
+      cerrarModalNombreCarpeta();
+    } catch (e2) {
+      mostrar(e2.message || "No se pudo guardar la carpeta.");
+    } finally {
+      btn.disabled = false;
+    }
+  });
+})();
+
+(function iniciarCarpetasMedia() {
+  const cab = document.getElementById("carpetasContenido");
+  const cont = document.getElementById("galeriaContenido");
+  if (cab) {
+    cab.addEventListener("click", (ev) => {
+      const el = ev.target.closest("[data-carpeta], [data-accion]");
+      if (!el) return;
+      if (el.dataset.carpeta) {
+        abrirVistaMedia(el.dataset.carpeta === "sin" ? "sin" : Number(el.dataset.carpeta));
+        return;
+      }
+      switch (el.dataset.accion) {
+        case "volver": abrirVistaMedia(null); break;
+        case "nueva": crearCarpetaDesdeVista(); break;
+        case "seleccionar": iniciarSeleccionMedia(); break;
+        case "renombrar": if (typeof vistaMedia === "number") renombrarCarpetaMedia(vistaMedia); break;
+        case "eliminar": if (typeof vistaMedia === "number") eliminarCarpetaMedia(vistaMedia); break;
+      }
+    });
+  }
+  // En modo selección, pulsar una tarjeta la marca/desmarca en vez de abrirla
+  // (captura: se adelanta a los onclick de la propia tarjeta).
+  if (cont) {
+    cont.addEventListener("click", (ev) => {
+      if (!modoSeleccionMedia) return;
+      const tarjeta = ev.target.closest(".tarjeta-media");
+      if (!tarjeta) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      if (tarjeta.dataset.seleccionable) alternarSeleccionMedia(Number(tarjeta.dataset.mediaId));
+    }, true);
+  }
+  const on = (id, fn) => { const el = document.getElementById(id); if (el) el.addEventListener("click", fn); };
+  on("btnSeleccionarTodoMedia", seleccionarTodoMedia);
+  on("btnCancelarSeleccionMedia", salirSeleccionMedia);
+  on("btnMoverSeleccionMedia", moverSeleccionMedia);
+})();
+
+// Contenido muy pesado: se abre el enlace externo (MediaFire, Drive...) en otra pestaña.
+function abrirEnlaceExternoMedia(id) {
+  const m = mediaActual.find((x) => x.id === id);
+  if (m && /^https:\/\//i.test(m.cloudinary_url || "")) window.open(m.cloudinary_url, "_blank", "noopener,noreferrer");
 }
 
 // ---------- CONTENIDO: Galería de partido (Fase 11) ----------
@@ -9751,6 +11966,38 @@ async function resetGaleriaArticulo(articleId) {
 document.getElementById("btnAnadirGaleriaArticulo")?.addEventListener("click", () => abrirModalGaleriaArticulo("galeria-final"));
 document.getElementById("btnImportarGaleriaAFotos")?.addEventListener("click", () => abrirModalGaleriaArticulo("fotos"));
 
+// "Importar de la galería del partido" solo está disponible si la noticia
+// tiene un resultado vinculado Y la galería de ese partido tiene al menos
+// una foto. Se re-comprueba cada vez que cambia el resultado vinculado
+// (incluido al abrir una noticia existente, que dispara el mismo "change").
+let TOKEN_COMPROBAR_GALERIA_IMPORTAR = 0;
+async function actualizarBotonImportarGaleria() {
+  const btn = document.getElementById("btnImportarGaleriaAFotos");
+  if (!btn) return;
+  const token = ++TOKEN_COMPROBAR_GALERIA_IMPORTAR;
+  const resultId = selectResultadoArticulo ? selectResultadoArticulo.value : "";
+  const fijar = (activo, motivo) => {
+    btn.disabled = !activo;
+    btn.title = motivo;
+  };
+  if (!resultId || resultId === "__nuevo__") {
+    fijar(false, "Vincula un partido en \"Resultado vinculado\" para activar este botón");
+    return;
+  }
+  fijar(false, "Comprobando la galería del partido…");
+  try {
+    const { galeria = [] } = await apiFetch(`/api/results/${resultId}/galeria`);
+    if (token !== TOKEN_COMPROBAR_GALERIA_IMPORTAR) return; // llegó una respuesta más nueva
+    const hayFotos = galeria.some((g) => g.tipo === "foto");
+    fijar(hayFotos, hayFotos ? "Importar fotos de la galería del partido vinculado" : "El partido vinculado no tiene fotos en su galería");
+  } catch (err) {
+    if (token !== TOKEN_COMPROBAR_GALERIA_IMPORTAR) return;
+    fijar(false, "No se pudo comprobar la galería del partido");
+  }
+}
+selectResultadoArticulo?.addEventListener("change", actualizarBotonImportarGaleria);
+actualizarBotonImportarGaleria();
+
 async function abrirModalGaleriaArticulo(modo = "galeria-final") {
   MODO_MODAL_GALERIA_ARTICULO = modo;
   SELECCION_MODAL_GALERIA_ARTICULO = new Set();
@@ -9763,6 +12010,16 @@ async function abrirModalGaleriaArticulo(modo = "galeria-final") {
   const ayudaModoFotos = document.getElementById("gaAyudaModoFotos");
   if (titulo) titulo.textContent = modo === "fotos" ? "Importar fotos a la noticia" : "Añadir imágenes a la noticia";
   if (ayudaModoFotos) ayudaModoFotos.style.display = modo === "fotos" ? "block" : "none";
+
+  // En modo "fotos" solo se muestran las fotos del partido vinculado: se
+  // oculta "Tu contenido subido" (la mediateca general).
+  const wrapMediateca = document.getElementById("gaMediatecaWrap");
+  if (wrapMediateca) wrapMediateca.style.display = modo === "fotos" ? "none" : "block";
+
+  if (modo === "fotos" && !resultId) {
+    // No debería poder llegarse aquí (el botón está desactivado), pero por si acaso.
+    return;
+  }
 
   if (resultId) {
     if (wrapPartido) wrapPartido.style.display = "block";
@@ -9784,7 +12041,7 @@ async function abrirModalGaleriaArticulo(modo = "galeria-final") {
 
   // El banco general de media puede no estar cargado todavía si el
   // redactor no ha pasado antes por "Ver contenido subido".
-  if (!mediaActual.length) {
+  if (modo !== "fotos" && !mediaActual.length) {
     try {
       const { media = [] } = await apiFetch(`/api/media`);
       mediaActual = media;
@@ -9798,6 +12055,26 @@ async function abrirModalGaleriaArticulo(modo = "galeria-final") {
 function cerrarModalGaleriaArticulo() {
   document.getElementById("modalGaleriaArticulo")?.classList.remove("abierto");
 }
+
+// Cerrar el selector sin tener que bajar hasta el final (con muchas fotos la
+// lista es larguísima): ✕ de la cabecera, clic en el fondo oscuro o Escape.
+// Se exige que el clic EMPIECE y TERMINE en el fondo, para que arrastrar el
+// ratón desde dentro de la caja hacia fuera no cierre el modal sin querer.
+(function () {
+  const modal = document.getElementById("modalGaleriaArticulo");
+  if (!modal) return;
+  let pulsadoEnFondo = false;
+  modal.addEventListener("mousedown", (e) => { pulsadoEnFondo = e.target === modal; });
+  modal.addEventListener("touchstart", (e) => { pulsadoEnFondo = e.target === modal; }, { passive: true });
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal && pulsadoEnFondo) cerrarModalGaleriaArticulo();
+    pulsadoEnFondo = false;
+  });
+  document.getElementById("btnCerrarGaleriaArticuloX")?.addEventListener("click", cerrarModalGaleriaArticulo);
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && modal.classList.contains("abierto")) cerrarModalGaleriaArticulo();
+  });
+})();
 
 // En modo "fotos" no hay media_id que comparar directamente (las filas
 // de imagenesLista solo guardan la URL), así que se descartan de la
@@ -9835,9 +12112,9 @@ function pintarModalGaleriaArticulo() {
   }
 
   const contMediateca = document.getElementById("gaGaleriaMediateca");
-  if (contMediateca) {
+  if (contMediateca && MODO_MODAL_GALERIA_ARTICULO !== "fotos") {
     const disponiblesMediateca = mediaActual
-      .filter((m) => m.tipo === "foto" && !idsYaVinculados.has(m.id))
+      .filter((m) => m.tipo === "foto" && m.content_type !== "enlace/externo" && !idsYaVinculados.has(m.id))
       .filter((m) => !urlsYaFotos || !urlsYaFotos.has(m.cloudinary_url));
     contMediateca.innerHTML = !disponiblesMediateca.length
       ? "<p>No tienes fotos subidas pendientes de añadir.</p>"
@@ -9882,7 +12159,7 @@ document.getElementById("btnConfirmarGaleriaArticulo")?.addEventListener("click"
   const elegidos = [];
   for (const mediaId of SELECCION_MODAL_GALERIA_ARTICULO) {
     const deGaleria = GALERIA_ARTICULO_PARTIDO_CACHE.find((g) => g.media_id === mediaId);
-    const deMediateca = mediaActual.find((m) => m.id === mediaId);
+    const deMediateca = MODO_MODAL_GALERIA_ARTICULO === "fotos" ? null : mediaActual.find((m) => m.id === mediaId);
     const origen = deGaleria
       ? { media_id: deGaleria.media_id, cloudinary_url: deGaleria.cloudinary_url, titulo: deGaleria.titulo, tipo: deGaleria.tipo, autor_nombre: deGaleria.autor_nombre }
       : (deMediateca ? { media_id: deMediateca.id, cloudinary_url: deMediateca.cloudinary_url, titulo: deMediateca.titulo, tipo: deMediateca.tipo, autor_nombre: deMediateca.autor_nombre } : null);
@@ -10091,6 +12368,59 @@ async function prepararSelectorPartidoEdicionMedia() {
   }
 }
 
+// ---------- Editar contenido: carpeta (solo contenido privado) ----------
+// El campo aparece únicamente con visibilidad "Privado". Si el archivo pasa a
+// público, el servidor lo desvincula de su carpeta; si pasa de público a
+// privado, aquí se elige a cuál va.
+let emCarpetaPrevia = "";
+
+function poblarSelectCarpetaEdicion(carpetaIdActual, seleccionarId) {
+  const sel = document.getElementById("em_carpeta");
+  if (!sel) return;
+  sel.innerHTML = "";
+  const add = (valor, texto) => { const o = document.createElement("option"); o.value = valor; o.textContent = texto; sel.appendChild(o); };
+  add("", "— Sin carpeta —");
+  carpetasMedia.forEach((c) => add(String(c.id), c.nombre));
+  // Si por una carrera la carpeta actual ya no está en la lista, se conserva
+  // como opción para no desvincular el archivo sin querer al guardar.
+  if (carpetaIdActual && !carpetasMedia.some((c) => c.id === carpetaIdActual)) add(String(carpetaIdActual), "(carpeta actual)");
+  add("__nueva__", "+ Nueva carpeta…");
+  const elegido = seleccionarId !== undefined ? String(seleccionarId) : (carpetaIdActual ? String(carpetaIdActual) : "");
+  sel.value = Array.from(sel.options).some((o) => o.value === elegido) ? elegido : "";
+  emCarpetaPrevia = sel.value;
+}
+
+function sincronizarCarpetaEdicion() {
+  const wrap = document.getElementById("em_carpetaWrap");
+  const vis = document.getElementById("em_visibilidad");
+  if (!wrap || !vis) return;
+  wrap.style.display = vis.value === "privado" ? "block" : "none";
+}
+
+(function iniciarSelectCarpetaEdicion() {
+  const sel = document.getElementById("em_carpeta");
+  if (!sel) return;
+  sel.addEventListener("change", () => {
+    if (sel.value !== "__nueva__") { emCarpetaPrevia = sel.value; return; }
+    // Si cierra el cuadro sin crear nada, vuelve a la carpeta que tenía.
+    abrirModalNombreCarpeta({
+      titulo: "Nueva carpeta",
+      textoBoton: "Crear",
+      alCancelar: () => { sel.value = emCarpetaPrevia; },
+      alEnviar: async (nombre) => {
+        const { carpeta } = await apiFetch(`/api/media/carpetas`, { method: "POST", body: JSON.stringify({ nombre }) });
+        if (!carpeta || !carpeta.id) throw new Error("No se pudo crear la carpeta.");
+        if (!carpetasMedia.some((c) => c.id === carpeta.id)) {
+          carpetasMedia.push({ id: carpeta.id, nombre: carpeta.nombre, total: 0 });
+          carpetasMedia.sort((a, b) => a.nombre.localeCompare(b.nombre, "es", { sensitivity: "base" }));
+        }
+        poblarSelectCarpetaEdicion(null, carpeta.id);
+        avisarCarpetasCambiadas();
+      },
+    });
+  });
+})();
+
 function editarMedia(id) {
   const m = mediaActual.find((x) => x.id === id);
   if (!m) return;
@@ -10099,6 +12429,8 @@ function editarMedia(id) {
   document.getElementById("em_titulo").value = m.titulo || "";
   document.getElementById("em_descripcion").value = m.descripcion || "";
   activarSelectorVisibilidad(document.getElementById("em_selectorVisibilidad"), document.getElementById("em_visibilidad"), m.visibilidad);
+  poblarSelectCarpetaEdicion(m.carpeta_id || null);
+  sincronizarCarpetaEdicion();
 
   // Partido vinculado (si lo hay): se rellena el buscador con el partido
   // ya vinculado y se oculta "Club" en su lugar; si no hay partido, se
@@ -10124,11 +12456,12 @@ function editarMedia(id) {
   const bloquePortada = document.getElementById("em_bloque_portada");
   const inputPortada = document.getElementById("em_portada_segundo");
   const videoPrevio = document.getElementById("em_video_previo");
+  const esEnlaceEdicion = m.content_type === "enlace/externo";
   const esVideo = m.tipo === "video";
-  if (bloquePortada) bloquePortada.style.display = esVideo ? "block" : "none";
+  if (bloquePortada) bloquePortada.style.display = esVideo && !esEnlaceEdicion ? "block" : "none";
   if (inputPortada) inputPortada.value = Number.isFinite(m.portada_segundo) ? m.portada_segundo : "";
   if (videoPrevio) {
-    if (esVideo && m.cloudinary_url) {
+    if (esVideo && m.cloudinary_url && m.content_type !== "enlace/externo") {
       videoPrevio.src = m.cloudinary_url;
       videoPrevio.style.display = "block";
     } else {
@@ -10143,25 +12476,21 @@ function editarMedia(id) {
   emMediaEnEdicion = m;
   const inputFoco = document.getElementById("em_portada_foco");
   if (inputFoco) inputFoco.value = (esVideo && m.portada_foco) || "50% 50%";
-  const focoPanelPortadaVideo = document.getElementById("focoPanelPortadaVideo");
-  const btnFocoPortadaVideo = document.getElementById("btnFocoPortadaVideo");
-  if (focoPanelPortadaVideo) focoPanelPortadaVideo.classList.add("oculto");
-  if (btnFocoPortadaVideo) btnFocoPortadaVideo.classList.remove("activo");
+  if (selectorFocoPortadaVideo) selectorFocoPortadaVideo.cerrar();
   pintarFocoPortadaVideo();
 
   // Punto de foco de la foto (mismo sistema, pero sobre la propia imagen
   // en vez de un fotograma de vídeo).
   const bloqueFocoFoto = document.getElementById("em_bloque_foco_foto");
   const inputFocoFoto = document.getElementById("em_foto_foco");
-  if (bloqueFocoFoto) bloqueFocoFoto.style.display = esVideo ? "none" : "block";
-  if (inputFocoFoto) inputFocoFoto.value = (!esVideo && m.imagen_foco) || "50% 50%";
-  const focoPanelFoto = document.getElementById("focoPanelFoto");
-  const btnFocoFoto = document.getElementById("btnFocoFoto");
-  if (focoPanelFoto) focoPanelFoto.classList.add("oculto");
-  if (btnFocoFoto) btnFocoFoto.classList.remove("activo");
+  if (bloqueFocoFoto) bloqueFocoFoto.style.display = esVideo || esEnlaceEdicion ? "none" : "block";
+  if (inputFocoFoto) inputFocoFoto.value = (!esVideo && m.portada_foco) || "50% 50%";
+  if (selectorFocoFoto) selectorFocoFoto.cerrar();
   pintarFocoFoto();
 
   if (modalEditarMedia) modalEditarMedia.classList.add("abierto");
+  const emCuerpo = modalEditarMedia && modalEditarMedia.querySelector(".em-cuerpo");
+  if (emCuerpo) emCuerpo.scrollTop = 0;
 }
 
 // Referencia al registro que se está editando en el modal "Editar
@@ -10169,101 +12498,58 @@ function editarMedia(id) {
 // foco) cada vez que cambia el segundo o el punto de foco elegidos.
 let emMediaEnEdicion = null;
 
-// Punto de foco de la miniatura del vídeo: mismo sistema de clic sobre una
-// preview que ya usan las fotos de contenido y la foto de perfil, pero
-// aquí la preview muestra el fotograma real (extraído por Cloudinary en el
-// segundo de portada elegido) en vez de una imagen fija, para que se vea
-// exactamente lo que se va a recortar.
+// Punto de foco de la miniatura del vídeo y de la foto en "Editar contenido":
+// ambos usan el selector único (admin/js/foco-selector.js). Para el vídeo la
+// imagen sobre la que se elige es el fotograma real (extraído por Cloudinary
+// en el segundo de portada elegido), para ver exactamente lo que se recorta.
+// "var": se declaran antes de montarse para poder llamarse desde el modal.
+var selectorFocoPortadaVideo = null;
+var selectorFocoFoto = null;
+
+function urlFotogramaPortadaVideo() {
+  if (!emMediaEnEdicion || !emMediaEnEdicion.cloudinary_url) return "";
+  const segundoActual = Number(document.getElementById("em_portada_segundo").value);
+  return miniaturaCloudinary(
+    emMediaEnEdicion.cloudinary_url, "video",
+    Number.isFinite(segundoActual) && segundoActual >= 0 ? segundoActual : emMediaEnEdicion.portada_segundo
+  ) || "";
+}
+
 function pintarFocoPortadaVideo() {
-  const preview = document.getElementById("focoPreviewPortadaVideo");
-  const marcador = document.getElementById("focoMarcadorPortadaVideo");
-  const inputFoco = document.getElementById("em_portada_foco");
-  if (!preview || !marcador || !inputFoco) return;
-  const [fx, fy] = (inputFoco.value || "50% 50%").split(" ");
-  marcador.style.left = fx;
-  marcador.style.top = fy;
-  if (emMediaEnEdicion && emMediaEnEdicion.cloudinary_url) {
-    const segundoActual = Number(document.getElementById("em_portada_segundo").value);
-    const urlFotograma = miniaturaCloudinary(
-      emMediaEnEdicion.cloudinary_url, "video",
-      Number.isFinite(segundoActual) && segundoActual >= 0 ? segundoActual : emMediaEnEdicion.portada_segundo
-    );
-    preview.style.backgroundImage = urlFotograma ? `url("${urlFotograma}")` : "none";
-  } else {
-    preview.style.backgroundImage = "none";
-  }
+  if (selectorFocoPortadaVideo) selectorFocoPortadaVideo.pintar();
+}
+
+function pintarFocoFoto() {
+  if (selectorFocoFoto) selectorFocoFoto.pintar();
 }
 
 (function inicializarFocoPortadaVideo() {
-  const preview = document.getElementById("focoPreviewPortadaVideo");
   const btnFoco = document.getElementById("btnFocoPortadaVideo");
-  const focoPanel = document.getElementById("focoPanelPortadaVideo");
-  const btnReset = document.getElementById("btnFocoResetPortadaVideo");
   const inputFoco = document.getElementById("em_portada_foco");
-  const inputSegundo = document.getElementById("em_portada_segundo");
-  if (!preview || !btnFoco || !focoPanel || !btnReset || !inputFoco) return;
-
-  preview.addEventListener("click", (e) => {
-    const rect = preview.getBoundingClientRect();
-    const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
-    const y = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
-    inputFoco.value = `${Math.round(x)}% ${Math.round(y)}%`;
-    pintarFocoPortadaVideo();
+  if (!btnFoco || !inputFoco) return;
+  selectorFocoPortadaVideo = EOF_FOCO_SELECTOR.montar({
+    boton: btnFoco,
+    obtenerUrl: urlFotogramaPortadaVideo,
+    obtenerValor: () => inputFoco.value,
+    fijarValor: (v) => { inputFoco.value = v; },
+    proporciones: ["16x9", "1x1"],
+    texto: "La miniatura de este vídeo se recorta a un cuadrado o rectángulo. Marca el punto del fotograma que quieres que se vea siempre.",
   });
-  btnFoco.addEventListener("click", () => {
-    focoPanel.classList.toggle("oculto");
-    btnFoco.classList.toggle("activo");
-    if (!focoPanel.classList.contains("oculto")) pintarFocoPortadaVideo();
-  });
-  btnReset.addEventListener("click", () => {
-    inputFoco.value = "50% 50%";
-    pintarFocoPortadaVideo();
-  });
-  // Al cambiar el segundo del fotograma (a mano o con "Usar el fotograma
-  // actual"), se refresca la preview del foco para que siga mostrando el
-  // instante correcto del vídeo.
-  if (inputSegundo) inputSegundo.addEventListener("input", pintarFocoPortadaVideo);
+  // La ventana lee la URL del fotograma cada vez que se abre, así que
+  // siempre muestra el segundo elegido en ese momento.
 })();
 
-// Punto de foco de la foto en el modal "Editar contenido": mismo sistema
-// de clic sobre una preview que el foco del fotograma de vídeo, pero
-// mostrando aquí directamente la propia imagen.
-function pintarFocoFoto() {
-  const preview = document.getElementById("focoPreviewFoto");
-  const marcador = document.getElementById("focoMarcadorFoto");
-  const inputFoco = document.getElementById("em_foto_foco");
-  if (!preview || !marcador || !inputFoco) return;
-  const [fx, fy] = (inputFoco.value || "50% 50%").split(" ");
-  marcador.style.left = fx;
-  marcador.style.top = fy;
-  preview.style.backgroundImage = (emMediaEnEdicion && emMediaEnEdicion.cloudinary_url)
-    ? `url("${emMediaEnEdicion.cloudinary_url}")`
-    : "none";
-}
-
 (function inicializarFocoFoto() {
-  const preview = document.getElementById("focoPreviewFoto");
   const btnFoco = document.getElementById("btnFocoFoto");
-  const focoPanel = document.getElementById("focoPanelFoto");
-  const btnReset = document.getElementById("btnFocoResetFoto");
   const inputFoco = document.getElementById("em_foto_foco");
-  if (!preview || !btnFoco || !focoPanel || !btnReset || !inputFoco) return;
-
-  preview.addEventListener("click", (e) => {
-    const rect = preview.getBoundingClientRect();
-    const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
-    const y = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
-    inputFoco.value = `${Math.round(x)}% ${Math.round(y)}%`;
-    pintarFocoFoto();
-  });
-  btnFoco.addEventListener("click", () => {
-    focoPanel.classList.toggle("oculto");
-    btnFoco.classList.toggle("activo");
-    if (!focoPanel.classList.contains("oculto")) pintarFocoFoto();
-  });
-  btnReset.addEventListener("click", () => {
-    inputFoco.value = "50% 50%";
-    pintarFocoFoto();
+  if (!btnFoco || !inputFoco) return;
+  selectorFocoFoto = EOF_FOCO_SELECTOR.montar({
+    boton: btnFoco,
+    obtenerUrl: () => (emMediaEnEdicion && emMediaEnEdicion.cloudinary_url) || "",
+    obtenerValor: () => inputFoco.value,
+    fijarValor: (v) => { inputFoco.value = v; },
+    proporciones: ["16x9", "1x1", "4x5"],
+    texto: "La miniatura de esta foto se recorta a un cuadrado o rectángulo. Marca el punto que quieres que se vea siempre.",
   });
 })();
 
@@ -10322,6 +12608,12 @@ if (formEditarMedia) {
       imagenFoco: document.getElementById("em_foto_foco").value.trim() || "50% 50%",
       visibilidad: inputEmVisibilidad ? inputEmVisibilidad.value : "publico",
     };
+    // Carpeta: solo en privado ("" = Sin carpeta). En público no se manda: el
+    // servidor lo desvincula de su carpeta.
+    if (body.visibilidad === "privado") {
+      const selCarpeta = document.getElementById("em_carpeta");
+      body.carpeta_id = selCarpeta && selCarpeta.value && selCarpeta.value !== "__nueva__" ? selCarpeta.value : "";
+    }
 
     try {
       await apiFetch(`/api/media/${id}`, { method: "PUT", body: JSON.stringify(body) });
@@ -10372,28 +12664,493 @@ async function eliminarMedia(id) {
 }
 
 // ---------- USUARIOS (solo admins) ----------
-async function cargaUsuarios() {
-  const cos = document.getElementById("tablaUsuarios");
-  if (!cos) return;
-  cos.innerHTML = "<tr><td colspan='8'>Cargando...</td></tr>";
-  try {
-    const { users = [] } = await apiFetch(`/api/users`);
 
-    // Contador bonito: "usuarios que ya han iniciado sesión (los que
-    // tienen correo electrónico puesto) / usuarios registrados en total".
-    const contadorEl = document.getElementById("contadorUsuarios");
-    const contadorNumeroEl = document.getElementById("contadorUsuariosNumero");
-    if (contadorEl && contadorNumeroEl) {
-      const conSesionIniciada = users.filter(u => u.email && String(u.email).trim() !== "").length;
-      contadorNumeroEl.textContent = `${conSesionIniciada} / ${users.length}`;
-      contadorEl.style.display = users.length ? "flex" : "none";
+// Avisos de inactividad (correos automáticos a redactores que llevan 30 días
+// sin subir nada). Los datos vienen de GET /api/users en u.inactividad y solo
+// aplican a redactores. Se muestran como un botón bajo el nivel, en la columna
+// "Situación" de la tabla de Usuarios; al pulsarlo se abre una ventana con una
+// línea de tiempo (aviso 1..5 + aviso a admins) donde cada paso es clicable y
+// enseña su detalle.
+const USUARIOS_INACTIVIDAD = new Map(); // id -> usuario (lo rellena cargaUsuarios)
+let AVISOS_MODAL = null; // { u, pasos, max, n, i } del modal abierto
+const AVISOS_DIA_MS = 24 * 60 * 60 * 1000;
+const AVISOS_INTERVALO_DIAS = 5;
+
+const AVISOS_ICONOS = {
+  sobre: `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m4 7.5 8 6 8-6"/></svg>`,
+  check: `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>`,
+  escudo: `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 5 6v5.5c0 4.4 2.9 7.9 7 9.5 4.1-1.6 7-5.1 7-9.5V6l-7-3Z"/><path d="M12 8.5v4M12 15.6h.01"/></svg>`,
+};
+
+function fechaAvisoInactividad(iso, conHora) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  const opciones = { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Europe/Madrid" };
+  if (conHora) Object.assign(opciones, { hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleString("es-ES", opciones);
+}
+
+function sumarDiasISO(iso, dias) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return null;
+  return new Date(d.getTime() + dias * AVISOS_DIA_MS).toISOString();
+}
+
+// Resumen del estado de un usuario, o null si no aplica (admins y fotógrafos
+// no entran en el ciclo de avisos). clase: ok | aviso | grave | neutro.
+function estadoInactividadUsuario(u) {
+  if (u.rol !== "redactor" || !u.inactividad) return null;
+  const i = u.inactividad;
+  const max = i.avisos_maximo || 5;
+  const n = i.avisos_enviados || 0;
+  if (!u.activo) return { clase: "neutro", texto: "Cuenta inactiva", titulo: "No se avisa a cuentas desactivadas", puntos: false };
+  if (!u.email || !String(u.email).trim()) return { clase: "aviso", texto: "Sin correo", titulo: "No ha puesto correo: no se le pueden mandar avisos", puntos: false };
+  if (i.admins_avisados_at) return { clase: "grave", texto: "Expulsión pendiente", titulo: `Ha recibido los ${max} avisos y los admins ya han sido avisados`, puntos: true };
+  if (n >= max) return { clase: "grave", texto: `${n}/${max} avisos`, titulo: "Ha recibido todos los avisos", puntos: true };
+  if (n > 0) return { clase: "aviso", texto: `${n}/${max} avisos`, titulo: "Avisos de inactividad enviados en el ciclo actual", puntos: true };
+  if (i.dias_sin_subir !== null && i.dias_sin_subir !== undefined && i.dias_sin_subir >= (i.dias_hasta_primer_aviso || 30)) {
+    return { clase: "aviso", texto: "Aviso pendiente", titulo: "Ya cumple los días de inactividad: el primer aviso saldrá en la próxima pasada diaria", puntos: true };
+  }
+  return { clase: "ok", texto: "Sin avisos", titulo: "No ha recibido avisos de inactividad", puntos: true };
+}
+
+function botonAvisosUsuario(u) {
+  const est = estadoInactividadUsuario(u);
+  if (!est) return "";
+  const max = u.inactividad.avisos_maximo || 5;
+  const n = u.inactividad.avisos_enviados || 0;
+  const puntos = est.puntos
+    ? `<span class="avisos-btn-puntos" aria-hidden="true">${Array.from({ length: max }, (_, k) => `<i class="${k < n ? "on" : ""}"></i>`).join("")}</span>`
+    : "";
+  return `<button type="button" class="avisos-btn av-${est.clase}" title="${escapeHtml(est.titulo)} · clic para ver el detalle" onclick="abrirModalAvisosUsuario(${u.id})">` +
+    `<span class="avisos-btn-icono">${AVISOS_ICONOS.sobre}</span>` +
+    `<span class="avisos-btn-texto">${escapeHtml(est.texto)}</span>${puntos}` +
+    `<span class="avisos-btn-flecha" aria-hidden="true">›</span></button>`;
+}
+
+// Qué dice cada correo (ver construirEmailRecordatorioInactividad en el worker).
+function metaAvisoInactividad(k, max, nombre) {
+  if (k > max) {
+    return {
+      tipo: "Aviso a los administradores",
+      asunto: `Se debe expulsar a ${nombre} por inactividad`,
+      resumen: "Correo a todos los admins: el redactor ha recibido los avisos y sigue sin subir nada. La expulsión no es automática: la decide un admin desde esta tabla.",
+    };
+  }
+  if (k === 1) {
+    return {
+      tipo: "Primer recordatorio",
+      asunto: "¡Te echamos de menos en El Otro Fútbol!",
+      resumen: "Correo amistoso: le recuerda cuántos días lleva sin subir nada, que colabora por voluntad propia y que puede pedir ayuda si la necesita.",
+    };
+  }
+  if (k >= max) {
+    return {
+      tipo: "Aviso con incumplimiento",
+      asunto: "Sobre tu colaboración en El Otro Fútbol",
+      resumen: "Último aviso: cita el apartado 3.6 (Compromiso) de la guía del medio y le dice que, si en 5 días no se sabe nada de él, la administración valorará su continuidad.",
+    };
+  }
+  return {
+    tipo: "Recordatorio amistoso",
+    asunto: "Un recordatorio amistoso de El Otro Fútbol",
+    resumen: "Mismo tono, sin presión: le recuerda que seguimos contando con él y le anima a contar si anda con poco tiempo.",
+  };
+}
+
+// Construye los pasos de la línea de tiempo: avisos 1..max y, al final, el
+// aviso a los admins. Las fechas de los avisos anteriores al registro
+// detallado (migración del historial) se estiman: uno cada 5 días hacia atrás
+// desde el último aviso, que sí es real.
+function pasosInactividadUsuario(u) {
+  const i = u.inactividad;
+  const max = i.avisos_maximo || 5;
+  const n = i.avisos_enviados || 0;
+  const diasPrimer = i.dias_hasta_primer_aviso || 30;
+  const registrados = new Map((i.avisos || []).map((a) => [Number(a.numero), a]));
+  const tieneCorreo = !!(u.email && String(u.email).trim());
+  let bloqueo = null;
+  if (!u.activo) bloqueo = "La cuenta está desactivada, así que no recibe avisos.";
+  else if (!tieneCorreo) bloqueo = "Todavía no ha puesto su correo (se le pide en su primer inicio de sesión).";
+
+  const baseSiguiente = n === 0 ? sumarDiasISO(i.referencia_at, diasPrimer) : sumarDiasISO(i.ultimo_aviso_at, AVISOS_INTERVALO_DIAS);
+  const ref = i.referencia_at ? new Date(i.referencia_at).getTime() : null;
+  const ahora = Date.now();
+  const pasos = [];
+
+  for (let k = 1; k <= max + 1; k++) {
+    const esAdmins = k === max + 1;
+    const paso = { k, esAdmins, meta: metaAvisoInactividad(k, max, u.nombre), fecha: null, conHora: false, estimada: false, dias: null, bloqueo: null };
+
+    if (esAdmins ? !!i.admins_avisados_at : k <= n) {
+      paso.estado = "enviado";
+      if (esAdmins) {
+        paso.fecha = i.admins_avisados_at; paso.conHora = true;
+      } else {
+        const reg = registrados.get(k);
+        if (reg) {
+          paso.fecha = reg.enviado_at; paso.conHora = true; paso.dias = reg.dias_sin_subir;
+        } else {
+          paso.fecha = k === n ? i.ultimo_aviso_at : sumarDiasISO(i.ultimo_aviso_at, -AVISOS_INTERVALO_DIAS * (n - k));
+          paso.conHora = k === n;
+          paso.estimada = k !== n;
+        }
+        if (paso.dias === null && paso.fecha && ref !== null) {
+          paso.dias = Math.max(0, Math.floor((new Date(paso.fecha).getTime() - ref) / AVISOS_DIA_MS));
+        }
+      }
+    } else {
+      const siguiente = esAdmins ? n >= max : k === n + 1;
+      paso.estado = siguiente ? "siguiente" : "pendiente";
+      paso.fecha = sumarDiasISO(baseSiguiente, AVISOS_INTERVALO_DIAS * (k - (n + 1)));
+      paso.bloqueo = bloqueo;
+      paso.yaToca = !!paso.fecha && new Date(paso.fecha).getTime() <= ahora;
     }
+    pasos.push(paso);
+  }
+  return { pasos, max, n, bloqueo };
+}
 
-    cos.innerHTML = users.map(u => {
+function filaAviso(etiqueta, valor) {
+  return `<div class="avisos-fila"><dt>${etiqueta}</dt><dd>${valor}</dd></div>`;
+}
+
+function htmlDetalleAviso(paso, ctx) {
+  const u = ctx.u;
+  const correo = u.email && String(u.email).trim() ? escapeHtml(u.email) : "— sin correo —";
+  const etiquetaChip = { enviado: "✓ Enviado", siguiente: paso.bloqueo ? "⏸ En pausa" : "● Siguiente", pendiente: "○ Pendiente" }[paso.estado];
+  const claseChip = paso.estado === "siguiente" && paso.bloqueo ? "pausa" : paso.estado;
+  const sup = paso.esAdmins ? "Paso final" : `Aviso ${paso.k} de ${ctx.max}`;
+  let filas = "";
+
+  if (paso.estado === "enviado") {
+    const f = fechaAvisoInactividad(paso.fecha, paso.conHora);
+    filas += filaAviso(paso.esAdmins ? "Admins avisados el" : "Enviado el", paso.estimada ? `≈ ${f || "—"} <span class="avisos-etiqueta-est">fecha estimada</span>` : (f || "—"));
+    filas += filaAviso("Enviado a", paso.esAdmins ? "Todos los administradores activos" : correo);
+    filas += filaAviso("Asunto", escapeHtml(paso.meta.asunto));
+    if (!paso.esAdmins && paso.dias !== null && paso.dias !== undefined) filas += filaAviso("Sin subir nada ese día", `${paso.dias} día${paso.dias === 1 ? "" : "s"}`);
+  } else {
+    const f = fechaAvisoInactividad(paso.fecha);
+    let cuando;
+    if (paso.bloqueo) cuando = "Cuando se resuelva, en la siguiente pasada diaria";
+    else if (paso.estado === "siguiente" && paso.yaToca) cuando = "En la próxima pasada diaria <span class=\"avisos-etiqueta-est\">a partir de las 10:00</span>";
+    else if (paso.estado === "siguiente") cuando = f ? `A partir del ${f}` : "—";
+    else cuando = f ? `≈ ${f} <span class="avisos-etiqueta-est">fecha prevista</span>` : "—";
+    if (paso.bloqueo) filas += filaAviso("Estado", `<span class="avisos-pausa-txt">En pausa:</span> ${escapeHtml(paso.bloqueo)}`);
+    filas += filaAviso(paso.esAdmins ? "Se avisará" : "Se enviará", cuando);
+    filas += filaAviso("Condición", paso.esAdmins
+      ? `Que pasen ${AVISOS_INTERVALO_DIAS} días desde el aviso ${ctx.max} sin que suba ninguna noticia`
+      : (paso.k === 1 ? "Que cumpla 30 días sin subir ninguna noticia" : `Que pasen ${AVISOS_INTERVALO_DIAS} días desde el aviso ${paso.k - 1} sin que suba nada`));
+    filas += filaAviso(paso.esAdmins ? "Destinatarios" : "Se enviará a", paso.esAdmins ? "Todos los administradores activos" : correo);
+    filas += filaAviso("Asunto", escapeHtml(paso.meta.asunto));
+  }
+
+  const nota = paso.estimada
+    ? `<p class="avisos-nota">Este aviso es anterior al registro detallado: su fecha se ha calculado a partir del último aviso (uno cada ${AVISOS_INTERVALO_DIAS} días).</p>`
+    : "";
+  return `<div class="avisos-detalle-cab">
+      <div><small>${sup}</small><h4>${escapeHtml(paso.meta.tipo)}</h4></div>
+      <span class="avisos-chip avisos-chip-${claseChip}">${etiquetaChip}</span>
+    </div>
+    <p class="avisos-detalle-resumen">${escapeHtml(paso.meta.resumen)}</p>
+    <dl class="avisos-datos">${filas}</dl>${nota}`;
+}
+
+function abrirModalAvisosUsuario(id) {
+  const u = USUARIOS_INACTIVIDAD.get(Number(id));
+  if (!u || !u.inactividad) return;
+  const i = u.inactividad;
+  const est = estadoInactividadUsuario(u);
+  const { pasos, max, n, bloqueo } = pasosInactividadUsuario(u);
+  AVISOS_MODAL = { u, pasos, max, n, i };
+
+  // Cabecera
+  const avatar = u.avatar_url
+    ? `<span class="avisos-cab-avatar" style="background-image:url('${escapeHtml(u.avatar_url)}')"></span>`
+    : `<span class="avisos-cab-avatar">${escapeHtml(iniciales(u.nombre) || "?")}</span>`;
+  const cab = document.getElementById("avisosUsuarioCabecera");
+  cab.className = `avisos-cab av-${est.clase}`;
+  cab.innerHTML = `${avatar}
+    <div class="avisos-cab-txt">
+      <span class="avisos-cab-sup">Avisos de inactividad</span>
+      <h3 id="modalAvisosUsuarioTitulo">${escapeHtml(u.nombre)}</h3>
+      <span class="avisos-cab-sub">@${escapeHtml(u.username || "")}${u.email ? " · " + escapeHtml(u.email) : ""}</span>
+    </div>
+    <span class="avisos-cab-estado">${escapeHtml(est.texto)}</span>`;
+
+  // Tarjetas de resumen
+  const dias = i.dias_sin_subir;
+  const tarjetas = `<div class="avisos-stats">
+      <div class="avisos-stat avisos-stat-principal"><span class="avisos-stat-num">${dias === null || dias === undefined ? "—" : dias}</span><span class="avisos-stat-lbl">${dias === 1 ? "día sin subir" : "días sin subir"}</span></div>
+      <div class="avisos-stat"><span class="avisos-stat-val">${i.ultima_noticia ? fechaAvisoInactividad(i.ultima_noticia) : "Nunca"}</span><span class="avisos-stat-lbl">Última noticia</span></div>
+      <div class="avisos-stat"><span class="avisos-stat-val">${fechaAvisoInactividad(u.created_at) || "—"}</span><span class="avisos-stat-lbl">Cuenta creada</span></div>
+    </div>`;
+
+  // Línea de tiempo: cada paso es un botón
+  const enviados = pasos.filter((p) => p.estado === "enviado").length;
+  const progreso = enviados > 0 ? ((enviados - 1) / (pasos.length - 1)) * 100 : 0;
+  const hueco = 100 / (pasos.length * 2);
+  const nodos = pasos.map((p) => {
+    const contenido = p.estado === "enviado" ? AVISOS_ICONOS.check : (p.esAdmins ? AVISOS_ICONOS.escudo : p.k);
+    return `<button type="button" class="avisos-nodo avisos-nodo-${p.estado}" data-k="${p.k}" role="tab" aria-selected="false" onclick="seleccionarAvisoUsuario(${p.k})" title="${p.esAdmins ? "Aviso a los admins" : "Aviso " + p.k}">
+        <span class="avisos-nodo-circulo">${contenido}</span>
+        <span class="avisos-nodo-lbl">${p.esAdmins ? "Admins" : "Aviso " + p.k}</span>
+      </button>`;
+  }).join("");
+  const linea = `<div class="avisos-linea" role="tablist" aria-label="Avisos enviados y pendientes" style="--av-n:${pasos.length}">
+      <div class="avisos-pista" style="left:${hueco}%;right:${hueco}%"><span class="avisos-progreso" style="width:${progreso}%"></span></div>
+      ${nodos}
+    </div>`;
+
+  const ayuda = `<details class="avisos-ayuda"><summary>Cómo funciona el ciclo de avisos</summary>
+      <p>El primer aviso sale a los ${i.dias_hasta_primer_aviso || 30} días sin subir nada; después, uno cada ${AVISOS_INTERVALO_DIAS} días hasta ${max}. El último cita el apartado 3.6 (Compromiso) de la guía del medio. Cinco días después, si sigue sin subir nada, se avisa a los admins. Si sube una noticia, el contador vuelve a cero. Los correos salen en una pasada diaria, a partir de las 10:00 (hora de Madrid).</p>
+    </details>`;
+
+  document.getElementById("avisosUsuarioContenido").innerHTML =
+    `${tarjetas}${linea}<div class="avisos-detalle av-${est.clase}" id="avisosDetalleCont" aria-live="polite"></div>${ayuda}`;
+  document.getElementById("avisosUsuarioContenido").className = `avisos-cuerpo av-${est.clase}`;
+
+  seleccionarAvisoUsuario(i.admins_avisados_at ? max + 1 : (n > 0 ? n : 1));
+  document.getElementById("modalAvisosUsuario").classList.add("abierto");
+}
+
+function seleccionarAvisoUsuario(k) {
+  if (!AVISOS_MODAL) return;
+  const paso = AVISOS_MODAL.pasos.find((p) => p.k === k);
+  if (!paso) return;
+  document.querySelectorAll("#avisosUsuarioContenido .avisos-nodo").forEach((b) => {
+    const activo = Number(b.dataset.k) === k;
+    b.classList.toggle("is-sel", activo);
+    b.setAttribute("aria-selected", activo ? "true" : "false");
+  });
+  const cont = document.getElementById("avisosDetalleCont");
+  cont.innerHTML = htmlDetalleAviso(paso, AVISOS_MODAL);
+  cont.dataset.estado = paso.estado;
+  cont.classList.remove("avisos-detalle-anim");
+  void cont.offsetWidth; // reinicia la animación de entrada
+  cont.classList.add("avisos-detalle-anim");
+}
+
+function cerrarModalAvisosUsuario() {
+  document.getElementById("modalAvisosUsuario")?.classList.remove("abierto");
+  AVISOS_MODAL = null;
+}
+(function () {
+  const modal = document.getElementById("modalAvisosUsuario");
+  if (!modal) return;
+  modal.addEventListener("click", (e) => { if (e.target === modal) cerrarModalAvisosUsuario(); });
+  document.addEventListener("keydown", (e) => {
+    if (!modal.classList.contains("abierto") || !AVISOS_MODAL) return;
+    if (e.key === "Escape") { cerrarModalAvisosUsuario(); return; }
+    if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+      const actual = Number(document.querySelector("#avisosUsuarioContenido .avisos-nodo.is-sel")?.dataset.k) || 1;
+      const nuevo = Math.min(AVISOS_MODAL.pasos.length, Math.max(1, actual + (e.key === "ArrowRight" ? 1 : -1)));
+      seleccionarAvisoUsuario(nuevo);
+      document.querySelector(`#avisosUsuarioContenido .avisos-nodo[data-k="${nuevo}"]`)?.focus();
+      e.preventDefault();
+    }
+  });
+})();
+
+// ---------------------------------------------------------------------
+// Panel de Usuarios: estado, filtros y PREVENCIÓN DE FAILOVER
+//
+// Cuando la API principal cae, las lecturas se sirven desde la réplica
+// (Railway/Postgres): puede ir con ~1 min de retraso, la sesión puede dar
+// 401 falsos (apiFetch devuelve {}) y las escrituras no están garantizadas.
+// Por eso este panel:
+//   - guarda la última lista buena (sessionStorage) y la muestra si la
+//     carga falla, con un aviso, en vez de dejar la tabla vacía;
+//   - normaliza cada usuario y protege cada fila con try/catch, de modo
+//     que un registro raro de la réplica no rompe la tabla entera;
+//   - descarta respuestas antiguas (carga más lenta que otra posterior);
+//   - se reintenta solo cada 20 s mientras esté en respaldo o sin datos;
+//   - bloquea crear/editar/borrar mientras el failover esté abierto.
+// ---------------------------------------------------------------------
+const USUARIOS_FILTRO = { texto: "", rol: "todos", estado: "todos", orden: "nombre" };
+const USUARIOS_CACHE_KEY = "eof_usuarios_cache_v1";
+const USUARIOS_REINTENTO_MS = 20000;
+const USUARIOS_TIMEOUT_MS = 20000;
+let USUARIOS_LISTA = [];
+let USUARIOS_ORIGEN = { cache: false, en: 0 };
+let usuariosToolbarMontada = false;
+let usuariosCargaId = 0;
+let usuariosReintentoTimer = null;
+
+function usuariosEnRespaldo() {
+  return typeof eofApiState !== "undefined" && !!eofApiState.circuitoAbierto;
+}
+
+// Devuelve true si se puede escribir; si no, avisa y devuelve false.
+function usuariosPuedeEscribir() {
+  if (!usuariosEnRespaldo()) return true;
+  const msg = "Modo respaldo activo: ahora mismo no se pueden crear ni modificar usuarios. Espera a que la API principal vuelva.";
+  try { EOF.toast(msg, "error"); } catch { alert(msg); }
+  return false;
+}
+
+function usuariosGuardarCache(lista) {
+  try { sessionStorage.setItem(USUARIOS_CACHE_KEY, JSON.stringify({ en: Date.now(), users: lista })); } catch {}
+}
+function usuariosLeerCache() {
+  try {
+    const raw = sessionStorage.getItem(USUARIOS_CACHE_KEY);
+    if (!raw) return null;
+    const d = JSON.parse(raw);
+    return d && Array.isArray(d.users) && d.users.length ? d : null;
+  } catch { return null; }
+}
+
+// Deja cada registro con la forma que espera la tabla, venga de D1 o de
+// Postgres (booleanos, fechas, JSON como texto...).
+function usuarioNormalizarRegistro(u) {
+  const aLista = (v) => {
+    if (Array.isArray(v)) return v.filter(x => x != null && x !== "");
+    if (typeof v === "string" && v.trim()) {
+      try { const j = JSON.parse(v); if (Array.isArray(j)) return j.filter(Boolean); } catch {}
+      return [v];
+    }
+    return [];
+  };
+  const inactivo = u.activo === 0 || u.activo === false || u.activo === "0" || u.activo === "f" || u.activo === "false" || u.activo == null;
+  return {
+    ...u,
+    id: Number(u.id),
+    username: String(u.username ?? ""),
+    nombre: String(u.nombre ?? u.username ?? ""),
+    rol: ["admin", "redactor", "fotografo"].includes(u.rol) ? u.rol : "redactor",
+    activo: inactivo ? 0 : 1,
+    email: u.email ? String(u.email) : "",
+    equipo: aLista(u.equipo),
+    categorias_fijas: aLista(u.categorias_fijas),
+    nivel: Number(u.nivel) > 0 ? Number(u.nivel) : 1,
+    created_at: u.created_at instanceof Date ? u.created_at.toISOString() : (u.created_at || ""),
+  };
+}
+
+function usuarioNormalizar(txt) {
+  return String(txt == null ? "" : txt).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+function usuarioFechaAlta(valor) {
+  if (!valor) return "";
+  const v = String(valor);
+  const d = new Date(v.includes("T") ? v : v.replace(" ", "T") + "Z");
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" });
+}
+
+function usuarioSinCorreo(u) {
+  return !(u.email && String(u.email).trim());
+}
+
+function usuarioCoincideBusqueda(u, q) {
+  if (!q) return true;
+  const equipos = Array.isArray(u.equipo) ? u.equipo : (u.equipo ? [u.equipo] : []);
+  let cats = [];
+  try { cats = (u.categorias_fijas || []).map(categoriaLabel); } catch {}
+  const pajar = usuarioNormalizar([u.username, u.nombre, u.email, "#" + u.id, ...equipos, ...cats].join(" "));
+  return q.split(/\s+/).filter(Boolean).every(t => pajar.includes(t));
+}
+
+function usuariosFiltrados() {
+  const q = usuarioNormalizar(USUARIOS_FILTRO.texto).trim();
+  let lista = USUARIOS_LISTA.filter(u => {
+    if (USUARIOS_FILTRO.rol !== "todos" && u.rol !== USUARIOS_FILTRO.rol) return false;
+    if (USUARIOS_FILTRO.estado === "activos" && !u.activo) return false;
+    if (USUARIOS_FILTRO.estado === "inactivos" && u.activo) return false;
+    if (USUARIOS_FILTRO.estado === "sin_acceso" && !usuarioSinCorreo(u)) return false;
+    return usuarioCoincideBusqueda(u, q);
+  });
+  const cmpNombre = (x, y) => String(x.nombre || "").localeCompare(String(y.nombre || ""), "es", { sensitivity: "base" });
+  const fechaDe = (u) => { const v = String(u.created_at || ""); const t = new Date(v.includes("T") ? v : v.replace(" ", "T") + "Z").getTime(); return isNaN(t) ? 0 : t; };
+  if (USUARIOS_FILTRO.orden === "recientes") lista.sort((x, y) => fechaDe(y) - fechaDe(x) || cmpNombre(x, y));
+  else if (USUARIOS_FILTRO.orden === "antiguos") lista.sort((x, y) => fechaDe(x) - fechaDe(y) || cmpNombre(x, y));
+  else if (USUARIOS_FILTRO.orden === "nivel") lista.sort((x, y) => (y.rol === "admin" ? 5 : (y.nivel || 1)) - (x.rol === "admin" ? 5 : (x.nivel || 1)) || cmpNombre(x, y));
+  else lista.sort(cmpNombre);
+  return lista;
+}
+
+function montarToolbarUsuarios() {
+  if (usuariosToolbarMontada) return;
+  const buscador = document.getElementById("usuariosBuscar");
+  if (!buscador) return;
+  usuariosToolbarMontada = true;
+  let timer = null;
+  buscador.addEventListener("input", () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => { USUARIOS_FILTRO.texto = buscador.value; renderTablaUsuarios(); }, 120);
+  });
+  document.getElementById("usuariosOrden")?.addEventListener("change", (e) => {
+    USUARIOS_FILTRO.orden = e.target.value;
+    renderTablaUsuarios();
+  });
+  document.getElementById("usuariosChipsRol")?.addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-rol]");
+    if (!b) return;
+    USUARIOS_FILTRO.rol = b.dataset.rol;
+    renderTablaUsuarios();
+  });
+  document.getElementById("usuariosChipsEstado")?.addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-estado]");
+    if (!b) return;
+    USUARIOS_FILTRO.estado = b.dataset.estado;
+    renderTablaUsuarios();
+  });
+  document.getElementById("usuariosLimpiar")?.addEventListener("click", limpiarFiltrosUsuarios);
+  // Las tarjetas de resumen también filtran al pulsarlas
+  document.getElementById("usuariosStats")?.addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-rol],button[data-estado]");
+    if (!b) return;
+    if (b.dataset.rol) { USUARIOS_FILTRO.rol = b.dataset.rol; USUARIOS_FILTRO.estado = "todos"; }
+    if (b.dataset.estado) { USUARIOS_FILTRO.estado = b.dataset.estado; USUARIOS_FILTRO.rol = "todos"; }
+    renderTablaUsuarios();
+    document.getElementById("usuariosToolbar")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  });
+}
+
+function limpiarFiltrosUsuarios() {
+  USUARIOS_FILTRO.texto = ""; USUARIOS_FILTRO.rol = "todos"; USUARIOS_FILTRO.estado = "todos";
+  const buscador = document.getElementById("usuariosBuscar");
+  if (buscador) buscador.value = "";
+  renderTablaUsuarios();
+}
+
+// Barra de estado sobre la tabla: modo respaldo / lista guardada.
+function avisoRespaldoUsuarios() {
+  const toolbar = document.getElementById("usuariosToolbar");
+  const sub = document.getElementById("subpanel-redactores");
+  if (!toolbar || !sub) return;
+  const respaldo = usuariosEnRespaldo();
+  sub.classList.toggle("usuarios-solo-lectura", respaldo);
+  let texto = "";
+  if (USUARIOS_ORIGEN.cache) {
+    const min = Math.max(1, Math.round((Date.now() - USUARIOS_ORIGEN.en) / 60000));
+    texto = `No se ha podido actualizar la lista. Estás viendo la última que se cargó (hace ${min} min); se reintentará sola. No se pueden hacer cambios mientras tanto.`;
+  } else if (respaldo) {
+    texto = "Modo respaldo activo: estás viendo los datos del servidor secundario, que pueden ir con hasta un minuto de retraso. Crear, editar y borrar usuarios está desactivado hasta que la API principal vuelva.";
+  }
+  let aviso = document.getElementById("usuariosAvisoRespaldo");
+  if (!texto) { if (aviso) aviso.remove(); return; }
+  if (!aviso) {
+    aviso = document.createElement("div");
+    aviso.id = "usuariosAvisoRespaldo";
+    aviso.className = "usuarios-aviso-respaldo";
+    aviso.setAttribute("role", "status");
+    toolbar.parentNode.insertBefore(aviso, toolbar);
+  }
+  aviso.textContent = texto;
+}
+
+function filaUsuarioHTML(u) {
       const equipos = Array.isArray(u.equipo) ? u.equipo : (u.equipo ? [u.equipo] : []);
-      const etiquetaBoton = (u.categorias_fijas && u.categorias_fijas.length)
-        ? `Categoría fija: ${escapeHtml(u.categorias_fijas.map(categoriaLabel).join(" / "))}`
-        : (equipos.length ? escapeHtml(equipos.join(" / ")) : "— Sin especificar —");
+      const complementarias = (u.categorias_fijas || []).map(categoriaLabel);
+      const partesEtiqueta = [...equipos, ...complementarias];
+      const etiquetaBoton = partesEtiqueta.length
+        ? escapeHtml(partesEtiqueta.join(" / "))
+        : "— Sin especificar —";
       const nivelEsAdmin = u.rol === "admin";
       const esFotografoFila = u.rol === "fotografo";
       // El sistema de niveles (1-4, con sus requisitos de artículos/
@@ -10410,38 +13167,193 @@ async function cargaUsuarios() {
       const avatarHTML = u.avatar_url
         ? `<span class="avatar-usuario" style="background-image:url('${escapeHtml(u.avatar_url)}')"></span>`
         : `<span class="avatar-usuario avatar-usuario-iniciales">${escapeHtml(iniciales(u.nombre) || "?")}</span>`;
+      const altaTxt = usuarioFechaAlta(u.created_at);
+      const sinAcceso = !(u.email && String(u.email).trim());
       return `
-      <tr>
-        <td data-label="Usuario">${avatarHTML}${escapeHtml(u.username)} <span class="id-usuario-panel" title="ID de usuario (para la ficha de cuentas de X)">#${u.id}</span></td>
-        <td data-label="Nombre">${escapeHtml(u.nombre)}</td>
+      <tr class="${u.activo ? "" : "fila-usuario-inactiva"}">
+        <td data-label="Usuario"><span class="celda-usuario">${avatarHTML}<span class="usuario-datos"><span class="usuario-nombre">${escapeHtml(u.username)}</span> <span class="id-usuario-panel" title="ID de usuario (para la ficha de cuentas de X)">#${u.id}</span></span></span></td>
+        <td data-label="Nombre">${escapeHtml(u.nombre)}${altaTxt ? `<span class="usuario-alta">Alta: ${altaTxt}</span>` : ""}</td>
         <td data-label="Rol">
           <select class="select-rol rol-${u.rol}" onchange="this.className='select-rol rol-'+this.value; cambiarRolUsuario(${u.id}, this.value)" ${u.id === USER.id ? "disabled title='No puedes cambiar tu propio rol'" : ""}>
             <option value="redactor" ${u.rol === "redactor" ? "selected" : ""}>Redactor</option>
             <option value="fotografo" ${u.rol === "fotografo" ? "selected" : ""}>Fotógrafo</option>
             <option value="admin" ${u.rol === "admin" ? "selected" : ""}>Administrador</option>
           </select>
+          ${insignia2faUsuario(u)}
         </td>
-        <td data-label="Correo">${escapeHtml(u.email || "—")}</td>
+        <td data-label="Correo">${sinAcceso ? `<span class="usuario-sin-acceso" title="Aún no ha puesto su correo, es decir, no ha iniciado sesión por primera vez">Sin primer acceso</span>` : escapeHtml(u.email)}</td>
         <td data-label="Equipo / Categoría">
-          <button type="button" class="editar btn-equipos-usuario" onclick='abrirModalEquiposUsuario(${u.id}, ${JSON.stringify(u.nombre)}, ${JSON.stringify(equipos)}, ${JSON.stringify(u.categorias_fijas || [])})'>${etiquetaBoton}</button>
+          <button type="button" class="editar btn-equipos-usuario" onclick='abrirModalEquiposUsuario(${u.id}, ${argJs(u.nombre)}, ${argJs(equipos)}, ${argJs(u.categorias_fijas || [])})'>${etiquetaBoton}</button>
         </td>
-        <td data-label="Nivel">
-          ${esFotografoFila
-            ? `<span class="nivel-badge nivel-badge-na" title="El sistema de niveles es solo para redactores; no aplica a un fotógrafo">— No aplica —</span>`
-            : `<button type="button" class="editar btn-nivel-usuario nivel-badge nivel-badge-${nivelMostrado}" ${nivelEsAdmin ? `disabled title="Los administradores están siempre en el nivel máximo y no se puede editar"` : `onclick='abrirModalNivelUsuario(${u.id}, ${JSON.stringify(u.nombre)})'`}>${nivelInfo.emoji} Nivel ${nivelMostrado} — ${nivelInfo.nombre}</button>`}
+        <td data-label="Situación">
+          <div class="celda-situacion">
+            ${esFotografoFila
+              ? `<span class="nivel-badge nivel-badge-na" title="El sistema de niveles es solo para redactores; no aplica a un fotógrafo">— No aplica —</span>`
+              : `<button type="button" class="editar btn-nivel-usuario nivel-badge nivel-badge-${nivelMostrado}" ${nivelEsAdmin ? `disabled title="Los administradores están siempre en el nivel máximo y no se puede editar"` : `onclick='abrirModalNivelUsuario(${u.id}, ${argJs(u.nombre)})'`}>${nivelInfo.emoji} Nivel ${nivelMostrado} — ${nivelInfo.nombre}</button>`}
+            ${botonAvisosUsuario(u)}
+          </div>
         </td>
-        <td data-label="Estado"><span class="badge-estado ${u.activo ? "publicado" : "borrador"}">${u.activo ? "Activo" : "Inactivo"}</span></td>
+        <td data-label="Estado"><span class="badge-estado usuario-estado ${u.activo ? "publicado" : "borrador"}">${u.activo ? "Activo" : "Inactivo"}</span></td>
         <td class="acciones acciones-usuario" data-label="">
-          <button class="editar" onclick="window.open('../autor.html?id=${u.id}', '_blank')">Previsualizar perfil</button>
-          <button class="editar" onclick='restablecerPasswordUsuario(${u.id}, ${JSON.stringify(u.username)}, ${JSON.stringify(u.nombre)})'>Restablecer contraseña</button>
+          <button class="editar" onclick="window.open('../autor.html?id=${u.id}', '_blank')" title="Previsualizar el perfil público">Ver perfil</button>
+          <button class="editar" onclick='restablecerPasswordUsuario(${u.id}, ${argJs(u.username)}, ${argJs(u.nombre)})' title="Generar una contraseña nueva">Contraseña</button>
           <button onclick="alternarActivoUsuario(${u.id}, ${u.activo ? 0 : 1})" ${u.id === USER.id ? "disabled title='No puedes desactivar tu propia cuenta'" : ""}>${u.activo ? "Desactivar" : "Activar"}</button>
-          <button class="eliminar" onclick="eliminarUsuario(${u.id}, '${escapeHtml(u.username)}')" ${u.id === USER.id ? "disabled title='No puedes eliminar tu propia cuenta'" : ""}>Eliminar</button>
+          <button class="eliminar" onclick="eliminarUsuario(${u.id}, ${argJs(u.username)})" ${u.id === USER.id ? "disabled title='No puedes eliminar tu propia cuenta'" : ""}>Eliminar</button>
         </td>
       </tr>`;
-    }).join("") || "<tr><td colspan='8'>Todavía no hay usuarios.</td></tr>";
-  } catch (err) {
-    cos.innerHTML = `<tr><td colspan="8">Error cargando: ${err.message}</td></tr>`;
+}
+
+// Insignia de 2FA de la fila de Usuarios. Con 2FA activo es un BOTÓN: al pulsarla
+// (y confirmar) se desactiva el 2FA de esa persona, por si ha perdido el móvil y los
+// códigos. En un admin (2FA obligatorio) equivale a restablecerlo: tendrá que
+// configurarlo de nuevo en su próximo acceso. En tu propia fila no se puede pulsar
+// (el servidor tampoco lo permite): ahí la insignia también es un botón, pero abre Ajustes de
+// cuenta > Seguridad; para restablecer el tuyo usa un código de recuperación o pídeselo a otro admin.
+function insignia2faUsuario(u) {
+  if (u.rol !== "admin" && !u.totp_activo) return "";
+  if (!u.totp_activo) {
+    return `<span class="badge-2fa badge-2fa-pend" title="Todavía no ha configurado la verificación en dos pasos: la configurará en su próximo acceso">2FA pendiente</span>`;
   }
+  const esAdminFila = u.rol === "admin";
+  if (u.id === USER.id) {
+    const ayudaPropia = "Es tu cuenta: por seguridad no puedes restablecer tu propio 2FA desde aquí. Pulsa para abrir Ajustes de cuenta > Seguridad";
+    return `<button type="button" class="badge-2fa badge-2fa-ok badge-2fa-btn badge-2fa-btn-propio" onclick="irAAjustesCuenta('seguridad')" title="${escapeHtml(ayudaPropia)}" aria-label="${escapeHtml("2FA activo. " + ayudaPropia)}">2FA activo <span aria-hidden="true">›</span></button>`;
+  }
+  const ayuda = esAdminFila
+    ? "Pulsa para restablecer su 2FA (si ha perdido el móvil y los códigos): lo configurará de nuevo en su próximo acceso"
+    : "Pulsa para desactivar su 2FA (si ha perdido el móvil y los códigos): volverá a entrar solo con contraseña";
+  return `<button type="button" class="badge-2fa badge-2fa-ok badge-2fa-btn" onclick='restablecerDosPasosUsuario(${u.id}, ${argJs(u.username)}, ${argJs(u.rol)})' title="${escapeHtml(ayuda)}" aria-label="${escapeHtml("2FA activo de " + u.username + ". " + ayuda)}">2FA activo <span aria-hidden="true">✕</span></button>`;
+}
+
+function filaUsuarioFallbackHTML(u) {
+  return `<tr class="fila-usuario-error"><td colspan="8">No se puede mostrar el usuario #${escapeHtml(String(u && u.id))} (${escapeHtml(String((u && u.username) || "?"))}): datos incompletos.</td></tr>`;
+}
+
+function renderTablaUsuarios() {
+  const cos = document.getElementById("tablaUsuarios");
+  if (!cos) return;
+  const todos = USUARIOS_LISTA;
+
+  const cuenta = {
+    todos: todos.length,
+    admin: todos.filter(u => u.rol === "admin").length,
+    redactor: todos.filter(u => u.rol === "redactor").length,
+    fotografo: todos.filter(u => u.rol === "fotografo").length,
+    activos: todos.filter(u => u.activo).length,
+    inactivos: todos.filter(u => !u.activo).length,
+    sin_acceso: todos.filter(usuarioSinCorreo).length,
+  };
+  document.querySelectorAll("#usuariosChipsRol button[data-rol]").forEach(b => {
+    const k = b.dataset.rol;
+    b.classList.toggle("activo", USUARIOS_FILTRO.rol === k);
+    const n = b.querySelector("b"); if (n) n.textContent = cuenta[k] ?? 0;
+  });
+  document.querySelectorAll("#usuariosChipsEstado button[data-estado]").forEach(b => {
+    const k = b.dataset.estado;
+    b.classList.toggle("activo", USUARIOS_FILTRO.estado === k);
+    const n = b.querySelector("b"); if (n) n.textContent = k === "todos" ? cuenta.todos : (cuenta[k] ?? 0);
+  });
+  // Tarjetas de resumen
+  const setStat = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  setStat("statUsuTotal", cuenta.todos);
+  setStat("statUsuRedactores", cuenta.redactor);
+  setStat("statUsuFotografos", cuenta.fotografo);
+  setStat("statUsuAdmins", cuenta.admin);
+  setStat("statUsuInactivos", cuenta.inactivos);
+  setStat("statUsuSinAcceso", cuenta.sin_acceso);
+
+  const users = usuariosFiltrados();
+  const hayFiltro = USUARIOS_FILTRO.texto.trim() || USUARIOS_FILTRO.rol !== "todos" || USUARIOS_FILTRO.estado !== "todos";
+  const resEl = document.getElementById("usuariosResultado");
+  if (resEl) resEl.textContent = hayFiltro ? `Mostrando ${users.length} de ${todos.length}` : `${todos.length} ${todos.length === 1 ? "usuario" : "usuarios"}`;
+  const limpiarEl = document.getElementById("usuariosLimpiar");
+  if (limpiarEl) limpiarEl.style.display = hayFiltro ? "" : "none";
+
+  avisoRespaldoUsuarios();
+
+  cos.innerHTML = users.map(u => {
+    try { return filaUsuarioHTML(u); }
+    catch (e) { console.warn("[usuarios] fila no válida", u, e); return filaUsuarioFallbackHTML(u); }
+  }).join("") || (todos.length
+    ? "<tr><td colspan='8' class='usuarios-vacio'>Ningún usuario coincide con los filtros. <button type='button' class='usuarios-vacio-limpiar' onclick='limpiarFiltrosUsuarios()'>Quitar filtros</button></td></tr>"
+    : "<tr><td colspan='8' class='usuarios-vacio'>Todavía no hay usuarios.</td></tr>");
+}
+
+function programarReintentoUsuarios() {
+  clearTimeout(usuariosReintentoTimer);
+  usuariosReintentoTimer = null;
+  if (!(USUARIOS_ORIGEN.cache || usuariosEnRespaldo() || !USUARIOS_LISTA.length)) return;
+  usuariosReintentoTimer = setTimeout(() => {
+    const visible = document.getElementById("panel-usuarios")?.classList.contains("activo")
+      && document.getElementById("subpanel-redactores")?.classList.contains("activo")
+      && !document.hidden;
+    if (visible) cargaUsuarios({ silencioso: true });
+    else programarReintentoUsuarios();
+  }, USUARIOS_REINTENTO_MS);
+}
+
+async function cargaUsuarios(opts = {}) {
+  const cos = document.getElementById("tablaUsuarios");
+  if (!cos) return;
+  montarToolbarUsuarios();
+  const miCarga = ++usuariosCargaId;
+  const silencioso = !!(opts && opts.silencioso) && USUARIOS_LISTA.length > 0;
+  if (!silencioso && !USUARIOS_LISTA.length) {
+    cos.innerHTML = "<tr><td colspan='8' class='usuarios-cargando'><span class='usuarios-spinner'></span>Cargando usuarios…</td></tr>";
+  }
+  let resp = null, fallo = null;
+  try {
+    resp = await Promise.race([
+      apiFetch(`/api/users`),
+      new Promise((_, rej) => setTimeout(() => rej(new Error("La API tarda demasiado en responder")), USUARIOS_TIMEOUT_MS)),
+    ]);
+  } catch (err) { fallo = err; }
+  if (miCarga !== usuariosCargaId) return; // llegó una carga más reciente
+
+  if (!fallo && resp && Array.isArray(resp.users)) {
+    let lista;
+    try { lista = resp.users.map(usuarioNormalizarRegistro); }
+    catch (e) { fallo = e; }
+    if (lista) {
+      USUARIOS_LISTA = lista;
+      USUARIOS_ORIGEN = { cache: false, en: Date.now() };
+      // En respaldo la réplica puede ir atrasada: no se guarda como "última buena".
+      if (!usuariosEnRespaldo()) usuariosGuardarCache(resp.users);
+      USUARIOS_INACTIVIDAD.clear();
+      lista.forEach(u => USUARIOS_INACTIVIDAD.set(Number(u.id), u));
+
+      const contadorEl = document.getElementById("contadorUsuarios");
+      const contadorNumeroEl = document.getElementById("contadorUsuariosNumero");
+      if (contadorEl && contadorNumeroEl) {
+        const conSesion = lista.filter(u => !usuarioSinCorreo(u)).length;
+        contadorNumeroEl.textContent = `${conSesion} / ${lista.length}`;
+        contadorEl.style.setProperty("--pct", (lista.length ? Math.round(conSesion / lista.length * 100) : 0) + "%");
+        contadorEl.style.display = lista.length ? "flex" : "none";
+      }
+      renderTablaUsuarios();
+      programarReintentoUsuarios();
+      return;
+    }
+  }
+
+  // --- Fallo (red, timeout, 401 falso de la réplica => {} ...) ---
+  console.warn("[usuarios] no se pudo cargar la lista", fallo || resp);
+  if (!USUARIOS_LISTA.length) {
+    const c = usuariosLeerCache();
+    if (c) {
+      try { USUARIOS_LISTA = c.users.map(usuarioNormalizarRegistro); USUARIOS_ORIGEN = { cache: true, en: c.en }; } catch {}
+    }
+  } else {
+    USUARIOS_ORIGEN = { cache: true, en: USUARIOS_ORIGEN.en || Date.now() };
+  }
+  if (USUARIOS_LISTA.length) {
+    renderTablaUsuarios();
+  } else {
+    const detalle = fallo && fallo.message ? ` (${escapeHtml(fallo.message)})` : "";
+    cos.innerHTML = `<tr><td colspan='8' class='usuarios-vacio'>No se ha podido cargar la lista de usuarios${detalle}. La API principal no responde o tu sesión aún se está sincronizando en el servidor de respaldo. Se reintentará sola. <button type='button' class='usuarios-vacio-limpiar' onclick='cargaUsuarios()'>Reintentar ahora</button></td></tr>`;
+    avisoRespaldoUsuarios();
+  }
+  programarReintentoUsuarios();
 }
 
 // Cuentas públicas de lectores (registradas desde "Acceso" para poder
@@ -10453,7 +13365,12 @@ async function cargaLectores() {
   if (!cos) return;
   cos.innerHTML = "<tr><td colspan='4'>Cargando...</td></tr>";
   try {
-    const { readers = [] } = await apiFetch(`/api/readers`);
+    const respLectores = await apiFetch(`/api/readers`);
+    if (!respLectores || !Array.isArray(respLectores.readers)) {
+      cos.innerHTML = "<tr><td colspan='4' class='usuarios-vacio'>No se ha podido cargar la lista de lectores (API principal sin respuesta o sesión sincronizándose). <button type='button' class='usuarios-vacio-limpiar' onclick='cargaLectores()'>Reintentar</button></td></tr>";
+      return;
+    }
+    const readers = respLectores.readers;
 
     const contadorEl = document.getElementById("contadorLectores");
     const contadorNumeroEl = document.getElementById("contadorLectoresNumero");
@@ -10509,14 +13426,16 @@ const nuEquipoBloque = document.getElementById("nu_equipo_bloque");
 // experiencia visual), se engancha un listener a los propios chips una
 // vez creados: como el picker los recrea en cada render() (al buscar),
 // se usa delegación de eventos sobre el contenedor de la lista.
-document.getElementById("nu_categoria_fija_lista")?.addEventListener("change", () => {
-  nuEquipoBloque.style.display = nuCategoriaFijaPicker.obtenerSeleccion().length ? "none" : "";
-});
+// (Las categorías complementarias ya no ocultan el bloque de Equipo.)
 
 const formNuevoUsuario = document.getElementById("formNuevoUsuario");
 if (formNuevoUsuario) {
   formNuevoUsuario.addEventListener("submit", async (e) => {
+  if (EOF_ACCIONES_EN_CURSO.has("L13262")) return;
+  EOF_ACCIONES_EN_CURSO.add("L13262");
+  try {
     e.preventDefault();
+    if (!usuariosPuedeEscribir()) return;
     const msgOk = document.getElementById("msgOkUsuario");
     const errMsg = document.getElementById("errUsuario");
     msgOk.style.display = "none";
@@ -10531,9 +13450,7 @@ if (formNuevoUsuario) {
 
     const categoriasFijas = nuCategoriaFijaPicker.obtenerSeleccion();
 
-    // El picker de equipos solo se valida/envía si el redactor NO tiene
-    // ninguna categoría fija marcada (ese tipo de redactor no tiene equipo).
-    if (!categoriasFijas.length && !nuEquipoPicker.esValido()) {
+    if (!nuEquipoPicker.esValido()) {
       errMsg.textContent = "Puedes dejarlo sin especificar o elegir hasta 3 equipos.";
       errMsg.style.display = "block";
       return;
@@ -10545,7 +13462,7 @@ if (formNuevoUsuario) {
       rol: document.getElementById("nu_rol").value,
       email: document.getElementById("nu_email").value.trim(),
       categorias_fijas: categoriasFijas,
-      equipo: categoriasFijas.length ? [] : nuEquipoPicker.obtenerSeleccion(),
+      equipo: nuEquipoPicker.obtenerSeleccion(),
       password,
     };
 
@@ -10574,10 +13491,13 @@ if (formNuevoUsuario) {
       errMsg.textContent = err.message;
       errMsg.style.display = "block";
     }
-  });
+  
+  } finally { EOF_ACCIONES_EN_CURSO.delete("L13262"); }
+});
 }
 
 async function cambiarRolUsuario(id, rol) {
+  if (!usuariosPuedeEscribir()) { cargaUsuarios({ silencioso: true }); return; }
   try {
     await apiFetch(`/api/users/${id}`, { method: "PUT", body: JSON.stringify({ rol }) });
     cargaUsuarios();
@@ -10590,10 +13510,6 @@ async function cambiarRolUsuario(id, rol) {
 // ---------- Modal "Editar equipos" (tabla de Usuarios, solo admins) ----------
 const equiposUsuarioEquipoBloque = document.getElementById("equiposUsuario_equipo_bloque");
 let equiposUsuarioCategoriaFijaPicker = null;
-document.getElementById("equiposUsuarioCategoriaFijaLista")?.addEventListener("change", () => {
-  if (!equiposUsuarioCategoriaFijaPicker || !equiposUsuarioEquipoBloque) return;
-  equiposUsuarioEquipoBloque.style.display = equiposUsuarioCategoriaFijaPicker.obtenerSeleccion().length ? "none" : "";
-});
 function abrirModalEquiposUsuario(id, nombre, equiposActuales, categoriasFijasActuales) {
   document.getElementById("equiposUsuarioId").value = id;
   document.getElementById("equiposUsuarioNombre").textContent = nombre;
@@ -10606,9 +13522,7 @@ function abrirModalEquiposUsuario(id, nombre, equiposActuales, categoriasFijasAc
     listaEl: document.getElementById("equiposUsuarioCategoriaFijaLista"),
     ayudaEl: document.getElementById("equiposUsuarioCategoriaFijaAyuda"),
   }, actuales);
-  if (equiposUsuarioEquipoBloque) {
-    equiposUsuarioEquipoBloque.style.display = actuales.length ? "none" : "";
-  }
+  if (equiposUsuarioEquipoBloque) equiposUsuarioEquipoBloque.style.display = "";
   modalEquiposPicker = iniciarEquiposPicker({
     contadorEl: document.getElementById("equiposUsuarioContador"),
     buscadorEl: document.getElementById("equiposUsuarioBuscador"),
@@ -10634,7 +13548,7 @@ if (btnGuardarEquiposUsuario) {
     errMsg.style.display = "none";
     msgOk.style.display = "none";
     const categoriasFijas = equiposUsuarioCategoriaFijaPicker ? equiposUsuarioCategoriaFijaPicker.obtenerSeleccion() : [];
-    if (!categoriasFijas.length && (!modalEquiposPicker || !modalEquiposPicker.esValido())) {
+    if (!modalEquiposPicker || !modalEquiposPicker.esValido()) {
       errMsg.textContent = "Puedes dejarlo sin especificar o elegir hasta 3 equipos.";
       errMsg.style.display = "block";
       return;
@@ -10645,7 +13559,7 @@ if (btnGuardarEquiposUsuario) {
         method: "PUT",
         body: JSON.stringify({
           categorias_fijas: categoriasFijas,
-          equipo: categoriasFijas.length ? [] : modalEquiposPicker.obtenerSeleccion(),
+          equipo: modalEquiposPicker.obtenerSeleccion(),
         }),
       });
       msgOk.style.display = "block";
@@ -10781,6 +13695,7 @@ if (btnGuardarNivelUsuario) {
 }
 
 async function alternarActivoUsuario(id, activo) {
+  if (!usuariosPuedeEscribir()) return;
   try {
     await apiFetch(`/api/users/${id}`, { method: "PUT", body: JSON.stringify({ activo: !!activo }) });
     cargaUsuarios();
@@ -10789,7 +13704,25 @@ async function alternarActivoUsuario(id, activo) {
   }
 }
 
+async function restablecerDosPasosUsuario(id, username, rol) {
+  if (!usuariosPuedeEscribir()) return;
+  // Admin: tendrá que configurarla de nuevo en su próximo acceso (es obligatoria).
+  // Colaborador (redactor, fotógrafo…): queda desactivada y entra solo con contraseña; si quiere, la activa otra vez.
+  const mensaje = rol === "admin"
+    ? `¿Restablecer la verificación en dos pasos de "${username}"? Se cerrarán sus sesiones y tendrá que configurar de nuevo la app de autenticación en su próximo acceso. Hazlo solo si ha perdido el móvil y sus códigos de recuperación.`
+    : `¿Quitar la verificación en dos pasos de "${username}"? Se cerrarán sus sesiones y volverá a entrar solo con contraseña (podrá activarla de nuevo cuando quiera desde Ajustes de cuenta > Seguridad). Hazlo solo si ha perdido el móvil y sus códigos de recuperación.`;
+  if (!(await EOF.confirmar(mensaje, { textoConfirmar: rol === "admin" ? "Restablecer 2FA" : "Quitar 2FA" }))) return;
+  try {
+    await apiFetch(`/api/users/${id}/reset-2fa`, { method: "PUT", body: JSON.stringify({}) });
+    EOF.toast(rol === "admin" ? `Verificación en dos pasos de "${username}" restablecida.` : `Verificación en dos pasos de "${username}" desactivada.`, "exito");
+    cargaUsuarios();
+  } catch (err) {
+    EOF.toast("Error: " + err.message, "error");
+  }
+}
+
 async function restablecerPasswordUsuario(id, username, nombre) {
+  if (!usuariosPuedeEscribir()) return;
   if (!(await EOF.confirmar(`¿Restablecer la contraseña de "${username}"? Se generará una nueva contraseña.`, { textoConfirmar: "Restablecer" }))) return;
   try {
     const data = await apiFetch(`/api/users/${id}/reset-password`, { method: "PUT", body: JSON.stringify({}) });
@@ -10912,6 +13845,7 @@ document.getElementById("btnCopiarPasswordGenerada")?.addEventListener("click", 
 });
 
 async function eliminarUsuario(id, username) {
+  if (!usuariosPuedeEscribir()) return;
   if (!(await EOF.confirmar(`¿Seguro que quieres eliminar al usuario "${username}"? Esta acción no se puede deshacer.`, { peligroso: true, textoConfirmar: "Eliminar" }))) return;
   try {
     await apiFetch(`/api/users/${id}`, { method: "DELETE" });
@@ -10951,41 +13885,1941 @@ async function cargaNewsletter() {
   try {
     const { suscriptores = [], ultimo_envio_at, proximo_envio_at } = await apiFetch(`/api/newsletter/suscriptores`);
 
-    const contadorEl = document.getElementById("contadorNewsletter");
-    const contadorNumeroEl = document.getElementById("contadorNewsletterNumero");
-    if (contadorEl && contadorNumeroEl) {
-      const activos = suscriptores.filter(s => s.activo).length;
-      contadorNumeroEl.textContent = `${activos} / ${suscriptores.length}`;
-      contadorEl.style.display = suscriptores.length ? "flex" : "none";
-    }
-
-    // El próximo envío automático es siempre "dentro de X días" (o "hoy",
-    // calculado por el propio backend); el último puede no haber ocurrido
-    // nunca todavía (proyecto recién desplegado), caso que se rotula
-    // aparte en vez de dejarlo en blanco.
-    const infoEl = document.getElementById("newsletterEnvioInfo");
-    const proximoEl = document.getElementById("newsletterProximoEnvio");
-    const ultimoEl = document.getElementById("newsletterUltimoEnvio");
-    if (infoEl && proximoEl && ultimoEl) {
-      infoEl.style.display = "flex";
-      proximoEl.textContent = formatFechaHoraNewsletter(proximo_envio_at) || "Por calcular";
-      ultimoEl.textContent = formatFechaHoraNewsletter(ultimo_envio_at) || "Todavía no se ha enviado ninguno";
-    }
+    const activos = suscriptores.filter(s => s.activo).length;
+    const setTxt = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+    setTxt("newsletterStatActivos", String(activos));
+    setTxt("newsletterStatBajas", String(suscriptores.length - activos));
+    // El próximo envío es siempre futuro (o "hoy", calculado por el
+    // backend); el último puede no haber ocurrido nunca todavía.
+    setTxt("newsletterProximoEnvio", formatFechaHoraNewsletter(proximo_envio_at) || "Por calcular");
+    setTxt("newsletterUltimoEnvio", formatFechaHoraNewsletter(ultimo_envio_at) || "Aún no se ha enviado ninguno");
 
     cos.innerHTML = suscriptores.map(s => `
-      <tr>
-        <td data-label="Email">${escapeHtml(s.email)}</td>
-        <td data-label="Estado"><span class="badge-estado ${s.activo ? "publicado" : "borrador"}">${s.activo ? "Activo" : "De baja"}</span></td>
+      <tr data-buscar="${escapeHtml(String(s.email).toLowerCase())}">
+        <td data-label="Suscriptor"><div class="func-celda-persona">${funcAvatarHTML(s.email)}<span class="nombre">${escapeHtml(s.email)}</span></div></td>
+        <td data-label="Estado"><span class="func-chip ${s.activo ? "verde" : ""}">${s.activo ? "Activo" : "De baja"}</span></td>
         <td data-label="Suscrito desde">${formatFecha(s.created_at)}</td>
         <td class="acciones" data-label="">
           <button class="eliminar" onclick="eliminarSuscriptorNewsletter(${s.id}, this.dataset.email)" data-email="${escapeHtml(s.email)}">Eliminar</button>
         </td>
       </tr>`).join("") || "<tr><td colspan='4'>Todavía no hay nadie suscrito.</td></tr>";
+    filtraNewsletter();
   } catch (err) {
-    cos.innerHTML = `<tr><td colspan="4">Error cargando: ${err.message}</td></tr>`;
+    cos.innerHTML = `<tr><td colspan="4">Error cargando: ${escapeHtml(err.message)}</td></tr>`;
   }
 }
 
+// Filtro en cliente por correo (la lista ya está entera en memoria).
+function filtraNewsletter() {
+  const q = (document.getElementById("newsletterBuscador")?.value || "").trim().toLowerCase();
+  document.querySelectorAll("#tablaNewsletter tr[data-buscar]").forEach(tr => {
+    tr.style.display = !q || tr.dataset.buscar.includes(q) ? "" : "none";
+  });
+}
+document.getElementById("newsletterBuscador")?.addEventListener("input", filtraNewsletter);
+
+
+// ---------- ACREDITACIONES (formulario público + bandeja de solicitudes) ----------
+// El formulario vive en /acreditacion (public/acreditacion.html) y guarda en
+// la tabla "acreditaciones". Aquí los admins ven las solicitudes, las marcan
+// como pendiente/aprobada/rechazada (control interno, la concesión real la
+// decide el club), las editan, importan desde CSV, las descargan y
+// personalizan los textos y listas del formulario.
+let ACRED_DATOS = [];
+let ACRED_CONFIG = null;
+let ACRED_FILTRO = "";
+let ACRED_EDITANDO = null;
+const ACRED_ABIERTAS = new Set();
+const ACRED_NOTAS = {};
+const ACRED_ESTADOS = { pendiente: "Pendiente", aprobada: "Aprobada", rechazada: "Rechazada" };
+const ACRED_CONFIG_DEFECTO = {
+  titulo: "Formulario de acreditación | ElOtroFútbol",
+  intro: "Solicita tu acreditación para cubrir partidos, ruedas de prensa y actos oficiales de Primera Federación y Segunda Federación.",
+  aviso: "Las solicitudes serán revisadas por el equipo de administración. El envío del formulario no garantiza la concesión de la acreditación, ya que la decisión final corresponde al club organizador.",
+  confirmacion: "Confirmo que los datos facilitados son correctos y entiendo que el envío de esta solicitud no garantiza la concesión de la acreditación.",
+  gracias: "Hemos recibido tu solicitud de acreditación. El equipo de administración la revisará y se pondrá en contacto contigo por correo.",
+  eventos: ["Rueda de prensa", "Partido de fútbol", "Presentación oficial", "Acto"],
+  evento_otro: true,
+  acreditaciones: ["Prensa / Pupitre", "Fotógrafo / Césped", "Cabina de prensa (si el club dispone de ella)"],
+  secciones: { solicitante: "Datos del solicitante", cobertura: "Información de la cobertura", confirmacion: "Confirmación" },
+  preguntas: {
+    nombre: { etiqueta: "Nombre y apellidos", ayuda: "Tu respuesta", error: "Indica tu nombre y apellidos.", activa: true, obligatoria: true },
+    email: { etiqueta: "Correo electrónico", ayuda: "Tu respuesta", error: "Introduce un correo electrónico válido.", activa: true, obligatoria: true },
+    dni: { etiqueta: "DNI / NIE", ayuda: "Tu respuesta", error: "Introduce un DNI / NIE válido.", activa: true, obligatoria: true },
+    equipo: { etiqueta: "Equipo que deseas cubrir", ayuda: "Elige un equipo…", error: "Elige o escribe el equipo que deseas cubrir.", activa: true, obligatoria: true },
+    tipo_evento: { etiqueta: "Tipo de evento", ayuda: "", error: "Elige el tipo de evento.", activa: true, obligatoria: true },
+    tipo_acreditacion: { etiqueta: "Tipo de acreditación", ayuda: "", error: "Elige el tipo de acreditación.", activa: true, obligatoria: true },
+    funciones: { etiqueta: "Describe brevemente las funciones que realizarás durante la cobertura", ayuda: "Tu respuesta", error: "Describe brevemente tus funciones.", activa: true, obligatoria: true },
+    jornada_partido: { etiqueta: "Indica la jornada y partido que quieres cubrir", ayuda: "Tu respuesta", error: "Indica la jornada y el partido.", activa: true, obligatoria: true },
+  },
+};
+// Preguntas que no se pueden ocultar ni dejar como opcionales.
+const ACRED_PREGUNTAS_FIJAS = ["nombre", "email", "equipo", "tipo_acreditacion"];
+const ACRED_ICO = {
+  chev: '<svg class="acred-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>',
+  sube: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5m0 0l-6 6m6-6l6 6"/></svg>',
+  baja: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14m0 0l-6-6m6 6l6-6"/></svg>',
+  borra: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2m-9 0l1 14h8l1-14"/></svg>',
+  subir: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3m0 0L8 7m4-4l4 4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>',
+  vacio: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v13H8l-4 4V4z"/><path d="M8 9h8M8 13h5"/></svg>',
+};
+
+function urlFormularioAcreditacion() {
+  return location.origin + "/acreditacion";
+}
+
+async function cargaAcreditaciones() {
+  cargarPinAcreditacionPanel();
+  cargarAccesoAcreditacionPanel();
+  const enlace = document.getElementById("acredEnlace");
+  if (enlace) enlace.value = urlFormularioAcreditacion();
+  const cos = document.getElementById("tablaAcreditaciones");
+  if (!cos) return;
+  cos.innerHTML = '<div class="acred-vacio"><strong>Cargando solicitudes…</strong></div>';
+  apiFetch("/api/acreditaciones/config").then((c) => { ACRED_CONFIG = c; }).catch(() => {});
+  try {
+    const { acreditaciones = [] } = await apiFetch("/api/acreditaciones");
+    ACRED_DATOS = acreditaciones;
+    pintarAcreditaciones();
+  } catch (err) {
+    cos.innerHTML = `<div class="acred-vacio"><strong>No se pudieron cargar las solicitudes</strong>${escapeHtml(err.message)}</div>`;
+  }
+}
+
+// Modo de acceso al formulario: "pin" | "login" (cuenta de colaborador) | "solicitar" (libre).
+function pintarAccesoAcreditacion(modo) {
+  document.querySelectorAll('input[name="acredAcceso"]').forEach((r) => { r.checked = r.value === modo; });
+  document.querySelectorAll(".acred-modo-op").forEach((l) => l.classList.toggle("activo", !!l.querySelector("input:checked")));
+  // El PIN solo tiene sentido en el modo "pin".
+  const caja = document.getElementById("acredCajaPin");
+  if (caja) caja.hidden = modo !== "pin";
+}
+async function cargarAccesoAcreditacionPanel() {
+  try {
+    const { acceso } = await apiFetch("/api/acreditaciones/acceso");
+    pintarAccesoAcreditacion(acceso || "pin");
+  } catch (err) {
+    pintarAccesoAcreditacion("pin");
+  }
+}
+async function cambiarAccesoAcreditacion(modo) {
+  try {
+    const r = await apiFetch("/api/acreditaciones/acceso", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ acceso: modo }),
+    });
+    pintarAccesoAcreditacion(r.acceso || modo);
+    EOF.toast("Acceso al formulario actualizado", "exito");
+  } catch (err) {
+    EOF.toast("Error: " + err.message, "error");
+    cargarAccesoAcreditacionPanel();
+  }
+}
+
+async function cargarPinAcreditacionPanel() {
+  const el = document.getElementById("acredPin");
+  if (!el) return;
+  try {
+    const { pin } = await apiFetch("/api/acreditaciones/pin");
+    el.value = pin || "";
+  } catch (err) {
+    el.value = "";
+    el.placeholder = "No se pudo cargar";
+  }
+}
+
+async function guardarPinAcreditacionPanel(generar) {
+  const el = document.getElementById("acredPin");
+  const pin = generar ? "" : el.value.trim();
+  if (!generar && !/^\d{4,8}$/.test(pin)) {
+    EOF.toast("El PIN debe tener entre 4 y 8 dígitos", "error");
+    return;
+  }
+  try {
+    const r = await apiFetch("/api/acreditaciones/pin", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pin }),
+    });
+    el.value = r.pin || "";
+    EOF.toast("PIN actualizado", "exito");
+  } catch (err) {
+    EOF.toast("Error: " + err.message, "error");
+  }
+}
+
+async function copiarPinAcreditacion() {
+  const el = document.getElementById("acredPin");
+  if (!el || !el.value) return;
+  try {
+    await navigator.clipboard.writeText(el.value);
+    EOF.toast("PIN copiado", "exito");
+  } catch {
+    el.select();
+    EOF.toast("Copia el PIN con Ctrl+C", "info");
+  }
+}
+
+async function copiarEnlaceAcreditacion() {
+  const url = urlFormularioAcreditacion();
+  try {
+    await navigator.clipboard.writeText(url);
+    EOF.toast("Enlace copiado", "exito");
+  } catch {
+    const el = document.getElementById("acredEnlace");
+    if (el) { el.select(); EOF.toast("Copia el enlace con Ctrl+C", "info"); }
+  }
+}
+
+// ----- Lista, filtros y búsqueda -----
+function filtrarAcreditaciones(estado) {
+  ACRED_FILTRO = estado || "";
+  pintarAcreditaciones();
+}
+function limpiarBusquedaAcreditaciones() {
+  const b = document.getElementById("acredBuscador");
+  if (b) { b.value = ""; b.focus(); }
+  pintarAcreditaciones();
+}
+function acredNorm(t) {
+  return String(t == null ? "" : t).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+function acredHl(texto, q) {
+  const t = String(texto == null ? "" : texto);
+  if (!q) return escapeHtml(t);
+  const low = t.toLowerCase(), ql = q.toLowerCase();
+  let i = 0, out = "";
+  for (;;) {
+    const j = low.indexOf(ql, i);
+    if (j < 0) { out += escapeHtml(t.slice(i)); break; }
+    out += escapeHtml(t.slice(i, j)) + '<mark class="acred-mark">' + escapeHtml(t.slice(j, j + ql.length)) + "</mark>";
+    i = j + ql.length;
+  }
+  return out;
+}
+function acredIniciales(nombre) {
+  const p = String(nombre || "?").trim().split(/\s+/).filter(Boolean);
+  return ((p[0] || "?")[0] + (p.length > 1 ? p[p.length - 1][0] : "")).toUpperCase();
+}
+function acredOpcionesDatalist(id, valores) {
+  return `<datalist id="${id}">${[...new Set(valores.filter(Boolean))].map((v) => `<option value="${escapeHtml(v)}">`).join("")}</datalist>`;
+}
+
+function pintarAcreditaciones() {
+  const cos = document.getElementById("tablaAcreditaciones");
+  if (!cos) return;
+  const buscador = document.getElementById("acredBuscador");
+  const qRaw = ((buscador || {}).value || "").trim();
+  const q = acredNorm(qRaw);
+  const orden = (document.getElementById("acredOrden") || {}).value || "recientes";
+  if (buscador && buscador.parentNode) buscador.parentNode.classList.toggle("con-texto", !!qRaw);
+
+  // Contadores (siempre sobre el total) y filtro activo.
+  const cuenta = { pendiente: 0, aprobada: 0, rechazada: 0 };
+  ACRED_DATOS.forEach((a) => { if (cuenta[a.estado] !== undefined) cuenta[a.estado]++; });
+  const poner = (id, n) => { const e = document.getElementById(id); if (e) e.textContent = n; };
+  poner("acredNumTodas", ACRED_DATOS.length);
+  poner("acredNumPendiente", cuenta.pendiente);
+  poner("acredNumAprobada", cuenta.aprobada);
+  poner("acredNumRechazada", cuenta.rechazada);
+  document.querySelectorAll("#acredStats .acred-stat").forEach((b) => b.classList.toggle("activo", (b.dataset.filtro || "") === ACRED_FILTRO));
+
+  let lista = ACRED_DATOS.filter((a) => {
+    if (ACRED_FILTRO && a.estado !== ACRED_FILTRO) return false;
+    if (!q) return true;
+    return [a.nombre, a.email, a.dni, a.equipo, a.jornada_partido, a.tipo_evento, a.tipo_acreditacion, a.funciones]
+      .some((v) => acredNorm(v).includes(q));
+  });
+  const cmp = {
+    recientes: (x, y) => String(y.created_at || "").localeCompare(String(x.created_at || "")) || y.id - x.id,
+    antiguas: (x, y) => String(x.created_at || "").localeCompare(String(y.created_at || "")) || x.id - y.id,
+    nombre: (x, y) => String(x.nombre || "").localeCompare(String(y.nombre || ""), "es", { sensitivity: "base" }),
+    equipo: (x, y) => String(x.equipo || "").localeCompare(String(y.equipo || ""), "es", { sensitivity: "base" }),
+  }[orden];
+  lista = lista.slice().sort(cmp);
+
+  const resumen = document.getElementById("acredResumen");
+  if (resumen) {
+    resumen.textContent = ACRED_DATOS.length
+      ? `Mostrando ${lista.length} de ${ACRED_DATOS.length} solicitudes` + (qRaw ? ` para “${qRaw}”` : "")
+      : "";
+  }
+
+  if (!lista.length) {
+    cos.innerHTML = `<div class="acred-vacio">${ACRED_ICO.vacio}<strong>${ACRED_DATOS.length ? "Ninguna solicitud coincide" : "Todavía no hay solicitudes"}</strong>${
+      ACRED_DATOS.length ? "Prueba con otra búsqueda o cambia el filtro." : "Cuando alguien rellene el formulario aparecerá aquí. También puedes importar solicitudes desde un CSV."}</div>`;
+    return;
+  }
+
+  const eqs = ACRED_DATOS.map((a) => a.equipo);
+  const eventos = [...((ACRED_CONFIG || ACRED_CONFIG_DEFECTO).eventos || []), ...ACRED_DATOS.map((a) => a.tipo_evento)];
+  const tipos = [...((ACRED_CONFIG || ACRED_CONFIG_DEFECTO).acreditaciones || []), ...ACRED_DATOS.map((a) => a.tipo_acreditacion)];
+  const datalists = acredOpcionesDatalist("acredDlEquipos", eqs) + acredOpcionesDatalist("acredDlEventos", eventos) + acredOpcionesDatalist("acredDlTipos", tipos);
+
+  cos.innerHTML = datalists + lista.map((a, idx) => {
+    const abierta = ACRED_ABIERTAS.has(a.id);
+    const estado = ACRED_ESTADOS[a.estado] ? a.estado : "pendiente";
+    const fecha = formatFechaHoraNewsletter(a.created_at) || a.created_at || "";
+    const cab = `
+      <button type="button" class="acred-item-cab" onclick="alternarDetalleAcreditacion(${a.id})" aria-expanded="${abierta}">
+        <span class="acred-avatar" aria-hidden="true">${escapeHtml(acredIniciales(a.nombre))}</span>
+        <span class="col"><b>${acredHl(a.nombre, qRaw)}</b><small>${acredHl(a.email, qRaw)}${a.dni ? " · " + acredHl(a.dni, qRaw) : ""}</small></span>
+        <span class="col col-equipo"><b>${acredHl(a.equipo, qRaw)}</b><small>${acredHl(a.tipo_evento, qRaw)}</small></span>
+        <span class="col col-partido"><b>${acredHl(a.tipo_acreditacion, qRaw)}</b><small>${acredHl(a.jornada_partido, qRaw)}</small></span>
+        <span class="acred-fecha">${escapeHtml(fecha)}</span>
+        <span class="acred-estado acred-estado-${estado}">${ACRED_ESTADOS[estado]}</span>
+        ${ACRED_ICO.chev}
+      </button>`;
+    let cuerpo = "";
+    if (abierta) cuerpo = ACRED_EDITANDO === a.id ? acredCuerpoEdicion(a) : acredCuerpoVista(a, qRaw);
+    return `<article class="acred-item est-${estado}${abierta ? " abierta" : ""}" data-id="${a.id}" style="animation-delay:${Math.min(idx, 10) * 25}ms">${cab}${cuerpo}</article>`;
+  }).join("");
+}
+
+function acredCuerpoVista(a, q) {
+  const dato = (et, v) => `<div><span>${et}</span><b>${v ? acredHl(v, q) : "—"}</b></div>`;
+  const revisado = (a.revisado_at && a.estado === "pendiente")
+    ? `<p class="acred-revisado">Revisada por <strong>${escapeHtml(a.revisado_por || "—")}</strong> el ${escapeHtml(formatFechaHoraNewsletter(a.revisado_at) || a.revisado_at)}</p>`
+    : "";
+  const nota = a.id in ACRED_NOTAS ? ACRED_NOTAS[a.id] : (a.nota_admin || "");
+  // Pendiente: se muestran Aprobar / Rechazar. Ya resuelta (aprobada o
+  // rechazada): se muestra solo el resultado y el cambio de estado queda
+  // escondido tras un botón discreto "···", para evitar toques por error.
+  const resuelta = a.estado === "aprobada" || a.estado === "rechazada";
+  let botonesEstado;
+  if (!resuelta) {
+    botonesEstado = `
+        <button type="button" class="acred-btn acred-btn-ok" onclick="resolverAcreditacion(${a.id}, 'aprobada')">Aprobar</button>
+        <button type="button" class="acred-btn acred-btn-no" onclick="resolverAcreditacion(${a.id}, 'rechazada')">Rechazar</button>`;
+  } else {
+    const ap = a.estado === "aprobada";
+    const otra = ap ? "rechazada" : "aprobada";
+    const quien = a.revisado_at
+      ? `Revisada por ${escapeHtml(a.revisado_por || "—")} · ${escapeHtml(formatFechaHoraNewsletter(a.revisado_at) || a.revisado_at)}`
+      : "Estado ya resuelto";
+    const IC = {
+      aprobada: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+      rechazada: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+      pendiente: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+    };
+    botonesEstado = `
+        <details class="acred-mas acred-mas-${a.estado}">
+          <summary>
+            <span class="acred-res-ico">${IC[a.estado]}</span>
+            <span class="acred-res-txt"><b>Solicitud ${ap ? "aprobada" : "rechazada"}</b><small>${quien}</small></span>
+            <span class="acred-res-cambiar">Cambiar estado <svg class="acred-res-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></span>
+          </summary>
+          <div class="acred-mas-menu">
+            <button type="button" class="acred-opc acred-opc-${otra}" onclick="cambiarEstadoAcreditacion(${a.id}, '${otra}')">
+              <span class="acred-opc-ico">${IC[otra]}</span>
+              <span class="acred-opc-txt"><b>Pasar a ${otra}</b><small>Se avisará por correo a la persona</small></span>
+            </button>
+            <button type="button" class="acred-opc acred-opc-pendiente" onclick="cambiarEstadoAcreditacion(${a.id}, 'pendiente')">
+              <span class="acred-opc-ico">${IC.pendiente}</span>
+              <span class="acred-opc-txt"><b>Volver a pendiente</b><small>Reabre la solicitud sin enviar nada</small></span>
+            </button>
+          </div>
+        </details>
+        <button type="button" class="acred-btn acred-btn-sec" onclick="resolverAcreditacion(${a.id}, '${a.estado}')">Guardar nota</button>`;
+  }
+  return `
+    <div class="acred-cuerpo">
+      <div class="acred-datos">
+        ${dato("Nombre", a.nombre)}${dato("Correo", a.email)}${dato("DNI / NIE", a.dni)}
+        ${dato("Equipo", a.equipo)}${dato("Evento", a.tipo_evento)}${dato("Acreditación", a.tipo_acreditacion)}
+        ${dato("Jornada y partido", a.jornada_partido)}
+      </div>
+      <div class="acred-bloque"><h4>Funciones durante la cobertura</h4><p class="acred-funciones">${a.funciones ? acredHl(a.funciones, q) : "—"}</p></div>
+      ${revisado}
+      <label for="acredNota-${a.id}">Nota interna (opcional)</label>
+      <textarea id="acredNota-${a.id}" maxlength="1000" rows="2" placeholder="Solo la ven los administradores" oninput="ACRED_NOTAS[${a.id}] = this.value">${escapeHtml(nota)}</textarea>
+      <div class="acred-correo-bloque">
+        ${a.estado === "pendiente" ? `<label class="acred-correo-chk"><input type="checkbox" id="acredCorreo-${a.id}" checked> Avisar por correo a <b>${escapeHtml(a.email || "la persona")}</b> al aprobar o rechazar</label>` : ""}
+        <label for="acredRecogida-${a.id}">Dónde y cuándo recogerla (se envía al aprobar o con «Enviar indicaciones»)</label>
+        <textarea id="acredRecogida-${a.id}" maxlength="600" rows="2" placeholder="Ej.: Sala de prensa del estadio, 90 min antes del partido, con tu DNI">${escapeHtml((ACRED_CONFIG && ACRED_CONFIG.recogida) || "")}</textarea>
+        <label for="acredMensaje-${a.id}">Mensaje / indicaciones para la persona (opcional; en un rechazo, el motivo)</label>
+        <textarea id="acredMensaje-${a.id}" maxlength="800" rows="2" placeholder="${escapeHtml((ACRED_CONFIG && ACRED_CONFIG.instrucciones_aprobada) || "Instrucciones o motivo")}"></textarea>
+        <button type="button" class="acred-btn acred-btn-sec" onclick="enviarIndicacionesAcreditacion(${a.id})" title="Envía el correo con estas indicaciones sin aprobar, rechazar ni cambiar el estado">Enviar indicaciones (sin cambiar el estado)</button>
+      </div>
+      <div class="acred-acciones">
+        ${botonesEstado}
+        <span class="espacio"></span>
+        <button type="button" class="acred-btn acred-btn-sec" onclick="copiarCorreoClubAcreditacion(${a.id})" title="Copia el correo ya redactado para pegarlo y enviarlo al club">Copiar correo al club</button>
+        <button type="button" class="acred-btn acred-btn-sec" onclick="editarAcreditacion(${a.id})">Editar datos</button>
+        <button type="button" class="acred-btn acred-btn-peligro" onclick="eliminarAcreditacion(${a.id})">Eliminar</button>
+      </div>
+    </div>`;
+}
+
+function acredCuerpoEdicion(a) {
+  const campo = (id, et, v, extra = "", clase = "") =>
+    `<div class="${clase}"><label for="acredEd-${id}">${et}</label><input type="text" id="acredEd-${id}" value="${escapeHtml(v || "")}" ${extra}></div>`;
+  return `
+    <div class="acred-cuerpo">
+      <div class="acred-form-edicion">
+        ${campo("nombre", "Nombre y apellidos", a.nombre, 'maxlength="200"')}
+        ${campo("email", "Correo electrónico", a.email, 'maxlength="200"')}
+        ${campo("dni", "DNI / NIE", a.dni, 'maxlength="30"')}
+        ${campo("equipo", "Equipo", a.equipo, 'maxlength="200" list="acredDlEquipos"')}
+        ${campo("tipo_evento", "Tipo de evento", a.tipo_evento, 'maxlength="200" list="acredDlEventos"')}
+        ${campo("tipo_acreditacion", "Tipo de acreditación", a.tipo_acreditacion, 'maxlength="200" list="acredDlTipos"')}
+        ${campo("jornada_partido", "Jornada y partido", a.jornada_partido, 'maxlength="500"', "ancho")}
+        <div class="ancho"><label for="acredEd-funciones">Funciones durante la cobertura</label><textarea id="acredEd-funciones" maxlength="2000" rows="4">${escapeHtml(a.funciones || "")}</textarea></div>
+      </div>
+      <div class="acred-acciones">
+        <button type="button" class="acred-btn" onclick="guardarEdicionAcreditacion(${a.id})">Guardar cambios</button>
+        <button type="button" class="acred-btn acred-btn-sec" onclick="cancelarEdicionAcreditacion()">Cancelar</button>
+      </div>
+    </div>`;
+}
+
+function alternarDetalleAcreditacion(id) {
+  if (ACRED_ABIERTAS.has(id)) { ACRED_ABIERTAS.delete(id); if (ACRED_EDITANDO === id) ACRED_EDITANDO = null; }
+  else ACRED_ABIERTAS.add(id);
+  pintarAcreditaciones();
+}
+// ----- Correo institucional para el club -----
+// Rival a partir del texto libre "jornada y partido" (p. ej. "Jornada 5: Deportiva Minera - Castellonense").
+// Devuelve { rival, partido }; si no se puede separar, rival queda vacío y partido es el texto tal cual.
+function acredParsearPartido(jornadaPartido, equipo) {
+  let txt = String(jornadaPartido || "").replace(/\s+/g, " ").trim();
+  txt = txt.replace(/^(jornada|j\.?)\s*\d+\s*[:\-–—.,]?\s*/i, "").replace(/\(.*?\)/g, " ").trim();
+  const partes = txt.split(/\s+(?:-|–|—|vs\.?|v|contra)\s+|\s*\bvs\.?\s*/i).map((x) => x.trim()).filter(Boolean);
+  if (partes.length === 2) {
+    const e = acredNorm(equipo);
+    const [a, b] = partes;
+    const na = acredNorm(a), nb = acredNorm(b);
+    const esMio = (n) => e && (n.includes(e) || e.includes(n));
+    let rival = "";
+    if (esMio(na) && !esMio(nb)) rival = b;
+    else if (esMio(nb) && !esMio(na)) rival = a;
+    else rival = nb === e ? a : b;
+    return { rival, partido: txt };
+  }
+  return { rival: "", partido: txt };
+}
+
+// "Prensa / Pupitre" -> "Prensa de pupitre"; quita aclaraciones entre paréntesis.
+function acredTipoLegible(tipo) {
+  let t = String(tipo || "").replace(/\(.*?\)/g, "").replace(/\s+/g, " ").trim();
+  const p = t.split(/\s*\/\s*/).filter(Boolean);
+  if (p.length === 2) t = p[0] + " de " + p[1].charAt(0).toLowerCase() + p[1].slice(1);
+  return t;
+}
+
+function acredConstruirCorreoClub(a) {
+  const club = (a.equipo || "").trim() || "el club";
+  const { rival, partido } = acredParsearPartido(a.jornada_partido, a.equipo);
+  const encuentro = rival
+    ? `el próximo encuentro entre ${club} y ${rival}`
+    : (partido ? `el siguiente encuentro: ${partido}` : "el próximo encuentro");
+  let funciones = String(a.funciones || "").replace(/\s+/g, " ").trim() || "Cobertura informativa del partido";
+  if (!/[.!?]$/.test(funciones)) funciones += ".";
+  const firma = (USER && USER.nombre) ? USER.nombre : "";
+  const firmaLineas = ["Atentamente,"];
+  if (firma) firmaLineas.push(firma);
+  firmaLineas.push("Acreditaciones", "El Otro Fútbol");
+  // Bloques separados por una línea en blanco; dentro de un bloque, saltos simples.
+  return [
+    [`Estimado departamento de comunicación de ${club}:`],
+    [`Me pongo en contacto con ustedes para solicitar formalmente una acreditación de prensa para ${encuentro}.`],
+    [
+      `A continuación, les facilito los datos del profesional que asistirá al partido:`,
+      `● Nombre y apellidos: ${a.nombre || ""}`,
+      `● Correo electrónico: ${a.email || ""}`,
+      `● DNI: ${a.dni || ""}`,
+      `● Medio: El Otro Fútbol`,
+      `● Función: ${funciones}`,
+      `● Tipo de acreditación solicitada: ${acredTipoLegible(a.tipo_acreditacion)}.`,
+    ],
+    [`Confirmamos nuestro compromiso de respetar en todo momento las normas de prensa, los derechos audiovisuales y las condiciones establecidas tanto por los clubes como por el estadio.`],
+    [`Agradezco de antemano su tiempo y gestión. Quedo a la espera de su confirmación y de las indicaciones correspondientes para la recogida de la credencial.`],
+    firmaLineas,
+  ].map((b) => b.join("\n")).join("\n\n");
+}
+
+async function copiarCorreoClubAcreditacion(id) {
+  const a = ACRED_DATOS.find((x) => x.id === id);
+  if (!a) return;
+  const texto = acredConstruirCorreoClub(a);
+  try {
+    await navigator.clipboard.writeText(texto);
+    EOF.toast("Correo para el club copiado. Pégalo en tu correo y envíalo.", "exito");
+  } catch {
+    // Sin permiso de portapapeles: se copia con un textarea temporal.
+    const ta = document.createElement("textarea");
+    ta.value = texto; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    let ok = false;
+    try { ok = document.execCommand("copy"); } catch { ok = false; }
+    ta.remove();
+    EOF.toast(ok ? "Correo para el club copiado" : "No se pudo copiar automáticamente", ok ? "exito" : "error");
+  }
+}
+
+function editarAcreditacion(id) { ACRED_EDITANDO = id; pintarAcreditaciones(); }
+function cancelarEdicionAcreditacion() { ACRED_EDITANDO = null; pintarAcreditaciones(); }
+
+async function guardarEdicionAcreditacion(id) {
+  const v = (k) => (document.getElementById("acredEd-" + k) || {}).value || "";
+  const datos = {
+    nombre: v("nombre").trim(), email: v("email").trim(), dni: v("dni").trim(), equipo: v("equipo").trim(),
+    tipo_evento: v("tipo_evento").trim(), tipo_acreditacion: v("tipo_acreditacion").trim(),
+    funciones: v("funciones").trim(), jornada_partido: v("jornada_partido").trim(),
+  };
+  if (!datos.nombre) { EOF.toast("Falta el nombre", "error"); return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(datos.email)) { EOF.toast("El correo no es válido", "error"); return; }
+  if (!datos.equipo) { EOF.toast("Falta el equipo", "error"); return; }
+  try {
+    await apiFetch(`/api/acreditaciones/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ datos }),
+    });
+    const a = ACRED_DATOS.find((x) => x.id === id);
+    if (a) Object.assign(a, { ...datos, email: datos.email.toLowerCase(), dni: datos.dni.replace(/[\s.-]/g, "").toUpperCase() });
+    ACRED_EDITANDO = null;
+    pintarAcreditaciones();
+    EOF.toast("Datos actualizados", "exito");
+  } catch (err) {
+    EOF.toast("Error: " + err.message, "error");
+  }
+}
+
+// Cambio de estado de una solicitud ya resuelta (menú escondido "···"):
+// pide confirmación porque ya había una decisión tomada.
+async function cambiarEstadoAcreditacion(id, estado) {
+  const a = ACRED_DATOS.find((x) => x.id === id);
+  const nombre = a ? a.nombre : "esta solicitud";
+  const destino = estado === "pendiente" ? "pendiente" : ACRED_ESTADOS[estado].toLowerCase();
+  const avisoCorreo = estado === "pendiente" ? "" : " Se enviará un correo a la persona con el nuevo estado.";
+  if (!(await EOF.confirmar(`¿Cambiar la solicitud de "${nombre}" a ${destino}?${avisoCorreo}`, { textoConfirmar: "Cambiar" }))) return;
+  resolverAcreditacion(id, estado);
+}
+
+// Envía solo las indicaciones (dónde/cuándo recogerla + mensaje) por correo.
+// NO cambia el estado de la solicitud: sigue pendiente/aprobada/rechazada.
+async function enviarIndicacionesAcreditacion(id) {
+  const a = ACRED_DATOS.find((x) => x.id === id);
+  const recogida = (document.getElementById(`acredRecogida-${id}`) || {}).value || "";
+  const mensaje = (document.getElementById(`acredMensaje-${id}`) || {}).value || "";
+  if (!recogida.trim() && !mensaje.trim()) {
+    EOF.toast("Escribe alguna indicación (dónde recogerla o un mensaje)", "error");
+    return;
+  }
+  if (!(await EOF.confirmar(`¿Enviar las indicaciones a ${a && a.email ? a.email : "la persona"}? La solicitud seguirá en su estado actual.`, { textoConfirmar: "Enviar" }))) return;
+  try {
+    const resp = await apiFetch(`/api/acreditaciones/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ solo_indicaciones: true, recogida: recogida.trim(), mensaje: mensaje.trim() }),
+    });
+    if (resp && resp.correo === "enviado") EOF.toast("Indicaciones enviadas · el estado no ha cambiado", "exito");
+    else EOF.toast("⚠ No se pudo enviar el correo (el estado no ha cambiado)", "error");
+  } catch (err) {
+    EOF.toast("Error: " + err.message, "error");
+  }
+}
+
+async function resolverAcreditacion(id, estado) {
+  const notaEl = document.getElementById(`acredNota-${id}`);
+  const nota = notaEl ? notaEl.value.trim() : "";
+  // Campos del correo (solo existen en solicitudes pendientes). Si no están
+  // (cambio desde el menú "···"), el servidor usa los textos por defecto.
+  const chkCorreo = document.getElementById(`acredCorreo-${id}`);
+  const recogidaEl = document.getElementById(`acredRecogida-${id}`);
+  const mensajeEl = document.getElementById(`acredMensaje-${id}`);
+  const datosCorreo = {};
+  if (chkCorreo) datosCorreo.enviar_correo = chkCorreo.checked;
+  if (recogidaEl) datosCorreo.recogida = recogidaEl.value.trim();
+  if (mensajeEl) datosCorreo.mensaje = mensajeEl.value.trim();
+  try {
+    const resp = await apiFetch(`/api/acreditaciones/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ estado, nota_admin: nota, ...datosCorreo }),
+    });
+    const a = ACRED_DATOS.find((x) => x.id === id);
+    if (a) {
+      a.estado = estado;
+      a.nota_admin = nota || null;
+      a.revisado_por = (typeof USER !== "undefined" && USER.nombre) || a.revisado_por;
+      a.revisado_at = new Date().toISOString().slice(0, 19).replace("T", " ");
+    }
+    delete ACRED_NOTAS[id];
+    pintarAcreditaciones();
+    const cor = resp && resp.correo;
+    const extra = cor === "enviado" ? " · correo enviado a la persona" : cor === "no_enviado" ? " · ⚠ no se pudo enviar el correo" : "";
+    EOF.toast(`Solicitud marcada como ${ACRED_ESTADOS[estado].toLowerCase()}${extra}`, cor === "no_enviado" ? "error" : "exito");
+  } catch (err) {
+    EOF.toast("Error: " + err.message, "error");
+  }
+}
+
+async function eliminarAcreditacion(id) {
+  const a = ACRED_DATOS.find((x) => x.id === id);
+  const nombre = a ? a.nombre : "esta persona";
+  if (!(await EOF.confirmar(`¿Seguro que quieres eliminar la solicitud de "${nombre}"? Esta acción no se puede deshacer.`, { peligroso: true, textoConfirmar: "Eliminar" }))) return;
+  try {
+    await apiFetch(`/api/acreditaciones/${id}`, { method: "DELETE" });
+    ACRED_DATOS = ACRED_DATOS.filter((x) => x.id !== id);
+    ACRED_ABIERTAS.delete(id);
+    if (ACRED_EDITANDO === id) ACRED_EDITANDO = null;
+    pintarAcreditaciones();
+  } catch (err) {
+    EOF.toast("Error: " + err.message, "error");
+  }
+}
+
+// ----- CSV: descargar y plantilla -----
+const ACRED_CSV_CABECERA = ["Fecha", "Nombre", "Correo", "DNI/NIE", "Equipo", "Tipo de evento", "Tipo de acreditación", "Funciones", "Jornada y partido", "Estado", "Nota interna", "Revisada por", "Revisada el"];
+function acredCeldaCSV(v) {
+  let t = String(v == null ? "" : v);
+  // Evita que Excel interprete el contenido como fórmula.
+  if (/^[=+\-@]/.test(t)) t = "'" + t;
+  return `"${t.replace(/"/g, '""')}"`;
+}
+function acredDescargar(nombre, filas) {
+  const csv = "\uFEFF" + filas.map((f) => f.map(acredCeldaCSV).join(";")).join("\r\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const enlace = document.createElement("a");
+  enlace.href = URL.createObjectURL(blob);
+  enlace.download = nombre;
+  document.body.appendChild(enlace);
+  enlace.click();
+  enlace.remove();
+  setTimeout(() => URL.revokeObjectURL(enlace.href), 1000);
+}
+function exportarAcreditacionesCSV() {
+  if (!ACRED_DATOS.length) { EOF.toast("No hay solicitudes que exportar", "info"); return; }
+  const filas = ACRED_DATOS.map((a) => [
+    a.created_at, a.nombre, a.email, a.dni, a.equipo, a.tipo_evento, a.tipo_acreditacion,
+    a.funciones, a.jornada_partido, ACRED_ESTADOS[a.estado] || a.estado, a.nota_admin, a.revisado_por, a.revisado_at,
+  ]);
+  acredDescargar(`acreditaciones-${new Date().toISOString().slice(0, 10)}.csv`, [ACRED_CSV_CABECERA, ...filas]);
+}
+function descargarPlantillaAcreditaciones() {
+  acredDescargar("plantilla-acreditaciones.csv", [
+    ["Nombre", "Correo", "DNI/NIE", "Equipo", "Tipo de evento", "Tipo de acreditación", "Funciones", "Jornada y partido", "Estado"],
+    ["Ana Pérez López", "ana@ejemplo.com", "12345678Z", "CD Mirandés", "Partido de fútbol", "Prensa / Pupitre", "Crónica y fotos del partido", "Jornada 5 - Mirandés vs Burgos", "Pendiente"],
+  ]);
+}
+
+// ----- Ventanas (modales) -----
+function acredModal(html, onCerrar) {
+  const ov = document.createElement("div");
+  ov.className = "acred-overlay";
+  ov.innerHTML = html;
+  const cerrar = () => { document.removeEventListener("keydown", tecla); ov.remove(); if (onCerrar) onCerrar(); };
+  const tecla = (e) => { if (e.key === "Escape") cerrar(); };
+  ov.addEventListener("mousedown", (e) => { if (e.target === ov) cerrar(); });
+  ov.querySelectorAll("[data-cerrar]").forEach((b) => b.addEventListener("click", cerrar));
+  document.addEventListener("keydown", tecla);
+  document.body.appendChild(ov);
+  return { ov, cerrar };
+}
+
+// ----- Importar -----
+let ACRED_IMP = { filas: [], errores: [], total: 0 };
+// Reconocimiento de columnas por la cabecera. Cada cabecera se asigna a UN solo campo,
+// el que mejor encaja: antes ganaba el primero de la lista, así que una cabecera como
+// "Nombre y apellidos (como en el DNI)" acababa como DNI y todas las filas salían sin nombre.
+const ACRED_NORM_CAB = (h) => String(h == null ? "" : h).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "").replace(/^\d+/, ""); // quita la numeración "1. " de las preguntas
+function acredPuntuarCabecera(n, campo) {
+  const empieza = (...t) => t.some((x) => n.startsWith(x));
+  const tiene = (...t) => t.some((x) => n.includes(x));
+  switch (campo) {
+    case "created_at": return empieza("marcatemporal", "timestamp", "fecha") ? 10 : tiene("marcatemporal", "timestamp") ? 6 : 0;
+    case "email": return empieza("correo", "email", "mail", "direccionde") ? 10 : tiene("correo", "email", "mail") ? 5 : 0;
+    case "dni": return empieza("dni", "nie", "documento") ? 10 : (tiene("dni", "nie", "documento") && !tiene("nombre", "apellid")) ? 4 : 0;
+    case "tipo_acreditacion": return empieza("tipodeacreditacion", "acreditacion", "tipoacreditacion") ? 10 : tiene("acreditacion") ? 4 : 0;
+    case "tipo_evento": return empieza("tipodeevento", "evento", "tipoevento") ? 10 : tiene("evento") ? 4 : 0;
+    case "funciones": return empieza("funciones") ? 10 : tiene("funciones") ? 6 : 0;
+    case "jornada_partido": return empieza("jornada", "partido") ? 10 : tiene("jornada", "partido") ? 4 : 0;
+    case "nota_admin": return empieza("nota") ? 10 : 0;
+    case "estado": return empieza("estado") ? 10 : 0;
+    case "equipo": return empieza("equipo", "club") ? 10 : tiene("equipo", "club") ? 3 : 0;
+    case "nombre":
+      if (tiene("equipo", "club", "partido", "evento", "medio")) return 0;
+      return empieza("nombre", "nombreyapellidos", "nombrecompleto") ? 10 : tiene("nombre", "apellidos") ? 5 : 0;
+    case "apellidos": return empieza("apellid") ? 10 : 0;
+  }
+  return 0;
+}
+const ACRED_CAMPOS_IMPORT = ["created_at", "email", "dni", "tipo_acreditacion", "tipo_evento", "funciones", "jornada_partido", "nota_admin", "estado", "equipo", "nombre", "apellidos"];
+function acredMapearColumnas(cabecera) {
+  const norm = cabecera.map(ACRED_NORM_CAB);
+  const cand = [];
+  norm.forEach((n, i) => { if (!n) return; ACRED_CAMPOS_IMPORT.forEach((c) => { const p = acredPuntuarCabecera(n, c); if (p > 0) cand.push({ i, c, p }); }); });
+  cand.sort((a, b) => b.p - a.p || a.i - b.i);
+  const mapa = {}, usadas = new Set();
+  cand.forEach(({ i, c }) => { if (mapa[c] === undefined && !usadas.has(i)) { mapa[c] = i; usadas.add(i); } });
+  const sinReconocer = cabecera.map((h, i) => [h, i]).filter(([h, i]) => String(h).trim() && !usadas.has(i)).map(([h]) => String(h).trim());
+  return { mapa, sinReconocer };
+}
+function acredParseCSV(texto) {
+  texto = String(texto || "").replace(/^\uFEFF/, "");
+  const primera = texto.split(/\r?\n/, 1)[0] || "";
+  const delim = [";", "\t", ","].map((c) => [c, primera.split(c).length - 1]).sort((a, b) => b[1] - a[1])[0][0];
+  const filas = [];
+  let fila = [], celda = "", comillas = false;
+  for (let i = 0; i < texto.length; i++) {
+    const c = texto[i];
+    if (comillas) {
+      if (c === '"') { if (texto[i + 1] === '"') { celda += '"'; i++; } else comillas = false; }
+      else celda += c;
+    } else if (c === '"') comillas = true;
+    else if (c === delim) { fila.push(celda); celda = ""; }
+    else if (c === "\n" || c === "\r") {
+      if (c === "\r" && texto[i + 1] === "\n") i++;
+      fila.push(celda); celda = "";
+      if (fila.some((x) => x.trim() !== "")) filas.push(fila);
+      fila = [];
+    } else celda += c;
+  }
+  fila.push(celda);
+  if (fila.some((x) => x.trim() !== "")) filas.push(fila);
+  return filas;
+}
+function acredFechaISO(t) {
+  t = String(t || "").trim();
+  if (!t) return "";
+  let m = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if (m) {
+    const p = (n) => String(n).padStart(2, "0");
+    return `${m[3]}-${p(m[2])}-${p(m[1])} ${p(m[4] || 0)}:${p(m[5] || 0)}:${p(m[6] || 0)}`;
+  }
+  m = t.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(a\.?\s?m\.?|p\.?\s?m\.?)?)?/i);
+  if (m && t.includes("/")) {
+    const p2 = (n) => String(n).padStart(2, "0");
+    let h = Number(m[4] || 0);
+    const ampm = (m[7] || "").toLowerCase().replace(/[\s.]/g, "");
+    if (ampm === "pm" && h < 12) h += 12;
+    if (ampm === "am" && h === 12) h = 0;
+    return `${m[1]}-${p2(m[2])}-${p2(m[3])} ${p2(h)}:${p2(m[5] || 0)}:${p2(m[6] || 0)}`;
+  }
+  m = t.match(/^\d{4}-\d{2}-\d{2}/);
+  return m ? t.replace("T", " ").slice(0, 19) : "";
+}
+function acredAnalizarImportacion(texto) {
+  const tabla = acredParseCSV(texto);
+  if (tabla.length < 2) return { filas: [], errores: [], total: 0, sinCabecera: tabla.length === 1 };
+  const { mapa, sinReconocer } = acredMapearColumnas(tabla[0]);
+  const filas = [], errores = [];
+  tabla.slice(1).forEach((r, idx) => {
+    const g = (c) => {
+      let v = mapa[c] === undefined ? "" : String(r[mapa[c]] == null ? "" : r[mapa[c]]).trim();
+      if (/^'[=+\-@]/.test(v)) v = v.slice(1);
+      return v;
+    };
+    const estadoTxt = acredNorm(g("estado"));
+    const o = {
+      nombre: [g("nombre"), g("apellidos")].filter(Boolean).join(" "), email: g("email").toLowerCase(), dni: g("dni"), equipo: g("equipo"),
+      tipo_evento: g("tipo_evento"), tipo_acreditacion: g("tipo_acreditacion"), funciones: g("funciones"),
+      jornada_partido: g("jornada_partido"), nota_admin: g("nota_admin"), created_at: acredFechaISO(g("created_at")),
+      estado: /aprob/.test(estadoTxt) ? "aprobada" : /rechaz|deneg/.test(estadoTxt) ? "rechazada" : "pendiente",
+    };
+    const dni = o.dni.replace(/[\s.-]/g, "");
+    let motivo = "";
+    if (!o.nombre) motivo = mapa.nombre === undefined ? "no se encuentra la columna del nombre" : "falta el nombre";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(o.email)) motivo = "correo no válido";
+    else if (!o.equipo) motivo = "falta el equipo";
+    else if (dni && (dni.length < 5 || !/^[A-Za-z0-9]+$/.test(dni))) motivo = "DNI / NIE no válido";
+    if (motivo) errores.push({ fila: idx + 2, motivo }); else filas.push(o);
+  });
+  return { filas, errores, total: tabla.length - 1, columnas: Object.keys(mapa), sinReconocer, sinNombre: mapa.nombre === undefined };
+}
+// Lee el primer .csv/.tsv/.txt de un ZIP (el navegador descomprime con DecompressionStream).
+async function acredLeerCsvDeZip(buf) {
+  const dv = new DataView(buf), b = new Uint8Array(buf);
+  let eocd = -1;
+  for (let i = b.length - 22; i >= Math.max(0, b.length - 65557); i--) { if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; } }
+  if (eocd < 0) throw new Error("El ZIP no es válido");
+  let pos = dv.getUint32(eocd + 16, true);
+  const n = dv.getUint16(eocd + 10, true);
+  for (let k = 0; k < n; k++) {
+    if (dv.getUint32(pos, true) !== 0x02014b50) break;
+    const metodo = dv.getUint16(pos + 10, true), tamC = dv.getUint32(pos + 20, true);
+    const lNom = dv.getUint16(pos + 28, true), lExt = dv.getUint16(pos + 30, true), lCom = dv.getUint16(pos + 32, true);
+    const offLocal = dv.getUint32(pos + 42, true);
+    const nombre = new TextDecoder().decode(b.subarray(pos + 46, pos + 46 + lNom));
+    pos += 46 + lNom + lExt + lCom;
+    if (!/\.(csv|tsv|txt)$/i.test(nombre) || /(^|\/)__MACOSX\//.test(nombre)) continue;
+    const ini = offLocal + 30 + dv.getUint16(offLocal + 26, true) + dv.getUint16(offLocal + 28, true);
+    const datos = b.subarray(ini, ini + tamC);
+    if (metodo === 0) return new TextDecoder("utf-8").decode(datos);
+    if (metodo !== 8 || typeof DecompressionStream === "undefined") throw new Error("Este ZIP no se puede abrir aquí: descomprímelo y sube el CSV");
+    const flujo = new Blob([datos]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+    return new TextDecoder("utf-8").decode(await new Response(flujo).arrayBuffer());
+  }
+  throw new Error("El ZIP no contiene ningún archivo CSV");
+}
+function abrirImportarAcreditaciones() {
+  ACRED_IMP = { filas: [], errores: [], total: 0 };
+  const { ov, cerrar } = acredModal(`
+    <div class="acred-modal" role="dialog" aria-modal="true" aria-labelledby="acredImpTit">
+      <div class="acred-modal-cab">
+        <div><h3 id="acredImpTit">Importar solicitudes</h3><p>Sube un CSV (por ejemplo, el que descargas aquí o las respuestas de Google Forms exportadas) o pega las filas.</p></div>
+        <button type="button" class="acred-cerrar" data-cerrar aria-label="Cerrar">×</button>
+      </div>
+      <div class="acred-modal-cuerpo">
+        <label class="acred-drop" id="acredDrop" for="acredArchivo">
+          ${ACRED_ICO.subir}
+          <b>Arrastra un archivo CSV (o un ZIP que lo contenga) o haz clic para elegirlo</b>
+          <span>Separador coma, punto y coma o tabulador · UTF-8</span>
+          <input type="file" id="acredArchivo" accept=".csv,.tsv,.txt,.zip,text/csv,text/plain,application/zip" hidden>
+        </label>
+        <div class="acred-o">o pega aquí</div>
+        <div class="acred-campo"><textarea id="acredPegar" rows="4" placeholder="Nombre;Correo;DNI/NIE;Equipo;Tipo de evento;Tipo de acreditación;Funciones;Jornada y partido;Estado"></textarea></div>
+        <p class="acred-ayuda-csv">Se reconocen las columnas por su nombre: <b>Nombre, Correo, DNI/NIE, Equipo, Tipo de evento, Tipo de acreditación, Funciones, Jornada y partido, Estado, Nota interna, Fecha</b>. Obligatorios: nombre, correo y equipo. Si tienes un Excel, guárdalo como CSV. <a id="acredPlantilla">Descargar plantilla</a></p>
+        <div id="acredImpVista" style="margin-top:16px;"></div>
+      </div>
+      <div class="acred-modal-pie">
+        <label class="acred-interruptor"><input type="checkbox" id="acredOmitirDup" checked><i></i>Omitir duplicadas</label>
+        <span class="espacio"></span>
+        <button type="button" class="acred-btn acred-btn-sec" data-cerrar>Cancelar</button>
+        <button type="button" class="acred-btn" id="acredImpBtn" disabled>Importar</button>
+      </div>
+    </div>`);
+  const vista = ov.querySelector("#acredImpVista"), btn = ov.querySelector("#acredImpBtn"), pegar = ov.querySelector("#acredPegar");
+  const analizar = (texto) => {
+    ACRED_IMP = acredAnalizarImportacion(texto);
+    const { filas, errores, total } = ACRED_IMP;
+    btn.disabled = !filas.length;
+    btn.textContent = filas.length ? `Importar ${filas.length}` : "Importar";
+    if (!texto.trim()) { vista.innerHTML = ""; return; }
+    if (!total) { vista.innerHTML = `<div class="acred-errores" style="list-style:none;padding-left:14px;">No se han encontrado filas. La primera línea debe ser la cabecera con los nombres de las columnas.</div>`; return; }
+    const cols = ["nombre", "email", "equipo", "tipo_evento", "jornada_partido", "estado"];
+    vista.innerHTML = `
+      <div class="acred-resumen-imp"><span class="ok">${filas.length} válidas</span>${errores.length ? `<span class="mal">${errores.length} con error</span>` : ""}<span class="info">${total} filas leídas</span></div>
+      ${filas.length ? `<div class="acred-preview"><table><thead><tr><th>Nombre</th><th>Correo</th><th>Equipo</th><th>Evento</th><th>Partido</th><th>Estado</th></tr></thead><tbody>${
+        filas.slice(0, 5).map((f) => `<tr>${cols.map((c) => `<td title="${escapeHtml(f[c])}">${escapeHtml(f[c]) || "—"}</td>`).join("")}</tr>`).join("")}</tbody></table></div>
+      ${filas.length > 5 ? `<p class="acred-ayuda-csv" style="margin:-4px 0 12px;">…y ${filas.length - 5} más.</p>` : ""}` : ""}
+      ${ACRED_IMP.sinNombre ? `<div class="acred-errores" style="list-style:none;padding-left:14px;margin-bottom:8px;"><b>No se ha encontrado la columna del nombre.</b> Renombra la cabecera a <b>Nombre</b> (o “Nombre y apellidos”) y vuelve a subir el archivo.</div>` : ""}
+      ${(ACRED_IMP.sinReconocer || []).length ? `<p class="acred-ayuda-csv" style="margin:0 0 10px;">Columnas que no se importan (no se reconocen): ${ACRED_IMP.sinReconocer.slice(0, 8).map((c) => `<b>${escapeHtml(c)}</b>`).join(", ")}${ACRED_IMP.sinReconocer.length > 8 ? "…" : ""}</p>` : ""}
+      ${errores.length ? `<ul class="acred-errores">${errores.slice(0, 6).map((e) => `<li>Fila ${e.fila}: ${escapeHtml(e.motivo)}</li>`).join("")}${errores.length > 6 ? `<li>…y ${errores.length - 6} más</li>` : ""}</ul>` : ""}`;
+  };
+  const leerArchivo = async (f) => {
+    if (!f) return;
+    try {
+      const buf = await f.arrayBuffer();
+      const b = new Uint8Array(buf);
+      const esZip = b.length > 3 && b[0] === 0x50 && b[1] === 0x4b && b[2] === 0x03 && b[3] === 0x04;
+      const texto = esZip ? await acredLeerCsvDeZip(buf) : new TextDecoder("utf-8").decode(buf);
+      pegar.value = texto; analizar(texto);
+    } catch (err) {
+      EOF.toast(err.message || "No se ha podido leer el archivo", "error");
+    }
+  };
+  ov.querySelector("#acredArchivo").addEventListener("change", (e) => leerArchivo(e.target.files[0]));
+  const drop = ov.querySelector("#acredDrop");
+  ["dragenter", "dragover"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add("encima"); }));
+  ["dragleave", "drop"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove("encima"); }));
+  drop.addEventListener("drop", (e) => leerArchivo(e.dataTransfer.files[0]));
+  let t = null;
+  pegar.addEventListener("input", () => { clearTimeout(t); t = setTimeout(() => analizar(pegar.value), 350); });
+  ov.querySelector("#acredPlantilla").addEventListener("click", descargarPlantillaAcreditaciones);
+  btn.addEventListener("click", async () => {
+    const filas = ACRED_IMP.filas;
+    if (!filas.length) return;
+    btn.disabled = true; btn.textContent = "Importando…";
+    const omitir = ov.querySelector("#acredOmitirDup").checked;
+    let importadas = 0, duplicadas = 0, fallos = 0;
+    try {
+      for (let i = 0; i < filas.length; i += 200) {
+        const r = await apiFetch("/api/acreditaciones/importar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ filas: filas.slice(i, i + 200), omitir_duplicadas: omitir }),
+        });
+        importadas += r.importadas || 0; duplicadas += r.duplicadas || 0; fallos += (r.errores || []).length;
+      }
+      cerrar();
+      EOF.toast(`Importadas ${importadas}` + (duplicadas ? ` · ${duplicadas} duplicadas omitidas` : "") + (fallos ? ` · ${fallos} con error` : ""), importadas ? "exito" : "info");
+      cargaAcreditaciones();
+    } catch (err) {
+      EOF.toast("Error: " + err.message + (importadas ? ` (ya se habían importado ${importadas})` : ""), "error");
+      btn.disabled = false; btn.textContent = `Importar ${filas.length}`;
+      if (importadas) cargaAcreditaciones();
+    }
+  });
+}
+
+// ----- Personalizar el formulario público -----
+function abrirEditorFormularioAcreditacion() {
+  const c = JSON.parse(JSON.stringify(ACRED_CONFIG || ACRED_CONFIG_DEFECTO));
+  const ed = { eventos: [...c.eventos], acreditaciones: [...c.acreditaciones] };
+  const PD = ACRED_CONFIG_DEFECTO.preguntas;
+  c.preguntas = { ...JSON.parse(JSON.stringify(PD)), ...(c.preguntas || {}) };
+  c.secciones = { ...ACRED_CONFIG_DEFECTO.secciones, ...(c.secciones || {}) };
+  const bloquePregunta = (k, n) => {
+    const p = { ...PD[k], ...c.preguntas[k] }, fija = ACRED_PREGUNTAS_FIJAS.includes(k);
+    const lista = k === "tipo_evento" || k === "tipo_acreditacion";
+    return `
+    <div class="acred-preg" data-preg="${k}">
+      <div class="acred-preg-cab"><b>${n}. ${escapeHtml(PD[k].etiqueta.length > 40 ? PD[k].etiqueta.slice(0, 40) + "…" : PD[k].etiqueta)}</b>${fija ? '<span class="acred-preg-fija">Siempre visible y obligatoria</span>' : `
+        <label class="acred-interruptor"><input type="checkbox" data-p="activa" ${p.activa ? "checked" : ""}><i></i>Visible</label>
+        <label class="acred-interruptor"><input type="checkbox" data-p="obligatoria" ${p.obligatoria ? "checked" : ""}><i></i>Obligatoria</label>`}</div>
+      <div class="acred-campo"><label>Pregunta</label><input type="text" data-p="etiqueta" maxlength="300" value="${escapeHtml(p.etiqueta)}"></div>
+      ${lista ? "" : `<div class="acred-campo"><label>Texto de ayuda dentro de la casilla</label><input type="text" data-p="ayuda" maxlength="200" value="${escapeHtml(p.ayuda)}"></div>`}
+      <div class="acred-campo" style="margin:0;"><label>Mensaje si está mal o falta</label><input type="text" data-p="error" maxlength="200" value="${escapeHtml(p.error)}"></div>
+    </div>`;
+  };
+  const ORDEN_P = ["nombre", "email", "dni", "equipo", "tipo_evento", "tipo_acreditacion", "funciones", "jornada_partido"];
+  const filasLista = (clave, ph) => ed[clave].map((v, i) => `
+    <div class="acred-lista-ed-fila" data-i="${i}">
+      <input type="text" value="${escapeHtml(v)}" maxlength="150" placeholder="${ph}" data-lista="${clave}" data-i="${i}">
+      <button type="button" class="acred-mini" data-acc="sube" data-lista="${clave}" data-i="${i}" title="Subir" ${i === 0 ? "disabled" : ""}>${ACRED_ICO.sube}</button>
+      <button type="button" class="acred-mini" data-acc="baja" data-lista="${clave}" data-i="${i}" title="Bajar" ${i === ed[clave].length - 1 ? "disabled" : ""}>${ACRED_ICO.baja}</button>
+      <button type="button" class="acred-mini peligro" data-acc="borra" data-lista="${clave}" data-i="${i}" title="Quitar">${ACRED_ICO.borra}</button>
+    </div>`).join("");
+  const { ov, cerrar } = acredModal(`
+    <div class="acred-modal" role="dialog" aria-modal="true" aria-labelledby="acredEdTit" style="max-width:820px;">
+      <div class="acred-modal-cab">
+        <div><h3 id="acredEdTit">Personalizar el formulario</h3><p>Cambia los textos y las opciones que ve quien rellena el formulario. Los cambios se aplican al guardar.</p></div>
+        <button type="button" class="acred-cerrar" data-cerrar aria-label="Cerrar">×</button>
+      </div>
+      <div class="acred-modal-cuerpo">
+        <div class="acred-grupo"><h4>Textos</h4>
+          <div class="acred-campo"><label for="acredCfgTitulo">Título</label><input type="text" id="acredCfgTitulo" maxlength="120" value="${escapeHtml(c.titulo)}"><small>Lo que va antes de “|” es el título de la pantalla del PIN.</small></div>
+          <div class="acred-campo"><label for="acredCfgIntro">Introducción</label><textarea id="acredCfgIntro" maxlength="600">${escapeHtml(c.intro)}</textarea></div>
+          <div class="acred-campo"><label for="acredCfgAviso">Aviso</label><textarea id="acredCfgAviso" maxlength="800">${escapeHtml(c.aviso)}</textarea></div>
+          <div class="acred-campo"><label for="acredCfgConf">Texto de confirmación (casilla obligatoria)</label><textarea id="acredCfgConf" maxlength="600">${escapeHtml(c.confirmacion)}</textarea></div>
+          <div class="acred-campo" style="margin:0;"><label for="acredCfgGracias">Mensaje tras enviar</label><textarea id="acredCfgGracias" maxlength="600">${escapeHtml(c.gracias)}</textarea></div>
+        </div>
+        <div class="acred-grupo"><h4>Correo al aprobar</h4>
+          <p style="margin:0 0 12px;font-size:.78rem;color:var(--ac-suave);">Textos por defecto del correo que recibe la persona al aprobar su solicitud. Puedes cambiarlos en cada solicitud antes de aprobarla. Estos datos no se muestran en el formulario público.</p>
+          <div class="acred-campo"><label for="acredCfgRecogida">Dónde y cuándo recoger la acreditación</label><textarea id="acredCfgRecogida" maxlength="600" placeholder="Ej.: Sala de prensa del estadio, 90 minutos antes del partido">${escapeHtml(c.recogida || "")}</textarea></div>
+          <div class="acred-campo" style="margin:0;"><label for="acredCfgInstr">Instrucciones adicionales</label><textarea id="acredCfgInstr" maxlength="800">${escapeHtml(c.instrucciones_aprobada || "")}</textarea></div>
+        </div>
+        <div class="acred-grupo"><h4>Preguntas del formulario</h4>
+          <p style="margin:0 0 12px;font-size:.78rem;color:var(--ac-suave);">Aquí están todas las preguntas: cambia su texto, ocúltalas u hazlas opcionales. Nombre, correo, equipo y tipo de acreditación no se pueden quitar. Las opciones de “tipo de evento” y “tipo de acreditación” se editan más abajo.</p>
+          <div class="acred-campo"><label for="acredSecA">Título de la sección 1</label><input type="text" id="acredSecA" maxlength="100" value="${escapeHtml(c.secciones.solicitante)}"></div>
+          ${ORDEN_P.slice(0, 6).map((k, i) => bloquePregunta(k, i + 1)).join("")}
+          <div class="acred-campo"><label for="acredSecB">Título de la sección 2</label><input type="text" id="acredSecB" maxlength="100" value="${escapeHtml(c.secciones.cobertura)}"></div>
+          ${ORDEN_P.slice(6).map((k, i) => bloquePregunta(k, i + 7)).join("")}
+          <div class="acred-campo" style="margin:0;"><label for="acredSecC">Título de la sección 3 (confirmación)</label><input type="text" id="acredSecC" maxlength="100" value="${escapeHtml(c.secciones.confirmacion)}"></div>
+        </div>
+        <div class="acred-grupo"><h4>Tipos de evento</h4>
+          <div class="acred-lista-ed" id="acredLstEventos">${filasLista("eventos", "Ej.: Rueda de prensa")}</div>
+          <button type="button" class="acred-btn acred-btn-sec" data-acc="add" data-lista="eventos">+ Añadir tipo de evento</button>
+          <div style="margin-top:14px;"><label class="acred-interruptor"><input type="checkbox" id="acredCfgOtro" ${c.evento_otro ? "checked" : ""}><i></i>Permitir la opción “Otro:” con texto libre</label></div>
+        </div>
+        <div class="acred-grupo" style="margin-bottom:0;"><h4>Tipos de acreditación</h4>
+          <div class="acred-lista-ed" id="acredLstAcred">${filasLista("acreditaciones", "Ej.: Prensa / Pupitre")}</div>
+          <button type="button" class="acred-btn acred-btn-sec" data-acc="add" data-lista="acreditaciones">+ Añadir tipo de acreditación</button>
+          <small style="display:block;margin-top:8px;color:var(--ac-suave);font-size:.75rem;">Hace falta al menos uno. Las solicitudes antiguas conservan el tipo que eligieron.</small>
+        </div>
+      </div>
+      <div class="acred-modal-pie">
+        <button type="button" class="acred-btn acred-btn-peligro" id="acredCfgRestaurar">Restaurar valores por defecto</button>
+        <span class="espacio"></span>
+        <button type="button" class="acred-btn acred-btn-sec" id="acredCfgVer">Ver formulario</button>
+        <button type="button" class="acred-btn" id="acredCfgGuardar">Guardar cambios</button>
+      </div>
+    </div>`);
+  const repintar = (clave) => {
+    const cont = ov.querySelector(clave === "eventos" ? "#acredLstEventos" : "#acredLstAcred");
+    cont.innerHTML = filasLista(clave, clave === "eventos" ? "Ej.: Rueda de prensa" : "Ej.: Prensa / Pupitre");
+  };
+  ov.addEventListener("input", (e) => {
+    const t = e.target;
+    if (t.dataset && t.dataset.lista && t.dataset.i !== undefined) ed[t.dataset.lista][Number(t.dataset.i)] = t.value;
+  });
+  ov.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-acc]");
+    if (!b) return;
+    const clave = b.dataset.lista, i = Number(b.dataset.i), arr = ed[clave];
+    if (b.dataset.acc === "add") { arr.push(""); repintar(clave); const ins = ov.querySelectorAll(`input[data-lista="${clave}"]`); if (ins.length) ins[ins.length - 1].focus(); return; }
+    if (b.dataset.acc === "borra") arr.splice(i, 1);
+    if (b.dataset.acc === "sube" && i > 0) [arr[i - 1], arr[i]] = [arr[i], arr[i - 1]];
+    if (b.dataset.acc === "baja" && i < arr.length - 1) [arr[i + 1], arr[i]] = [arr[i], arr[i + 1]];
+    repintar(clave);
+  });
+  ov.querySelector("#acredCfgVer").addEventListener("click", () => window.open(urlFormularioAcreditacion(), "_blank", "noopener"));
+  ov.querySelector("#acredCfgGuardar").addEventListener("click", async () => {
+    const limpiar = (a) => a.map((x) => String(x).replace(/\s+/g, " ").trim()).filter(Boolean);
+    const cfg = {
+      titulo: ov.querySelector("#acredCfgTitulo").value.trim(),
+      intro: ov.querySelector("#acredCfgIntro").value.trim(),
+      aviso: ov.querySelector("#acredCfgAviso").value.trim(),
+      confirmacion: ov.querySelector("#acredCfgConf").value.trim(),
+      gracias: ov.querySelector("#acredCfgGracias").value.trim(),
+      recogida: ov.querySelector("#acredCfgRecogida").value.trim(),
+      instrucciones_aprobada: ov.querySelector("#acredCfgInstr").value.trim(),
+      eventos: limpiar(ed.eventos),
+      evento_otro: ov.querySelector("#acredCfgOtro").checked,
+      acreditaciones: limpiar(ed.acreditaciones),
+      secciones: {
+        solicitante: ov.querySelector("#acredSecA").value.trim(),
+        cobertura: ov.querySelector("#acredSecB").value.trim(),
+        confirmacion: ov.querySelector("#acredSecC").value.trim(),
+      },
+      preguntas: {},
+    };
+    ov.querySelectorAll(".acred-preg").forEach((bloque) => {
+      const k = bloque.dataset.preg, fija = ACRED_PREGUNTAS_FIJAS.includes(k);
+      const val = (n) => { const e = bloque.querySelector(`[data-p="${n}"]`); return e ? e.value.trim() : undefined; };
+      const chk = (n) => { const e = bloque.querySelector(`[data-p="${n}"]`); return e ? e.checked : true; };
+      cfg.preguntas[k] = {
+        etiqueta: val("etiqueta"), error: val("error"),
+        ayuda: val("ayuda") === undefined ? ACRED_CONFIG_DEFECTO.preguntas[k].ayuda : val("ayuda"),
+        activa: fija ? true : chk("activa"), obligatoria: fija ? true : chk("obligatoria"),
+      };
+    });
+    if (!cfg.acreditaciones.length) { EOF.toast("Añade al menos un tipo de acreditación", "error"); return; }
+    if (!cfg.eventos.length && !cfg.evento_otro) { EOF.toast("Añade un tipo de evento o permite “Otro”", "error"); return; }
+    const btn = ov.querySelector("#acredCfgGuardar"); btn.disabled = true;
+    try {
+      ACRED_CONFIG = await apiFetch("/api/acreditaciones/config", {
+        method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cfg),
+      });
+      cerrar();
+      pintarAcreditaciones();
+      EOF.toast("Formulario actualizado", "exito");
+    } catch (err) {
+      btn.disabled = false;
+      EOF.toast("Error: " + err.message, "error");
+    }
+  });
+  ov.querySelector("#acredCfgRestaurar").addEventListener("click", async () => {
+    if (!(await EOF.confirmar("¿Restaurar los textos y opciones del formulario a sus valores por defecto?", { peligroso: true, textoConfirmar: "Restaurar" }))) return;
+    try {
+      ACRED_CONFIG = await apiFetch("/api/acreditaciones/config", {
+        method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ restaurar: true }),
+      });
+      cerrar();
+      EOF.toast("Formulario restaurado", "exito");
+      abrirEditorFormularioAcreditacion();
+    } catch (err) {
+      EOF.toast("Error: " + err.message, "error");
+    }
+  });
+}
+
+
+// ---------- FORMULARIOS (Solicitudes > Formularios) ----------
+// Lista de formularios del medio. "Acreditaciones" es un formulario ya creado
+// (su panel y su configuración son los de siempre, ver arriba) y desde aquí un
+// admin puede crear todos los formularios que quiera: cada uno con su enlace
+// público (/formulario?f=<slug>), sus campos y su bandeja de respuestas.
+let FORM_LISTA = [];
+let FORM_ACTUAL = null; // formulario personalizado abierto (objeto)
+let FORM_RESP = [];
+let FORM_RESP_FILTRO = "";
+const FORM_RESP_ABIERTAS = new Set();
+const FORM_TIPOS = {
+  texto: "Respuesta corta",
+  parrafo: "Párrafo (respuesta larga)",
+  email: "Correo electrónico",
+  telefono: "Teléfono",
+  numero: "Número",
+  fecha: "Fecha",
+  desplegable: "Desplegable",
+  opcion: "Opción única",
+  casillas: "Varias opciones (casillas)",
+  confirmacion: "Casilla de confirmación",
+  seccion: "Sección nueva (página aparte)",
+  enlaces: "Bloque de enlaces (guía, redes…)",
+};
+const FORM_TIPOS_CON_OPCIONES = ["desplegable", "opcion", "casillas"];
+const FORM_TIPOS_SIN_RESPUESTA = ["seccion", "enlaces"];
+// Enlaces <-> texto del editor: una línea por enlace, «Texto | https://…»
+const formEnlacesATexto = (arr) => (arr || []).map((e) => `${e.texto} | ${e.url}`).join("\n");
+const formTextoAEnlaces = (t) => String(t || "").split("\n").map((l) => {
+  const i = l.indexOf("|");
+  return i < 0 ? { texto: "", url: l.trim() } : { texto: l.slice(0, i).trim(), url: l.slice(i + 1).trim() };
+}).filter((e) => e.texto || e.url);
+
+function urlFormularioPublico(slug) {
+  return location.origin + "/formulario?f=" + encodeURIComponent(slug);
+}
+function formMostrarVista(cual) {
+  const v = { lista: "formListaVista", acred: "formAcredVista", custom: "formCustomVista" };
+  Object.entries(v).forEach(([k, id]) => {
+    const el = document.getElementById(id);
+    if (el) el.hidden = k !== cual;
+  });
+}
+function volverListaFormularios() {
+  FORM_ACTUAL = null;
+  cargaFormularios();
+}
+function abrirFormularioAcreditaciones() {
+  formMostrarVista("acred");
+  cargaAcreditaciones();
+}
+async function copiarTextoFormulario(texto, mensaje) {
+  try { await navigator.clipboard.writeText(texto); EOF.toast(mensaje, "exito"); }
+  catch { window.prompt("Copia el texto:", texto); }
+}
+
+async function cargaFormularios() {
+  formMostrarVista("lista");
+  const cont = document.getElementById("formGrid");
+  if (!cont) return;
+  cont.innerHTML = `<p class="solicitudes-vacio">Cargando...</p>`;
+  let acred = null;
+  try {
+    const { acreditaciones = [] } = await apiFetch("/api/acreditaciones");
+    acred = { total: acreditaciones.length, pendientes: acreditaciones.filter((a) => a.estado === "pendiente").length };
+  } catch { /* si falla se muestra la tarjeta sin cifras */ }
+  try {
+    const { formularios = [] } = await apiFetch("/api/formularios");
+    FORM_LISTA = formularios;
+  } catch (err) {
+    FORM_LISTA = [];
+    EOF.toast("No se han podido cargar los formularios: " + err.message, "error");
+  }
+  const nAcredPend = acred ? acred.pendientes : 0;
+  const tarjetaAcred = `
+    <article class="fmz-card fmz-card-fija">
+      <div class="fmz-card-cab">
+        <span class="fmz-chip fmz-chip-ya">Ya creado</span>
+        ${nAcredPend ? `<span class="fmz-chip fmz-chip-nuevas">${nAcredPend} pendiente${nAcredPend === 1 ? "" : "s"}</span>` : ""}
+      </div>
+      <h4>Formulario de acreditaciones</h4>
+      <p>Solicitudes de acreditación para partidos, ruedas de prensa y actos. Con su propio acceso (PIN, login o libre), personalización, importación y aprobación.</p>
+      <div class="fmz-card-meta">${acred ? `${acred.total} solicitud${acred.total === 1 ? "" : "es"}` : ""}</div>
+      <div class="fmz-card-acciones">
+        <button type="button" class="acred-btn" onclick="abrirFormularioAcreditaciones()">Abrir</button>
+        <button type="button" class="acred-btn acred-btn-sec" onclick="copiarTextoFormulario(urlFormularioAcreditacion(), 'Enlace copiado')">Copiar enlace</button>
+      </div>
+    </article>`;
+  const tarjetas = FORM_LISTA.map((f) => `
+    <article class="fmz-card ${f.activo ? "" : "fmz-card-pausado"}">
+      <div class="fmz-card-cab">
+        <span class="fmz-chip ${f.activo ? "fmz-chip-ok" : "fmz-chip-pausa"}">${f.activo ? "Activo" : "Pausado"}</span>
+        <span class="fmz-chip">${f.acceso === "pin" ? "Con PIN" : "Acceso libre"}</span>
+        ${f.nuevas ? `<span class="fmz-chip fmz-chip-nuevas">${f.nuevas} nueva${f.nuevas === 1 ? "" : "s"}</span>` : ""}
+      </div>
+      <h4>${escapeHtml(f.titulo)}</h4>
+      <p>${escapeHtml((f.descripcion || "").slice(0, 140)) || "<i>Sin descripción</i>"}</p>
+      <div class="fmz-card-meta">${f.total_respuestas} respuesta${f.total_respuestas === 1 ? "" : "s"} · ${f.campos.length} campo${f.campos.length === 1 ? "" : "s"}</div>
+      <div class="fmz-card-acciones">
+        <button type="button" class="acred-btn" onclick="abrirFormularioPersonalizado(${f.id})">Respuestas</button>
+        <button type="button" class="acred-btn acred-btn-sec" onclick="abrirEditorFormulario(${f.id})">Editar</button>
+        <button type="button" class="acred-btn acred-btn-sec" onclick="copiarTextoFormulario(urlFormularioPublico(${argJs(f.slug)}), 'Enlace copiado')">Copiar enlace</button>
+      </div>
+    </article>`).join("");
+  cont.innerHTML = tarjetaAcred + tarjetas;
+}
+
+// ----- Bandeja de respuestas de un formulario personalizado -----
+async function abrirFormularioPersonalizado(id) {
+  const f = FORM_LISTA.find((x) => x.id === id);
+  if (!f) return;
+  FORM_ACTUAL = f;
+  FORM_RESP_FILTRO = "";
+  FORM_RESP_ABIERTAS.clear();
+  formMostrarVista("custom");
+  const cont = document.getElementById("formCustomVista");
+  cont.innerHTML = `
+    <button type="button" class="acred-btn acred-btn-sec fmz-volver" onclick="volverListaFormularios()">← Todos los formularios</button>
+    <div class="acred-hero">
+      <div class="acred-hero-texto">
+        <h3 class="titulo-subseccion" style="margin-top:0;">${escapeHtml(f.titulo)}</h3>
+        <p class="ayuda-editor" style="margin:0;">Enlace público: <a href="${escapeHtml(urlFormularioPublico(f.slug))}" target="_blank" rel="noopener">${escapeHtml(urlFormularioPublico(f.slug))}</a>${f.acceso === "pin" ? ` · PIN: <b>${escapeHtml(f.pin || "—")}</b>` : ""}${f.activo ? "" : " · <b>Pausado</b>: nadie puede rellenarlo ahora"}</p>
+      </div>
+      <div class="acred-hero-acciones">
+        <button type="button" class="acred-btn acred-btn-sec" onclick="copiarTextoFormulario(urlFormularioPublico(${argJs(f.slug)}), 'Enlace copiado')">Copiar enlace</button>
+        <button type="button" class="acred-btn acred-btn-sec" onclick="exportarRespuestasFormularioCSV()">Descargar CSV</button>
+        <button type="button" class="acred-btn" onclick="abrirEditorFormulario(${f.id})">Editar formulario</button>
+      </div>
+    </div>
+    <div id="formInvitadosCaja"></div>
+    <div class="fmz-filtros" id="formRespFiltros"></div>
+    <div id="formRespLista"><p class="solicitudes-vacio">Cargando...</p></div>`;
+  cargarInvitadosFormulario(); // en paralelo: no hace falta esperar a las invitaciones para ver las respuestas
+  await cargarRespuestasFormulario();
+}
+// ----- Personas invitadas: añadir gente al formulario SIN editarlo (caducan solas) -----
+// Cada persona sale en la lista desplegable del formulario público durante unos días (7 por defecto)
+// y desaparece al caducar o cuando responde. Ver "invitaciones" en worker/src/index.js.
+let FORM_INVITADOS = [];
+const FORM_INV_DIAS = [[1, "1 día"], [3, "3 días"], [7, "7 días"], [14, "14 días"], [30, "30 días"], [0, "Sin caducidad"]];
+const formCamposConInvitaciones = (f) => ((f && f.campos) || []).filter((c) => (c.tipo === "desplegable" || c.tipo === "opcion") && (c.invitaciones || c.alta_usuario));
+const formInvFecha = (txt) => new Date(String(txt).replace(" ", "T") + "Z");
+function formInvEstado(i) {
+  if (i.estado === "usada") return { clase: "fmz-chip-ya", texto: "Ya ha respondido" };
+  if (i.estado === "caducada") return { clase: "fmz-chip-pausa", texto: "Caducada" };
+  if (!i.expira_at) return { clase: "fmz-chip-ok", texto: "Sin caducidad" };
+  const ms = formInvFecha(i.expira_at) - Date.now();
+  if (ms <= 0) return { clase: "fmz-chip-pausa", texto: "Caducada" };
+  if (ms < 86400000) return { clase: "fmz-chip-nuevas", texto: `Caduca en ${Math.max(1, Math.ceil(ms / 3600000))} h` };
+  const d = Math.ceil(ms / 86400000);
+  return { clase: d <= 2 ? "fmz-chip-nuevas" : "fmz-chip-ok", texto: `Caduca en ${d} día${d === 1 ? "" : "s"}` };
+}
+function formInvPlaceholder(c) {
+  return c && c.alta_usuario ? "Nombre — Equipo\nNombre — Equipo 1 & Equipo 2" : "Una persona por línea";
+}
+function formInvCambiaCampo() {
+  const sel = document.getElementById("formInvCampo");
+  const area = document.getElementById("formInvNombres");
+  if (!sel || !area) return;
+  area.placeholder = formInvPlaceholder(formCamposConInvitaciones(FORM_ACTUAL).find((c) => c.id === sel.value));
+}
+async function cargarInvitadosFormulario() {
+  const caja = document.getElementById("formInvitadosCaja");
+  const f = FORM_ACTUAL;
+  if (!caja || !f) return;
+  if (!formCamposConInvitaciones(f).length) { caja.innerHTML = ""; return; }
+  try {
+    const { invitados = [] } = await apiFetch(`/api/formularios/${f.id}/invitados`);
+    if (!FORM_ACTUAL || FORM_ACTUAL.id !== f.id) return; // se cambió de formulario mientras cargaba
+    FORM_INVITADOS = invitados;
+  } catch (err) {
+    FORM_INVITADOS = [];
+    EOF.toast("No se han podido cargar las invitaciones: " + err.message, "error");
+  }
+  // El formulario de alta se pinta una sola vez (así no se pierde lo que se esté escribiendo); después solo se refresca la lista.
+  if (!document.getElementById("formInvLista")) pintarFormularioInvitaciones();
+  else pintarListaInvitaciones();
+}
+function pintarFormularioInvitaciones() {
+  const caja = document.getElementById("formInvitadosCaja");
+  const campos = formCamposConInvitaciones(FORM_ACTUAL);
+  if (!caja || !campos.length) return;
+  const rolTxt = (c) => (c.alta_usuario ? ` (${c.alta_usuario === "fotografo" ? "fotógrafos" : "redactores"})` : "");
+  caja.innerHTML = `
+    <section class="fmz-inv" aria-labelledby="formInvTit">
+      <h4 id="formInvTit">Personas invitadas</h4>
+      <p class="ayuda-editor" style="margin:0;">Añade aquí a quien deba rellenar el formulario, sin editarlo. Su nombre sale en la lista durante unos días y desaparece solo al caducar o cuando responda.</p>
+      <div class="fmz-inv-form">
+        ${campos.length > 1
+          ? `<div class="acred-campo"><label for="formInvCampo">Lista</label><select id="formInvCampo" onchange="formInvCambiaCampo()">${campos.map((c) => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.etiqueta)}${rolTxt(c)}</option>`).join("")}</select></div>`
+          : `<input type="hidden" id="formInvCampo" value="${escapeHtml(campos[0].id)}">`}
+        <div class="acred-campo"><label for="formInvNombres">Personas (una por línea)</label><textarea id="formInvNombres" rows="3" placeholder="${escapeHtml(formInvPlaceholder(campos[0]))}"></textarea></div>
+        <div class="fmz-inv-fila">
+          <div class="acred-campo"><label for="formInvDias">Caduca a los</label><select id="formInvDias">${FORM_INV_DIAS.map(([d, t]) => `<option value="${d}" ${d === 7 ? "selected" : ""}>${t}</option>`).join("")}</select></div>
+          <button type="button" class="acred-btn" id="formInvAnadir" onclick="anadirInvitadosFormulario()">Invitar</button>
+        </div>
+      </div>
+      <div id="formInvLista"></div>
+    </section>`;
+  pintarListaInvitaciones();
+}
+function pintarListaInvitaciones() {
+  const cont = document.getElementById("formInvLista");
+  if (!cont) return;
+  const campos = formCamposConInvitaciones(FORM_ACTUAL);
+  const etiquetaCampo = (id) => (campos.find((c) => c.id === id) || {}).etiqueta || "";
+  const orden = { activa: 0, caducada: 1, usada: 2 };
+  const lista = [...FORM_INVITADOS].sort((a, b) => {
+    if (a.estado !== b.estado) return orden[a.estado] - orden[b.estado];
+    if (a.estado === "activa") return String(a.expira_at || "9999").localeCompare(String(b.expira_at || "9999")); // las que caducan antes, primero
+    return b.id - a.id;
+  });
+  if (!lista.length) { cont.innerHTML = `<p class="solicitudes-vacio" style="margin:0;">Aún no has invitado a nadie.</p>`; return; }
+  cont.innerHTML = lista.map((i) => {
+    const e = formInvEstado(i);
+    return `
+      <div class="fmz-inv-persona fmz-inv-${i.estado}">
+        <div class="fmz-inv-nombre"><b>${escapeHtml(i.opcion)}</b>${campos.length > 1 ? `<small>${escapeHtml(etiquetaCampo(i.campo_id))}</small>` : ""}</div>
+        <span class="fmz-chip ${e.clase}">${escapeHtml(e.texto)}</span>
+        <div class="fmz-inv-acc">
+          ${i.estado === "usada" ? "" : `<button type="button" class="acred-btn acred-btn-sec" onclick="copiarMensajeInvitacionFormulario(${i.id})">Copiar mensaje</button>
+          <button type="button" class="acred-btn acred-btn-sec" onclick="renovarInvitacionFormulario(${i.id})">${i.estado === "caducada" ? "Renovar 7 días" : "Alargar 7 días"}</button>`}
+          <button type="button" class="acred-btn acred-btn-sec" onclick="quitarInvitacionFormulario(${i.id})">Quitar</button>
+        </div>
+      </div>`;
+  }).join("");
+}
+async function anadirInvitadosFormulario() {
+  const f = FORM_ACTUAL;
+  if (!f) return;
+  const area = document.getElementById("formInvNombres");
+  const personas = area.value.split("\n").map((x) => x.trim()).filter(Boolean);
+  if (!personas.length) { EOF.toast("Escribe al menos un nombre", "error"); area.focus(); return; }
+  const btn = document.getElementById("formInvAnadir");
+  btn.disabled = true;
+  try {
+    const r = await apiFetch(`/api/formularios/${f.id}/invitados`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ campo_id: document.getElementById("formInvCampo").value, personas, dias: Number(document.getElementById("formInvDias").value) }),
+    });
+    const omitidas = r.omitidas || [];
+    area.value = omitidas.map((o) => o.opcion).join("\n"); // lo que no se pudo añadir se queda escrito para corregirlo
+    const partes = [];
+    if (r.anadidas) partes.push(`${r.anadidas} invitada${r.anadidas === 1 ? "" : "s"}`);
+    if (r.renovadas) partes.push(`${r.renovadas} renovada${r.renovadas === 1 ? "" : "s"}`);
+    if (omitidas.length) partes.push(`${omitidas.length} sin añadir (${omitidas.slice(0, 3).map((o) => `${o.opcion}: ${o.motivo}`).join("; ")}${omitidas.length > 3 ? "…" : ""})`);
+    EOF.toast(partes.join(" · ") || "No había nada que añadir", omitidas.length && !r.anadidas && !r.renovadas ? "error" : "exito");
+    await cargarInvitadosFormulario();
+  } catch (err) {
+    EOF.toast("Error: " + err.message, "error");
+  } finally {
+    btn.disabled = false;
+  }
+}
+async function renovarInvitacionFormulario(id) {
+  try {
+    await apiFetch(`/api/formularios/invitados/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dias: 7 }) });
+    EOF.toast("Invitación renovada: 7 días desde ahora", "exito");
+    await cargarInvitadosFormulario();
+  } catch (err) { EOF.toast("Error: " + err.message, "error"); }
+}
+async function quitarInvitacionFormulario(id) {
+  const i = FORM_INVITADOS.find((x) => x.id === id);
+  if (!i) return;
+  if (!(await EOF.confirmar(`¿Quitar la invitación de "${i.opcion}"? Dejará de aparecer en la lista del formulario.`, { textoConfirmar: "Quitar" }))) return;
+  try {
+    await apiFetch(`/api/formularios/invitados/${id}`, { method: "DELETE" });
+    EOF.toast("Invitación quitada", "exito");
+    await cargarInvitadosFormulario();
+  } catch (err) { EOF.toast("Error: " + err.message, "error"); }
+}
+// Mensaje listo para pegar en WhatsApp/Discord: enlace, PIN si lo hay y hasta cuándo vale.
+function copiarMensajeInvitacionFormulario(id) {
+  const i = FORM_INVITADOS.find((x) => x.id === id);
+  const f = FORM_ACTUAL;
+  if (!i || !f) return;
+  const nombre = String(i.opcion).replace(/\s*\([^)]*\)\s*$/, "").split(" — ")[0].trim();
+  const hasta = i.expira_at ? ` Está disponible hasta el ${formInvFecha(i.expira_at).toLocaleDateString("es-ES", { day: "numeric", month: "long" })}.` : "";
+  const pin = f.acceso === "pin" && f.pin ? ` El PIN es ${f.pin}.` : "";
+  copiarTextoFormulario(`Hola, ${nombre}. Rellena el formulario «${f.titulo}» aquí: ${urlFormularioPublico(f.slug)} y elige tu nombre en la lista.${pin}${hasta}`, "Mensaje copiado");
+}
+
+async function cargarRespuestasFormulario() {
+  if (!FORM_ACTUAL) return;
+  try {
+    const { respuestas = [] } = await apiFetch(`/api/formularios/${FORM_ACTUAL.id}/respuestas`);
+    FORM_RESP = respuestas;
+  } catch (err) {
+    FORM_RESP = [];
+    EOF.toast("Error: " + err.message, "error");
+  }
+  pintarRespuestasFormulario();
+}
+function formValorTexto(v) {
+  if (Array.isArray(v)) return v.join(", ");
+  if (v === true) return "Sí";
+  return v == null ? "" : String(v);
+}
+function filtrarRespuestasFormulario(estado) {
+  FORM_RESP_FILTRO = estado;
+  pintarRespuestasFormulario();
+}
+function pintarRespuestasFormulario() {
+  const cont = document.getElementById("formRespLista");
+  const filt = document.getElementById("formRespFiltros");
+  if (!cont || !FORM_ACTUAL) return;
+  const nuevas = FORM_RESP.filter((r) => r.estado === "nueva").length;
+  const btn = (est, txt, n) => `<button type="button" class="acred-stat ${FORM_RESP_FILTRO === est ? "activo" : ""}" onclick="filtrarRespuestasFormulario('${est}')"><span class="acred-stat-num">${n}</span><span class="acred-stat-et">${txt}</span></button>`;
+  filt.innerHTML = btn("", "Total", FORM_RESP.length) + btn("nueva", "Nuevas", nuevas) + btn("revisada", "Revisadas", FORM_RESP.length - nuevas);
+  const lista = FORM_RESP.filter((r) => !FORM_RESP_FILTRO || r.estado === FORM_RESP_FILTRO);
+  if (!lista.length) {
+    cont.innerHTML = `<p class="solicitudes-vacio">${FORM_RESP.length ? "No hay respuestas con este filtro." : "Todavía no ha respondido nadie."}</p>`;
+    return;
+  }
+  const campos = (FORM_ACTUAL.campos || []).filter((c) => !FORM_TIPOS_SIN_RESPUESTA.includes(c.tipo));
+  cont.innerHTML = lista.map((r) => {
+    const abierta = FORM_RESP_ABIERTAS.has(r.id);
+    const filas = campos.filter((c) => formCampoVisible(c, r.datos)).map((c) => {
+      const t = formValorTexto(r.datos[c.id]);
+      return `<div class="fmz-resp-dato"><span>${escapeHtml(c.etiqueta)}</span><b>${t ? escapeHtml(t).replace(/\n/g, "<br>") : "<i>Sin respuesta</i>"}</b></div>`;
+    }).join("");
+    const extra = Object.keys(r.datos).filter((k) => !campos.some((c) => c.id === k))
+      .map((k) => `<div class="fmz-resp-dato"><span>Campo eliminado</span><b>${escapeHtml(formValorTexto(r.datos[k]))}</b></div>`).join("");
+    return `
+    <div class="fmz-resp ${r.estado === "nueva" ? "fmz-resp-nueva" : ""}">
+      <button type="button" class="fmz-resp-cab" onclick="alternarRespuestaFormulario(${r.id})" aria-expanded="${abierta}">
+        <span class="fmz-resp-fecha">${escapeHtml(String(r.created_at || "").slice(0, 16).replace("T", " "))}</span>
+        <span class="fmz-resp-resumen">${formResumenRespuesta(r, campos)}</span>
+        <span class="fmz-chip ${r.estado === "nueva" ? "fmz-chip-nuevas" : "fmz-chip-ok"}">${r.estado === "nueva" ? "Nueva" : "Revisada"}</span>
+      </button>
+      ${abierta ? `<div class="fmz-resp-cuerpo">
+        ${filas}${extra}
+        <div class="acred-campo" style="margin:12px 0 0;"><label for="formNota${r.id}">Nota interna</label><textarea id="formNota${r.id}" maxlength="1000">${escapeHtml(r.nota_admin || "")}</textarea></div>
+        <div class="fmz-card-acciones" style="margin-top:12px;">
+          <button type="button" class="acred-btn" onclick="guardarRespuestaFormulario(${r.id}, '${r.estado === "nueva" ? "revisada" : "nueva"}')">${r.estado === "nueva" ? "Marcar como revisada" : "Volver a nueva"}</button>
+          <button type="button" class="acred-btn acred-btn-sec" onclick="guardarRespuestaFormulario(${r.id}, '${r.estado}')">Guardar nota</button>
+          <button type="button" class="acred-btn acred-btn-sec" onclick="editarRespuestaFormulario(${r.id})">Editar respuesta</button>
+          <button type="button" class="acred-btn acred-btn-peligro" onclick="eliminarRespuestaFormulario(${r.id})">Eliminar</button>
+        </div>
+      </div>` : ""}
+    </div>`;
+  }).join("");
+}
+// ¿Corresponde esta pregunta según lo respondido? (con rol Redactor no salen las de fotógrafo y al revés)
+function formCampoVisible(c, datos) {
+  if (!c.mostrar_si) return true;
+  const x = datos[c.mostrar_si.campo];
+  return Array.isArray(x) ? x.includes(c.mostrar_si.igual) : String(x == null ? "" : x) === String(c.mostrar_si.igual);
+}
+// Resumen de la cabecera de cada respuesta: nombre y equipo (sin el rol).
+function formResumenRespuesta(r, campos) {
+  const lleno = (c) => formValorTexto(r.datos[c.id]).trim();
+  const c = campos.find((x) => x.alta_usuario && lleno(x)) || campos.find((x) => /nombre/i.test(x.etiqueta || "") && lleno(x));
+  if (c) {
+    const [nom, ...eq] = lleno(c).split(/\s+[—–-]\s+/);
+    return `<b>${escapeHtml(nom.trim())}</b>${eq.length ? ` <em>${escapeHtml(eq.join(" — ").trim())}</em>` : ""}`;
+  }
+  const otro = campos.find((x) => !/\brol\b/i.test(x.etiqueta || "") && x.id !== "rol" && lleno(x));
+  return escapeHtml((otro ? lleno(otro) : "(sin datos)").slice(0, 90));
+}
+function alternarRespuestaFormulario(id) {
+  // Solo puede haber una respuesta abierta: al abrir una se cierra la que hubiera.
+  if (FORM_RESP_ABIERTAS.has(id)) FORM_RESP_ABIERTAS.delete(id); else { FORM_RESP_ABIERTAS.clear(); FORM_RESP_ABIERTAS.add(id); }
+  pintarRespuestasFormulario();
+}
+async function guardarRespuestaFormulario(id, estado) {
+  const nota = (document.getElementById("formNota" + id) || {}).value || "";
+  try {
+    await apiFetch(`/api/formularios/respuestas/${id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ estado, nota_admin: nota }),
+    });
+    const r = FORM_RESP.find((x) => x.id === id);
+    if (r) { r.estado = estado; r.nota_admin = nota; }
+    pintarRespuestasFormulario();
+    EOF.toast("Guardado", "exito");
+  } catch (err) {
+    EOF.toast("Error: " + err.message, "error");
+  }
+}
+// ----- Edición de una respuesta (solo admins): se abre en un modal -----
+let FORM_MODAL = null; // { id, ov, previo, tecla, guardando, confirmando, cerrando, overflowPrev, raf }
+const FORM_MOD_ICONOS = {
+  cerrar: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>',
+  guardar: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  lapiz: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>',
+  alerta: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>',
+};
+function editarRespuestaFormulario(id) {
+  const r = FORM_RESP.find((x) => x.id === id);
+  if (!r || !FORM_ACTUAL || FORM_MODAL) return;
+  const ov = document.createElement("div");
+  ov.className = "acred-overlay fmz-mod-ov";
+  ov.innerHTML = formEditorRespuestaHtml(r);
+  const m = FORM_MODAL = { id, ov, previo: document.activeElement, guardando: false, confirmando: false, cerrando: false, overflowPrev: document.body.style.overflow, raf: 0 };
+  // Cerrar al pulsar fuera, pero solo si el clic empieza Y acaba en el fondo (no al soltar tras seleccionar texto).
+  let empezoEnFondo = false;
+  ov.addEventListener("mousedown", (e) => { empezoEnFondo = e.target === ov; });
+  ov.addEventListener("click", (e) => { if (e.target === ov && empezoEnFondo) pedirCerrarEdicionRespuestaFormulario(); });
+  const dialogo = ov.querySelector(".fmz-mod");
+  m.tecla = (e) => {
+    if (FORM_MODAL !== m || m.confirmando || m.cerrando) return;
+    if (e.key === "Escape") { e.preventDefault(); pedirCerrarEdicionRespuestaFormulario(); return; }
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); guardarEdicionRespuestaFormulario(id); return; }
+    if (e.key === "Tab") {
+      // El foco se queda dentro del modal.
+      const f = [...ov.querySelectorAll('button:not([disabled]), input:not([disabled]):not([hidden]), select:not([disabled]), textarea:not([disabled])')].filter((el) => el.offsetParent !== null);
+      if (!f.length) return;
+      const primero = f[0], ultimo = f[f.length - 1], act = document.activeElement;
+      if (e.shiftKey && (act === primero || act === dialogo)) { e.preventDefault(); ultimo.focus(); }
+      else if (!e.shiftKey && act === ultimo) { e.preventDefault(); primero.focus(); }
+    }
+  };
+  document.addEventListener("keydown", m.tecla);
+  document.body.appendChild(ov);
+  document.body.style.overflow = "hidden";
+  const cuerpo = ov.querySelector(".fmz-mod-cuerpo");
+  cuerpo.addEventListener("scroll", () => {
+    if (m.raf) return;
+    m.raf = requestAnimationFrame(() => { m.raf = 0; formEdActualizarNav(m); });
+  }, { passive: true });
+  ov.querySelectorAll("[data-sec-ir]").forEach((b) => b.addEventListener("click", () => {
+    const sec = ov.querySelector(`#formEdSec${id}_${b.dataset.secIr}`);
+    if (sec) cuerpo.scrollTo({ top: Math.max(0, sec.offsetTop - 10), behavior: "smooth" });
+  }));
+  formEdAplicarCondiciones(id);
+  formEdActualizarNav(m);
+  if (dialogo) dialogo.focus({ preventScroll: true });
+}
+// Resalta en la barra de secciones la que se está viendo.
+function formEdActualizarNav(m) {
+  if (!m || !m.ov) return;
+  const cuerpo = m.ov.querySelector(".fmz-mod-cuerpo"), nav = m.ov.querySelector(".fmz-mod-nav");
+  if (!cuerpo || !nav) return;
+  const secs = [...cuerpo.querySelectorAll(".fmz-mod-sec")];
+  const umbral = cuerpo.scrollTop + 90;
+  let activa = secs.findIndex((s) => !s.hidden);
+  secs.forEach((s, i) => { if (!s.hidden && s.offsetTop <= umbral) activa = i; });
+  if (cuerpo.scrollTop + cuerpo.clientHeight >= cuerpo.scrollHeight - 4) { for (let i = secs.length - 1; i >= 0; i--) if (!secs[i].hidden) { activa = i; break; } }
+  nav.querySelectorAll("button").forEach((b, i) => {
+    const es = i === activa;
+    b.classList.toggle("activo", es);
+    if (es) {
+      b.setAttribute("aria-current", "true");
+      if (nav.scrollWidth > nav.clientWidth) nav.scrollTo({ left: Math.max(0, b.offsetLeft - 24), behavior: "smooth" });
+    } else b.removeAttribute("aria-current");
+  });
+}
+// Pide confirmación si hay cambios sin guardar antes de cerrar.
+async function pedirCerrarEdicionRespuestaFormulario() {
+  const m = FORM_MODAL;
+  if (!m || m.guardando || m.confirmando || m.cerrando) return;
+  if (formEdContarCambios(m.id) > 0) {
+    m.confirmando = true;
+    let ok = false;
+    try { ok = await EOF.confirmar("Tienes cambios sin guardar. ¿Quieres descartarlos?", { peligroso: true, textoConfirmar: "Descartar" }); }
+    finally { m.confirmando = false; }
+    if (!ok) return;
+  }
+  cerrarEdicionRespuestaFormulario();
+}
+function cerrarEdicionRespuestaFormulario() {
+  const m = FORM_MODAL;
+  if (!m || m.cerrando) return;
+  m.cerrando = true;
+  document.removeEventListener("keydown", m.tecla);
+  if (m.raf) cancelAnimationFrame(m.raf);
+  const fin = () => {
+    m.ov.remove();
+    document.body.style.overflow = m.overflowPrev;
+    if (FORM_MODAL === m) FORM_MODAL = null;
+    try { if (m.previo && document.contains(m.previo)) m.previo.focus({ preventScroll: true }); } catch {}
+  };
+  if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) fin();
+  else { m.ov.classList.add("fmz-mod-saliendo"); setTimeout(fin, 210); }
+}
+const FORM_ED_ICONOS = {
+  lapiz: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>',
+  info: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 11v5M12 8h.01"/></svg>',
+  rama: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="8" r="2.5"/><path d="M6 8.5v7M18 10.5c0 4-6 3-11 6"/></svg>',
+  usuario: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>',
+};
+// Texto corto de un valor para el «Antes: …» y para comparar cambios.
+function formEdNorm(c, v) {
+  if (c.tipo === "casillas") return (Array.isArray(v) ? v : []).slice().sort().join("|");
+  if (c.tipo === "confirmacion") return v === true ? "1" : "";
+  if (c.tipo === "numero") { const n = Number(String(v == null ? "" : v).replace(",", ".")); return v === "" || v == null ? "" : (Number.isFinite(n) ? String(n) : String(v).trim()); }
+  return v == null ? "" : String(v).replace(/\s+/g, " ").trim();
+}
+function formEditorCampoHtml(rid, c, v, porId) {
+  const id = `formEd${rid}_${c.id}`;
+  const et = escapeHtml(c.etiqueta);
+  const opcionesLargas = (c.opciones || []).some((o) => String(o).length > 38);
+  const ancho = c.tipo === "parrafo" || c.tipo === "casillas" || c.tipo === "confirmacion" || ((c.tipo === "desplegable" || c.tipo === "opcion") && opcionesLargas);
+  const etiquetas = [];
+  if (c.mostrar_si && porId[c.mostrar_si.campo]) {
+    etiquetas.push(`<span class="fmz-ef-tag fmz-ef-tag-rama" title="Solo se guarda si se cumple esta condición">${FORM_ED_ICONOS.rama} Solo si «${escapeHtml(porId[c.mostrar_si.campo].etiqueta)}» = «${escapeHtml(c.mostrar_si.igual)}»</span>`);
+  }
+  if (c.alta_usuario) {
+    etiquetas.push(`<span class="fmz-ef-tag fmz-ef-tag-user" title="Cambiarlo solo modifica la respuesta; el usuario ya creado no cambia">${FORM_ED_ICONOS.usuario} Nombre de usuario</span>`);
+  }
+  let campo = "";
+  switch (c.tipo) {
+    case "parrafo":
+      campo = `<textarea id="${id}" maxlength="4000" rows="4">${escapeHtml(formValorTexto(v))}</textarea>`; break;
+    case "fecha":
+      campo = `<input type="date" id="${id}" value="${escapeHtml(formValorTexto(v))}">`; break;
+    case "email":
+      campo = `<input type="email" id="${id}" maxlength="200" value="${escapeHtml(formValorTexto(v))}" autocomplete="off">`; break;
+    case "telefono":
+      campo = `<input type="tel" id="${id}" maxlength="30" value="${escapeHtml(formValorTexto(v))}" autocomplete="off">`; break;
+    case "numero":
+      campo = `<input type="text" inputmode="decimal" id="${id}" value="${escapeHtml(formValorTexto(v))}">`; break;
+    case "desplegable":
+    case "opcion": {
+      const opciones = c.opciones || [];
+      const actual = typeof v === "string" ? v : "";
+      const esOtro = c.permitir_otro && actual.startsWith("Otro: ");
+      const huerfana = actual && !esOtro && !opciones.includes(actual);
+      campo = `<select id="${id}" onchange="document.getElementById('${id}_otro').hidden = this.value !== '__otro__'">
+        <option value="">Sin respuesta</option>
+        ${opciones.map((o) => `<option value="${escapeHtml(o)}" ${o === actual ? "selected" : ""}>${escapeHtml(o)}</option>`).join("")}
+        ${huerfana ? `<option value="${escapeHtml(actual)}" selected>${escapeHtml(actual)} (ya no está en la lista)</option>` : ""}
+        ${c.permitir_otro ? `<option value="__otro__" ${esOtro ? "selected" : ""}>Otro…</option>` : ""}
+      </select>
+      <input type="text" id="${id}_otro" maxlength="150" placeholder="Escribe la otra opción…" class="fmz-ef-otro" ${esOtro ? "" : "hidden"} value="${esOtro ? escapeHtml(actual.slice(6)) : ""}">`;
+      break;
+    }
+    case "casillas": {
+      const sel = Array.isArray(v) ? v : [];
+      campo = `<div class="fmz-ef-chips">${(c.opciones || []).map((o) => `<label class="fmz-ef-chip"><input type="checkbox" data-edc="${rid}_${escapeHtml(c.id)}" value="${escapeHtml(o)}" ${sel.includes(o) ? "checked" : ""}><span>${escapeHtml(o)}</span></label>`).join("")}</div>`;
+      break;
+    }
+    case "confirmacion":
+      campo = `<label class="fmz-ef-chip fmz-ef-chip-solo"><input type="checkbox" id="${id}" ${v === true ? "checked" : ""}><span>Marcada</span></label>`; break;
+    default:
+      campo = `<input type="text" id="${id}" maxlength="500" value="${escapeHtml(formValorTexto(v))}">`;
+  }
+  const antes = formValorTexto(v);
+  const usaLabelFor = !["casillas", "confirmacion"].includes(c.tipo);
+  return `<div class="fmz-ef ${ancho ? "fmz-ef-ancho" : ""}" data-campo="${escapeHtml(c.id)}"${c.mostrar_si ? ` data-ms-campo="${escapeHtml(c.mostrar_si.campo)}" data-ms-igual="${escapeHtml(c.mostrar_si.igual)}"` : ""}>
+    <div class="fmz-ef-cab">
+      ${usaLabelFor ? `<label for="${id}">${et}${c.obligatorio ? `<span class="fmz-ef-req" title="Obligatorio en el formulario">*</span>` : ""}</label>` : `<span class="fmz-ef-label">${et}${c.obligatorio ? `<span class="fmz-ef-req" title="Obligatorio en el formulario">*</span>` : ""}</span>`}
+      <span class="fmz-ef-mod">Modificado</span>
+    </div>
+    ${campo}
+    <small class="fmz-ef-antes">Antes: <i>${antes ? escapeHtml(antes.length > 140 ? antes.slice(0, 140) + "…" : antes) : "sin respuesta"}</i></small>
+    ${etiquetas.length ? `<div class="fmz-ef-tags">${etiquetas.join("")}</div>` : ""}
+  </div>`;
+}
+// Nombre de la persona que respondió (para la cabecera del modal): el campo que da de alta un usuario,
+// si no el primero cuya pregunta habla de «nombre», si no la primera respuesta con texto.
+function formModalNombre(r) {
+  const campos = (FORM_ACTUAL.campos || []).filter((c) => !FORM_TIPOS_SIN_RESPUESTA.includes(c.tipo));
+  const lleno = (c) => typeof r.datos[c.id] === "string" && r.datos[c.id].trim();
+  const c = campos.find((x) => x.alta_usuario && lleno(x)) || campos.find((x) => /nombre/i.test(x.etiqueta || "") && lleno(x)) || campos.find((x) => formValorTexto(r.datos[x.id]).trim());
+  const bruto = c ? formValorTexto(r.datos[c.id]) : "";
+  return bruto.split(" — ")[0].split(" - ")[0].trim() || "Respuesta sin nombre";
+}
+function formModalIniciales(nombre) {
+  const p = String(nombre).split(/\s+/).filter(Boolean);
+  return ((p[0] || "?")[0] + (p[1] ? p[1][0] : "")).toUpperCase();
+}
+function formEditorRespuestaHtml(r) {
+  const campos = FORM_ACTUAL.campos || [];
+  const todos = campos.filter((c) => c.tipo !== "enlaces");
+  const porId = Object.fromEntries(todos.map((c) => [c.id, c]));
+  // Se agrupa por secciones del formulario (cada «seccion» abre un grupo).
+  const grupos = [];
+  let actual = { titulo: "", desc: "", campos: [] };
+  for (const c of todos) {
+    if (c.tipo === "seccion") {
+      if (actual.campos.length) grupos.push(actual);
+      actual = { titulo: c.etiqueta, desc: c.ayuda || "", ms: c.mostrar_si || null, campos: [] };
+    } else {
+      actual.campos.push(c);
+    }
+  }
+  if (actual.campos.length) grupos.push(actual);
+  const fecha = String(r.created_at || "").slice(0, 16).replace("T", " ");
+  const nombre = formModalNombre(r);
+  const campoRol = campos.find((c) => c.id === "rol") || campos.find((c) => !FORM_TIPOS_SIN_RESPUESTA.includes(c.tipo) && /\brol\b/i.test(c.etiqueta || ""));
+  const rolTxt = campoRol ? formValorTexto(r.datos[campoRol.id]).trim() : "";
+  const nPreguntas = campos.filter((c) => !FORM_TIPOS_SIN_RESPUESTA.includes(c.tipo)).length;
+  const nav = grupos.length > 1
+    ? `<nav class="fmz-mod-nav" aria-label="Secciones del formulario">${grupos.map((g, i) => `<button type="button" data-sec-ir="${i}"><span class="fmz-mod-nav-num">${i + 1}</span>${escapeHtml(g.titulo || "Datos")}</button>`).join("")}</nav>`
+    : "";
+  const cuerpo = grupos.length
+    ? grupos.map((g, i) => `<section class="fmz-mod-sec" id="formEdSec${r.id}_${i}" data-sec="${i}"${g.ms ? ` data-ms-campo="${escapeHtml(g.ms.campo)}" data-ms-igual="${escapeHtml(g.ms.igual)}"` : ""} style="animation-delay:${Math.min(i, 6) * 45}ms">
+        ${grupos.length > 1 || g.titulo ? `<h4 class="fmz-mod-sec-tit"><span class="fmz-mod-sec-num">${i + 1}</span><span>${escapeHtml(g.titulo || "Datos")}</span><small class="fmz-mod-sec-n">${g.campos.length} ${g.campos.length === 1 ? "pregunta" : "preguntas"}</small></h4>` : ""}
+        ${g.desc ? `<p class="fmz-mod-sec-desc">${escapeHtml(g.desc)}</p>` : ""}
+        <div class="fmz-edit-grid">${g.campos.map((c) => formEditorCampoHtml(r.id, c, r.datos[c.id], porId)).join("")}</div>
+      </section>`).join("")
+    : `<p class="solicitudes-vacio">Este formulario no tiene campos con respuesta.</p>`;
+  return `<div class="fmz-mod" role="dialog" aria-modal="true" aria-labelledby="formModTit${r.id}" tabindex="-1">
+    <header class="fmz-mod-cab">
+      <span class="fmz-mod-cab-fondo" aria-hidden="true"></span>
+      <span class="fmz-mod-av" aria-hidden="true">${escapeHtml(formModalIniciales(nombre))}</span>
+      <div class="fmz-mod-tit">
+        <span class="fmz-mod-sup">${FORM_MOD_ICONOS.lapiz}Editando respuesta</span>
+        <h3 id="formModTit${r.id}">${escapeHtml(nombre)}</h3>
+        <p>${fecha ? `Enviada el ${escapeHtml(fecha)} · ` : ""}${nPreguntas} ${nPreguntas === 1 ? "pregunta" : "preguntas"}</p>
+      </div>
+      <div class="fmz-mod-chips">
+        ${rolTxt ? `<span class="fmz-mod-chip">${escapeHtml(rolTxt)}</span>` : ""}
+        <span class="fmz-mod-chip ${r.estado === "nueva" ? "fmz-mod-chip-nueva" : "fmz-mod-chip-ok"}">${r.estado === "nueva" ? "Nueva" : "Revisada"}</span>
+      </div>
+      <button type="button" class="fmz-mod-x" onclick="pedirCerrarEdicionRespuestaFormulario()" aria-label="Cerrar">${FORM_MOD_ICONOS.cerrar}</button>
+    </header>
+    ${nav}
+    <div class="fmz-mod-cuerpo fmz-edit" id="formEdit${r.id}" oninput="formEdCambio(${r.id})" onchange="formEdCambio(${r.id})">
+      <div class="fmz-mod-error" id="formEdError${r.id}" role="alert" hidden></div>
+      <p class="fmz-mod-aviso">${FORM_ED_ICONOS.info}<span>Los cambios se guardan tal cual, sin avisar a quien respondió. Cada dato que cambies se marca en ámbar con su valor anterior.</span></p>
+      ${cuerpo}
+    </div>
+    <footer class="fmz-mod-pie">
+      <span class="fmz-edit-cont" id="formEdCont${r.id}" aria-live="polite">Sin cambios</span>
+      <span class="fmz-mod-atajo"><kbd>Esc</kbd> cerrar · <kbd>Ctrl</kbd> + <kbd>Intro</kbd> guardar</span>
+      <div class="fmz-edit-botones">
+        <button type="button" class="acred-btn acred-btn-sec" id="formEdCancelar${r.id}" onclick="pedirCerrarEdicionRespuestaFormulario()">Cancelar</button>
+        <button type="button" class="acred-btn" id="formEdGuardar${r.id}" onclick="guardarEdicionRespuestaFormulario(${r.id})" disabled>${FORM_MOD_ICONOS.guardar}Guardar cambios</button>
+      </div>
+    </footer>
+  </div>`;
+}
+// Muestra solo las preguntas (y secciones) que corresponden según lo elegido: con «Redactor» no salen las de
+// fotógrafo y al revés. Se reevalúa en cada cambio y renumera las secciones visibles.
+function formEdAplicarCondiciones(rid) {
+  const cont = document.getElementById("formEdit" + rid);
+  if (!cont) return;
+  const v = formLeerEdicionRespuesta(rid);
+  const cumple = (campo, igual) => { const x = v[campo]; return Array.isArray(x) ? x.includes(igual) : String(x == null ? "" : x) === String(igual); };
+  cont.querySelectorAll(".fmz-ef[data-ms-campo]").forEach((el) => { el.hidden = !cumple(el.dataset.msCampo, el.dataset.msIgual); });
+  const ov = cont.closest(".fmz-mod-ov");
+  let n = 0;
+  cont.querySelectorAll(".fmz-mod-sec").forEach((sec) => {
+    const hijos = [...sec.querySelectorAll(".fmz-ef")];
+    const visibles = hijos.filter((e) => !e.hidden).length;
+    const ok = visibles > 0 && !(sec.dataset.msCampo && !cumple(sec.dataset.msCampo, sec.dataset.msIgual));
+    sec.hidden = !ok;
+    const btn = ov && ov.querySelector(`.fmz-mod-nav button[data-sec-ir="${sec.dataset.sec}"]`);
+    if (btn) btn.hidden = !ok;
+    if (!ok) return;
+    n++;
+    const num = sec.querySelector(".fmz-mod-sec-num"); if (num) num.textContent = n;
+    const bn = btn && btn.querySelector(".fmz-mod-nav-num"); if (bn) bn.textContent = n;
+    const cnt = sec.querySelector(".fmz-mod-sec-n"); if (cnt) cnt.textContent = `${visibles} ${visibles === 1 ? "pregunta" : "preguntas"}`;
+  });
+}
+// Número de campos cuyo valor actual es distinto del guardado.
+function formEdContarCambios(rid) {
+  const r = FORM_RESP.find((x) => x.id === rid);
+  if (!r || !FORM_ACTUAL || !document.getElementById("formEdit" + rid)) return 0;
+  const nuevos = formLeerEdicionRespuesta(rid);
+  let n = 0;
+  for (const c of (FORM_ACTUAL.campos || [])) {
+    if (FORM_TIPOS_SIN_RESPUESTA.includes(c.tipo)) continue;
+    if (formEdNorm(c, nuevos[c.id]) !== formEdNorm(c, r.datos[c.id])) n++;
+  }
+  return n;
+}
+// Marca los campos modificados, pinta el contador y activa «Guardar cambios» solo si hay algo que guardar.
+function formEdCambio(rid) {
+  const r = FORM_RESP.find((x) => x.id === rid);
+  const cont = document.getElementById("formEdit" + rid);
+  if (!r || !cont || !FORM_ACTUAL) return;
+  formEdAplicarCondiciones(rid);
+  const nuevos = formLeerEdicionRespuesta(rid);
+  let n = 0;
+  for (const c of (FORM_ACTUAL.campos || [])) {
+    if (FORM_TIPOS_SIN_RESPUESTA.includes(c.tipo)) continue;
+    const cambiado = formEdNorm(c, nuevos[c.id]) !== formEdNorm(c, r.datos[c.id]);
+    const bloque = cont.querySelector(`.fmz-ef[data-campo="${(window.CSS && CSS.escape) ? CSS.escape(c.id) : c.id}"]`);
+    if (bloque) bloque.classList.toggle("fmz-ef-cambiado", cambiado);
+    if (cambiado) n++;
+  }
+  const t = document.getElementById("formEdCont" + rid), g = document.getElementById("formEdGuardar" + rid);
+  if (t) { t.textContent = n ? `${n} cambio${n === 1 ? "" : "s"} sin guardar` : "Sin cambios"; t.classList.toggle("hay", n > 0); }
+  if (g && !(FORM_MODAL && FORM_MODAL.guardando)) g.disabled = n === 0;
+  // Punto ámbar en las secciones de la barra que tienen cambios.
+  const m = FORM_MODAL;
+  if (m && m.ov) {
+    const botones = m.ov.querySelectorAll(".fmz-mod-nav button");
+    cont.querySelectorAll(".fmz-mod-sec").forEach((s, i) => { if (botones[i]) botones[i].classList.toggle("mod", !!s.querySelector(".fmz-ef-cambiado")); });
+    const err = document.getElementById("formEdError" + rid);
+    if (err && !err.hidden) err.hidden = true;
+  }
+}
+function formLeerEdicionRespuesta(rid) {
+  const out = {};
+  for (const c of (FORM_ACTUAL.campos || [])) {
+    if (FORM_TIPOS_SIN_RESPUESTA.includes(c.tipo)) continue;
+    const id = `formEd${rid}_${c.id}`;
+    const el = document.getElementById(id);
+    if (c.tipo === "casillas") {
+      out[c.id] = [...document.querySelectorAll(`input[data-edc="${rid}_${c.id}"]:checked`)].map((x) => x.value);
+    } else if (c.tipo === "confirmacion") {
+      out[c.id] = !!(el && el.checked);
+    } else if (c.tipo === "desplegable" || c.tipo === "opcion") {
+      let val = el ? el.value : "";
+      if (val === "__otro__") { const t = ((document.getElementById(id + "_otro") || {}).value || "").trim(); val = t ? "Otro: " + t : ""; }
+      out[c.id] = val;
+    } else {
+      out[c.id] = el ? el.value : "";
+    }
+  }
+  return out;
+}
+async function guardarEdicionRespuestaFormulario(id) {
+  const m = FORM_MODAL;
+  if (!m || m.id !== id || m.guardando || m.cerrando) return;
+  if (!formEdContarCambios(id)) return;
+  const btn = document.getElementById("formEdGuardar" + id), cancelar = document.getElementById("formEdCancelar" + id), err = document.getElementById("formEdError" + id);
+  const htmlBtn = btn ? btn.innerHTML : "";
+  m.guardando = true;
+  m.ov.classList.add("fmz-mod-guardando");
+  if (err) err.hidden = true;
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="fmz-spin" aria-hidden="true"></span>Guardando…'; }
+  if (cancelar) cancelar.disabled = true;
+  try {
+    const { datos } = await apiFetch(`/api/formularios/respuestas/${id}`, {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ respuestas: formLeerEdicionRespuesta(id) }),
+    });
+    const r = FORM_RESP.find((x) => x.id === id);
+    if (r && datos) r.datos = datos;
+    m.guardando = false;
+    cerrarEdicionRespuestaFormulario();
+    pintarRespuestasFormulario();
+    EOF.toast("Respuesta actualizada", "exito");
+  } catch (e) {
+    m.guardando = false;
+    m.ov.classList.remove("fmz-mod-guardando");
+    if (btn) btn.innerHTML = htmlBtn;
+    if (cancelar) cancelar.disabled = false;
+    formEdCambio(id);
+    if (err) {
+      err.innerHTML = `${FORM_MOD_ICONOS.alerta}<span>${escapeHtml(e.message || "No se pudo guardar la respuesta.")}</span>`;
+      err.hidden = false;
+      const cuerpo = m.ov.querySelector(".fmz-mod-cuerpo");
+      if (cuerpo) cuerpo.scrollTo({ top: 0, behavior: "smooth" });
+    } else EOF.toast("Error: " + e.message, "error");
+  }
+}
+async function eliminarRespuestaFormulario(id) {
+  if (!(await EOF.confirmar("¿Eliminar esta respuesta? No se puede deshacer.", { peligroso: true, textoConfirmar: "Eliminar" }))) return;
+  try {
+    await apiFetch(`/api/formularios/respuestas/${id}`, { method: "DELETE" });
+    FORM_RESP = FORM_RESP.filter((x) => x.id !== id);
+    pintarRespuestasFormulario();
+  } catch (err) {
+    EOF.toast("Error: " + err.message, "error");
+  }
+}
+function exportarRespuestasFormularioCSV() {
+  if (!FORM_ACTUAL || !FORM_RESP.length) { EOF.toast("No hay respuestas que exportar", "info"); return; }
+  const campos = (FORM_ACTUAL.campos || []).filter((c) => !FORM_TIPOS_SIN_RESPUESTA.includes(c.tipo));
+  const cab = ["Fecha", ...campos.map((c) => c.etiqueta), "Estado", "Nota interna"];
+  const filas = FORM_RESP.map((r) => [r.created_at, ...campos.map((c) => formValorTexto(r.datos[c.id])), r.estado === "nueva" ? "Nueva" : "Revisada", r.nota_admin || ""]);
+  acredDescargar(`${FORM_ACTUAL.slug}-${new Date().toISOString().slice(0, 10)}.csv`, [cab, ...filas]);
+}
+
+// ----- Crear / editar un formulario -----
+function formCampoNuevo(tipo = "texto") {
+  return { id: "", tipo, etiqueta: "", ayuda: "", obligatorio: false, opciones: FORM_TIPOS_CON_OPCIONES.includes(tipo) ? ["Opción 1"] : undefined, permitir_otro: false };
+}
+function abrirEditorFormulario(id) {
+  const existente = id ? FORM_LISTA.find((x) => x.id === id) : null;
+  if (id && !existente) return;
+  const f = existente
+    ? JSON.parse(JSON.stringify(existente))
+    : { titulo: "", descripcion: "", aviso: "", texto_boton: "Enviar", mensaje_final: "", acceso: "libre", pin: "", activo: 1, notificar_email: 1,
+        campos: [{ ...formCampoNuevo("texto"), etiqueta: "Nombre y apellidos", obligatorio: true }, { ...formCampoNuevo("email"), etiqueta: "Correo electrónico", obligatorio: true }] };
+  const campos = f.campos;
+  const filaCampo = (c, i) => `
+    <div class="fmz-ed-campo" data-i="${i}">
+      <div class="fmz-ed-campo-cab">
+        <span class="fmz-ed-num">${i + 1}</span>
+        <select data-k="tipo" data-i="${i}" aria-label="Tipo de campo">${Object.entries(FORM_TIPOS).map(([k, t]) => `<option value="${k}" ${k === c.tipo ? "selected" : ""}>${t}</option>`).join("")}</select>
+        <span class="espacio"></span>
+        <button type="button" class="acred-mini" data-acc="sube" data-i="${i}" title="Subir" ${i === 0 ? "disabled" : ""}>${ACRED_ICO.sube}</button>
+        <button type="button" class="acred-mini" data-acc="baja" data-i="${i}" title="Bajar" ${i === campos.length - 1 ? "disabled" : ""}>${ACRED_ICO.baja}</button>
+        <button type="button" class="acred-mini peligro" data-acc="borra" data-i="${i}" title="Quitar">${ACRED_ICO.borra}</button>
+      </div>
+      <div class="acred-campo"><label>${c.tipo === "confirmacion" ? "Texto de la casilla" : c.tipo === "seccion" ? "Título de la sección" : c.tipo === "enlaces" ? "Nombre del bloque (solo para ti)" : "Pregunta"}</label><input type="text" data-k="etiqueta" data-i="${i}" maxlength="300" value="${escapeHtml(c.etiqueta)}" placeholder="${c.tipo === "confirmacion" ? "Ej.: Acepto las condiciones" : c.tipo === "seccion" ? "Ej.: Presentación" : c.tipo === "enlaces" ? "Ej.: Redes del medio" : "Ej.: ¿Cuál es tu equipo?"}"></div>
+      ${c.mostrar_si ? `<p style="margin:0 0 10px;font-size:12.5px;opacity:.8;">Condicional: solo se muestra si «${escapeHtml((campos.find((x) => x.id === c.mostrar_si.campo) || {}).etiqueta || c.mostrar_si.campo)}» = «${escapeHtml(c.mostrar_si.igual)}» <button type="button" class="acred-mini" data-acc="quitacond" data-i="${i}" title="Quitar condición" style="margin-left:6px;">Quitar condición</button></p>` : ""}
+      ${c.tipo === "enlaces" ? `<div class="acred-campo"><label>Enlaces (uno por línea: Texto | https://…)</label><textarea data-k="enlaces" data-i="${i}" rows="4" placeholder="Instagram | https://www.instagram.com/…">${escapeHtml(formEnlacesATexto(c.enlaces))}</textarea></div>` : ""}
+      ${c.tipo === "confirmacion" ? `<div class="acred-campo"><label>Título sobre la casilla (opcional)</label><input type="text" data-k="ayuda" data-i="${i}" maxlength="400" value="${escapeHtml(c.ayuda || "")}" placeholder="Ej.: Confirmación de lectura"></div>` : `<div class="acred-campo"><label>${c.tipo === "seccion" ? "Descripción de la sección (opcional)" : "Texto de ayuda (opcional)"}</label><input type="text" data-k="ayuda" data-i="${i}" maxlength="400" value="${escapeHtml(c.ayuda || "")}"></div>`}
+      ${FORM_TIPOS_CON_OPCIONES.includes(c.tipo) ? `
+        ${c.tipo === "casillas" ? "" : `<div class="acred-campo"><label>Al enviar el formulario con una de estas opciones</label><select data-k="alta_usuario" data-i="${i}"><option value="" ${!c.alta_usuario ? "selected" : ""}>No hacer nada especial</option><option value="redactor" ${c.alta_usuario === "redactor" ? "selected" : ""}>Crear usuario redactor</option><option value="fotografo" ${c.alta_usuario === "fotografo" ? "selected" : ""}>Crear usuario fotógrafo</option></select></div>`}${c.alta_usuario ? `<p class="ayuda-editor" style="margin:0 0 10px;">Al enviar el formulario con una de estas opciones se crea el usuario (${c.alta_usuario === "fotografo" ? "fotógrafo" : "redactor"}) con ese nombre y equipo, y se le da su usuario y contraseña. Formato: «Nombre — Equipo1 &amp; Equipo2».</p><div class="acred-campo"><label>Personas que ya tienen usuario con otro nombre (una por línea: Opción de la lista = usuario)</label><textarea data-k="alias_usuarios" data-i="${i}" rows="3" placeholder="TodosADCeuta — AD Ceuta = ismael_adc">${escapeHtml(Object.entries(c.alias_usuarios || {}).map(([k, v]) => k + " = " + v).join("\n"))}</textarea></div>` : ""}<div class="acred-campo"><label>${c.invitaciones || c.alta_usuario ? "Opciones fijas (una por línea; no caducan nunca. Las personas invitadas se añaden desde la bandeja del formulario)" : "Opciones (una por línea)"}</label><textarea data-k="opciones" data-i="${i}" rows="4">${escapeHtml((c.opciones || []).join("\n"))}</textarea></div>
+        ${c.tipo === "casillas" ? "" : `<label class="acred-interruptor"><input type="checkbox" data-k="permitir_otro" data-i="${i}" ${c.permitir_otro ? "checked" : ""}><i></i>Permitir “Otro” con texto libre</label>
+        <label class="acred-interruptor" style="margin-top:8px;"><input type="checkbox" data-k="unica" data-i="${i}" ${c.unica ? "checked" : ""}><i></i>Cada opción solo se puede elegir una vez (desaparece cuando alguien la usa)</label>
+        <label class="acred-interruptor" style="margin-top:8px;"><input type="checkbox" data-k="invitaciones" data-i="${i}" ${c.invitaciones || c.alta_usuario ? "checked" : ""} ${c.alta_usuario ? "disabled" : ""}><i></i>Añadir personas desde «Personas invitadas», sin editar el formulario (caducan solas a los 7 días)</label>`}` : ""}
+      ${FORM_TIPOS_SIN_RESPUESTA.includes(c.tipo) ? "" : `<label class="acred-interruptor" style="margin-top:8px;"><input type="checkbox" data-k="obligatorio" data-i="${i}" ${c.obligatorio ? "checked" : ""}><i></i>Obligatorio</label>`}
+    </div>`;
+  const { ov, cerrar } = acredModal(`
+    <div class="acred-modal" role="dialog" aria-modal="true" aria-labelledby="formEdTit" style="max-width:820px;">
+      <div class="acred-modal-cab">
+        <div><h3 id="formEdTit">${existente ? "Editar formulario" : "Crear formulario"}</h3><p>Define los textos, el acceso y los campos. Los cambios se aplican al guardar.</p></div>
+        <button type="button" class="acred-cerrar" data-cerrar aria-label="Cerrar">×</button>
+      </div>
+      <div class="acred-modal-cuerpo">
+        <div class="acred-grupo"><h4>Textos</h4>
+          <div class="acred-campo"><label for="formEdTitulo">Título</label><input type="text" id="formEdTitulo" maxlength="200" value="${escapeHtml(f.titulo)}"></div>
+          <div class="acred-campo"><label for="formEdDesc">Descripción</label><textarea id="formEdDesc" maxlength="2000">${escapeHtml(f.descripcion || "")}</textarea></div>
+          <div class="acred-campo"><label for="formEdAviso">Aviso (opcional)</label><textarea id="formEdAviso" maxlength="1000">${escapeHtml(f.aviso || "")}</textarea></div>
+          <div class="acred-campo"><label for="formEdBoton">Texto del botón de enviar</label><input type="text" id="formEdBoton" maxlength="40" value="${escapeHtml(f.texto_boton || "Enviar")}"></div>
+          <div class="acred-campo" style="margin:0;"><label for="formEdFinal">Mensaje tras enviar</label><textarea id="formEdFinal" maxlength="1000" placeholder="Gracias, hemos recibido tu respuesta.">${escapeHtml(f.mensaje_final || "")}</textarea></div>
+        </div>
+        <div class="acred-grupo"><h4>Acceso y avisos</h4>
+          <div class="acred-modo">
+            <label class="acred-modo-op"><input type="radio" name="formEdAcceso" value="libre" ${f.acceso !== "pin" ? "checked" : ""}><span><strong>Libre</strong><small>Cualquiera con el enlace puede responder.</small></span></label>
+            <label class="acred-modo-op"><input type="radio" name="formEdAcceso" value="pin" ${f.acceso === "pin" ? "checked" : ""}><span><strong>Con PIN</strong><small>Hay que introducir el PIN que tú compartes.</small></span></label>
+          </div>
+          <div class="acred-campo" id="formEdPinCaja" style="margin-top:12px;${f.acceso === "pin" ? "" : "display:none;"}"><label for="formEdPin">PIN (4 a 8 dígitos; vacío = se genera uno)</label><input type="text" id="formEdPin" inputmode="numeric" maxlength="8" value="${escapeHtml(f.pin || "")}"></div>
+          <div style="margin-top:14px;display:grid;gap:10px;">
+            <label class="acred-interruptor"><input type="checkbox" id="formEdActivo" ${f.activo ? "checked" : ""}><i></i>Formulario activo (si lo pausas, nadie puede rellenarlo)</label>
+            <label class="acred-interruptor"><input type="checkbox" id="formEdNotif" ${f.notificar_email ? "checked" : ""}><i></i>Avisarme por correo cuando llegue una respuesta</label>
+          </div>
+        </div>
+        <div class="acred-grupo" style="margin-bottom:0;"><h4>Campos</h4>
+          <div id="formEdCampos">${campos.map(filaCampo).join("")}</div>
+          <button type="button" class="acred-btn acred-btn-sec" id="formEdAdd">+ Añadir campo</button>
+        </div>
+      </div>
+      <div class="acred-modal-pie">
+        ${existente ? `<button type="button" class="acred-btn acred-btn-peligro" id="formEdEliminar">Eliminar formulario</button>` : ""}
+        <span class="espacio"></span>
+        ${existente ? `<button type="button" class="acred-btn acred-btn-sec" id="formEdVer">Ver formulario</button>` : ""}
+        <button type="button" class="acred-btn" id="formEdGuardar">${existente ? "Guardar cambios" : "Crear formulario"}</button>
+      </div>
+    </div>`);
+  const repintar = () => { ov.querySelector("#formEdCampos").innerHTML = campos.map(filaCampo).join(""); };
+  ov.addEventListener("change", (e) => {
+    const t = e.target;
+    if (t.name === "formEdAcceso") { ov.querySelector("#formEdPinCaja").style.display = t.value === "pin" ? "" : "none"; return; }
+    if (!t.dataset || t.dataset.k === undefined) return;
+    const i = Number(t.dataset.i), c = campos[i];
+    if (t.dataset.k === "tipo") {
+      c.tipo = t.value;
+      if (FORM_TIPOS_CON_OPCIONES.includes(c.tipo) && !(c.opciones && c.opciones.length)) c.opciones = ["Opción 1"];
+      repintar();
+    } else if (t.dataset.k === "alta_usuario") {
+      if (t.value) c.alta_usuario = t.value; else { delete c.alta_usuario; delete c.alias_usuarios; }
+      repintar();
+    } else if (t.type === "checkbox") {
+      c[t.dataset.k] = t.checked;
+      if (t.dataset.k === "invitaciones" && t.checked) { c.unica = true; repintar(); } // cada invitación se usa una sola vez
+    }
+  });
+  ov.addEventListener("input", (e) => {
+    const t = e.target;
+    if (!t.dataset || t.dataset.k === undefined || t.type === "checkbox" || t.tagName === "SELECT") return;
+    const c = campos[Number(t.dataset.i)];
+    if (t.dataset.k === "opciones") c.opciones = t.value.split("\n");
+    else if (t.dataset.k === "alias_usuarios") {
+      const alias = {};
+      t.value.split("\n").forEach((l) => { const m = l.split("="); if (m.length >= 2) { const k = m.slice(0, -1).join("=").trim(), v = m[m.length - 1].trim().toLowerCase(); if (k && v) alias[k] = v; } });
+      c.alias_usuarios = alias;
+    }
+    else if (t.dataset.k === "enlaces") c.enlaces = formTextoAEnlaces(t.value);
+    else c[t.dataset.k] = t.value;
+  });
+  ov.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-acc]");
+    if (!b) return;
+    const i = Number(b.dataset.i);
+    if (b.dataset.acc === "quitacond") delete campos[i].mostrar_si;
+    if (b.dataset.acc === "borra") campos.splice(i, 1);
+    if (b.dataset.acc === "sube" && i > 0) [campos[i - 1], campos[i]] = [campos[i], campos[i - 1]];
+    if (b.dataset.acc === "baja" && i < campos.length - 1) [campos[i + 1], campos[i]] = [campos[i], campos[i + 1]];
+    repintar();
+  });
+  ov.querySelector("#formEdAdd").addEventListener("click", () => {
+    campos.push(formCampoNuevo("texto")); repintar();
+    const ins = ov.querySelectorAll('input[data-k="etiqueta"]'); if (ins.length) ins[ins.length - 1].focus();
+  });
+  const ver = ov.querySelector("#formEdVer");
+  if (ver) ver.addEventListener("click", () => window.open(urlFormularioPublico(existente.slug), "_blank", "noopener"));
+  const del = ov.querySelector("#formEdEliminar");
+  if (del) del.addEventListener("click", async () => {
+    if (!(await EOF.confirmar(`¿Eliminar el formulario "${existente.titulo}" y todas sus respuestas? No se puede deshacer.`, { peligroso: true, textoConfirmar: "Eliminar" }))) return;
+    try {
+      await apiFetch(`/api/formularios/${existente.id}`, { method: "DELETE" });
+      cerrar(); FORM_ACTUAL = null; EOF.toast("Formulario eliminado", "exito"); cargaFormularios();
+    } catch (err) { EOF.toast("Error: " + err.message, "error"); }
+  });
+  ov.querySelector("#formEdGuardar").addEventListener("click", async () => {
+    const val = (id) => ov.querySelector(id).value.trim();
+    const cuerpo = {
+      titulo: val("#formEdTitulo"), descripcion: val("#formEdDesc"), aviso: val("#formEdAviso"),
+      texto_boton: val("#formEdBoton"), mensaje_final: val("#formEdFinal"),
+      acceso: ov.querySelector('input[name="formEdAcceso"]:checked').value,
+      pin: val("#formEdPin"),
+      activo: ov.querySelector("#formEdActivo").checked, notificar_email: ov.querySelector("#formEdNotif").checked,
+      campos: campos.map((c) => ({
+        id: c.id || undefined, tipo: c.tipo, etiqueta: (c.etiqueta || "").trim(), ayuda: (c.ayuda || "").trim(),
+        obligatorio: !!c.obligatorio, permitir_otro: !!c.permitir_otro, unica: !!c.unica, invitaciones: c.invitaciones ? true : undefined,
+        mostrar_si: c.mostrar_si || undefined,
+        alta_usuario: c.alta_usuario || undefined,
+        alias_usuarios: c.alta_usuario && c.alias_usuarios ? c.alias_usuarios : undefined,
+        opciones: FORM_TIPOS_CON_OPCIONES.includes(c.tipo) ? (c.opciones || []).map((o) => String(o).trim()).filter(Boolean) : undefined,
+        enlaces: c.tipo === "enlaces" ? (c.enlaces || []) : undefined,
+      })),
+    };
+    if (!cuerpo.titulo) { EOF.toast("Pon un título al formulario", "error"); return; }
+    const btn = ov.querySelector("#formEdGuardar"); btn.disabled = true;
+    try {
+      const r = await apiFetch(existente ? `/api/formularios/${existente.id}` : "/api/formularios", {
+        method: existente ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cuerpo),
+      });
+      cerrar();
+      EOF.toast(existente ? "Formulario actualizado" : "Formulario creado", "exito");
+      await cargaFormularios();
+      abrirFormularioPersonalizado((r && r.id) || (existente && existente.id));
+    } catch (err) {
+      btn.disabled = false;
+      EOF.toast("Error: " + err.message, "error");
+    }
+  });
+}
 
 async function eliminarSuscriptorNewsletter(id, email) {
   if (!(await EOF.confirmar(`¿Seguro que quieres eliminar a "${email}" de la lista del boletín? Esta acción no se puede deshacer.`, { peligroso: true, textoConfirmar: "Eliminar" }))) return;
@@ -11211,7 +16045,7 @@ function pintarTarjetaSolicitud(s, { mostrarBotonesRespuesta }) {
   // Detalle ampliado (visible sobre todo para admins, que son quienes
   // gestionan la mayoría de solicitudes): qué es exactamente, quién la
   // pide (con usuario y correo) y de quién es originalmente.
-  const tipoLabel = { noticia: "Noticia", previa: "Previa", cronica: "Crónica", analisis: "Análisis", opinion: "Opinión", entrevista: "Entrevista" }[s.entidad_tipo] || (s.tipo_entidad === "resultado" ? "Resultado" : "Artículo");
+  const tipoLabel = { noticia: "Noticia", previa: "Previa", cronica: "Crónica", analisis: "Análisis", opinion: "Opinión", entrevista: "Entrevista", uno_por_uno: "1x1 de jugadores" }[s.entidad_tipo] || (s.tipo_entidad === "resultado" ? "Resultado" : "Artículo");
   const estadoEntidad = !s.entidad_existe
     ? "Ya no existe"
     : s.entidad_publicado
@@ -11339,6 +16173,9 @@ if (modalSolicitarEdicionEl) {
   });
 }
 document.getElementById("btnEnviarSolicitudEdicion")?.addEventListener("click", async () => {
+  if (EOF_ACCIONES_EN_CURSO.has("L15846")) return;
+  EOF_ACCIONES_EN_CURSO.add("L15846");
+  try {
   const errEl = document.getElementById("errSolicitarEdicion");
   errEl.style.display = "none";
   const tipo_entidad = document.getElementById("se_tipo").value;
@@ -11352,45 +16189,127 @@ document.getElementById("btnEnviarSolicitudEdicion")?.addEventListener("click", 
     errEl.textContent = err.message;
     errEl.style.display = "block";
   }
+
+  } finally { EOF_ACCIONES_EN_CURSO.delete("L15846"); }
 });
 
 // ---------- HISTORIAL DE ACCIONES (solo admins) ----------
 const ETIQUETAS_ACCION = {
+  // Sesión y cuenta
   login: "Inicio de sesión",
-  crear_usuario: "Crear usuario",
-  editar_usuario: "Editar usuario",
-  eliminar_usuario: "Eliminar usuario",
-  restablecer_password: "Restablecer contraseña",
-  cambiar_password_propia: "Cambiar contraseña propia",
-  recuperar_password: "Recuperar contraseña olvidada",
-  editar_email_propio: "Guardar correo propio",
-  editar_perfil_propio: "Editar perfil propio",
-  subir_media: "Subir contenido",
-  editar_media: "Editar contenido",
-  eliminar_media: "Eliminar contenido",
-  descargar_media: "Descargar contenido",
-  crear_articulo: "Publicar noticia/crónica",
-  guardar_borrador: "Guardar borrador",
-  editar_articulo: "Editar noticia/crónica",
-  eliminar_articulo: "Eliminar noticia/crónica",
-  crear_resultado: "Crear resultado",
-  editar_resultado: "Editar resultado",
-  eliminar_resultado: "Eliminar resultado",
-  crear_evento_partido: "Evento de minuto a minuto",
+  cerrar_sesion: "Cierre de sesión",
+  cerrar_otras_sesiones: "Cierre de otras sesiones",
+  cambiar_password_propia: "Cambio de contraseña propia",
+  solicitar_recuperar_password: "Solicitud de recuperar contraseña",
+  recuperar_password: "Contraseña recuperada",
+  restablecer_password: "Contraseña restablecida",
+  editar_email_propio: "Correo propio guardado",
+  editar_perfil_propio: "Perfil propio editado",
+  // Usuarios
+  crear_usuario: "Usuario creado",
+  editar_usuario: "Usuario editado",
+  eliminar_usuario: "Usuario eliminado",
+  cambiar_nivel_usuario: "Nivel de usuario cambiado",
+  // Noticias y crónicas
+  crear_articulo: "Noticia/crónica publicada",
+  guardar_borrador: "Borrador guardado",
+  programar_articulo: "Noticia/crónica programada",
+  publicar_articulo_programado: "Publicación programada ejecutada",
+  editar_articulo: "Noticia/crónica editada",
+  eliminar_articulo: "Noticia/crónica eliminada",
+  compartir_redes: "Previa/crónica subida a redes",
+  etiquetar_redes_articulo: "Noticias marcadas para redes (carrusel/individual)",
+  quitar_etiqueta_redes_articulo: "Etiqueta de redes quitada",
+  crear_noticia_rapida: "Noticia rápida creada",
+  editar_noticia_rapida: "Noticia rápida editada",
+  borrar_noticia_rapida: "Noticia rápida eliminada",
+  solicitar_edicion: "Edición solicitada",
+  aprobar_solicitud_edicion: "Solicitud de edición aprobada",
+  rechazar_solicitud_edicion: "Solicitud de edición rechazada",
+  // Contenido multimedia
+  subir_media: "Contenido subido",
+  crear_carpeta_media: "Carpeta de contenido creada",
+  renombrar_carpeta_media: "Carpeta de contenido renombrada",
+  eliminar_carpeta_media: "Carpeta de contenido eliminada",
+  mover_media: "Contenido movido de carpeta",
+  editar_media: "Contenido editado",
+  eliminar_media: "Contenido eliminado",
+  descargar_media: "Contenido descargado",
+  vincular_galeria_partido: "Galería vinculada a un partido",
+  desvincular_galeria_partido: "Galería desvinculada de un partido",
+  // Resultados y partidos
+  crear_resultado: "Resultado creado",
+  editar_resultado: "Resultado editado",
+  eliminar_resultado: "Resultado eliminado",
+  crear_evento_partido: "Evento de minuto a minuto añadido",
   aviso_partido_desatendido: "Aviso: partido desatendido",
-  partido_colgado_ocultado: "Partido colgado (ocultado)",
-  editar_settings: "Editar ajustes del medio",
+  partido_colgado_ocultado: "Partido colgado ocultado",
+  // Clubes
+  crear_club_personalizado: "Club personalizado creado",
+  editar_club_info: "Ficha de club editada",
+  proponer_club_info: "Cambio en ficha de club propuesto",
+  aprobar_club_info: "Cambio en ficha de club aprobado",
+  rechazar_club_info: "Cambio en ficha de club rechazado",
+  // Comentarios y comunidad
+  moderar_comentario: "Comentario moderado",
+  borrar_comentario: "Comentario eliminado",
+  revisar_denuncia_comentario: "Denuncia de comentario revisada",
+  crear_encuesta: "Encuesta creada",
+  borrar_encuesta: "Encuesta eliminada",
+  crear_votacion_interna: "Votación interna creada",
+  votar_votacion_interna: "Voto en votación interna",
+  cerrar_votacion_interna: "Votación interna cerrada",
+  reabrir_votacion_interna: "Votación interna reabierta",
+  borrar_votacion_interna: "Votación interna eliminada",
+  // Acreditaciones
+  acreditacion_pin: "PIN de acreditaciones cambiado",
+  acreditacion_acceso: "Acceso al formulario de acreditaciones cambiado",
+  acreditacion_config: "Formulario de acreditaciones personalizado",
+  acreditacion_importar: "Acreditaciones importadas",
+  acreditacion_editada: "Acreditación editada",
+  acreditacion_pendiente: "Acreditación devuelta a pendiente",
+  acreditacion_aprobada: "Acreditación aprobada",
+  acreditacion_rechazada: "Acreditación rechazada",
+  // Formularios
+  formulario_creado: "Formulario creado",
+  formulario_editado: "Formulario editado",
+  formulario_eliminado: "Formulario eliminado",
+  // Tienda
+  crear_producto_tienda: "Producto de tienda creado",
+  actualizar_producto_tienda: "Producto de tienda actualizado",
+  borrar_producto_tienda: "Producto de tienda eliminado",
+  crear_pedido_tienda: "Pedido de tienda creado",
+  actualizar_pedido_tienda: "Pedido de tienda actualizado",
+  cancelar_pedido_tienda: "Pedido de tienda cancelado",
+  borrar_pedido_tienda: "Pedido de tienda eliminado",
+  // Comunicación y ajustes
+  anuncio_email_envio: "Anuncio por correo enviado",
+  newsletter_envio_manual: "Boletín enviado manualmente",
+  quitar_banner_urgente: "Banner urgente retirado",
+  regenerar_pin_ultima_hora: "PIN de última hora regenerado",
+  editar_settings: "Ajustes del medio editados",
 };
 
-function etiquetaAccion(accion) {
-  return ETIQUETAS_ACCION[accion] || accion;
+// Si aparece una acción nueva que aún no tiene etiqueta, se muestra
+// legible igualmente ("crear_foo_bar" -> "Crear foo bar"), nunca con guiones bajos.
+function humanizarAccion(accion) {
+  const t = String(accion || "").replace(/[_-]+/g, " ").trim();
+  return t ? t.charAt(0).toUpperCase() + t.slice(1) : "—";
 }
 
-function formatFechaHistorial(fechaStr) {
-  // Mismo problema que formatFechaNotif: la fecha en BD está en UTC,
-  // hay que marcarla como tal y pedir la hora de España al mostrarla.
-  const d = new Date(fechaStr.replace(" ", "T") + "Z");
-  return d.toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Madrid" });
+// Color de la etiqueta del historial según el tipo de acción.
+function claseAccionHistorial(accion) {
+  const a = String(accion || "");
+  if (/^(aviso|partido_colgado)/.test(a)) return "aviso";
+  if (/^(eliminar|borrar|cancelar|desvincular|quitar|rechazar)|_rechazada$|_eliminado$/.test(a)) return "borra";
+  if (/^(login|restablecer|cambiar_password|recuperar|solicitar_recuperar|cerrar_sesion|cerrar_otras)/.test(a)) return "sesion";
+  if (/^(crear|subir|proponer|vincular|publicar|aprobar|programar)|_aprobada$|_importar$|_creado$/.test(a)) return "crea";
+  if (/^(editar|guardar|actualizar|moderar|revisar|cambiar|regenerar|cerrar|reabrir|acreditacion|formulario_editado)/.test(a)) return "edita";
+  return "";
+}
+
+function etiquetaAccion(accion) {
+  return ETIQUETAS_ACCION[accion] || humanizarAccion(accion);
 }
 
 let historialPagina = 0;
@@ -11441,24 +16360,29 @@ async function cargaHistorial(irAPrimeraPagina = true) {
         selUsuario.appendChild(opt);
       });
       const selAccion = document.getElementById("hist_accion");
-      acciones.forEach((a) => {
-        const opt = document.createElement("option");
-        opt.value = a;
-        opt.textContent = etiquetaAccion(a);
-        selAccion.appendChild(opt);
-      });
+      [...acciones]
+        .sort((x, y) => etiquetaAccion(x).localeCompare(etiquetaAccion(y), "es"))
+        .forEach((a) => {
+          const opt = document.createElement("option");
+          opt.value = a;
+          opt.textContent = etiquetaAccion(a);
+          selAccion.appendChild(opt);
+        });
       historialFiltrosSelectsListos = true;
     }
 
     tabla.innerHTML = actividad.length
-      ? actividad.map((a) => `
+      ? actividad.map((a) => {
+          const f = funcFechaDosLineas(a.created_at);
+          return `
         <tr>
-          <td data-label="Fecha">${formatFechaHistorial(a.created_at)}</td>
-          <td data-label="Usuario">${escapeHtml(a.usuario_nombre)} <span class="etiqueta-rol">(${a.usuario_rol})</span></td>
-          <td data-label="Acción">${etiquetaAccion(a.accion)}</td>
-          <td data-label="Descripción">${escapeHtml(a.descripcion)}</td>
-          <td data-label="IP">${a.ip ? escapeHtml(a.ip) : "—"}</td>
-        </tr>`).join("")
+          <td data-label="Fecha"><div class="func-hist-fecha"><b>${f.dia}</b><span>${f.hora}</span></div></td>
+          <td data-label="Persona"><div class="func-celda-persona">${funcAvatarHTML(a.usuario_nombre)}<div><span class="nombre">${escapeHtml(a.usuario_nombre)}</span><small>${escapeHtml(a.usuario_rol || "")}</small></div></div></td>
+          <td data-label="Acción"><span class="func-accion ${claseAccionHistorial(a.accion)}">${escapeHtml(etiquetaAccion(a.accion))}</span></td>
+          <td data-label="Descripción"><span class="func-hist-desc">${escapeHtml(a.descripcion)}</span></td>
+          <td data-label="IP"><span class="func-hist-ip">${a.ip ? escapeHtml(a.ip) : "—"}</span></td>
+        </tr>`;
+        }).join("")
       : `<tr><td colspan="5">No hay acciones que coincidan con los filtros.</td></tr>`;
 
     const desde = total === 0 ? 0 : historialPagina * HISTORIAL_POR_PAGINA + 1;
@@ -11532,38 +16456,98 @@ function etiquetaTipoX(tipo) {
     analisis: "📊 ANÁLISIS",
     opinion: "📝 OPINIÓN",
     entrevista: "🎤 ENTREVISTA",
+    uno_por_uno: "⚽ 1X1 DE JUGADORES",
   };
   return mapa[tipo] || "📰 NOTICIA";
 }
 
-// Pinta, dentro del modal de compartir, únicamente la imagen principal
-// (portada) de la noticia: es la única que se sube a redes, así que no
-// tiene sentido ofrecer el resto de fotos de la galería aquí. Se marca
-// siempre como seleccionada de forma automática.
-function pintarImagenesCompartir(a) {
+// Pinta, dentro del modal de compartir, TODAS las fotos de la noticia:
+// la portada, las fotos del propio texto (campo "imagenes") y las de la
+// galería vinculada (article_media). Se quitan duplicados por URL, se
+// ignoran vídeos y tuits incrustados, y la portada sale marcada por
+// defecto (el resto, a un clic con "Marcar todas").
+let TOKEN_IMAGENES_COMPARTIR = 0;
+async function pintarImagenesCompartir(a) {
   const cont = document.getElementById("cp_imagenes_lista");
   const wrap = document.getElementById("cp_imagenes_wrap");
   if (!cont || !wrap) return;
+  const token = ++TOKEN_IMAGENES_COMPARTIR;
 
-  const urlPortada = a.imagen_url || null;
+  const vistas = new Set();
+  const fotos = []; // { url, etiqueta }
+  const anadir = (url, etiqueta) => {
+    const u = String(url || "").trim();
+    if (!u || vistas.has(u)) return;
+    vistas.add(u);
+    fotos.push({ url: u, etiqueta: etiqueta || "" });
+  };
+  const deImagenes = (raw) => {
+    let lista = raw;
+    if (typeof lista === "string") { try { lista = JSON.parse(lista); } catch { lista = []; } }
+    if (!Array.isArray(lista)) return;
+    lista.forEach((it) => {
+      if (typeof it === "string") anadir(it);
+      else if (it && typeof it === "object" && it.tipo !== "tweet") anadir(it.url);
+    });
+  };
 
-  if (!urlPortada) {
-    wrap.style.display = "none";
-    cont.innerHTML = "";
-    return;
+  anadir(a.imagen_url, "Portada");
+  deImagenes(a.imagenes);
+  pintar();
+
+  // El listado del panel trae el artículo recortado y, justo tras
+  // publicar, ni siquiera hay id: se pide el completo y su galería.
+  try {
+    let id = a.id;
+    let completo = null;
+    if (a.slug || id) {
+      const r = await apiFetch(`/api/articles/${encodeURIComponent(id || a.slug)}`);
+      completo = r && r.article;
+      if (completo && completo.id) id = completo.id;
+    }
+    if (completo) { anadir(completo.imagen_url, "Portada"); deImagenes(completo.imagenes); }
+    if (id) {
+      const { media = [] } = await apiFetch(`/api/articles/${id}/media`);
+      media.filter((m) => m.tipo !== "video").forEach((m) => anadir(m.cloudinary_url));
+    }
+  } catch (err) {
+    console.error("No se pudieron cargar todas las fotos para compartir:", err.message);
   }
-  wrap.style.display = "";
+  if (token !== TOKEN_IMAGENES_COMPARTIR) return; // se abrió otra noticia mientras tanto
+  pintar();
 
-  cont.innerHTML = `
-    <div class="compartir-imagen-item">
-      <span class="compartir-imagen-etiqueta-portada">Portada</span>
-      <img src="${escapeHtml(urlPortada)}" alt="" loading="lazy">
-      <label>
-        <input type="checkbox" class="cp-imagen-check" value="${escapeHtml(urlPortada)}" checked>
-        Usar
-      </label>
-    </div>`;
+  function pintar() {
+    if (token !== TOKEN_IMAGENES_COMPARTIR) return;
+    if (!fotos.length) {
+      wrap.style.display = "none";
+      cont.innerHTML = "";
+      return;
+    }
+    wrap.style.display = "";
+    const nuevas = fotos.map((f, i) => `
+      <div class="compartir-imagen-item">
+        ${f.etiqueta ? `<span class="compartir-imagen-etiqueta-portada">${escapeHtml(f.etiqueta)}</span>` : ""}
+        <img src="${escapeHtml(f.url)}" alt="" loading="lazy">
+        <label>
+          <input type="checkbox" class="cp-imagen-check" value="${escapeHtml(f.url)}"${f.etiqueta === "Portada" ? " checked" : ""}>
+          Usar
+        </label>
+      </div>`).join("");
+    // Se conserva lo que el usuario ya hubiera marcado si se repinta.
+    const marcadas = new Set([...cont.querySelectorAll(".cp-imagen-check:checked")].map((c) => c.value));
+    const yaHabia = cont.querySelector(".cp-imagen-check") !== null;
+    cont.innerHTML = nuevas;
+    if (yaHabia) cont.querySelectorAll(".cp-imagen-check").forEach((c) => { c.checked = marcadas.has(c.value); });
+    const toggle = document.getElementById("btnMarcarTodasImagenesCompartir");
+    if (toggle) toggle.style.display = fotos.length > 1 ? "" : "none";
+  }
 }
+
+document.getElementById("btnMarcarTodasImagenesCompartir")?.addEventListener("click", () => {
+  const checks = [...document.querySelectorAll(".cp-imagen-check")];
+  const todas = checks.every((c) => c.checked);
+  checks.forEach((c) => { c.checked = !todas; });
+});
 
 // Descarga cada imagen marcada (una petición fetch + enlace temporal por
 // foto), para que el autor las tenga ya en su carpeta de descargas listas
@@ -11616,20 +16600,204 @@ function cuentaXDeAutorId(autorId) {
   return usuario ? `@${usuario}` : null;
 }
 
+// Una noticia cuenta como "última hora" mientras su banner siga activo
+// (banner_urgente = 1 y banner_urgente_hasta en el futuro). Recién creada
+// desde el formulario aún no hay caducidad calculada por el servidor: si
+// viene marcada y sin fecha, se da por activa.
+function esUltimaHoraParaCompartir(a) {
+  if (!a || !a.banner_urgente) return false;
+  if (!a.banner_urgente_hasta) return true;
+  return parsearFechaBannerUrgente(a.banner_urgente_hasta) > Date.now();
+}
+
+// Devuelve { slug, categoria } de la página pública a la que hay que enlazar
+// al compartir "a". Lo normal es la propia noticia; si es una previa/crónica
+// fusionada con otra, la de la fusionada. El listado ya trae fusion_slug;
+// si no (p. ej. justo tras publicar), se pregunta a la API pública, que para
+// la que no tiene página propia contesta con la fusionada.
+async function resolverDestinoCompartir(a) {
+  const propio = { slug: a.slug, categoria: a.categoria };
+  if (!a || !a.slug || !["previa", "cronica"].includes(a.tipo)) return propio;
+  if (a.fusion_slug) {
+    return { slug: a.fusion_slug, categoria: a.fusion_categoria || a.categoria };
+  }
+  if (a.fusion_total !== undefined && Number(a.fusion_total) < 2) return propio;
+  try {
+    const r = await apiFetch(`/api/articles/${encodeURIComponent(a.slug)}`);
+    if (r && r.redirect && r.categoria) return { slug: r.redirect, categoria: r.categoria };
+  } catch (e) { /* si falla, se usa el enlace propio */ }
+  return propio;
+}
+
+// Firmantes (autores) de una previa/crónica conjunta, o null si no lo es.
+// La web pública devuelve la lista completa en "firmantes" para la noticia
+// que sí tiene página (la primera de la fusión); se pide con el slug de
+// destino. Si falla o solo hay un firmante, se usa autor/coautor de la propia.
+async function resolverFirmantesCompartir(a, destino) {
+  if (!a || !destino || !destino.slug || !["previa", "cronica"].includes(a.tipo)) return null;
+  const esFusionada = !!a.fusion_slug || Number(a.fusion_total) >= 2 || destino.slug !== a.slug;
+  if (!esFusionada) return null;
+  try {
+    const r = await apiFetch(`/api/articles/${encodeURIComponent(destino.slug)}`);
+    const f = r && r.article && r.article.firmantes;
+    if (Array.isArray(f) && f.length >= 2) return f;
+  } catch (e) { /* se usa autor/coautor */ }
+  return null;
+}
+
+// Clubes de la noticia para hashtags y menciones: previa/crónica traen los
+// dos equipos del partido (array o JSON); el resto, el club suelto si lo hay.
+function clubesDeArticuloParaCompartir(a) {
+  if (!a || !a.club) return [];
+  if (Array.isArray(a.club)) return a.club.map((c) => String(c || "").trim()).filter(Boolean);
+  return parsearClubArticulo(a.club);
+}
+
+// Aviso compacto bajo el texto de X: una sola línea con los clubes de la
+// noticia que no tienen cuenta registrada (etiquetas pequeñas + "copiar").
+// "General" y las competiciones no cuentan. Los detalles (clubes cuyo nombre
+// no sale en el titular, cuentas añadidas por salir en él) van en el tooltip.
+function pintarAvisoClubesX(contenedor, info) {
+  if (!contenedor) return;
+  contenedor.textContent = "";
+  const sinCuenta = (info && info.sinCuenta) || [];
+  if (!sinCuenta.length) {
+    contenedor.style.display = "none";
+    contenedor.removeAttribute("title");
+    return;
+  }
+  const noAparecen = (info && info.noAparecen) || [];
+  const extras = (info && info.extras) || [];
+  const detalle = ["Falta su @ en public/js/clubs-redes.js (CLUB_CUENTA_X); mientras tanto se deja el nombre."];
+  if (noAparecen.length) detalle.push(`No salen en el titular: ${noAparecen.map((n) => n.club).join(", ")}.`);
+  if (extras.length) detalle.push(`Mencionados por salir en el titular: ${extras.join(", ")}.`);
+  contenedor.title = detalle.join("\n");
+
+  contenedor.style.cssText = "display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin:6px 0 0;font-size:12px;color:#92400e;";
+  const etiqueta = document.createElement("span");
+  etiqueta.textContent = "Sin @ en X:";
+  etiqueta.style.fontWeight = "600";
+  contenedor.appendChild(etiqueta);
+  sinCuenta.forEach((c) => {
+    const chip = document.createElement("span");
+    chip.textContent = c;
+    chip.style.cssText = "padding:1px 8px;background:#fef3c7;border-radius:999px;font-size:11.5px;";
+    contenedor.appendChild(chip);
+  });
+  const lineas = sinCuenta.map((c) => `  ${JSON.stringify(c)}: "@",`).join("\n");
+  const copiar = document.createElement("button");
+  copiar.type = "button";
+  copiar.textContent = "copiar línea";
+  copiar.style.cssText = "border:0;background:none;padding:0 2px;color:#b45309;text-decoration:underline;font-size:11.5px;cursor:pointer;";
+  copiar.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(lineas);
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = lineas;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      ta.remove();
+    }
+    copiar.textContent = "copiado ✓";
+    setTimeout(() => { copiar.textContent = "copiar línea"; }, 1600);
+  });
+  contenedor.appendChild(copiar);
+}
+
+// ---------- Aviso: previa/crónica del mismo partido ya subida a redes ----------
+// "Subida" = alguien copió el texto o abrió X desde este modal (se anota en el
+// servidor, ver /api/compartir-redes/*). Si ya hay una previa (o crónica) de ESE
+// partido subida, se avisa de que esta ya no hace falta. Es solo un aviso: los
+// botones siguen funcionando por si de verdad se quiere subir igualmente.
+let ARTICULO_COMPARTIENDO = null;
+let SUBIDA_REDES_REGISTRADA = false;
+let TOKEN_AVISO_YA_SUBIDA = 0;
+
+// El log guarda UTC: en SQLite sin zona ("2026-10-11 21:30:00") y en Postgres con ella.
+function formatoFechaSubidaARedes(valor) {
+  if (!valor) return "";
+  const s = String(valor);
+  const iso = /(Z|[+-]\d\d:?\d\d)$/.test(s) ? s : s.replace(" ", "T") + "Z";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleString("es-ES", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Madrid" });
+}
+
+async function pintarAvisoYaSubida(a) {
+  const caja = document.getElementById("cp_aviso_ya_subida");
+  if (!caja) return;
+  const token = ++TOKEN_AVISO_YA_SUBIDA;
+  caja.style.display = "none";
+  if (!a || !["previa", "cronica"].includes(a.tipo) || !(a.id || a.slug)) return;
+  try {
+    const consulta = a.id ? `id=${encodeURIComponent(a.id)}` : `slug=${encodeURIComponent(a.slug)}`;
+    const r = await apiFetch(`/api/compartir-redes/estado?${consulta}`);
+    if (token !== TOKEN_AVISO_YA_SUBIDA || !r || !r.ya_subida) return; // otro artículo abierto entretanto, o nada que avisar
+    const tipoTxt = r.tipo === "previa" ? "previa" : "crónica";
+    const fecha = formatoFechaSubidaARedes(r.subida_at);
+    const cuando = fecha ? ` el ${fecha}` : "";
+    const quien = r.por ? ` (por ${r.por})` : "";
+    document.getElementById("cp_aviso_ya_subida_titulo").textContent = r.propia
+      ? `Esta ${tipoTxt} ya se subió a redes`
+      : `Ya hay una ${tipoTxt} de este partido subida a redes`;
+    document.getElementById("cp_aviso_ya_subida_texto").textContent = r.propia
+      ? `Se subió${cuando}${quien}. No hace falta volver a subirla.`
+      : `Se subió${r.titulo ? ` «${r.titulo}»` : ""}${cuando}${quien}. Como es del mismo partido, ya no hace falta subir esta.`;
+    caja.style.display = "";
+  } catch (e) { /* sin aviso si la consulta falla: no debe estorbar al compartir */ }
+}
+
+// Anota (una vez por apertura del modal) que esta previa/crónica se ha subido.
+function registrarSubidaARedes() {
+  const a = ARTICULO_COMPARTIENDO;
+  if (!a || SUBIDA_REDES_REGISTRADA || !["previa", "cronica"].includes(a.tipo)) return;
+  SUBIDA_REDES_REGISTRADA = true;
+  apiFetch("/api/compartir-redes/registrar", { method: "POST", body: JSON.stringify({ id: a.id, slug: a.slug }) })
+    .catch(() => { SUBIDA_REDES_REGISTRADA = false; });
+}
+
 async function abrirModalCompartir(a) {
+  // Fuera del horario de publicación: no se sube a redes, no se comparte.
+  // La comprobación se hace AQUÍ, al entrar a Compartir, con el horario
+  // actual en el servidor (y no solo con la marca guardada al publicar).
+  let fuera = !!(a && a.fuera_calendario);
+  if (a && a.id) {
+    try {
+      const r = await apiFetch(`/api/articles/${a.id}/compartir-permitido`);
+      fuera = !!(r && r.fuera_calendario);
+    } catch (e) { /* si falla la consulta, se usa la marca que ya trae el listado */ }
+  }
+  if (fuera) {
+    EOF.toast("Esta noticia está fuera del horario de publicación: no se puede compartir en redes sociales.", "error", 6000);
+    return;
+  }
   // Por si el modal se abre antes de que /api/autores haya respondido
   // (justo al cargar la página), nos aseguramos de tener la caché de
   // autores lista para poder resolver su cuenta de X.
   if (Object.keys(AUTORES_CACHE).length === 0) {
     await cargarAutoresSelect();
   }
-  const link = `${SITIO_PUBLICO_URL}${urlNoticia(a.categoria, a.slug)}`;
+  // Previa/crónica fusionada con otra del mismo partido: la web solo tiene
+  // página para la primera, así que el enlace es el de la fusionada y no
+  // el de esta (que ya no existe como página propia).
+  const destino = await resolverDestinoCompartir(a);
+  const link = enlaceConVersionVistaPrevia(`${SITIO_PUBLICO_URL}${urlNoticia(destino.categoria, destino.slug)}`, a);
   const titulo = a.titulo || "";
   const subtitulo = quitarEtiquetasHtml(a.subtitulo || "");
   const hashtag = hashtagCategoria(a.categoria);
+  // Hashtags de los equipos (#RealOviedo #RealSporting) y, solo para X, los
+  // nombres de los equipos del titular cambiados por la @ de su cuenta
+  // oficial (los clubes sin cuenta registrada se dejan con su nombre).
+  const clubesNoticia = clubesDeArticuloParaCompartir(a);
+  const hashtagsEquipos = clubesNoticia.map(hashtagDeClub).filter(Boolean);
+  const infoClubesX = mencionarClubesEnTexto(titulo, clubesNoticia);
+  const tituloX = infoClubesX.texto;
+  const hashtagsComunes = [hashtag, ...hashtagsEquipos].filter(Boolean);
   // En un amistoso no hay hashtag de competición (ver hashtagCategoria),
-  // así que esa línea se omite entera en vez de dejar un hueco vacío.
-  const lineaHashtag = hashtag ? `\n\n${hashtag}` : "";
+  // así que esa parte se omite en vez de dejar un hueco vacío.
+  const lineaHashtag = hashtagsComunes.length ? `\n\n${hashtagsComunes.join(" ")}` : "";
 
   document.getElementById("cp_link").value = link;
   pintarImagenesCompartir(a);
@@ -11653,19 +16821,53 @@ async function abrirModalCompartir(a) {
   // Formato fijo para X: etiqueta con emoji + medio, título, enlace,
   // hashtag de la categoría (si lo hay) y, si el autor y/o el coautor
   // tienen cuenta de X registrada en su perfil, una línea de firma al
-  // final mencionando a los dos ("✍️ @autor y @coautor").
-  const firmaAutor = cuentaXDeAutorId(a.autor_id);
-  const firmaCoautor = cuentaXDeAutorId(a.coautor_id);
-  const firmas = [firmaAutor, firmaCoautor].filter(Boolean);
-  const lineaFirma = firmas.length ? `\n\n✍️ ${firmas.join(" y ")}` : "";
-  const textoX = `${etiquetaTipoX(a.tipo)} | ElOtroFútbol\n\n${titulo}\n\n🔗 ${link}${lineaHashtag}${lineaFirma}`;
+  // final mencionando a todos ("✍️ @autor y ✍️ @coautor").
+  // Previa/crónica conjunta: se mencionan todos los firmantes, en UNA sola
+  // línea y cada uno con su ✍️ ("✍️ @redactor1 y ✍️ @redactor2").
+  const firmantesConjunta = await resolverFirmantesCompartir(a, destino);
+  const idsFirmantes = firmantesConjunta
+    ? firmantesConjunta.map((f) => f.id)
+    : [a.autor_id, a.coautor_id];
+  const firmas = [];
+  idsFirmantes.forEach((id) => {
+    const cuenta = cuentaXDeAutorId(id);
+    if (cuenta && !firmas.includes(cuenta)) firmas.push(cuenta);
+  });
+  const firmasConIcono = firmas.map((c) => `✍️ ${c}`);
+  const listaFirmas = firmasConIcono.length > 1
+    ? firmasConIcono.slice(0, -1).join(", ") + " y " + firmasConIcono[firmasConIcono.length - 1]
+    : firmasConIcono.join("");
+  const lineaFirma = listaFirmas ? `\n\n${listaFirmas}` : "";
+  // Noticia marcada como última hora: cabecera roja propia en vez de la
+  // etiqueta del tipo, y hashtag #UltimaHora (el de la competición, si lo
+  // hay, va después).
+  const ultimaHora = esUltimaHoraParaCompartir(a);
+  const cabeceraRed = ultimaHora ? "🔴 ÚLTIMA HORA" : etiquetaTipoX(a.tipo);
+  const lineaHashtagX = ultimaHora
+    ? `\n\n${["#UltimaHora", ...hashtagsComunes].join(" ")}`
+    : lineaHashtag;
+  const textoX = `${cabeceraRed} | ElOtroFútbol\n\n${tituloX}\n\n🔗 ${link}${lineaHashtagX}${lineaFirma}`;
   document.getElementById("cp_texto_x").value = textoX;
-  actualizarContadorX();
 
-  const hashtagsInstagram = [hashtag, "#ElOtroFutbolTV", "#Futbol"].filter(Boolean).join(" ");
-  const textoInstagram = `${etiquetaTipoX(a.tipo)} | ElOtroFútbol\n\n${titulo}\n\n${subtitulo ? subtitulo + "\n\n" : ""}Noticia completa en el enlace de nuestra biografía 🔗\n\n${hashtagsInstagram}`;
+  const tituloModal = document.getElementById("modalCompartirTitulo");
+  if (tituloModal) tituloModal.textContent = ultimaHora ? "🔴 Compartir ÚLTIMA HORA en redes" : "📢 Compartir en redes";
+  const avisoUH = document.getElementById("cp_aviso_ultima_hora");
+  if (avisoUH) avisoUH.style.display = ultimaHora ? "" : "none";
+  actualizarContadorX();
+  pintarAvisoClubesX(document.getElementById("cp_aviso_clubes_sin_cuenta"), infoClubesX);
+
+  const hashtagsInstagram = (ultimaHora
+    ? ["#UltimaHora", hashtag, ...hashtagsEquipos, "#ElOtroFutbolTV"]
+    : [hashtag, ...hashtagsEquipos, "#ElOtroFutbolTV", "#Futbol"]).filter(Boolean).join(" ");
+  const cierreInstagram = ultimaHora
+    ? "Todos los detalles en el enlace de nuestra biografía 🔗 Seguimos informando."
+    : "Noticia completa en el enlace de nuestra biografía 🔗";
+  const textoInstagram = `${cabeceraRed} | ElOtroFútbol\n\n${titulo}\n\n${subtitulo ? subtitulo + "\n\n" : ""}${cierreInstagram}\n\n${hashtagsInstagram}`;
   document.getElementById("cp_texto_instagram").value = textoInstagram;
 
+  ARTICULO_COMPARTIENDO = a;
+  SUBIDA_REDES_REGISTRADA = false;
+  pintarAvisoYaSubida(a); // sin await: el modal se abre ya y el aviso aparece al llegar la respuesta
   document.getElementById("modalCompartir").classList.add("abierto");
 }
 
@@ -11693,6 +16895,7 @@ document.querySelectorAll("[data-copiar]").forEach((btn) => {
       campo.select();
       document.execCommand("copy");
     }
+    if (btn.closest("#modalCompartir")) registrarSubidaARedes();
     const span = btn.querySelector("span");
     const textoOriginal = span.textContent;
     btn.classList.add("copiado");
@@ -11718,6 +16921,7 @@ document.getElementById("btnCopiarLinkCompartir")?.addEventListener("click", asy
 // X sí permite prellenar el compositor mediante su URL de "intent" pública.
 document.getElementById("btnAbrirX")?.addEventListener("click", () => {
   const texto = document.getElementById("cp_texto_x").value;
+  registrarSubidaARedes();
   window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(texto)}`, "_blank");
 });
 
@@ -11727,6 +16931,266 @@ document.getElementById("btnAbrirX")?.addEventListener("click", () => {
 // botón de arriba, listo para pegar al crear el post.
 document.getElementById("btnAbrirInstagram")?.addEventListener("click", () => {
   window.open("https://www.instagram.com/elotrofutboltv_/", "_blank");
+});
+
+// ---------- Compartir carrusel (Fase 2) ----------
+// Genera, para un conjunto de noticias programadas (un carrusel o una
+// selección): UN texto de X por noticia (el mismo de siempre, sin portada) y
+// UN texto de Instagram por liga/categoría, juntando los titulares. Cada liga
+// es un post distinto, así que un carrusel suele tener 2 o 3 posts.
+const TIPOS_CARRUSEL = {
+  noticia:   { cab: "📰 NOTICIAS",   s: "noticia",   p: "noticias",   f: true },
+  previa:    { cab: "🔮 PREVIAS",    s: "previa",    p: "previas",    f: true },
+  cronica:   { cab: "🎙️ CRÓNICAS",   s: "crónica",   p: "crónicas",   f: true },
+  analisis:  { cab: "📊 ANÁLISIS",   s: "análisis",  p: "análisis",   f: false },
+  opinion:   { cab: "📝 OPINIONES",  s: "opinión",   p: "opiniones",  f: true },
+  entrevista:{ cab: "🎤 ENTREVISTAS",s: "entrevista",p: "entrevistas",f: true },
+  uno_por_uno:{ cab: "⚽ 1X1 DE JUGADORES", s: "1x1 de jugadores", p: "1x1 de jugadores", f: false },
+};
+const NUMEROS_CARRUSEL = ["", "una", "dos", "tres", "cuatro", "cinco", "seis", "siete", "ocho", "nueve", "diez"];
+const LIMITE_INSTAGRAM = 2200;
+
+// Titulares unidos en una frase: «A, b y c.». Solo se baja la inicial de los
+// que empiezan por artículo/determinante («El Ourense…» → «el Ourense…»), para
+// no estropear nombres propios; el texto es editable antes de copiarlo.
+function unirTitularesCarrusel(titulos) {
+  const limpios = titulos.map((t) => String(t || "").trim().replace(/[\s.,;:!¡?¿…]+$/u, "")).filter(Boolean);
+  const partes = limpios.map((t, i) => {
+    if (i === 0) return t;
+    return /^(el|la|los|las|un|una|unos|unas|lo)\s/i.test(t) ? t.charAt(0).toLowerCase() + t.slice(1) : t;
+  });
+  if (partes.length <= 1) return (partes[0] || "") + ".";
+  const ultima = partes[partes.length - 1];
+  const conj = /^(i|í|hi(?!e))/i.test(ultima) ? "e" : "y"; // «y» → «e» ante «i-»
+  return `${partes.slice(0, -1).join(", ")} ${conj} ${ultima}.`;
+}
+
+function frasePieCarrusel(grupo) {
+  const tipos = [...new Set(grupo.map((a) => a.tipo || "noticia"))];
+  const info = tipos.length === 1 ? (TIPOS_CARRUSEL[tipos[0]] || TIPOS_CARRUSEL.noticia) : TIPOS_CARRUSEL.noticia;
+  const n = grupo.length;
+  if (n === 1) return `Ya puedes consultar ${info.f ? "la" : "el"} ${info.s} en nuestra web.`;
+  const num = n <= 10 ? NUMEROS_CARRUSEL[n] : String(n);
+  return `Ya puedes consultar ${info.f ? "las" : "los"} ${num} ${info.p} en nuestra web.`;
+}
+
+function textoInstagramCarrusel(grupo, categoria) {
+  const tipos = [...new Set(grupo.map((a) => a.tipo || "noticia"))];
+  const info = tipos.length === 1 ? (TIPOS_CARRUSEL[tipos[0]] || TIPOS_CARRUSEL.noticia) : TIPOS_CARRUSEL.noticia;
+  const hashtags = [hashtagCategoria(categoria), "#ElOtroFútbol"].filter(Boolean).join(" ");
+  return `${info.cab} | ElOtroFútbol\n\n⚽ ${unirTitularesCarrusel(grupo.map((a) => a.titulo))}\n\n📰 ${frasePieCarrusel(grupo)}\n\n${hashtags}`;
+}
+
+// Mismo texto de X que el modal de compartir normal (ver abrirModalCompartir).
+// Enlace para X/Facebook con una "versión" de la vista previa (?v=...). Las redes
+// guardan la tarjeta (titular + foto) de cada URL la primera vez que la ven y no
+// la refrescan al editar la noticia. Si el enlace lleva un código calculado con
+// titular, subtítulo y foto, al editar cualquiera de ellos el enlace cambia y la
+// red lo trata como una URL nueva (tarjeta recién leída). Sin cambios, el enlace
+// es siempre el mismo. La web ignora el parámetro "v" (canonical y SEO limpios).
+// Un tuit YA programado en X conserva su enlace viejo: hay que pegar el nuevo.
+function versionVistaPreviaX(a) {
+  let foto = (a && a.imagen_url) || "";
+  if (!foto && a && a.imagenes) {
+    try {
+      const lista = typeof a.imagenes === "string" ? JSON.parse(a.imagenes) : a.imagenes;
+      const primera = Array.isArray(lista) && lista.find((x) => x && x.tipo !== "tweet" && x.url);
+      if (primera) foto = primera.url;
+    } catch (e) { /* imagenes mal formadas: solo cuentan titular y subtítulo */ }
+  }
+  const base = [a && a.titulo, a && a.subtitulo, foto].map((x) => String(x || "")).join("\u0001");
+  let h = 0x811c9dc5; // FNV-1a de 32 bits
+  for (let i = 0; i < base.length; i++) { h ^= base.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+  return h.toString(36);
+}
+function enlaceConVersionVistaPrevia(link, a) {
+  return `${link}${link.includes("?") ? "&" : "?"}v=${versionVistaPreviaX(a)}`;
+}
+
+async function textoXCarrusel(a) {
+  const destino = await resolverDestinoCompartir(a);
+  const link = enlaceConVersionVistaPrevia(`${SITIO_PUBLICO_URL}${urlNoticia(destino.categoria, destino.slug)}`, a);
+  const clubes = clubesDeArticuloParaCompartir(a);
+  const hashtagsEquipos = clubes.map(hashtagDeClub).filter(Boolean);
+  const infoClubes = mencionarClubesEnTexto(a.titulo || "", clubes);
+  const comunes = [hashtagCategoria(a.categoria), ...hashtagsEquipos].filter(Boolean);
+  const ultimaHora = esUltimaHoraParaCompartir(a);
+  const cabecera = ultimaHora ? "🔴 ÚLTIMA HORA" : etiquetaTipoX(a.tipo);
+  const hashtagsX = ultimaHora ? ["#UltimaHora", ...comunes] : comunes;
+  const lineaHashtag = hashtagsX.length ? `\n\n${hashtagsX.join(" ")}` : "";
+  const firmantes = await resolverFirmantesCompartir(a, destino);
+  const ids = firmantes ? firmantes.map((f) => f.id) : [a.autor_id, a.coautor_id];
+  const firmas = [];
+  ids.forEach((id) => { const c = cuentaXDeAutorId(id); if (c && !firmas.includes(c)) firmas.push(c); });
+  const conIcono = firmas.map((c) => `✍️ ${c}`);
+  const lista = conIcono.length > 1 ? conIcono.slice(0, -1).join(", ") + " y " + conIcono[conIcono.length - 1] : conIcono.join("");
+  return `${cabecera} | ElOtroFútbol\n\n${infoClubes.texto}\n\n🔗 ${link}${lineaHashtag}${lista ? `\n\n${lista}` : ""}`;
+}
+
+let CARRUSEL_ACTUAL = null;     // { articulos, grupos } del modal abierto
+let CARRUSEL_REGISTRADOS = new Set();
+let TOKEN_CARRUSEL = 0;
+
+function cerrarModalCompartirCarrusel() {
+  TOKEN_CARRUSEL++;
+  document.getElementById("modalCompartirCarrusel")?.classList.remove("abierto");
+}
+
+async function abrirModalCompartirCarrusel(articulos, titulo) {
+  const modal = document.getElementById("modalCompartirCarrusel");
+  const cuerpo = document.getElementById("ccBody");
+  if (!modal || !cuerpo) return;
+  const lista = (articulos || []).filter((a) => a && articuloEtiquetableRedes(a));
+  if (!lista.length) {
+    EOF.toast("No hay noticias programadas o publicadas para compartir en ese carrusel.", "error");
+    return;
+  }
+  const token = ++TOKEN_CARRUSEL;
+  document.getElementById("ccTitulo").textContent = `🎠 Compartir ${titulo}`;
+  cuerpo.innerHTML = `<p class="ayuda-editor">Preparando los textos…</p>`;
+  modal.classList.add("abierto");
+  CARRUSEL_REGISTRADOS = new Set();
+
+  if (Object.keys(AUTORES_CACHE).length === 0) await cargarAutoresSelect();
+  // Las que están fuera del horario de publicación no se suben a redes (igual
+  // que en el modal normal): se apartan y se avisa.
+  const permitido = await Promise.all(lista.map(async (a) => {
+    try { const r = await apiFetch(`/api/articles/${a.id}/compartir-permitido`); return !(r && r.fuera_calendario); }
+    catch (e) { return !a.fuera_calendario; }
+  }));
+  const validas = lista.filter((_, i) => permitido[i]);
+  const apartadas = lista.filter((_, i) => !permitido[i]);
+
+  // Grupos por categoría (liga): cada uno es un post de Instagram.
+  const porCategoria = new Map();
+  validas.slice().sort((x, y) => String(x.programado_para || x.fecha_publicacion || "").localeCompare(String(y.programado_para || y.fecha_publicacion || ""))).forEach((a) => {
+    if (!porCategoria.has(a.categoria)) porCategoria.set(a.categoria, []);
+    porCategoria.get(a.categoria).push(a);
+  });
+  const rango = (c) => { const i = ORDEN_CATEGORIAS_CARRUSEL.indexOf(c); return i === -1 ? 99 : i; };
+  const grupos = [...porCategoria.entries()]
+    .sort((x, y) => rango(x[0]) - rango(y[0]) || String(x[0]).localeCompare(String(y[0])))
+    .map(([categoria, arts]) => ({ categoria, arts, texto: textoInstagramCarrusel(arts, categoria), plan: planSubidaGrupo(arts) }));
+
+  const textosX = await Promise.all(validas.map(async (a) => ({ a, texto: await textoXCarrusel(a) })));
+  if (token !== TOKEN_CARRUSEL) return; // se cerró o se abrió otro entretanto
+  const xPorId = new Map(textosX.map((x) => [x.a.id, x.texto]));
+  CARRUSEL_ACTUAL = { grupos };
+
+  const iconoCopiar = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>`;
+  const nPublicadas = validas.filter((a) => a.publicado).length;
+  const nProgramadas = validas.length - nPublicadas;
+  const html = [];
+  if (apartadas.length) {
+    html.push(`<div class="aviso-programada-compartir"><span class="aviso-programada-icono">⚠️</span><div><p class="aviso-programada-titulo">Fuera del horario de publicación</p><p class="aviso-programada-texto">No se pueden compartir en redes: ${apartadas.map((a) => escapeHtml(a.titulo)).join("; ")}.</p></div></div>`);
+  }
+  if (!validas.length) {
+    cuerpo.innerHTML = html.join("") || `<p class="ayuda-editor">Ninguna de estas noticias se puede compartir ahora.</p>`;
+    return;
+  }
+  if (nProgramadas) {
+    html.push(`<div class="aviso-programada-compartir"><span class="aviso-programada-icono">⏳</span><div><p class="aviso-programada-titulo">${nProgramadas} ${nProgramadas === 1 ? "noticia programada" : "noticias programadas"}</p><p class="aviso-programada-texto">Aún no están publicadas: quien abra los enlaces antes de la hora verá una cuenta atrás. Al publicarse seguirán en el carrusel 48 h para poder compartirlo.</p></div></div>`);
+  }
+  if (nPublicadas) {
+    html.push(`<div class="aviso-programada-compartir"><span class="aviso-programada-icono">✅</span><div><p class="aviso-programada-titulo">${nPublicadas} ${nPublicadas === 1 ? "noticia ya publicada" : "noticias ya publicadas"}</p><p class="aviso-programada-texto">Los enlaces ya funcionan con normalidad: puedes compartirlas en cualquier momento.</p></div></div>`);
+  }
+
+  // --- Plan de subida: qué se sube y a qué hora (calculado solo) ---
+  const filasPlan = [];
+  grupos.forEach((g) => {
+    if (!g.plan) return;
+    filasPlan.push({ ms: g.plan.ig.ms + 1, red: "ig", hora: g.plan.ig.hora, dia: g.plan.ig.dia,
+      texto: `Carrusel de ${escapeHtml(categoriaLabel(g.categoria))} (${g.arts.length} ${g.arts.length === 1 ? "noticia" : "noticias"})`,
+      nota: g.arts.length > 1 ? `a la hora de la última: ${escapeHtml(g.plan.ig.articulo.titulo)}` : "" });
+    g.plan.items.forEach((i) => filasPlan.push({ ms: i.ms, red: "x", hora: i.hora, dia: i.dia, texto: escapeHtml(i.a.titulo), nota: "" }));
+  });
+  filasPlan.sort((x, y) => x.ms - y.ms);
+  if (filasPlan.length) {
+    const hoyIso = partesMadrid(new Date()).dia;
+    html.push(`<p class="cc-seccion">Plan de subida · en orden de hora</p>`);
+    html.push(`<div class="cc-plan" role="table" aria-label="Plan de subida a redes">${filasPlan.map((f) =>
+      `<div class="cc-plan-fila cc-plan-${f.red}" role="row"><span class="cc-plan-hora" role="cell"><strong>${f.hora}</strong><small>${etiquetaDiaMadrid(f.dia)}</small></span><span class="cc-plan-red" role="cell">${f.red === "ig" ? "Instagram" : "X"}</span><span class="cc-plan-txt" role="cell">${f.texto}${f.nota ? `<small>${f.nota}</small>` : ""}</span></div>`).join("")}</div>`);
+    const avisos = [];
+    grupos.forEach((g) => {
+      if (!g.plan) return;
+      const liga = escapeHtml(categoriaLabel(g.categoria));
+      if (g.plan.variosDias) avisos.push(`${liga}: hay noticias de días distintos en el mismo carrusel. Instagram saldría el ${etiquetaDiaMadrid(g.plan.ig.dia)} a las ${g.plan.ig.hora}. ¿Seguro que van juntas?`);
+      else if (g.plan.margenMin > 240) avisos.push(`${liga}: pasan ${Math.floor(g.plan.margenMin / 60)} h entre la primera y la última noticia; las primeras esperarán mucho a salir en Instagram.`);
+      if (g.plan.ig.ms < Date.now()) avisos.push(`${liga}: la hora de Instagram (${g.plan.ig.hora}) ya ha pasado.`);
+    });
+    if (avisos.length) html.push(`<div class="aviso-programada-compartir"><span class="aviso-programada-icono">⚠️</span><div><p class="aviso-programada-titulo">Revisa esto</p><p class="aviso-programada-texto">${avisos.join("<br>")}</p></div></div>`);
+  }
+
+  // --- Instagram: un post por liga ---
+  html.push(`<p class="cc-seccion">Instagram · ${grupos.length} ${grupos.length === 1 ? "post" : "posts"} en el carrusel</p>`);
+  grupos.forEach((g, i) => {
+    html.push(`<div class="compartir-red">
+      <div class="compartir-red-cabecera"><span class="compartir-red-icono instagram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><rect x="2.5" y="2.5" width="19" height="19" rx="5.5"/><circle cx="12" cy="12" r="4.3"/><circle cx="17.35" cy="6.65" r="1.05" fill="currentColor" stroke="none"/></svg></span>
+      <span class="compartir-red-nombre">Post ${i + 1} · ${escapeHtml(categoriaLabel(g.categoria))} <small class="cc-n">${g.arts.length} ${g.arts.length === 1 ? "noticia" : "noticias"}</small></span>${g.plan ? `<span class="cc-hora-subida" title="Hora de la última noticia de esta liga">Subir a las ${g.plan.ig.hora} · ${etiquetaDiaMadrid(g.plan.ig.dia)}</span>` : ""}</div>
+      <textarea id="cc_ig_${i}" data-cc-contador="cc_ig_c${i}" data-cc-max="${LIMITE_INSTAGRAM}" rows="9">${escapeHtml(g.texto)}</textarea>
+      <div class="compartir-red-contador" id="cc_ig_c${i}">${g.texto.length} / ${LIMITE_INSTAGRAM}</div>
+      <div class="compartir-red-acciones"><button type="button" data-cc-copiar="cc_ig_${i}" data-cc-grupo="${i}">${iconoCopiar}<span>Copiar texto</span></button><button type="button" data-cc-abrir-ig>Abrir Instagram ↗</button></div>
+    </div>`);
+  });
+
+  // --- X: un texto por noticia, sin portada ---
+  html.push(`<p class="cc-seccion">X · un tuit por noticia, sin portada</p>`);
+  html.push(`<p class="compartir-ayuda" style="margin-top:0;">Se publican solo con el texto y el enlace (X pinta la tarjeta del enlace): no hace falta descargar imágenes.</p>`);
+  const horaX = (a) => { if (a.publicado) return `<span class="cc-hora-subida" title="Ya está publicada en la web">Ya publicada</span>`; const d = instanteProgramado(a); if (!d) return ""; const m = partesMadrid(d); return `<span class="cc-hora-subida" title="Hora normal de publicación de la noticia">Subir a las ${m.hora} · ${etiquetaDiaMadrid(m.dia)}</span>`; };
+  grupos.forEach((g) => g.arts.forEach((a) => {
+    const t = xPorId.get(a.id) || "";
+    html.push(`<div class="compartir-red">
+      <div class="compartir-red-cabecera"><span class="compartir-red-icono x"><svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></span>
+      <span class="compartir-red-nombre">${escapeHtml(a.titulo)}</span>${horaX(a)}</div>
+      <textarea id="cc_x_${a.id}" data-cc-contador="cc_x_c${a.id}" data-cc-max="280" rows="7">${escapeHtml(t)}</textarea>
+      <div class="compartir-red-contador${t.length > 280 ? " limite" : ""}" id="cc_x_c${a.id}">${t.length} / 280</div>
+      <div class="compartir-red-acciones"><button type="button" data-cc-copiar="cc_x_${a.id}" data-cc-art="${a.id}">${iconoCopiar}<span>Copiar texto</span></button><button type="button" data-cc-abrir-x="cc_x_${a.id}" data-cc-art="${a.id}">Abrir en X ya rellenado ↗</button></div>
+    </div>`);
+  }));
+  cuerpo.innerHTML = html.join("");
+}
+
+// Anota que las previas/crónicas del carrusel se han subido (mismo registro que
+// el modal normal, para que avise si luego se abre otra del mismo partido).
+function registrarSubidaCarrusel(articulos) {
+  (articulos || []).forEach((a) => {
+    if (!a || CARRUSEL_REGISTRADOS.has(a.id) || !["previa", "cronica"].includes(a.tipo)) return;
+    CARRUSEL_REGISTRADOS.add(a.id);
+    apiFetch("/api/compartir-redes/registrar", { method: "POST", body: JSON.stringify({ id: a.id, slug: a.slug }) })
+      .catch(() => { CARRUSEL_REGISTRADOS.delete(a.id); });
+  });
+}
+
+document.getElementById("ccBody")?.addEventListener("input", (ev) => {
+  const ta = ev.target.closest("textarea[data-cc-contador]");
+  if (!ta) return;
+  const c = document.getElementById(ta.dataset.ccContador);
+  if (!c) return;
+  c.textContent = `${ta.value.length} / ${ta.dataset.ccMax}`;
+  c.classList.toggle("limite", ta.value.length > Number(ta.dataset.ccMax));
+});
+document.getElementById("ccBody")?.addEventListener("click", async (ev) => {
+  const copiar = ev.target.closest("[data-cc-copiar]");
+  const abrirX = ev.target.closest("[data-cc-abrir-x]");
+  const abrirIg = ev.target.closest("[data-cc-abrir-ig]");
+  const grupos = (CARRUSEL_ACTUAL && CARRUSEL_ACTUAL.grupos) || [];
+  if (copiar) {
+    const campo = document.getElementById(copiar.dataset.ccCopiar);
+    try { await navigator.clipboard.writeText(campo.value); } catch { campo.select(); document.execCommand("copy"); }
+    if (copiar.dataset.ccGrupo !== undefined) registrarSubidaCarrusel((grupos[Number(copiar.dataset.ccGrupo)] || {}).arts);
+    else registrarSubidaCarrusel([ARTICULOS_CACHE[copiar.dataset.ccArt]]);
+    const span = copiar.querySelector("span");
+    const original = span.textContent;
+    copiar.classList.add("copiado");
+    span.textContent = "Copiado ✓";
+    setTimeout(() => { copiar.classList.remove("copiado"); span.textContent = original; }, 2000);
+  } else if (abrirX) {
+    const campo = document.getElementById(abrirX.dataset.ccAbrirX);
+    registrarSubidaCarrusel([ARTICULOS_CACHE[abrirX.dataset.ccArt]]);
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(campo.value)}`, "_blank");
+  } else if (abrirIg) {
+    window.open("https://www.instagram.com/elotrofutboltv_/", "_blank");
+  }
 });
 
 // Permite llegar directamente a una sección de "Ajustes de cuenta" desde
@@ -12133,6 +17597,9 @@ function nombreEquipoAlineacionElegido() {
 }
 
 document.getElementById("btnGuardarAlineacion").addEventListener("click", async () => {
+  if (EOF_ACCIONES_EN_CURSO.has("L17259")) return;
+  EOF_ACCIONES_EN_CURSO.add("L17259");
+  try {
   const equipo = nombreEquipoAlineacionElegido();
   const msgError = document.getElementById("msgErrorAlineacion");
   msgError.style.display = "none";
@@ -12183,6 +17650,8 @@ document.getElementById("btnGuardarAlineacion").addEventListener("click", async 
     msgError.textContent = "Error: " + err.message;
     msgError.style.display = "block";
   }
+
+  } finally { EOF_ACCIONES_EN_CURSO.delete("L17259"); }
 });
 
 document.getElementById("btnEliminarAlineacion").addEventListener("click", async () => {
@@ -12494,7 +17963,7 @@ function pintarFotosCollageEditor() {
     urlInput.addEventListener("input", () => {
       const url = urlInput.value.trim();
       miniatura.hidden = !url;
-      if (url) miniatura.src = url;
+      if (url) miniatura.src = url; else miniatura.removeAttribute("src");
       guardarFoto();
     });
     creditoInput.addEventListener("input", guardarFoto);
@@ -12695,6 +18164,7 @@ function aplicarTemaEnDocumento(nuevo) {
   btn.addEventListener("click", () => {
     const esOscuroAhora = document.documentElement.getAttribute("data-theme") === "dark";
     const nuevo = esOscuroAhora ? "light" : "dark";
+    if (window.EOFTema) { window.EOFTema.fijar(nuevo); return; }
     aplicarTemaEnDocumento(nuevo);
     try {
       localStorage.setItem("eof_tema", nuevo);
@@ -12703,51 +18173,56 @@ function aplicarTemaEnDocumento(nuevo) {
 })();
 
 // ---------- ENCUESTAS ----------
-// Solo puede votar en el frontend un lector con cuenta, logueado y con
-// el correo verificado (ver requireReaderVerificado en el worker); en
-// el panel, crear/editar/cerrar solo pueden hacerlo redactores/admin,
-// igual que cualquier otro contenido.
+// En el frontend puede votar cualquier lector, sin cuenta ni sesión (ver
+// hashVotanteEncuesta en el worker); en el panel, crear/editar/cerrar
+// solo pueden hacerlo redactores/admin, igual que cualquier otro
+// contenido.
 
 function encuestaEstadoBadgeHTML(encuesta) {
-  if (encuesta.estado === "cerrada") return `<span class="badge-estado badge-rechazado">Cerrada</span>`;
-  if (encuesta.cierra_en) return `<span class="badge-estado badge-aprobado">Abierta · cierra ${new Date(encuesta.cierra_en.replace(" ", "T")).toLocaleString("es-ES", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</span>`;
-  return `<span class="badge-estado badge-aprobado">Abierta</span>`;
+  if (encuesta.estado === "cerrada") return `<span class="func-chip">Cerrada</span>`;
+  if (encuesta.cierra_en) {
+    const cierre = new Date(encuesta.cierra_en.replace(" ", "T")).toLocaleString("es-ES", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+    return `<span class="func-chip verde">Abierta · cierra ${cierre}</span>`;
+  }
+  return `<span class="func-chip verde">Abierta</span>`;
 }
 
 function encuestaItemHTML(encuesta) {
+  const maxVotos = Math.max(0, ...encuesta.opciones.map(o => o.votos));
   const opciones = encuesta.opciones.map(o => {
     const pct = encuesta.total_votos ? Math.round((o.votos / encuesta.total_votos) * 100) : 0;
-    return `<div style="margin:4px 0;">
-      <div style="display:flex; justify-content:space-between; font-size:0.9em;">
-        <span>${escapeHtml(o.texto)}</span>
-        <span>${o.votos} voto${o.votos === 1 ? "" : "s"} (${pct}%)</span>
+    const lider = encuesta.total_votos > 0 && o.votos === maxVotos;
+    return `<div class="func-opcion${lider ? " lider" : ""}">
+      <div class="func-opcion-fila">
+        <span class="txt">${escapeHtml(o.texto)}</span>
+        <span class="num"><b>${pct}%</b> · ${o.votos} voto${o.votos === 1 ? "" : "s"}</span>
       </div>
-      <div style="background:var(--borde,#ddd); border-radius:4px; height:6px; overflow:hidden;">
-        <div style="background:var(--celeste,#0a7); height:100%; width:${pct}%;"></div>
-      </div>
+      <div class="func-barra"><i style="width:${pct}%"></i></div>
     </div>`;
   }).join("");
 
-  const dondeAparece = [
-    encuesta.articulo_titulo ? `en la noticia "${escapeHtml(encuesta.articulo_titulo)}"` : null,
-    encuesta.en_portada ? "en portada" : null,
-  ].filter(Boolean).join(" y ") || "en ningún sitio del frontend todavía";
+  const chips = [
+    encuesta.articulo_titulo ? `<span class="func-chip azul sin-punto">Noticia: ${escapeHtml(encuesta.articulo_titulo)}</span>` : "",
+    encuesta.en_portada ? `<span class="func-chip violeta sin-punto">En portada</span>` : "",
+    (!encuesta.articulo_titulo && !encuesta.en_portada) ? `<span class="func-chip ambar sin-punto">Sin ubicación todavía</span>` : "",
+    `<span class="func-chip sin-punto">${encuesta.total_votos} voto${encuesta.total_votos === 1 ? "" : "s"} en total</span>`,
+  ].filter(Boolean).join("");
 
-  return `<div class="form-card" style="margin-bottom:14px;" data-encuesta-id="${encuesta.id}">
-    <div style="display:flex; justify-content:space-between; align-items:start; gap:10px;">
-      <strong>${escapeHtml(encuesta.pregunta)}</strong>
+  return `<article class="func-encuesta${encuesta.estado === "cerrada" ? " cerrada" : ""}" data-encuesta-id="${encuesta.id}">
+    <div class="func-encuesta-cab">
+      <h4 class="func-encuesta-pregunta">${escapeHtml(encuesta.pregunta)}</h4>
       ${encuestaEstadoBadgeHTML(encuesta)}
     </div>
-    <p class="ayuda-editor" style="margin:6px 0 10px;">Aparece ${dondeAparece} · ${encuesta.total_votos} voto${encuesta.total_votos === 1 ? "" : "s"} en total</p>
+    <div class="func-encuesta-chips">${chips}</div>
     ${opciones}
-    <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
-      <button type="button" class="btn-secundari" data-encuesta-editar="${encuesta.id}">Editar</button>
+    <div class="func-encuesta-acc">
+      <button type="button" class="func-btn editar" data-encuesta-editar="${encuesta.id}">Editar</button>
       ${encuesta.estado === "abierta"
-        ? `<button type="button" class="btn-secundari" data-encuesta-cerrar="${encuesta.id}">Cerrar</button>`
-        : `<button type="button" class="btn-secundari" data-encuesta-reabrir="${encuesta.id}">Reabrir</button>`}
-      <button type="button" class="btn-secundari" data-encuesta-borrar="${encuesta.id}">Borrar</button>
+        ? `<button type="button" class="func-btn cerrar" data-encuesta-cerrar="${encuesta.id}">Cerrar</button>`
+        : `<button type="button" class="func-btn reabrir" data-encuesta-reabrir="${encuesta.id}">Reabrir</button>`}
+      <button type="button" class="func-btn borrar" data-encuesta-borrar="${encuesta.id}">Borrar</button>
     </div>
-  </div>`;
+  </article>`;
 }
 
 async function cargaEncuestas() {
@@ -12893,7 +18368,11 @@ function cerrarModalEncuesta() {
 
 document.getElementById("btnNuevaEncuesta")?.addEventListener("click", () => abrirModalEncuesta());
 
+// Guarda en curso: evita que varios clics (o Enter + clic) creen la misma
+// encuesta varias veces mientras el servidor aún no ha respondido.
+let guardandoEncuesta = false;
 document.getElementById("btnGuardarEncuesta")?.addEventListener("click", async () => {
+  if (guardandoEncuesta) return;
   const errEl = document.getElementById("errEncuesta");
   const okEl = document.getElementById("msgOkEncuesta");
   errEl.style.display = "none";
@@ -12938,6 +18417,11 @@ document.getElementById("btnGuardarEncuesta")?.addEventListener("click", async (
   // por tener ya votos (si están bloqueadas, no se tocan en el backend).
   if (!id || !opcionesBloqueadas) body.opciones = opciones;
 
+  const btnGuardar = document.getElementById("btnGuardarEncuesta");
+  const textoBtn = btnGuardar.textContent;
+  guardandoEncuesta = true;
+  btnGuardar.disabled = true;
+  btnGuardar.textContent = "Guardando...";
   try {
     if (id) {
       await apiFetch(`/api/admin/polls/${id}`, { method: "PUT", body: JSON.stringify(body) });
@@ -12945,11 +18429,17 @@ document.getElementById("btnGuardarEncuesta")?.addEventListener("click", async (
       await apiFetch("/api/admin/polls", { method: "POST", body: JSON.stringify(body) });
     }
     okEl.style.display = "block";
-    await cargaEncuestas();
+    // El botón sigue bloqueado hasta cerrar el modal; el listado se
+    // recarga sin esperar para no dejar la ventana abierta y clicable.
+    cargaEncuestas();
     setTimeout(() => cerrarModalEncuesta(), 700);
+    setTimeout(() => { btnGuardar.disabled = false; btnGuardar.textContent = textoBtn; guardandoEncuesta = false; }, 900);
   } catch (err) {
     errEl.textContent = err.message || "No se ha podido guardar la encuesta.";
     errEl.style.display = "block";
+    btnGuardar.disabled = false;
+    btnGuardar.textContent = textoBtn;
+    guardandoEncuesta = false;
   }
 });
 
@@ -13003,94 +18493,383 @@ document.getElementById("listaEncuestas")?.addEventListener("click", async (e) =
 // (intRound) que da TheSportsDB para el relleno automático de
 // partidos, porque a menudo se equivoca -sobre todo en
 // Primera/Segunda RFEF-. Ver /api/jornadas-calendario en
-// worker/src/index.js.
+// worker/src/index.js. Estilos: /admin/css/calendario-jornadas.css
+//
+// Qué hace la UI:
+//  - Pestañas por competición (con contador) y chips de grupo.
+//  - Resumen: rangos, jornada en curso, próxima y avisos.
+//  - Cada fila muestra su estado (finalizada / en curso /
+//    próxima), la duración y detecta solapes y jornadas
+//    repetidas dentro del mismo grupo.
+//  - El botón de guardar de cada fila solo se activa cuando hay
+//    cambios (Enter en un campo también guarda).
+//  - «Añadir siguiente jornada» continúa justo donde acaba la
+//    última y «Generar varias de golpe» crea una tanda entera.
 // ============================================================
 let calJornadasTodas = [];
+let cjCargado = false;
+const cjGruposCerrados = new Set(); // secciones plegadas por el usuario (clave comp|grupo)
 
-function calJornadasGrupoRequerido(competicion) {
-  return competicion === "primera_federacion" || competicion === "segunda_federacion";
+const CJ_GRUPOS = {
+  hypermotion: [],
+  primera_federacion: ["Grupo 1", "Grupo 2"],
+  segunda_federacion: ["Grupo 1", "Grupo 2", "Grupo 3", "Grupo 4", "Grupo 5"],
+};
+const CJ_NOMBRES = {
+  hypermotion: "LaLiga Hypermotion",
+  primera_federacion: "Primera Federación",
+  segunda_federacion: "Segunda Federación",
+};
+
+const cjEl = (id) => document.getElementById(id);
+const cjEsc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+// ---------- Fechas (siempre YYYY-MM-DD; se opera en UTC para evitar saltos por zona horaria) ----------
+function calJornadasFechaHoyISO() {
+  // Fecha LOCAL del navegador (toISOString daba la fecha UTC y, entre
+  // las 00:00 y las 02:00 en España, marcaba como vigente el día anterior).
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+function cjParseISO(iso) {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d));
+}
+function cjSumarDias(iso, n) {
+  const d = cjParseISO(iso);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+function cjDias(ini, fin) {
+  return Math.round((cjParseISO(fin) - cjParseISO(ini)) / 86400000) + 1;
+}
+function cjFechaCorta(iso) {
+  return new Intl.DateTimeFormat("es-ES", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" })
+    .format(cjParseISO(iso)).replace(/\./g, "").replace(",", "");
+}
+const cjFechaValida = (v) => /^\d{4}-\d{2}-\d{2}$/.test(v || "");
+const cjPlural = (n, uno, varios) => `${n} ${n === 1 ? uno : varios}`;
+
+// ---------- Estado de pantalla ----------
+function cjCompeticion() { return cjEl("calJornadasCompeticion").value; }
+function cjGrupoFiltro() { return cjEl("calJornadasGrupo").value; }          // "" = todos los grupos
+function cjGruposObjetivo(competicion = cjCompeticion()) {
+  const grupos = CJ_GRUPOS[competicion] || [];
+  if (!grupos.length) return [null];
+  const f = cjGrupoFiltro();
+  return f ? [f] : grupos.slice();
+}
+function cjEstadoDe(fila, hoy) {
+  if (fila.fecha_fin < hoy) return "pasada";
+  if (fila.fecha_inicio <= hoy) return "vigente";
+  return "proxima";
 }
 
+// Solapes y jornadas repetidas dentro de la misma competición + grupo.
+// Devuelve Map(id -> [mensajes]).
+function cjDetectarAvisos(filas) {
+  const avisos = new Map();
+  const duplicados = new Map(); // id de la copia sobrante -> id del original que se conserva
+  const anota = (id, msg) => { if (!avisos.has(id)) avisos.set(id, []); avisos.get(id).push(msg); };
+  const porGrupo = new Map();
+  for (const f of filas) {
+    const k = f.competicion + "|" + (f.grupo || "");
+    if (!porGrupo.has(k)) porGrupo.set(k, []);
+    porGrupo.get(k).push(f);
+  }
+  for (const lista of porGrupo.values()) {
+    lista.sort((a, b) => a.id - b.id); // al duplicado exacto se le conserva el más antiguo
+    for (let i = 0; i < lista.length; i++) {
+      for (let j = i + 1; j < lista.length; j++) {
+        const a = lista[i], b = lista[j];
+        if (a.jornada === b.jornada && a.fecha_inicio === b.fecha_inicio && a.fecha_fin === b.fecha_fin) {
+          // Mismo rango guardado dos veces: un solo aviso claro (no «repetida» + «solapa»)
+          anota(a.id, `Hay otro rango idéntico (J${b.jornada}, ${cjFechaCorta(b.fecha_inicio)} – ${cjFechaCorta(b.fecha_fin)}).`);
+          anota(b.id, `Duplicado exacto de otro rango (J${a.jornada}, mismas fechas): sobra, no cambia nada y se puede eliminar.`);
+          if (!duplicados.has(b.id)) duplicados.set(b.id, a.id);
+          continue;
+        }
+        if (a.jornada === b.jornada) {
+          anota(a.id, `La jornada ${a.jornada} aparece más de una vez en este grupo.`);
+          anota(b.id, `La jornada ${a.jornada} aparece más de una vez en este grupo.`);
+        }
+        if (a.fecha_inicio <= b.fecha_fin && b.fecha_inicio <= a.fecha_fin) {
+          anota(a.id, `Se solapa con la J${b.jornada} (${cjFechaCorta(b.fecha_inicio)} – ${cjFechaCorta(b.fecha_fin)}): los partidos de los días comunes irán a la que empiece más tarde.`);
+          anota(b.id, `Se solapa con la J${a.jornada} (${cjFechaCorta(a.fecha_inicio)} – ${cjFechaCorta(a.fecha_fin)}): los partidos de los días comunes irán a la que empiece más tarde.`);
+        }
+      }
+    }
+  }
+  avisos.duplicados = duplicados;
+  return avisos;
+}
+
+// ---------- Cabecera: pestañas, chips de grupo, resumen ----------
 function calJornadasActualizarVisibilidadGrupo() {
-  const competicion = document.getElementById("calJornadasCompeticion").value;
-  const requiereGrupo = calJornadasGrupoRequerido(competicion);
-  const selectGrupo = document.getElementById("calJornadasGrupo");
-  const checkTodos = document.getElementById("calJornadasTodosGrupos");
-  const opcionesGrupo = competicion === "primera_federacion"
-    ? ["Grupo 1", "Grupo 2"]
-    : competicion === "segunda_federacion"
-      ? ["Grupo 1", "Grupo 2", "Grupo 3", "Grupo 4", "Grupo 5"]
-      : [];
-  selectGrupo.innerHTML = opcionesGrupo.map(g => `<option value="${g}">${g}</option>`).join("");
-  selectGrupo.style.display = requiereGrupo && !checkTodos.checked ? "" : "none";
-  checkTodos.closest(".cal-jornadas-check").style.display = requiereGrupo ? "" : "none";
+  const competicion = cjCompeticion();
+  const grupos = CJ_GRUPOS[competicion] || [];
+  const contenedor = cjEl("cjGrupos");
+  if (!grupos.includes(cjGrupoFiltro())) cjEl("calJornadasGrupo").value = "";
+  const actual = cjGrupoFiltro();
+  contenedor.hidden = !grupos.length;
+  contenedor.innerHTML = grupos.length
+    ? [`<button type="button" class="cj-chip" data-grupo="" aria-pressed="${actual === ""}">Todos los grupos</button>`]
+        .concat(grupos.map((g) => `<button type="button" class="cj-chip" data-grupo="${cjEsc(g)}" aria-pressed="${actual === g}">${cjEsc(g)}</button>`))
+        .join("")
+    : "";
 }
 
+function cjPintarPestanas() {
+  const competicion = cjCompeticion();
+  document.querySelectorAll("#cjComps .cj-comp").forEach((btn) => {
+    const comp = btn.dataset.comp;
+    btn.setAttribute("aria-selected", String(comp === competicion));
+    btn.querySelector(".cj-comp-n").textContent = calJornadasTodas.filter((j) => j.competicion === comp).length;
+  });
+}
+
+function cjPintarResumen(filas, avisos, hoy) {
+  const cont = cjEl("cjResumen");
+  if (!cjCargado) { cont.innerHTML = ""; return; }
+  const vigentes = filas.filter((f) => cjEstadoDe(f, hoy) === "vigente");
+  const proximas = filas.filter((f) => f.fecha_inicio > hoy).sort((a, b) => a.fecha_inicio.localeCompare(b.fecha_inicio));
+  const siguiente = proximas[0];
+  const nVigentes = [...new Set(vigentes.map((f) => f.jornada))].sort((a, b) => a - b);
+  const nAvisos = new Set([...avisos.keys()].filter((id) => filas.some((f) => f.id === id))).size;
+
+  const kpiVigente = vigentes.length
+    ? `<button type="button" class="cj-kpi vigente" data-cj-ir="vigente" title="Ir a la jornada en curso">
+         <span class="cj-kpi-et">En curso hoy</span>
+         <span class="cj-kpi-val">${nVigentes.map((n) => "J" + n).join(" · ")}</span>
+         <span class="cj-kpi-sub">hasta el ${cjFechaCorta(vigentes.reduce((m, f) => (f.fecha_fin < m ? f.fecha_fin : m), vigentes[0].fecha_fin))}</span>
+       </button>`
+    : `<div class="cj-kpi"><span class="cj-kpi-et">En curso hoy</span><span class="cj-kpi-val">—</span><span class="cj-kpi-sub">Hoy no cae en ningún rango</span></div>`;
+  const kpiSiguiente = siguiente
+    ? `<div class="cj-kpi"><span class="cj-kpi-et">Próxima jornada</span><span class="cj-kpi-val">J${siguiente.jornada}</span><span class="cj-kpi-sub">empieza el ${cjFechaCorta(siguiente.fecha_inicio)}</span></div>`
+    : `<div class="cj-kpi"><span class="cj-kpi-et">Próxima jornada</span><span class="cj-kpi-val">—</span><span class="cj-kpi-sub">No hay rangos futuros definidos</span></div>`;
+  const ultima = filas.reduce((m, f) => (f.jornada > m ? f.jornada : m), 0);
+  const kpiRangos = `<div class="cj-kpi"><span class="cj-kpi-et">Rangos definidos</span><span class="cj-kpi-val">${filas.length}</span><span class="cj-kpi-sub">${filas.length ? "hasta la jornada " + ultima : "ninguno todavía"}</span></div>`;
+  const kpiAvisos = nAvisos
+    ? `<button type="button" class="cj-kpi alerta" data-cj-ir="aviso" title="Ir al primer rango con aviso"><span class="cj-kpi-et">Revisar</span><span class="cj-kpi-val">${cjPlural(nAvisos, "rango", "rangos")}</span><span class="cj-kpi-sub">con solapes o jornadas repetidas</span></button>`
+    : `<div class="cj-kpi"><span class="cj-kpi-et">Revisión</span><span class="cj-kpi-val" style="color:var(--cj-verde-txt)">Todo en orden</span><span class="cj-kpi-sub">Sin solapes ni repetidas</span></div>`;
+  cont.innerHTML = kpiVigente + kpiSiguiente + kpiRangos + kpiAvisos;
+}
+
+function cjPintarDestino() {
+  const comp = cjCompeticion();
+  const grupos = CJ_GRUPOS[comp] || [];
+  const el = cjEl("cjDestino");
+  if (!grupos.length) { el.textContent = ""; return; }
+  el.textContent = cjGrupoFiltro()
+    ? `Se añadirá a ${cjGrupoFiltro()}`
+    : `Se añadirá a los ${grupos.length} grupos`;
+}
+
+// ---------- Carga y pintado de la lista ----------
 async function calJornadasCargar() {
-  const contenedor = document.getElementById("calJornadasLista");
-  contenedor.innerHTML = `<p class="cal-jornadas-vacio">Cargando...</p>`;
+  const contenedor = cjEl("calJornadasLista");
+  if (!cjCargado) contenedor.innerHTML = `<div class="cj-esqueleto"></div><div class="cj-esqueleto"></div><div class="cj-esqueleto"></div>`;
   try {
     const { jornadas } = await apiFetch("/api/jornadas-calendario");
     calJornadasTodas = jornadas || [];
+    cjCargado = true;
     calJornadasPintar();
   } catch (err) {
-    contenedor.innerHTML = `<p class="cal-jornadas-vacio">No se ha podido cargar: ${err.message}</p>`;
+    contenedor.innerHTML = `<div class="cj-vacio"><strong>No se ha podido cargar el calendario</strong><p>${cjEsc(err.message)}</p><button type="button" class="cj-btn cj-btn-sec" data-cj-reintentar>Reintentar</button></div>`;
   }
 }
 
-function calJornadasFechaHoyISO() {
-  return new Date().toISOString().slice(0, 10);
+function cjRellenarFila(filaEl, fila, estado, hoy, siguienteId, avisos) {
+  filaEl.dataset.id = fila.id;
+  filaEl.dataset.origJornada = fila.jornada;
+  filaEl.dataset.origInicio = fila.fecha_inicio;
+  filaEl.dataset.origFin = fila.fecha_fin;
+  filaEl.classList.add("estado-" + estado);
+  filaEl.querySelector(".cal-jornada-input-jornada").value = fila.jornada;
+  filaEl.querySelector(".cal-jornada-input-inicio").value = fila.fecha_inicio;
+  filaEl.querySelector(".cal-jornada-input-fin").value = fila.fecha_fin;
+  const grupoEt = filaEl.querySelector(".cal-jornada-grupo-etiqueta");
+  grupoEt.textContent = fila.grupo || "";
+  const est = filaEl.querySelector(".cj-estado");
+  const esSiguiente = estado === "proxima" && fila.id === siguienteId;
+  est.className = "cj-estado " + (esSiguiente ? "siguiente" : estado);
+  est.textContent = estado === "pasada" ? "Finalizada" : estado === "vigente" ? "En curso" : esSiguiente ? "La siguiente" : "Próxima";
+  filaEl.querySelector(".cj-duracion").textContent = cjPlural(cjDias(fila.fecha_inicio, fila.fecha_fin), "día", "días");
+  const msgs = avisos.get(fila.id);
+  const aviso = filaEl.querySelector(".cj-aviso");
+  if (msgs && msgs.length) {
+    filaEl.classList.add("cj-conflicto");
+    const esCopia = avisos.duplicados?.has(fila.id);
+    aviso.innerHTML = "⚠ " + cjEsc([...new Set(msgs)].join(" ")) +
+      (esCopia ? ` <button type="button" class="cj-aviso-btn" data-cj-quitar-dup="${fila.id}">Eliminar este duplicado</button>` : "");
+    aviso.dataset.conflicto = aviso.innerHTML; // para restaurarlo si luego se edita y se corrige un error de fechas
+    aviso.hidden = false;
+  }
+}
+
+function cjCrearFila(plantilla, fila, estado, hoy, siguienteId, avisos) {
+  const nodo = plantilla.content.cloneNode(true);
+  const filaEl = nodo.querySelector(".cj-fila");
+  cjRellenarFila(filaEl, fila, estado, hoy, siguienteId, avisos);
+  return nodo;
 }
 
 function calJornadasPintar() {
-  const competicion = document.getElementById("calJornadasCompeticion").value;
-  const contenedor = document.getElementById("calJornadasLista");
-  const filas = calJornadasTodas
-    .filter(j => j.competicion === competicion)
-    .sort((a, b) => (a.grupo || "").localeCompare(b.grupo || "") || a.fecha_inicio.localeCompare(b.fecha_inicio));
+  const competicion = cjCompeticion();
+  const contenedor = cjEl("calJornadasLista");
+  const hoy = calJornadasFechaHoyISO();
+  const grupos = CJ_GRUPOS[competicion] || [];
+  const filtro = cjGrupoFiltro();
+  const ocultarPasadas = cjEl("cjOcultarPasadas").checked;
 
-  if (!filas.length) {
-    contenedor.innerHTML = `<p class="cal-jornadas-vacio">Todavía no hay ningún rango definido para esta competición.</p>`;
+  cjPintarPestanas();
+  cjPintarDestino();
+
+  const deCompeticion = calJornadasTodas.filter((j) => j.competicion === competicion);
+  const avisos = cjDetectarAvisos(deCompeticion);
+  cjPintarBanner(avisos.duplicados.size);
+  const visibles = deCompeticion.filter((j) => !filtro || j.grupo === filtro);
+  cjPintarResumen(visibles, avisos, hoy);
+
+  if (!deCompeticion.length) {
+    contenedor.innerHTML = `<div class="cj-vacio">
+      <strong>Todavía no hay ningún rango en ${cjEsc(CJ_NOMBRES[competicion])}</strong>
+      <p>Mientras no haya rangos, los partidos automáticos usarán la jornada que indique TheSportsDB. Añade la primera jornada o genera una tanda completa.</p>
+      <button type="button" class="cj-btn cj-btn-pri" data-cj-vacio-anadir>+ Añadir primera jornada</button>
+    </div>`;
     return;
   }
 
-  const hoy = calJornadasFechaHoyISO();
-  const plantilla = document.getElementById("plantillaRangoJornada");
+  const plantilla = cjEl("plantillaRangoJornada");
+  const orden = (a, b) => a.fecha_inicio.localeCompare(b.fecha_inicio) || a.jornada - b.jornada;
+  const nombresGrupo = grupos.length ? (filtro ? [filtro] : grupos) : [null];
+
   contenedor.innerHTML = "";
-  for (const fila of filas) {
-    const nodo = plantilla.content.cloneNode(true);
-    const filaEl = nodo.querySelector(".cal-jornada-fila");
-    filaEl.dataset.id = fila.id;
-    if (fila.fecha_inicio <= hoy && fila.fecha_fin >= hoy) filaEl.classList.add("cal-jornada-vigente");
-    nodo.querySelector(".cal-jornada-numero-valor").textContent = fila.jornada;
-    nodo.querySelector(".cal-jornada-input-jornada").value = fila.jornada;
-    nodo.querySelector(".cal-jornada-input-inicio").value = fila.fecha_inicio;
-    nodo.querySelector(".cal-jornada-input-fin").value = fila.fecha_fin;
-    nodo.querySelector(".cal-jornada-grupo-etiqueta").textContent = fila.grupo || "";
-    contenedor.appendChild(nodo);
+  let alguna = false;
+  for (const g of nombresGrupo) {
+    const delGrupo = visibles.filter((j) => (j.grupo || null) === g).sort(orden);
+    if (!delGrupo.length && grupos.length === 0) continue;
+    const siguiente = delGrupo.filter((f) => f.fecha_inicio > hoy)[0];
+    const lista = delGrupo.filter((f) => !(ocultarPasadas && cjEstadoDe(f, hoy) === "pasada"));
+    const ocultas = delGrupo.length - lista.length;
+
+    // Cuerpo: filas
+    const cuerpo = document.createElement("div");
+    cuerpo.className = g ? "cj-seccion-cuerpo" : "cj-sin-grupo";
+    for (const fila of lista) cuerpo.appendChild(cjCrearFila(plantilla, fila, cjEstadoDe(fila, hoy), hoy, siguiente?.id, avisos));
+    if (!lista.length) {
+      cuerpo.innerHTML = `<div class="cj-vacio" style="padding:16px"><p>${delGrupo.length ? "Todas las jornadas de este grupo han finalizado." : "Este grupo todavía no tiene rangos."}</p></div>`;
+    }
+    if (!g) {
+      if (ocultas) {
+        const nota = document.createElement("p");
+        nota.className = "cj-seccion-datos";
+        nota.textContent = cjPlural(ocultas, "jornada finalizada oculta", "jornadas finalizadas ocultas") + ".";
+        contenedor.appendChild(nota);
+      }
+      contenedor.appendChild(cuerpo);
+      alguna = true;
+      continue;
+    }
+
+    // Sección por grupo (plegable) con tira de jornadas
+    const clave = competicion + "|" + g;
+    const sec = document.createElement("details");
+    sec.className = "cj-seccion";
+    sec.dataset.clave = clave;
+    sec.open = !cjGruposCerrados.has(clave);
+    const vig = delGrupo.find((f) => cjEstadoDe(f, hoy) === "vigente");
+    const tira = delGrupo.map((f) => {
+      const est = cjEstadoDe(f, hoy);
+      const conf = avisos.has(f.id) ? " conflicto" : "";
+      return `<button type="button" class="cj-tira-j ${est}${conf}" data-cj-saltar="${f.id}" title="J${f.jornada}: ${cjFechaCorta(f.fecha_inicio)} – ${cjFechaCorta(f.fecha_fin)}">${f.jornada}</button>`;
+    }).join("");
+    sec.innerHTML = `<summary>
+        <span class="cj-seccion-titulo">${cjEsc(g)}</span>
+        <span class="cj-seccion-datos">${cjPlural(delGrupo.length, "rango", "rangos")}${vig ? " · en curso: J" + vig.jornada : ""}${ocultas ? " · " + ocultas + " ocultas" : ""}</span>
+        <span class="cj-tira" aria-label="Mapa de jornadas de ${cjEsc(g)}">${tira}</span>
+      </summary>`;
+    sec.appendChild(cuerpo);
+    contenedor.appendChild(sec);
+    alguna = true;
+  }
+  if (!alguna) contenedor.innerHTML = `<div class="cj-vacio"><p>No hay rangos que mostrar con este filtro.</p></div>`;
+}
+
+// Aviso global cuando hay rangos idénticos guardados dos veces
+function cjPintarBanner(n) {
+  const b = cjEl("cjBanner");
+  if (!b) return;
+  b.hidden = !n;
+  b.innerHTML = n
+    ? `<span>⚠ ${cjPlural(n, "rango duplicado exacto", "rangos duplicados exactos")} en ${cjEsc(CJ_NOMBRES[cjCompeticion()])} (misma jornada y mismas fechas).</span>
+       <button type="button" class="cj-btn cj-btn-sec" data-cj-limpiar-dups>Eliminar duplicados</button>`
+    : "";
+}
+
+async function cjEliminarDuplicados(ids) {
+  const resultados = await Promise.allSettled(ids.map((id) => apiFetch(`/api/jornadas-calendario/${id}`, { method: "DELETE" })));
+  const fallos = resultados.filter((r) => r.status === "rejected").length;
+  window.EOF.toast(fallos ? `Eliminados ${ids.length - fallos}, fallaron ${fallos}` : `${cjPlural(ids.length, "duplicado eliminado", "duplicados eliminados")}`, fallos ? "error" : "exito");
+  await calJornadasCargar();
+}
+
+// ---------- Edición de una fila ----------
+function cjLeerFila(filaEl) {
+  return {
+    jornada: parseInt(filaEl.querySelector(".cal-jornada-input-jornada").value, 10),
+    fecha_inicio: filaEl.querySelector(".cal-jornada-input-inicio").value,
+    fecha_fin: filaEl.querySelector(".cal-jornada-input-fin").value,
+  };
+}
+function cjValidar(v) {
+  if (!Number.isInteger(v.jornada) || v.jornada < 1) return "La jornada debe ser un número válido (1 o más).";
+  if (!cjFechaValida(v.fecha_inicio) || !cjFechaValida(v.fecha_fin)) return "Faltan fechas.";
+  if (v.fecha_fin < v.fecha_inicio) return "La fecha «Hasta» no puede ser anterior a «Desde».";
+  return "";
+}
+// Refresca el estado visual de una fila mientras se edita (sin tocar el servidor)
+function cjActualizarFilaEnVivo(filaEl) {
+  const v = cjLeerFila(filaEl);
+  const sucia = String(v.jornada) !== filaEl.dataset.origJornada
+    || v.fecha_inicio !== filaEl.dataset.origInicio
+    || v.fecha_fin !== filaEl.dataset.origFin;
+  const error = cjValidar(v);
+  filaEl.classList.toggle("cj-sucia", sucia);
+  filaEl.classList.toggle("cj-invalida", sucia && !!error);
+  filaEl.querySelector(".cal-jornada-guardar").disabled = !sucia || !!error;
+  if (!error) filaEl.querySelector(".cj-duracion").textContent = cjPlural(cjDias(v.fecha_inicio, v.fecha_fin), "día", "días");
+  const aviso = filaEl.querySelector(".cj-aviso");
+  if (sucia && error) {
+    aviso.textContent = error;
+    aviso.classList.add("error");
+    aviso.hidden = false;
+  } else if (aviso.classList.contains("error")) {
+    aviso.classList.remove("error");
+    if (aviso.dataset.conflicto) aviso.innerHTML = aviso.dataset.conflicto;
+    else { aviso.hidden = true; aviso.textContent = ""; }
   }
 }
 
 async function calJornadasGuardarFila(filaEl) {
   const id = filaEl.dataset.id;
-  const competicion = document.getElementById("calJornadasCompeticion").value;
-  const grupoActual = calJornadasTodas.find(j => String(j.id) === String(id))?.grupo || null;
-  const jornada = parseInt(filaEl.querySelector(".cal-jornada-input-jornada").value, 10);
-  const fecha_inicio = filaEl.querySelector(".cal-jornada-input-inicio").value;
-  const fecha_fin = filaEl.querySelector(".cal-jornada-input-fin").value;
-  if (!Number.isInteger(jornada) || jornada < 1) return window.EOF.toast("La jornada debe ser un número válido", "error");
-  if (!fecha_inicio || !fecha_fin) return window.EOF.toast("Faltan fechas", "error");
-  if (fecha_fin < fecha_inicio) return window.EOF.toast("La fecha fin no puede ser anterior a la de inicio", "error");
+  const competicion = cjCompeticion();
+  const grupoActual = calJornadasTodas.find((j) => String(j.id) === String(id))?.grupo || null;
+  const v = cjLeerFila(filaEl);
+  const error = cjValidar(v);
+  if (error) return window.EOF.toast(error, "error");
 
   filaEl.classList.add("cal-jornada-guardando");
   try {
     await apiFetch(`/api/jornadas-calendario/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ competicion, grupo: grupoActual, jornada, fecha_inicio, fecha_fin }),
+      body: JSON.stringify({ competicion, grupo: grupoActual, ...v }),
     });
-    window.EOF.toast("Rango actualizado", "exito");
+    window.EOF.toast(`Jornada ${v.jornada} actualizada`, "exito");
     await calJornadasCargar();
+    cjDestellar(id);
   } catch (err) {
     window.EOF.toast("No se ha podido guardar: " + err.message, "error");
   } finally {
@@ -13099,7 +18878,8 @@ async function calJornadasGuardarFila(filaEl) {
 }
 
 async function calJornadasBorrarFila(filaEl) {
-  const ok = await window.EOF.confirmar("¿Eliminar este rango de jornada? Los próximos syncs volverán a usar la jornada que dé la API para estas fechas.");
+  const num = filaEl.querySelector(".cal-jornada-input-jornada").value;
+  const ok = await window.EOF.confirmar(`¿Eliminar el rango de la jornada ${num}? Los próximos syncs volverán a usar la jornada que dé la API para esas fechas.`);
   if (!ok) return;
   const id = filaEl.dataset.id;
   try {
@@ -13111,44 +18891,71 @@ async function calJornadasBorrarFila(filaEl) {
   }
 }
 
+function cjDestellar(id) {
+  const el = document.querySelector(`#calJornadasLista .cj-fila[data-id="${id}"]`);
+  if (!el) return;
+  el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  el.classList.add("cj-destello");
+  setTimeout(() => el.classList.remove("cj-destello"), 1500);
+}
+
+// Siguiente rango de un grupo: continúa justo donde acaba el último y mantiene su duración
+function cjSiguienteDe(competicion, grupo, hoy) {
+  const delGrupo = calJornadasTodas.filter((j) => j.competicion === competicion && (j.grupo || null) === (grupo || null));
+  if (!delGrupo.length) return { jornada: 1, fecha_inicio: hoy, fecha_fin: cjSumarDias(hoy, 6) };
+  const ultima = delGrupo.reduce((m, j) => (j.fecha_fin > m.fecha_fin ? j : m), delGrupo[0]);
+  const maxJornada = delGrupo.reduce((m, j) => Math.max(m, j.jornada), 0);
+  const dur = Math.max(1, cjDias(ultima.fecha_inicio, ultima.fecha_fin));
+  const inicio = cjSumarDias(ultima.fecha_fin, 1);
+  return { jornada: maxJornada + 1, fecha_inicio: inicio, fecha_fin: cjSumarDias(inicio, dur - 1) };
+}
+
+async function cjCrearRango(competicion, grupo, datos) {
+  return apiFetch("/api/jornadas-calendario", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ competicion, grupo, ...datos }),
+  });
+}
+
 async function calJornadasAnadirRango() {
-  const competicion = document.getElementById("calJornadasCompeticion").value;
-  const requiereGrupo = calJornadasGrupoRequerido(competicion);
-  const todosGrupos = document.getElementById("calJornadasTodosGrupos").checked;
-  const grupoUnico = document.getElementById("calJornadasGrupo").value;
-
-  const filasCompeticion = calJornadasTodas.filter(j => j.competicion === competicion);
-  const ultimaJornada = filasCompeticion.reduce((max, j) => Math.max(max, j.jornada), 0);
-  const jornada = ultimaJornada + 1;
+  const competicion = cjCompeticion();
   const hoy = calJornadasFechaHoyISO();
-
-  const grupos = !requiereGrupo
-    ? [null]
-    : todosGrupos
-      ? (competicion === "primera_federacion" ? ["Grupo 1", "Grupo 2"] : ["Grupo 1", "Grupo 2", "Grupo 3", "Grupo 4", "Grupo 5"])
-      : [grupoUnico];
-
+  const grupos = cjGruposObjetivo(competicion);
+  const boton = cjEl("btnAnadirRangoJornada");
+  boton.disabled = true;
   try {
-    for (const grupo of grupos) {
-      await apiFetch("/api/jornadas-calendario", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ competicion, grupo, jornada, fecha_inicio: hoy, fecha_fin: hoy }),
-      });
-    }
-    window.EOF.toast(`Jornada ${jornada} añadida — ajusta las fechas`, "exito");
+    const resultados = await Promise.allSettled(grupos.map((g) => cjCrearRango(competicion, g, cjSiguienteDe(competicion, g, hoy))));
+    const fallos = resultados.filter((r) => r.status === "rejected");
+    const hechos = resultados.length - fallos.length;
+    if (fallos.length) window.EOF.toast(`${hechos ? "Añadido en " + hechos + " grupo(s), pero " : ""}falló en ${fallos.length}: ${fallos[0].reason?.message || "error"}`, "error");
+    else window.EOF.toast(grupos.length > 1 ? `Siguiente jornada añadida en ${grupos.length} grupos — ajusta las fechas si hace falta` : "Siguiente jornada añadida — ajusta las fechas si hace falta", "exito");
+    await calJornadasCargar();
+  } finally {
+    boton.disabled = false;
+  }
+}
+
+async function calJornadasDuplicarFila(filaEl) {
+  const fila = calJornadasTodas.find((j) => String(j.id) === String(filaEl.dataset.id));
+  if (!fila) return;
+  const dur = Math.max(1, cjDias(fila.fecha_inicio, fila.fecha_fin));
+  const inicio = cjSumarDias(fila.fecha_fin, 1);
+  try {
+    await cjCrearRango(fila.competicion, fila.grupo || null, { jornada: fila.jornada + 1, fecha_inicio: inicio, fecha_fin: cjSumarDias(inicio, dur - 1) });
+    window.EOF.toast(`Jornada ${fila.jornada + 1} creada a continuación`, "exito");
     await calJornadasCargar();
   } catch (err) {
-    window.EOF.toast("No se ha podido añadir: " + err.message, "error");
+    window.EOF.toast("No se ha podido crear: " + err.message, "error");
   }
 }
 
 async function calJornadasRecalcular() {
   const ok = await window.EOF.confirmar("Esto revisa todos los partidos automáticos ya guardados y les aplica la jornada del calendario donde corresponda. ¿Continuar?");
   if (!ok) return;
-  const boton = document.getElementById("btnRecalcularJornadas");
+  const boton = cjEl("btnRecalcularJornadas");
   boton.disabled = true;
-  boton.textContent = "Recalculando...";
+  boton.textContent = "Recalculando…";
   try {
     const resultado = await apiFetch("/api/jornadas-calendario/recalcular", { method: "POST" });
     window.EOF.toast(`Revisados ${resultado.revisados}, corregidos ${resultado.actualizados}`, "exito");
@@ -13160,22 +18967,969 @@ async function calJornadasRecalcular() {
   }
 }
 
-document.getElementById("calJornadasCompeticion")?.addEventListener("change", () => {
+// ---------- Generador en bloque ----------
+function cjGenLeer() {
+  return {
+    desde: parseInt(cjEl("cjGenDesde").value, 10),
+    cuantas: parseInt(cjEl("cjGenCuantas").value, 10),
+    inicio: cjEl("cjGenInicio").value,
+    dias: parseInt(cjEl("cjGenDias").value, 10),
+  };
+}
+function cjGenPlan() {
+  const v = cjGenLeer();
+  if (!Number.isInteger(v.desde) || v.desde < 1) return { error: "Indica la primera jornada." };
+  if (!Number.isInteger(v.cuantas) || v.cuantas < 1 || v.cuantas > 60) return { error: "El número de jornadas debe estar entre 1 y 60." };
+  if (!cjFechaValida(v.inicio)) return { error: "Elige la fecha en que empieza la primera." };
+  if (!Number.isInteger(v.dias) || v.dias < 1 || v.dias > 31) return { error: "Los días por jornada deben estar entre 1 y 31." };
+  const rangos = [];
+  let ini = v.inicio;
+  for (let i = 0; i < v.cuantas; i++) {
+    const fin = cjSumarDias(ini, v.dias - 1);
+    rangos.push({ jornada: v.desde + i, fecha_inicio: ini, fecha_fin: fin });
+    ini = cjSumarDias(fin, 1);
+  }
+  return { rangos };
+}
+function cjGenActualizarVista() {
+  const vista = cjEl("cjGenVista");
+  const plan = cjGenPlan();
+  const boton = cjEl("cjGenCrear");
+  vista.classList.toggle("error", !!plan.error);
+  boton.disabled = !!plan.error;
+  if (plan.error) { vista.textContent = plan.error; return; }
+  const r = plan.rangos, n = cjGruposObjetivo().length;
+  vista.textContent = `J${r[0].jornada}–J${r[r.length - 1].jornada}, del ${cjFechaCorta(r[0].fecha_inicio)} al ${cjFechaCorta(r[r.length - 1].fecha_fin)}${n > 1 ? ` · en ${n} grupos (${r.length * n} rangos)` : ""}`;
+}
+function cjGenPrerrellenar() {
+  const comp = cjCompeticion();
+  const hoy = calJornadasFechaHoyISO();
+  const sig = cjSiguienteDe(comp, cjGruposObjetivo(comp)[0], hoy);
+  cjEl("cjGenDesde").value = sig.jornada;
+  cjEl("cjGenInicio").value = sig.fecha_inicio;
+  cjEl("cjGenDias").value = Math.max(1, cjDias(sig.fecha_inicio, sig.fecha_fin));
+  cjGenActualizarVista();
+}
+async function cjGenCrear() {
+  const plan = cjGenPlan();
+  if (plan.error) return window.EOF.toast(plan.error, "error");
+  const comp = cjCompeticion();
+  const grupos = cjGruposObjetivo(comp);
+  const tareas = [];
+  for (const g of grupos) for (const r of plan.rangos) tareas.push({ g, r });
+  if (tareas.length > 30) {
+    const ok = await window.EOF.confirmar(`Se van a crear ${tareas.length} rangos en ${CJ_NOMBRES[comp]}. ¿Continuar?`);
+    if (!ok) return;
+  }
+  const boton = cjEl("cjGenCrear");
+  boton.disabled = true;
+  let hechas = 0, fallos = 0, primerError = "";
+  let cursor = 0;
+  const trabajador = async () => {
+    while (cursor < tareas.length) {
+      const { g, r } = tareas[cursor++];
+      try { await cjCrearRango(comp, g, r); } catch (err) { fallos++; primerError = primerError || err.message; }
+      hechas++;
+      boton.textContent = `Creando… ${hechas}/${tareas.length}`;
+    }
+  };
+  try {
+    await Promise.all(Array.from({ length: 4 }, trabajador));
+  } finally {
+    boton.textContent = "Crear rangos";
+    boton.disabled = false;
+  }
+  if (fallos) window.EOF.toast(`Creados ${tareas.length - fallos} de ${tareas.length}. Error: ${primerError}`, "error");
+  else window.EOF.toast(`${cjPlural(tareas.length, "rango creado", "rangos creados")}`, "exito");
+  await calJornadasCargar();
+  cjGenPrerrellenar();
+}
+
+// ---------- Eventos ----------
+function cjCambiarCompeticion(comp) {
+  cjEl("calJornadasCompeticion").value = comp;
+  cjEl("calJornadasGrupo").value = "";
   calJornadasActualizarVisibilidadGrupo();
   calJornadasPintar();
+  if (!cjEl("cjGenerador").hidden) cjGenPrerrellenar();
+}
+
+cjEl("cjComps")?.addEventListener("click", (e) => {
+  const btn = e.target.closest(".cj-comp");
+  if (btn && btn.dataset.comp !== cjCompeticion()) cjCambiarCompeticion(btn.dataset.comp);
 });
-document.getElementById("calJornadasTodosGrupos")?.addEventListener("change", calJornadasActualizarVisibilidadGrupo);
-document.getElementById("btnAnadirRangoJornada")?.addEventListener("click", calJornadasAnadirRango);
-document.getElementById("btnRecalcularJornadas")?.addEventListener("click", calJornadasRecalcular);
-document.getElementById("calJornadasLista")?.addEventListener("click", (e) => {
-  const filaEl = e.target.closest(".cal-jornada-fila");
+cjEl("cjGrupos")?.addEventListener("click", (e) => {
+  const chip = e.target.closest(".cj-chip");
+  if (!chip) return;
+  cjEl("calJornadasGrupo").value = chip.dataset.grupo;
+  calJornadasActualizarVisibilidadGrupo();
+  calJornadasPintar();
+  if (!cjEl("cjGenerador").hidden) cjGenPrerrellenar();
+});
+cjEl("cjOcultarPasadas")?.addEventListener("change", calJornadasPintar);
+cjEl("btnAnadirRangoJornada")?.addEventListener("click", calJornadasAnadirRango);
+cjEl("btnRecalcularJornadas")?.addEventListener("click", calJornadasRecalcular);
+cjEl("cjBtnGenerar")?.addEventListener("click", () => {
+  const panel = cjEl("cjGenerador");
+  panel.hidden = !panel.hidden;
+  cjEl("cjBtnGenerar").setAttribute("aria-expanded", String(!panel.hidden));
+  if (!panel.hidden) { cjGenPrerrellenar(); cjEl("cjGenCuantas").focus(); }
+});
+["cjGenDesde", "cjGenCuantas", "cjGenInicio", "cjGenDias"].forEach((id) => cjEl(id)?.addEventListener("input", cjGenActualizarVista));
+cjEl("cjGenCrear")?.addEventListener("click", cjGenCrear);
+cjEl("cjResumen")?.addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-cj-ir]");
+  if (!btn) return;
+  const el = btn.dataset.cjIr === "vigente"
+    ? document.querySelector("#calJornadasLista .cj-fila.estado-vigente")
+    : document.querySelector("#calJornadasLista .cj-fila.cj-conflicto");
+  if (!el) return window.EOF.toast("No se ve ese rango con los filtros actuales", "info");
+  const sec = el.closest("details");
+  if (sec && !sec.open) sec.open = true;
+  el.scrollIntoView({ block: "center", behavior: "smooth" });
+  el.classList.add("cj-destello");
+  setTimeout(() => el.classList.remove("cj-destello"), 1500);
+});
+
+const cjLista = cjEl("calJornadasLista");
+cjEl("cjBanner")?.addEventListener("click", async (e) => {
+  if (!e.target.closest("[data-cj-limpiar-dups]")) return;
+  const dups = [...cjDetectarAvisos(calJornadasTodas.filter((j) => j.competicion === cjCompeticion())).duplicados.keys()];
+  if (!dups.length) return;
+  const ok = await window.EOF.confirmar(`Se eliminarán ${dups.length} rangos que son copia exacta de otro (se conserva el original). No cambia las jornadas que se aplican. ¿Continuar?`);
+  if (ok) cjEliminarDuplicados(dups);
+});
+cjLista?.addEventListener("click", async (e) => {
+  const dup = e.target.closest("[data-cj-quitar-dup]");
+  if (dup) return cjEliminarDuplicados([dup.dataset.cjQuitarDup]);
+  if (e.target.closest("[data-cj-reintentar]")) return calJornadasCargar();
+  if (e.target.closest("[data-cj-vacio-anadir]")) return calJornadasAnadirRango();
+  const salto = e.target.closest("[data-cj-saltar]");
+  if (salto) {
+    e.preventDefault(); // el botón vive dentro de <summary>: no plegar la sección
+    e.stopPropagation();
+    const el = cjLista.querySelector(`.cj-fila[data-id="${salto.dataset.cjSaltar}"]`);
+    if (el) { el.scrollIntoView({ block: "center", behavior: "smooth" }); el.classList.add("cj-destello"); setTimeout(() => el.classList.remove("cj-destello"), 1500); }
+    else window.EOF.toast("Esa jornada está oculta por el filtro «Ocultar finalizadas»", "info");
+    return;
+  }
+  const filaEl = e.target.closest(".cj-fila");
   if (!filaEl) return;
   if (e.target.closest(".cal-jornada-guardar")) calJornadasGuardarFila(filaEl);
-  if (e.target.closest(".cal-jornada-borrar")) calJornadasBorrarFila(filaEl);
+  else if (e.target.closest(".cal-jornada-duplicar")) calJornadasDuplicarFila(filaEl);
+  else if (e.target.closest(".cal-jornada-borrar")) calJornadasBorrarFila(filaEl);
 });
+cjLista?.addEventListener("input", (e) => {
+  const filaEl = e.target.closest(".cj-fila");
+  if (filaEl) cjActualizarFilaEnVivo(filaEl);
+});
+cjLista?.addEventListener("keydown", (e) => {
+  if (e.key !== "Enter" || !e.target.matches(".cj-input")) return;
+  const filaEl = e.target.closest(".cj-fila");
+  const guardar = filaEl?.querySelector(".cal-jornada-guardar");
+  if (guardar && !guardar.disabled) { e.preventDefault(); calJornadasGuardarFila(filaEl); }
+});
+// Recuerda qué grupos pliega el usuario para no reabrirlos al repintar
+cjLista?.addEventListener("toggle", (e) => {
+  const sec = e.target.closest?.(".cj-seccion");
+  if (!sec) return;
+  if (sec.open) cjGruposCerrados.delete(sec.dataset.clave); else cjGruposCerrados.add(sec.dataset.clave);
+}, true);
+
 document.querySelector('#panel-resultados .subtabs button[data-subtab="calendarioJornadas"]')?.addEventListener("click", () => {
   calJornadasActualizarVisibilidadGrupo();
   calJornadasCargar();
+  rellenoCargar({ alRevisitar: true });
+});
+
+// ============================================================
+// Relleno automático de partidos (TheSportsDB). Ver "RELLENO
+// AUTOMATICO DE PARTIDOS" en worker/src/index.js.
+// Estilos: admin.css (.relleno-auto) + /admin/css/relleno-mejoras.css
+//
+// Funciones añadidas sobre la base:
+//  - Estado por liga con barra de progreso (finalizados / total).
+//  - Refresco automático mientras hay un ciclo en curso y botón «Actualizar».
+//  - Barra fija «Cambios sin guardar» (Guardar / Descartar, Ctrl+S) y aviso
+//    al cerrar la pestaña con cambios pendientes o una sincronización en marcha.
+//  - Grupo como desplegable (nada de escribirlo a mano) y nombre de la liga visible.
+//  - «Buscar IDs»: filtro de texto y marca de las ligas que ya están en uso.
+//  - Equipos sin reconocer: sugerencia automática del equipo del sitio,
+//    «Aceptar sugerencias» en bloque y buscador en los alias ya definidos.
+//  - Reloj de tiempo transcurrido durante la sincronización.
+// ============================================================
+const RELLENO_GRUPOS = { hypermotion: [], primera_federacion: ["Grupo 1", "Grupo 2"], segunda_federacion: ["Grupo 1", "Grupo 2", "Grupo 3", "Grupo 4", "Grupo 5"] };
+const RELLENO_RONDAS = { hypermotion: 42, primera_federacion: 38, segunda_federacion: 34 };
+const RELLENO_NOMBRES = { hypermotion: "LaLiga Hypermotion", primera_federacion: "Primera Federación", segunda_federacion: "Segunda Federación" };
+const RELLENO_NOMBRES_CORTOS = { hypermotion: "Hypermotion", primera_federacion: "1ª Fed.", segunda_federacion: "2ª Fed." };
+const RELLENO_MAX_PASADAS = 80;
+const RELLENO_MAX_429 = 6;     // pasadas seguidas con límite de peticiones antes de rendirse
+const RELLENO_REFRESCO_MS = 20000; // refresco del estado mientras hay un ciclo en curso
+let rellenoEspera429 = 65;     // segundos a esperar tras un 429 (TheSportsDB limita por minuto)
+let rellenoLigas = [];
+let rellenoSucio = false;       // hay cambios en el formulario sin guardar
+let rellenoEjecutando = false;  // hay una sincronización en marcha desde este panel
+let rellenoCancelar = false;    // el usuario ha pulsado "Detener"
+let rellenoIdsCache = [];       // ligas de TheSportsDB ya buscadas
+let rellenoEquiposLista = [];   // equipos conocidos del sitio (para sugerir alias)
+let rellenoSinAliasNombres = [];
+let rellenoTimerRefresco = null;
+let rellenoTimerReloj = null;
+let rellenoInicioEjecucion = 0;
+
+function rellenoEsc(v) {
+  return String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+function rellenoMarcarSucio(valor = true) {
+  rellenoSucio = !!valor;
+  const el = document.getElementById("rellenoSucio");
+  if (el) el.hidden = !rellenoSucio;
+  const barra = document.getElementById("rellenoBarraSucia");
+  if (barra) barra.hidden = !rellenoSucio;
+}
+
+function rellenoNombreLiga(l) {
+  if (l.nombre) return l.nombre;
+  const c = rellenoIdsCache.find((x) => String(x.id) === String(l.leagueId));
+  return c ? c.nombre : "";
+}
+
+function rellenoPintarLigas() {
+  const cont = document.getElementById("rellenoLigas");
+  if (!cont) return;
+  if (!rellenoLigas.length) {
+    cont.innerHTML = `<p class="relleno-vacio">Todavía no hay ninguna liga configurada: no se rellenará nada. Pulsa «+ Añadir liga» o «Buscar IDs de TheSportsDB».</p>`;
+    return;
+  }
+  cont.innerHTML = rellenoLigas.map((l, i) => {
+    const hyper = l.competicion === "hypermotion";
+    const opciones = Object.entries(RELLENO_NOMBRES)
+      .map(([v, n]) => `<option value="${v}"${l.competicion === v ? " selected" : ""}>${n}</option>`).join("");
+    const gruposComp = RELLENO_GRUPOS[l.competicion] || [];
+    const extra = l.grupo && !gruposComp.includes(l.grupo) ? [l.grupo] : []; // por si había un valor antiguo a mano
+    const opcionesGrupo = hyper
+      ? `<option value="">No aplica</option>`
+      : [`<option value="">Elige grupo…</option>`].concat(gruposComp.concat(extra).map((g) => `<option value="${rellenoEsc(g)}"${l.grupo === g ? " selected" : ""}>${rellenoEsc(g)}</option>`)).join("");
+    const nombre = rellenoNombreLiga(l);
+    return `
+    <div class="relleno-liga" data-i="${i}">
+      <label class="relleno-campo relleno-campo-comp"><span>Competición</span>
+        <select data-k="competicion">${opciones}</select></label>
+      <label class="relleno-campo"><span>Grupo</span>
+        <select data-k="grupo"${hyper ? " disabled" : ""}>${opcionesGrupo}</select></label>
+      <label class="relleno-campo relleno-campo-corto"><span>ID liga</span>
+        <input data-k="leagueId" inputmode="numeric" autocomplete="off" placeholder="ID" value="${rellenoEsc(l.leagueId || "")}"></label>
+      <label class="relleno-campo relleno-campo-corto"><span>Jornadas</span>
+        <input data-k="rondas" inputmode="numeric" autocomplete="off" title="Número de jornadas de la liga" value="${rellenoEsc(l.rondas || "")}"></label>
+      <button type="button" class="relleno-quitar" data-accion="quitar" title="Quitar liga" aria-label="Quitar liga ${i + 1}">✕</button>
+      ${nombre ? `<span class="relleno-liga-nombre">${rellenoEsc(nombre)}</span>` : ""}
+    </div>`;
+  }).join("");
+}
+
+function rellenoLeerLigasDelDom() {
+  document.querySelectorAll("#rellenoLigas .relleno-liga").forEach((fila) => {
+    const l = rellenoLigas[parseInt(fila.dataset.i, 10)];
+    if (!l) return;
+    l.competicion = fila.querySelector('[data-k="competicion"]').value;
+    l.grupo = l.competicion === "hypermotion" ? null : (fila.querySelector('[data-k="grupo"]').value.trim() || null);
+    const id = fila.querySelector('[data-k="leagueId"]').value.trim();
+    if (id !== String(l.leagueId || "")) delete l.nombre; // el ID ha cambiado: el nombre guardado ya no vale
+    l.leagueId = id;
+    l.rondas = parseInt(fila.querySelector('[data-k="rondas"]').value, 10) || RELLENO_RONDAS[l.competicion];
+  });
+}
+
+// Devuelve un mensaje de error (y marca la fila) o null si todo es válido.
+// El backend descarta en silencio las ligas sin ID numérico y las repetidas,
+// así que mejor avisar aquí que dejar que "se guarde" y desaparezcan.
+function rellenoValidarLigas() {
+  const filas = document.querySelectorAll("#rellenoLigas .relleno-liga");
+  filas.forEach((f) => f.classList.remove("invalido"));
+  const vistas = new Map();
+  for (let i = 0; i < rellenoLigas.length; i++) {
+    const l = rellenoLigas[i];
+    const fila = filas[i];
+    if (!/^\d{1,9}$/.test(String(l.leagueId || ""))) {
+      fila?.classList.add("invalido");
+      fila?.querySelector('[data-k="leagueId"]')?.focus();
+      return `La liga ${i + 1} necesita un ID numérico de TheSportsDB (usa «Buscar IDs»).`;
+    }
+    const clave = `${l.competicion}|${l.grupo || ""}`;
+    if (vistas.has(clave)) {
+      fila?.classList.add("invalido");
+      return `La liga ${i + 1} repite la competición y el grupo de la liga ${vistas.get(clave) + 1}.`;
+    }
+    vistas.set(clave, i);
+  }
+  return null;
+}
+
+function rellenoFecha(iso) {
+  if (!iso) return "nunca";
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleString("es-ES", { dateStyle: "short", timeStyle: "short" });
+}
+
+// "hace 5 min" para la última sincronización (el dato exacto va en el title)
+function rellenoRelativa(iso) {
+  if (!iso) return "nunca";
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return "—";
+  const min = Math.round((Date.now() - t) / 60000);
+  if (min < 1) return "hace unos segundos";
+  if (min < 60) return `hace ${min} min`;
+  const h = Math.round(min / 60);
+  if (h < 24) return `hace ${h} h`;
+  return rellenoFecha(iso);
+}
+
+function rellenoPintarEstado(datos) {
+  const el = document.getElementById("rellenoEstado");
+  if (!el) return;
+  const { estado = {}, sync, partidos_automaticos: total, config } = datos;
+  const falloReciente = !!(sync && sync.ultimo_sync_ok === 0 && sync.ultimo_error);
+  const activo = config?.activo !== false;
+  const enCurso = !!estado.ciclo_en_curso;
+  const informe = estado.informe || { ligas: {} };
+  let pastilla = activo ? ["ok", "Activa"] : ["pausa", "Pausada"];
+  if (enCurso) pastilla = ["curso", "Ciclo en curso"];
+  if (falloReciente) pastilla = ["error", "Con error"];
+
+  // Una tarjeta por liga configurada con la foto REAL de la BD (total, finalizados,
+  // pendientes...). Lo que tocó la última pasada va aparte, en pequeño.
+  const resumen = datos.resumen_ligas || {};
+  const clavesLigas = (datos.config?.ligas || []).map((l) => `${l.competicion}|${l.grupo || ""}`);
+  for (const k of Object.keys(informe.ligas || {})) if (!clavesLigas.includes(k)) clavesLigas.push(k);
+  const filas = clavesLigas.map((clave) => {
+    const [comp, grupo] = clave.split("|");
+    const r = (informe.ligas || {})[clave] || {};
+    const t = resumen[clave];
+    const nombre = RELLENO_NOMBRES_CORTOS[comp] || comp;
+    const pct = t && t.total ? Math.round((t.finalizados / t.total) * 100) : 0;
+    return `<li class="relleno-informe-fila relleno-liga-estado${r.error ? " con-error" : ""}">
+      <div class="rle-cab">
+        <span class="relleno-informe-liga">${rellenoEsc(nombre)}${grupo ? " " + rellenoEsc(grupo) : ""}</span>
+        ${t ? `<span class="rle-num" title="Partidos con resultado sobre el total guardado de la temporada">${t.finalizados} / ${t.total} <small>${pct}%</small></span>` : `<span class="rle-num rle-vacio">sin partidos</span>`}
+      </div>
+      <div class="rle-barra" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}" aria-label="Partidos finalizados de ${rellenoEsc(nombre)}${grupo ? " " + rellenoEsc(grupo) : ""}"><span style="width:${pct}%"></span></div>
+      <div class="rle-chips">
+        ${t ? `<span class="relleno-chip" title="Aún sin resultado">${t.programados} pendientes</span>
+        <span class="relleno-chip" title="Partidos que cubre el relleno automático / los de redacción">${t.automaticos} auto · ${t.redaccion} redacción</span>
+        ${t.ultima_jornada ? `<span class="relleno-chip" title="Última jornada con resultados">J${t.ultima_jornada}</span>` : ""}`
+        : `<span class="relleno-chip aviso" title="Esta liga está configurada pero todavía no tiene partidos">Pulsa «Sincronizar todo (GitHub Action)»</span>`}
+        <span class="relleno-chip nuevos" title="Lo que cambió en la última pasada">última pasada: +${r.insertados ?? 0} nuevos · ${r.actualizados ?? 0} actualizados</span>
+      </div>
+      ${r.error ? `<span class="relleno-informe-error">${rellenoEsc(r.error)}</span>` : ""}
+    </li>`;
+  }).join("");
+
+  const hora = new Date().toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  el.classList.toggle("relleno-error", falloReciente);
+  el.innerHTML = `
+    <div class="relleno-kpis">
+      <div class="relleno-kpi"><span>Estado</span><strong><i class="relleno-pastilla ${pastilla[0]}">${pastilla[1]}</i></strong></div>
+      <div class="relleno-kpi"><span>Última sincronización</span><strong title="${rellenoEsc(rellenoFecha(sync?.ultimo_sync_at))}">${rellenoRelativa(sync?.ultimo_sync_at)}</strong></div>
+      <div class="relleno-kpi"><span>Partidos automáticos</span><strong>${total ?? 0}</strong></div>
+      <div class="relleno-kpi"><span>${enCurso ? "Ciclo completo" : "Último ciclo completo"}</span><strong title="${enCurso ? "" : rellenoEsc(rellenoFecha(estado.ultimo_ciclo_fin))}">${enCurso ? "en curso" : rellenoRelativa(estado.ultimo_ciclo_fin)}</strong></div>
+    </div>
+    ${datos.clave_premium ? "" : `<p class="relleno-nota">Clave gratuita de TheSportsDB: se pide una jornada por petición, por eso un ciclo completo se reparte en varias pasadas.</p>`}
+    ${falloReciente ? `<p class="relleno-aviso-error"><strong>Último error:</strong> ${rellenoEsc(sync.ultimo_error)}</p>` : ""}
+    ${filas ? `<ul class="relleno-informe relleno-ligas-estado">${filas}</ul>` : ""}
+    <div class="relleno-estado-pie">
+      <span>${enCurso && !rellenoEjecutando ? "Hay un ciclo en marcha: este panel se actualiza solo. " : ""}Actualizado a las ${hora}</span>
+      <button type="button" class="relleno-enlace" data-accion="refrescar">↻ Actualizar</button>
+    </div>`;
+  rellenoSinAliasNombres = informe.sin_alias || [];
+  rellenoPintarSinAlias();
+  rellenoProgramarRefresco(enCurso);
+}
+
+// Mientras el servidor tenga un ciclo en marcha (lo lanzó el cron u otro
+// admin) se vuelve a pedir el estado cada pocos segundos, solo si el panel
+// está a la vista.
+function rellenoProgramarRefresco(enCurso) {
+  clearTimeout(rellenoTimerRefresco);
+  rellenoTimerRefresco = null;
+  if (!enCurso || rellenoEjecutando) return;
+  rellenoTimerRefresco = setTimeout(() => {
+    const visible = document.getElementById("rellenoAuto")?.offsetParent !== null && !document.hidden;
+    if (visible && !rellenoEjecutando) rellenoCargar({ alRevisitar: true });
+    else rellenoProgramarRefresco(true);
+  }, RELLENO_REFRESCO_MS);
+}
+
+// alRevisitar: se llama al volver a abrir la subpestaña; si hay cambios sin
+// guardar en el formulario no se pisan (solo se refresca el estado).
+async function rellenoCargar({ alRevisitar = false } = {}) {
+  try {
+    const datos = await apiFetch("/api/admin/sync-partidos");
+    if (!(alRevisitar && rellenoSucio)) {
+      document.getElementById("rellenoActivo").checked = datos.config?.activo !== false;
+      rellenoLigas = (datos.config?.ligas || []).map((l) => ({ ...l }));
+      rellenoPintarLigas();
+      rellenoMarcarSucio(false);
+    }
+    await rellenoCargarAlias(); // antes que el estado: las sugerencias necesitan la lista de equipos
+    rellenoPintarEstado(datos);
+    if (!rellenoEjecutando) {
+      if (!datos.action_configurada) rellenoActionInfo(null, false);
+      else rellenoActionConsultar().then((e) => rellenoActionInfo(e.run, e.configurada)).catch(() => {});
+    }
+  } catch (err) {
+    const el = document.getElementById("rellenoEstado");
+    el.classList.add("relleno-error");
+    el.innerHTML = `${rellenoEsc("No se ha podido cargar el estado: " + err.message)} <button type="button" class="relleno-enlace" data-accion="refrescar">Reintentar</button>`;
+  }
+}
+
+async function rellenoCargarAlias() {
+  try {
+    const { alias, equipos_conocidos } = await apiFetch("/api/admin/alias-equipos");
+    rellenoEquiposLista = equipos_conocidos || [];
+    document.getElementById("rellenoEquiposConocidos").innerHTML = rellenoEquiposLista.map((n) => `<option value="${rellenoEsc(n)}">`).join("");
+    const lista = document.getElementById("rellenoAliasLista");
+    const n = (alias || []).length;
+    const resumen = document.querySelector("#rellenoAuto .relleno-alias-det summary");
+    if (resumen) resumen.textContent = `Alias ya definidos${n ? ` (${n})` : ""}`;
+    lista.innerHTML = n
+      ? `${n > 6 ? `<input type="search" class="relleno-alias-buscar" placeholder="Buscar alias…" aria-label="Buscar entre los alias definidos" autocomplete="off">` : ""}
+         <div class="relleno-alias-filas">${alias.map((a) => `<div class="relleno-alias-fila" data-id="${a.id}" data-texto="${rellenoEsc((a.nombre_externo + " " + a.nombre_interno).toLowerCase())}"><span>${rellenoEsc(a.nombre_externo)} → <strong>${rellenoEsc(a.nombre_interno)}</strong></span><button type="button" class="relleno-quitar" data-accion="borrar-alias" title="Borrar alias" aria-label="Borrar alias">✕</button></div>`).join("")}</div>
+         <p class="relleno-vacio" hidden data-sin-coincidencias>Ningún alias coincide.</p>`
+      : `<p class="relleno-vacio">Sin alias.</p>`;
+  } catch (err) {
+    console.warn("Alias no cargados:", err.message);
+  }
+}
+
+// ---------- Sugerencia de equipo para un nombre de la API ----------
+const RELLENO_RUIDO = new Set(["cf", "fc", "cd", "ud", "sd", "ad", "cp", "rc", "rcd", "club", "de", "del", "la", "el", "y"]);
+function rellenoTokens(nombre) {
+  return new Set(
+    String(nombre || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9 ]+/g, " ").split(/\s+/).filter((t) => t && !RELLENO_RUIDO.has(t))
+  );
+}
+function rellenoSimilitud(a, b) {
+  const ta = rellenoTokens(a), tb = rellenoTokens(b);
+  if (!ta.size || !tb.size) return 0;
+  let comunes = 0;
+  ta.forEach((t) => { if (tb.has(t)) comunes++; });
+  return comunes / (ta.size + tb.size - comunes); // Jaccard
+}
+// Solo sugiere cuando hay un candidato claro: parecido alto y sin otro casi igual
+// (así «Real Oviedo» no se confunde con «Real Oviedo Vetusta»).
+function rellenoSugerirEquipo(nombreApi) {
+  let mejor = null, segundo = 0, mejorPuntos = 0;
+  for (const eq of rellenoEquiposLista) {
+    const p = rellenoSimilitud(nombreApi, eq);
+    if (p > mejorPuntos) { segundo = mejorPuntos; mejorPuntos = p; mejor = eq; }
+    else if (p > segundo) segundo = p;
+  }
+  return mejor && mejorPuntos >= 0.75 && mejorPuntos - segundo >= 0.1 ? mejor : null;
+}
+
+function rellenoPintarSinAlias() {
+  const cont = document.getElementById("rellenoSinAlias");
+  const nombres = rellenoSinAliasNombres;
+  if (!nombres.length) { cont.innerHTML = `<p class="relleno-vacio">Ninguno pendiente. 🎉</p>`; return; }
+  const sugerencias = new Map(nombres.map((n) => [n, rellenoSugerirEquipo(n)]));
+  const nSug = [...sugerencias.values()].filter(Boolean).length;
+  cont.innerHTML = `
+    <div class="relleno-sinalias-cab">
+      <span><strong>${nombres.length}</strong> ${nombres.length === 1 ? "nombre pendiente" : "nombres pendientes"}${nSug ? ` · <strong>${nSug}</strong> con sugerencia` : ""}</span>
+      ${nSug ? `<button type="button" class="relleno-btn relleno-btn-pri relleno-btn-mini" data-accion="aceptar-sugerencias">Aceptar ${nSug === 1 ? "la sugerencia" : "las " + nSug + " sugerencias"}</button>` : ""}
+    </div>` + nombres.map((n) => {
+      const sug = sugerencias.get(n);
+      return `<div class="relleno-alias-fila${sug ? " con-sugerencia" : ""}" data-externo="${rellenoEsc(n)}"><strong>${rellenoEsc(n)}</strong><span class="relleno-flecha" aria-hidden="true">→</span>
+        <input list="rellenoEquiposConocidos" autocomplete="off" placeholder="Nombre en el sitio (p. ej. RC Deportivo Fabril)" aria-label="Equipo del sitio para ${rellenoEsc(n)}" value="${rellenoEsc(sug || "")}"${sug ? ` data-sugerido="1"` : ""}>
+        ${sug ? `<span class="relleno-chip nuevos" title="Parecido por nombre: revísalo antes de guardar">sugerido</span>` : ""}
+        <button type="button" class="relleno-btn relleno-btn-sec relleno-btn-mini" data-accion="guardar-alias">Guardar</button></div>`;
+    }).join("");
+}
+
+// Devuelve true si se ha guardado.
+async function rellenoGuardarConfig() {
+  rellenoLeerLigasDelDom();
+  const problema = rellenoValidarLigas();
+  if (problema) {
+    window.EOF.toast(problema, "error");
+    return false;
+  }
+  const botones = ["rellenoGuardar", "rellenoGuardarBarra"].map((id) => document.getElementById(id)).filter(Boolean);
+  botones.forEach((b) => { b.disabled = true; b.classList.add("cargando"); });
+  try {
+    await apiFetch("/api/admin/sync-partidos/config", {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ activo: document.getElementById("rellenoActivo").checked, ligas: rellenoLigas }),
+    });
+    rellenoMarcarSucio(false);
+    window.EOF.toast("Configuración guardada", "success");
+    await rellenoCargar();
+    return true;
+  } catch (err) {
+    window.EOF.toast("No se ha podido guardar: " + err.message, "error");
+    return false;
+  } finally {
+    botones.forEach((b) => { b.disabled = false; b.classList.remove("cargando"); });
+  }
+}
+
+function rellenoReloj() {
+  const s = Math.max(0, Math.round((Date.now() - rellenoInicioEjecucion) / 1000));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+function rellenoPintarProgreso(estado, texto, pct = null) {
+  const prog = document.getElementById("rellenoProgreso");
+  if (!prog) return;
+  if (!estado) { prog.innerHTML = ""; return; }
+  const barra = estado === "curso" || pct != null
+    ? `<div class="relleno-barra ${estado}${pct == null ? " indeterminada" : ""}"><span style="${pct == null ? "" : `width:${pct}%`}"></span></div>`
+    : "";
+  const reloj = estado === "curso" && rellenoInicioEjecucion ? ` <span class="relleno-reloj" title="Tiempo transcurrido">⏱ ${rellenoReloj()}</span>` : "";
+  prog.innerHTML = `${barra}<p class="relleno-progreso-texto ${estado}">${texto}${reloj}</p>`;
+}
+
+function rellenoTotales(informe) {
+  const t = { n: 0, a: 0 };
+  Object.values(informe?.ligas || {}).forEach((r) => { t.n += r.insertados || 0; t.a += r.actualizados || 0; });
+  return t;
+}
+
+// Espera cancelable (botón «Detener») con cuenta atrás.
+async function rellenoEsperar(segundos, alTic) {
+  for (let s = segundos; s > 0 && !rellenoCancelar; s--) {
+    alTic(s);
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+}
+
+// Repite pasadas hasta terminar el ciclo (cada llamada tiene un presupuesto
+// de peticiones; con la clave gratuita hacen falta varias).
+async function rellenoEjecutar(modo) {
+  if (rellenoEjecutando) return;
+  // Lo que se ejecuta es la configuración GUARDADA: si hay cambios en el
+  // formulario se guardan antes, y si no se pueden guardar no se sigue.
+  if (rellenoSucio && !(await rellenoGuardarConfig())) return;
+  if (!rellenoLigas.length) {
+    window.EOF.toast("Añade y guarda al menos una liga antes de sincronizar", "error");
+    return;
+  }
+  if (modo === "ciclo") {
+    const ok = await EOF.confirmar(
+      "Se pedirán a TheSportsDB todas las jornadas de las ligas configuradas. Con la clave gratuita puede tardar varios minutos; puedes detenerlo cuando quieras. ¿Continuar?",
+      { textoConfirmar: "Rellenar" }
+    );
+    if (!ok) return;
+  }
+
+  rellenoEjecutando = true;
+  rellenoCancelar = false;
+  rellenoInicioEjecucion = Date.now();
+  clearTimeout(rellenoTimerRefresco);
+  clearInterval(rellenoTimerReloj);
+  rellenoTimerReloj = setInterval(() => {
+    document.querySelectorAll("#rellenoProgreso .relleno-reloj").forEach((e) => { e.textContent = "⏱ " + rellenoReloj(); });
+  }, 1000);
+  const btnCiclo = document.getElementById("rellenoEjecutar");
+  const btnVivo = document.getElementById("rellenoVivo");
+  const btnDetener = document.getElementById("rellenoDetener");
+  const activo = modo === "ciclo" ? btnCiclo : btnVivo;
+  [btnCiclo, btnVivo].forEach((b) => { b.disabled = true; });
+  activo.classList.add("cargando");
+  btnDetener.hidden = modo !== "ciclo";
+  btnDetener.disabled = false;
+  try {
+    let reiniciar = modo === "ciclo";
+    let r = null;
+    let pasadas = 0;
+    let seguidos429 = 0;
+    let limiteDefinitivo = false;
+    for (let pasada = 1; pasada <= RELLENO_MAX_PASADAS; pasada++) {
+      pasadas = pasada;
+      rellenoPintarProgreso("curso", modo === "ciclo"
+        ? `Pasada ${pasada}… (puede tardar un minuto por pasada)${r ? ` · ${rellenoTotales(r.informe).n} nuevos y ${rellenoTotales(r.informe).a} actualizados hasta ahora` : ""}`
+        : "Actualizando los resultados de hoy…");
+      r = await apiFetch("/api/admin/sync-partidos/ejecutar", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ modo, reiniciar }),
+      });
+      reiniciar = false;
+      if (r.error) throw new Error(r.error);
+      if (modo !== "ciclo" || !r.ciclo_en_curso) break;
+      if (rellenoCancelar) break;
+      // Límite de peticiones de TheSportsDB (429): el servidor conserva el
+      // punto por donde iba; basta esperar a que pase el minuto y seguir.
+      if ((r.errores || []).some((e) => /429/.test(e))) {
+        if (++seguidos429 > RELLENO_MAX_429) { limiteDefinitivo = true; break; }
+        await rellenoEsperar(rellenoEspera429, (s) =>
+          rellenoPintarProgreso("curso", `TheSportsDB ha limitado las peticiones (429). Esperando ${s} s para seguir con la pasada ${pasada + 1}…`));
+        if (rellenoCancelar) break;
+      } else {
+        seguidos429 = 0;
+      }
+    }
+    const errores = r?.errores || [];
+    const t = rellenoTotales(r?.informe);
+    const resumen = `${t.n} nuevos · ${t.a} actualizados · ${rellenoReloj()}`;
+    if (modo === "ciclo" && r?.ciclo_en_curso) {
+      const motivo = rellenoCancelar ? `Detenido tras la pasada ${pasadas}`
+        : limiteDefinitivo ? `TheSportsDB sigue limitando las peticiones (429) tras ${pasadas} pasadas`
+        : `Se ha alcanzado el máximo de ${RELLENO_MAX_PASADAS} pasadas`;
+      rellenoPintarProgreso("aviso", `${motivo} (${resumen}). El ciclo queda a medias y se retoma en la siguiente sincronización programada.`);
+    } else if (errores.length) {
+      rellenoPintarProgreso("aviso", `Terminado con avisos (${resumen}): ${errores.map(rellenoEsc).join(" · ")}`, 100);
+    } else {
+      rellenoPintarProgreso("ok", `Terminado correctamente (${resumen}).`, 100);
+    }
+    rellenoEjecutando = false;
+    await rellenoCargar({ alRevisitar: true });
+  } catch (err) {
+    rellenoPintarProgreso("error", "Error: " + rellenoEsc(err.message));
+  } finally {
+    clearInterval(rellenoTimerReloj);
+    rellenoTimerReloj = null;
+    [btnCiclo, btnVivo].forEach((b) => { b.disabled = false; });
+    activo.classList.remove("cargando");
+    btnDetener.hidden = true;
+    rellenoEjecutando = false;
+  }
+}
+
+// ---------- Sincronizar con la GitHub Action ----------
+// El Worker no puede pedir datos a TheSportsDB (403), asi que se lanza el
+// workflow sync-partidos.yml; el panel sigue su estado y, al terminar,
+// recarga el relleno y el calendario de jornadas.
+let rellenoActionTimer = null;
+
+function rellenoActionTexto(run) {
+  if (!run) return "";
+  const cuando = run.actualizado ? new Date(run.actualizado).toLocaleString("es-ES", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "";
+  const estados = { queued: "en cola", in_progress: "en curso", waiting: "esperando", pending: "pendiente" };
+  if (run.estado !== "completed") return `Action ${estados[run.estado] || run.estado}…`;
+  const res = { success: "terminó bien ✔", failure: "falló ✖", cancelled: "cancelada", timed_out: "agotó el tiempo ✖" };
+  return `Última Action (${cuando}): ${res[run.conclusion] || run.conclusion || "terminada"}`;
+}
+
+function rellenoActionInfo(run, configurada) {
+  const el = document.getElementById("rellenoActionInfo");
+  if (!el) return;
+  if (!configurada) {
+    el.hidden = false;
+    el.textContent = "La Action no está conectada: añade en el Worker los secretos GITHUB_DISPATCH_TOKEN y GITHUB_REPO (owner/repo).";
+    return;
+  }
+  if (!run) { el.hidden = true; return; }
+  el.hidden = false;
+  el.innerHTML = `${rellenoEsc(rellenoActionTexto(run))} ${run.url ? `<a href="${rellenoEsc(run.url)}" target="_blank" rel="noopener">ver en GitHub</a>` : ""}`;
+}
+
+async function rellenoActionConsultar(desde) {
+  const q = desde ? `?desde=${encodeURIComponent(desde)}` : "";
+  return apiFetch("/api/admin/sync-partidos/action-estado" + q);
+}
+
+async function rellenoLanzarAction() {
+  if (rellenoEjecutando) return;
+  if (rellenoSucio && !(await rellenoGuardarConfig())) return;
+  if (!rellenoLigas.length) {
+    window.EOF.toast("Añade y guarda al menos una liga antes de sincronizar", "error");
+    return;
+  }
+  const ok = await EOF.confirmar(
+    "Se lanzará la GitHub Action que descarga todas las jornadas de TheSportsDB y las guarda en la web. Tarda unos 10 minutos y el panel se actualizará solo al terminar. ¿Continuar?",
+    { textoConfirmar: "Sincronizar" }
+  );
+  if (!ok) return;
+
+  const btn = document.getElementById("rellenoLanzarAction");
+  const otros = ["rellenoEjecutar", "rellenoVivo"].map((id) => document.getElementById(id));
+  rellenoEjecutando = true;
+  rellenoInicioEjecucion = Date.now();
+  clearTimeout(rellenoTimerRefresco);
+  clearInterval(rellenoTimerReloj);
+  rellenoTimerReloj = setInterval(() => {
+    document.querySelectorAll("#rellenoProgreso .relleno-reloj").forEach((e) => { e.textContent = "⏱ " + rellenoReloj(); });
+  }, 1000);
+  [btn, ...otros].forEach((b) => { if (b) b.disabled = true; });
+  btn.classList.add("cargando");
+  const terminar = () => {
+    clearInterval(rellenoTimerReloj);
+    rellenoTimerReloj = null;
+    clearTimeout(rellenoActionTimer);
+    [btn, ...otros].forEach((b) => { if (b) b.disabled = false; });
+    btn.classList.remove("cargando");
+    rellenoEjecutando = false;
+  };
+
+  try {
+    rellenoPintarProgreso("curso", "Lanzando la Action en GitHub…");
+    const lanzado = await apiFetch("/api/admin/sync-partidos/lanzar-action", { method: "POST" });
+    const desde = lanzado.desde;
+    let vistaRun = null;
+    const limite = Date.now() + 40 * 60 * 1000;
+    for (;;) {
+      await new Promise((r) => { rellenoActionTimer = setTimeout(r, 10000); });
+      if (Date.now() > limite) throw new Error("La Action tarda demasiado. Revísala en GitHub.");
+      let est;
+      try { est = await rellenoActionConsultar(desde); } catch { continue; }
+      vistaRun = est.run;
+      if (!est.run) { rellenoPintarProgreso("curso", "Esperando a que GitHub arranque la Action…"); continue; }
+      rellenoActionInfo(est.run, true);
+      if (est.run.estado !== "completed") { rellenoPintarProgreso("curso", rellenoEsc(rellenoActionTexto(est.run))); continue; }
+      break;
+    }
+    if (vistaRun.conclusion === "success") {
+      rellenoPintarProgreso("ok", `Sincronizado correctamente (${rellenoReloj()}).`, 100);
+    } else {
+      rellenoPintarProgreso("error", `La Action no terminó bien (${rellenoEsc(vistaRun.conclusion || "sin resultado")}). Abre el registro en GitHub para ver el motivo.`);
+    }
+    terminar();
+    await rellenoCargar({ alRevisitar: true });
+    if (typeof calJornadasCargar === "function") { try { await calJornadasCargar(); } catch {} }
+    window.dispatchEvent(new CustomEvent("relleno-sincronizado"));
+  } catch (err) {
+    rellenoPintarProgreso("error", "Error: " + rellenoEsc(err.message));
+    terminar();
+  }
+}
+
+// ---------- Buscar IDs de TheSportsDB ----------
+function rellenoPintarIds(filtro = "") {
+  const cont = document.getElementById("rellenoIds");
+  const lista = cont.querySelector(".relleno-ids-lista");
+  if (!lista) return;
+  const q = filtro.trim().toLowerCase();
+  const enUso = new Set(rellenoLigas.map((l) => String(l.leagueId || "")).filter(Boolean));
+  const visibles = rellenoIdsCache.filter((l) => !q || `${l.nombre} ${l.id}`.toLowerCase().includes(q));
+  lista.innerHTML = visibles.length
+    ? visibles.map((l) => `<button type="button" data-id="${rellenoEsc(l.id)}" data-nombre="${rellenoEsc(l.nombre)}"><span>${rellenoEsc(l.nombre)}</span>${enUso.has(String(l.id)) ? `<i class="relleno-chip nuevos">en uso</i>` : ""}<em>ID ${rellenoEsc(l.id)}</em></button>`).join("")
+    : `<p class="relleno-vacio">Ninguna liga coincide con «${rellenoEsc(filtro)}».</p>`;
+  const cuenta = cont.querySelector(".relleno-ids-cuenta");
+  if (cuenta) cuenta.textContent = `${visibles.length} de ${rellenoIdsCache.length}`;
+}
+
+async function rellenoBuscarIds() {
+  const cont = document.getElementById("rellenoIds");
+  const btn = document.getElementById("rellenoBuscarIds");
+  cont.hidden = false;
+  cont.textContent = "Buscando ligas de España en TheSportsDB…";
+  btn.disabled = true;
+  try {
+    const { ligas } = await apiFetch("/api/admin/sync-partidos/ligas");
+    rellenoIdsCache = ligas || [];
+    if (!rellenoIdsCache.length) { cont.textContent = "No ha devuelto ninguna liga."; return; }
+    cont.innerHTML = `<div class="relleno-ids-cab">
+        <input type="search" class="relleno-ids-filtro" placeholder="Filtrar por nombre o ID…" aria-label="Filtrar ligas" autocomplete="off">
+        <span class="relleno-ids-cuenta"></span>
+      </div><div class="relleno-ids-lista"></div>
+      <p class="relleno-ids-ayuda">Al pulsar una liga se asigna a la primera fila sin ID (o se crea una fila nueva).</p>`;
+    rellenoPintarIds();
+    rellenoPintarLigas(); // los nombres de las filas con ID conocido salen ahora
+  } catch (err) {
+    cont.textContent = "No se han podido listar: " + err.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// Sugiere la competición a partir del nombre de la liga (solo para filas nuevas).
+function rellenoAdivinarCompeticion(nombre) {
+  const n = String(nombre || "").toLowerCase();
+  if (/primera.*(rfef|federaci)/.test(n)) return "primera_federacion";
+  if (/segunda.*(rfef|federaci)/.test(n)) return "segunda_federacion";
+  return "hypermotion";
+}
+
+// ---------- Alias de equipos ----------
+async function rellenoPostAlias(externo, interno) {
+  return apiFetch("/api/admin/alias-equipos", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ nombre_externo: externo, nombre_interno: interno }),
+  });
+}
+
+async function rellenoGuardarAlias(fila, btn) {
+  const interno = fila.querySelector("input").value.trim();
+  if (!interno) return window.EOF.toast("Indica el nombre del equipo en el sitio", "error");
+  btn.disabled = true;
+  try {
+    const r = await rellenoPostAlias(fila.dataset.externo, interno);
+    window.EOF.toast(r.duplicados_eliminados ? `Alias guardado (${r.duplicados_eliminados} duplicado/s unificado/s)` : "Alias guardado", "success");
+    rellenoSinAliasNombres = rellenoSinAliasNombres.filter((n) => n !== fila.dataset.externo);
+    rellenoPintarSinAlias();
+    await rellenoCargarAlias();
+  } catch (err) {
+    btn.disabled = false;
+    window.EOF.toast("No se ha podido guardar: " + err.message, "error");
+  }
+}
+
+async function rellenoAceptarSugerencias(btn) {
+  const filas = [...document.querySelectorAll("#rellenoSinAlias .relleno-alias-fila[data-externo]")]
+    .map((f) => ({ externo: f.dataset.externo, interno: f.querySelector("input").value.trim() }))
+    .filter((x) => x.interno);
+  if (!filas.length) return;
+  const muestra = filas.slice(0, 8).map((x) => `• ${x.externo} → ${x.interno}`).join("\n") + (filas.length > 8 ? `\n… y ${filas.length - 8} más` : "");
+  const ok = await window.EOF.confirmar(`Se guardarán ${filas.length} alias con el equipo indicado en cada fila:\n\n${muestra}\n\nSe corregirán los partidos ya guardados con esos nombres. ¿Continuar?`, { textoConfirmar: "Guardar alias" });
+  if (!ok) return;
+  btn.disabled = true;
+  let hechos = 0, fallos = 0;
+  for (const { externo, interno } of filas) {
+    try { await rellenoPostAlias(externo, interno); hechos++; rellenoSinAliasNombres = rellenoSinAliasNombres.filter((n) => n !== externo); }
+    catch { fallos++; }
+  }
+  window.EOF.toast(fallos ? `Guardados ${hechos}, fallaron ${fallos}` : `${hechos} alias guardados`, fallos ? "error" : "success");
+  rellenoPintarSinAlias();
+  await rellenoCargarAlias();
+}
+
+// ---------- Eventos ----------
+document.getElementById("rellenoAnadirLiga")?.addEventListener("click", () => {
+  rellenoLeerLigasDelDom();
+  rellenoLigas.push({ competicion: "hypermotion", grupo: null, leagueId: "", rondas: RELLENO_RONDAS.hypermotion });
+  rellenoPintarLigas();
+  rellenoMarcarSucio();
+  document.querySelector("#rellenoLigas .relleno-liga:last-child [data-k=\"competicion\"]")?.focus();
+});
+document.getElementById("rellenoActivo")?.addEventListener("change", () => rellenoMarcarSucio());
+document.getElementById("rellenoGuardar")?.addEventListener("click", rellenoGuardarConfig);
+document.getElementById("rellenoGuardarBarra")?.addEventListener("click", rellenoGuardarConfig);
+document.getElementById("rellenoDescartar")?.addEventListener("click", async () => {
+  const ok = await window.EOF.confirmar("Se perderán los cambios que no hayas guardado en las ligas. ¿Descartarlos?");
+  if (ok) rellenoCargar();
+});
+document.getElementById("rellenoLanzarAction")?.addEventListener("click", rellenoLanzarAction);
+document.getElementById("rellenoEjecutar")?.addEventListener("click", () => rellenoEjecutar("ciclo"));
+document.getElementById("rellenoVivo")?.addEventListener("click", () => rellenoEjecutar("vivo"));
+document.getElementById("rellenoDetener")?.addEventListener("click", (e) => {
+  rellenoCancelar = true;
+  e.currentTarget.disabled = true;
+  rellenoPintarProgreso("curso", "Deteniendo al terminar la pasada en curso…");
+});
+document.getElementById("rellenoBuscarIds")?.addEventListener("click", rellenoBuscarIds);
+document.getElementById("rellenoEstado")?.addEventListener("click", (e) => {
+  if (e.target.closest('[data-accion="refrescar"]')) rellenoCargar({ alRevisitar: true });
+});
+document.getElementById("rellenoLigas")?.addEventListener("click", (e) => {
+  const fila = e.target.closest(".relleno-liga");
+  if (fila && e.target.closest('[data-accion="quitar"]')) {
+    rellenoLeerLigasDelDom();
+    rellenoLigas.splice(parseInt(fila.dataset.i, 10), 1);
+    rellenoPintarLigas();
+    rellenoMarcarSucio();
+  }
+});
+document.getElementById("rellenoLigas")?.addEventListener("input", (e) => {
+  const fila = e.target.closest(".relleno-liga");
+  fila?.classList.remove("invalido");
+  // El ID admite solo dígitos: se limpia al escribir/pegar
+  if (e.target.matches('[data-k="leagueId"],[data-k="rondas"]')) {
+    const limpio = e.target.value.replace(/\D+/g, "");
+    if (limpio !== e.target.value) e.target.value = limpio;
+  }
+  rellenoMarcarSucio();
+});
+document.getElementById("rellenoLigas")?.addEventListener("change", (e) => {
+  const fila = e.target.closest(".relleno-liga");
+  if (!fila) return;
+  if (e.target.matches('[data-k="leagueId"]')) {
+    // Con el ID ya escrito se enseña el nombre de la liga si se conoce
+    rellenoLeerLigasDelDom();
+    rellenoPintarLigas();
+    return;
+  }
+  if (!e.target.matches('[data-k="competicion"]')) return;
+  // Al cambiar de competición se actualizan las jornadas por defecto y se
+  // vacía el grupo (Hypermotion no tiene grupos).
+  rellenoLeerLigasDelDom();
+  const l = rellenoLigas[parseInt(fila.dataset.i, 10)];
+  if (l) {
+    l.rondas = RELLENO_RONDAS[l.competicion];
+    if (l.competicion === "hypermotion" || !(RELLENO_GRUPOS[l.competicion] || []).includes(l.grupo)) l.grupo = null;
+  }
+  rellenoPintarLigas();
+  rellenoMarcarSucio();
+  document.querySelector(`#rellenoLigas .relleno-liga[data-i="${fila.dataset.i}"] [data-k="competicion"]`)?.focus();
+});
+document.getElementById("rellenoIds")?.addEventListener("input", (e) => {
+  if (e.target.matches(".relleno-ids-filtro")) rellenoPintarIds(e.target.value);
+});
+document.getElementById("rellenoIds")?.addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-id]");
+  if (!b) return;
+  // Rellena el ID en la primera liga sin ID (o crea una nueva).
+  rellenoLeerLigasDelDom();
+  let liga = rellenoLigas.find((l) => !l.leagueId);
+  if (!liga) {
+    const competicion = rellenoAdivinarCompeticion(b.dataset.nombre);
+    liga = { competicion, grupo: null, rondas: RELLENO_RONDAS[competicion] };
+    rellenoLigas.push(liga);
+  }
+  liga.leagueId = b.dataset.id;
+  liga.nombre = b.dataset.nombre;
+  rellenoPintarLigas();
+  rellenoMarcarSucio();
+  rellenoPintarIds(document.querySelector("#rellenoIds .relleno-ids-filtro")?.value || "");
+  window.EOF.toast(`ID ${b.dataset.id} asignado a la liga ${rellenoLigas.indexOf(liga) + 1}`, "success");
+});
+document.getElementById("rellenoSinAlias")?.addEventListener("click", (e) => {
+  const btnTodas = e.target.closest('[data-accion="aceptar-sugerencias"]');
+  if (btnTodas) return rellenoAceptarSugerencias(btnTodas);
+  const fila = e.target.closest(".relleno-alias-fila");
+  const btn = e.target.closest('[data-accion="guardar-alias"]');
+  if (fila && btn) rellenoGuardarAlias(fila, btn);
+});
+document.getElementById("rellenoSinAlias")?.addEventListener("input", (e) => {
+  // Si el usuario toca una sugerencia deja de marcarse como tal
+  if (e.target.matches("input[data-sugerido]")) {
+    e.target.removeAttribute("data-sugerido");
+    e.target.closest(".relleno-alias-fila")?.classList.remove("con-sugerencia");
+    e.target.parentElement.querySelector(".relleno-chip.nuevos")?.remove();
+  }
+});
+document.getElementById("rellenoSinAlias")?.addEventListener("keydown", (e) => {
+  if (e.key !== "Enter" || !e.target.matches("input")) return;
+  e.preventDefault();
+  const fila = e.target.closest(".relleno-alias-fila");
+  const btn = fila?.querySelector('[data-accion="guardar-alias"]');
+  if (fila && btn && !btn.disabled) rellenoGuardarAlias(fila, btn);
+});
+document.getElementById("rellenoAliasLista")?.addEventListener("input", (e) => {
+  if (!e.target.matches(".relleno-alias-buscar")) return;
+  const q = e.target.value.trim().toLowerCase();
+  let visibles = 0;
+  document.querySelectorAll("#rellenoAliasLista .relleno-alias-fila").forEach((f) => {
+    const ok = !q || f.dataset.texto.includes(q);
+    f.hidden = !ok;
+    if (ok) visibles++;
+  });
+  const sin = document.querySelector("#rellenoAliasLista [data-sin-coincidencias]");
+  if (sin) sin.hidden = visibles > 0;
+});
+document.getElementById("rellenoAliasLista")?.addEventListener("click", async (e) => {
+  const fila = e.target.closest(".relleno-alias-fila");
+  if (!fila || !e.target.closest('[data-accion="borrar-alias"]')) return;
+  const ok = await window.EOF.confirmar("¿Borrar este alias? Los partidos ya corregidos no se tocan, pero el próximo sync volverá a avisar de ese nombre.");
+  if (!ok) return;
+  try {
+    await apiFetch(`/api/admin/alias-equipos/${fila.dataset.id}`, { method: "DELETE" });
+    await rellenoCargarAlias();
+  } catch (err) {
+    window.EOF.toast("No se ha podido borrar: " + err.message, "error");
+  }
+});
+// Ctrl/Cmd+S dentro del bloque guarda la configuración si hay cambios
+document.getElementById("rellenoAuto")?.addEventListener("keydown", (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s" && rellenoSucio) {
+    e.preventDefault();
+    rellenoGuardarConfig();
+  }
+});
+// No perder cambios ni cortar una sincronización por cerrar la pestaña sin querer
+window.addEventListener("beforeunload", (e) => {
+  if (rellenoSucio || rellenoEjecutando) { e.preventDefault(); e.returnValue = ""; }
 });
 
 // ---------- TIENDA DE ACREDITACIÓN ----------
@@ -13189,6 +19943,7 @@ let TIENDA_PRODUCTOS_CACHE = {};
 let TIENDA_PRODUCTOS_LISTA = []; // para poder filtrar por el buscador sin recargar
 let TIENDA_PRODUCTO_ELEGIDO = null;
 let TIENDA_PUEDE_GESTIONAR = null; // null = todavía no comprobado
+let TIENDA_PUEDE_GESTIONAR_CONFIRMADO = false; // true solo si la API lo ha confirmado
 let TIENDA_FILTRO_ESTADO_GESTION = "";
 let TIENDA_GESTION_LISTA = []; // pedidos de la última carga de gestión, para filtrar por texto
 let TIENDA_GESTION_BUSQUEDA = "";
@@ -13199,6 +19954,32 @@ const TIENDA_ETIQUETAS_ESTADO = {
   enviado: "Enviado",
   cancelado: "Cancelado",
 };
+
+const TIENDA_ETIQUETAS_METODO = { bizum: "Bizum", paypal: "PayPal" };
+const TIENDA_BIZUM_TELEFONO = "+34 669 17 80 59";
+
+// Texto corto de cómo se entrega un pedido (los anteriores a esta mejora
+// no tienen forma de entrega guardada: se coordinan con el equipo).
+function tiendaEtiquetaEntrega(entrega) {
+  if (entrega === "mano") return "Recogida en mano";
+  if (entrega === "envio") return "Envío";
+  return "Entrega a coordinar";
+}
+
+// Chips con número de pedido, método de pago y entrega (mis pedidos y gestión).
+function tiendaChipsPedidoHTML(p) {
+  const chips = [];
+  if (p.codigo) chips.push(`<span class="tienda-chip codigo" title="Número de pedido">${escapeHtml(p.codigo)}</span>`);
+  if (p.metodo_pago && TIENDA_ETIQUETAS_METODO[p.metodo_pago]) chips.push(`<span class="tienda-chip">${TIENDA_ETIQUETAS_METODO[p.metodo_pago]}</span>`);
+  chips.push(`<span class="tienda-chip ${p.entrega === "envio" ? "envio" : ""}">${tiendaEtiquetaEntrega(p.entrega)}</span>`);
+  return `<div class="tienda-pedido-chips">${chips.join("")}</div>`;
+}
+
+function tiendaDireccionPedidoHTML(p) {
+  return p.entrega === "envio" && p.direccion_envio
+    ? `<p class="tienda-pedido-direccion"><strong>Enviar a:</strong> ${escapeHtml(p.direccion_envio).replace(/\n/g, "<br>")}</p>`
+    : "";
+}
 
 // Orden de la línea de tiempo (cancelado se pinta aparte, no en la línea)
 const TIENDA_PASOS_TIMELINE = ["pendiente_pago", "pagado", "enviado"];
@@ -13231,9 +20012,14 @@ async function tiendaComprobarPermisoGestion() {
     TIENDA_PUEDE_GESTIONAR = true;
   } else {
     try {
-      await apiFetch(`/api/tienda/pedidos`);
-      TIENDA_PUEDE_GESTIONAR = true;
-    } catch {
+      // Solo cuenta como permiso si la API devuelve de verdad la lista de
+      // pedidos: una respuesta vacía ({}) no es un "sí".
+      const r = await apiFetch(`/api/tienda/pedidos`);
+      TIENDA_PUEDE_GESTIONAR = !!(r && Array.isArray(r.pedidos));
+      TIENDA_PUEDE_GESTIONAR_CONFIRMADO = TIENDA_PUEDE_GESTIONAR;
+    } catch (err) {
+      // 401 = sesión sin confirmar, no falta de permiso: no se cachea.
+      if (err && err.status === 401) return;
       TIENDA_PUEDE_GESTIONAR = false;
     }
   }
@@ -13244,7 +20030,105 @@ async function tiendaComprobarPermisoGestion() {
   if (TIENDA_PUEDE_GESTIONAR) actualizarBadgeTiendaGestionPendientes();
 }
 
+// ---------- Estados vacíos / error de la tienda ----------
+const TIENDA_ICONOS_VACIO = {
+  tienda: '<path d="M3 9 4.5 4h15L21 9"/><path d="M4 9v11h16V9"/><path d="M9 20v-6h6v6"/><path d="M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/>',
+  buscar: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/><path d="M8.5 11h5"/>',
+  bolsa: '<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/>',
+  alerta: '<circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/>',
+  caja: '<path d="m21 8-9-5-9 5v8l9 5 9-5Z"/><path d="m3 8 9 5 9-5"/><path d="M12 13v8"/>',
+};
+
+const TIENDA_ILUSTRACION_VACIO = `<svg class="tienda-vacio-ilustracion" viewBox="0 0 200 165" fill="none" aria-hidden="true"><ellipse class="tv-sombra" cx="100" cy="150" rx="78" ry="7"/><rect class="tv-pared" x="40" y="68" width="120" height="76" rx="6"/><path class="tv-ta" d="M50.00 40H66.67L57.33 70H36.00Z"/><path class="tv-ta" d="M36.00 70a10.67 10.67 0 0 0 21.33 0Z"/><path class="tv-tb" d="M66.67 40H83.33L78.67 70H57.33Z"/><path class="tv-tb" d="M57.33 70a10.67 10.67 0 0 0 21.33 0Z"/><path class="tv-ta" d="M83.33 40H100.00L100.00 70H78.67Z"/><path class="tv-ta" d="M78.67 70a10.67 10.67 0 0 0 21.33 0Z"/><path class="tv-tb" d="M100.00 40H116.67L121.33 70H100.00Z"/><path class="tv-tb" d="M100.00 70a10.67 10.67 0 0 0 21.33 0Z"/><path class="tv-ta" d="M116.67 40H133.33L142.67 70H121.33Z"/><path class="tv-ta" d="M121.33 70a10.67 10.67 0 0 0 21.33 0Z"/><path class="tv-tb" d="M133.33 40H150.00L164.00 70H142.67Z"/><path class="tv-tb" d="M142.67 70a10.67 10.67 0 0 0 21.33 0Z"/><rect class="tv-toldo-borde" x="48" y="38" width="104" height="5" rx="2.5"/><rect class="tv-ventana" x="48" y="90" width="32" height="32" rx="4"/><rect class="tv-ventana" x="120" y="90" width="32" height="32" rx="4"/><path class="tv-gorra" d="M55 112c0-8 6-13 11-13s11 5 11 13z"/><path class="tv-gorra-v" d="M75 112h8"/><path class="tv-camiseta" d="M130 98l6-3c1 3 4 4 6 4s5-1 6-4l6 3-3 7-4-1v14h-18v-14l-4 1z" transform="translate(-6 -2)"/><rect class="tv-puerta" x="88" y="96" width="24" height="48" rx="3"/><circle class="tv-pomo" cx="106" cy="122" r="1.8"/><rect class="tv-cartel" x="91" y="102" width="18" height="10" rx="2"/><path class="tv-brillo" d="M54 94l10-0M54 98l5 0"/><g class="tv-chispa tv-c1"><path d="M28 50v10M23 55h10"/></g><g class="tv-chispa tv-c2"><path d="M176 36v8M172 40h8"/></g><g class="tv-chispa tv-c3"><path d="M168 96v6M165 99h6"/></g><circle class="tv-punto" cx="22" cy="100" r="2.5"/><circle class="tv-punto" cx="182" cy="70" r="2"/></svg>`;
+
+// botones: [{ texto, accion, primario }]. Las acciones las resuelve el
+// manejador delegado "data-vacio-accion" de más abajo.
+// ilustracion: dibuja la tiendita en vez del icono redondo.
+// fantasmas: fila de tarjetas "próximamente" que dan idea de cómo se verá el catálogo.
+function tiendaEstadoVacioHTML({ icono = "tienda", titulo, texto = "", botones = [], error = false, ilustracion = false, fantasmas = false } = {}) {
+  const botonesHTML = botones.length
+    ? `<div class="tienda-vacio-botones">${botones.map((b) =>
+        `<button type="button" class="${b.primario ? "btn-primari" : "btn-secundari"}" data-vacio-accion="${b.accion}">${escapeHtml(b.texto)}</button>`).join("")}</div>`
+    : "";
+  const cabecera = ilustracion
+    ? `<div class="tienda-vacio-escena">${TIENDA_ILUSTRACION_VACIO}</div>`
+    : `<div class="tienda-vacio-icono"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${TIENDA_ICONOS_VACIO[icono] || TIENDA_ICONOS_VACIO.tienda}</svg></div>`;
+  const fantasmasHTML = fantasmas
+    ? `<div class="tienda-vacio-fantasmas" aria-hidden="true">${["Gorras", "Camisetas", "Micros"].map((t) =>
+        `<div class="tienda-fantasma"><div class="tienda-fantasma-img"></div><span class="tienda-fantasma-linea"></span><span class="tienda-fantasma-linea corta"></span><em>${t}</em></div>`).join("")}</div>`
+    : "";
+  return `
+    <div class="tienda-vacio ${error ? "error" : ""} ${ilustracion ? "con-escena" : ""}">
+      ${cabecera}
+      ${ilustracion ? '<span class="tienda-vacio-etiqueta">Próximamente</span>' : ""}
+      <h4>${escapeHtml(titulo)}</h4>
+      ${texto ? `<p>${texto}</p>` : ""}
+      ${botonesHTML}
+      ${fantasmasHTML}
+    </div>`;
+}
+
+const TIENDA_PRODUCTOS_EJEMPLO = [
+  { nombre: "Gorra ElOtroFútbol", descripcion: "Gorra oficial bordada con el logo, para ir acreditado en el campo.", precio_centimos: 800, variantes: [] },
+  { nombre: "Camiseta ElOtroFútbol", descripcion: "Camiseta técnica con el logo, ideal para grabaciones y directos desde el campo.", precio_centimos: 1200, variantes: ["S", "M", "L", "XL"] },
+  { nombre: "Petaca de micrófono personalizada", descripcion: "Funda para micro con el logo de ElOtroFútbol, para que se vea en las entrevistas.", precio_centimos: 600, variantes: [] },
+];
+
+async function tiendaCrearProductosEjemplo(boton) {
+  if (boton) { boton.disabled = true; boton.textContent = "Creando..."; }
+  try {
+    for (let i = 0; i < TIENDA_PRODUCTOS_EJEMPLO.length; i++) {
+      const p = TIENDA_PRODUCTOS_EJEMPLO[i];
+      const r = await apiFetch(`/api/tienda/productos`, {
+        method: "POST",
+        body: JSON.stringify({ ...p, imagen_url: "", imagenes: [], stock: null, orden: i + 1 }),
+      });
+      // Quedan ocultos: así se ajustan precios/fotos antes de que los vea nadie.
+      if (r && r.id) await apiFetch(`/api/tienda/productos/${r.id}`, { method: "PUT", body: JSON.stringify({ activo: false }) });
+    }
+    EOF.toast("Productos de ejemplo creados (ocultos). Edítalos y actívalos cuando estén listos.", "exito");
+  } catch (err) {
+    EOF.toast("Error: " + err.message, "error");
+  }
+  cargaTiendaProductosGestion();
+}
+
+document.getElementById("panel-tienda")?.addEventListener("click", (ev) => {
+  const btn = ev.target.closest("[data-vacio-accion]");
+  if (!btn) return;
+  const subtab = (n) => document.querySelector(`#panel-tienda .subtabs button[data-subtab="${n}"]`)?.click();
+  switch (btn.dataset.vacioAccion) {
+    case "recargar-catalogo": cargaTiendaCatalogo(); break;
+    case "recargar-mis-pedidos": cargaTiendaMisPedidos(); break;
+    case "recargar-gestion": cargaTiendaGestion(); break;
+    case "recargar-productos": cargaTiendaProductosGestion(); break;
+    case "ir-catalogo": subtab("tiendaCatalogo"); break;
+    case "ir-mis-pedidos": subtab("tiendaMisPedidos"); break;
+    case "ir-productos": subtab("tiendaProductos"); break;
+    case "nuevo-producto": abrirModalTiendaProducto(); break;
+    case "ejemplos": tiendaCrearProductosEjemplo(btn); break;
+    case "limpiar-busqueda-catalogo": {
+      const i = document.getElementById("tiendaBuscador"); if (i) i.value = "";
+      document.getElementById("tiendaSoloDisponibles")?.setAttribute("aria-pressed", "false");
+      tiendaGuardarPrefCatalogo();
+      pintarTiendaCatalogoFiltrado();
+      break;
+    }
+    case "limpiar-busqueda-productos": {
+      const i = document.getElementById("tiendaProductosBuscador"); if (i) i.value = "";
+      TIENDA_PRODUCTOS_BUSQUEDA = ""; pintarTiendaProductosFiltrados();
+      break;
+    }
+    case "limpiar-filtros-gestion": {
+      const i = document.getElementById("tiendaGestionBuscador"); if (i) i.value = "";
+      document.querySelector('#tiendaGestionFiltros button[data-estado=""]')?.click();
+      break;
+    }
+  }
+});
+
 // ---------- Catálogo ----------
+let TIENDA_PRODUCTO_PENDIENTE = null; // id de producto a abrir tras cargar el catálogo
 async function cargaTiendaCatalogo() {
   const cont = document.getElementById("tiendaGrid");
   if (!cont) return;
@@ -13255,41 +20139,156 @@ async function cargaTiendaCatalogo() {
     productos.forEach((p) => { TIENDA_PRODUCTOS_CACHE[p.id] = p; });
     TIENDA_PRODUCTOS_LISTA = productos;
     pintarTiendaCatalogoFiltrado();
+    // Llegada por enlace directo (?ir=tienda.tiendaCatalogo&producto=<id>):
+    // una vez cargado el catálogo se abre la ficha de ese producto.
+    if (TIENDA_PRODUCTO_PENDIENTE !== null) {
+      const id = TIENDA_PRODUCTO_PENDIENTE;
+      TIENDA_PRODUCTO_PENDIENTE = null;
+      if (TIENDA_PRODUCTOS_CACHE[id]) mostrarTiendaFicha(id);
+      else EOF.toast("Ese producto ya no está disponible en la tienda.", "error");
+    }
   } catch (err) {
-    cont.innerHTML = `<p class='solicitudes-vacio'>Error cargando el catálogo: ${err.message}</p>`;
+    cont.innerHTML = tiendaEstadoVacioHTML({
+      icono: "alerta", error: true, titulo: "No se ha podido cargar el catálogo",
+      texto: escapeHtml(err.message || "Inténtalo de nuevo en unos segundos."),
+      botones: [{ texto: "Reintentar", accion: "recargar-catalogo", primario: true }],
+    });
   }
 }
 
-// Repinta el grid a partir de TIENDA_PRODUCTOS_LISTA aplicando el texto
-// escrito en el buscador, sin volver a pedir nada a la API.
+// Preferencias del catálogo (orden y "solo disponibles") recordadas en este dispositivo.
+const TIENDA_PREF_CATALOGO = "eof_tienda_catalogo_pref";
+function tiendaLeerLS(clave) { try { return JSON.parse(localStorage.getItem(clave) || "{}") || {}; } catch { return {}; } }
+function tiendaGuardarLS(clave, valor) { try { localStorage.setItem(clave, JSON.stringify(valor)); } catch { /* modo privado: no pasa nada */ } }
+
+function tiendaProductosOrdenados(lista) {
+  const modo = document.getElementById("tiendaOrdenCatalogo")?.value || "destacados";
+  const copia = [...lista];
+  if (modo === "precio-asc") copia.sort((a, b) => a.precio_centimos - b.precio_centimos);
+  else if (modo === "precio-desc") copia.sort((a, b) => b.precio_centimos - a.precio_centimos);
+  else if (modo === "nombre") copia.sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), "es"));
+  return copia;
+}
+
+// Repinta el grid a partir de TIENDA_PRODUCTOS_LISTA aplicando buscador,
+// "solo disponibles" y orden, sin volver a pedir nada a la API.
 function pintarTiendaCatalogoFiltrado() {
   const cont = document.getElementById("tiendaGrid");
   if (!cont) return;
   const texto = normalizarBusquedaPanel(document.getElementById("tiendaBuscador")?.value || "");
-  const productos = texto
-    ? TIENDA_PRODUCTOS_LISTA.filter((p) =>
-        normalizarBusquedaPanel(p.nombre || "").includes(texto) || normalizarBusquedaPanel(p.descripcion || "").includes(texto))
-    : TIENDA_PRODUCTOS_LISTA;
+  const soloDisp = document.getElementById("tiendaSoloDisponibles")?.getAttribute("aria-pressed") === "true";
+  let productos = TIENDA_PRODUCTOS_LISTA;
+  if (texto) {
+    productos = productos.filter((p) =>
+      normalizarBusquedaPanel(p.nombre || "").includes(texto) || normalizarBusquedaPanel(p.descripcion || "").includes(texto));
+  }
+  if (soloDisp) productos = productos.filter((p) => !tiendaEstadoStock(p).agotado);
+  productos = tiendaProductosOrdenados(productos);
+
+  const contador = document.getElementById("tiendaCatalogoContador");
+  if (contador) {
+    contador.textContent = TIENDA_PRODUCTOS_LISTA.length
+      ? (productos.length === TIENDA_PRODUCTOS_LISTA.length
+          ? `${productos.length} ${productos.length === 1 ? "producto" : "productos"}`
+          : `${productos.length} de ${TIENDA_PRODUCTOS_LISTA.length}`)
+      : "";
+  }
 
   if (!TIENDA_PRODUCTOS_LISTA.length) {
-    cont.innerHTML = "<p class='solicitudes-vacio'>De momento no hay productos disponibles en la tienda.</p>";
+    const gestor = TIENDA_PUEDE_GESTIONAR === true && (USER.rol === "admin" || TIENDA_PUEDE_GESTIONAR_CONFIRMADO);
+    cont.innerHTML = tiendaEstadoVacioHTML({
+      icono: "tienda", ilustracion: true, fantasmas: true,
+      titulo: "La tienda está vacía por ahora",
+      texto: gestor
+        ? "Todavía no hay ningún producto visible para los colaboradores. Añade el primero o crea unos productos de ejemplo para empezar."
+        : "Aún no hay material disponible para pedir. Vuelve a pasarte pronto: avisaremos cuando haya productos nuevos.",
+      botones: gestor
+        ? [{ texto: "+ Añadir producto", accion: "nuevo-producto", primario: true }, { texto: "Ir a Productos", accion: "ir-productos" }]
+        : [{ texto: "Ver mis pedidos", accion: "ir-mis-pedidos" }, { texto: "Actualizar", accion: "recargar-catalogo" }],
+    });
   } else if (!productos.length) {
-    cont.innerHTML = "<p class='tienda-vacio-busqueda'>Ningún producto coincide con tu búsqueda.</p>";
+    const q = (document.getElementById("tiendaBuscador")?.value || "").trim();
+    cont.innerHTML = tiendaEstadoVacioHTML({
+      icono: "buscar",
+      titulo: "Sin resultados",
+      texto: q ? `Ningún producto coincide con «${escapeHtml(q)}»${soloDisp ? " entre los disponibles" : ""}. Prueba con otra palabra.`
+        : (soloDisp ? "Ahora mismo todos los productos están agotados." : "Ningún producto coincide con tu búsqueda."),
+      botones: [{ texto: "Limpiar filtros", accion: "limpiar-busqueda-catalogo", primario: true }],
+    });
   } else {
     cont.innerHTML = productos.map(pintarTarjetaProductoTienda).join("");
   }
 }
 
+// Restaura las preferencias guardadas en los controles del catálogo.
+(function tiendaRestaurarPrefCatalogo() {
+  const pref = tiendaLeerLS(TIENDA_PREF_CATALOGO);
+  const sel = document.getElementById("tiendaOrdenCatalogo");
+  if (sel && ["destacados", "precio-asc", "precio-desc", "nombre"].includes(pref.orden)) sel.value = pref.orden;
+  const btn = document.getElementById("tiendaSoloDisponibles");
+  if (btn && pref.soloDisponibles) btn.setAttribute("aria-pressed", "true");
+})();
+
+function tiendaGuardarPrefCatalogo() {
+  tiendaGuardarLS(TIENDA_PREF_CATALOGO, {
+    orden: document.getElementById("tiendaOrdenCatalogo")?.value || "destacados",
+    soloDisponibles: document.getElementById("tiendaSoloDisponibles")?.getAttribute("aria-pressed") === "true",
+  });
+}
+
+document.getElementById("tiendaOrdenCatalogo")?.addEventListener("change", () => { tiendaGuardarPrefCatalogo(); pintarTiendaCatalogoFiltrado(); });
+document.getElementById("tiendaSoloDisponibles")?.addEventListener("click", (ev) => {
+  const btn = ev.currentTarget;
+  btn.setAttribute("aria-pressed", btn.getAttribute("aria-pressed") === "true" ? "false" : "true");
+  tiendaGuardarPrefCatalogo();
+  pintarTiendaCatalogoFiltrado();
+});
+
 document.getElementById("tiendaBuscador")?.addEventListener("input", pintarTiendaCatalogoFiltrado);
 
+// Imágenes de un producto: la principal (imagen_url) seguida de las de
+// la galería (imagenes), sin repetidos.
+function tiendaImagenesProducto(p) {
+  const todas = [p.imagen_url, ...(Array.isArray(p.imagenes) ? p.imagenes : [])].filter(Boolean);
+  return [...new Set(todas)];
+}
+
+// Estado de stock de cara al usuario. "disponibles" lo calcula el
+// servidor (stock - pedidos no cancelados); null = sin límite.
+function tiendaEstadoStock(p) {
+  const d = p.disponibles;
+  if (d === null || d === undefined) return { agotado: false, clase: "", texto: "" };
+  if (d <= 0) return { agotado: true, clase: "agotado", texto: "Agotado" };
+  if (d <= 5) return { agotado: false, clase: "pocas", texto: d === 1 ? "¡Última unidad!" : `Quedan solo ${d}` };
+  return { agotado: false, clase: "disponible", texto: `${d} disponibles` };
+}
+
+// Máximo de unidades que se pueden pedir de una vez (10, o las que queden).
+function tiendaLimiteCantidad(p) {
+  const d = p.disponibles;
+  return d === null || d === undefined ? 10 : Math.max(0, Math.min(10, d));
+}
+
 function pintarTarjetaProductoTienda(p) {
-  const imagenHTML = p.imagen_url
-    ? `<div class="tienda-tarjeta-imagen" style="background-image:url('${escapeHtml(p.imagen_url)}')"></div>`
+  const imagenes = tiendaImagenesProducto(p);
+  const stock = tiendaEstadoStock(p);
+  const imagenHTML = imagenes.length
+    ? `<div class="tienda-tarjeta-imagen" style="background-image:url('${escapeHtml(imagenes[0])}')"></div>`
     : `<div class="tienda-tarjeta-imagen">${tiendaIconoProducto()}</div>`;
+  const etiquetaStockHTML = stock.texto && stock.clase !== "disponible"
+    ? `<span class="tienda-etiqueta ${stock.clase}">${stock.texto}</span>`
+    : "";
+  const etiquetaFotosHTML = imagenes.length > 1
+    ? `<span class="tienda-etiqueta-fotos">${imagenes.length} fotos</span>`
+    : "";
   return `
-    <div class="tienda-tarjeta" data-id="${p.id}">
+    <div class="tienda-tarjeta ${stock.agotado ? "agotado" : ""}" data-id="${p.id}">
       <div class="tienda-tarjeta-clic" data-id="${p.id}">
-        ${imagenHTML}
+        <div class="tienda-tarjeta-marco">
+          ${imagenHTML}
+          ${etiquetaStockHTML}
+          ${etiquetaFotosHTML}
+        </div>
         <div class="tienda-tarjeta-cuerpo">
           <p class="tienda-tarjeta-nombre">${escapeHtml(p.nombre)}</p>
           ${p.descripcion ? `<p class="tienda-tarjeta-descripcion">${escapeHtml(p.descripcion)}</p>` : ""}
@@ -13298,7 +20297,7 @@ function pintarTarjetaProductoTienda(p) {
       </div>
       <div class="tienda-tarjeta-pie">
         <button type="button" class="tienda-tarjeta-ver" data-id="${p.id}">Ver detalles</button>
-        <button type="button" class="tienda-tarjeta-boton" data-id="${p.id}">Pedir</button>
+        <button type="button" class="tienda-tarjeta-boton" data-id="${p.id}" ${stock.agotado ? "disabled" : ""}>${stock.agotado ? "Agotado" : "Pedir"}</button>
       </div>
     </div>`;
 }
@@ -13319,83 +20318,458 @@ document.getElementById("tiendaGrid")?.addEventListener("click", (ev) => {
 // No es una subtab con botón propio: se abre programáticamente al
 // pulsar una tarjeta del catálogo, activando el subpanel a mano con el
 // mismo mecanismo (clases "activo") que usa el resto del panel.
+let TIENDA_FICHA_IMGS = [];
+let TIENDA_FICHA_IDX = 0;
+let TIENDA_FICHA_ID = null;
+
+function tiendaIconoSvg(ruta) {
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ruta}</svg>`;
+}
+
 function mostrarTiendaFicha(productoId) {
   const producto = TIENDA_PRODUCTOS_CACHE[productoId];
   const cont = document.getElementById("tiendaFichaContenido");
   if (!producto || !cont) return;
+  TIENDA_FICHA_ID = productoId;
 
   const panelTienda = document.getElementById("panel-tienda");
   panelTienda.querySelectorAll(":scope > .subtabs button").forEach((b) => b.classList.remove("activo"));
   panelTienda.querySelectorAll(":scope > .subpanel").forEach((p) => p.classList.remove("activo"));
   document.getElementById("subpanel-tiendaFicha").classList.add("activo");
+  try { cont.scrollIntoView({ block: "start" }); window.scrollTo({ top: 0, behavior: "smooth" }); } catch {}
 
   const tieneVariantes = Array.isArray(producto.variantes) && producto.variantes.length > 0;
-  const imagenHTML = producto.imagen_url
-    ? `<div class="tienda-ficha-imagen" style="background-image:url('${escapeHtml(producto.imagen_url)}')"></div>`
-    : `<div class="tienda-ficha-imagen">${tiendaIconoProducto()}</div>`;
+  const imagenes = tiendaImagenesProducto(producto);
+  TIENDA_FICHA_IMGS = imagenes;
+  TIENDA_FICHA_IDX = 0;
+  const stock = tiendaEstadoStock(producto);
+  const limite = tiendaLimiteCantidad(producto);
+
+  const flechasHTML = imagenes.length > 1 ? `
+      <button type="button" class="tienda-ficha-flecha izq" data-dir="-1" aria-label="Foto anterior">${tiendaIconoSvg('<path d="m15 18-6-6 6-6"/>')}</button>
+      <button type="button" class="tienda-ficha-flecha der" data-dir="1" aria-label="Foto siguiente">${tiendaIconoSvg('<path d="m9 18 6-6-6-6"/>')}</button>
+      <span class="tienda-ficha-contador" id="tiendaFichaContador">1 / ${imagenes.length}</span>` : "";
+  const principalHTML = imagenes.length
+    ? `<div class="tienda-ficha-imagen tienda-ficha-zoomable" id="tiendaFichaImagenPrincipal" style="background-image:url('${escapeHtml(imagenes[0])}')" role="button" tabindex="0" aria-label="Ampliar foto">
+         <span class="tienda-ficha-lupa">${tiendaIconoSvg('<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/><path d="M11 8v6M8 11h6"/>')}</span>
+         ${flechasHTML}
+       </div>`
+    : `<div class="tienda-ficha-imagen" id="tiendaFichaImagenPrincipal">${tiendaIconoProducto()}</div>`;
+  const miniaturasHTML = imagenes.length > 1
+    ? `<div class="tienda-ficha-miniaturas" id="tiendaFichaMiniaturas">
+        ${imagenes.map((u, i) => `<button type="button" class="tienda-ficha-miniatura ${i === 0 ? "activo" : ""}" data-idx="${i}" style="background-image:url('${escapeHtml(u)}')" aria-label="Ver foto ${i + 1}"></button>`).join("")}
+      </div>`
+    : "";
   const variantesHTML = tieneVariantes ? `
       <div class="tienda-ficha-variantes">
-        <span class="tienda-ficha-variantes-label">Talla</span>
+        <span class="tienda-ficha-variantes-label">Talla: <strong id="tiendaFichaTallaElegida">${escapeHtml(producto.variantes[0])}</strong></span>
         <div class="tienda-ficha-chips" id="tiendaFichaChips">
           ${producto.variantes.map((v, i) => `<button type="button" class="tienda-ficha-chip ${i === 0 ? "activo" : ""}" data-variante="${escapeHtml(v)}">${escapeHtml(v)}</button>`).join("")}
         </div>
       </div>` : "";
+  const cantidadHTML = stock.agotado ? "" : `
+      <div class="tienda-ficha-variantes">
+        <span class="tienda-ficha-variantes-label">Cantidad</span>
+        <div class="tienda-cantidad" id="tiendaFichaCantidad" data-max="${limite}" data-precio="${producto.precio_centimos}">
+          <button type="button" class="tienda-cantidad-btn" data-delta="-1" aria-label="Quitar una unidad" disabled>−</button>
+          <span class="tienda-cantidad-valor" id="tiendaFichaCantidadValor">1</span>
+          <button type="button" class="tienda-cantidad-btn" data-delta="1" aria-label="Añadir una unidad" ${limite <= 1 ? "disabled" : ""}>+</button>
+        </div>
+        <p class="tienda-ficha-total">Total: <strong id="tiendaFichaTotal">${tiendaFormatPrecio(producto.precio_centimos)}</strong></p>
+      </div>`;
+
+  // Otros productos del catálogo (hasta 4), para seguir mirando sin volver atrás.
+  const otros = (TIENDA_PRODUCTOS_LISTA || []).filter((p) => p.id !== producto.id).slice(0, 4);
+  const otrosHTML = otros.length ? `
+    <section class="tienda-ficha-otros">
+      <h3>Más productos</h3>
+      <div class="tienda-ficha-otros-grid">
+        ${otros.map((p) => {
+          const img = tiendaImagenesProducto(p)[0];
+          const st = tiendaEstadoStock(p);
+          return `<button type="button" class="tienda-ficha-otro ${st.agotado ? "agotado" : ""}" data-id="${p.id}">
+            <span class="tienda-ficha-otro-img" ${img ? `style="background-image:url('${escapeHtml(img)}')"` : ""}>${img ? "" : tiendaIconoProducto()}</span>
+            <span class="tienda-ficha-otro-nombre">${escapeHtml(p.nombre)}</span>
+            <span class="tienda-ficha-otro-precio">${st.agotado ? "Agotado" : tiendaFormatPrecio(p.precio_centimos)}</span>
+          </button>`;
+        }).join("")}
+      </div>
+    </section>` : "";
 
   cont.innerHTML = `
+    <nav class="tienda-ficha-migas" aria-label="Ruta">
+      <button type="button" data-ir="catalogo">Catálogo</button><span>›</span><strong>${escapeHtml(producto.nombre)}</strong>
+    </nav>
     <div class="tienda-ficha">
-      ${imagenHTML}
+      <div class="tienda-ficha-galeria">
+        ${principalHTML}
+        ${miniaturasHTML}
+      </div>
       <div class="tienda-ficha-info">
         <h2 class="tienda-ficha-nombre">${escapeHtml(producto.nombre)}</h2>
         <p class="tienda-ficha-precio">${tiendaFormatPrecio(producto.precio_centimos)}</p>
+        ${stock.texto ? `<p class="tienda-stock ${stock.clase}">${stock.texto}</p>` : ""}
         ${producto.descripcion ? `<p class="tienda-ficha-descripcion">${escapeHtml(producto.descripcion)}</p>` : ""}
+        <div class="tienda-ficha-yapedido" id="tiendaFichaYaPedido" hidden></div>
         ${variantesHTML}
-        <button type="button" class="tienda-tarjeta-boton tienda-ficha-boton" id="tiendaFichaPedir" data-id="${producto.id}">Pedir ahora</button>
+        ${cantidadHTML}
+        <button type="button" class="tienda-tarjeta-boton tienda-ficha-boton" id="tiendaFichaPedir" data-id="${producto.id}" ${stock.agotado ? "disabled" : ""}>${stock.agotado ? "Agotado" : "Pedir ahora"}</button>
+        <div class="tienda-ficha-acciones-sec">
+          <button type="button" class="tienda-ficha-sec" data-accion="copiar">${tiendaIconoSvg('<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>')}Copiar datos</button>
+          <button type="button" class="tienda-ficha-sec" data-accion="enlace">${tiendaIconoSvg('<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>')}Copiar enlace</button>
+          <button type="button" class="tienda-ficha-sec" data-accion="mispedidos">${tiendaIconoSvg('<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/>')}Mis pedidos</button>
+        </div>
         <div class="tienda-ficha-garantias">
-          <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>Pago seguro por Bizum</span>
-          <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Confirmación manual del equipo</span>
+          <span>${tiendaIconoSvg('<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>')}Pago por Bizum o PayPal</span>
+          <span>${tiendaIconoSvg('<path d="M20 6 9 17l-5-5"/>')}Confirmación manual del equipo</span>
+        </div>
+        <div class="tienda-ficha-acordeon">
+          <details open>
+            <summary>Cómo pedir</summary>
+            <ol class="tienda-ficha-pasos">
+              <li><strong>Elige</strong> ${tieneVariantes ? "talla y " : ""}cantidad y pulsa «Pedir ahora».</li>
+              <li><strong>Escoge cómo pagar y cómo recibirlo</strong> (en mano o envío) y confirma: te damos tu número de pedido.</li>
+              <li><strong>Paga por Bizum o PayPal</strong> poniendo ese número de pedido como concepto.</li>
+              <li><strong>Espera la confirmación</strong>: cuando el equipo vea el pago, tu pedido pasa a «Pagado» y después a «Enviado» o «Entregado».</li>
+            </ol>
+          </details>
+          <details>
+            <summary>Detalles del producto</summary>
+            <ul class="tienda-ficha-detalles">
+              <li><span>Precio por unidad</span><strong>${tiendaFormatPrecio(producto.precio_centimos)}</strong></li>
+              <li><span>Tallas</span><strong>${tieneVariantes ? escapeHtml(producto.variantes.join(", ")) : "Talla única"}</strong></li>
+              <li><span>Disponibilidad</span><strong>${stock.agotado ? "Agotado" : (stock.texto || "Disponible")}</strong></li>
+              <li><span>Fotos</span><strong>${imagenes.length || "Sin fotos"}</strong></li>
+            </ul>
+          </details>
+          <details>
+            <summary>Entrega y cancelaciones</summary>
+            <p class="tienda-ficha-nota">Eliges al pedir si lo recoges en mano o prefieres envío (en ese caso se te pide la dirección). La entrega se coordina con el equipo una vez confirmado el pago. Mientras el pedido esté pendiente de pago puedes cancelarlo desde «Mis pedidos».</p>
+          </details>
         </div>
       </div>
-    </div>`;
+    </div>
+    ${otrosHTML}`;
+
+  tiendaFichaActualizarBoton();
+  tiendaFichaCargarYaPedido(producto);
 }
+
+// Cambia la foto mostrada (ficha y miniaturas). dir relativo o idx absoluto.
+function tiendaFichaIrAFoto(idx) {
+  if (!TIENDA_FICHA_IMGS.length) return;
+  TIENDA_FICHA_IDX = (idx + TIENDA_FICHA_IMGS.length) % TIENDA_FICHA_IMGS.length;
+  const url = TIENDA_FICHA_IMGS[TIENDA_FICHA_IDX];
+  const principal = document.getElementById("tiendaFichaImagenPrincipal");
+  if (principal) principal.style.backgroundImage = `url('${url.replace(/'/g, "%27")}')`;
+  document.querySelectorAll("#tiendaFichaMiniaturas .tienda-ficha-miniatura").forEach((m, i) => m.classList.toggle("activo", i === TIENDA_FICHA_IDX));
+  const contador = document.getElementById("tiendaFichaContador");
+  if (contador) contador.textContent = `${TIENDA_FICHA_IDX + 1} / ${TIENDA_FICHA_IMGS.length}`;
+  const lb = document.getElementById("tiendaLightbox");
+  if (lb && lb.classList.contains("abierto")) lb.querySelector("img").src = url;
+}
+
+// Texto del botón principal: resume talla, cantidad y total elegidos.
+function tiendaFichaActualizarBoton() {
+  const btn = document.getElementById("tiendaFichaPedir");
+  const producto = TIENDA_PRODUCTOS_CACHE[TIENDA_FICHA_ID];
+  if (!btn || !producto || btn.disabled) return;
+  const chip = document.querySelector("#tiendaFichaChips .tienda-ficha-chip.activo");
+  const cantidad = Number(document.getElementById("tiendaFichaCantidadValor")?.textContent) || 1;
+  const partes = [];
+  if (chip) partes.push(chip.dataset.variante);
+  if (cantidad > 1) partes.push(`× ${cantidad}`);
+  btn.textContent = `Pedir ahora · ${partes.length ? partes.join(" ") + " · " : ""}${tiendaFormatPrecio(producto.precio_centimos * cantidad)}`;
+}
+
+// Aviso si la persona ya tiene pedidos (no cancelados) de este producto.
+async function tiendaFichaCargarYaPedido(producto) {
+  const caja = document.getElementById("tiendaFichaYaPedido");
+  if (!caja) return;
+  try {
+    const { pedidos = [] } = await apiFetch(`/api/tienda/mis-pedidos`);
+    if (TIENDA_FICHA_ID !== producto.id) return;
+    const n = pedidos.filter((p) => p.producto_nombre === producto.nombre && p.estado !== "cancelado").length;
+    if (n > 0) {
+      caja.textContent = `Ya tienes ${n} ${n === 1 ? "pedido" : "pedidos"} de este producto.`;
+      caja.hidden = false;
+    }
+  } catch { /* es solo informativo */ }
+}
+
+function tiendaAbrirLightbox() {
+  if (!TIENDA_FICHA_IMGS.length) return;
+  let lb = document.getElementById("tiendaLightbox");
+  if (!lb) {
+    lb = document.createElement("div");
+    lb.id = "tiendaLightbox";
+    lb.className = "tienda-lightbox";
+    lb.innerHTML = `
+      <button type="button" class="tienda-lightbox-cerrar" aria-label="Cerrar">&times;</button>
+      <button type="button" class="tienda-lightbox-flecha izq" data-dir="-1" aria-label="Anterior">‹</button>
+      <img alt="">
+      <button type="button" class="tienda-lightbox-flecha der" data-dir="1" aria-label="Siguiente">›</button>`;
+    lb.addEventListener("click", (ev) => {
+      const flecha = ev.target.closest(".tienda-lightbox-flecha");
+      if (flecha) { tiendaFichaIrAFoto(TIENDA_FICHA_IDX + Number(flecha.dataset.dir)); return; }
+      if (ev.target === lb || ev.target.closest(".tienda-lightbox-cerrar")) lb.classList.remove("abierto");
+    });
+    document.body.appendChild(lb);
+  }
+  lb.querySelector("img").src = TIENDA_FICHA_IMGS[TIENDA_FICHA_IDX];
+  lb.classList.toggle("sola", TIENDA_FICHA_IMGS.length < 2);
+  lb.classList.add("abierto");
+}
+
+document.addEventListener("keydown", (ev) => {
+  const lb = document.getElementById("tiendaLightbox");
+  const lbAbierto = lb && lb.classList.contains("abierto");
+  const fichaActiva = document.getElementById("subpanel-tiendaFicha")?.classList.contains("activo");
+  if (lbAbierto && ev.key === "Escape") { lb.classList.remove("abierto"); return; }
+  if ((lbAbierto || fichaActiva) && TIENDA_FICHA_IMGS.length > 1 && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || "")) {
+    if (ev.key === "ArrowLeft") tiendaFichaIrAFoto(TIENDA_FICHA_IDX - 1);
+    if (ev.key === "ArrowRight") tiendaFichaIrAFoto(TIENDA_FICHA_IDX + 1);
+  }
+});
 
 document.getElementById("tiendaFichaVolver")?.addEventListener("click", () => {
   document.querySelector('#panel-tienda .subtabs button[data-subtab="tiendaCatalogo"]').click();
 });
 
-document.getElementById("tiendaFichaContenido")?.addEventListener("click", (ev) => {
+// Pone la cantidad y el total de un selector de cantidad (ficha o
+// checkout) y deshabilita "−" en 1 y "+" en el máximo.
+function tiendaPintarCantidad(contenedor, cantidad, max) {
+  const valor = contenedor.querySelector(".tienda-cantidad-valor");
+  if (valor) valor.textContent = String(cantidad);
+  const menos = contenedor.querySelector('.tienda-cantidad-btn[data-delta="-1"]');
+  const mas = contenedor.querySelector('.tienda-cantidad-btn[data-delta="1"]');
+  if (menos) menos.disabled = cantidad <= 1;
+  if (mas) mas.disabled = cantidad >= max;
+}
+
+document.getElementById("tiendaFichaContenido")?.addEventListener("click", async (ev) => {
+  const migas = ev.target.closest('[data-ir="catalogo"]');
+  if (migas) { document.getElementById("tiendaFichaVolver")?.click(); return; }
+
+  const flecha = ev.target.closest(".tienda-ficha-flecha");
+  if (flecha) { ev.stopPropagation(); tiendaFichaIrAFoto(TIENDA_FICHA_IDX + Number(flecha.dataset.dir)); return; }
+
+  const miniatura = ev.target.closest(".tienda-ficha-miniatura");
+  if (miniatura) { tiendaFichaIrAFoto(Number(miniatura.dataset.idx)); return; }
+
+  if (ev.target.closest(".tienda-ficha-zoomable")) { tiendaAbrirLightbox(); return; }
+
+  const otro = ev.target.closest(".tienda-ficha-otro");
+  if (otro) { mostrarTiendaFicha(Number(otro.dataset.id)); return; }
+
+  const sec = ev.target.closest(".tienda-ficha-sec");
+  if (sec) {
+    if (sec.dataset.accion === "mispedidos") {
+      document.querySelector('#panel-tienda .subtabs button[data-subtab="tiendaMisPedidos"]')?.click();
+    } else if (sec.dataset.accion === "enlace") {
+      // Enlace al producto dentro del panel: quien lo abra sin sesión de
+      // colaborador pasa primero por el acceso (ver ?volver= más arriba).
+      const url = new URL("panel.html", location.href);
+      url.search = new URLSearchParams({ ir: "tienda.tiendaCatalogo", producto: String(TIENDA_FICHA_ID) }).toString();
+      try { await navigator.clipboard.writeText(url.href); EOF.toast("Enlace del producto copiado. Solo pueden abrirlo colaboradores con cuenta.", "exito"); }
+      catch { EOF.toast("No se pudo copiar al portapapeles.", "error"); }
+    } else if (sec.dataset.accion === "copiar") {
+      const p = TIENDA_PRODUCTOS_CACHE[TIENDA_FICHA_ID];
+      if (!p) return;
+      const texto = [p.nombre, tiendaFormatPrecio(p.precio_centimos), p.descripcion || ""].filter(Boolean).join(" — ");
+      try { await navigator.clipboard.writeText(texto); EOF.toast("Datos del producto copiados.", "exito"); }
+      catch { EOF.toast("No se pudo copiar al portapapeles.", "error"); }
+    }
+    return;
+  }
+
   const chip = ev.target.closest(".tienda-ficha-chip");
   if (chip) {
     chip.closest("#tiendaFichaChips").querySelectorAll(".tienda-ficha-chip").forEach((c) => c.classList.remove("activo"));
     chip.classList.add("activo");
+    const elegida = document.getElementById("tiendaFichaTallaElegida");
+    if (elegida) elegida.textContent = chip.dataset.variante;
+    tiendaFichaActualizarBoton();
+    return;
+  }
+  const btnCantidad = ev.target.closest(".tienda-cantidad-btn");
+  if (btnCantidad) {
+    const caja = document.getElementById("tiendaFichaCantidad");
+    const max = Number(caja.dataset.max) || 1;
+    const actual = Number(document.getElementById("tiendaFichaCantidadValor").textContent) || 1;
+    const nueva = Math.min(max, Math.max(1, actual + Number(btnCantidad.dataset.delta)));
+    tiendaPintarCantidad(caja, nueva, max);
+    document.getElementById("tiendaFichaTotal").textContent = tiendaFormatPrecio(Number(caja.dataset.precio) * nueva);
+    tiendaFichaActualizarBoton();
     return;
   }
   const btnPedir = ev.target.closest("#tiendaFichaPedir");
-  if (btnPedir) {
+  if (btnPedir && !btnPedir.disabled) {
     const chipActivo = document.querySelector("#tiendaFichaChips .tienda-ficha-chip.activo");
-    abrirModalTiendaCheckout(Number(btnPedir.dataset.id), chipActivo?.dataset.variante);
+    const cantidad = Number(document.getElementById("tiendaFichaCantidadValor")?.textContent) || 1;
+    abrirModalTiendaCheckout(Number(btnPedir.dataset.id), chipActivo?.dataset.variante, cantidad);
+  }
+});
+
+document.getElementById("tiendaFichaContenido")?.addEventListener("keydown", (ev) => {
+  if ((ev.key === "Enter" || ev.key === " ") && ev.target.classList?.contains("tienda-ficha-zoomable")) {
+    ev.preventDefault();
+    tiendaAbrirLightbox();
   }
 });
 
 // ---------- Modal de checkout ----------
-// varianteInicial: cuando se pide desde la ficha de producto con una
-// talla ya elegida (chips), se preselecciona en el <select> en vez de
-// dejar la primera opción por defecto.
-function abrirModalTiendaCheckout(productoId, varianteInicial) {
+// varianteInicial / cantidadInicial: cuando se pide desde la ficha de
+// producto con una talla y cantidad ya elegidas, se preseleccionan en el
+// modal en vez de dejar los valores por defecto.
+let TIENDA_CHECKOUT_CANTIDAD = 1;
+let TIENDA_FOCO_PREVIO = null;
+const TIENDA_PREF_CHECKOUT = "eof_tienda_checkout_pref";
+
+function tiendaActualizarContadorDireccion() {
+  const area = document.getElementById("tcDireccion");
+  const c = document.getElementById("tcDireccionContador");
+  if (area && c) c.textContent = `${area.value.length}/${area.maxLength > 0 ? area.maxLength : 400}`;
+}
+document.getElementById("tcDireccion")?.addEventListener("input", tiendaActualizarContadorDireccion);
+
+function tiendaActualizarTotalCheckout() {
+  const producto = TIENDA_PRODUCTO_ELEGIDO;
+  if (!producto) return;
+  const max = Math.max(1, tiendaLimiteCantidad(producto));
+  tiendaPintarCantidad(document.getElementById("tcCantidad"), TIENDA_CHECKOUT_CANTIDAD, max);
+  const total = tiendaFormatPrecio(producto.precio_centimos * TIENDA_CHECKOUT_CANTIDAD);
+  document.getElementById("tcTotal").textContent = total;
+  document.getElementById("tcPrecioBizum").textContent = total;
+  const pp = document.getElementById("tcPrecioPaypal");
+  if (pp) pp.textContent = total;
+}
+
+// Método de pago del checkout: "bizum" o "paypal".
+const TIENDA_PAYPAL_CORREO = "2024futwear@gmail.com";
+let TIENDA_METODO_PAGO = "bizum";
+
+function tiendaElegirMetodoPago(metodo) {
+  TIENDA_METODO_PAGO = metodo === "paypal" ? "paypal" : "bizum";
+  const esPaypal = TIENDA_METODO_PAGO === "paypal";
+  document.querySelectorAll("#tcMetodoPago .tienda-metodo-btn").forEach((b) => {
+    const activo = b.dataset.metodo === TIENDA_METODO_PAGO;
+    b.classList.toggle("activo", activo);
+    b.setAttribute("aria-checked", activo ? "true" : "false");
+  });
+  document.getElementById("tcPagoBizum").hidden = esPaypal;
+  document.getElementById("tcPagoPaypal").hidden = !esPaypal;
+  document.getElementById("tcReferenciaLabel").textContent = esPaypal
+    ? "Si ya has pagado, ID de transacción de PayPal (opcional)"
+    : "Si ya has pagado, referencia del Bizum (opcional)";
+  document.getElementById("tcReferencia").placeholder = esPaypal
+    ? "Ej: ID de transacción o correo del pagador"
+    : "Ej: nombre del pagador o referencia";
+}
+
+document.getElementById("tcMetodoPago")?.addEventListener("click", (ev) => {
+  const btn = ev.target.closest(".tienda-metodo-btn");
+  if (btn) tiendaElegirMetodoPago(btn.dataset.metodo);
+});
+
+// Forma de entrega del checkout: "mano" o "envio" (con dirección).
+let TIENDA_ENTREGA = "mano";
+
+function tiendaElegirEntrega(entrega) {
+  TIENDA_ENTREGA = entrega === "envio" ? "envio" : "mano";
+  const esEnvio = TIENDA_ENTREGA === "envio";
+  document.querySelectorAll("#tcEntrega .tienda-metodo-btn").forEach((b) => {
+    const activo = b.dataset.entrega === TIENDA_ENTREGA;
+    b.classList.toggle("activo", activo);
+    b.setAttribute("aria-checked", activo ? "true" : "false");
+  });
+  document.getElementById("tcEnvioCaja").hidden = !esEnvio;
+  document.getElementById("tcEntregaTexto").textContent = esEnvio
+    ? "Te lo enviamos una vez confirmado el pago. Indica a dónde y un teléfono de contacto."
+    : "Quedas con el equipo para recogerlo en mano cuando el pago esté confirmado.";
+}
+
+document.getElementById("tcEntrega")?.addEventListener("click", (ev) => {
+  const btn = ev.target.closest(".tienda-metodo-btn");
+  if (btn) tiendaElegirEntrega(btn.dataset.entrega);
+});
+
+async function tiendaCopiarTexto(texto, aviso) {
+  try { await navigator.clipboard.writeText(texto); EOF.toast(aviso, "exito"); }
+  catch { EOF.toast("No se pudo copiar al portapapeles.", "error"); }
+}
+
+// Pantalla de confirmación dentro del propio modal: número de pedido y
+// a dónde enviar el pago, con el número como concepto.
+function tiendaMostrarExitoPedido(r, metodo, entrega, direccion) {
+  const total = tiendaFormatPrecio(r.total_centimos);
+  const codigo = r.codigo || "";
+  document.getElementById("tcExitoCodigo").textContent = codigo;
+  document.getElementById("tcExitoCopiarCodigo").onclick = () => tiendaCopiarTexto(codigo, "Número de pedido copiado.");
+  const producto = TIENDA_PRODUCTO_ELEGIDO;
+  const lineas = [
+    `<li><span>Producto</span><strong>${escapeHtml(producto ? producto.nombre : "")}${r.cantidad > 1 ? " × " + r.cantidad : ""}</strong></li>`,
+    `<li><span>Total</span><strong>${total}</strong></li>`,
+    `<li><span>Entrega</span><strong>${tiendaEtiquetaEntrega(entrega)}</strong></li>`,
+  ];
+  if (entrega === "envio" && direccion) lineas.push(`<li><span>Dirección</span><strong>${escapeHtml(direccion).replace(/\n/g, "<br>")}</strong></li>`);
+  document.getElementById("tcExitoResumen").innerHTML = lineas.join("");
+
+  const destino = metodo === "paypal"
+    ? `por PayPal a <strong>${escapeHtml(TIENDA_PAYPAL_CORREO)}</strong> <button type="button" class="tienda-copiar-mini" data-copiar="${escapeHtml(TIENDA_PAYPAL_CORREO)}" data-aviso="Correo de PayPal copiado.">Copiar correo</button>`
+    : `por Bizum al <strong>${TIENDA_BIZUM_TELEFONO}</strong> <button type="button" class="tienda-copiar-mini" data-copiar="${TIENDA_BIZUM_TELEFONO.replace(/\s/g, "")}" data-aviso="Teléfono copiado.">Copiar teléfono</button>`;
+  document.getElementById("tcExitoPago").innerHTML = `
+    <p class="tienda-bizum-titulo">Ahora, el pago</p>
+    <p class="tienda-bizum-texto" style="margin:0;">Envía <strong>${total}</strong> ${destino} y pon como concepto <strong>${escapeHtml(codigo)}</strong>. Cuando el equipo vea el pago, tu pedido pasará a «Pagado».</p>`;
+  document.querySelectorAll("#tcExitoPago [data-copiar]").forEach((b) => {
+    b.addEventListener("click", () => tiendaCopiarTexto(b.dataset.copiar, b.dataset.aviso));
+  });
+
+  document.getElementById("tcFormulario").hidden = true;
+  document.getElementById("tcExito").hidden = false;
+  try { document.querySelector("#modalTiendaCheckout .modal-caja").scrollTo({ top: 0 }); } catch {}
+}
+
+document.getElementById("tcExitoMisPedidos")?.addEventListener("click", () => {
+  cerrarModalTiendaCheckout();
+  document.querySelector('#panel-tienda .subtabs button[data-subtab="tiendaMisPedidos"]')?.click();
+});
+
+document.getElementById("tcCantidad")?.addEventListener("click", (ev) => {
+  const btn = ev.target.closest(".tienda-cantidad-btn");
+  if (!btn || !TIENDA_PRODUCTO_ELEGIDO) return;
+  const max = Math.max(1, tiendaLimiteCantidad(TIENDA_PRODUCTO_ELEGIDO));
+  TIENDA_CHECKOUT_CANTIDAD = Math.min(max, Math.max(1, TIENDA_CHECKOUT_CANTIDAD + Number(btn.dataset.delta)));
+  tiendaActualizarTotalCheckout();
+});
+
+function abrirModalTiendaCheckout(productoId, varianteInicial, cantidadInicial) {
   const producto = TIENDA_PRODUCTOS_CACHE[productoId];
   if (!producto) return;
+  if (tiendaEstadoStock(producto).agotado) {
+    EOF.toast("Este producto está agotado.", "error");
+    return;
+  }
   TIENDA_PRODUCTO_ELEGIDO = producto;
+  const max = Math.max(1, tiendaLimiteCantidad(producto));
+  TIENDA_CHECKOUT_CANTIDAD = Math.min(max, Math.max(1, Number(cantidadInicial) || 1));
 
   document.getElementById("tcNombre").textContent = producto.nombre;
-  document.getElementById("tcPrecio").textContent = tiendaFormatPrecio(producto.precio_centimos);
-  document.getElementById("tcPrecioBizum").textContent = tiendaFormatPrecio(producto.precio_centimos);
+  document.getElementById("tcPrecio").textContent = tiendaFormatPrecio(producto.precio_centimos) + " / unidad";
 
   const imagen = document.getElementById("tcImagen");
-  if (producto.imagen_url) {
-    imagen.src = producto.imagen_url;
+  const principal = tiendaImagenesProducto(producto)[0];
+  if (principal) {
+    imagen.src = principal;
     imagen.hidden = false;
   } else {
     imagen.hidden = true;
   }
+
+  const stock = tiendaEstadoStock(producto);
+  const stockInfo = document.getElementById("tcStockInfo");
+  stockInfo.textContent = stock.texto;
+  stockInfo.className = "tienda-stock-nota " + stock.clase;
 
   const grupoVariante = document.getElementById("tcVarianteGrupo");
   const selectVariante = document.getElementById("tcVariante");
@@ -13408,17 +20782,40 @@ function abrirModalTiendaCheckout(productoId, varianteInicial) {
     grupoVariante.style.display = "none";
   }
 
+  tiendaActualizarTotalCheckout();
   document.getElementById("tcReferencia").value = "";
+  // Método de pago recordado; la dirección solo si la persona marcó "recordar".
+  const pref = tiendaLeerLS(TIENDA_PREF_CHECKOUT);
+  tiendaElegirMetodoPago(pref.metodo === "paypal" ? "paypal" : "bizum");
+  const direccionEl = document.getElementById("tcDireccion");
+  const recordarEl = document.getElementById("tcRecordarDireccion");
+  direccionEl.value = typeof pref.direccion === "string" ? pref.direccion : "";
+  if (recordarEl) recordarEl.checked = !!pref.direccion;
+  tiendaActualizarContadorDireccion();
+  tiendaElegirEntrega(pref.entrega === "envio" && pref.direccion ? "envio" : "mano");
+  TIENDA_FOCO_PREVIO = document.activeElement;
+  document.getElementById("tcFormulario").hidden = false;
+  document.getElementById("tcExito").hidden = true;
   document.getElementById("tcError").style.display = "none";
   document.getElementById("tcConfirmar").disabled = false;
-  document.getElementById("tcConfirmar").textContent = "He pagado, confirmar pedido";
+  document.getElementById("tcConfirmar").textContent = "Confirmar pedido";
   document.getElementById("modalTiendaCheckout").classList.add("abierto");
 }
 
 function cerrarModalTiendaCheckout() {
   document.getElementById("modalTiendaCheckout").classList.remove("abierto");
   TIENDA_PRODUCTO_ELEGIDO = null;
+  // Devuelve el foco a lo que lo tenía antes de abrir el modal (accesibilidad).
+  try { if (TIENDA_FOCO_PREVIO && document.contains(TIENDA_FOCO_PREVIO)) TIENDA_FOCO_PREVIO.focus(); } catch {}
+  TIENDA_FOCO_PREVIO = null;
 }
+
+// Esc cierra el checkout, como el resto de modales.
+document.addEventListener("keydown", (ev) => {
+  if (ev.key !== "Escape") return;
+  const modal = document.getElementById("modalTiendaCheckout");
+  if (modal && modal.classList.contains("abierto")) cerrarModalTiendaCheckout();
+});
 
 async function confirmarPedidoTienda() {
   if (!TIENDA_PRODUCTO_ELEGIDO) return;
@@ -13428,159 +20825,379 @@ async function confirmarPedidoTienda() {
   const variante = document.getElementById("tcVarianteGrupo").style.display !== "none"
     ? document.getElementById("tcVariante").value
     : undefined;
+  const metodo = TIENDA_METODO_PAGO;
   const referencia = document.getElementById("tcReferencia").value.trim();
+  const cantidad = TIENDA_CHECKOUT_CANTIDAD;
+  const entrega = TIENDA_ENTREGA;
+  const direccion = document.getElementById("tcDireccion").value.trim();
+  if (entrega === "envio" && direccion.length < 10) {
+    errEl.textContent = "Escribe la dirección completa de envío (nombre, calle, código postal, ciudad y teléfono).";
+    errEl.style.display = "block";
+    document.getElementById("tcDireccion").focus();
+    return;
+  }
 
   btn.disabled = true;
   btn.textContent = "Enviando...";
+  let creado = false;
   try {
-    await apiFetch(`/api/tienda/pedidos`, {
+    const r = await apiFetch(`/api/tienda/pedidos`, {
       method: "POST",
       body: JSON.stringify({
         producto_id: TIENDA_PRODUCTO_ELEGIDO.id,
         variante,
+        cantidad,
         referencia_pago: referencia,
+        metodo_pago: metodo,
+        entrega,
+        direccion_envio: entrega === "envio" ? direccion : undefined,
       }),
     });
-    EOF.toast("Pedido registrado. Te avisaremos en cuanto confirmemos el pago.", "exito");
-    cerrarModalTiendaCheckout();
+    creado = true;
+    // Se recuerda el método de pago; la dirección solo si lo pidió expresamente.
+    const recordar = entrega === "envio" && document.getElementById("tcRecordarDireccion")?.checked;
+    tiendaGuardarLS(TIENDA_PREF_CHECKOUT, { metodo, entrega: recordar ? "envio" : "mano", direccion: recordar ? direccion : "" });
+    tiendaMostrarExitoPedido(r, metodo, entrega, direccion);
     cargaTiendaMisPedidos();
+    cargaTiendaCatalogo(); // el stock ha cambiado
   } catch (err) {
     errEl.textContent = err.message || "No se ha podido registrar el pedido.";
     errEl.style.display = "block";
+    cargaTiendaCatalogo(); // por si el error es de stock, refresca lo que queda
   } finally {
     btn.disabled = false;
-    btn.textContent = "He pagado, confirmar pedido";
+    btn.textContent = "Confirmar pedido";
+    if (creado) btn.disabled = true; // el formulario ya está oculto: evita un segundo envío
   }
 }
 
+// ---------- Pedidos agrupados (compartido por "Mis pedidos" y "Gestión") ----------
+// En la base de datos cada UNIDAD es una fila, pero las de una misma compra
+// comparten número de pedido (EOF-0042). Aquí se agrupan para verlas y
+// gestionarlas como UN pedido: una tarjeta, un total, un estado.
+function tiendaAgruparPedidos(pedidos) {
+  const orden = ["pendiente_pago", "pagado", "enviado"]; // de menos a más avanzado
+  const mapa = new Map();
+  for (const p of pedidos || []) {
+    const clave = p.codigo || `id-${p.id}`;
+    if (!mapa.has(clave)) mapa.set(clave, []);
+    mapa.get(clave).push(p);
+  }
+  return [...mapa.entries()].map(([clave, unidades]) => {
+    unidades.sort((a, b) => a.id - b.id);
+    const activas = unidades.filter((u) => u.estado !== "cancelado");
+    // Estado del pedido = el de la unidad menos avanzada que siga viva.
+    const estado = activas.length
+      ? activas.reduce((min, u) => (orden.indexOf(u.estado) < orden.indexOf(min) ? u.estado : min), activas[0].estado)
+      : "cancelado";
+    const vigentes = activas.length ? activas : unidades;
+    const lineasMapa = new Map();
+    for (const u of vigentes) {
+      const k = `${u.producto_nombre}|${u.variante || ""}|${u.precio_centimos}`;
+      const l = lineasMapa.get(k) || { nombre: u.producto_nombre, variante: u.variante || "", precio: u.precio_centimos, cantidad: 0 };
+      l.cantidad++;
+      lineasMapa.set(k, l);
+    }
+    const porEstado = {};
+    unidades.forEach((u) => { porEstado[u.estado] = (porEstado[u.estado] || 0) + 1; });
+    return {
+      clave,
+      codigo: unidades[0].codigo || "",
+      unidades,
+      ids: unidades.map((u) => u.id),
+      base: unidades[0],
+      estado,
+      mixto: Object.keys(porEstado).length > 1,
+      porEstado,
+      canceladas: unidades.length - activas.length,
+      lineas: [...lineasMapa.values()],
+      total: vigentes.reduce((s, u) => s + (Number(u.precio_centimos) || 0), 0),
+    };
+  }).sort((a, b) => b.ids[b.ids.length - 1] - a.ids[a.ids.length - 1]); // más reciente primero
+}
+
+// "2 × «Camiseta» (M), «Gorra»": texto corto para avisos y confirmaciones.
+function tiendaResumenLineasTexto(g) {
+  return g.lineas.map((l) => `${l.cantidad > 1 ? l.cantidad + " × " : ""}"${l.nombre}"${l.variante ? " (" + l.variante + ")" : ""}`).join(", ");
+}
+
+// "1 pagada · 2 pendientes de pago": solo se enseña si las unidades de un
+// mismo pedido no van todas por el mismo estado.
+function tiendaAvisoMixtoHTML(g) {
+  if (!g.mixto) return "";
+  const nombres = { pendiente_pago: "pendiente de pago", pagado: "pagada", enviado: "enviada", cancelado: "cancelada" };
+  const texto = Object.entries(g.porEstado).map(([e, n]) => `${n} ${nombres[e] || e}`).join(" · ");
+  return `<p class="tienda-orden-mixto">Unidades en distinto estado: ${escapeHtml(texto)}.</p>`;
+}
+
+function tiendaBadgeEstadoHTML(g) {
+  const etiqueta = g.estado === "enviado" && g.base.entrega === "mano" ? "Entregado" : (TIENDA_ETIQUETAS_ESTADO[g.estado] || g.estado);
+  return `<span class="tienda-badge-estado ${escapeHtml(g.estado)}">${escapeHtml(etiqueta)}</span>`;
+}
+
+function tiendaLineasPedidoHTML(g) {
+  const filas = g.lineas.map((l) => `
+      <li>
+        <span class="tienda-orden-linea-nombre">${escapeHtml(l.nombre)}${l.variante ? ` <em>· Talla ${escapeHtml(l.variante)}</em>` : ""}</span>
+        <span class="tienda-orden-linea-cant">× ${l.cantidad}</span>
+        <strong>${tiendaFormatPrecio(l.precio * l.cantidad)}</strong>
+      </li>`).join("");
+  const canceladas = g.canceladas && g.canceladas < g.unidades.length
+    ? `<li class="tienda-orden-linea-aviso"><span>${g.canceladas} ${g.canceladas === 1 ? "unidad cancelada" : "unidades canceladas"} (no cuentan en el total)</span></li>` : "";
+  return `<ul class="tienda-orden-lineas">${filas}${canceladas}</ul>`;
+}
+
+function tiendaCodigoHTML(g) {
+  if (!g.codigo) return `<span class="tienda-chip">Pedido #${g.base.id}</span>`;
+  return `<span class="tienda-orden-codigo">
+      <span class="tienda-chip codigo" title="Número de pedido">${escapeHtml(g.codigo)}</span>
+      <button type="button" class="tienda-copiar-mini" data-copiar="${escapeHtml(g.codigo)}" data-aviso="Número de pedido copiado.">Copiar</button>
+    </span>`;
+}
+
+// Un único manejador de "copiar" para todas las tarjetas de pedidos.
+document.getElementById("panel-tienda")?.addEventListener("click", (ev) => {
+  const b = ev.target.closest(".tienda-orden [data-copiar]");
+  if (b) tiendaCopiarTexto(b.dataset.copiar, b.dataset.aviso || "Copiado.");
+});
+
 // ---------- Mis pedidos ----------
+let TIENDA_MIS_PEDIDOS_GRUPOS = [];
+let TIENDA_MIS_PEDIDOS_FILTRO = "todos"; // todos | curso | cerrados
+
 async function cargaTiendaMisPedidos() {
   const cont = document.getElementById("tiendaMisPedidosLista");
   if (!cont) return;
   cont.innerHTML = "<p class='solicitudes-vacio'>Cargando...</p>";
   try {
     const { pedidos = [] } = await apiFetch(`/api/tienda/mis-pedidos`);
-    cont.innerHTML = pedidos.length
-      ? pedidos.map(pintarMiPedidoTiendaHTML).join("")
-      : "<p class='solicitudes-vacio'>Todavía no has pedido nada en la tienda.</p>";
+    TIENDA_MIS_PEDIDOS_GRUPOS = tiendaAgruparPedidos(pedidos);
+    pintarTiendaMisPedidosFiltrado();
   } catch (err) {
-    cont.innerHTML = `<p class='solicitudes-vacio'>Error cargando tus pedidos: ${err.message}</p>`;
+    document.getElementById("tiendaMisPedidosFiltros")?.setAttribute("hidden", "");
+    cont.innerHTML = tiendaEstadoVacioHTML({
+      icono: "alerta", error: true, titulo: "No se han podido cargar tus pedidos",
+      texto: escapeHtml(err.message || ""),
+      botones: [{ texto: "Reintentar", accion: "recargar-mis-pedidos", primario: true }],
+    });
   }
 }
 
+const tiendaPedidoEnCurso = (g) => g.estado === "pendiente_pago" || g.estado === "pagado";
+
+function pintarTiendaMisPedidosFiltrado() {
+  const cont = document.getElementById("tiendaMisPedidosLista");
+  const filtros = document.getElementById("tiendaMisPedidosFiltros");
+  if (!cont) return;
+  const todos = TIENDA_MIS_PEDIDOS_GRUPOS;
+
+  if (!todos.length) {
+    filtros?.setAttribute("hidden", "");
+    cont.innerHTML = tiendaEstadoVacioHTML({
+      icono: "bolsa", titulo: "Todavía no has pedido nada",
+      texto: "Cuando hagas un pedido lo verás aquí, con su estado: pendiente de pago, pagado o enviado.",
+      botones: [{ texto: "Ir al catálogo", accion: "ir-catalogo", primario: true }],
+    });
+    return;
+  }
+
+  const nCurso = todos.filter(tiendaPedidoEnCurso).length;
+  const conteos = { todos: todos.length, curso: nCurso, cerrados: todos.length - nCurso };
+  if (filtros) {
+    filtros.removeAttribute("hidden");
+    filtros.querySelectorAll("button[data-filtro]").forEach((b) => {
+      b.classList.toggle("activo", b.dataset.filtro === TIENDA_MIS_PEDIDOS_FILTRO);
+      const n = b.querySelector(".tienda-filtro-n");
+      if (n) n.textContent = String(conteos[b.dataset.filtro] ?? 0);
+    });
+  }
+
+  const visibles = TIENDA_MIS_PEDIDOS_FILTRO === "curso" ? todos.filter(tiendaPedidoEnCurso)
+    : TIENDA_MIS_PEDIDOS_FILTRO === "cerrados" ? todos.filter((g) => !tiendaPedidoEnCurso(g))
+    : todos;
+
+  // Resumen de lo que queda por pagar (solo pedidos aún pendientes de pago).
+  const porPagar = todos.filter((g) => g.estado === "pendiente_pago");
+  const importePorPagar = porPagar.reduce((s, g) => s + g.total, 0);
+  const resumenHTML = porPagar.length
+    ? `<div class="tienda-resumen-pago" role="status"><strong>${tiendaFormatPrecio(importePorPagar)}</strong> pendientes de pago en ${porPagar.length} ${porPagar.length === 1 ? "pedido" : "pedidos"}. Pon el número de pedido como concepto.</div>`
+    : "";
+
+  cont.innerHTML = resumenHTML + (visibles.length
+    ? visibles.map(pintarMiPedidoTiendaHTML).join("")
+    : `<p class="solicitudes-vacio">No tienes pedidos ${TIENDA_MIS_PEDIDOS_FILTRO === "curso" ? "en curso" : "cerrados"}.</p>`);
+}
+
+document.getElementById("tiendaMisPedidosFiltros")?.addEventListener("click", (ev) => {
+  const btn = ev.target.closest("button[data-filtro]");
+  if (!btn) return;
+  TIENDA_MIS_PEDIDOS_FILTRO = btn.dataset.filtro;
+  pintarTiendaMisPedidosFiltrado();
+});
+
 // Pinta la línea de tiempo pendiente → pagado → enviado. Si el pedido
 // está cancelado se muestra aparte, en rojo, sin línea de progreso.
-function tiendaPintarTimeline(estado) {
+function tiendaPintarTimeline(estado, entrega) {
   if (estado === "cancelado") {
     return `<div class="tienda-pedido-timeline cancelado"><div class="paso actual"><span class="punto"></span>Cancelado</div></div>`;
   }
   const posicionActual = TIENDA_PASOS_TIMELINE.indexOf(estado);
-  return `<div class="tienda-pedido-timeline">${TIENDA_PASOS_TIMELINE.map((paso, i) => {
+  return `<div class="tienda-pedido-timeline" role="img" aria-label="Estado: ${escapeHtml(TIENDA_ETIQUETAS_ESTADO[estado] || estado)}">${TIENDA_PASOS_TIMELINE.map((paso, i) => {
     const clase = i < posicionActual ? "hecho" : i === posicionActual ? "actual" : "";
-    const separador = i < TIENDA_PASOS_TIMELINE.length - 1 ? `<span class="linea"></span>` : "";
-    return `<div class="paso ${clase}"><span class="punto"></span>${TIENDA_ETIQUETAS_ESTADO[paso]}</div>${separador}`;
+    const separador = i < TIENDA_PASOS_TIMELINE.length - 1 ? `<span class="linea ${i < posicionActual ? "hecha" : ""}"></span>` : "";
+    return `<div class="paso ${clase}"><span class="punto"></span>${paso === "enviado" && entrega === "mano" ? "Entregado" : TIENDA_ETIQUETAS_ESTADO[paso]}</div>${separador}`;
   }).join("")}</div>`;
 }
 
-function pintarMiPedidoTiendaHTML(p) {
-  const fecha = formatFecha(p.created_at) || p.created_at;
-  const metaTexto = [p.variante ? `Talla ${escapeHtml(p.variante)}` : "", fecha].filter(Boolean).join(" · ");
-  const referenciaHTML = p.referencia_pago
-    ? `<p class="tienda-pedido-referencia">Referencia: <strong>${escapeHtml(p.referencia_pago)}</strong></p>`
+function pintarMiPedidoTiendaHTML(g) {
+  const b = g.base;
+  const fecha = formatFecha(b.created_at) || b.created_at;
+  const referenciaHTML = b.referencia_pago
+    ? `<p class="tienda-pedido-referencia">Referencia: <strong>${escapeHtml(b.referencia_pago)}</strong></p>`
     : "";
-  const cancelarHTML = p.estado === "pendiente_pago"
-    ? `<button type="button" class="tienda-pedido-cancelar" data-id="${p.id}">Cancelar pedido</button>`
+  const cancelables = g.unidades.filter((u) => u.estado === "pendiente_pago").length;
+  const cancelarHTML = cancelables
+    ? `<button type="button" class="tienda-pedido-cancelar" data-clave="${escapeHtml(g.clave)}">Cancelar pedido</button>`
     : "";
-  // Borrar (quitar de la lista para siempre) solo tiene sentido una vez
-  // el pedido ya está "cerrado" (cancelado o enviado): mientras sigue
-  // pendiente de pago o pagado-sin-enviar, lo correcto es cancelarlo
-  // primero o esperar a que se gestione.
-  const borrarHTML = ["cancelado", "enviado"].includes(p.estado)
-    ? `<button type="button" class="tienda-pedido-borrar" data-id="${p.id}" data-nombre="${escapeHtml(p.producto_nombre)}">Borrar del historial</button>`
+  // Mientras no se haya pagado, se recuerda qué poner de concepto.
+  const recordatorioPagoHTML = g.estado === "pendiente_pago" && g.codigo
+    ? `<p class="tienda-pedido-aviso">Paga <strong>${tiendaFormatPrecio(g.total)}</strong> por ${b.metodo_pago === "paypal" ? "PayPal" : "Bizum"} con el concepto <strong>${escapeHtml(g.codigo)}</strong>.</p>`
+    : "";
+  // Borrar del historial solo cuando TODAS las unidades están cerradas.
+  const cerrado = g.unidades.every((u) => ["cancelado", "enviado"].includes(u.estado));
+  const borrarHTML = cerrado
+    ? `<button type="button" class="tienda-pedido-borrar" data-clave="${escapeHtml(g.clave)}" data-nombre="${escapeHtml(g.codigo || g.lineas[0]?.nombre || "")}">Borrar del historial</button>`
     : "";
 
   return `
-    <div class="tienda-pedido-item" data-id="${p.id}">
-      <div class="tienda-pedido-info">
-        <span class="tienda-pedido-nombre">${escapeHtml(p.producto_nombre)}</span>
-        <span class="tienda-pedido-meta">${metaTexto}</span>
-        ${referenciaHTML}
-        ${tiendaPintarTimeline(p.estado)}
-        <div class="tienda-pedido-acciones-fila">${cancelarHTML}${borrarHTML}</div>
-      </div>
-      <div class="tienda-pedido-derecha">
-        <span class="tienda-pedido-precio">${tiendaFormatPrecio(p.precio_centimos)}</span>
-      </div>
-    </div>`;
+    <article class="tienda-pedido-item tienda-orden estado-${escapeHtml(g.estado)}" data-clave="${escapeHtml(g.clave)}">
+      <header class="tienda-orden-cab">
+        ${tiendaCodigoHTML(g)}
+        ${tiendaBadgeEstadoHTML(g)}
+      </header>
+      <p class="tienda-pedido-meta">${escapeHtml(fecha)}</p>
+      ${tiendaLineasPedidoHTML(g)}
+      <div class="tienda-orden-total"><span>Total</span><strong>${tiendaFormatPrecio(g.total)}</strong></div>
+      ${tiendaChipsPedidoHTML({ ...b, codigo: "" })}
+      ${tiendaDireccionPedidoHTML(b)}
+      ${referenciaHTML}
+      ${recordatorioPagoHTML}
+      ${tiendaAvisoMixtoHTML(g)}
+      ${tiendaPintarTimeline(g.estado, b.entrega)}
+      <div class="tienda-pedido-acciones-fila">${cancelarHTML}${borrarHTML}</div>
+    </article>`;
+}
+
+// Ejecuta una petición por unidad y espera a todas; si alguna falla se
+// cuenta cuántas para poder avisar sin dejar la lista a medias.
+async function tiendaPorUnidades(ids, hacer) {
+  const res = await Promise.allSettled(ids.map(hacer));
+  const fallos = res.filter((r) => r.status === "rejected");
+  if (fallos.length) {
+    const e = new Error(fallos.length === ids.length
+      ? (fallos[0].reason?.message || "No se ha podido completar la acción")
+      : `Se ha completado en ${ids.length - fallos.length} de ${ids.length} unidades. ${fallos[0].reason?.message || ""}`.trim());
+    throw e;
+  }
 }
 
 document.getElementById("tiendaMisPedidosLista")?.addEventListener("click", async (ev) => {
   const btnCancelar = ev.target.closest(".tienda-pedido-cancelar");
   if (btnCancelar) {
-    if (!(await EOF.confirmar("¿Seguro que quieres cancelar este pedido?", { peligroso: true, textoConfirmar: "Cancelar pedido" }))) return;
-    const id = btnCancelar.dataset.id;
+    const g = TIENDA_MIS_PEDIDOS_GRUPOS.find((x) => x.clave === btnCancelar.dataset.clave);
+    if (!g) return;
+    const ids = g.unidades.filter((u) => u.estado === "pendiente_pago").map((u) => u.id);
+    if (!(await EOF.confirmar(ids.length > 1 ? `¿Seguro que quieres cancelar este pedido (${ids.length} unidades)?` : "¿Seguro que quieres cancelar este pedido?", { peligroso: true, textoConfirmar: "Cancelar pedido" }))) return;
     btnCancelar.disabled = true;
     btnCancelar.textContent = "Cancelando...";
     try {
-      await apiFetch(`/api/tienda/mis-pedidos/${id}/cancelar`, { method: "PUT" });
+      await tiendaPorUnidades(ids, (id) => apiFetch(`/api/tienda/mis-pedidos/${id}/cancelar`, { method: "PUT" }));
       EOF.toast("Pedido cancelado.", "exito");
-      cargaTiendaMisPedidos();
     } catch (err) {
       EOF.toast("Error: " + (err.message || "no se ha podido cancelar"), "error");
-      btnCancelar.disabled = false;
-      btnCancelar.textContent = "Cancelar pedido";
     }
+    cargaTiendaMisPedidos();
+    cargaTiendaCatalogo(); // las unidades canceladas vuelven al stock
     return;
   }
 
   const btnBorrar = ev.target.closest(".tienda-pedido-borrar");
   if (btnBorrar) {
-    const nombre = btnBorrar.dataset.nombre;
-    if (!(await EOF.confirmar(`¿Seguro que quieres borrar tu pedido "${nombre}" del historial? Esta acción no se puede deshacer.`, { peligroso: true, textoConfirmar: "Borrar" }))) return;
-    const id = btnBorrar.dataset.id;
+    const g = TIENDA_MIS_PEDIDOS_GRUPOS.find((x) => x.clave === btnBorrar.dataset.clave);
+    if (!g) return;
+    if (!(await EOF.confirmar(`¿Seguro que quieres borrar tu pedido ${btnBorrar.dataset.nombre ? `"${btnBorrar.dataset.nombre}" ` : ""}del historial? Esta acción no se puede deshacer.`, { peligroso: true, textoConfirmar: "Borrar" }))) return;
     btnBorrar.disabled = true;
     btnBorrar.textContent = "Borrando...";
     try {
-      await apiFetch(`/api/tienda/mis-pedidos/${id}`, { method: "DELETE" });
+      await tiendaPorUnidades(g.ids, (id) => apiFetch(`/api/tienda/mis-pedidos/${id}`, { method: "DELETE" }));
       EOF.toast("Pedido borrado del historial.", "exito");
-      cargaTiendaMisPedidos();
     } catch (err) {
       EOF.toast("Error: " + (err.message || "no se ha podido borrar"), "error");
-      btnBorrar.disabled = false;
-      btnBorrar.textContent = "Borrar del historial";
     }
+    cargaTiendaMisPedidos();
   }
 });
 
-// ---------- Vista de gestión (comparte estructura con "Mis pedidos" pero con más datos y acciones) ----------
-function pintarPedidoTiendaGestionHTML(p) {
-  const fecha = formatFecha(p.created_at) || p.created_at;
-  const metaTexto = [p.variante ? `Talla ${escapeHtml(p.variante)}` : "", fecha].filter(Boolean).join(" · ");
-  const referenciaHTML = p.referencia_pago
-    ? `<p class="tienda-pedido-referencia">Referencia: <strong>${escapeHtml(p.referencia_pago)}</strong></p>`
+// ---------- Vista de gestión (comparte tarjeta con "Mis pedidos", con más datos y acciones) ----------
+let TIENDA_GESTION_GRUPOS = [];
+
+// Siguiente paso lógico de un pedido, para el botón de acción rápida.
+function tiendaAccionRapida(g) {
+  if (g.estado === "pendiente_pago") return { estado: "pagado", texto: "Marcar pagado", clase: "pagado" };
+  if (g.estado === "pagado") {
+    return g.base.entrega === "envio"
+      ? { estado: "enviado", texto: "Marcar enviado", clase: "enviado" }
+      : { estado: "enviado", texto: "Marcar entregado", clase: "enviado" };
+  }
+  return null;
+}
+
+function pintarPedidoTiendaGestionHTML(g) {
+  const b = g.base;
+  const fecha = formatFecha(b.created_at) || b.created_at;
+  const referenciaHTML = b.referencia_pago
+    ? `<p class="tienda-pedido-referencia">Referencia: <strong>${escapeHtml(b.referencia_pago)}</strong></p>`
     : "";
-  const redactorHTML = `<p class="tienda-pedido-meta">${escapeHtml(p.redactor_nombre || "")}${p.redactor_email ? " · " + escapeHtml(p.redactor_email) : ""}</p>`;
-  const selectHTML = `<select class="tienda-pedido-select" data-id="${p.id}">
-        ${Object.entries(TIENDA_ETIQUETAS_ESTADO).map(([valor, etiqueta]) => `<option value="${valor}" ${valor === p.estado ? "selected" : ""}>${etiqueta}</option>`).join("")}
+  const correo = b.redactor_email
+    ? ` · <a class="tienda-orden-mail" href="mailto:${escapeHtml(b.redactor_email)}?subject=${encodeURIComponent("Tu pedido " + (g.codigo || "") + " en ElOtroFútbol")}">${escapeHtml(b.redactor_email)}</a>`
+    : "";
+  const redactorHTML = `<p class="tienda-pedido-meta"><strong>${escapeHtml(b.redactor_nombre || "")}</strong>${correo}</p>`;
+  const direccionHTML = b.entrega === "envio" && b.direccion_envio
+    ? `${tiendaDireccionPedidoHTML(b)}<button type="button" class="tienda-copiar-mini" data-copiar="${escapeHtml(b.direccion_envio)}" data-aviso="Dirección copiada.">Copiar dirección</button>`
+    : "";
+  const rapida = tiendaAccionRapida(g);
+  const rapidaHTML = rapida
+    ? `<button type="button" class="tienda-accion-rapida ${rapida.clase}" data-clave="${escapeHtml(g.clave)}" data-estado="${rapida.estado}">${rapida.texto}</button>`
+    : "";
+  const selectHTML = `<select class="tienda-pedido-select" data-clave="${escapeHtml(g.clave)}" aria-label="Estado del pedido">
+        ${Object.entries(TIENDA_ETIQUETAS_ESTADO).map(([valor, etiqueta]) => `<option value="${valor}" ${valor === g.estado ? "selected" : ""}>${etiqueta}</option>`).join("")}
       </select>`;
-  const borrarHTML = `<button type="button" class="tienda-pedido-borrar" data-id="${p.id}" data-nombre="${escapeHtml(p.producto_nombre)}" title="Borrar este pedido">Borrar</button>`;
+  const borrarHTML = `<button type="button" class="tienda-pedido-borrar" data-clave="${escapeHtml(g.clave)}" data-nombre="${escapeHtml(g.codigo || g.lineas[0]?.nombre || "")}" title="Borrar este pedido">Borrar</button>`;
+  // Las unidades de un pedido comparten nota: se enseña la primera que exista.
+  const nota = (g.unidades.find((u) => u.nota_gestion) || {}).nota_gestion || "";
 
   return `
-    <div class="tienda-pedido-item" data-id="${p.id}">
-      <div class="tienda-pedido-info">
-        <span class="tienda-pedido-nombre">${escapeHtml(p.producto_nombre)}</span>
-        <span class="tienda-pedido-meta">${metaTexto}</span>
-        ${redactorHTML}
-        ${referenciaHTML}
-        <textarea class="tienda-pedido-nota" data-id="${p.id}" placeholder="Nota interna (opcional)...">${escapeHtml(p.nota_gestion || "")}</textarea>
-        <span class="tienda-pedido-nota-guardado" data-guardado-id="${p.id}">Guardado</span>
-      </div>
-      <div class="tienda-pedido-derecha">
-        <span class="tienda-pedido-precio">${tiendaFormatPrecio(p.precio_centimos)}</span>
+    <article class="tienda-pedido-item tienda-orden gestion estado-${escapeHtml(g.estado)}" data-clave="${escapeHtml(g.clave)}">
+      <header class="tienda-orden-cab">
+        ${tiendaCodigoHTML(g)}
+        ${tiendaBadgeEstadoHTML(g)}
+      </header>
+      ${redactorHTML}
+      <p class="tienda-pedido-meta">${escapeHtml(fecha)}</p>
+      ${tiendaLineasPedidoHTML(g)}
+      <div class="tienda-orden-total"><span>Total</span><strong>${tiendaFormatPrecio(g.total)}</strong></div>
+      ${tiendaChipsPedidoHTML({ ...b, codigo: "" })}
+      ${direccionHTML}
+      ${referenciaHTML}
+      ${tiendaAvisoMixtoHTML(g)}
+      <textarea class="tienda-pedido-nota" data-clave="${escapeHtml(g.clave)}" placeholder="Nota interna (opcional)..." aria-label="Nota interna">${escapeHtml(nota)}</textarea>
+      <span class="tienda-pedido-nota-guardado" data-guardado-clave="${escapeHtml(g.clave)}">Guardado</span>
+      <div class="tienda-orden-gestion-acciones">
+        ${rapidaHTML}
         ${selectHTML}
         ${borrarHTML}
       </div>
-    </div>`;
+    </article>`;
 }
 
 // ---------- Gestión de pedidos (admin / gestor de tienda) ----------
@@ -13592,51 +21209,71 @@ async function cargaTiendaGestion() {
     const query = TIENDA_FILTRO_ESTADO_GESTION ? `?estado=${encodeURIComponent(TIENDA_FILTRO_ESTADO_GESTION)}` : "";
     const { pedidos = [] } = await apiFetch(`/api/tienda/pedidos${query}`);
     TIENDA_GESTION_LISTA = pedidos;
+    TIENDA_GESTION_GRUPOS = tiendaAgruparPedidos(pedidos);
     pintarTiendaGestionContadores(pedidos);
     pintarTiendaGestionFiltrada();
     actualizarBadgeTiendaGestionPendientes(pedidos.filter((p) => p.estado === "pendiente_pago").length);
   } catch (err) {
-    cont.innerHTML = `<p class='solicitudes-vacio'>Error cargando los pedidos: ${err.message}</p>`;
+    cont.innerHTML = tiendaEstadoVacioHTML({
+      icono: "alerta", error: true, titulo: "No se han podido cargar los pedidos",
+      texto: escapeHtml(err.message || ""),
+      botones: [{ texto: "Reintentar", accion: "recargar-gestion", primario: true }],
+    });
   }
 }
 
-// Resumen rápido con el número de pedidos en cada estado, calculado
-// sobre el filtro de estado actual (si hay uno) para que cuadre con
-// lo que se ve debajo.
+// Resumen rápido: pedidos por estado y dinero, calculado sobre el filtro de
+// estado actual (si hay uno) para que cuadre con lo que se ve debajo.
 function pintarTiendaGestionContadores(pedidos) {
   const cont = document.getElementById("tiendaGestionContadores");
   if (!cont) return;
+  const grupos = tiendaAgruparPedidos(pedidos);
   const conteos = { pendiente_pago: 0, pagado: 0, enviado: 0, cancelado: 0 };
-  pedidos.forEach((p) => { if (conteos[p.estado] !== undefined) conteos[p.estado]++; });
+  grupos.forEach((g) => { if (conteos[g.estado] !== undefined) conteos[g.estado]++; });
+  // Dinero por unidad (un pedido con unidades en estados distintos se reparte bien).
+  const suma = (fn) => pedidos.filter(fn).reduce((s, p) => s + (Number(p.precio_centimos) || 0), 0);
+  const porCobrar = suma((p) => p.estado === "pendiente_pago");
+  const cobrado = suma((p) => p.estado === "pagado" || p.estado === "enviado");
   cont.innerHTML = `
-    <div class="tienda-gestion-contador"><strong>${pedidos.length}</strong><span>Total</span></div>
-    <div class="tienda-gestion-contador"><strong>${conteos.pendiente_pago}</strong><span>Pend. pago</span></div>
+    <div class="tienda-gestion-contador"><strong>${grupos.length}</strong><span>Pedidos</span></div>
+    <div class="tienda-gestion-contador aviso"><strong>${conteos.pendiente_pago}</strong><span>Pend. pago</span></div>
     <div class="tienda-gestion-contador"><strong>${conteos.pagado}</strong><span>Pagados</span></div>
     <div class="tienda-gestion-contador"><strong>${conteos.enviado}</strong><span>Enviados</span></div>
+    <div class="tienda-gestion-contador dinero por-cobrar"><strong>${tiendaFormatPrecio(porCobrar)}</strong><span>Por cobrar</span></div>
+    <div class="tienda-gestion-contador dinero cobrado"><strong>${tiendaFormatPrecio(cobrado)}</strong><span>Cobrado</span></div>
   `;
 }
 
-// Repinta la lista de gestión aplicando el buscador de texto (por
-// nombre de colaborador, email o producto) sobre TIENDA_GESTION_LISTA,
-// sin volver a pedir nada a la API.
+// Grupos que pasan el buscador de texto (colaborador, email, número de
+// pedido o producto), sin volver a pedir nada a la API.
+function tiendaGestionGruposVisibles() {
+  const texto = normalizarBusquedaPanel(TIENDA_GESTION_BUSQUEDA);
+  if (!texto) return TIENDA_GESTION_GRUPOS;
+  return TIENDA_GESTION_GRUPOS.filter((g) => g.unidades.some((p) =>
+    normalizarBusquedaPanel(p.redactor_nombre || "").includes(texto) ||
+    normalizarBusquedaPanel(p.redactor_email || "").includes(texto) ||
+    normalizarBusquedaPanel(p.codigo || "").includes(texto) ||
+    normalizarBusquedaPanel(p.producto_nombre || "").includes(texto)));
+}
+
 function pintarTiendaGestionFiltrada() {
   const cont = document.getElementById("tiendaGestionLista");
   if (!cont) return;
   const texto = normalizarBusquedaPanel(TIENDA_GESTION_BUSQUEDA);
-  const pedidos = texto
-    ? TIENDA_GESTION_LISTA.filter((p) =>
-        normalizarBusquedaPanel(p.redactor_nombre || "").includes(texto) ||
-        normalizarBusquedaPanel(p.redactor_email || "").includes(texto) ||
-        normalizarBusquedaPanel(p.producto_nombre || "").includes(texto))
-    : TIENDA_GESTION_LISTA;
+  const grupos = tiendaGestionGruposVisibles();
 
-  if (!pedidos.length) {
-    cont.innerHTML = texto
-      ? "<p class='tienda-vacio-busqueda'>Ningún pedido coincide con tu búsqueda.</p>"
-      : "<p class='solicitudes-vacio'>No hay pedidos con este filtro.</p>";
+  if (!grupos.length) {
+    cont.innerHTML = tiendaEstadoVacioHTML({
+      icono: texto ? "buscar" : "caja",
+      titulo: texto ? "Sin resultados" : "No hay pedidos con este filtro",
+      texto: texto ? "Ningún pedido coincide con tu búsqueda." : "Prueba con otro estado o revisa más tarde: aquí aparecerán los pedidos nuevos.",
+      botones: [{ texto: "Ver todos los pedidos", accion: "limpiar-filtros-gestion" }],
+    });
   } else {
-    cont.innerHTML = pedidos.map(pintarPedidoTiendaGestionHTML).join("");
+    cont.innerHTML = grupos.map(pintarPedidoTiendaGestionHTML).join("");
   }
+  const exportar = document.getElementById("tiendaGestionExportar");
+  if (exportar) exportar.disabled = !grupos.length;
 }
 
 document.getElementById("tiendaGestionBuscador")?.addEventListener("input", (ev) => {
@@ -13653,57 +21290,87 @@ document.getElementById("tiendaGestionFiltros")?.addEventListener("click", (ev) 
   cargaTiendaGestion();
 });
 
+// Unidades a las que afecta un cambio de estado: las vivas, salvo que el
+// pedido entero esté cancelado (entonces se reactivan todas).
+function tiendaIdsParaEstado(g) {
+  return g.estado === "cancelado" ? g.ids : g.unidades.filter((u) => u.estado !== "cancelado").map((u) => u.id);
+}
+
+async function tiendaCambiarEstadoPedido(g, nuevoEstado) {
+  const ids = tiendaIdsParaEstado(g);
+  await tiendaPorUnidades(ids, (id) => apiFetch(`/api/tienda/pedidos/${id}`, { method: "PUT", body: JSON.stringify({ estado: nuevoEstado }) }));
+}
+
 document.getElementById("tiendaGestionLista")?.addEventListener("change", async (ev) => {
   const select = ev.target.closest(".tienda-pedido-select");
   if (!select) return;
-  const id = select.dataset.id;
-  const nuevoEstado = select.value;
+  const g = TIENDA_GESTION_GRUPOS.find((x) => x.clave === select.dataset.clave);
+  if (!g) return;
   select.disabled = true;
   try {
-    await apiFetch(`/api/tienda/pedidos/${id}`, { method: "PUT", body: JSON.stringify({ estado: nuevoEstado }) });
+    await tiendaCambiarEstadoPedido(g, select.value);
     EOF.toast("Pedido actualizado.", "exito");
-    cargaTiendaGestion();
   } catch (err) {
     EOF.toast("Error: " + err.message, "error");
-    select.disabled = false;
   }
+  cargaTiendaGestion();
+  if (select.value === "cancelado" || g.estado === "cancelado") cargaTiendaCatalogo(); // el stock cambia
 });
 
 document.getElementById("tiendaGestionLista")?.addEventListener("click", async (ev) => {
+  const rapida = ev.target.closest(".tienda-accion-rapida");
+  if (rapida) {
+    const g = TIENDA_GESTION_GRUPOS.find((x) => x.clave === rapida.dataset.clave);
+    if (!g) return;
+    rapida.disabled = true;
+    const textoOriginal = rapida.textContent;
+    rapida.textContent = "Guardando...";
+    try {
+      await tiendaCambiarEstadoPedido(g, rapida.dataset.estado);
+      EOF.toast(`Pedido ${g.codigo || ""} actualizado.`.replace("  ", " "), "exito");
+    } catch (err) {
+      EOF.toast("Error: " + err.message, "error");
+      rapida.disabled = false;
+      rapida.textContent = textoOriginal;
+      return;
+    }
+    cargaTiendaGestion();
+    return;
+  }
+
   const btn = ev.target.closest(".tienda-pedido-borrar");
   if (!btn) return;
+  const g = TIENDA_GESTION_GRUPOS.find((x) => x.clave === btn.dataset.clave);
+  if (!g) return;
   const nombre = btn.dataset.nombre;
-  if (!(await EOF.confirmar(`¿Seguro que quieres borrar el pedido "${nombre}"? Esta acción no se puede deshacer.`, { peligroso: true, textoConfirmar: "Borrar" }))) return;
-  const id = btn.dataset.id;
+  if (!(await EOF.confirmar(`¿Seguro que quieres borrar el pedido${nombre ? ` "${nombre}"` : ""}${g.ids.length > 1 ? ` (${g.ids.length} unidades)` : ""}? Esta acción no se puede deshacer.`, { peligroso: true, textoConfirmar: "Borrar" }))) return;
   btn.disabled = true;
   btn.textContent = "Borrando...";
   try {
-    await apiFetch(`/api/tienda/pedidos/${id}`, { method: "DELETE" });
+    await tiendaPorUnidades(g.ids, (id) => apiFetch(`/api/tienda/pedidos/${id}`, { method: "DELETE" }));
     EOF.toast("Pedido borrado.", "exito");
-    cargaTiendaGestion();
   } catch (err) {
     EOF.toast("Error: " + err.message, "error");
-    btn.disabled = false;
-    btn.textContent = "Borrar";
   }
+  cargaTiendaGestion();
 });
 
-// Guarda la nota interna al dejar de escribir (blur), sin bloquear la
-// edición del resto de la lista mientras se guarda.
+// Guarda la nota interna al dejar de escribir (blur). La nota es del pedido
+// completo, así que se aplica a todas sus unidades conservando el estado de cada una.
 document.getElementById("tiendaGestionLista")?.addEventListener("focusout", async (ev) => {
   const textarea = ev.target.closest(".tienda-pedido-nota");
   if (!textarea) return;
-  const id = textarea.dataset.id;
-  const pedidoOriginal = TIENDA_GESTION_LISTA.find((p) => String(p.id) === String(id));
+  const g = TIENDA_GESTION_GRUPOS.find((x) => x.clave === textarea.dataset.clave);
+  if (!g) return;
   const notaActual = textarea.value.trim();
-  if (pedidoOriginal && (pedidoOriginal.nota_gestion || "") === notaActual) return; // sin cambios
+  if (g.unidades.every((u) => (u.nota_gestion || "") === notaActual)) return; // sin cambios
   try {
-    await apiFetch(`/api/tienda/pedidos/${id}`, {
-      method: "PUT",
-      body: JSON.stringify({ estado: pedidoOriginal.estado, nota_gestion: notaActual }),
+    await tiendaPorUnidades(g.ids, (id) => {
+      const u = g.unidades.find((x) => x.id === id);
+      return apiFetch(`/api/tienda/pedidos/${id}`, { method: "PUT", body: JSON.stringify({ estado: u.estado, nota_gestion: notaActual }) });
     });
-    if (pedidoOriginal) pedidoOriginal.nota_gestion = notaActual;
-    const aviso = document.querySelector(`.tienda-pedido-nota-guardado[data-guardado-id="${id}"]`);
+    g.unidades.forEach((u) => { u.nota_gestion = notaActual; });
+    const aviso = document.querySelector(`.tienda-pedido-nota-guardado[data-guardado-clave="${CSS.escape(g.clave)}"]`);
     if (aviso) {
       aviso.classList.add("visible");
       setTimeout(() => aviso.classList.remove("visible"), 1500);
@@ -13712,6 +21379,39 @@ document.getElementById("tiendaGestionLista")?.addEventListener("focusout", asyn
     EOF.toast("No se ha podido guardar la nota: " + err.message, "error");
   }
 });
+
+// ---------- Exportar pedidos a CSV (Excel en español: separador ";" y BOM) ----------
+function tiendaCsvCelda(valor) {
+  let s = valor === null || valor === undefined ? "" : String(valor);
+  // Una celda que empieza por = + - @ la interpreta Excel como fórmula: se neutraliza.
+  if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+  return `"${s.replace(/"/g, '""')}"`;
+}
+
+function tiendaExportarGestionCSV() {
+  const grupos = tiendaGestionGruposVisibles();
+  if (!grupos.length) { EOF.toast("No hay pedidos que exportar.", "error"); return; }
+  const cabecera = ["Pedido", "Fecha", "Estado", "Colaborador", "Email", "Producto", "Talla", "Precio (€)", "Pago", "Entrega", "Dirección", "Referencia", "Nota interna"];
+  const filas = [];
+  grupos.forEach((g) => g.unidades.forEach((u) => filas.push([
+    u.codigo || `#${u.id}`, u.created_at || "", TIENDA_ETIQUETAS_ESTADO[u.estado] || u.estado,
+    u.redactor_nombre || "", u.redactor_email || "", u.producto_nombre || "", u.variante || "",
+    ((Number(u.precio_centimos) || 0) / 100).toFixed(2).replace(".", ","),
+    TIENDA_ETIQUETAS_METODO[u.metodo_pago] || "", tiendaEtiquetaEntrega(u.entrega),
+    (u.direccion_envio || "").replace(/\s*\n\s*/g, " · "), u.referencia_pago || "", u.nota_gestion || "",
+  ])));
+  const csv = "\uFEFF" + [cabecera, ...filas].map((f) => f.map(tiendaCsvCelda).join(";")).join("\r\n");
+  const enlace = document.createElement("a");
+  enlace.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  enlace.download = `pedidos-tienda-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(enlace);
+  enlace.click();
+  enlace.remove();
+  setTimeout(() => URL.revokeObjectURL(enlace.href), 2000);
+  EOF.toast(`Exportadas ${filas.length} líneas de pedido.`, "exito");
+}
+
+document.getElementById("tiendaGestionExportar")?.addEventListener("click", tiendaExportarGestionCSV);
 
 // ---------- Gestión de productos del catálogo (admin / gestor de tienda) ----------
 let TIENDA_PRODUCTOS_GESTION_CACHE = {};
@@ -13731,7 +21431,11 @@ async function cargaTiendaProductosGestion() {
     pintarTiendaProductosContadores(productos);
     pintarTiendaProductosFiltrados();
   } catch (err) {
-    cont.innerHTML = `<p class='solicitudes-vacio'>Error cargando los productos: ${err.message}</p>`;
+    cont.innerHTML = tiendaEstadoVacioHTML({
+      icono: "alerta", error: true, titulo: "No se han podido cargar los productos",
+      texto: escapeHtml(err.message || ""),
+      botones: [{ texto: "Reintentar", accion: "recargar-productos", primario: true }],
+    });
   }
 }
 
@@ -13741,10 +21445,12 @@ function pintarTiendaProductosContadores(productos) {
   const cont = document.getElementById("tiendaProductosContadores");
   if (!cont) return;
   const visibles = productos.filter((p) => p.activo).length;
+  const agotados = productos.filter((p) => p.disponibles !== null && p.disponibles !== undefined && p.disponibles <= 0).length;
   cont.innerHTML = `
     <div class="tienda-gestion-contador"><strong>${productos.length}</strong><span>Total</span></div>
     <div class="tienda-gestion-contador"><strong>${visibles}</strong><span>Visibles</span></div>
     <div class="tienda-gestion-contador"><strong>${productos.length - visibles}</strong><span>Ocultos</span></div>
+    <div class="tienda-gestion-contador"><strong>${agotados}</strong><span>Agotados</span></div>
   `;
 }
 
@@ -13761,9 +21467,21 @@ function pintarTiendaProductosFiltrados() {
     : TIENDA_PRODUCTOS_GESTION_LISTA;
 
   if (!TIENDA_PRODUCTOS_GESTION_LISTA.length) {
-    cont.innerHTML = "<p class='solicitudes-vacio'>Todavía no hay productos en el catálogo.</p>";
+    cont.innerHTML = tiendaEstadoVacioHTML({
+      icono: "tienda", ilustracion: true,
+      titulo: "Aún no hay productos en el catálogo",
+      texto: "Crea el primero desde cero o empieza con unos productos de ejemplo (gorra, camiseta y petaca de micro). Los de ejemplo se crean ocultos para que ajustes precios y fotos antes de mostrarlos.",
+      botones: [
+        { texto: "+ Crear primer producto", accion: "nuevo-producto", primario: true },
+        { texto: "Crear productos de ejemplo", accion: "ejemplos" },
+      ],
+    });
   } else if (!productos.length) {
-    cont.innerHTML = "<p class='tienda-vacio-busqueda'>Ningún producto coincide con tu búsqueda.</p>";
+    cont.innerHTML = tiendaEstadoVacioHTML({
+      icono: "buscar", titulo: "Sin resultados",
+      texto: "Ningún producto coincide con tu búsqueda.",
+      botones: [{ texto: "Limpiar búsqueda", accion: "limpiar-busqueda-productos", primario: true }],
+    });
   } else {
     cont.innerHTML = `<div class="tienda-productos-lista">${productos.map(pintarFilaTiendaProducto).join("")}</div>`;
   }
@@ -13788,6 +21506,12 @@ function pintarFilaTiendaProducto(p) {
     ? `<div class="tienda-producto-fila-imagen" style="background-image:url('${escapeHtml(p.imagen_url)}')"></div>`
     : `<div class="tienda-producto-fila-imagen">${tiendaIconoProducto()}</div>`;
   const variantesTexto = Array.isArray(p.variantes) && p.variantes.length ? p.variantes.join(", ") : "Talla única";
+  const agotado = p.disponibles !== null && p.disponibles !== undefined && p.disponibles <= 0;
+  const stockTexto = p.stock === null || p.stock === undefined
+    ? "Sin límite de stock"
+    : (agotado ? "Agotado" : `${p.disponibles} de ${p.stock} disponibles`);
+  const numFotos = tiendaImagenesProducto(p).length;
+  const fotosTexto = numFotos > 1 ? ` · ${numFotos} fotos` : "";
   const numPedidos = tiendaContarPedidosProducto(p.nombre);
   const pedidosHTML = numPedidos !== null
     ? `<span class="tienda-producto-fila-pedidos">${numPedidos} pedido${numPedidos === 1 ? "" : "s"}</span>`
@@ -13802,7 +21526,7 @@ function pintarFilaTiendaProducto(p) {
         </div>
         ${p.descripcion ? `<span class="tienda-producto-fila-descripcion">${escapeHtml(p.descripcion)}</span>` : ""}
         <span class="tienda-producto-fila-meta">
-          <strong>${tiendaFormatPrecio(p.precio_centimos)}</strong> · ${escapeHtml(variantesTexto)}${pedidosHTML ? " · " + pedidosHTML : ""}
+          <strong>${tiendaFormatPrecio(p.precio_centimos)}</strong> · ${escapeHtml(variantesTexto)} · <span class="tienda-producto-fila-stock ${agotado ? "agotado" : ""}">${stockTexto}</span>${fotosTexto}${pedidosHTML ? " · " + pedidosHTML : ""}
         </span>
       </div>
       <div class="tienda-producto-fila-acciones">
@@ -13811,14 +21535,48 @@ function pintarFilaTiendaProducto(p) {
           <span></span>
         </label>
         <button type="button" class="tienda-producto-editar" data-id="${p.id}">Editar</button>
+        <button type="button" class="tienda-producto-duplicar" data-id="${p.id}" title="Crear una copia oculta">Duplicar</button>
+        <button type="button" class="tienda-producto-borrar" data-id="${p.id}" title="Borrar el producto">Borrar</button>
       </div>
     </div>`;
 }
 
-document.getElementById("tiendaProductosLista")?.addEventListener("click", (ev) => {
-  const btn = ev.target.closest(".tienda-producto-editar");
-  if (!btn) return;
-  abrirModalTiendaProducto(Number(btn.dataset.id));
+document.getElementById("tiendaProductosLista")?.addEventListener("click", async (ev) => {
+  const btnEditar = ev.target.closest(".tienda-producto-editar");
+  if (btnEditar) {
+    abrirModalTiendaProducto(Number(btnEditar.dataset.id));
+    return;
+  }
+
+  const btnDuplicar = ev.target.closest(".tienda-producto-duplicar");
+  if (btnDuplicar) {
+    btnDuplicar.disabled = true;
+    try {
+      await apiFetch(`/api/tienda/productos/${btnDuplicar.dataset.id}/duplicar`, { method: "POST" });
+      EOF.toast("Producto duplicado (queda oculto hasta que lo actives).", "exito");
+      cargaTiendaProductosGestion();
+    } catch (err) {
+      EOF.toast("Error: " + err.message, "error");
+      btnDuplicar.disabled = false;
+    }
+    return;
+  }
+
+  const btnBorrar = ev.target.closest(".tienda-producto-borrar");
+  if (btnBorrar) {
+    const id = btnBorrar.dataset.id;
+    const prod = TIENDA_PRODUCTOS_GESTION_CACHE[id];
+    if (!confirm(`¿Borrar "${prod ? prod.nombre : "este producto"}" del catálogo? Esta acción no se puede deshacer.`)) return;
+    btnBorrar.disabled = true;
+    try {
+      await apiFetch(`/api/tienda/productos/${id}`, { method: "DELETE" });
+      EOF.toast("Producto borrado.", "exito");
+      cargaTiendaProductosGestion();
+    } catch (err) {
+      EOF.toast("Error: " + err.message, "error");
+      btnBorrar.disabled = false;
+    }
+  }
 });
 
 document.getElementById("tiendaProductosLista")?.addEventListener("change", async (ev) => {
@@ -13854,13 +21612,71 @@ function abrirModalTiendaProducto(productoId) {
   document.getElementById("tpPrecio").value = producto ? (producto.precio_centimos / 100).toFixed(2) : "";
   document.getElementById("tpImagen").value = producto?.imagen_url || "";
   document.getElementById("tpVariantes").value = Array.isArray(producto?.variantes) ? producto.variantes.join(", ") : "";
+  document.getElementById("tpStock").value = producto && producto.stock !== null && producto.stock !== undefined ? String(producto.stock) : "";
+  document.getElementById("tpImagenes").value = Array.isArray(producto?.imagenes) ? producto.imagenes.join("\n") : "";
   document.getElementById("tpOrden").value = producto ? String(producto.orden || 0) : "0";
   document.getElementById("tpActivo").checked = producto ? !!producto.activo : true;
   document.getElementById("tpError").style.display = "none";
   document.getElementById("tpGuardar").disabled = false;
   document.getElementById("tpGuardar").textContent = "Guardar producto";
+  actualizarVistaPreviaTiendaProducto();
   document.getElementById("modalTiendaProducto").classList.add("abierto");
+  setTimeout(() => document.getElementById("tpNombre")?.focus(), 50);
 }
+
+// Vista previa en vivo del producto mientras se edita el formulario.
+function actualizarVistaPreviaTiendaProducto() {
+  const val = (id) => (document.getElementById(id)?.value || "").trim();
+  const nombre = val("tpNombre");
+  const nombreEl = document.getElementById("tpPrevNombre");
+  nombreEl.textContent = nombre || "Nombre del producto";
+  nombreEl.classList.toggle("vacio", !nombre);
+
+  const precio = parseFloat(val("tpPrecio"));
+  document.getElementById("tpPrevPrecio").textContent = precio > 0 ? tiendaFormatPrecio(Math.round(precio * 100)) : "0,00 €";
+  document.getElementById("tpPrevDesc").textContent = val("tpDescripcion");
+
+  const img = val("tpImagen");
+  const imgEl = document.getElementById("tpPrevImg");
+  if (/^https?:\/\//i.test(img)) {
+    imgEl.style.backgroundImage = `url("${img.replace(/"/g, "%22")}")`;
+    imgEl.classList.add("con-foto");
+  } else {
+    imgEl.style.backgroundImage = "";
+    imgEl.classList.remove("con-foto");
+  }
+
+  const activo = document.getElementById("tpActivo").checked;
+  const estadoEl = document.getElementById("tpPrevEstado");
+  estadoEl.textContent = activo ? "Visible" : "Oculto";
+  estadoEl.classList.toggle("oculto", !activo);
+
+  const variantes = val("tpVariantes").split(",").map((v) => v.trim()).filter(Boolean);
+  document.getElementById("tpPrevVariantes").innerHTML = variantes.map((v) => `<span>${escapeHtml(v)}</span>`).join("");
+
+  const stockTxt = val("tpStock");
+  const stockEl = document.getElementById("tpPrevStock");
+  const agotado = stockTxt !== "" && Number(stockTxt) === 0;
+  stockEl.textContent = stockTxt === "" ? "Sin límite de stock" : (agotado ? "Agotado" : `${stockTxt} unidades en stock`);
+  stockEl.classList.toggle("agotado", agotado);
+
+  const fotos = val("tpImagenes").split(/\r?\n/).map((u) => u.trim()).filter((u) => /^https?:\/\//i.test(u)).slice(0, 8);
+  document.getElementById("tpGaleria").innerHTML = fotos
+    .map((u) => `<div style="background-image:url('${escapeHtml(u).replace(/'/g, "%27")}')"></div>`).join("");
+}
+
+["tpNombre", "tpDescripcion", "tpPrecio", "tpImagen", "tpImagenes", "tpStock", "tpVariantes", "tpActivo"].forEach((id) => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener(id === "tpActivo" ? "change" : "input", actualizarVistaPreviaTiendaProducto);
+});
+
+// Cerrar al pulsar fuera de la caja o con Escape.
+document.getElementById("modalTiendaProducto")?.addEventListener("click", (ev) => {
+  if (ev.target.id === "modalTiendaProducto") cerrarModalTiendaProducto();
+});
+document.addEventListener("keydown", (ev) => {
+  if (ev.key === "Escape" && document.getElementById("modalTiendaProducto")?.classList.contains("abierto")) cerrarModalTiendaProducto();
+});
 
 function cerrarModalTiendaProducto() {
   document.getElementById("modalTiendaProducto").classList.remove("abierto");
@@ -13886,12 +21702,32 @@ async function guardarTiendaProducto() {
   }
   const variantes = document.getElementById("tpVariantes").value
     .split(",").map((v) => v.trim()).filter(Boolean);
+  const stockTexto = document.getElementById("tpStock").value.trim();
+  let stock = null;
+  if (stockTexto !== "") {
+    stock = Number(stockTexto);
+    if (!Number.isInteger(stock) || stock < 0) {
+      errEl.textContent = "El stock debe ser un número entero de 0 o más (o déjalo vacío para no limitarlo).";
+      errEl.style.display = "block";
+      return;
+    }
+  }
+  const imagenes = document.getElementById("tpImagenes").value
+    .split(/\r?\n/).map((u) => u.trim()).filter(Boolean);
+  const imagenInvalida = imagenes.find((u) => !/^https?:\/\//i.test(u));
+  if (imagenInvalida) {
+    errEl.textContent = `Esta URL de imagen no es válida (debe empezar por http:// o https://): ${imagenInvalida}`;
+    errEl.style.display = "block";
+    return;
+  }
 
   const body = {
     nombre,
     descripcion: document.getElementById("tpDescripcion").value.trim(),
     precio_centimos: Math.round(precioEuros * 100),
     imagen_url: document.getElementById("tpImagen").value.trim(),
+    imagenes,
+    stock,
     variantes,
     orden: parseInt(document.getElementById("tpOrden").value, 10) || 0,
     activo: document.getElementById("tpActivo").checked,
@@ -13943,20 +21779,43 @@ async function actualizarBadgeTiendaGestionPendientes(numeroConocido) {
 // ---------- Navegación directa por URL: ?ir=tab.subtab ----------
 // Permite abrir el panel directamente en una sección/subsección concreta
 // (p. ej. "?ir=noticias.nueva" o "?ir=resultados.lista"), en vez de
-// aterrizar siempre en la pestaña por defecto. Reutiliza el mismo
-// mecanismo de clicks programáticos que irANotificacion().
-(function irSegunQuerystring() {
-  const params = new URLSearchParams(location.search);
-  const ir = params.get("ir");
+// aterrizar siempre en la pestaña por defecto. También lo usan los avisos
+// push de la campanita: el servidor manda ?ir=<sección> (ver STAFF_PUSH_IR).
+//
+// Alias de las secciones que manda el servidor en los avisos de equipo.
+const STAFF_PUSH_IR = {
+  contenido: "contenido.ver",
+  noticias: "noticias.lista",
+  solicitudes: "solicitudes",
+  acreditaciones: "solicitudes.formularios",
+  incorporaciones: "solicitudes.formularios",
+  fichas: "solicitudes.propuestasEquipos",
+  ediciones: "solicitudes.solicitudesRecibidas",
+  tienda: "tienda.tiendaGestion",
+  comentarios: "funcionalidades.comentarios",
+  anuncios: "funcionalidades.anuncios",
+};
+// Subpestañas que no ve todo el mundo: si están ocultas se queda en la principal.
+const STAFF_PUSH_IR_SOLO_VISIBLES = new Set(["formularios"]);
+
+function eofIrASeccion(ir, params) {
   if (!ir) return;
-  const [tab, subtab] = ir.split(".");
+  const esAlias = Object.prototype.hasOwnProperty.call(STAFF_PUSH_IR, ir);
+  const [tab, subtab] = (esAlias ? STAFF_PUSH_IR[ir] : ir).split(".");
   const intentar = () => {
     const btnTab = document.querySelector(`.tabs button[data-tab="${tab}"]`);
     if (!btnTab) return false;
+    // Enlace directo a un producto de la tienda (?ir=tienda.tiendaCatalogo&producto=<id>).
+    // Se marca antes del click para que cargaTiendaCatalogo() abra la ficha al terminar.
+    const productoId = parseInt(params.get("producto"), 10);
+    if (tab === "tienda" && Number.isInteger(productoId) && productoId > 0) {
+      TIENDA_PRODUCTO_PENDIENTE = productoId;
+    }
     btnTab.click();
     if (subtab) {
       const btnSubtab = document.querySelector(`#panel-${tab} .subtabs button[data-subtab="${subtab}"]`);
-      if (btnSubtab) btnSubtab.click();
+      const oculta = esAlias && STAFF_PUSH_IR_SOLO_VISIBLES.has(subtab) && btnSubtab && btnSubtab.style.display === "none";
+      if (btnSubtab && !oculta) btnSubtab.click();
     }
     // Si el enlace traía también "?articulo=<id>", se abre ese artículo
     // en el editor en vez de dejar el formulario de "Nueva noticia" en blanco.
@@ -13987,4 +21846,819 @@ async function actualizarBadgeTiendaGestionPendientes(numeroConocido) {
       }
     }, 150);
   }
+}
+
+(function irSegunQuerystring() {
+  const params = new URLSearchParams(location.search);
+  eofIrASeccion(params.get("ir"), params);
+})();
+
+
+// ---------- NOTICIAS RÁPIDAS (foto + titular + subtitular) ----------
+// Subpestaña de "Noticias" donde redactores y admin publican piezas muy
+// breves con solo tres campos. Backend: /api/admin/noticias-rapidas (el
+// redactor edita/borra solo las suyas; el admin, todas).
+const NR_TITULO_MAX = 150;
+const NR_SUBTITULO_MAX = 250;
+let NR_LISTA = [];
+
+function nrFormatearFecha(iso) {
+  if (!iso) return "";
+  const d = new Date(String(iso).replace(" ", "T") + "Z");
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleString("es-ES", { dateStyle: "short", timeStyle: "short" });
+}
+
+function nrPuedeEditar(n) {
+  return USER.rol === "admin" || Number(n.autor_id) === Number(USER.id);
+}
+
+// Foco de la foto: "X% Y%" (por defecto, centro). Se valida el formato
+// para no pintar nunca un valor raro en un style.
+function nrFocoActual() {
+  const el = document.getElementById("nrImagenFoco");
+  return EOF_FOCO.texto(el ? el.value : "");
+}
+
+function nrPintarFoto(url) {
+  const cont = document.getElementById("nrFotoPreview");
+  if (!cont) return;
+  cont.innerHTML = url ? `<img src="${escapeHtml(url)}" alt="" style="object-position:${nrFocoActual()}">` : "<span>Sin foto</span>";
+  nrPintarFoco();
+  nrActualizarPreview();
+}
+
+// Refresca el selector de foco (foto + marcador) y el botón "Foco", que
+// solo tiene sentido cuando ya hay una foto.
+// "var": nrPintarFoco() puede llamarse antes de montar el selector.
+var selectorFocoNr = null;
+
+function nrPintarFoco() {
+  const url = (document.getElementById("nrImagenUrl") || {}).value || "";
+  const btn = document.getElementById("btnNrFoco");
+  if (btn) btn.hidden = !url;
+  if (selectorFocoNr) {
+    if (!url) selectorFocoNr.cerrar();
+    selectorFocoNr.pintar();
+  }
+  const miniatura = document.querySelector("#nrFotoPreview img");
+  if (miniatura) miniatura.style.objectPosition = nrFocoActual();
+}
+
+function nrPonerFoco(valor) {
+  const el = document.getElementById("nrImagenFoco");
+  if (el) el.value = valor || "50% 50%";
+  nrPintarFoco();
+  nrActualizarPreview();
+}
+
+function nrActualizarContadores() {
+  const t = document.getElementById("nrTitulo");
+  const s = document.getElementById("nrSubtitulo");
+  const ct = document.getElementById("nrContTitulo");
+  const cs = document.getElementById("nrContSubtitulo");
+  if (t && ct) nrPintarContador(ct, t.value.length, NR_TITULO_MAX);
+  if (s && cs) nrPintarContador(cs, s.value.length, NR_SUBTITULO_MAX);
+  nrActualizarPreview();
+}
+
+// Vista previa en vivo de la tarjeta tal y como saldrá en la portada.
+function nrActualizarPreview() {
+  const val = (id) => { const el = document.getElementById(id); return el ? el.value.trim() : ""; };
+  const poner = (id, texto, vacio) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = texto || vacio;
+    el.classList.toggle("nr-pv-vacio", !texto);
+  };
+  poner("nrPvTitulo", val("nrTitulo"), "Tu titular aparecerá aquí");
+  poner("nrPvSub", val("nrSubtitulo"), "El subtitular explica la noticia en una frase.");
+  const url = val("nrImagenUrl");
+  const media = document.getElementById("nrPvMedia");
+  if (media) {
+    media.style.backgroundImage = url ? `url("${url.replace(/"/g, "%22")}")` : "";
+    media.style.backgroundPosition = nrFocoActual();
+    media.classList.toggle("nr-pv-sinfoto", !url);
+  }
+  // Si se edita una noticia ya publicada, el autor es el original; si no, tú.
+  const idEdit = val("nrId");
+  const orig = idEdit ? NR_LISTA.find((x) => Number(x.id) === Number(idEdit)) : null;
+  const yo = (typeof USER !== "undefined" && USER) || {};
+  const nombre = String(orig ? (orig.autor_nombre || "Redacción") : (yo.nombre || yo.name || yo.email || "Redacción"));
+  const avatarUrl = orig ? (orig.autor_avatar_url || "") : (yo.avatar_url || "");
+  poner("nrPvAutor", nombre, "Redacción");
+  const av = document.getElementById("nrPvAvatar");
+  if (av) av.innerHTML = nrAvatarInner(avatarUrl, nombre);
+}
+
+function nrPintarContador(el, largo, max) {
+  el.textContent = `${largo}/${max}`;
+  el.classList.toggle("cerca", largo >= max * 0.85 && largo < max);
+  el.classList.toggle("lleno", largo >= max);
+}
+
+function nrMarcarEdicion(id) {
+  const card = document.getElementById("nrFormCard");
+  if (card) card.classList.toggle("nr-editando", !!id);
+  document.querySelectorAll("#listaNoticiasRapidas .nr-item").forEach((el) => {
+    el.classList.toggle("nr-item--editando", !!id && el.dataset.nrId === String(id));
+  });
+}
+
+function nrAdminIniciales(nombre) {
+  const partes = String(nombre || "").trim().split(/\s+/).filter(Boolean);
+  if (!partes.length) return "·";
+  return (partes[0][0] + (partes.length > 1 ? partes[partes.length - 1][0] : "")).toUpperCase();
+}
+
+// Foto del redactor si la tiene; si no (o falla la carga), sus iniciales.
+function nrAvatarInner(url, nombre) {
+  return `<span class="nr-av-ini">${escapeHtml(nrAdminIniciales(nombre))}</span>` +
+    (url ? `<img src="${escapeHtml(url)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : "");
+}
+
+function nrAvatarHTML(url, nombre) {
+  return `<span class="nr-avatar-mini" title="${escapeHtml(nombre || "")}">${nrAvatarInner(url, nombre)}</span>`;
+}
+
+function nrIrTab(nombre) {
+  document.querySelectorAll("[data-nr-tab]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.nrTab === nombre)));
+  document.querySelectorAll("[data-nr-pane]").forEach((p) => { p.hidden = p.dataset.nrPane !== nombre; });
+}
+
+function nrResetFormulario() {
+  document.getElementById("nrId").value = "";
+  document.getElementById("nrImagenUrl").value = "";
+  document.getElementById("nrImagenFoco").value = "50% 50%";
+  if (selectorFocoNr) selectorFocoNr.reiniciar();
+  document.getElementById("nrTitulo").value = "";
+  document.getElementById("nrSubtitulo").value = "";
+  document.getElementById("nrFotoEstado").textContent = "";
+  document.getElementById("nrFormTitulo").textContent = "Nueva noticia rápida";
+  document.getElementById("btnGuardarNoticiaRapida").textContent = "Publicar noticia rápida";
+  document.getElementById("btnCancelarNoticiaRapida").style.display = "none";
+  nrPintarFoto("");
+  nrActualizarContadores();
+  nrMarcarEdicion(null);
+}
+
+function nrItemHTML(n) {
+  const puede = nrPuedeEditar(n);
+  const acciones = puede
+    ? `<div class="nr-item-acciones">
+         <button type="button" class="btn-secundari nr-btn-editar" data-nr-editar="${n.id}">✏️ Editar</button>
+         <button type="button" class="btn-secundari nr-btn-borrar" data-nr-borrar="${n.id}">🗑️ Borrar</button>
+       </div>`
+    : "";
+  const d = n.created_at ? new Date(String(n.created_at).replace(" ", "T") + "Z") : null;
+  const esNueva = d && !isNaN(d.getTime()) && Date.now() - d.getTime() < 3 * 3600 * 1000;
+  return `<div class="nr-item" data-nr-id="${n.id}">
+    <img class="nr-item-foto" src="${escapeHtml(n.imagen_url)}" alt="" loading="lazy" style="object-position:${EOF_FOCO.texto(n.imagen_foco)}">
+    <div class="nr-item-texto">
+      <strong>${escapeHtml(n.titulo)}</strong>
+      <span>${escapeHtml(n.subtitulo)}</span>
+      <small>${esNueva ? '<span class="nr-item-nueva">Nueva</span>' : ""}${nrAvatarHTML(n.autor_avatar_url, n.autor_nombre)}<span>${escapeHtml(n.autor_nombre || "")} · ${escapeHtml(nrFormatearFecha(n.created_at))}</span></small>
+    </div>
+    ${acciones}
+  </div>`;
+}
+
+function nrNormalizar(t) {
+  return String(t || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+function nrRenderLista() {
+  const cont = document.getElementById("listaNoticiasRapidas");
+  if (!cont) return;
+  const input = document.getElementById("nrBuscar");
+  const q = nrNormalizar(input ? input.value.trim() : "");
+  const lista = q
+    ? NR_LISTA.filter((n) => nrNormalizar(`${n.titulo} ${n.subtitulo} ${n.autor_nombre || ""}`).includes(q))
+    : NR_LISTA;
+  cont.innerHTML = lista.length
+    ? lista.map(nrItemHTML).join("")
+    : `<p class="solicitudes-vacio">${NR_LISTA.length ? "Ninguna noticia coincide con la búsqueda." : "Todavía no hay ninguna noticia rápida."}</p>`;
+  const total = document.getElementById("nrTotal");
+  if (total) {
+    total.textContent = q ? `${lista.length} de ${NR_LISTA.length}` : String(NR_LISTA.length);
+    total.hidden = !NR_LISTA.length;
+  }
+  const hoyStr = new Date().toDateString();
+  const esHoy = (n) => { const d = new Date(String(n.created_at || "").replace(" ", "T") + "Z"); return !isNaN(d.getTime()) && d.toDateString() === hoyStr; };
+  const ponerTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  ponerTxt("nrStatTotal", NR_LISTA.length);
+  ponerTxt("nrStatHoy", NR_LISTA.filter(esHoy).length);
+  ponerTxt("nrStatMias", (typeof USER !== "undefined" && USER) ? NR_LISTA.filter((n) => Number(n.autor_id) === Number(USER.id)).length : 0);
+  const badge = document.getElementById("nrTabBadge");
+  if (badge) { badge.textContent = NR_LISTA.length; badge.hidden = !NR_LISTA.length; }
+  const barra = document.getElementById("nrToolbar");
+  if (barra) barra.hidden = !NR_LISTA.length;
+  nrMarcarEdicion(document.getElementById("nrId").value);
+  nrActualizarPreview();
+}
+
+async function cargaNoticiasRapidas() {
+  const cont = document.getElementById("listaNoticiasRapidas");
+  if (!cont) return;
+  cont.innerHTML = Array.from({ length: 3 }, () => `<div class="nr-item nr-item--esqueleto" aria-hidden="true"><div class="nr-item-foto"></div><div class="nr-item-texto"><strong></strong><span></span></div></div>`).join("");
+  try {
+    const { noticias_rapidas = [] } = await apiFetch("/api/admin/noticias-rapidas");
+    NR_LISTA = noticias_rapidas;
+    nrRenderLista();
+  } catch (err) {
+    cont.innerHTML = `<p class="solicitudes-vacio">No se han podido cargar las noticias rápidas.</p>`;
+  }
+}
+
+function nrEditar(id) {
+  const n = NR_LISTA.find((x) => Number(x.id) === Number(id));
+  if (!n) return;
+  nrIrTab("redactar");
+  document.getElementById("nrId").value = n.id;
+  document.getElementById("nrImagenUrl").value = n.imagen_url;
+  document.getElementById("nrImagenFoco").value = n.imagen_foco || "50% 50%";
+  document.getElementById("nrTitulo").value = n.titulo;
+  document.getElementById("nrSubtitulo").value = n.subtitulo;
+  document.getElementById("nrFormTitulo").textContent = "Editar noticia rápida";
+  document.getElementById("btnGuardarNoticiaRapida").textContent = "Guardar cambios";
+  document.getElementById("btnCancelarNoticiaRapida").style.display = "";
+  nrPintarFoto(n.imagen_url);
+  nrActualizarContadores();
+  nrMarcarEdicion(n.id);
+  document.getElementById("formNoticiaRapida").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+// Aviso bonito "último repaso" que sale antes de publicar una noticia
+// rápida. Devuelve una promesa: true si el redactor confirma que ha
+// corregido las faltas, false si vuelve atrás. El botón de publicar
+// no se activa hasta marcar las tres comprobaciones.
+function nrConfirmarRevision(body, editando) {
+  return new Promise((resolve) => {
+    const previo = document.activeElement;
+    const raiz = document.createElement("div");
+    raiz.className = "nr-rev";
+    raiz.innerHTML = `
+      <div class="nr-rev-fondo" data-nr-rev-cerrar></div>
+      <div class="nr-rev-caja" role="dialog" aria-modal="true" aria-labelledby="nrRevTitulo" tabindex="-1">
+        <div class="nr-rev-sello" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+        </div>
+        <h3 class="nr-rev-titulo" id="nrRevTitulo">Un último repaso antes de enviar</h3>
+        <p class="nr-rev-sub">Una buena noticia rápida no se publica con faltas. Léela una vez más, con calma, como la leería un lector.</p>
+        <div class="nr-rev-papel">
+          <span class="nr-rev-lapiz" aria-hidden="true">✎</span>
+          <strong class="nr-rev-papel-titulo">${escapeHtml(body.titulo)}</strong>
+          <span class="nr-rev-papel-sub">${escapeHtml(body.subtitulo)}</span>
+        </div>
+        <ul class="nr-rev-lista">
+          <li><label><input type="checkbox" class="nr-rev-check"><span class="nr-rev-marca" aria-hidden="true"></span><span>He corregido <b>faltas de ortografía</b> y <b>tildes</b>.</span></label></li>
+          <li><label><input type="checkbox" class="nr-rev-check"><span class="nr-rev-marca" aria-hidden="true"></span><span>Los <b>nombres</b> de jugadores y clubes están bien escritos.</span></label></li>
+          <li><label><input type="checkbox" class="nr-rev-check"><span class="nr-rev-marca" aria-hidden="true"></span><span>Los <b>datos y cifras</b> (marcador, fechas, fichajes) son correctos.</span></label></li>
+        </ul>
+        <div class="nr-rev-acciones">
+          <button type="button" class="btn-secundari" data-nr-rev-cerrar>Volver a revisar</button>
+          <button type="button" class="btn-primari nr-rev-enviar" disabled>${editando ? "Guardar cambios" : "Publicar ahora"}</button>
+        </div>
+      </div>`;
+    document.body.appendChild(raiz);
+    const caja = raiz.querySelector(".nr-rev-caja");
+    const checks = Array.from(raiz.querySelectorAll(".nr-rev-check"));
+    const enviar = raiz.querySelector(".nr-rev-enviar");
+    requestAnimationFrame(() => { raiz.classList.add("nr-rev--visible"); caja.focus({ preventScroll: true }); });
+
+    let hecho = false;
+    function cerrar(resultado) {
+      if (hecho) return;
+      hecho = true;
+      document.removeEventListener("keydown", teclas, true);
+      raiz.classList.remove("nr-rev--visible");
+      setTimeout(() => raiz.remove(), 200);
+      if (previo && previo.focus && document.contains(previo)) previo.focus({ preventScroll: true });
+      resolve(resultado);
+    }
+    function teclas(ev) {
+      if (ev.key === "Escape") { ev.preventDefault(); ev.stopPropagation(); cerrar(false); }
+      else if (ev.key === "Tab") { // el foco no sale del aviso
+        const f = Array.from(raiz.querySelectorAll("input,button:not([disabled])"));
+        if (!f.length) return;
+        const primero = f[0], ultimo = f[f.length - 1];
+        if (ev.shiftKey && (document.activeElement === primero || document.activeElement === caja)) { ev.preventDefault(); ultimo.focus(); }
+        else if (!ev.shiftKey && document.activeElement === ultimo) { ev.preventDefault(); primero.focus(); }
+      }
+    }
+    document.addEventListener("keydown", teclas, true);
+    checks.forEach((c) => c.addEventListener("change", () => {
+      const todas = checks.every((x) => x.checked);
+      enviar.disabled = !todas;
+      caja.classList.toggle("nr-rev-lista-ok", todas);
+    }));
+    raiz.addEventListener("click", (ev) => { if (ev.target.closest("[data-nr-rev-cerrar]")) cerrar(false); });
+    enviar.addEventListener("click", () => { if (!enviar.disabled) cerrar(true); });
+  });
+}
+
+async function guardarNoticiaRapida(ev) {
+  ev.preventDefault();
+  const okEl = document.getElementById("nrMsgOk");
+  okEl.style.display = "none";
+  if (SUBIDAS_IMAGEN_EN_CURSO > 0) {
+    alert("La foto todavía se está subiendo. Espera un momento y vuelve a pulsar.");
+    return;
+  }
+  const id = document.getElementById("nrId").value;
+  const body = {
+    titulo: document.getElementById("nrTitulo").value.trim(),
+    subtitulo: document.getElementById("nrSubtitulo").value.trim(),
+    imagen_url: document.getElementById("nrImagenUrl").value.trim(),
+    imagen_foco: nrFocoActual(),
+  };
+  if (!body.imagen_url) { alert("Falta la foto."); return; }
+  if (!body.titulo) { alert("Falta el titular."); return; }
+  if (!body.subtitulo) { alert("Falta el subtitular."); return; }
+
+  // Último repaso antes de enviar: el redactor confirma que ha corregido
+  // las faltas. Si cierra el aviso, no se publica nada.
+  if (!(await nrConfirmarRevision(body, !!id))) return;
+
+  const btn = document.getElementById("btnGuardarNoticiaRapida");
+  btn.disabled = true;
+  try {
+    if (id) {
+      await apiFetch(`/api/admin/noticias-rapidas/${id}`, { method: "PUT", body: JSON.stringify(body) });
+    } else {
+      await apiFetch("/api/admin/noticias-rapidas", { method: "POST", body: JSON.stringify(body) });
+    }
+    nrResetFormulario();
+    if (id) nrIrTab("publicadas");
+    okEl.style.display = "block";
+    setTimeout(() => { okEl.style.display = "none"; }, 3000);
+    cargaNoticiasRapidas();
+  } catch (err) {
+    alert("No se ha podido guardar: " + err.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+(function iniciarNoticiasRapidas() {
+  const form = document.getElementById("formNoticiaRapida");
+  if (!form) return;
+  form.addEventListener("submit", guardarNoticiaRapida);
+  document.querySelectorAll("[data-nr-tab]").forEach((b) => b.addEventListener("click", () => nrIrTab(b.dataset.nrTab)));
+  document.getElementById("nrTitulo").addEventListener("input", nrActualizarContadores);
+  document.getElementById("nrSubtitulo").addEventListener("input", nrActualizarContadores);
+  document.getElementById("btnCancelarNoticiaRapida").addEventListener("click", nrResetFormulario);
+
+  const btnSubir = document.getElementById("btnNrSubirFoto");
+  const inputArchivo = document.getElementById("nrFotoArchivo");
+  const preview = document.getElementById("nrFotoPreview");
+  const zona = document.getElementById("nrDropzone");
+  const estado = document.getElementById("nrFotoEstado");
+
+  async function subirArchivo(file) {
+    if (!file) return;
+    if (!/^image\//.test(file.type)) { estado.textContent = "Ese archivo no es una imagen."; return; }
+    btnSubir.disabled = true;
+    preview.classList.add("nr-subiendo");
+    estado.textContent = "Subiendo foto...";
+    try {
+      const url = await subirImagenSuelta(file);
+      document.getElementById("nrImagenUrl").value = url;
+      document.getElementById("nrImagenFoco").value = "50% 50%";
+      nrPintarFoto(url);
+      if (selectorFocoNr) selectorFocoNr.exigirSiNueva();
+      estado.textContent = "Foto subida ✓";
+      setTimeout(() => { if (estado.textContent === "Foto subida ✓") estado.textContent = ""; }, 2500);
+    } catch (err) {
+      estado.textContent = "No se ha podido subir la foto: " + err.message;
+    } finally {
+      btnSubir.disabled = false;
+      preview.classList.remove("nr-subiendo");
+      inputArchivo.value = "";
+    }
+  }
+
+  // Selector de foco único (admin/js/foco-selector.js)
+  const btnFoco = document.getElementById("btnNrFoco");
+  if (btnFoco) {
+    selectorFocoNr = EOF_FOCO_SELECTOR.montar({
+      boton: btnFoco,
+      obtenerUrl: () => (document.getElementById("nrImagenUrl") || {}).value || "",
+      obtenerValor: nrFocoActual,
+      fijarValor: nrPonerFoco,
+      alQuitar: () => {
+        document.getElementById("nrImagenUrl").value = "";
+        nrPonerFoco("50% 50%");
+        nrPintarFoto("");
+      },
+      proporciones: ["16x9", "1x1"],
+      texto: "La tarjeta se recorta a un rectángulo. Marca el punto de la foto que quieres que se vea siempre.",
+    });
+  }
+
+  btnSubir.addEventListener("click", () => inputArchivo.click());
+  preview.addEventListener("click", () => inputArchivo.click());
+  preview.addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); inputArchivo.click(); }
+  });
+  inputArchivo.addEventListener("change", () => subirArchivo(inputArchivo.files && inputArchivo.files[0]));
+  ["dragenter", "dragover"].forEach((t) => zona.addEventListener(t, (ev) => {
+    ev.preventDefault(); ev.stopPropagation(); zona.classList.add("nr-arrastrando");
+  }));
+  ["dragleave", "drop"].forEach((t) => zona.addEventListener(t, (ev) => {
+    ev.preventDefault(); ev.stopPropagation(); zona.classList.remove("nr-arrastrando");
+    if (t === "drop") subirArchivo(ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files[0]);
+  }));
+
+  // Buscador y tipo de vista de la lista
+  const buscar = document.getElementById("nrBuscar");
+  if (buscar) buscar.addEventListener("input", nrRenderLista);
+  const listaEl = document.getElementById("listaNoticiasRapidas");
+  const poner = (v) => {
+    listaEl.dataset.vista = v;
+    document.querySelectorAll("[data-nr-vista]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.nrVista === v)));
+  };
+  try { poner(localStorage.getItem("nrVista") === "grid" ? "grid" : "lista"); } catch (e) {}
+  document.querySelectorAll("[data-nr-vista]").forEach((b) => b.addEventListener("click", () => {
+    poner(b.dataset.nrVista);
+    try { localStorage.setItem("nrVista", b.dataset.nrVista); } catch (e) {}
+  }));
+
+  document.getElementById("listaNoticiasRapidas").addEventListener("click", async (ev) => {
+    const bEditar = ev.target.closest("[data-nr-editar]");
+    if (bEditar) { nrEditar(bEditar.dataset.nrEditar); return; }
+    const bBorrar = ev.target.closest("[data-nr-borrar]");
+    if (!bBorrar) return;
+    if (!confirm("¿Borrar esta noticia rápida? No se puede deshacer.")) return;
+    try {
+      await apiFetch(`/api/admin/noticias-rapidas/${bBorrar.dataset.nrBorrar}`, { method: "DELETE" });
+      if (document.getElementById("nrId").value === String(bBorrar.dataset.nrBorrar)) nrResetFormulario();
+      cargaNoticiasRapidas();
+    } catch (err) {
+      alert("No se ha podido borrar: " + err.message);
+    }
+  });
+  nrActualizarContadores();
+})();
+
+
+// ---------- ANUNCIOS POR CORREO (solo admins) ----------
+// Se envía por tandas: la primera llamada crea el anuncio y manda la tanda 0;
+// las siguientes (con anuncio_id) mandan el resto hasta que el servidor
+// responde sin "siguiente_tanda". Así el envío no depende de una sola
+// petición larga y se puede ver el progreso.
+//
+// Destinatarios: cada grupo puede estar en modo "nadie", "todos" o "algunos"
+// (personas concretas). Se envía como { seleccion: { admins: "todos",
+// redactores: ["ana@x.com", ...] } }; el servidor solo filtra filas que ya
+// existen en su base de datos.
+const ANUNCIO_ESTADO = { conteos: {}, enviando: false, tanda: 20, personas: {}, sel: {}, busca: {}, cargadas: false };
+const ANUNCIO_MAX_FILAS = 120; // filas pintadas por lista (el buscador filtra el resto)
+const ANUNCIO_ICONOS = {
+  admins: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>',
+  redactores: '<path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/>',
+  fotografos: '<path d="M4 8h3l2-3h6l2 3h3a1 1 0 011 1v9a1 1 0 01-1 1H4a1 1 0 01-1-1V9a1 1 0 011-1z"/><circle cx="12" cy="13" r="3.5"/>',
+  suscriptores: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>',
+  lectores: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>',
+};
+const ANUNCIO_GRUPOS = [
+  { id: "admins", nombre: "Administradores", desc: "Gestionan el panel y la web", color: "rojo", bloque: "Equipo" },
+  { id: "redactores", nombre: "Redactores", desc: "Escriben y publican las noticias", color: "azul", bloque: "Equipo" },
+  { id: "fotografos", nombre: "Fotógrafos", desc: "Colaboradores de imagen y galerías", color: "violeta", bloque: "Equipo" },
+  { id: "suscriptores", nombre: "Suscriptores del boletín", desc: "Pidieron recibir correos · llevan enlace de baja", color: "ambar", bloque: "Comunidad" },
+  { id: "lectores", nombre: "Lectores con cuenta", desc: "Cuentas verificadas · solo avisos del servicio", color: "verde", bloque: "Comunidad" },
+];
+const ANUNCIO_NOMBRES_AUD = Object.fromEntries(ANUNCIO_GRUPOS.map((g) => [g.id, g.nombre]));
+
+function anuncioIniciales(p) {
+  const base = (p.nombre || p.email || "?").trim();
+  const partes = base.split(/[\s@._-]+/).filter(Boolean);
+  return ((partes[0] || "?")[0] + (partes.length > 1 ? partes[1][0] : "")).toUpperCase();
+}
+function anuncioColorAv(texto) {
+  let h = 0; for (const c of String(texto)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return h % 6;
+}
+function anuncioAvatarHtml(p) {
+  if (p.avatar) return `<span class="an-av"><img src="${escapeHtml(p.avatar)}" alt="" loading="lazy" referrerpolicy="no-referrer"></span>`;
+  return `<span class="an-av an-av-${anuncioColorAv(p.email)}">${escapeHtml(anuncioIniciales(p))}</span>`;
+}
+
+// Estado de un grupo: { modo: "nadie"|"todos"|"algunos", emails: Set }
+function anuncioSel(id) {
+  if (!ANUNCIO_ESTADO.sel[id]) ANUNCIO_ESTADO.sel[id] = { modo: "nadie", emails: new Set() };
+  return ANUNCIO_ESTADO.sel[id];
+}
+
+// Personas que se elegirían en un grupo según su modo.
+function anuncioPersonasDeGrupo(id) {
+  const st = anuncioSel(id);
+  const lista = ANUNCIO_ESTADO.personas[id] || [];
+  if (st.modo === "todos") return lista;
+  if (st.modo === "algunos") return lista.filter((p) => st.emails.has(p.email.toLowerCase()));
+  return [];
+}
+// Cuántas personas hay en un grupo que no se pudieron listar (listas muy largas).
+function anuncioExtraNoListado(id) {
+  const total = ANUNCIO_ESTADO.conteos[id] || 0;
+  const listadas = (ANUNCIO_ESTADO.personas[id] || []).length;
+  return anuncioSel(id).modo === "todos" ? Math.max(0, total - listadas) : 0;
+}
+
+function anuncioSeleccionParaEnvio() {
+  const sel = {};
+  for (const g of ANUNCIO_GRUPOS) {
+    const st = anuncioSel(g.id);
+    if (st.modo === "todos") sel[g.id] = "todos";
+    else if (st.modo === "algunos" && st.emails.size) sel[g.id] = [...st.emails];
+  }
+  return sel;
+}
+
+function anuncioFilaPersona(p, marcada) {
+  return `<li><label class="an-persona${marcada ? " marcada" : ""}"><input type="checkbox" data-email="${escapeHtml(p.email.toLowerCase())}"${marcada ? " checked" : ""}>${anuncioAvatarHtml(p)}<span class="an-pn"><b>${escapeHtml(p.nombre || p.email)}</b>${p.nombre ? `<small>${escapeHtml(p.email)}</small>` : ""}</span><span class="an-tick" aria-hidden="true"></span></label></li>`;
+}
+
+function anuncioPintarLista(id) {
+  const cont = document.querySelector(`.an-grupo[data-g="${id}"]`);
+  if (!cont) return;
+  const st = anuncioSel(id);
+  const lista = ANUNCIO_ESTADO.personas[id] || [];
+  const q = (ANUNCIO_ESTADO.busca[id] || "").trim().toLowerCase();
+  const filtradas = q ? lista.filter((p) => (p.nombre + " " + p.email).toLowerCase().includes(q)) : lista;
+  const visibles = filtradas.slice(0, ANUNCIO_MAX_FILAS);
+  const ul = cont.querySelector("[data-lista]");
+  ul.innerHTML = visibles.length
+    ? visibles.map((p) => anuncioFilaPersona(p, st.emails.has(p.email.toLowerCase()))).join("")
+    : `<li class="an-vacio">${lista.length ? "Nadie coincide con la búsqueda." : "No hay personas con correo válido en este grupo."}</li>`;
+  const mas = cont.querySelector("[data-mas]");
+  mas.textContent = filtradas.length > visibles.length ? `Mostrando ${visibles.length} de ${filtradas.length}. Usa el buscador para encontrar al resto.` : "";
+}
+
+function anuncioActualizarCabecera(id) {
+  const cont = document.querySelector(`.an-grupo[data-g="${id}"]`);
+  if (!cont) return;
+  const st = anuncioSel(id);
+  const total = ANUNCIO_ESTADO.conteos[id] ?? (ANUNCIO_ESTADO.personas[id] || []).length;
+  const n = st.modo === "todos" ? total : (st.modo === "algunos" ? st.emails.size : 0);
+  cont.dataset.modo = st.modo;
+  cont.querySelector("[data-cuenta]").innerHTML = st.modo === "nadie" ? `<b>${total}</b> personas` : `<b>${n}</b> de ${total}`;
+  cont.querySelectorAll("button[data-modo]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.modo === st.modo)));
+  cont.querySelector(".an-grupo-cuerpo").hidden = st.modo !== "algunos";
+}
+
+function anuncioPintarGrupos() {
+  const caja = document.getElementById("anuncioGrupos");
+  let bloque = "";
+  caja.innerHTML = ANUNCIO_GRUPOS.map((g) => {
+    const cab = g.bloque !== bloque ? `<div class="an-bloque">${g.bloque}</div>` : "";
+    bloque = g.bloque;
+    return `${cab}<section class="an-grupo" data-g="${g.id}" data-color="${g.color}" data-modo="nadie">
+      <header class="an-grupo-cab">
+        <span class="an-grupo-ico"><svg viewBox="0 0 24 24" aria-hidden="true">${ANUNCIO_ICONOS[g.id]}</svg></span>
+        <div class="an-grupo-txt"><h5>${g.nombre}</h5><p>${g.desc}</p></div>
+        <span class="an-grupo-cuenta" data-cuenta></span>
+        <div class="an-seg" role="group" aria-label="Destinatarios de ${g.nombre}">
+          <button type="button" data-modo="nadie" aria-pressed="true">Nadie</button>
+          <button type="button" data-modo="todos" aria-pressed="false">Todos</button>
+          <button type="button" data-modo="algunos" aria-pressed="false">Elegir</button>
+        </div>
+      </header>
+      <div class="an-grupo-cuerpo" hidden>
+        <div class="an-busca">
+          <input type="search" class="an-input an-input-peq" data-busca placeholder="Buscar por nombre o correo…" autocomplete="off">
+          <button type="button" class="an-mini" data-acc="marcar">Marcar visibles</button>
+          <button type="button" class="an-mini" data-acc="quitar">Quitar visibles</button>
+        </div>
+        <ul class="an-personas" data-lista></ul>
+        <p class="an-mas" data-mas></p>
+      </div>
+    </section>`;
+  }).join("");
+  ANUNCIO_GRUPOS.forEach((g) => { anuncioActualizarCabecera(g.id); anuncioPintarLista(g.id); });
+}
+
+// Total sin repetidos, pila de avatares y desglose por grupo.
+function actualizarTotalAnuncio() {
+  const unicos = new Map();
+  let extra = 0;
+  const desglose = [];
+  for (const g of ANUNCIO_GRUPOS) {
+    const personas = anuncioPersonasDeGrupo(g.id);
+    const ex = anuncioExtraNoListado(g.id);
+    const n = personas.length + ex;
+    extra += ex;
+    if (n) desglose.push({ g, n });
+    for (const p of personas) { const k = p.email.toLowerCase(); if (!unicos.has(k)) unicos.set(k, p); }
+  }
+  const total = unicos.size + extra;
+  const suma = desglose.reduce((a, d) => a + d.n, 0);
+  document.getElementById("anuncioTotalSeleccion").textContent = String(total);
+  document.getElementById("anuncioTotalNota").textContent = suma > total ? `(se quitan ${suma - total} repetidos)` : "";
+  document.getElementById("anuncioDesglose").innerHTML = desglose.length
+    ? desglose.map(({ g, n }) => `<span class="an-chip" data-color="${g.color}"><i></i>${g.nombre}<b>${n}</b></span>`).join("")
+    : `<span class="an-vacio">Aún no has elegido a nadie.</span>`;
+  const primeros = [...unicos.values()].slice(0, 7);
+  document.getElementById("anuncioPila").innerHTML = primeros.map(anuncioAvatarHtml).join("") + (total > primeros.length ? `<span class="an-av an-av-mas">+${total - primeros.length}</span>` : "");
+}
+
+function anuncioActualizarPrevia() {
+  const asunto = document.getElementById("anuncioAsunto").value.trim();
+  const mensaje = document.getElementById("anuncioMensaje").value.trim();
+  const bt = document.getElementById("anuncioBotonTexto").value.trim();
+  const bu = document.getElementById("anuncioBotonUrl").value.trim();
+  const a = document.getElementById("anuncioPrevAsunto");
+  a.textContent = asunto || "El asunto aparecerá aquí";
+  a.classList.toggle("an-vacio-prev", !asunto);
+  const m = document.getElementById("anuncioPrevMensaje");
+  m.innerHTML = mensaje
+    ? mensaje.replace(/\r\n/g, "\n").split(/\n{2,}/).map((x) => x.trim()).filter(Boolean).map((x) => `<p>${escapeHtml(x).replace(/\n/g, "<br>")}</p>`).join("")
+    : `<p class="an-vacio-prev">Tu mensaje aparecerá aquí mientras lo escribes.</p>`;
+  const b = document.getElementById("anuncioPrevBoton");
+  b.style.display = bt ? "inline-block" : "none";
+  b.textContent = bt;
+  b.title = bu;
+  const len = document.getElementById("anuncioMensaje").value.length;
+  document.getElementById("anuncioMensajeContador").textContent = String(len);
+  const barra = document.getElementById("anuncioMensajeBarra");
+  barra.style.width = Math.min(100, (len / 5000) * 100) + "%";
+  barra.parentElement.classList.toggle("alto", len > 4500);
+}
+
+async function cargaAnuncios() {
+  try {
+    const [r, pr] = await Promise.all([apiFetch("/api/anuncios/audiencias"), apiFetch("/api/anuncios/personas")]);
+    ANUNCIO_ESTADO.conteos = r.conteos || {};
+    ANUNCIO_ESTADO.tanda = r.tanda || 20;
+    ANUNCIO_ESTADO.personas = pr.personas || {};
+    document.getElementById("anuncioAvisoConfig").style.display = r.correo_configurado ? "none" : "block";
+    // Si ya había selección (se vuelve a abrir la pestaña), se conserva; se descartan correos que ya no existen.
+    for (const g of ANUNCIO_GRUPOS) {
+      const st = anuncioSel(g.id);
+      const existentes = new Set((ANUNCIO_ESTADO.personas[g.id] || []).map((p) => p.email.toLowerCase()));
+      st.emails = new Set([...st.emails].filter((e) => existentes.has(e)));
+      if (st.modo === "algunos" && !st.emails.size) st.modo = "nadie";
+    }
+    ANUNCIO_ESTADO.cargadas = true;
+    anuncioPintarGrupos();
+    actualizarTotalAnuncio();
+  } catch (err) {
+    document.getElementById("anuncioGrupos").innerHTML = `<p class="an-vacio">No se pudieron cargar las personas: ${escapeHtml(err.message)}</p>`;
+    EOF.toast("No se pudieron cargar las audiencias: " + err.message, "error");
+  }
+  anuncioActualizarPrevia();
+  try {
+    const { anuncios = [] } = await apiFetch("/api/anuncios");
+    const cos = document.getElementById("tablaAnuncios");
+    cos.innerHTML = anuncios.length ? anuncios.map((a) => {
+      const aud = a.audiencias && !Array.isArray(a.audiencias) ? a.audiencias : Object.fromEntries((a.audiencias || []).map((x) => [x, "todos"]));
+      const chips = Object.entries(aud).map(([k, v]) => {
+        const g = ANUNCIO_GRUPOS.find((x) => x.id === k);
+        return `<span class="an-chip" data-color="${g ? g.color : "azul"}"><i></i>${escapeHtml(ANUNCIO_NOMBRES_AUD[k] || k)}${Array.isArray(v) ? `<b>${v.length}</b>` : ""}</span>`;
+      }).join("");
+      const completo = a.estado === "completado";
+      const pct = Math.min(100, Math.round(((a.enviados + a.fallidos) / Math.max(1, a.total_destinatarios)) * 100));
+      const estado = completo
+        ? `<span class="an-estado ok">Enviado</span>`
+        : `<span class="an-estado inc">Incompleto</span>`;
+      const res = `<b>${a.enviados}</b> enviados${a.fallidos ? ` · <span class="an-fallo">${a.fallidos} fallidos</span>` : ""}${completo ? "" : ` de ${a.total_destinatarios}`}`;
+      return `<article class="an-hist-item">
+        <div class="an-hist-top"><h5>${escapeHtml(a.asunto)}</h5>${estado}</div>
+        <div class="an-hist-meta">${escapeHtml(formatFechaHoraNewsletter(a.created_at) || a.created_at || "")} · ${escapeHtml(a.creado_por_nombre || "—")} · ${a.total_destinatarios} persona(s)</div>
+        <div class="an-hist-chips">${chips}</div>
+        <div class="an-hist-prog"><span class="an-progreso-barra"><span style="width:${pct}%"></span></span><small>${res}</small></div>
+      </article>`;
+    }).join("") : `<p class="an-vacio">Aún no se ha enviado ningún anuncio.</p>`;
+  } catch (err) {
+    document.getElementById("tablaAnuncios").innerHTML = `<p class="an-vacio">Error: ${escapeHtml(err.message)}</p>`;
+  }
+}
+
+function datosFormularioAnuncio() {
+  return {
+    asunto: document.getElementById("anuncioAsunto").value.trim(),
+    mensaje: document.getElementById("anuncioMensaje").value.trim(),
+    boton_texto: document.getElementById("anuncioBotonTexto").value.trim(),
+    boton_url: document.getElementById("anuncioBotonUrl").value.trim(),
+    seleccion: anuncioSeleccionParaEnvio(),
+  };
+}
+
+async function enviarPruebaAnuncio() {
+  const btn = document.getElementById("btnAnuncioPrueba");
+  const datos = datosFormularioAnuncio();
+  btn.disabled = true;
+  try {
+    const r = await apiFetch("/api/anuncios/prueba", { method: "POST", body: JSON.stringify(datos) });
+    EOF.toast(`Prueba enviada a ${r.enviado_a}`, "exito");
+  } catch (err) {
+    EOF.toast("Error: " + err.message, "error");
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function enviarAnuncio() {
+  if (ANUNCIO_ESTADO.enviando) return;
+  const datos = datosFormularioAnuncio();
+  if (!datos.asunto || !datos.mensaje) { EOF.toast("Escribe el asunto y el mensaje", "error"); return; }
+  if (!Object.keys(datos.seleccion).length) { EOF.toast("Elige al menos un grupo o una persona", "error"); return; }
+  const total = document.getElementById("anuncioTotalSeleccion").textContent;
+  if (!(await EOF.confirmar(`Vas a enviar "${datos.asunto}" a ${total} persona(s). Los correos no se pueden retirar una vez enviados. ¿Continuar?`, { textoConfirmar: "Enviar anuncio" }))) return;
+
+  const btn = document.getElementById("btnAnuncioEnviar");
+  const btnPrueba = document.getElementById("btnAnuncioPrueba");
+  const caja = document.getElementById("anuncioProgreso");
+  const relleno = document.getElementById("anuncioProgresoRelleno");
+  const texto = document.getElementById("anuncioProgresoTexto");
+  ANUNCIO_ESTADO.enviando = true;
+  btn.disabled = true; btnPrueba.disabled = true;
+  caja.style.display = "block";
+  relleno.style.width = "0%";
+  texto.textContent = "Enviando… no cierres esta pestaña hasta que termine.";
+  // Si el navegador se cierra a mitad, el anuncio queda "Incompleto" en el historial.
+  const avisoSalir = (e) => { e.preventDefault(); e.returnValue = ""; };
+  window.addEventListener("beforeunload", avisoSalir);
+
+  let anuncioId = null, tanda = 0, ultimo = null;
+  try {
+    while (tanda !== null) {
+      const cuerpo = anuncioId ? { anuncio_id: anuncioId, tanda } : { ...datos, tanda };
+      ultimo = await apiFetch("/api/anuncios/enviar", { method: "POST", body: JSON.stringify(cuerpo) });
+      anuncioId = ultimo.anuncio_id;
+      tanda = ultimo.siguiente_tanda;
+      const hechos = ultimo.enviados + ultimo.fallidos;
+      relleno.style.width = Math.min(100, Math.round((hechos / Math.max(1, ultimo.total)) * 100)) + "%";
+      texto.textContent = `Enviados ${ultimo.enviados} de ${ultimo.total}${ultimo.fallidos ? ` (${ultimo.fallidos} fallidos)` : ""}…`;
+    }
+    texto.textContent = `Listo: ${ultimo.enviados} enviados${ultimo.fallidos ? `, ${ultimo.fallidos} fallidos` : ""}.`;
+    EOF.toast("Anuncio enviado", "exito");
+    ["anuncioAsunto", "anuncioMensaje", "anuncioBotonTexto", "anuncioBotonUrl"].forEach((id) => { document.getElementById(id).value = ""; });
+    anuncioActualizarPrevia();
+  } catch (err) {
+    texto.textContent = `Se interrumpió: ${err.message}. Lo ya enviado consta en el historial como incompleto.`;
+    EOF.toast("Error: " + err.message, "error");
+  } finally {
+    window.removeEventListener("beforeunload", avisoSalir);
+    ANUNCIO_ESTADO.enviando = false;
+    btn.disabled = false; btnPrueba.disabled = false;
+    cargaAnuncios();
+  }
+}
+
+(function iniciarAnuncios() {
+  const grupos = document.getElementById("anuncioGrupos");
+  if (!grupos) return;
+  // Clics: cambiar modo, marcar/quitar visibles.
+  grupos.addEventListener("click", (e) => {
+    const cont = e.target.closest(".an-grupo");
+    if (!cont) return;
+    const id = cont.dataset.g;
+    const st = anuncioSel(id);
+    const bModo = e.target.closest("button[data-modo]");
+    if (bModo) {
+      const modo = bModo.dataset.modo;
+      st.modo = modo;
+      if (modo === "algunos" && !(ANUNCIO_ESTADO.personas[id] || []).length) st.modo = "nadie";
+      anuncioActualizarCabecera(id); anuncioPintarLista(id); actualizarTotalAnuncio();
+      return;
+    }
+    const bAcc = e.target.closest("button[data-acc]");
+    if (bAcc) {
+      const q = (ANUNCIO_ESTADO.busca[id] || "").trim().toLowerCase();
+      const lista = (ANUNCIO_ESTADO.personas[id] || []).filter((p) => !q || (p.nombre + " " + p.email).toLowerCase().includes(q));
+      for (const p of lista) { const k = p.email.toLowerCase(); if (bAcc.dataset.acc === "marcar") st.emails.add(k); else st.emails.delete(k); }
+      anuncioActualizarCabecera(id); anuncioPintarLista(id); actualizarTotalAnuncio();
+    }
+  });
+  // Casillas de personas.
+  grupos.addEventListener("change", (e) => {
+    const chk = e.target.closest("input[type=checkbox][data-email]");
+    if (!chk) return;
+    const cont = chk.closest(".an-grupo");
+    const id = cont.dataset.g;
+    const st = anuncioSel(id);
+    if (chk.checked) st.emails.add(chk.dataset.email); else st.emails.delete(chk.dataset.email);
+    chk.closest(".an-persona").classList.toggle("marcada", chk.checked);
+    anuncioActualizarCabecera(id); actualizarTotalAnuncio();
+  });
+  // Buscador por grupo.
+  grupos.addEventListener("input", (e) => {
+    const inp = e.target.closest("[data-busca]");
+    if (!inp) return;
+    const id = inp.closest(".an-grupo").dataset.g;
+    ANUNCIO_ESTADO.busca[id] = inp.value;
+    anuncioPintarLista(id);
+  });
+  // Atajos de selección.
+  document.querySelectorAll("#subpanel-anuncios [data-preset]").forEach((b) => b.addEventListener("click", () => {
+    const equipo = ["admins", "redactores", "fotografos"];
+    for (const g of ANUNCIO_GRUPOS) {
+      const st = anuncioSel(g.id);
+      if (b.dataset.preset === "limpiar") { st.modo = "nadie"; st.emails.clear(); }
+      else if (equipo.includes(g.id)) st.modo = "todos";
+    }
+    anuncioPintarGrupos(); actualizarTotalAnuncio();
+  }));
+  ["anuncioAsunto", "anuncioMensaje", "anuncioBotonTexto", "anuncioBotonUrl"].forEach((id) => document.getElementById(id)?.addEventListener("input", anuncioActualizarPrevia));
 })();

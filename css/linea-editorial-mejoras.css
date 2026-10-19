@@ -71,7 +71,8 @@ body[data-page="linea-editorial"] .pagina-info-cuerpo h4::before{
 
 /* Párrafos de listado de equipos: se muestran como tarjeta suave en vez de
    texto corrido, más fáciles de escanear visualmente. */
-body[data-page="linea-editorial"] .pagina-info-cuerpo h4 + p{
+body[data-page="linea-editorial"] .pagina-info-cuerpo h4 + p,
+body[data-page="linea-editorial"] .pagina-info-cuerpo p.lista-equipos{
   background: var(--fondo-alt);
   border: 1px solid var(--borde);
   border-radius: var(--radio);
@@ -80,7 +81,14 @@ body[data-page="linea-editorial"] .pagina-info-cuerpo h4 + p{
   line-height: 1.65;
   color: var(--texto-suave);
 }
-body[data-page="linea-editorial"] .pagina-info-cuerpo h4 + p strong{
+/* Segundo (y siguientes) listados bajo un mismo h4, p. ej. el Grupo 2 de
+   Primera Federación: no van pegados al h4, así que se marcan con la
+   clase "lista-equipos" para tener el mismo aspecto de tarjeta. */
+body[data-page="linea-editorial"] .pagina-info-cuerpo p.lista-equipos{
+  margin-top: 12px;
+}
+body[data-page="linea-editorial"] .pagina-info-cuerpo h4 + p strong,
+body[data-page="linea-editorial"] .pagina-info-cuerpo p.lista-equipos strong{
   display: block;
   color: var(--marino-texto);
   font-family: var(--font-tit);
@@ -139,7 +147,8 @@ body[data-page="linea-editorial"] .pagina-info-cuerpo > p:last-of-type{
     margin-top: 28px;
     font-size: .86rem;
   }
-  body[data-page="linea-editorial"] .pagina-info-cuerpo h4 + p{
+  body[data-page="linea-editorial"] .pagina-info-cuerpo h4 + p,
+  body[data-page="linea-editorial"] .pagina-info-cuerpo p.lista-equipos{
     padding: 12px 14px;
     font-size: .86rem;
   }

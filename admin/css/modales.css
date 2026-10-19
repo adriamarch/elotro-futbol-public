@@ -1,0 +1,507 @@
+/* =======================================================================
+   MODALES DEL PANEL (admin) — sistema unificado
+   -----------------------------------------------------------------------
+   Se carga DESPUÉS de admin.css y lo complementa sin tocar su lógica:
+   las clases que usa admin.js (.modal-overlay + .abierto, .mam-modal-overlay
+   + .mam-abierto) siguen siendo las mismas.
+
+   Qué aporta:
+   · Fondo con desenfoque y bloqueo del scroll de la página mientras hay
+     un modal abierto (sin JS, con :has()).
+   · Cabecera coherente: título + botón ✕ (.modal-cerrar) en todos.
+   · Pie de acciones (.modal-acciones): botones alineados, el principal a
+     la derecha; en móvil se apilan con el principal arriba. Es "sticky":
+     en formularios largos los botones siempre quedan a la vista.
+   · Mensajes de estado (.modal-msg-ok / .modal-msg-err) en vez de colores
+     puestos a mano en cada <p>.
+   · En móvil los modales suben como "hoja" desde abajo (bottom sheet).
+   · Foco visible, modo oscuro y prefers-reduced-motion.
+   ======================================================================= */
+
+:root{
+  --modal-pad:30px;
+  --modal-radio:20px;
+  --modal-acento:linear-gradient(90deg,var(--rojo),var(--celeste));
+}
+
+/* ---------- Fondo + bloqueo de scroll ---------- */
+.modal-overlay,
+.mam-modal-overlay{
+  overscroll-behavior:contain;
+  -webkit-backdrop-filter:blur(6px) saturate(130%);
+  backdrop-filter:blur(6px) saturate(130%);
+}
+.modal-overlay{ background:rgba(8,16,28,.52); }
+.mam-modal-overlay{ background:rgba(6,14,25,.7); }
+
+/* La página de detrás deja de hacer scroll mientras hay un modal abierto */
+body:has(.modal-overlay.abierto),
+body:has(.mam-modal-overlay.mam-abierto){
+  overflow:hidden;
+}
+
+/* ---------- Caja ---------- */
+.modal-caja,
+.mam-modal-caja{
+  border-radius:var(--modal-radio);
+  box-shadow:0 28px 70px rgba(8,16,28,.38), 0 0 0 1px rgba(127,127,127,.14);
+}
+.modal-caja{
+  overscroll-behavior:contain;
+  scrollbar-width:thin;
+  scrollbar-color:var(--borde) transparent;
+}
+/* El acento rojo→celeste de arriba se queda fijo mientras se hace scroll */
+.modal-caja::before{
+  background:var(--modal-acento);
+  border-radius:var(--modal-radio) var(--modal-radio) 0 0;
+  z-index:3;
+  pointer-events:none;
+}
+
+/* ---------- Título ---------- */
+.modal-caja > h3,
+.modal-caja > .modal-cabecera h3{
+  margin:0 0 6px;
+  padding-right:44px;               /* hueco para el ✕ */
+  font-family:var(--font-tit);
+  font-size:1.18rem;
+  line-height:1.25;
+  letter-spacing:.4px;
+  text-transform:uppercase;
+  color:var(--marino-texto);
+}
+.modal-caja > h3.titulo-subseccion{ margin-top:0; }
+.modal-caja > h3 + .ayuda-editor,
+.modal-caja > h3 + p{ margin-top:0; }
+
+/* Icono grande de los modales de aviso (PIN, borrador, contraseña…) */
+.pin-modal-icono,
+.password-modal-icono{
+  width:56px;height:56px;margin:0 auto 14px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.6rem;line-height:1;
+  background:linear-gradient(135deg,rgba(209,19,46,.10),rgba(91,184,232,.16));
+  box-shadow:inset 0 0 0 1px rgba(127,127,127,.18);
+}
+.modal-caja-pin > h3,
+.modal-caja-password > h3,
+.modal-aviso > h3{ text-align:center; padding-right:0; }
+.modal-caja-pin > .ayuda-editor,
+.modal-aviso > .ayuda-editor{ text-align:center; }
+.modal-caja-pin > .pin-modal-icono + h3{ margin-top:0; }
+
+/* Cabeceras propias (no son h3 hijos directos): dejan hueco al ✕ */
+.newsletter-modal-cabecera,
+.tienda-checkout-cabecera{ padding-right:40px; }
+
+/* ---------- Botón ✕ ---------- */
+.modal-cerrar{
+  position:absolute;top:14px;right:14px;z-index:4;
+  width:34px;height:34px;padding:0;
+  display:inline-flex;align-items:center;justify-content:center;
+  border:0;border-radius:50%;cursor:pointer;
+  background:var(--gris-claro);color:var(--marino-texto);
+  font-size:1.35rem;line-height:1;
+  transition:background .16s ease, color .16s ease, transform .2s ease;
+}
+.modal-cerrar:hover{ background:var(--rojo);color:#fff;transform:rotate(90deg); }
+.modal-cerrar:focus-visible{ outline:2px solid var(--celeste);outline-offset:2px; }
+
+/* Los que ya traían su propio ✕ se alinean con el mismo lenguaje */
+.tp-cerrar,.ga-cerrar{ transition:background .16s ease,color .16s ease,transform .2s ease; }
+.tp-cerrar:focus-visible,.ga-cerrar:focus-visible,
+.btn-cerrar-reproductor-media:focus-visible{ outline:2px solid var(--celeste);outline-offset:2px; }
+
+/* ---------- Campos ---------- */
+.modal-caja label{ letter-spacing:.1px; }
+.modal-caja input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+.modal-caja select,
+.modal-caja textarea{
+  min-height:42px;
+  border-radius:10px;
+}
+.modal-caja input[type="checkbox"],
+.modal-caja input[type="radio"]{ accent-color:var(--rojo); }
+.modal-caja input::placeholder,
+.modal-caja textarea::placeholder{ color:var(--texto-suave);opacity:.8; }
+.modal-caja input:focus-visible,
+.modal-caja select:focus-visible,
+.modal-caja textarea:focus-visible{
+  outline:none;border-color:var(--celeste);box-shadow:0 0 0 3px rgba(91,184,232,.22);
+}
+
+/* Casillas de PIN: más grandes y táctiles */
+.modal-caja .pin-modal-inputs input{ width:52px;padding:0; }
+.pin-modal-inputs input{
+  border-radius:12px;
+  transition:border-color .16s ease, box-shadow .16s ease, transform .12s ease;
+}
+.pin-modal-inputs input:focus{ transform:translateY(-1px); }
+.pin-digito-mostrado{
+  width:48px;height:56px;display:inline-flex;align-items:center;justify-content:center;
+  border-radius:12px;background:var(--gris-claro);border:1.5px solid var(--borde);
+  font-size:1.4rem;font-weight:700;font-variant-numeric:tabular-nums;color:var(--marino-texto);
+}
+
+/* ---------- Pie de acciones ---------- */
+.modal-acciones{
+  position:sticky;bottom:0;z-index:2;
+  display:flex;flex-direction:row-reverse;flex-wrap:wrap;justify-content:flex-start;gap:10px;
+  margin:22px calc(var(--modal-pad) * -1) calc(var(--modal-pad) * -1);
+  padding:14px var(--modal-pad);
+  background:var(--tarjeta);
+  border-top:1px solid var(--borde);
+  border-radius:0 0 var(--modal-radio) var(--modal-radio);
+}
+.modal-acciones .btn-primari,
+.modal-acciones .btn-secundari{ margin:0; }
+/* Pila de botones a ancho completo (avisos, PIN, contraseña…) */
+.modal-acciones-pila{
+  position:static;flex-direction:column;align-items:stretch;
+  margin:20px 0 0;padding:0;border:0;background:none;border-radius:0;
+}
+.modal-acciones-pila .btn-primari,
+.modal-acciones-pila .btn-secundari{
+  width:100%;display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.modal-acciones-pila .btn-primari svg,
+.modal-acciones-pila .btn-secundari svg{ flex-shrink:0; }
+/* Nota pequeña bajo un botón de la pila */
+.modal-nota{ margin:6px 0 0;font-size:.78rem;line-height:1.4;color:var(--texto-suave);text-align:center; }
+
+/* ---------- Mensajes de estado ---------- */
+.modal-msg{
+  margin:12px 0 0;padding:10px 14px;border-radius:10px;
+  font-size:.85rem;font-weight:600;line-height:1.4;
+}
+.modal-msg-ok { color:#166534;background:#dcfce7; }
+.modal-msg-err{ color:#b4132a;background:#fde8eb; }
+[data-theme="dark"] .modal-msg-ok { color:#4ade80;background:rgba(34,197,94,.14); }
+[data-theme="dark"] .modal-msg-err{ color:#f87171;background:rgba(248,113,113,.14); }
+
+/* ---------- Modales concretos ---------- */
+.modal-caja-newsletter{ max-width:480px; }
+.modal-caja-compartir,
+.modal-caja-resultado{ border-radius:var(--modal-radio); }
+
+/* Contraseña restablecida: caja con la clave más legible */
+.password-modal-caja input{ font-family:ui-monospace,Menlo,Consolas,monospace;letter-spacing:.5px; }
+
+/* Resultado "nuevo resultado": el formulario embebido no repite tarjeta */
+.modal-caja-resultado .form-card{ background:transparent; }
+
+/* El padding de .modal-caja lo define admin.css (30px, y 20px en ≤780px):
+   esta variable solo lo replica para los márgenes negativos del pie. */
+@media (max-width:780px){
+  :root{ --modal-pad:20px; }
+}
+
+/* ---------- Móvil: hoja que sube desde abajo ---------- */
+@media (max-width:640px){
+  .modal-overlay{ align-items:flex-end;padding:0; }
+  .modal-caja{
+    max-width:100%;
+    max-height:92vh;max-height:92dvh;
+    border-radius:22px 22px 0 0;
+    animation:modal-hoja-in .26s cubic-bezier(.2,.85,.25,1);
+  }
+  .modal-caja::before{ border-radius:22px 22px 0 0; }
+  /* "asa" visual de la hoja */
+  .modal-caja::after{
+    content:"";position:absolute;top:8px;left:50%;width:38px;height:4px;margin-left:-19px;
+    border-radius:4px;background:rgba(127,127,127,.35);pointer-events:none;z-index:3;
+  }
+  .modal-caja > h3{ padding-top:6px; }
+  .modal-cerrar{ top:12px;right:12px; }
+
+  .modal-acciones{
+    flex-direction:column;align-items:stretch;
+    margin-bottom:calc((var(--modal-pad) + env(safe-area-inset-bottom,0px)) * -1);
+    padding-bottom:calc(14px + env(safe-area-inset-bottom,0px));
+    border-radius:0;
+  }
+  .modal-acciones .btn-primari,
+  .modal-acciones .btn-secundari{ width:100%; }
+
+  .tp-caja{ max-height:92vh;max-height:92dvh;border-radius:22px 22px 0 0 !important; }
+  .tp-caja::after{ display:none; }
+  /* El reproductor y la galería a pantalla casi completa */
+  .modal-overlay:has(.modal-caja-reproductor-media){ align-items:center;padding:10px; }
+  .modal-caja-reproductor-media{ border-radius:16px; }
+  .modal-caja-reproductor-media::after{ display:none; }
+
+  /* Modal rápido de Minuto a Minuto */
+  .mam-modal-overlay{ align-items:flex-end;padding:0; }
+  .mam-modal-caja{
+    max-width:100%;max-height:92dvh;overflow-y:auto;
+    border-radius:22px 22px 0 0;
+    padding-bottom:calc(24px + env(safe-area-inset-bottom,0px));
+    animation:modal-hoja-in .26s cubic-bezier(.2,.85,.25,1);
+  }
+}
+@keyframes modal-hoja-in{
+  from{ opacity:.6;transform:translateY(40px); }
+  to  { opacity:1;transform:translateY(0); }
+}
+
+/* ---------- Minuto a Minuto: modales rápidos ---------- */
+.mam-modal-caja{ position:relative; }
+.mam-modal-caja h4{ padding-right:40px; }
+.mam-modal-caja .modal-cerrar{ top:12px;right:12px; }
+.mam-modal-caja input:focus-visible,
+#mamFormEvento select:focus-visible{
+  outline:none;border-color:var(--celeste);box-shadow:0 0 0 3px rgba(91,184,232,.22);
+}
+
+/* ---------- Modo oscuro ---------- */
+[data-theme="dark"] .modal-overlay{ background:rgba(0,0,0,.66); }
+[data-theme="dark"] .modal-caja,
+[data-theme="dark"] .mam-modal-caja{
+  box-shadow:0 28px 70px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.08);
+}
+[data-theme="dark"] .modal-cerrar{ background:rgba(255,255,255,.08);color:var(--texto); }
+[data-theme="dark"] .modal-cerrar:hover{ background:var(--rojo);color:#fff; }
+[data-theme="dark"] .modal-acciones{ background:var(--tarjeta);border-top-color:var(--borde); }
+[data-theme="dark"] .pin-modal-icono,
+[data-theme="dark"] .password-modal-icono{
+  background:linear-gradient(135deg,rgba(209,19,46,.22),rgba(91,184,232,.18));
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);
+}
+[data-theme="dark"] .pin-digito-mostrado{ background:var(--panel-fondo-suave,#1a2130);border-color:var(--borde); }
+
+/* ---------- Movimiento reducido ---------- */
+@media (prefers-reduced-motion: reduce){
+  .modal-caja,.mam-modal-caja{ animation:none !important; }
+  .modal-cerrar,.pin-modal-inputs input{ transition:none; }
+  .modal-cerrar:hover{ transform:none; }
+}
+
+/* ---------- Pie sin "sticky" (cuando hay contenido después, p. ej. historial) ---------- */
+.modal-acciones-simple{
+  position:static;
+  margin:18px 0 0;padding:0;border:0;background:none;border-radius:0;
+}
+/* Los mensajes de estado van ENCIMA del pie: no se tapan al hacer scroll */
+.modal-acciones ~ .modal-msg{ margin-top:12px; }
+
+/* ---------- Modal "Compartir en redes" ----------
+   Antes TODA la caja hacía scroll (título y ✕ incluidos) y el pie "Cerrar"
+   era sticky con márgenes negativos, dentro de un fondo con desenfoque.
+   Esa mezcla hacía que Chrome dejara "fantasmas" al repintar: arriba del
+   todo, bajo el ✕, se veía el aviso de Instagram (que está mucho más
+   abajo) y desaparecía al hacer scroll. Ahora la caja no hace scroll:
+   título, ✕ y pie quedan fijos y solo se desplaza .compartir-cuerpo. */
+#modalCompartir, #modalCompartirCarrusel{
+  -webkit-backdrop-filter:none;backdrop-filter:none;
+  background:rgba(8,16,28,.62);
+}
+[data-theme="dark"] #modalCompartir,
+[data-theme="dark"] #modalCompartirCarrusel{ background:rgba(0,0,0,.72); }
+#modalCompartir .modal-caja-compartir, #modalCompartirCarrusel .modal-caja-compartir{
+  display:flex;flex-direction:column;overflow:hidden;
+  animation:none;
+}
+#modalCompartir .modal-caja-compartir > h3, #modalCompartirCarrusel .modal-caja-compartir > h3{ flex:0 0 auto; }
+#modalCompartir .compartir-cuerpo, #modalCompartirCarrusel .compartir-cuerpo{
+  flex:1 1 auto;min-height:0;
+  overflow-y:auto;overscroll-behavior:contain;
+  scrollbar-width:none;-ms-overflow-style:none;
+  /* respiro para que el foco/sombras de los campos no se corten */
+  margin:0 -6px;padding:0 6px 4px;
+}
+#modalCompartir .compartir-cuerpo::-webkit-scrollbar, #modalCompartirCarrusel .compartir-cuerpo::-webkit-scrollbar{ display:none; }
+#modalCompartir .modal-acciones, #modalCompartirCarrusel .modal-acciones{
+  position:static;flex:0 0 auto;
+}
+
+/* ---------- Modal "Editar contenido" ----------
+   Antes toda la caja hacía scroll y el pie era sticky con márgenes
+   negativos dentro de un <form>: en móvil (barras del navegador, 100vh) y
+   con el desplegable del buscador de partido, el final del formulario
+   quedaba inalcanzable. Ahora la caja no hace scroll: título y ✕ arriba,
+   botones abajo, y solo se desplaza .em-cuerpo. Se usa dvh para que la
+   altura sea la visible de verdad. */
+#modalEditarMedia{ overflow:hidden; }
+#modalEditarMedia .modal-caja-editar-media{
+  display:flex;flex-direction:column;overflow:hidden;
+  max-height:calc(100vh - 40px);max-height:calc(100dvh - 40px);
+  padding-bottom:0;
+}
+#modalEditarMedia .modal-caja-editar-media > h3{ flex:0 0 auto; }
+#modalEditarMedia #formEditarMedia{
+  display:flex;flex-direction:column;flex:1 1 auto;min-height:0;
+}
+#modalEditarMedia .em-cuerpo{
+  flex:1 1 auto;min-height:0;
+  overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
+  margin:0 -6px;padding:0 6px 24px;   /* respiro para foco/sombras y para el final */
+  scrollbar-width:thin;scrollbar-color:var(--borde) transparent;
+}
+#modalEditarMedia #msgOkEditarMedia,
+#modalEditarMedia #errEditarMedia{ flex:0 0 auto; }
+#modalEditarMedia #errEditarMedia{
+  display:none;margin:12px 0 0;padding:10px 14px;border-radius:10px;
+  font-size:.85rem;font-weight:600;color:#b4132a;background:#fde8eb;
+}
+[data-theme="dark"] #modalEditarMedia #errEditarMedia{ color:#f87171;background:rgba(248,113,113,.14); }
+#modalEditarMedia .modal-acciones{
+  position:static;flex:0 0 auto;
+  margin:0 calc(var(--modal-pad) * -1);
+  padding:14px var(--modal-pad);
+  padding-bottom:calc(14px + env(safe-area-inset-bottom,0px));
+}
+/* El desplegable de partidos ya no se sale de la caja: dentro del cuerpo con scroll */
+#modalEditarMedia .autocompletar-resultado-lista{ max-height:220px; }
+@media (max-width:640px){
+  #modalEditarMedia .modal-caja-editar-media{
+    max-height:92vh;max-height:92dvh;
+  }
+  #modalEditarMedia .modal-acciones{ margin-bottom:0; }
+}
+
+
+/* =======================================================================
+   MEJORAS v7
+   -----------------------------------------------------------------------
+   · La franja rojo→celeste ahora SÍ se queda fija al hacer scroll (antes
+     era un ::before absoluto dentro del contenedor con scroll, así que se
+     iba con el contenido). Pasa a ser un fondo con attachment:scroll.
+   · Altura con dvh (barras del navegador móvil) y respiro en los bordes.
+   · Cabecera separada del cuerpo con una línea fina.
+   · Campos: estado hover, deshabilitado y 16px en móvil (iOS hacía zoom
+     al enfocar un input de menos de 16px).
+   · Pie de acciones con sombra suave cuando tapa contenido.
+   · Botones ✕ y de acción con área táctil de 44px en pantallas táctiles.
+   · Modal rápido de Minuto a Minuto con los mismos campos que el resto.
+   ======================================================================= */
+
+/* ---------- Franja de acento fija ---------- */
+.modal-caja{
+  background-image:var(--modal-acento);
+  background-size:100% 3px;
+  background-repeat:no-repeat;
+  background-position:top left;
+  background-attachment:scroll;
+}
+.modal-caja::before{ display:none; }
+.modal-caja.avisos-caja{ background-image:none; }
+
+/* ---------- Altura ---------- */
+.modal-caja{ max-height:calc(100vh - 40px); }
+@supports (height:1dvh){
+  .modal-caja{ max-height:calc(100dvh - 40px); }
+}
+
+/* ---------- Cabecera ---------- */
+.modal-caja:not(.modal-caja-pin):not(.modal-caja-password):not(.avisos-caja):not(.modal-aviso) > .modal-cerrar + h3,
+.modal-caja:not(.modal-caja-pin):not(.modal-caja-password):not(.avisos-caja):not(.modal-aviso) > h3:first-child{
+  margin-bottom:16px;
+  padding-bottom:14px;
+  border-bottom:1px solid var(--borde);
+}
+/* Si debajo del título hay un texto de ayuda, se pega a la línea sin duplicar hueco */
+.modal-caja > h3 + .ayuda-editor{ margin-top:-4px; }
+
+/* ---------- Campos ---------- */
+.modal-caja input:where(:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(:disabled):not(:focus):not([aria-invalid="true"])):hover,
+.modal-caja select:where(:not(:disabled):not(:focus):not([aria-invalid="true"])):hover,
+.modal-caja textarea:where(:not(:disabled):not(:focus):not([aria-invalid="true"])):hover{
+  border-color:color-mix(in srgb, var(--celeste) 55%, var(--borde));
+}
+.modal-caja input:disabled,
+.modal-caja select:disabled,
+.modal-caja textarea:disabled{
+  opacity:.6;cursor:not-allowed;background:var(--gris-claro);
+}
+.modal-caja input[readonly]{ background:var(--gris-claro); }
+.modal-caja textarea{ line-height:1.5; }
+.modal-caja label:has(> input[type="checkbox"]),
+.modal-caja label:has(> input[type="radio"]){
+  display:flex;align-items:center;gap:8px;cursor:pointer;
+}
+.modal-caja input[type="checkbox"],
+.modal-caja input[type="radio"]{ width:auto;min-height:0;flex-shrink:0; }
+
+/* ---------- Pie de acciones ---------- */
+.modal-acciones:not(.modal-acciones-pila):not(.modal-acciones-simple){
+  box-shadow:0 -10px 18px -14px rgba(8,16,28,.35);
+}
+.modal-acciones .btn-primari:focus-visible,
+.modal-acciones .btn-secundari:focus-visible{
+  outline:2px solid var(--celeste);outline-offset:2px;
+}
+.modal-acciones button:disabled{ cursor:not-allowed; }
+
+/* ---------- Táctil ---------- */
+@media (pointer:coarse){
+  .modal-cerrar{ width:40px;height:40px; }
+  .modal-acciones .btn-primari,
+  .modal-acciones .btn-secundari{ min-height:44px; }
+}
+
+/* ---------- Móvil ---------- */
+@media (max-width:640px){
+  /* La hoja inferior vuelve a 92dvh (la regla general de arriba la pisaba) */
+  .modal-caja{ max-height:92vh;max-height:92dvh; }
+  .modal-caja input:where(:not([type="checkbox"]):not([type="radio"]):not([type="range"])),
+  .modal-caja select,
+  .modal-caja textarea,
+  .mam-modal-caja input:where(:not([type="checkbox"]):not([type="radio"])),
+  .mam-modal-caja select,
+  .mam-modal-caja textarea{ font-size:16px; }
+  /* Los dígitos del PIN conservan su tamaño grande */
+  .modal-caja .pin-modal-inputs input{ font-size:1.4rem; }
+  /* La hoja inferior respeta la barra de gestos del móvil */
+  .modal-caja{ padding-bottom:calc(var(--modal-pad) + env(safe-area-inset-bottom,0px)); }
+  .modal-caja > .modal-acciones{
+    margin-bottom:calc((var(--modal-pad) + env(safe-area-inset-bottom,0px)) * -1);
+  }
+  #modalEditarMedia .modal-caja-editar-media{ padding-bottom:0; }
+}
+
+/* ---------- Minuto a Minuto: modal rápido ---------- */
+.mam-modal-caja{
+  max-height:calc(100vh - 32px);
+  overflow-y:auto;overscroll-behavior:contain;
+  scrollbar-width:thin;scrollbar-color:var(--borde) transparent;
+}
+@supports (height:1dvh){
+  .mam-modal-caja{ max-height:calc(100dvh - 32px); }
+}
+.mam-modal-caja input:where(:not([type="checkbox"]):not([type="radio"])),
+.mam-modal-caja select,
+.mam-modal-caja textarea{
+  width:100%;box-sizing:border-box;min-height:40px;
+  padding:9px 12px;border:1.5px solid var(--borde);border-radius:10px;
+  font-family:inherit;font-size:.9rem;
+  background:var(--tarjeta);color:var(--texto);
+  transition:border-color .15s ease, box-shadow .15s ease;
+}
+.mam-modal-caja select:focus-visible,
+.mam-modal-caja textarea:focus-visible{
+  outline:none;border-color:var(--celeste);box-shadow:0 0 0 3px rgba(91,184,232,.22);
+}
+.mam-modal-caja input[type="checkbox"],
+.mam-modal-caja input[type="radio"]{ accent-color:var(--rojo); }
+
+/* ---------- Modo oscuro ---------- */
+[data-theme="dark"] .modal-caja input:where(:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(:disabled):not(.password-modal-caja input)),
+[data-theme="dark"] .modal-caja select:where(:not(:disabled)),
+[data-theme="dark"] .modal-caja textarea:where(:not(:disabled)){
+  background:var(--panel-fondo-suave,#1a2130);
+}
+[data-theme="dark"] .modal-caja input:disabled,
+[data-theme="dark"] .modal-caja select:disabled,
+[data-theme="dark"] .modal-caja textarea:disabled,
+[data-theme="dark"] .modal-caja input[readonly]{
+  background:rgba(255,255,255,.04);
+}
+[data-theme="dark"] .modal-acciones:not(.modal-acciones-pila):not(.modal-acciones-simple){
+  box-shadow:0 -10px 18px -14px rgba(0,0,0,.7);
+}
+[data-theme="dark"] .mam-modal-caja input:where(:not([type="checkbox"]):not([type="radio"])),
+[data-theme="dark"] .mam-modal-caja select,
+[data-theme="dark"] .mam-modal-caja textarea{
+  background:var(--panel-fondo-suave,#1a2130);
+}

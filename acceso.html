@@ -1,276 +1,401 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<script src="js/tema.js"></script>
+<meta name="google-adsense-account" content="ca-pub-7347856722927942">
+<script src="js/tema.js?v=2"></script>
+<script src="js/preferencias.js?v=3"></script>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://api.elotrofutbol.media" crossorigin>
+<link rel="preconnect" href="https://res.cloudinary.com">
 <title id="pageTitle">Acceso — ELOTROFÚTBOLTV</title>
+<meta property="og:image" content="https://elotrofutbol.media/img/og-default.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://elotrofutbol.media/img/og-default.png">
 <meta name="robots" content="noindex, follow">
-<link rel="canonical" href="https://elotrofutbol.media/acceso.html">
-<link rel="icon" href="/favicon.ico?v=2" sizes="any">
-<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=2">
-<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
-<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=17">
+<link rel="canonical" href="https://elotrofutbol.media/acceso">
+<link rel="icon" href="/favicon.ico?v=3" sizes="any">
+<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=3">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png?v=2">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&display=swap" onload="this.onload=null;this.rel='stylesheet'"><noscript><link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet"></noscript>
+<link rel="stylesheet" href="css/style.css?v=25">
+<link rel="stylesheet" href="css/accesibilidad.css?v=1">
+<script src="js/accesibilidad.js?v=1" defer></script>
+<link rel="stylesheet" href="css/foco.css?v=1">
 <style>
-  body{background:var(--marino);min-height:100vh;}
+  /* =====================================================================
+     ACCESO — estilos de la página (v2)
+     Mantiene todos los ids/clases que usa lector-auth.js y main.js.
+     ===================================================================== */
+  :root{--acc-radio:20px;--acc-ease:cubic-bezier(.22,.8,.3,1);}
+  html{-webkit-text-size-adjust:100%;}
+  body{background:var(--marino);min-height:100vh;min-height:100dvh;}
+
+  /* ---------- Fondo: degradado de marca + luces suaves + rejilla ---------- */
   .acceso-fondo{
-    min-height:100vh;display:flex;align-items:center;justify-content:center;
-    padding:90px 20px 60px;position:relative;overflow:hidden;
-  }
-  /* Textura sutil de fondo, coherente con el marino de marca */
-  .acceso-fondo::before{
-    content:"";position:absolute;inset:0;
+    min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;
+    padding:84px 20px 56px;position:relative;overflow:hidden;isolation:isolate;
     background:
-      radial-gradient(circle at 15% 20%, rgba(91,184,232,.12), transparent 45%),
-      radial-gradient(circle at 85% 80%, rgba(209,19,46,.14), transparent 45%);
-    pointer-events:none;
+      radial-gradient(1100px 600px at 50% -10%, rgba(91,184,232,.16), transparent 60%),
+      linear-gradient(180deg, rgba(255,255,255,.03), rgba(0,0,0,.28));
+  }
+  .acceso-fondo::before,.acceso-fondo::after{
+    content:"";position:absolute;z-index:-1;pointer-events:none;border-radius:50%;filter:blur(70px);
+  }
+  .acceso-fondo::before{
+    width:460px;height:460px;left:-140px;top:8%;
+    background:radial-gradient(circle, rgba(91,184,232,.30), transparent 68%);
+    animation:accesoLuz 14s ease-in-out infinite alternate;
+  }
+  .acceso-fondo::after{
+    width:520px;height:520px;right:-170px;bottom:-6%;
+    background:radial-gradient(circle, rgba(209,19,46,.30), transparent 68%);
+    animation:accesoLuz 17s ease-in-out infinite alternate-reverse;
+  }
+  @keyframes accesoLuz{from{transform:translate3d(0,0,0) scale(1);}to{transform:translate3d(40px,-30px,0) scale(1.12);}}
+  .acceso-shell::before{
+    content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.5;
+    background-image:
+      linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+    background-size:44px 44px;
+    -webkit-mask-image:radial-gradient(ellipse at center, #000 20%, transparent 75%);
+            mask-image:radial-gradient(ellipse at center, #000 20%, transparent 75%);
   }
 
-  .acceso-shell{
-    position:relative;z-index:1;width:100%;max-width:420px;
-  }
+  .acceso-shell{position:relative;z-index:1;width:100%;max-width:440px;}
 
-  .acceso-logo-wrap{display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:22px;}
-  .acceso-logo-wrap img{height:64px;}
-  .acceso-logo-wrap span{font-family:var(--font-tit);font-size:1.15rem;text-transform:uppercase;color:#fff;letter-spacing:.3px;}
+  /* ---------- Logo ---------- */
+  .acceso-logo-wrap{display:flex;flex-direction:column;align-items:center;gap:12px;margin-bottom:24px;text-align:center;}
+  .acceso-logo-wrap img{height:72px;width:auto;filter:drop-shadow(0 8px 18px rgba(0,0,0,.45));}
+  .acceso-logo-wrap span{font-family:var(--font-tit);font-size:1.25rem;text-transform:uppercase;color:#fff;letter-spacing:.8px;}
   .acceso-logo-wrap span .brand-rojo{color:var(--rojo);}
 
-  /* ---------- Pestañitas superiores: discretas pero elegantes ---------- */
+  /* ---------- Selector Lector / Colaborador ---------- */
   .modo-tabs{
-    display:flex;justify-content:center;gap:4px;margin:0 auto 16px;
-    width:fit-content;background:rgba(255,255,255,.08);
-    border:1px solid rgba(255,255,255,.14);
-    border-radius:999px;padding:4px;backdrop-filter:blur(6px);
+    display:flex;justify-content:center;gap:4px;margin:0 auto 18px;width:fit-content;
+    background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);
+    border-radius:999px;padding:4px;
+    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+    box-shadow:0 6px 24px rgba(0,0,0,.2), inset 0 1px 0 rgba(255,255,255,.08);
   }
   .modo-tab{
-    border:none;background:none;cursor:pointer;
-    padding:7px 18px;border-radius:999px;
-    font-family:var(--font-tit);font-size:.72rem;letter-spacing:.6px;text-transform:uppercase;
-    color:rgba(255,255,255,.62);transition:background .18s,color .18s,box-shadow .18s;
-    display:flex;align-items:center;gap:6px;
+    border:none;background:none;cursor:pointer;display:flex;align-items:center;gap:7px;
+    padding:8px 20px;border-radius:999px;
+    font-family:var(--font-tit);font-size:.74rem;letter-spacing:.8px;text-transform:uppercase;
+    color:rgba(255,255,255,.66);transition:background .2s,color .2s,box-shadow .2s,transform .2s;
   }
-  .modo-tab svg{width:13px;height:13px;opacity:.85;}
-  .modo-tab:hover{color:#fff;}
-  .modo-tab.activa{
-    background:#fff;color:var(--marino);
-    box-shadow:0 2px 10px rgba(0,0,0,.25);
-  }
+  .modo-tab svg{width:14px;height:14px;opacity:.85;}
+  .modo-tab:hover{color:#fff;background:rgba(255,255,255,.08);}
+  .modo-tab.activa{background:#fff;color:var(--marino);box-shadow:0 4px 14px rgba(0,0,0,.28);}
+  .modo-tab.activa:hover{background:#fff;}
   .modo-tab.activa svg{opacity:1;}
 
-  /* ---------- Tarjeta principal ---------- */
+  /* ---------- Tarjeta ---------- */
   .acceso-box{
-    background:var(--tarjeta);padding:36px 34px;border-radius:16px;
-    box-shadow:0 24px 70px rgba(0,0,0,.4);
-    border:1px solid rgba(255,255,255,.06);
-    animation:accesoAparece .28s ease;
+    position:relative;overflow:hidden;
+    background:var(--tarjeta);padding:38px 36px 34px;border-radius:var(--acc-radio);
+    border:1px solid rgba(255,255,255,.08);
+    box-shadow:0 1px 0 rgba(255,255,255,.06) inset, 0 30px 80px -10px rgba(0,0,0,.55), 0 10px 30px rgba(0,0,0,.25);
+    animation:accesoAparece .4s var(--acc-ease);
   }
-  @keyframes accesoAparece{
-    from{opacity:0;transform:translateY(8px);}
-    to{opacity:1;transform:translateY(0);}
+  .acceso-box::before{
+    content:"";position:absolute;left:0;right:0;top:0;height:4px;
+    background:linear-gradient(90deg, var(--rojo), var(--celeste));
   }
+  @keyframes accesoAparece{from{opacity:0;transform:translateY(14px) scale(.985);}to{opacity:1;transform:none;}}
+  .pantalla.activa{animation:accesoPantalla .28s var(--acc-ease);}
+  @keyframes accesoPantalla{from{opacity:0;transform:translateX(8px);}to{opacity:1;transform:none;}}
 
-  .acceso-box h2{margin:0 0 4px;font-family:var(--font-tit);font-size:1.32rem;color:var(--marino-texto);letter-spacing:.2px;}
-  .acceso-box p.sub{margin:0 0 22px;font-size:.85rem;color:var(--texto-suave);line-height:1.5;}
+  .acceso-box h2{margin:0 0 6px;font-family:var(--font-tit);font-size:1.5rem;line-height:1.2;color:var(--marino-texto);letter-spacing:.2px;}
+  .acceso-box p.sub{margin:0 0 24px;font-size:.88rem;color:var(--texto-suave);line-height:1.55;}
 
-  /* Sub-pestañas internas del modo Lector (Iniciar sesión / Crear cuenta) */
-  .lector-tabs{display:flex;gap:6px;margin-bottom:22px;background:var(--fondo-alt);border-radius:10px;padding:4px;}
-  .lector-tab{flex:1;text-align:center;padding:9px 0;border:none;background:none;border-radius:8px;font-family:var(--font-tit);font-size:.78rem;text-transform:uppercase;letter-spacing:.3px;color:var(--texto-suave);cursor:pointer;transition:background .15s,color .15s;}
-  .lector-tab.activa{background:var(--tarjeta);color:var(--marino-texto);box-shadow:0 1px 4px rgba(0,0,0,.08);}
+  /* Sub-pestañas Iniciar sesión / Crear cuenta */
+  .lector-tabs{display:flex;gap:4px;margin-bottom:26px;background:var(--fondo-alt);border:1px solid var(--borde);border-radius:12px;padding:4px;}
+  .lector-tab{
+    flex:1;text-align:center;padding:10px 0;border:none;background:none;border-radius:9px;cursor:pointer;
+    font-family:var(--font-tit);font-size:.78rem;text-transform:uppercase;letter-spacing:.5px;
+    color:var(--texto-suave);transition:background .2s,color .2s,box-shadow .2s;
+  }
+  .lector-tab:hover{color:var(--marino-texto);}
+  .lector-tab.activa{background:var(--tarjeta);color:var(--marino-texto);box-shadow:0 2px 8px rgba(12,27,46,.14), 0 0 0 1px var(--borde);}
 
-  .acceso-box label{display:block;font-size:.85rem;margin:14px 0 6px;font-weight:600;color:var(--marino-texto);}
-  .acceso-box input{width:100%;padding:11px 12px;border:1.5px solid var(--borde);border-radius:8px;font-size:.95rem;background:var(--tarjeta);color:var(--texto);transition:border-color .15s,box-shadow .15s;}
-  .acceso-box input:focus{outline:none;border-color:var(--celeste);box-shadow:0 0 0 3px rgba(91,184,232,.15);}
+  /* ---------- Formularios ---------- */
+  .acceso-box label{display:block;font-size:.8rem;margin:16px 0 7px;font-weight:700;letter-spacing:.2px;color:var(--marino-texto);}
+  .acceso-box input{
+    width:100%;padding:13px 14px;font-size:1rem;font-family:inherit;line-height:1.2;
+    border:1.5px solid var(--borde);border-radius:12px;background:var(--fondo-alt);color:var(--texto);
+    transition:border-color .18s,box-shadow .18s,background .18s;
+  }
+  .acceso-box input::placeholder{color:var(--texto-suave);opacity:.7;}
+  .acceso-box input:hover{border-color:color-mix(in srgb, var(--celeste) 45%, var(--borde));}
+  .acceso-box input:focus{outline:none;border-color:var(--celeste);background:var(--tarjeta);box-shadow:0 0 0 4px rgba(91,184,232,.22);}
+  .acceso-box input:-webkit-autofill{-webkit-text-fill-color:var(--texto);box-shadow:0 0 0 1000px var(--fondo-alt) inset;transition:background-color 9999s;}
 
-  .acceso-box button[type="submit"]{
-    width:100%;margin-top:22px;padding:13px;
+  .acceso-box button[type="submit"],.acceso-box .btn-principal{
+    position:relative;overflow:hidden;width:100%;margin-top:26px;padding:14px;
     background:linear-gradient(135deg, var(--rojo), var(--rojo-oscuro));color:#fff;
-    border:none;border-radius:26px;font-family:var(--font-tit);text-transform:uppercase;
-    font-size:.95rem;cursor:pointer;letter-spacing:.4px;
-    box-shadow:0 4px 14px rgba(209,19,46,.3);transition:transform .15s,box-shadow .15s;
+    border:none;border-radius:999px;font-family:var(--font-tit);text-transform:uppercase;
+    font-size:.98rem;letter-spacing:.8px;cursor:pointer;
+    box-shadow:0 8px 20px rgba(209,19,46,.32), inset 0 1px 0 rgba(255,255,255,.22);
+    transition:transform .18s,box-shadow .18s,filter .18s;
   }
-  .acceso-box button[type="submit"]:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(209,19,46,.4);}
-  .acceso-box button[type="submit"]:disabled{opacity:.6;cursor:default;transform:none;box-shadow:none;}
+  .acceso-box button[type="submit"]::after,.acceso-box .btn-principal::after{
+    content:"";position:absolute;top:0;bottom:0;left:-60%;width:40%;pointer-events:none;
+    background:linear-gradient(100deg, transparent, rgba(255,255,255,.28), transparent);transform:skewX(-20deg);
+  }
+  .acceso-box button[type="submit"]:hover,.acceso-box .btn-principal:hover{transform:translateY(-2px);box-shadow:0 14px 28px rgba(209,19,46,.42), inset 0 1px 0 rgba(255,255,255,.25);}
+  .acceso-box button[type="submit"]:hover::after,.acceso-box .btn-principal:hover::after{left:130%;transition:left .65s ease;}
+  .acceso-box button[type="submit"]:active,.acceso-box .btn-principal:active{transform:translateY(0);filter:brightness(.95);}
+  .acceso-box button[type="submit"]:disabled,.acceso-box .btn-principal:disabled{opacity:.6;cursor:default;transform:none;box-shadow:none;}
+  .acceso-box button[type="submit"]:disabled::after,.acceso-box .btn-principal:disabled::after{display:none;}
 
-  .acceso-msg{font-size:.85rem;margin-top:14px;padding:10px 12px;border-radius:8px;display:none;}
-  .acceso-msg-error{color:#7a1c2b;background:#fdecef;display:block;}
-  .acceso-msg-ok{color:#166534;background:#dcfce7;display:block;}
+  /* Accesibilidad: foco visible en todo lo pulsable */
+  .modo-tab:focus-visible,.lector-tab:focus-visible,.enlace-olvido:focus-visible,.volver-portada:focus-visible,
+  .theme-toggle-acceso:focus-visible,.acceso-box button:focus-visible,.btn-google:focus-visible,
+  .btn-microsoft:focus-visible,.btn-discord:focus-visible,.btn-x:focus-visible{
+    outline:3px solid var(--celeste);outline-offset:2px;
+  }
+
+  /* ---------- Mensajes ---------- */
+  .acceso-msg{font-size:.86rem;line-height:1.45;margin-top:16px;padding:11px 14px;border-radius:10px;border-left:4px solid transparent;display:none;}
+  .acceso-msg-error{color:#7a1c2b;background:#fdecef;border-left-color:var(--rojo);display:block;animation:accesoAparece .25s var(--acc-ease);}
+  .acceso-msg-ok{color:#166534;background:#dcfce7;border-left-color:#22a55a;display:block;animation:accesoAparece .25s var(--acc-ease);}
   [data-theme="dark"] .acceso-msg-error{background:#3a1a20;color:#f5a3ae;}
   [data-theme="dark"] .acceso-msg-ok{background:#123321;color:#7fe0a3;}
 
-  /* ---------- Separador "o" entre Google y el formulario de correo ---------- */
-  .separador-o{display:flex;align-items:center;gap:12px;margin:20px 0;color:var(--texto-suave);font-size:.78rem;text-transform:uppercase;letter-spacing:.4px;}
-  .separador-o::before,.separador-o::after{content:"";flex:1;height:1px;background:var(--borde);}
+  /* ---------- Separador ---------- */
+  .separador-o{display:flex;align-items:center;gap:14px;margin:22px 0;color:var(--texto-suave);font-size:.74rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;}
+  .separador-o::before,.separador-o::after{content:"";flex:1;height:1px;background:linear-gradient(90deg, transparent, var(--borde) 40%, var(--borde));}
+  .separador-o::after{background:linear-gradient(270deg, transparent, var(--borde) 40%, var(--borde));}
 
-  /* ---------- Botón "Continuar con Google", diseño propio ----------
-     El widget oficial de Google (renderButton) tiene un ancho fijo en
-     píxeles y apenas se puede personalizar, así que aquí se pinta un
-     botón propio -- coherente con el resto de acceso.html (misma
-     tipografía, mismos radios, mismo comportamiento en modo oscuro) y
-     de verdad responsive (ocupa el 100% del ancho disponible) -- que al
-     pulsarlo dispara el flujo real de Google Identity Services por
-     detrás (ver iniciarBotonesGoogleLector en lector-auth.js: sigue
-     siendo la misma API oficial y el mismo id_token verificado en el
-     servidor, solo cambia quién dibuja el botón). */
+  /* ---------- Botones sociales (base común) ----------
+     Google y Microsoft abren popup; Discord y X redirigen. El JS
+     (lector-auth.js) engancha por id/clase, así que solo cambia el aspecto. */
   .google-btn-wrap{width:100%;}
-  .btn-google{
-    width:100%;display:flex;align-items:center;justify-content:center;gap:10px;
-    padding:12px 18px;border-radius:26px;
-    background:var(--tarjeta);color:var(--texto);
-    border:1.5px solid var(--borde);
-    font-family:var(--font-tit);font-size:.88rem;letter-spacing:.2px;text-transform:uppercase;
-    cursor:pointer;transition:border-color .15s,box-shadow .15s,transform .15s,background .15s;
+  .microsoft-btn-wrap,.discord-btn-wrap,.x-btn-wrap{width:100%;margin-top:10px;}
+  .btn-google,.btn-microsoft,.btn-discord,.btn-x{
+    width:100%;display:flex;align-items:center;justify-content:center;gap:11px;
+    padding:13px 18px;border-radius:999px;
+    font-family:var(--font-tit);font-size:.88rem;letter-spacing:.5px;text-transform:uppercase;
+    cursor:pointer;transition:border-color .18s,box-shadow .18s,transform .18s,filter .18s,background .18s;
   }
-  .btn-google svg{width:19px;height:19px;flex-shrink:0;}
-  .btn-google:hover{
-    border-color:#c8cdd6;box-shadow:0 4px 14px rgba(0,0,0,.08);transform:translateY(-1px);
-  }
-  [data-theme="dark"] .btn-google:hover{border-color:#3a4356;box-shadow:0 4px 14px rgba(0,0,0,.35);}
-  .btn-google:active{transform:translateY(0);box-shadow:none;}
-  .btn-google:disabled{opacity:.6;cursor:default;transform:none;box-shadow:none;}
-  .btn-google .btn-google-spinner{
-    width:16px;height:16px;border-radius:50%;
-    border:2px solid var(--borde);border-top-color:var(--celeste);
-    animation:girarSpinnerGoogle .7s linear infinite;display:none;
-  }
-  .btn-google.cargando .btn-google-spinner{display:inline-block;}
-  .btn-google.cargando .btn-google-logo,.btn-google.cargando .btn-google-texto{opacity:.5;}
-  @keyframes girarSpinnerGoogle{to{transform:rotate(360deg);}}
+  .btn-google svg,.btn-microsoft svg,.btn-discord svg,.btn-x svg{width:19px;height:19px;flex-shrink:0;}
+  .btn-google:active,.btn-microsoft:active,.btn-discord:active,.btn-x:active{transform:translateY(0);box-shadow:none;}
+  .btn-google:disabled,.btn-microsoft:disabled,.btn-discord:disabled,.btn-x:disabled{opacity:.6;cursor:default;transform:none;box-shadow:none;}
 
-  @media(max-width:360px){
-    .btn-google{font-size:.8rem;padding:11px 10px;gap:8px;}
-  }
+  /* Google y Microsoft: neutros */
+  .btn-google,.btn-microsoft{background:var(--tarjeta);color:var(--texto);border:1.5px solid var(--borde);}
+  .btn-google:hover,.btn-microsoft:hover{border-color:var(--celeste);background:var(--fondo-alt);box-shadow:0 8px 20px rgba(12,27,46,.12);transform:translateY(-2px);}
+  [data-theme="dark"] .btn-google:hover,[data-theme="dark"] .btn-microsoft:hover{box-shadow:0 8px 20px rgba(0,0,0,.4);}
 
-  /* ---------- Botón "Continuar con Microsoft" ----------
-     Mismo botón propio que .btn-google (misma forma, radios y
-     comportamiento en modo oscuro/responsive), solo cambia el logo y
-     el texto. Dispara el flujo de MSAL.js por detrás (ver
-     iniciarBotonesMicrosoftLector en lector-auth.js), que manda el
-     id_token resultante a /api/readers/microsoft para verificarlo en
-     el servidor -- mismo patrón que Google, solo cambia el proveedor. */
-  .microsoft-btn-wrap{width:100%;margin-top:10px;}
-  .btn-microsoft{
-    width:100%;display:flex;align-items:center;justify-content:center;gap:10px;
-    padding:12px 18px;border-radius:26px;
-    background:var(--tarjeta);color:var(--texto);
-    border:1.5px solid var(--borde);
-    font-family:var(--font-tit);font-size:.88rem;letter-spacing:.2px;text-transform:uppercase;
-    cursor:pointer;transition:border-color .15s,box-shadow .15s,transform .15s,background .15s;
-  }
-  .btn-microsoft svg{width:18px;height:18px;flex-shrink:0;}
-  .btn-microsoft:hover{
-    border-color:#c8cdd6;box-shadow:0 4px 14px rgba(0,0,0,.08);transform:translateY(-1px);
-  }
-  [data-theme="dark"] .btn-microsoft:hover{border-color:#3a4356;box-shadow:0 4px 14px rgba(0,0,0,.35);}
-  .btn-microsoft:active{transform:translateY(0);box-shadow:none;}
-  .btn-microsoft:disabled{opacity:.6;cursor:default;transform:none;box-shadow:none;}
-  .btn-microsoft .btn-microsoft-spinner{
-    width:16px;height:16px;border-radius:50%;
-    border:2px solid var(--borde);border-top-color:var(--celeste);
-    animation:girarSpinnerGoogle .7s linear infinite;display:none;
-  }
-  .btn-microsoft.cargando .btn-microsoft-spinner{display:inline-block;}
-  .btn-microsoft.cargando .btn-microsoft-logo,.btn-microsoft.cargando .btn-microsoft-texto{opacity:.5;}
+  /* Discord: blurple de marca */
+  .btn-discord{background:#5865F2;color:#fff;border:1.5px solid #5865F2;}
+  .btn-discord svg{fill:#fff;}
+  .btn-discord:hover{filter:brightness(1.08);box-shadow:0 8px 20px rgba(88,101,242,.4);transform:translateY(-2px);}
 
-  @media(max-width:360px){
-    .btn-microsoft{font-size:.8rem;padding:11px 10px;gap:8px;}
-  }
-
-  /* ---------- Botón "Continuar con Discord" ----------
-     Mismo botón propio que .btn-google/.btn-microsoft, solo cambia el
-     logo, el texto y el color de fondo (el "blurple" de marca de
-     Discord, con texto blanco en vez del estilo neutro de los otros
-     dos). A diferencia de Google/Microsoft, este botón no abre un
-     popup: es un enlace disfrazado de botón que manda a
-     /api/readers/discord/iniciar y el navegador entero navega fuera
-     y vuelve (ver iniciarBotonesDiscordLector en lector-auth.js). */
-  .discord-btn-wrap{width:100%;margin-top:10px;}
-  .btn-discord{
-    width:100%;display:flex;align-items:center;justify-content:center;gap:10px;
-    padding:12px 18px;border-radius:26px;
-    background:#5865F2;color:#fff;
-    border:1.5px solid #5865F2;
-    font-family:var(--font-tit);font-size:.88rem;letter-spacing:.2px;text-transform:uppercase;
-    cursor:pointer;transition:filter .15s,box-shadow .15s,transform .15s;
-  }
-  .btn-discord svg{width:19px;height:19px;flex-shrink:0;fill:#fff;}
-  .btn-discord:hover{filter:brightness(1.08);box-shadow:0 4px 14px rgba(88,101,242,.35);transform:translateY(-1px);}
-  .btn-discord:active{transform:translateY(0);box-shadow:none;}
-  .btn-discord:disabled{opacity:.6;cursor:default;transform:none;box-shadow:none;}
-  .btn-discord .btn-discord-spinner{
-    width:16px;height:16px;border-radius:50%;
-    border:2px solid rgba(255,255,255,.4);border-top-color:#fff;
-    animation:girarSpinnerGoogle .7s linear infinite;display:none;
-  }
-  .btn-discord.cargando .btn-discord-spinner{display:inline-block;}
-  .btn-discord.cargando .btn-discord-logo,.btn-discord.cargando .btn-discord-texto{opacity:.5;}
-
-  @media(max-width:360px){
-    .btn-discord{font-size:.8rem;padding:11px 10px;gap:8px;}
-  }
-
-  /* ---------- Botón "Continuar con X" ----------
-     Mismo patrón que Discord: OAuth 2.0 con redirect completo (X no
-     tiene un flujo de id_token tipo Google/Microsoft), el clic manda
-     el navegador entero a /api/readers/x/iniciar y vuelve (ver
-     iniciarBotonesXLector en lector-auth.js). */
-  .x-btn-wrap{width:100%;margin-top:10px;}
-  .btn-x{
-    width:100%;display:flex;align-items:center;justify-content:center;gap:10px;
-    padding:12px 18px;border-radius:26px;
-    background:#000;color:#fff;
-    border:1.5px solid #000;
-    font-family:var(--font-tit);font-size:.88rem;letter-spacing:.2px;text-transform:uppercase;
-    cursor:pointer;transition:filter .15s,box-shadow .15s,transform .15s;
-  }
-  .btn-x svg{width:17px;height:17px;flex-shrink:0;fill:#fff;}
-  .btn-x:hover{filter:brightness(1.3);box-shadow:0 4px 14px rgba(0,0,0,.35);transform:translateY(-1px);}
+  /* X: negro (blanco en oscuro) */
+  .btn-x{background:#000;color:#fff;border:1.5px solid #000;}
+  .btn-x svg{width:17px;height:17px;fill:#fff;}
+  .btn-x:hover{filter:brightness(1.3);box-shadow:0 8px 20px rgba(0,0,0,.35);transform:translateY(-2px);}
   [data-theme="dark"] .btn-x{background:#fff;color:#000;border-color:#fff;}
   [data-theme="dark"] .btn-x svg{fill:#000;}
-  [data-theme="dark"] .btn-x:hover{box-shadow:0 4px 14px rgba(255,255,255,.2);}
-  .btn-x:active{transform:translateY(0);box-shadow:none;}
-  .btn-x:disabled{opacity:.6;cursor:default;transform:none;box-shadow:none;}
-  .btn-x .btn-x-spinner{
-    width:16px;height:16px;border-radius:50%;
-    border:2px solid rgba(255,255,255,.4);border-top-color:#fff;
-    animation:girarSpinnerGoogle .7s linear infinite;display:none;
+  [data-theme="dark"] .btn-x:hover{box-shadow:0 8px 20px rgba(255,255,255,.2);}
+
+  /* Spinners */
+  .btn-google .btn-google-spinner,.btn-microsoft .btn-microsoft-spinner,
+  .btn-discord .btn-discord-spinner,.btn-x .btn-x-spinner{
+    width:16px;height:16px;border-radius:50%;display:none;
+    border:2px solid var(--borde);border-top-color:var(--celeste);
+    animation:girarSpinnerGoogle .7s linear infinite;
   }
+  .btn-discord .btn-discord-spinner{border-color:rgba(255,255,255,.4);border-top-color:#fff;}
+  .btn-x .btn-x-spinner{border-color:rgba(255,255,255,.4);border-top-color:#fff;}
   [data-theme="dark"] .btn-x .btn-x-spinner{border-color:rgba(0,0,0,.3);border-top-color:#000;}
-  .btn-x.cargando .btn-x-spinner{display:inline-block;}
+  .btn-google.cargando .btn-google-spinner,.btn-microsoft.cargando .btn-microsoft-spinner,
+  .btn-discord.cargando .btn-discord-spinner,.btn-x.cargando .btn-x-spinner{display:inline-block;}
+  .btn-google.cargando .btn-google-logo,.btn-google.cargando .btn-google-texto,
+  .btn-microsoft.cargando .btn-microsoft-logo,.btn-microsoft.cargando .btn-microsoft-texto,
+  .btn-discord.cargando .btn-discord-logo,.btn-discord.cargando .btn-discord-texto,
   .btn-x.cargando .btn-x-logo,.btn-x.cargando .btn-x-texto{opacity:.5;}
+  @keyframes girarSpinnerGoogle{to{transform:rotate(360deg);}}
 
-  @media(max-width:360px){
-    .btn-x{font-size:.8rem;padding:11px 10px;gap:8px;}
+  /* ---------- Enlaces ---------- */
+  .enlace-olvido{
+    display:block;width:fit-content;margin:18px auto 0;padding:4px 6px;font-size:.84rem;font-family:inherit;
+    color:var(--celeste);background:none;border:none;cursor:pointer;border-radius:6px;
+    text-decoration:underline;text-underline-offset:3px;text-decoration-color:transparent;
+    transition:color .15s,text-decoration-color .15s;
   }
-
-  .enlace-olvido{display:block;text-align:center;margin-top:16px;font-size:.82rem;color:var(--celeste);background:none;border:none;cursor:pointer;text-decoration:underline;}
-  .volver-portada{display:block;text-align:center;margin-top:20px;font-size:.82rem;color:rgba(255,255,255,.65);text-decoration:none;}
-  .volver-portada:hover{color:#fff;}
+  .enlace-olvido:hover{color:var(--marino-texto);text-decoration-color:currentColor;}
+  .volver-portada{
+    display:block;width:fit-content;margin:22px auto 0;padding:6px 10px;font-size:.84rem;border-radius:8px;
+    color:rgba(255,255,255,.7);text-decoration:none;transition:color .15s,background .15s;
+  }
+  .volver-portada:hover{color:#fff;background:rgba(255,255,255,.08);}
 
   .pantalla{display:none;}
   .pantalla.activa{display:block;}
-  .ayuda-form{font-size:.8rem;color:var(--texto-suave);margin:0 0 4px;line-height:1.5;}
+  .ayuda-form{font-size:.84rem;color:var(--texto-suave);margin:0 0 6px;line-height:1.55;}
+  /* Verificación en dos pasos (admins) */
+  .qr-2fa{display:flex;justify-content:center;margin:12px 0 8px;}
+  .qr-2fa svg{width:min(220px,70vw);height:auto;background:#fff;padding:8px;border-radius:12px;border:1px solid var(--borde,#d9e1ea);}
+  .clave-2fa{display:block;text-align:center;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.95rem;letter-spacing:.08em;word-break:break-all;padding:10px 12px;margin:0 0 14px;border-radius:10px;background:var(--fondo-alt,#eef3f8);color:var(--marino-texto);user-select:all;}
+  .pasos-2fa{margin:0 0 8px;padding-left:1.2rem;font-size:.84rem;line-height:1.55;color:var(--texto-suave);}
+  .codigo-2fa-input{text-align:center;font-size:1.3rem;letter-spacing:.35em;font-variant-numeric:tabular-nums;}
+  .codigo-2fa-input.modo-recuperacion{font-size:1rem;letter-spacing:.12em;}
 
-  .overlay{display:none;position:fixed;inset:0;background:rgba(10,20,35,.6);align-items:center;justify-content:center;z-index:50;padding:20px;}
+  /* ---------- Códigos de recuperación (se muestran una sola vez) ---------- */
+  .rec-cabecera{display:flex;flex-direction:column;align-items:center;text-align:center;gap:12px;margin-bottom:4px;}
+  .rec-cabecera h2{margin:0;}
+  .rec-sub{margin:0;font-size:.88rem;line-height:1.55;color:var(--texto-suave);max-width:34ch;}
+  .rec-icono{
+    width:64px;height:64px;border-radius:20px;display:grid;place-items:center;color:#fff;
+    background:linear-gradient(135deg, var(--celeste), #2f86c0);
+    box-shadow:0 12px 26px rgba(91,184,232,.40), inset 0 1px 0 rgba(255,255,255,.38);
+    animation:recIcono .55s var(--acc-ease);
+  }
+  .rec-icono svg{width:32px;height:32px;}
+  @keyframes recIcono{from{opacity:0;transform:scale(.7) rotate(-8deg);}to{opacity:1;transform:none;}}
+
+  .rec-aviso{
+    display:flex;gap:11px;align-items:flex-start;margin:18px 0 0;padding:12px 14px;border-radius:12px;
+    font-size:.84rem;line-height:1.5;color:#6b4300;background:#fff4dc;border:1px solid #f3d38a;border-left:4px solid #f5a623;
+  }
+  .rec-aviso svg{flex:none;width:19px;height:19px;margin-top:1px;color:#d98a00;}
+  .rec-aviso strong{font-weight:700;}
+  [data-theme="dark"] .rec-aviso{background:#34280f;color:#f6d48a;border-color:#5a4416;border-left-color:#f5a623;}
+  [data-theme="dark"] .rec-aviso svg{color:#f5b73b;}
+
+  .rec-tarjeta{margin:16px 0 14px;padding:14px;border-radius:18px;background:var(--fondo-alt);border:1px solid var(--borde);}
+  .rec-tarjeta-cab{
+    display:flex;justify-content:space-between;align-items:center;gap:10px;margin:0 2px 11px;
+    font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:var(--texto-suave);
+  }
+  .rec-tarjeta-cab .rec-pista{display:inline-flex;align-items:center;gap:5px;font-weight:600;letter-spacing:.3px;text-transform:none;font-size:.72rem;}
+  .rec-tarjeta-cab .rec-pista svg{width:13px;height:13px;}
+  .rec-solo-impresion{display:none;}
+
+  .lista-recuperacion{display:grid;grid-template-columns:1fr 1fr;gap:9px;}
+  .codigo-rec{
+    position:relative;display:flex;align-items:center;gap:10px;width:100%;min-width:0;padding:10px 11px;
+    border-radius:12px;border:1.5px dashed var(--borde);background:var(--tarjeta);color:var(--marino-texto);
+    font:inherit;text-align:left;cursor:pointer;
+    transition:border-color .16s,transform .16s,box-shadow .16s,background .16s;
+    animation:recCodigo .35s var(--acc-ease) both;animation-delay:calc(var(--i, 0) * 45ms);
+  }
+  @keyframes recCodigo{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+  .codigo-rec:hover{border-style:solid;border-color:var(--celeste);transform:translateY(-2px);box-shadow:0 8px 18px rgba(12,27,46,.13);}
+  .codigo-rec:active{transform:translateY(0);}
+  .codigo-rec-n{
+    flex:none;width:22px;height:22px;border-radius:7px;display:grid;place-items:center;
+    font-size:.68rem;font-weight:700;color:var(--texto-suave);background:var(--fondo-alt);border:1px solid var(--borde);
+    transition:background .16s,color .16s,border-color .16s;
+  }
+  .codigo-rec-v{
+    min-width:0;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.93rem;font-weight:600;
+    letter-spacing:.07em;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:clip;
+  }
+  .codigo-rec.copiado{border-style:solid;border-color:#22a55a;background:#eafaf0;}
+  .codigo-rec.copiado .codigo-rec-n{background:#22a55a;border-color:#22a55a;color:#fff;font-size:0;}
+  .codigo-rec.copiado .codigo-rec-n::before{content:"\2713";font-size:.8rem;line-height:1;}
+  [data-theme="dark"] .codigo-rec.copiado{background:#123321;}
+  @media(max-width:420px){.lista-recuperacion{grid-template-columns:1fr;}}
+
+  .rec-acciones{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:6px;}
+  .btn-sec{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:11px 6px;
+    border-radius:14px;border:1.5px solid var(--borde);background:var(--tarjeta);color:var(--marino-texto);
+    font-family:var(--font-tit);font-size:.74rem;letter-spacing:.6px;text-transform:uppercase;cursor:pointer;
+    transition:border-color .16s,transform .16s,box-shadow .16s,background .16s,color .16s;
+  }
+  .btn-sec svg{width:20px;height:20px;color:var(--celeste);transition:color .16s;}
+  .btn-sec:hover{border-color:var(--celeste);background:var(--fondo-alt);transform:translateY(-2px);box-shadow:0 8px 18px rgba(12,27,46,.12);}
+  .btn-sec:active{transform:translateY(0);}
+  .btn-sec.hecho{border-color:#22a55a;color:#166534;background:#eafaf0;}
+  .btn-sec.hecho svg{color:#22a55a;}
+  [data-theme="dark"] .btn-sec.hecho{background:#123321;color:#7fe0a3;}
+  @media(max-width:380px){.rec-acciones{grid-template-columns:1fr 1fr;}.rec-acciones .btn-sec:last-child{grid-column:1/-1;}}
+
+  /* "Ya los he guardado": tarjeta con casilla propia (el input global .acceso-box input
+     es width:100% con padding, por eso la casilla antigua salía deformada) */
+  .acceso-box .rec-confirmar{
+    display:flex;align-items:center;gap:12px;margin:14px 0 0;padding:13px 14px;border-radius:14px;cursor:pointer;
+    font-size:.88rem;font-weight:600;line-height:1.35;color:var(--marino-texto);
+    background:var(--fondo-alt);border:1.5px solid var(--borde);transition:border-color .16s,background .16s;
+  }
+  .acceso-box .rec-confirmar:hover{border-color:color-mix(in srgb, var(--celeste) 55%, var(--borde));}
+  .acceso-box .rec-confirmar input{
+    -webkit-appearance:none;appearance:none;flex:none;width:24px;height:24px;margin:0;padding:0;cursor:pointer;
+    border-radius:8px;border:2px solid var(--borde);background:var(--tarjeta);display:grid;place-items:center;
+    transition:background .16s,border-color .16s,box-shadow .16s;
+  }
+  .acceso-box .rec-confirmar input::after{
+    content:"";width:6px;height:11px;margin-top:-2px;border:solid #fff;border-width:0 2.5px 2.5px 0;
+    transform:rotate(45deg) scale(0);transition:transform .16s var(--acc-ease);
+  }
+  .acceso-box .rec-confirmar input:checked{background:#22a55a;border-color:#22a55a;}
+  .acceso-box .rec-confirmar input:checked::after{transform:rotate(45deg) scale(1);}
+  .acceso-box .rec-confirmar input:focus-visible{box-shadow:0 0 0 4px rgba(91,184,232,.3);outline:none;}
+  .acceso-box .rec-confirmar:has(input:checked){border-color:#22a55a;background:#eafaf0;}
+  [data-theme="dark"] .acceso-box .rec-confirmar:has(input:checked){background:#123321;}
+  .acceso-box .rec-cta{margin-top:16px;}
+  .acceso-box .rec-cta:disabled{cursor:not-allowed;}
+  .rec-ayuda-cta{margin:9px 0 0;text-align:center;font-size:.76rem;color:var(--texto-suave);min-height:1.1em;}
+
+  /* Imprimir: solo la tarjeta con los códigos */
+  @media print{
+    body.imprimiendo-codigos *{visibility:hidden !important;}
+    body.imprimiendo-codigos .rec-tarjeta,body.imprimiendo-codigos .rec-tarjeta *{visibility:visible !important;}
+    body.imprimiendo-codigos .rec-tarjeta{position:absolute;left:0;top:0;width:100%;border:none;background:#fff;padding:0;}
+    body.imprimiendo-codigos .rec-solo-impresion{display:block;margin:0 0 14px;color:#000;font:600 14px/1.5 Arial,sans-serif;}
+    body.imprimiendo-codigos .rec-tarjeta-cab{display:none;}
+    body.imprimiendo-codigos .lista-recuperacion{grid-template-columns:1fr 1fr;gap:10px;}
+    body.imprimiendo-codigos .codigo-rec{animation:none;border:1px solid #000;background:#fff;color:#000;}
+    body.imprimiendo-codigos .codigo-rec-n{border-color:#000;color:#000;background:#fff;}
+  }
+
+  /* ---------- Overlay (pedir correo en el primer inicio de sesión) ---------- */
+  .overlay{
+    display:none;position:fixed;inset:0;align-items:center;justify-content:center;z-index:50;padding:20px;
+    background:rgba(8,16,28,.68);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+  }
   .overlay.activo{display:flex;}
+  .overlay .acceso-box{width:100%;}
 
   /* ---------- Botón de modo oscuro/claro ---------- */
   .theme-toggle-acceso{
-    position:fixed;top:18px;right:18px;
+    position:fixed;top:18px;right:18px;z-index:60;width:42px;height:42px;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;
     background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.25);border-radius:50%;
-    width:40px;height:40px;display:flex;align-items:center;justify-content:center;
-    cursor:pointer;color:#fff;transition:background .15s;z-index:60;
+    -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+    transition:background .18s,transform .25s var(--acc-ease);
   }
-  .theme-toggle-acceso:hover{background:rgba(255,255,255,.18);}
+  .theme-toggle-acceso:hover{background:rgba(255,255,255,.18);transform:rotate(18deg) scale(1.05);}
   .theme-toggle-acceso svg{width:19px;height:19px;}
   .theme-toggle-acceso .theme-icon-sol{display:none;}
   [data-theme="dark"] .theme-toggle-acceso .theme-icon-luna{display:none;}
   [data-theme="dark"] .theme-toggle-acceso .theme-icon-sol{display:block;color:var(--celeste-claro);}
 
-  @media(max-width:420px){
-    .acceso-fondo{padding:76px 14px 40px;}
-    .acceso-box{padding:28px 22px;}
-    .acceso-logo-wrap img{height:54px;}
+  /* ---------- Responsive ---------- */
+  @media(max-width:480px){
+    .acceso-fondo{padding:72px 14px 36px;align-items:flex-start;}
+    .acceso-box{padding:30px 22px 26px;border-radius:18px;}
+    .acceso-box h2{font-size:1.32rem;}
+    .acceso-logo-wrap img{height:58px;}
+    .acceso-logo-wrap span{font-size:1.1rem;}
+    .acceso-box input{font-size:16px;} /* evita el zoom automático de iOS */
+  }
+  @media(max-width:360px){
+    .btn-google,.btn-microsoft,.btn-discord,.btn-x{font-size:.8rem;padding:12px 10px;gap:8px;}
+    .modo-tab{padding:8px 14px;}
+  }
+  @media(prefers-reduced-motion:reduce){
+    .acceso-fondo::before,.acceso-fondo::after{animation:none;}
+    .acceso-box,.pantalla.activa,.acceso-msg-error,.acceso-msg-ok{animation:none;}
+    *{transition-duration:.01ms !important;}
   }
 </style>
 </head>
@@ -316,7 +441,7 @@
 
           <div id="bloqueLogin">
             <h2>Iniciar sesión</h2>
-            <p class="sub">Accede a tu cuenta de lector: comenta las noticias con tu nombre, vota en las encuestas, guarda tu porra de cada jornada, entra en el ranking y disfruta de todo lo que iremos añadiendo próximamente.</p>
+            <p class="sub">Accede a tu cuenta de lector: comenta las noticias con tu nombre, guarda tu porra de cada jornada, entra en el ranking y disfruta de todo lo que iremos añadiendo próximamente.</p>
 
             <div class="google-btn-wrap">
               <button type="button" class="btn-google" id="googleBtnLogin">
@@ -361,7 +486,7 @@
 
           <div id="bloqueRegistro" style="display:none">
             <h2>Crear cuenta</h2>
-            <p class="sub">Crea tu cuenta de lector: firma tus comentarios con tu nombre, vota en las encuestas, guarda tu porra de cada jornada, aparece en el ranking y aprovecha todas las funciones que iremos añadiendo.</p>
+            <p class="sub">Crea tu cuenta de lector: firma tus comentarios con tu nombre, guarda tu porra de cada jornada, aparece en el ranking y aprovecha todas las funciones que iremos añadiendo.</p>
 
             <div class="google-btn-wrap">
               <button type="button" class="btn-google" id="googleBtnRegistro">
@@ -400,6 +525,7 @@
               <input type="email" id="regEmail" required autocomplete="email">
               <label for="regPassword">Contraseña</label>
               <input type="password" id="regPassword" required minlength="8" autocomplete="new-password">
+              <div data-eof-turnstile style="margin:0 0 .8rem"></div>
               <button type="submit" id="btnRegistro">Crear cuenta</button>
             </form>
             <p id="registroMsg" class="acceso-msg"></p>
@@ -412,6 +538,7 @@
           <form id="formOlvidoLector" novalidate>
             <label for="olvidoEmailLector">Correo electrónico</label>
             <input type="email" id="olvidoEmailLector" required autocomplete="email">
+            <div data-eof-turnstile style="margin:0 0 .8rem"></div>
             <button type="submit" id="btnOlvidoLector">Enviar enlace</button>
           </form>
           <p id="olvidoMsgLector" class="acceso-msg"></p>
@@ -462,6 +589,7 @@
             <input type="text" id="ol_username" required autocomplete="username">
             <label for="ol_email">Correo electrónico</label>
             <input type="email" id="ol_email" required autocomplete="email">
+            <div data-eof-turnstile style="margin:0 0 .8rem"></div>
             <button type="submit">Enviar enlace</button>
             <p id="errorOlvido" class="acceso-msg acceso-msg-error" style="display:none"></p>
             <p id="okMsg" class="acceso-msg acceso-msg-ok" style="display:none"></p>
@@ -484,9 +612,75 @@
           </form>
         </div>
 
+        <!-- VERIFICACIÓN EN DOS PASOS (admins y redactores que la hayan activado): pedir el código -->
+        <div class="pantalla" id="cajaDosPasos">
+          <h2>Verificación en dos pasos</h2>
+          <p class="ayuda-form" id="ayudaDosPasos">Abre tu app de autenticación (Google Authenticator, Microsoft Authenticator, Authy…) y escribe el código de 6 dígitos de ElOtroFútbol.</p>
+          <form id="formDosPasos">
+            <label for="codigoDosPasos" id="labelCodigoDosPasos">Código de 6 dígitos</label>
+            <input type="text" id="codigoDosPasos" class="codigo-2fa-input" inputmode="numeric" pattern="[0-9 ]*" maxlength="8" autocomplete="one-time-code" required>
+            <label class="rec-confirmar"><input type="checkbox" id="recordarDispositivo2fa" checked> <span>Confiar en este dispositivo 30 días (no volver a pedirme el código aquí). Desmárcalo si es un ordenador compartido.</span></label>
+            <button type="submit">Verificar</button>
+            <p id="errorDosPasos" class="acceso-msg acceso-msg-error" style="display:none"></p>
+          </form>
+          <button type="button" class="enlace-olvido" id="btnAlternarRecuperacion">He perdido el móvil: usar un código de recuperación</button>
+          <button type="button" class="enlace-olvido" id="btnVolverLogin2fa">← Volver al inicio de sesión</button>
+        </div>
+
+        <!-- VERIFICACIÓN EN DOS PASOS (admins): configurarla por primera vez -->
+        <div class="pantalla" id="cajaConfigurar2fa">
+          <h2>Activa la verificación en dos pasos</h2>
+          <p class="ayuda-form">Para los administradores es obligatoria: además de la contraseña, se pide un código de tu móvil.</p>
+          <ol class="pasos-2fa">
+            <li>Instala una app de autenticación (Google Authenticator, Microsoft Authenticator, Authy…).</li>
+            <li>Escanea este código QR con la app.</li>
+            <li>Escribe aquí el código de 6 dígitos que te muestre.</li>
+          </ol>
+          <div id="qr2fa" class="qr-2fa" aria-label="Código QR para la app de autenticación"></div>
+          <p class="ayuda-form" style="text-align:center">¿No puedes escanearlo? Escribe esta clave en la app:</p>
+          <code id="clave2fa" class="clave-2fa">…</code>
+          <form id="formConfigurar2fa">
+            <label for="codigoConfigurar2fa">Código de 6 dígitos</label>
+            <input type="text" id="codigoConfigurar2fa" class="codigo-2fa-input" inputmode="numeric" pattern="[0-9 ]*" maxlength="8" autocomplete="one-time-code" required>
+            <label class="rec-confirmar"><input type="checkbox" id="recordarDispositivoConfigurar2fa" checked> <span>Confiar en este dispositivo 30 días (no volver a pedirme el código aquí). Desmárcalo si es un ordenador compartido.</span></label>
+            <button type="submit">Activar y entrar</button>
+            <p id="errorConfigurar2fa" class="acceso-msg acceso-msg-error" style="display:none"></p>
+          </form>
+          <button type="button" class="enlace-olvido" id="btnVolverLoginConfigurar2fa">← Volver al inicio de sesión</button>
+        </div>
+
+        <!-- VERIFICACIÓN EN DOS PASOS: códigos de recuperación (se muestran una sola vez) -->
+        <div class="pantalla" id="cajaCodigosRecuperacion">
+          <div class="rec-cabecera">
+            <div class="rec-icono"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7.5 3v5.5c0 4.6-3.1 8.1-7.5 9.5-4.4-1.4-7.5-4.9-7.5-9.5V6L12 3z"/><path d="M8.8 12.2l2.3 2.3 4.2-4.6"/></svg></div>
+            <h2>¡Verificación activada!</h2>
+            <p class="rec-sub">Guarda ahora tus códigos de recuperación. Son tu plan B si pierdes el móvil.</p>
+          </div>
+          <div class="rec-aviso" role="note">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5l9.5 16.5H2.5z"/><path d="M12 9.5v4.2"/><path d="M12 16.9h.01"/></svg>
+            <span><strong>Solo se muestran esta vez.</strong> Cada código sirve para entrar <strong>una única vez</strong>. Guárdalos en tu gestor de contraseñas o imprímelos, y no los compartas con nadie.</span>
+          </div>
+          <div class="rec-tarjeta">
+            <p class="rec-solo-impresion">ElOtroFútbol · Códigos de recuperación (cada uno vale una sola vez)</p>
+            <div class="rec-tarjeta-cab">
+              <span><span id="recTotal">8</span> códigos de un solo uso</span>
+              <span class="rec-pista"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11V5.5a1.5 1.5 0 0 1 3 0V11"/><path d="M12 10.5a1.5 1.5 0 0 1 3 0V12a1.5 1.5 0 0 1 3 0v3.5a5.5 5.5 0 0 1-5.5 5.5h-1A5.5 5.5 0 0 1 6.9 17.3L5 13.8a1.5 1.5 0 0 1 2.4-1.7L9 13.5"/></svg> Toca uno para copiarlo</span>
+            </div>
+            <div class="lista-recuperacion" id="listaCodigosRecuperacion"></div>
+          </div>
+          <div class="rec-acciones">
+            <button type="button" class="btn-sec" id="btnCopiarCodigos2fa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5 15V6.5A2.5 2.5 0 0 1 7.5 4H15"/></svg><span class="btn-sec-txt">Copiar todos</span></button>
+            <button type="button" class="btn-sec" id="btnDescargarCodigos2fa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="M7.5 11l4.5 4.5 4.5-4.5"/><path d="M5 20h14"/></svg><span class="btn-sec-txt">Descargar</span></button>
+            <button type="button" class="btn-sec" id="btnImprimirCodigos2fa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 9V4h10v5"/><rect x="4" y="9" width="16" height="8" rx="2"/><path d="M7 14h10v6H7z"/></svg><span class="btn-sec-txt">Imprimir</span></button>
+          </div>
+          <label class="rec-confirmar"><input type="checkbox" id="checkCodigosGuardados"> <span>Ya los he guardado en un lugar seguro</span></label>
+          <button type="button" class="btn-principal rec-cta" id="btnContinuarTrasCodigos" disabled>Continuar al panel</button>
+          <p class="rec-ayuda-cta" id="ayudaContinuarCodigos" aria-live="polite">Marca la casilla para poder continuar.</p>
+        </div>
+
       </div>
 
-      <a href="index.html" class="volver-portada">← Volver a la portada</a>
+      <a href="/" class="volver-portada">← Volver a la portada</a>
     </div>
   </div>
 
@@ -509,25 +703,30 @@
 
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="js/vendor/msal-browser.min.js" defer></script>
-<script src="js/ui-alertas.js?v=4"></script>
-<script src="js/config.js?v=15"></script>
-<script src="js/seo.js?v=4"></script>
+<script src="js/ui-alertas.js?v=5"></script>
+<script src="js/foco.js?v=1"></script>
+<script src="js/vendor/qrcode.js"></script>
+<script src="js/config.js?v=25"></script>
+<script src="js/seo.js?v=5"></script>
 <script src="js/lector-auth.js?v=13"></script>
-<script src="js/layout.js?v=7"></script>
+<script src="js/lecturas.js?v=7"></script>
+<script src="js/turnstile.js?v=2"></script>
+<script src="js/layout.js?v=22"></script>
 <script src="js/cookies.js?v=2"></script>
-<script src="js/ads.js?v=2"></script>
-<script src="js/main.js?v=10"></script>
+<script src="js/ads.js?v=3"></script>
+<script src="js/main.js?v=14"></script>
 <script>
 fijarSeoBasico({
   titulo: "Acceso — ELOTROFÚTBOLTV",
   descripcion: "Inicia sesión o regístrate en ELOTROFÚTBOLTV, como lector o como colaborador.",
-  urlPath: "/acceso.html",
+  urlPath: "/acceso",
 });
 
 // ---------- Modo oscuro (mismo comportamiento que el resto del sitio) ----------
 document.getElementById("themeToggleAcceso").addEventListener("click", () => {
   const esOscuroAhora = document.documentElement.getAttribute("data-theme") === "dark";
   const nuevo = esOscuroAhora ? "light" : "dark";
+  if (window.EOFTema) { window.EOFTema.fijar(nuevo); return; }
   if (nuevo === "dark") {
     document.documentElement.setAttribute("data-theme", "dark");
   } else {
@@ -570,7 +769,7 @@ document.getElementById("modoTabRedactor").addEventListener("click", () => activ
     // ?volver=<url original> (p. ej. panel.html?minuto_a_minuto=<id>
     // abierto en pestaña nueva sin sesión activa todavía), se vuelve
     // ahí en vez de siempre al dashboard general.
-    location.href = params.get("volver") || "admin/panel.html";
+    location.href = urlVolverSegura(params.get("volver"), "admin/panel.html");
     return;
   }
   if (sesionLectorActual() && params.get("cuenta") === "password") {
@@ -580,7 +779,7 @@ document.getElementById("modoTabRedactor").addEventListener("click", () => activ
   }
   if (sesionLectorActual() && !params.get("modo")) {
     const volver = params.get("volver");
-    location.href = volver || "index.html";
+    location.href = urlVolverSegura(volver, "index.html");
     return;
   }
   if (params.get("reset") || params.get("modo") === "redactor") {
@@ -644,7 +843,7 @@ document.getElementById("formLogin").addEventListener("submit", async (e) => {
     if (!res.ok) throw new Error(data.error || "No se ha podido iniciar sesión");
     guardarSesionLector(data.token, data.reader);
     const volver = new URLSearchParams(location.search).get("volver");
-    location.href = volver || "index.html";
+    location.href = urlVolverSegura(volver, "index.html");
   } catch (err) {
     mostrarMsg("loginMsg", err.message, false);
   } finally {
@@ -658,15 +857,18 @@ document.getElementById("formRegistro").addEventListener("submit", async (e) => 
   const nombre = document.getElementById("regNombre").value.trim();
   const email = document.getElementById("regEmail").value.trim();
   const password = document.getElementById("regPassword").value;
+  const contTurnstile = document.querySelector("#formRegistro [data-eof-turnstile]");
+  const turnstileToken = await window.EOFTurnstile.esperarToken(contTurnstile);
   btn.disabled = true;
   document.getElementById("registroMsg").style.display = "none";
   try {
     const res = await apiFetch("/api/readers/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nombre, email, password }),
+      body: JSON.stringify({ nombre, email, password, turnstileToken, web: window.EOFTurnstile.trampa(contTurnstile) }),
     });
     const data = await res.json();
+    window.EOFTurnstile.reiniciar(contTurnstile);
     if (!res.ok) throw new Error(data.error || "No se ha podido crear la cuenta");
     mostrarMsg("registroMsg", data.mensaje || "Cuenta creada. Revisa tu correo para confirmarla.", true);
     document.getElementById("formRegistro").reset();
@@ -681,14 +883,17 @@ document.getElementById("formOlvidoLector").addEventListener("submit", async (e)
   e.preventDefault();
   const btn = document.getElementById("btnOlvidoLector");
   const email = document.getElementById("olvidoEmailLector").value.trim();
+  const contOlvidoL = document.querySelector("#formOlvidoLector [data-eof-turnstile]");
+  const turnstileToken = await window.EOFTurnstile.esperarToken(contOlvidoL);
   btn.disabled = true;
   document.getElementById("olvidoMsgLector").style.display = "none";
   try {
     const res = await apiFetch("/api/readers/forgot-password", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email, turnstileToken }),
     });
+    window.EOFTurnstile.reiniciar(contOlvidoL);
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "No se ha podido procesar la solicitud");
     mostrarMsg("olvidoMsgLector", data.mensaje, true);
@@ -742,42 +947,305 @@ function mostrarPantallaRedactor(id) {
   document.getElementById(id).classList.add("activa");
 }
 
+// Dispositivo de confianza (2FA solo en dispositivos nuevos): tras verificar el código se
+// guarda aquí un token firmado por el servidor, uno por usuario. En los siguientes accesos
+// se envía junto a usuario + contraseña y, si es válido, el servidor no pide el código.
+// Si el token ya no vale (caducó, cambió la contraseña o el 2FA) se borra y se pide el código.
+const claveDispositivo2fa = (u) => "eof_td_" + encodeURIComponent(String(u || "").trim());
+function leerDispositivo2fa(u) { try { return localStorage.getItem(claveDispositivo2fa(u)) || undefined; } catch { return undefined; } }
+function guardarDispositivo2fa(u, token) { try { if (u && token) localStorage.setItem(claveDispositivo2fa(u), token); } catch {} }
+function olvidarDispositivo2fa(u) { try { localStorage.removeItem(claveDispositivo2fa(u)); } catch {} }
+let usuarioLogin2fa = "";
+
 document.getElementById("loginFormRedactor").addEventListener("submit", async (e) => {
   e.preventDefault();
   const username = document.getElementById("username").value.trim();
   const password = document.getElementById("password").value;
   const err = document.getElementById("errorMsg");
   err.style.display = "none";
+  usuarioLogin2fa = username;
   try {
+    const dispositivo = leerDispositivo2fa(username);
     const res = await apiFetch(`/api/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ username, password, dispositivo }),
     });
     const data = await res.json();
     if (!res.ok) { err.textContent = data.error || "Error de acceso"; err.style.display = "block"; return; }
-    localStorage.setItem("eof_token", data.token);
-    localStorage.setItem("eof_user", JSON.stringify(data.user));
-    // Marca de tiempo del login: admin.js la lee (eofDentroDeMargenGraciaLogin)
-    // para no desloguear a alguien que acaba de entrar si las primeras
-    // lecturas del panel dan un 401 por lag de propagación de la sesión
-    // entre PRIMARY y SECONDARY (ver el comentario grande junto a
-    // apiFetch() en admin.js).
-    try { sessionStorage.setItem("eof_login_en", String(Date.now())); } catch {}
-
-    // Primer inicio de sesión: si la cuenta todavía no tiene correo
-    // electrónico guardado, se pide antes de entrar al panel (así luego
-    // se puede usar "He olvidado mi contraseña").
-    if (!data.user.email) {
-      document.getElementById("overlayEmail").classList.add("activo");
-    } else {
-      const volver = new URLSearchParams(location.search).get("volver");
-      location.href = volver || "admin/panel.html";
-    }
+    // Si se envió un token de dispositivo y aun así se pide el código, ya no es válido.
+    if (dispositivo && (data.requiere_2fa || data.requiere_configurar_2fa)) olvidarDispositivo2fa(username);
+    // Administradores: la contraseña sola no da sesión, hace falta el 2FA.
+    if (data.requiere_2fa) { desafio2fa = data.desafio; abrirPantallaCodigo2fa(); return; }
+    if (data.requiere_configurar_2fa) { desafio2fa = data.desafio; await abrirConfiguracion2fa(); return; }
+    await completarLoginRedactor(data);
   } catch (err2) {
     err.textContent = "No se ha podido conectar con el servidor.";
     err.style.display = "block";
   }
+});
+
+// ---------- Verificación en dos pasos (obligatoria para admins) ----------
+let desafio2fa = null;
+let sesionPendiente2fa = null;
+let modoRecuperacion2fa = false;
+
+// Guarda la sesión y entra al panel (pidiendo antes el correo si falta).
+async function completarLoginRedactor(data) {
+  localStorage.setItem("eof_token", data.token);
+  localStorage.setItem("eof_user", JSON.stringify(data.user));
+  // El servidor devuelve un token de dispositivo nuevo (o renovado) cuando procede.
+  if (data.dispositivo) guardarDispositivo2fa(usuarioLogin2fa || (data.user && data.user.username), data.dispositivo);
+  // Marca de tiempo del login: admin.js la lee (eofDentroDeMargenGraciaLogin)
+  // para no desloguear a alguien que acaba de entrar si las primeras
+  // lecturas del panel dan un 401 por lag de propagación de la sesión
+  // entre PRIMARY y SECONDARY (ver el comentario grande junto a
+  // apiFetch() en admin.js).
+  try { sessionStorage.setItem("eof_login_en", String(Date.now())); } catch {}
+
+  // Primer inicio de sesión: si la cuenta todavía no tiene correo
+  // electrónico guardado, se pide antes de entrar al panel (así luego
+  // se puede usar "He olvidado mi contraseña").
+  if (!data.user.email) {
+    document.getElementById("overlayEmail").classList.add("activo");
+  } else {
+    const volver = new URLSearchParams(location.search).get("volver");
+    location.href = urlVolverSegura(volver, "admin/panel.html");
+  }
+}
+
+function mostrarError2fa(idError, texto) {
+  const el = document.getElementById(idError);
+  el.textContent = texto;
+  el.style.display = "block";
+}
+function volverAlLogin2fa(mensaje) {
+  desafio2fa = null;
+  sesionPendiente2fa = null;
+  document.getElementById("password").value = "";
+  mostrarPantallaRedactor("cajaLogin");
+  if (mensaje) {
+    const err = document.getElementById("errorMsg");
+    err.textContent = mensaje;
+    err.style.display = "block";
+  }
+}
+async function post2fa(ruta, cuerpo) {
+  const res = await apiFetch(ruta, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ desafio: desafio2fa, ...cuerpo }),
+  });
+  const data = await res.json().catch(() => ({}));
+  return { res, data };
+}
+
+function configurarModoCodigo2fa(recuperacion) {
+  modoRecuperacion2fa = recuperacion;
+  const input = document.getElementById("codigoDosPasos");
+  input.value = "";
+  input.classList.toggle("modo-recuperacion", recuperacion);
+  input.removeAttribute("pattern");
+  input.maxLength = recuperacion ? 14 : 8;
+  input.inputMode = recuperacion ? "text" : "numeric";
+  input.autocomplete = recuperacion ? "off" : "one-time-code";
+  document.getElementById("labelCodigoDosPasos").textContent = recuperacion ? "Código de recuperación" : "Código de 6 dígitos";
+  document.getElementById("ayudaDosPasos").textContent = recuperacion
+    ? "Escribe uno de los códigos de recuperación que guardaste al activar la verificación (formato XXXXX-XXXXX). Cada código solo sirve una vez."
+    : "Abre tu app de autenticación (Google Authenticator, Microsoft Authenticator, Authy…) y escribe el código de 6 dígitos de ElOtroFútbol.";
+  document.getElementById("btnAlternarRecuperacion").textContent = recuperacion
+    ? "← Usar el código de mi app"
+    : "He perdido el móvil: usar un código de recuperación";
+  document.getElementById("errorDosPasos").style.display = "none";
+  input.focus();
+}
+function abrirPantallaCodigo2fa() {
+  mostrarPantallaRedactor("cajaDosPasos");
+  configurarModoCodigo2fa(false);
+}
+document.getElementById("btnAlternarRecuperacion").addEventListener("click", () => configurarModoCodigo2fa(!modoRecuperacion2fa));
+document.getElementById("btnVolverLogin2fa").addEventListener("click", () => volverAlLogin2fa());
+document.getElementById("btnVolverLoginConfigurar2fa").addEventListener("click", () => volverAlLogin2fa());
+
+document.getElementById("formDosPasos").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const boton = e.target.querySelector("button[type=submit]");
+  document.getElementById("errorDosPasos").style.display = "none";
+  boton.disabled = true;
+  try {
+    const { res, data } = await post2fa("/api/login/2fa", { codigo: document.getElementById("codigoDosPasos").value, recordar: document.getElementById("recordarDispositivo2fa").checked });
+    if (!res.ok) {
+      if (data.caducado) { volverAlLogin2fa(data.error); return; }
+      mostrarError2fa("errorDosPasos", data.error || "Código incorrecto.");
+      return;
+    }
+    if (typeof data.codigos_recuperacion_restantes === "number" && data.codigos_recuperacion_restantes <= 2) {
+      alert("Has entrado con un código de recuperación. Te quedan " + data.codigos_recuperacion_restantes + ". " + (data.user && data.user.rol === "admin" ? "Pídele a otro administrador que restablezca tu verificación para generar códigos nuevos." : "Para generar códigos nuevos, desactiva la verificación en Ajustes de cuenta > Seguridad y vuelve a activarla."));
+    }
+    await completarLoginRedactor(data);
+  } catch {
+    mostrarError2fa("errorDosPasos", "No se ha podido conectar con el servidor.");
+  } finally {
+    boton.disabled = false;
+  }
+});
+
+async function abrirConfiguracion2fa() {
+  mostrarPantallaRedactor("cajaConfigurar2fa");
+  document.getElementById("errorConfigurar2fa").style.display = "none";
+  document.getElementById("codigoConfigurar2fa").value = "";
+  document.getElementById("clave2fa").textContent = "…";
+  document.getElementById("qr2fa").innerHTML = "";
+  try {
+    const { res, data } = await post2fa("/api/login/2fa/setup", {});
+    if (!res.ok) {
+      if (data.caducado) { volverAlLogin2fa(data.error); return; }
+      mostrarError2fa("errorConfigurar2fa", data.error || "No se ha podido preparar la verificación.");
+      return;
+    }
+    document.getElementById("clave2fa").textContent = (data.secreto || "").replace(/(.{4})/g, "$1 ").trim();
+    try {
+      const qr = qrcode(0, "M");
+      qr.addData(data.otpauth);
+      qr.make();
+      document.getElementById("qr2fa").innerHTML = qr.createSvgTag({ cellSize: 6, margin: 2, scalable: true });
+    } catch {
+      document.getElementById("qr2fa").textContent = "";
+    }
+    document.getElementById("codigoConfigurar2fa").focus();
+  } catch {
+    mostrarError2fa("errorConfigurar2fa", "No se ha podido conectar con el servidor.");
+  }
+}
+
+document.getElementById("formConfigurar2fa").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const boton = e.target.querySelector("button[type=submit]");
+  document.getElementById("errorConfigurar2fa").style.display = "none";
+  boton.disabled = true;
+  try {
+    const { res, data } = await post2fa("/api/login/2fa/activar", { codigo: document.getElementById("codigoConfigurar2fa").value, recordar: document.getElementById("recordarDispositivoConfigurar2fa").checked });
+    if (!res.ok) {
+      if (data.caducado) { volverAlLogin2fa(data.error); return; }
+      mostrarError2fa("errorConfigurar2fa", data.error || "Código incorrecto.");
+      return;
+    }
+    // Todavía NO se guarda la sesión ni se entra: primero hay que ver y
+    // guardar los códigos de recuperación (solo se muestran esta vez).
+    sesionPendiente2fa = data;
+    pintarCodigosRecuperacion(data.codigos_recuperacion || []);
+    document.getElementById("checkCodigosGuardados").checked = false;
+    document.getElementById("btnContinuarTrasCodigos").disabled = true;
+    document.getElementById("ayudaContinuarCodigos").textContent = "Marca la casilla para poder continuar.";
+    mostrarPantallaRedactor("cajaCodigosRecuperacion");
+  } catch {
+    mostrarError2fa("errorConfigurar2fa", "No se ha podido conectar con el servidor.");
+  } finally {
+    boton.disabled = false;
+  }
+});
+
+// Pinta los códigos como fichas pulsables (se construyen con textContent: nada de innerHTML).
+function pintarCodigosRecuperacion(codigos) {
+  const cont = document.getElementById("listaCodigosRecuperacion");
+  cont.textContent = "";
+  codigos.forEach((codigo, i) => {
+    const ficha = document.createElement("button");
+    ficha.type = "button";
+    ficha.className = "codigo-rec";
+    ficha.dataset.codigo = codigo;
+    ficha.style.setProperty("--i", String(i));
+    ficha.title = "Copiar este código";
+    ficha.setAttribute("aria-label", "Código " + (i + 1) + ": " + codigo + ". Pulsa para copiarlo");
+    const n = document.createElement("span");
+    n.className = "codigo-rec-n";
+    n.textContent = String(i + 1);
+    const v = document.createElement("span");
+    v.className = "codigo-rec-v";
+    v.textContent = codigo;
+    ficha.append(n, v);
+    cont.appendChild(ficha);
+  });
+  document.getElementById("recTotal").textContent = String(codigos.length);
+}
+function textoCodigosRecuperacion() {
+  return (sesionPendiente2fa && sesionPendiente2fa.codigos_recuperacion || []).join("\n");
+}
+// Copia con respaldo para navegadores/contextos sin navigator.clipboard.
+async function copiarTexto2fa(texto) {
+  try {
+    await navigator.clipboard.writeText(texto);
+    return true;
+  } catch {
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = texto;
+      ta.setAttribute("readonly", "");
+      ta.style.cssText = "position:fixed;top:-1000px;opacity:0;";
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand("copy");
+      ta.remove();
+      return ok;
+    } catch { return false; }
+  }
+}
+// Cambia un instante el texto de un botón de acción (sin destruir su icono) y lo restaura.
+function feedbackBoton2fa(boton, texto, ok = true) {
+  const span = boton.querySelector(".btn-sec-txt");
+  if (!span) return;
+  if (!boton.dataset.textoOriginal) boton.dataset.textoOriginal = span.textContent;
+  span.textContent = texto;
+  boton.classList.toggle("hecho", ok);
+  clearTimeout(boton._temporizador);
+  boton._temporizador = setTimeout(() => {
+    span.textContent = boton.dataset.textoOriginal;
+    boton.classList.remove("hecho");
+  }, 2000);
+}
+document.getElementById("listaCodigosRecuperacion").addEventListener("click", async (e) => {
+  const ficha = e.target.closest(".codigo-rec");
+  if (!ficha) return;
+  if (await copiarTexto2fa(ficha.dataset.codigo)) {
+    ficha.classList.add("copiado");
+    setTimeout(() => ficha.classList.remove("copiado"), 1400);
+  }
+});
+document.getElementById("btnCopiarCodigos2fa").addEventListener("click", async (e) => {
+  const boton = e.currentTarget;
+  const ok = await copiarTexto2fa(textoCodigosRecuperacion());
+  feedbackBoton2fa(boton, ok ? "¡Copiados!" : "Cópialos a mano", ok);
+});
+document.getElementById("btnImprimirCodigos2fa").addEventListener("click", () => {
+  document.body.classList.add("imprimiendo-codigos");
+  const limpiar = () => document.body.classList.remove("imprimiendo-codigos");
+  window.addEventListener("afterprint", limpiar, { once: true });
+  window.print();
+});
+document.getElementById("btnDescargarCodigos2fa").addEventListener("click", (e) => {
+  const fecha = new Date().toLocaleDateString("es-ES");
+  const cabecera = "Códigos de recuperación de ElOtroFútbol (" + fecha + ")\nCada código sirve para entrar UNA sola vez. Guárdalo en un lugar seguro.\n\n";
+  const numerados = (sesionPendiente2fa && sesionPendiente2fa.codigos_recuperacion || []).map((c, i) => (i + 1) + ". " + c).join("\n");
+  const blob = new Blob([cabecera + numerados + "\n"], { type: "text/plain;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "elotrofutbol-codigos-recuperacion.txt";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  feedbackBoton2fa(e.currentTarget, "¡Descargado!");
+});
+document.getElementById("checkCodigosGuardados").addEventListener("change", (e) => {
+  document.getElementById("btnContinuarTrasCodigos").disabled = !e.target.checked;
+  document.getElementById("ayudaContinuarCodigos").textContent = e.target.checked ? "" : "Marca la casilla para poder continuar.";
+});
+document.getElementById("btnContinuarTrasCodigos").addEventListener("click", async () => {
+  if (!sesionPendiente2fa) return;
+  const datos = sesionPendiente2fa;
+  sesionPendiente2fa = null;
+  document.getElementById("listaCodigosRecuperacion").innerHTML = "";
+  await completarLoginRedactor(datos);
 });
 
 // ---------- Petición de correo electrónico (primer inicio de sesión) ----------
@@ -798,7 +1266,7 @@ document.getElementById("formEmailInicial").addEventListener("submit", async (e)
     const user = JSON.parse(localStorage.getItem("eof_user") || "null");
     if (user) { user.email = data.email; localStorage.setItem("eof_user", JSON.stringify(user)); }
     const volver = new URLSearchParams(location.search).get("volver");
-    location.href = volver || "admin/panel.html";
+    location.href = urlVolverSegura(volver, "admin/panel.html");
   } catch (err2) {
     err.textContent = "No se ha podido conectar con el servidor.";
     err.style.display = "block";
@@ -817,13 +1285,16 @@ document.getElementById("formOlvido").addEventListener("submit", async (e) => {
   const ok = document.getElementById("okMsg");
   err.style.display = "none";
   ok.style.display = "none";
+  const contOlvidoS = document.querySelector("#formOlvido [data-eof-turnstile]");
+  const turnstileToken = await window.EOFTurnstile.esperarToken(contOlvidoS);
 
   try {
     const res = await apiFetch(`/api/forgot-password`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, email }),
+      body: JSON.stringify({ username, email, turnstileToken }),
     });
+    window.EOFTurnstile.reiniciar(contOlvidoS);
     const data = await res.json();
     if (!res.ok) { err.textContent = data.error || "No se ha podido procesar la solicitud"; err.style.display = "block"; return; }
     ok.textContent = data.mensaje || "Si los datos son correctos, te hemos enviado un enlace a tu correo.";

@@ -7,9 +7,29 @@
 //
 // La cuenta de lector no es solo "para comentar": es la cuenta pública
 // general del lector en el medio. Ya da acceso a comentar con nombre
-// firmado, votar en las encuestas y guardar la porra de cada jornada
+// firmado y guardar la porra de cada jornada
 // (con resumen de temporada y ranking), y con el tiempo irá sumando
 // muchas más funciones.
+
+// SEGURIDAD (open redirect / XSS por "javascript:"): el parámetro ?volver=
+// llega por la URL y se usaba tal cual en location.href. Un enlace
+// "acceso.html?volver=javascript:..." ejecutaba código al terminar el login,
+// y "?volver=https://sitio-malo" mandaba al usuario a un phishing justo
+// después de autenticarse. Solo se acepta un destino del MISMO origen.
+function urlVolverSegura(valor, porDefecto) {
+  try {
+    if (typeof valor !== "string" || !valor || valor.length > 500) return porDefecto;
+    // Caracteres de control o barras invertidas: los navegadores los
+    // normalizan de formas que permiten saltarse las comprobaciones.
+    if (/[\u0000-\u001f\u007f\\]/.test(valor)) return porDefecto;
+    const base = new URL(location.href);
+    const destino = new URL(valor, base);
+    if (destino.origin !== base.origin) return porDefecto; // "javascript:" y "data:" tienen origin "null"
+    return destino.href;
+  } catch {
+    return porDefecto;
+  }
+}
 
 const EOF_LECTOR_TOKEN_KEY = "eof_lector_token";
 const EOF_LECTOR_DATA_KEY = "eof_lector_data";
@@ -67,6 +87,9 @@ async function cerrarSesionLector() {
   const token = tokenLectorActual();
   localStorage.removeItem(EOF_LECTOR_TOKEN_KEY);
   localStorage.removeItem(EOF_LECTOR_DATA_KEY);
+  // Guardadas/historial del navegador (js/lecturas.js): se borran al cerrar
+  // sesión para no dejar datos de la cuenta en un equipo compartido.
+  if (window.EOFLecturas) window.EOFLecturas.limpiarLocal();
   if (token) {
     try {
       await apiFetch("/api/readers/logout", {
@@ -101,7 +124,7 @@ function accesoLectorHTML() {
   if (!reader) {
     return `
       <div class="acceso-lector">
-        <span>Crea tu cuenta de lector: comenta con tu nombre, vota en las encuestas, guarda tu porra, entra en el ranking y accede a todas las funciones que iremos añadiendo.</span>
+        <span>Crea tu cuenta de lector: comenta con tu nombre, guarda tu porra, entra en el ranking y accede a todas las funciones que iremos añadiendo.</span>
         <a href="acceso.html?volver=${volver}" class="acceso-lector-link">Inicia sesión o regístrate</a>
       </div>`;
   }
@@ -153,7 +176,7 @@ async function alTerminarLoginGoogle(response) {
     if (!res.ok) throw new Error(data.error || "No se ha podido iniciar sesión con Google");
     guardarSesionLector(data.token, data.reader);
     const volver = new URLSearchParams(location.search).get("volver");
-    location.href = volver || "index.html";
+    location.href = urlVolverSegura(volver, "index.html");
   } catch (err) {
     botones.forEach((b) => b.classList.remove("cargando"));
     // Mismo patrón que los formularios normales de acceso.html: si hay
@@ -348,7 +371,7 @@ async function alTerminarLoginMicrosoft(idToken, boton) {
     if (!res.ok) throw new Error(data.error || "No se ha podido iniciar sesión con Microsoft");
     guardarSesionLector(data.token, data.reader);
     const volver = new URLSearchParams(location.search).get("volver");
-    location.href = volver || "index.html";
+    location.href = urlVolverSegura(volver, "index.html");
   } catch (err) {
     // Mismo patrón que con Google: si hay un elemento de mensaje de
     // error visible en la pantalla activa, se usa; si no, un alert.
@@ -466,7 +489,7 @@ async function procesarRetornoDiscord() {
     if (!res.ok) throw new Error(data.error || "No se ha podido completar el inicio de sesión con Discord");
     guardarSesionLector(sesionDiscord, data.reader);
     const volver = params.get("volver");
-    location.href = volver || "index.html";
+    location.href = urlVolverSegura(volver, "index.html");
   } catch (err) {
     mostrarError(err.message);
   }
@@ -530,7 +553,7 @@ async function procesarRetornoX() {
     guardarSesionLector(sesionX, data.reader);
     await pedirCorreoSiEsSinteticoX(data.reader);
     const volver = params.get("volver");
-    location.href = volver || "index.html";
+    location.href = urlVolverSegura(volver, "index.html");
   } catch (err) {
     mostrarError(err.message);
   }

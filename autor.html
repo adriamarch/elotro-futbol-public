@@ -1,15 +1,28 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<script src="js/tema.js"></script>
+<meta name="google-adsense-account" content="ca-pub-7347856722927942">
+<script src="js/tema.js?v=2"></script>
+<script src="js/preferencias.js?v=3"></script>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://api.elotrofutbol.media" crossorigin>
+<link rel="preconnect" href="https://res.cloudinary.com">
 <title id="pageTitle">Autor — ELOTROFÚTBOLTV</title>
-<link rel="icon" href="/favicon.ico?v=2" sizes="any">
-<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=2">
-<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
-<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&family=Playfair+Display:wght@700;800&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=17">
+<meta property="og:image" content="https://elotrofutbol.media/img/og-default.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://elotrofutbol.media/img/og-default.png">
+<link rel="icon" href="/favicon.ico?v=3" sizes="any">
+<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=3">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png?v=2">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&family=Playfair+Display:wght@700;800&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" onload="this.onload=null;this.rel='stylesheet'"><noscript><link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&family=Playfair+Display:wght@700;800&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet"></noscript>
+<link rel="stylesheet" href="css/style.css?v=25">
+<link rel="stylesheet" href="css/accesibilidad.css?v=1">
+<script src="js/accesibilidad.js?v=1" defer></script>
+<link rel="stylesheet" href="css/foco.css?v=1">
+<link rel="stylesheet" href="css/perfil-autor-mejoras.css?v=2">
 </head>
 <body>
 
@@ -20,22 +33,24 @@
     <div class="estado-info"><div class="spinner"></div><p>Cargando...</p></div>
   </div>
   <div id="noticiasAutorWrap" style="display:none">
-    <h2 class="section-title">Sus últimas noticias</h2>
+    <h2 class="section-title">Sus últimas noticias <span class="pa-contador" id="contadorAutor"></span></h2>
     <div class="grid-noticias" id="gridAutor"></div>
   </div>
 </main>
 
 <div id="site-footer"></div>
 
-<script src="js/ui-alertas.js?v=4"></script>
-<script src="js/config.js?v=15"></script>
-<script src="js/seo.js?v=4"></script>
-<script src="js/clubs.js?v=4"></script>
+<script src="js/ui-alertas.js?v=5"></script>
+<script src="js/foco.js?v=1"></script>
+<script src="js/config.js?v=25"></script>
+<script src="js/seo.js?v=5"></script>
+<script src="js/clubs.js?v=6"></script>
 <script src="js/lector-auth.js?v=13"></script>
-<script src="js/layout.js?v=7"></script>
+<script src="js/lecturas.js?v=7"></script>
+<script src="js/layout.js?v=22"></script>
 <script src="js/cookies.js?v=2"></script>
-<script src="js/ads.js?v=2"></script>
-<script src="js/main.js?v=10"></script>
+<script src="js/ads.js?v=3"></script>
+<script src="js/main.js?v=14"></script>
 <script>
 async function cargaPerfilAutor() {
   const id = new URLSearchParams(location.search).get("id");
@@ -46,7 +61,7 @@ async function cargaPerfilAutor() {
       titulo: "Autor no especificado",
       texto: "El enlace al que has accedido no incluye ningún autor. Vuelve a la portada para seguir navegando.",
       tipo: "error",
-      cta: `<a href="index.html" class="btn-volver">Ir a portada</a>`,
+      cta: `<a href="/" class="btn-volver">Ir a portada</a>`,
     });
     return;
   }
@@ -64,41 +79,105 @@ async function cargaPerfilAutor() {
       migas: [{ nombre: autor.nombre }],
     });
 
+    const nombre = autor.nombre || "";
+    const primerNombre = nombre.trim().split(/\s+/)[0] || nombre;
+    const lista = Array.isArray(articulos) ? articulos : [];
+
     const redesHTML = Object.entries(autor.redes || {})
-      .filter(([, url]) => url)
-      .map(([key, url]) => `<a href="${url}" target="_blank" rel="noopener" title="${NOMBRES_REDES[key] || key}">${ICONOS_REDES[key] || ""}</a>`)
+      .filter(([, url]) => urlExternaSegura(url))
+      .map(([key, url]) => `<a href="${urlExternaSegura(url)}" target="_blank" rel="noopener" title="${escapeHtml(NOMBRES_REDES[key] || key)}" aria-label="${escapeHtml(nombre)} en ${escapeHtml(NOMBRES_REDES[key] || key)}">${ICONOS_REDES[key] || ""}</a>`)
       .join("");
 
+    // Avatar: foto con su foco, o iniciales si no hay foto (o si falla al cargar).
+    const inicialesAutor = escapeHtml(iniciales(nombre) || "?");
+    const avatarHTML = autor.avatar_url
+      ? `<img${EOF_FOCO.attrs(autor.avatar_foco, "pa-avatar")} src="${urlExternaSegura(cloudinaryOptimizada(autor.avatar_url, 340))}" alt="${escapeHtml(nombre)}" width="170" height="170" onerror="this.replaceWith(Object.assign(document.createElement('span'), {className:'pa-avatar pa-avatar-iniciales', textContent:'${inicialesAutor}'}))">`
+      : `<span class="pa-avatar pa-avatar-iniciales" aria-hidden="true">${inicialesAutor}</span>`;
+
+    // Clubes: etiqueta con escudo (el mismo que usa el resto de la web).
+    const equipos = Array.isArray(autor.equipo) ? autor.equipo : (autor.equipo ? [autor.equipo] : []);
+    const clubHTML = (nombreClub) => {
+      let escudo = "";
+      try {
+        let url = typeof getEscudoUrl === "function" ? getEscudoUrl(nombreClub) : "";
+        if (url) {
+          if (!/^(https?:)?\/\//.test(url) && !url.startsWith("/")) url = "/" + url;
+          escudo = `<img src="${escapeHtml(url)}" alt="" width="26" height="26" loading="lazy" data-equipo="${escapeHtml(nombreClub)}" onerror="manejarErrorEscudo(this)">`;
+        }
+      } catch (_) {}
+      return `<li class="pa-club">${escudo}${escapeHtml(nombreClub)}</li>`;
+    };
+
+    // Experiencia: cada línea escrita en el panel pasa a ser un punto de la línea de tiempo.
+    const lineasExperiencia = String(autor.experiencia || "").split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    const experienciaHTML = lineasExperiencia.length
+      ? `<ol class="pa-linea">${lineasExperiencia.map((l) => `<li>${escapeHtml(l)}</li>`).join("")}</ol>`
+      : `<p class="pa-vacio">No hay experiencias previas.</p>`;
+
+    // Actividad, calculada con las noticias recientes que devuelve la API.
+    const hace = (fecha) => {
+      const dias = Math.floor((Date.now() - fecha.getTime()) / 86400000);
+      if (dias <= 0) return "Hoy";
+      if (dias === 1) return "Ayer";
+      if (dias < 7) return `Hace ${dias} días`;
+      if (dias < 30) { const s = Math.floor(dias / 7); return `Hace ${s} ${s === 1 ? "semana" : "semanas"}`; }
+      return formatFecha(fecha.toISOString());
+    };
+    const fechas = lista.map((a) => new Date(a.fecha_publicacion)).filter((d) => !isNaN(d.getTime())).sort((a, b) => b - a);
+    const cuentaCat = {};
+    lista.forEach((a) => { if (a.categoria) cuentaCat[a.categoria] = (cuentaCat[a.categoria] || 0) + 1; });
+    const secciones = Object.entries(cuentaCat).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([cat]) => cat);
+    const lateralHTML = lista.length
+      ? `<aside class="pa-lateral" aria-label="Actividad de ${escapeHtml(nombre)}">
+          <h2 class="pa-h2">Actividad</h2>
+          <ul class="pa-datos">
+            <li><strong class="pa-cifra">${lista.length}</strong><span>Noticias recientes</span></li>
+            <li><strong class="pa-cifra pa-cifra-texto">${fechas.length ? escapeHtml(hace(fechas[0])) : "—"}</strong><span>Última publicación</span></li>
+          </ul>
+          ${secciones.length ? `<h3 class="pa-h3">Secciones en las que escribe</h3>
+          <ul class="pa-secciones">${secciones.map((cat) => `<li>${escapeHtml(categoriaLabel(cat))}</li>`).join("")}</ul>` : ""}
+        </aside>`
+      : `<aside class="pa-lateral" aria-label="Actividad de ${escapeHtml(nombre)}">
+          <h2 class="pa-h2">Actividad</h2>
+          <p class="pa-vacio">Todavía no ha publicado noticias.</p>
+        </aside>`;
+
     cont.innerHTML = `
-      <div class="perfil-autor-cabecera">
-        ${autor.avatar_url
-          ? `<img class="perfil-autor-avatar" src="${cloudinaryOptimizada(autor.avatar_url, 160)}" alt="${escapeHtml(autor.nombre)}" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'), {className:'perfil-autor-avatar perfil-autor-avatar-iniciales', textContent: '${escapeHtml(iniciales(autor.nombre) || "?")}'}))">`
-          : `<span class="perfil-autor-avatar perfil-autor-avatar-iniciales">${escapeHtml(iniciales(autor.nombre) || "?")}</span>`}
-        <div>
-          <span class="perfil-autor-etiqueta">Autor</span>
-          <h1>${escapeHtml(autor.nombre)}</h1>
-          ${(() => {
-            const equipos = Array.isArray(autor.equipo) ? autor.equipo : (autor.equipo ? [autor.equipo] : []);
-            return equipos.length ? `<p class="perfil-autor-equipo">${escapeHtml(equipos.join(" · "))}</p>` : "";
-          })()}
-          ${autor.bio
-            ? `<p class="perfil-autor-bio">${escapeHtml(autor.bio)}</p>`
-            : `<p class="perfil-autor-bio perfil-autor-vacio">✍️ Este autor todavía no ha añadido una presentación.</p>`}
-          <div class="perfil-autor-experiencia">
-            <h2>Experiencia previa</h2>
-            ${autor.experiencia
-              ? `<p>${escapeHtml(autor.experiencia)}</p>`
-              : `<p class="perfil-autor-vacio">📋 No hay experiencias previas.</p>`}
+      <section class="pa-ficha" aria-labelledby="paNombre">
+        <div class="pa-banda" aria-hidden="true"></div>
+        <div class="pa-identidad">
+          ${avatarHTML}
+          <div class="pa-id-texto">
+            <span class="pa-rol">Autor</span>
+            <h1 class="pa-nombre" id="paNombre">${escapeHtml(nombre)}</h1>
+            ${equipos.length ? `<ul class="pa-clubes" aria-label="Clubes que sigue">${equipos.map(clubHTML).join("")}</ul>` : ""}
           </div>
-          ${redesHTML ? `<div class="perfil-autor-redes">${redesHTML}</div>` : ""}
+          ${redesHTML ? `<div class="pa-redes" aria-label="Redes sociales">${redesHTML}</div>` : ""}
         </div>
-      </div>`;
+        <div class="pa-cuerpo">
+          <div class="pa-principal">
+            <section class="pa-bloque">
+              <h2 class="pa-h2">Sobre ${escapeHtml(primerNombre)}</h2>
+              ${autor.bio
+                ? `<p class="pa-bio">${escapeHtml(autor.bio)}</p>`
+                : `<p class="pa-vacio">Este autor todavía no ha añadido una presentación.</p>`}
+            </section>
+            <section class="pa-bloque">
+              <h2 class="pa-h2">Experiencia previa</h2>
+              ${experienciaHTML}
+            </section>
+          </div>
+          ${lateralHTML}
+        </div>
+      </section>`;
 
     const gridWrap = document.getElementById("noticiasAutorWrap");
     const grid = document.getElementById("gridAutor");
     if (articulos && articulos.length) {
       gridWrap.style.display = "block";
       grid.innerHTML = articulos.map(cardHTML).join("");
+      const contador = document.getElementById("contadorAutor");
+      if (contador) contador.textContent = articulos.length;
     }
   } catch (err) {
     _seoMeta("name", "robots", "noindex");
@@ -106,7 +185,7 @@ async function cargaPerfilAutor() {
       titulo: "No se ha podido cargar este perfil",
       texto: "Puede que el autor ya no exista o que haya un problema de conexión. Vuelve a la portada e inténtalo de nuevo.",
       tipo: "error",
-      cta: `<a href="index.html" class="btn-volver">Ir a portada</a>`,
+      cta: `<a href="/" class="btn-volver">Ir a portada</a>`,
     });
   }
 }

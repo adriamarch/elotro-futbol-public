@@ -52,8 +52,15 @@
 # convertirse nunca en enlace -- hace falta en las dos rutas de abajo,
 # no solo en una, porque Cloudflare Pages no fusiona reglas de
 # _headers para una misma cabecera.
+# SEGURIDAD (CSP): 'unsafe-eval' se ha quitado de las rutas del panel de
+# administración (/panel, /panel.html, /admin/panel, /admin/panel.html): ahí no
+# se cargan scripts de anuncios ni hay eval()/new Function en el código propio
+# ni en js/vendor. Se mantiene en el resto de rutas porque los scripts de
+# anuncios (Google, Ezoic, Taboola) lo piden. 'unsafe-inline' sigue siendo
+# necesario mientras existan onclick=/style= inline.
+#
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://accounts.google.com https://alcdn.msauth.net https://platform.twitter.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https://res.cloudinary.com; connect-src 'self' https://api.elotrofutbol.media https://elotro-futbol-api-production.up.railway.app https://accounts.google.com https://login.microsoftonline.com https://es.wikipedia.org; frame-src https://accounts.google.com https://platform.twitter.com https://syndication.twitter.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://accounts.google.com https://alcdn.msauth.net https://platform.twitter.com https://*.googlesyndication.com https://*.doubleclick.net https://www.googletagservices.com https://*.googleadservices.com https://*.adtrafficquality.google https://fundingchoicesmessages.google.com https://contextual.media.net https://*.media.net https://www.ezojs.com https://*.ezoic.net https://*.ezodn.com https://*.gatekeeperconsent.com https://cdn.taboola.com https://*.taboola.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https://res.cloudinary.com; connect-src 'self' https://api.elotrofutbol.media https://elotro-futbol-api-production.up.railway.app https://accounts.google.com https://login.microsoftonline.com https://es.wikipedia.org https://*.googlesyndication.com https://*.doubleclick.net https://*.adtrafficquality.google https://fundingchoicesmessages.google.com https://*.media.net https://*.ezoic.net https://*.ezoic.com https://*.ezodn.com https://*.gatekeeperconsent.com https://*.taboola.com https://*.taboolasyndication.com; frame-src https://challenges.cloudflare.com https://accounts.google.com https://platform.twitter.com https://syndication.twitter.com https://*.googlesyndication.com https://*.doubleclick.net https://www.google.com https://*.adtrafficquality.google https://*.media.net https://*.ezoic.net https://*.ezodn.com https://*.taboola.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests
   Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
@@ -72,7 +79,7 @@
 # cabecera: la coincidencia más específica (esta ruta) sustituye
 # entera a la de "/*", no se combinan.
 /widgets.html
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://accounts.google.com https://alcdn.msauth.net https://platform.twitter.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https://res.cloudinary.com; connect-src 'self' https://api.elotrofutbol.media https://elotro-futbol-api-production.up.railway.app https://accounts.google.com https://login.microsoftonline.com https://es.wikipedia.org; frame-src https://accounts.google.com https://elotrofutbol.media https://api.elotrofutbol.media https://platform.twitter.com https://syndication.twitter.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://accounts.google.com https://alcdn.msauth.net https://platform.twitter.com https://*.googlesyndication.com https://*.doubleclick.net https://www.googletagservices.com https://*.googleadservices.com https://*.adtrafficquality.google https://fundingchoicesmessages.google.com https://contextual.media.net https://*.media.net https://www.ezojs.com https://*.ezoic.net https://*.ezodn.com https://*.gatekeeperconsent.com https://cdn.taboola.com https://*.taboola.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https://res.cloudinary.com; connect-src 'self' https://api.elotrofutbol.media https://elotro-futbol-api-production.up.railway.app https://accounts.google.com https://login.microsoftonline.com https://es.wikipedia.org https://*.googlesyndication.com https://*.doubleclick.net https://*.adtrafficquality.google https://fundingchoicesmessages.google.com https://*.media.net https://*.ezoic.net https://*.ezoic.com https://*.ezodn.com https://*.gatekeeperconsent.com https://*.taboola.com https://*.taboolasyndication.com; frame-src https://challenges.cloudflare.com https://accounts.google.com https://elotrofutbol.media https://api.elotrofutbol.media https://platform.twitter.com https://syndication.twitter.com https://*.googlesyndication.com https://*.doubleclick.net https://www.google.com https://*.adtrafficquality.google https://*.media.net https://*.ezoic.net https://*.ezodn.com https://*.taboola.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests
   Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
@@ -98,14 +105,14 @@
 # "/*".
 /panel.html
   Cache-Control: no-cache, must-revalidate
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://accounts.google.com https://alcdn.msauth.net https://platform.twitter.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https://res.cloudinary.com; connect-src 'self' https://api.elotrofutbol.media https://elotro-futbol-api-production.up.railway.app https://accounts.google.com https://login.microsoftonline.com https://es.wikipedia.org; frame-src https://accounts.google.com https://platform.twitter.com https://syndication.twitter.com; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://accounts.google.com https://alcdn.msauth.net https://platform.twitter.com https://*.googlesyndication.com https://*.doubleclick.net https://www.googletagservices.com https://*.googleadservices.com https://*.adtrafficquality.google https://fundingchoicesmessages.google.com https://contextual.media.net https://*.media.net https://www.ezojs.com https://*.ezoic.net https://*.ezodn.com https://*.gatekeeperconsent.com https://cdn.taboola.com https://*.taboola.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https://res.cloudinary.com; connect-src 'self' https://api.elotrofutbol.media https://elotro-futbol-api-production.up.railway.app https://accounts.google.com https://login.microsoftonline.com https://es.wikipedia.org https://*.googlesyndication.com https://*.doubleclick.net https://*.adtrafficquality.google https://fundingchoicesmessages.google.com https://*.media.net https://*.ezoic.net https://*.ezoic.com https://*.ezodn.com https://*.gatekeeperconsent.com https://*.taboola.com https://*.taboolasyndication.com; frame-src https://challenges.cloudflare.com https://accounts.google.com https://platform.twitter.com https://syndication.twitter.com https://*.googlesyndication.com https://*.doubleclick.net https://www.google.com https://*.adtrafficquality.google https://*.media.net https://*.ezoic.net https://*.ezodn.com https://*.taboola.com; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'; upgrade-insecure-requests
   X-Frame-Options: SAMEORIGIN
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
 
 /panel
   Cache-Control: no-cache, must-revalidate
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://accounts.google.com https://alcdn.msauth.net https://platform.twitter.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https://res.cloudinary.com; connect-src 'self' https://api.elotrofutbol.media https://elotro-futbol-api-production.up.railway.app https://accounts.google.com https://login.microsoftonline.com https://es.wikipedia.org; frame-src https://accounts.google.com https://platform.twitter.com https://syndication.twitter.com; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://accounts.google.com https://alcdn.msauth.net https://platform.twitter.com https://*.googlesyndication.com https://*.doubleclick.net https://www.googletagservices.com https://*.googleadservices.com https://*.adtrafficquality.google https://fundingchoicesmessages.google.com https://contextual.media.net https://*.media.net https://www.ezojs.com https://*.ezoic.net https://*.ezodn.com https://*.gatekeeperconsent.com https://cdn.taboola.com https://*.taboola.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https://res.cloudinary.com; connect-src 'self' https://api.elotrofutbol.media https://elotro-futbol-api-production.up.railway.app https://accounts.google.com https://login.microsoftonline.com https://es.wikipedia.org https://*.googlesyndication.com https://*.doubleclick.net https://*.adtrafficquality.google https://fundingchoicesmessages.google.com https://*.media.net https://*.ezoic.net https://*.ezoic.com https://*.ezodn.com https://*.gatekeeperconsent.com https://*.taboola.com https://*.taboolasyndication.com; frame-src https://challenges.cloudflare.com https://accounts.google.com https://platform.twitter.com https://syndication.twitter.com https://*.googlesyndication.com https://*.doubleclick.net https://www.google.com https://*.adtrafficquality.google https://*.media.net https://*.ezoic.net https://*.ezodn.com https://*.taboola.com; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'; upgrade-insecure-requests
   X-Frame-Options: SAMEORIGIN
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
@@ -115,14 +122,54 @@
 # Cloudflare Pages). Mismas cabeceras que /panel.html arriba.
 /admin/panel.html
   Cache-Control: no-cache, must-revalidate
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://accounts.google.com https://alcdn.msauth.net https://platform.twitter.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https://res.cloudinary.com; connect-src 'self' https://api.elotrofutbol.media https://elotro-futbol-api-production.up.railway.app https://accounts.google.com https://login.microsoftonline.com https://es.wikipedia.org; frame-src https://accounts.google.com https://platform.twitter.com https://syndication.twitter.com; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://accounts.google.com https://alcdn.msauth.net https://platform.twitter.com https://*.googlesyndication.com https://*.doubleclick.net https://www.googletagservices.com https://*.googleadservices.com https://*.adtrafficquality.google https://fundingchoicesmessages.google.com https://contextual.media.net https://*.media.net https://www.ezojs.com https://*.ezoic.net https://*.ezodn.com https://*.gatekeeperconsent.com https://cdn.taboola.com https://*.taboola.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https://res.cloudinary.com; connect-src 'self' https://api.elotrofutbol.media https://elotro-futbol-api-production.up.railway.app https://accounts.google.com https://login.microsoftonline.com https://es.wikipedia.org https://*.googlesyndication.com https://*.doubleclick.net https://*.adtrafficquality.google https://fundingchoicesmessages.google.com https://*.media.net https://*.ezoic.net https://*.ezoic.com https://*.ezodn.com https://*.gatekeeperconsent.com https://*.taboola.com https://*.taboolasyndication.com; frame-src https://challenges.cloudflare.com https://accounts.google.com https://platform.twitter.com https://syndication.twitter.com https://*.googlesyndication.com https://*.doubleclick.net https://www.google.com https://*.adtrafficquality.google https://*.media.net https://*.ezoic.net https://*.ezodn.com https://*.taboola.com; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'; upgrade-insecure-requests
   X-Frame-Options: SAMEORIGIN
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
 
 /admin/panel
   Cache-Control: no-cache, must-revalidate
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://accounts.google.com https://alcdn.msauth.net https://platform.twitter.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https://res.cloudinary.com; connect-src 'self' https://api.elotrofutbol.media https://elotro-futbol-api-production.up.railway.app https://accounts.google.com https://login.microsoftonline.com https://es.wikipedia.org; frame-src https://accounts.google.com https://platform.twitter.com https://syndication.twitter.com; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://accounts.google.com https://alcdn.msauth.net https://platform.twitter.com https://*.googlesyndication.com https://*.doubleclick.net https://www.googletagservices.com https://*.googleadservices.com https://*.adtrafficquality.google https://fundingchoicesmessages.google.com https://contextual.media.net https://*.media.net https://www.ezojs.com https://*.ezoic.net https://*.ezodn.com https://*.gatekeeperconsent.com https://cdn.taboola.com https://*.taboola.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https://res.cloudinary.com; connect-src 'self' https://api.elotrofutbol.media https://elotro-futbol-api-production.up.railway.app https://accounts.google.com https://login.microsoftonline.com https://es.wikipedia.org https://*.googlesyndication.com https://*.doubleclick.net https://*.adtrafficquality.google https://fundingchoicesmessages.google.com https://*.media.net https://*.ezoic.net https://*.ezoic.com https://*.ezodn.com https://*.gatekeeperconsent.com https://*.taboola.com https://*.taboolasyndication.com; frame-src https://challenges.cloudflare.com https://accounts.google.com https://platform.twitter.com https://syndication.twitter.com https://*.googlesyndication.com https://*.doubleclick.net https://www.google.com https://*.adtrafficquality.google https://*.media.net https://*.ezoic.net https://*.ezodn.com https://*.taboola.com; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'; upgrade-insecure-requests
   X-Frame-Options: SAMEORIGIN
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
+
+# Service worker: el navegador debe revalidarlo siempre, para que un
+# cambio en sw.js llegue sin esperar a que caduque una cache.
+/sw.js
+  Cache-Control: no-cache, must-revalidate
+  Service-Worker-Allowed: /
+
+/manifest.webmanifest
+  Content-Type: application/manifest+json
+  Cache-Control: public, max-age=3600
+
+
+# Rendimiento: caché de los estáticos del sitio público. CSS y JS se
+# referencian con ?v=N (al subir la versión cambia la URL y se descarga la
+# nueva), así que pueden cachearse un día sin riesgo y revalidarse en segundo
+# plano hasta una semana. El panel (/admin/*) no entra aquí y mantiene sus
+# propias reglas. Las imágenes (escudos, logos) no llevan versión: un día.
+/css/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+/js/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+/img/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=2592000
+
+# layout.js carga push.js (la campana de avisos). Con la caché de 1 día de
+# /js/* los navegadores seguian con el layout.js viejo y no veian los cambios
+# de la campana aunque se subiera la version. Estos dos se revalidan siempre
+# (una peticion condicional, no se vuelven a descargar si no han cambiado).
+/js/layout.js
+  Cache-Control: no-cache, must-revalidate
+
+/js/push.js
+  Cache-Control: no-cache, must-revalidate
+
+# Datos de jugadores de fuente externa (los regenera herramientas/lapreferente).
+# Cambian como mucho una vez al día: 1 h de caché y revalidación en segundo plano.
+/data/jugadores/*
+  Cache-Control: public, max-age=3600, stale-while-revalidate=86400

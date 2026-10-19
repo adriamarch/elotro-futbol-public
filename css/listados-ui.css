@@ -1,0 +1,207 @@
+/* ============================================================
+   Listados — sistema visual compartido (Clasificación + Porras)
+   Se carga DESPUÉS de style.css y ANTES de la hoja propia de cada
+   página. Solo CSS: no toca marcado ni JS.
+
+   Contiene:
+   - Tokens (--ui-*) con su versión en modo oscuro.
+   - Filtros de categoría (pastillas) y desplegable de grupo.
+   - Base común de las dos tablas (clasificación y ranking de porras):
+     contenedor, cabecera, filas, columnas fijas, hover.
+   ============================================================ */
+
+/* ---------- Tokens ---------- */
+:root{
+  --ui-act-bg:var(--marino);          /* fondo de un control activo */
+  --ui-act-fg:#fff;
+  --ui-verde:#1fa25a;
+  --ui-oro:#f6c445;
+  --ui-plata:#c9d1de;
+  --ui-bronce:#e39b5c;
+  --ui-rojo-txt:var(--rojo);          /* rojo legible como TEXTO */
+  --ui-radio:18px;
+  --ui-hover:color-mix(in srgb, var(--celeste) 10%, var(--tarjeta));
+  --ui-linea:color-mix(in srgb, var(--borde) 70%, transparent);
+  --ui-celda-pts:color-mix(in srgb, var(--texto) 5%, var(--tarjeta));
+  --ui-sombra:
+    0 1px 2px rgba(12,27,46,.05),
+    0 10px 28px -12px rgba(12,27,46,.18);
+  --ui-anillo:0 0 0 3px rgba(91,184,232,.38);
+}
+[data-theme="dark"]{
+  --ui-act-bg:var(--celeste);
+  --ui-act-fg:var(--marino);
+  --ui-verde:#3ecf7e;
+  --ui-rojo-txt:#ff6b7d;
+  --ui-sombra:
+    0 1px 2px rgba(0,0,0,.45),
+    0 14px 32px -14px rgba(0,0,0,.7);
+}
+
+/* ---------- Filtros de categoría ---------- */
+body:is([data-page="clasificacion"],[data-page="predicciones"]) .filtros{
+  gap:8px;
+  margin-bottom:18px;
+}
+body:is([data-page="clasificacion"],[data-page="predicciones"]) .filtros button{
+  padding:10px 18px;
+  border-radius:999px;
+  border:1px solid var(--borde);
+  background:var(--tarjeta);
+  color:var(--marino-texto);
+  font-family:var(--font-text);
+  font-size:.86rem;
+  font-weight:600;
+  box-shadow:0 1px 2px rgba(12,27,46,.05);
+  transition:transform .15s, box-shadow .15s, border-color .15s, background .15s, color .15s;
+}
+body:is([data-page="clasificacion"],[data-page="predicciones"]) .filtros button:hover:not(.activo){
+  border-color:var(--celeste);
+  transform:translateY(-1px);
+  box-shadow:0 6px 14px -8px rgba(12,27,46,.35);
+}
+body:is([data-page="clasificacion"],[data-page="predicciones"]) .filtros button.activo{
+  background:var(--ui-act-bg);
+  border-color:var(--ui-act-bg);
+  color:var(--ui-act-fg);
+  box-shadow:0 8px 18px -8px color-mix(in srgb, var(--ui-act-bg) 70%, transparent);
+}
+body:is([data-page="clasificacion"],[data-page="predicciones"]) .filtros button:focus-visible,
+body:is([data-page="clasificacion"],[data-page="predicciones"]) .select-filtro:focus-visible{
+  outline:none;
+  box-shadow:var(--ui-anillo);
+  border-color:var(--celeste);
+}
+@media(max-width:600px){
+  body:is([data-page="clasificacion"],[data-page="predicciones"]) .filtros{
+    scrollbar-width:none;
+    padding-bottom:8px;      /* sitio para la sombra de los botones */
+  }
+  body:is([data-page="clasificacion"],[data-page="predicciones"]) .filtros::-webkit-scrollbar{display:none;}
+}
+
+/* ---------- Desplegable de grupo ---------- */
+body:is([data-page="clasificacion"],[data-page="predicciones"]) .filtros-secundarios{margin-bottom:24px;}
+body:is([data-page="clasificacion"],[data-page="predicciones"]) .select-filtro{
+  appearance:none;
+  -webkit-appearance:none;
+  padding:10px 40px 10px 18px;
+  border-radius:999px;
+  border:1px solid var(--borde);
+  background-color:var(--tarjeta);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a93a6' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;
+  background-position:right 14px center;
+  background-size:16px;
+  color:var(--marino-texto);
+  font-family:var(--font-text);
+  font-size:.86rem;
+  font-weight:600;
+  box-shadow:0 1px 2px rgba(12,27,46,.05);
+  transition:border-color .15s, box-shadow .15s;
+}
+body:is([data-page="clasificacion"],[data-page="predicciones"]) .select-filtro:hover{border-color:var(--celeste);}
+
+/* ---------- Contenedor de tabla ---------- */
+:is(.clasificacion-tabla-wrap,.porras-ranking-tabla-wrap){
+  overflow-x:auto;
+  border:1px solid var(--borde);
+  border-radius:var(--ui-radio);
+  background:var(--tarjeta);
+  box-shadow:var(--ui-sombra);
+  margin-bottom:18px;
+  scrollbar-width:thin;
+}
+
+/* ---------- Tabla: base común ---------- */
+:is(.clasificacion-tabla,.porras-ranking-tabla){
+  --w-pos:52px;
+  width:100%;
+  border-collapse:separate;
+  border-spacing:0;
+  font-size:.9rem;
+  font-variant-numeric:tabular-nums;
+}
+
+/* Cabecera: clara y discreta (antes un bloque marino pesado) */
+:is(.clasificacion-tabla,.porras-ranking-tabla) thead th{
+  background:var(--fondo-alt);
+  color:var(--texto-suave);
+  font-family:var(--font-text);
+  font-size:.66rem;
+  font-weight:700;
+  letter-spacing:.09em;
+  text-transform:uppercase;
+  text-align:center;
+  white-space:nowrap;
+  padding:14px 8px;
+  border-bottom:1px solid var(--borde);
+}
+:is(.clasificacion-tabla,.porras-ranking-tabla) thead th:last-child{
+  color:var(--marino-texto);
+  background:color-mix(in srgb, var(--texto) 6%, var(--fondo-alt));
+}
+
+/* Filas */
+:is(.clasificacion-tabla,.porras-ranking-tabla) tbody td{
+  height:54px;
+  padding:0 8px;
+  text-align:center;
+  background-color:var(--tarjeta);
+  color:var(--texto);
+  border-bottom:1px solid var(--ui-linea);
+  transition:background-color .12s;
+}
+:is(.clasificacion-tabla,.porras-ranking-tabla) tbody tr:last-child td{border-bottom:0;}
+:is(.clasificacion-tabla,.porras-ranking-tabla) tbody tr:hover td{background-color:var(--ui-hover);}
+
+/* Columnas fijas: # y nombre a la izquierda, Pts a la derecha */
+:is(.clasificacion-tabla,.porras-ranking-tabla) :is(thead th:first-child, tbody td.col-pos){
+  position:sticky;
+  left:0;
+  z-index:2;
+  width:var(--w-pos);
+  min-width:var(--w-pos);
+  max-width:var(--w-pos);
+  padding-left:0;
+  padding-right:0;
+}
+:is(.clasificacion-tabla,.porras-ranking-tabla) tbody td.col-pos{z-index:1;}
+:is(.clasificacion-tabla,.porras-ranking-tabla) :is(thead th.col-equipo, thead th.col-nombre, tbody td.col-equipo, tbody td.col-nombre){
+  position:sticky;
+  left:var(--w-pos);
+  z-index:2;
+  text-align:left;
+  padding-left:4px;
+  padding-right:14px;
+}
+:is(.clasificacion-tabla,.porras-ranking-tabla) :is(tbody td.col-equipo, tbody td.col-nombre){z-index:1;}
+:is(.clasificacion-tabla,.porras-ranking-tabla) :is(thead th:last-child, tbody td.col-puntos){
+  position:sticky;
+  right:0;
+  z-index:2;
+}
+:is(.clasificacion-tabla,.porras-ranking-tabla) tbody td.col-puntos{
+  z-index:1;
+  background-color:var(--ui-celda-pts);
+  font-size:1.05rem;
+  font-weight:800;
+  color:var(--marino-texto);
+}
+:is(.clasificacion-tabla,.porras-ranking-tabla) tbody tr:hover td.col-puntos{
+  background-color:color-mix(in srgb, var(--celeste) 14%, var(--ui-celda-pts));
+}
+
+@media(max-width:600px){
+  :is(.clasificacion-tabla,.porras-ranking-tabla){--w-pos:42px;font-size:.84rem;}
+  :is(.clasificacion-tabla,.porras-ranking-tabla) thead th{padding:12px 5px;}
+  :is(.clasificacion-tabla,.porras-ranking-tabla) tbody td{height:52px;padding:0 5px;}
+  :is(.clasificacion-tabla,.porras-ranking-tabla) :is(thead th:first-child, tbody td.col-pos){padding:0;}
+    /* solo el ranking de porras desplaza en móvil; la clasificación cabe entera */
+  .porras-ranking-tabla tbody td.col-nombre{box-shadow:8px 0 10px -8px rgba(12,27,46,.28);}
+  .porras-ranking-tabla tbody td.col-puntos{box-shadow:-8px 0 10px -8px rgba(12,27,46,.28);}
+}
+@media (prefers-reduced-motion: reduce){
+  body:is([data-page="clasificacion"],[data-page="predicciones"]) .filtros button,
+  :is(.clasificacion-tabla,.porras-ranking-tabla) tbody td{transition:none;}
+}

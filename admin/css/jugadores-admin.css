@@ -1,0 +1,227 @@
+/* Funcionalidades > Jugadores: corrección manual de fichas de jugador.
+   Usa las variables --f-* de funcionalidades.css (acotadas a #panel-funcionalidades)
+   con valores de reserva, y los tokens del sitio (--tarjeta, --borde, --marino-texto...)
+   para que el modo oscuro funcione sin reglas extra. */
+
+#jugAdm{
+  --j-azul:var(--f-azul,#2563eb);--j-azul-bg:var(--f-azul-bg,rgba(37,99,235,.11));
+  --j-rojo:var(--f-rojo,#d1132e);--j-rojo-bg:var(--f-rojo-bg,rgba(209,19,46,.10));
+  --j-verde:var(--f-verde,#16a34a);--j-verde-bg:var(--f-verde-bg,rgba(22,163,74,.12));
+  --j-ambar:var(--f-ambar,#d97706);--j-ambar-bg:var(--f-ambar-bg,rgba(217,119,6,.13));
+  --j-violeta:var(--f-violeta,#7c3aed);--j-violeta-bg:var(--f-violeta-bg,rgba(124,58,237,.11));
+  --j-suave:var(--f-suave,var(--fondo-alt,#f3f5f9));
+  --j-borde:var(--borde,#e1e5ec);
+  --j-tarjeta:var(--tarjeta,#fff);
+  --j-texto:var(--marino-texto,#0c1b2e);
+  --j-apagado:var(--texto-suave,#5a6270);
+  display:flex;flex-direction:column;gap:6px;
+}
+
+/* ---------- Resumen ---------- */
+.jug-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px;}
+.jug-stat{
+  position:relative;display:flex;flex-direction:column;gap:3px;padding:12px 16px 12px 18px;overflow:hidden;
+  background:var(--j-tarjeta);border:1px solid var(--j-borde);border-radius:14px;box-shadow:var(--sombra-sm,0 1px 2px rgba(12,27,46,.06));
+}
+.jug-stat::before{content:"";position:absolute;inset:0 auto 0 0;width:4px;background:var(--j-c,var(--j-azul));}
+.jug-stat b{font-family:var(--font-tit);font-size:1.5rem;line-height:1.1;color:var(--j-texto);font-variant-numeric:tabular-nums;}
+.jug-stat span{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--j-apagado);}
+.jug-stat.azul{--j-c:var(--j-azul);}
+.jug-stat.verde{--j-c:var(--j-verde);}
+.jug-stat.ambar{--j-c:var(--j-ambar);}
+.jug-stat.violeta{--j-c:var(--j-violeta);}
+.jug-stat.gris{--j-c:var(--j-apagado);}
+
+/* ---------- Filtros ---------- */
+.jug-filtros{
+  display:flex;flex-wrap:wrap;gap:8px 10px;margin-bottom:12px;padding:12px;
+  background:var(--j-suave);border:1px solid var(--j-borde);border-radius:16px;
+}
+.jug-filtros select,.jug-filtros input{
+  padding:10px 14px;border:1.5px solid var(--j-borde);border-radius:999px;background:var(--j-tarjeta);color:var(--j-texto);
+  font:inherit;font-size:.86rem;font-weight:600;min-width:0;max-width:100%;
+  transition:border-color .15s,box-shadow .15s;
+}
+.jug-filtros select{
+  appearance:none;-webkit-appearance:none;padding-right:38px;cursor:pointer;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a93a6' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 13px center;background-size:15px;
+}
+.jug-filtros select[hidden]{display:none;}
+.jug-filtros input{
+  flex:1 1 220px;font-weight:500;padding-left:40px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%239aa4b8' stroke-width='2.4' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:14px 50%;
+}
+.jug-filtros select:hover,.jug-filtros input:hover{border-color:var(--celeste,#5bb8e8);}
+.jug-filtros select:focus-visible,.jug-filtros input:focus-visible{outline:none;border-color:var(--celeste,#5bb8e8);box-shadow:0 0 0 3px rgba(91,184,232,.3);}
+
+/* ---------- Títulos y ayuda ---------- */
+.jug-tit{
+  display:flex;align-items:center;gap:10px;margin:22px 0 6px;
+  font-family:var(--font-tit);font-size:1.05rem;text-transform:uppercase;letter-spacing:.4px;color:var(--j-texto);
+}
+.jug-tit::before{content:"";flex:none;width:5px;height:1.1em;border-radius:3px;background:var(--j-rojo);}
+.jug-tit-n{font-family:var(--font-text);font-size:.76rem;font-weight:700;text-transform:none;letter-spacing:0;color:var(--j-apagado);
+  padding:2px 10px;border-radius:999px;background:var(--j-suave);border:1px solid var(--j-borde);}
+.jug-tit-n:empty{display:none;}
+.jug-ayuda{margin:0 0 10px;max-width:78ch;font-size:.82rem;line-height:1.55;color:var(--j-apagado);}
+
+/* ---------- Botones ---------- */
+.jug-btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 16px;
+  border:1.5px solid var(--j-borde);border-radius:999px;background:var(--j-tarjeta);color:var(--j-texto);
+  font:inherit;font-size:.8rem;font-weight:700;cursor:pointer;
+  transition:transform .15s,box-shadow .15s,border-color .15s,background .15s;
+}
+.jug-btn:hover:not(:disabled){border-color:var(--celeste,#5bb8e8);transform:translateY(-1px);box-shadow:0 6px 14px -8px rgba(12,27,46,.35);}
+.jug-btn:active:not(:disabled){transform:none;}
+.jug-btn:focus-visible{outline:2px solid var(--celeste,#5bb8e8);outline-offset:2px;}
+.jug-btn:disabled{opacity:.55;cursor:not-allowed;}
+.jug-btn-pri{background:linear-gradient(135deg,var(--marino,#0c1b2e),var(--marino2,#152b46));border-color:transparent;color:#fff;box-shadow:0 6px 16px -8px rgba(12,27,46,.6);}
+.jug-btn-pri:hover:not(:disabled){border-color:transparent;box-shadow:0 10px 20px -8px rgba(12,27,46,.7);}
+.jug-btn-peligro{color:var(--j-rojo);border-color:color-mix(in srgb,var(--j-rojo) 40%,var(--j-borde));}
+.jug-btn-peligro:hover:not(:disabled){background:var(--j-rojo-bg);border-color:var(--j-rojo);}
+.jug-btn-mini{padding:5px 12px;font-size:.74rem;}
+
+/* ---------- Editor / barra de acción (fija al desplazarse) ---------- */
+.jug-editor{
+  position:sticky;top:8px;z-index:3;margin-bottom:12px;padding:16px 18px;
+  border:1.5px solid var(--celeste,#5bb8e8);border-radius:16px;
+  background:
+    linear-gradient(135deg,color-mix(in srgb,var(--celeste,#5bb8e8) 12%,var(--j-tarjeta)),var(--j-tarjeta) 60%);
+  box-shadow:0 14px 32px -14px rgba(12,27,46,.45);
+  animation:jug-entra .22s ease both;
+}
+.jug-editor[hidden]{display:none;}
+.jug-editor-txt{margin-bottom:12px;font-size:.86rem;line-height:1.5;color:var(--j-texto);}
+.jug-editor-campos{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:12px;}
+.jug-editor-campos label{display:flex;flex-direction:column;gap:5px;flex:1 1 220px;
+  font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--j-apagado);}
+.jug-editor-campos label:last-child{flex:0 1 120px;}
+.jug-editor-campos input{
+  padding:10px 14px;border:1.5px solid var(--j-borde);border-radius:12px;background:var(--j-tarjeta);color:var(--j-texto);
+  font:inherit;font-size:.95rem;font-weight:600;text-transform:none;letter-spacing:0;
+}
+.jug-editor-campos input:focus{outline:none;border-color:var(--celeste,#5bb8e8);box-shadow:0 0 0 3px rgba(91,184,232,.3);}
+.jug-editor-acc{display:flex;gap:8px;flex-wrap:wrap;}
+@keyframes jug-entra{from{opacity:0;transform:translateY(-6px);}to{opacity:1;transform:none;}}
+
+/* ---------- Tabla de fichas automáticas ---------- */
+.jug-tabla-wrap{overflow:auto;max-height:min(70vh,640px);border:1px solid var(--j-borde);border-radius:16px;background:var(--j-tarjeta);box-shadow:var(--sombra-sm,none);}
+.jug-tabla{width:100%;border-collapse:separate;border-spacing:0;font-size:.86rem;}
+.jug-tabla th,.jug-tabla td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--j-borde);white-space:nowrap;vertical-align:middle;}
+.jug-tabla thead th{
+  position:sticky;top:0;z-index:1;background:var(--j-suave);font-size:.7rem;font-weight:700;
+  text-transform:uppercase;letter-spacing:.6px;color:var(--j-apagado);
+}
+.jug-tabla td.num,.jug-tabla th.num{text-align:center;}
+.jug-tabla tbody tr{cursor:pointer;transition:background .12s;}
+.jug-tabla tbody tr:hover{background:color-mix(in srgb,var(--celeste,#5bb8e8) 8%,var(--j-tarjeta));}
+.jug-tabla tbody tr:last-child td{border-bottom:0;}
+.jug-tabla tr.sel{background:color-mix(in srgb,var(--celeste,#5bb8e8) 16%,var(--j-tarjeta));}
+.jug-tabla tr.sel td:first-child{box-shadow:inset 4px 0 0 var(--celeste,#5bb8e8);}
+.jug-tabla tr.sin-nombre td:first-child{box-shadow:inset 4px 0 0 var(--j-ambar);}
+.jug-tabla tr.sin-nombre:not(.sel){background:color-mix(in srgb,var(--j-ambar) 6%,var(--j-tarjeta));}
+.jug-tabla td.sel-celda{width:44px;}
+.jug-tabla td.acc{text-align:right;}
+.jug-tabla input[type=checkbox]{width:18px;height:18px;cursor:pointer;accent-color:var(--celeste,#2f80ed);}
+.jug-nombre{font-weight:700;color:var(--j-texto);}
+.jug-nombre-celda{white-space:normal;min-width:180px;}
+
+.jug-dorsal{
+  display:inline-grid;place-items:center;min-width:28px;height:28px;padding:0 7px;border-radius:9px;
+  background:color-mix(in srgb,var(--celeste,#5bb8e8) 16%,var(--j-tarjeta));color:var(--j-texto);
+  font-family:var(--font-tit);font-size:.82rem;font-weight:700;font-variant-numeric:tabular-nums;
+}
+.jug-dorsal.vacio{background:transparent;color:var(--j-apagado);font-weight:400;}
+.jug-corr-nombre .jug-dorsal{margin-left:8px;vertical-align:middle;height:24px;min-width:24px;font-size:.76rem;}
+.jug-club{display:inline-flex;align-items:center;gap:8px;color:var(--j-texto);}
+.jug-club > span{overflow:hidden;text-overflow:ellipsis;}
+.jug-escudo{width:22px;height:22px;flex:none;object-fit:contain;}
+.jug-cifra{
+  display:inline-block;min-width:26px;padding:2px 8px;border-radius:8px;background:var(--j-suave);
+  font-family:var(--font-tit);font-size:.92rem;font-weight:700;font-variant-numeric:tabular-nums;color:var(--j-texto);
+}
+.jug-cifra.cero{background:transparent;color:var(--j-apagado);font-weight:400;opacity:.6;}
+
+/* ---------- Insignias ---------- */
+.jug-badge{
+  display:inline-block;margin-left:8px;padding:2px 10px;border-radius:999px;vertical-align:middle;
+  font-size:.68rem;font-weight:700;background:var(--j-ambar-bg);color:#a16207;
+}
+.jug-badge.ok{background:var(--j-verde-bg);color:#15803d;}
+.jug-badge.oculto{background:rgba(120,120,130,.2);color:var(--j-apagado);}
+
+/* ---------- Jugadores corregidos (tarjetas) ---------- */
+#jugCorregidos{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,420px),1fr));gap:10px;}
+.jug-corr{
+  display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;padding:14px 16px;
+  background:var(--j-tarjeta);border:1px solid var(--j-borde);border-radius:16px;box-shadow:var(--sombra-sm,none);
+  transition:box-shadow .15s,border-color .15s;
+}
+.jug-corr:hover{border-color:var(--celeste,#5bb8e8);box-shadow:0 10px 22px -14px rgba(12,27,46,.4);}
+.jug-corr.oculto{background:var(--j-suave);}
+.jug-corr.oculto .jug-avatar,.jug-corr.oculto .jug-corr-nombre{opacity:.6;}
+.jug-avatar{
+  display:grid;place-items:center;width:42px;height:42px;flex:none;border-radius:50%;
+  background:linear-gradient(135deg,var(--marino,#0c1b2e),var(--marino2,#152b46));color:#fff;
+  font-family:var(--font-tit);font-size:1.1rem;font-weight:700;box-shadow:0 6px 12px -6px rgba(12,27,46,.6);
+}
+.jug-corr-id{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1 1 160px;}
+.jug-corr-nombre{font-weight:700;font-size:.98rem;color:var(--j-texto);overflow:hidden;text-overflow:ellipsis;}
+.jug-corr-club{font-size:.8rem;color:var(--j-apagado);}
+.jug-corr-claves{display:flex;flex-wrap:wrap;gap:6px;flex-basis:100%;padding-top:10px;border-top:1px dashed var(--j-borde);}
+.jug-chip{
+  display:inline-flex;align-items:center;gap:2px;padding:3px 4px 3px 12px;border-radius:999px;
+  background:var(--j-suave);border:1px solid var(--j-borde);font-size:.74rem;color:var(--j-texto);
+}
+.jug-chip button{border:0;background:transparent;color:inherit;cursor:pointer;font-size:.78rem;line-height:1;padding:3px 7px;border-radius:50%;}
+.jug-chip button:hover{background:var(--j-rojo-bg);color:var(--j-rojo);}
+.jug-corr-acc{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto;}
+
+/* ---------- Vacíos, errores y carga ---------- */
+.jug-vacio{
+  display:flex;flex-direction:column;align-items:center;gap:6px;padding:34px 20px;text-align:center;
+  background:var(--j-suave);border:1px dashed var(--j-borde);border-radius:16px;color:var(--j-apagado);font-size:.86rem;
+}
+.jug-vacio svg{width:34px;height:34px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;opacity:.6;}
+.jug-vacio strong{color:var(--j-texto);font-size:.95rem;}
+.jug-vacio-error{border-color:color-mix(in srgb,var(--j-rojo) 40%,var(--j-borde));}
+.jug-vacio-error svg{color:var(--j-rojo);opacity:.8;}
+.jug-vacio .jug-btn{margin-top:8px;}
+.jug-esq{display:grid;gap:8px;padding:14px;background:var(--j-tarjeta);border:1px solid var(--j-borde);border-radius:16px;}
+.jug-esq span{
+  display:block;height:34px;border-radius:10px;
+  background:linear-gradient(90deg,var(--j-suave) 25%,color-mix(in srgb,var(--j-borde) 70%,var(--j-suave)) 50%,var(--j-suave) 75%);
+  background-size:200% 100%;animation:jug-brillo 1.3s linear infinite;
+}
+@keyframes jug-brillo{to{background-position:-200% 0;}}
+
+/* ---------- Modo oscuro ---------- */
+[data-theme="dark"] .jug-badge{color:#fbbf24;}
+[data-theme="dark"] .jug-badge.ok{color:#4ade80;}
+[data-theme="dark"] .jug-btn-peligro{color:#fb7185;}
+[data-theme="dark"] .jug-editor{box-shadow:0 14px 32px -14px rgba(0,0,0,.7);}
+[data-theme="dark"] .jug-escudo{background:#fff;border-radius:50%;padding:2px;box-sizing:border-box;}
+
+/* ---------- Móvil ---------- */
+@media (max-width:640px){
+  .jug-stats{grid-template-columns:repeat(2,1fr);}
+  .jug-filtros select{flex:1 1 100%;}
+  .jug-editor{top:4px;padding:14px;}
+  .jug-editor-campos label:last-child{flex:1 1 100%;}
+  .jug-tabla-wrap{max-height:none;}
+  /* En móvil se ocultan Club, Asist. y Tarj.: quedan casilla, dorsal, ficha, G, PJ y Editar */
+  .jug-tabla th:nth-child(4),.jug-tabla td:nth-child(4),
+  .jug-tabla th:nth-child(6),.jug-tabla td:nth-child(6),
+  .jug-tabla th:nth-child(7),.jug-tabla td:nth-child(7){display:none;}
+  .jug-corr-acc{margin-left:0;flex-basis:100%;}
+  #jugCorregidos{grid-template-columns:1fr;}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .jug-btn,.jug-tabla tbody tr,.jug-corr{transition:none;}
+  .jug-editor{animation:none;}
+  .jug-esq span{animation:none;}
+}

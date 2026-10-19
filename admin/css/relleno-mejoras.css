@@ -1,0 +1,71 @@
+/* =====================================================================
+   Relleno automático de partidos — mejoras (Resultados > Calendario de
+   jornadas). Se carga DESPUÉS de admin.css y solo AÑADE / afina reglas de
+   .relleno-auto: tarjetas de estado por liga, barra fija de cambios sin
+   guardar, buscador de IDs, sugerencias de alias, etc.
+   Usa variables de tema, así que el modo oscuro sale solo.
+   ===================================================================== */
+
+/* ---------- Estado por liga (tarjetas con barra de progreso) ---------- */
+.relleno-auto .relleno-ligas-estado{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:10px;margin:14px 0 0;}
+.relleno-auto .relleno-liga-estado{display:flex;flex-direction:column;gap:9px;padding:12px 14px;border:1px solid var(--borde);border-radius:12px;background:var(--tarjeta);list-style:none;}
+.relleno-auto .relleno-liga-estado.con-error{border-color:rgba(220,38,38,.45);background:linear-gradient(180deg,rgba(220,38,38,.06),transparent 60%),var(--tarjeta);}
+.relleno-auto .relleno-liga-estado + .relleno-liga-estado{border-top:1px solid var(--borde);}
+.relleno-auto .rle-cab{display:flex;align-items:baseline;justify-content:space-between;gap:10px;}
+.relleno-auto .rle-cab .relleno-informe-liga{min-width:0;font-size:.9rem;}
+.relleno-auto .rle-num{font-size:.9rem;font-weight:800;font-variant-numeric:tabular-nums;color:var(--marino-texto);white-space:nowrap;}
+.relleno-auto .rle-num small{margin-left:4px;font-size:.72rem;font-weight:700;color:var(--texto-suave);}
+.relleno-auto .rle-num.rle-vacio{font-size:.78rem;font-weight:600;color:var(--texto-suave);}
+.relleno-auto .rle-barra{height:7px;border-radius:99px;background:var(--gris-claro);border:1px solid var(--borde);overflow:hidden;}
+.relleno-auto .rle-barra span{display:block;height:100%;min-width:0;border-radius:99px;background:linear-gradient(90deg,#16a34a,#4ade80);transition:width .5s ease;}
+.relleno-auto .rle-chips{display:flex;flex-wrap:wrap;gap:5px;}
+.relleno-auto .relleno-chip.aviso{background:rgba(245,158,11,.14);border-color:rgba(245,158,11,.35);color:#b45309;}
+[data-theme="dark"] .relleno-auto .relleno-chip.aviso{color:#fbbf24;}
+.relleno-auto .relleno-liga-estado .relleno-informe-error{flex-basis:auto;font-size:.78rem;}
+
+/* ---------- Pie del estado + enlaces ---------- */
+.relleno-auto .relleno-estado-pie{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 12px;margin-top:12px;padding-top:10px;border-top:1px dashed var(--borde);font-size:.76rem;color:var(--texto-suave);}
+.relleno-auto .relleno-enlace{padding:4px 8px;border:0;border-radius:8px;background:transparent;font-family:inherit;font-size:.78rem;font-weight:700;color:#1a7fb3;cursor:pointer;}
+.relleno-auto .relleno-enlace:hover{background:rgba(91,184,232,.14);}
+.relleno-auto .relleno-enlace:focus-visible{outline:2px solid var(--celeste);outline-offset:1px;}
+[data-theme="dark"] .relleno-auto .relleno-enlace{color:var(--celeste-claro);}
+
+/* ---------- Filas de liga: selects del mismo alto que los inputs ---------- */
+.relleno-auto .relleno-liga select:disabled{opacity:.55;cursor:not-allowed;background:transparent;}
+.relleno-auto .relleno-liga-nombre{display:inline-flex;align-items:center;gap:6px;font-weight:600;}
+.relleno-auto .relleno-liga-nombre::before{content:"";width:6px;height:6px;border-radius:50%;background:#16a34a;}
+
+/* ---------- Barra fija de cambios sin guardar ---------- */
+.relleno-auto .relleno-barra-sucia{position:sticky;bottom:12px;z-index:5;display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin-top:4px;padding:10px 12px 10px 16px;border:1px solid rgba(245,158,11,.5);border-radius:14px;background:var(--tarjeta);box-shadow:0 10px 30px -10px rgba(12,27,46,.45),0 0 0 3px rgba(245,158,11,.14);animation:rellenoSube .22s cubic-bezier(.2,.8,.2,1);}
+.relleno-auto .relleno-barra-sucia-texto{flex:1 1 200px;display:inline-flex;align-items:center;gap:9px;font-size:.84rem;font-weight:700;color:#b45309;}
+.relleno-auto .relleno-barra-sucia-texto i{width:9px;height:9px;border-radius:50%;background:#f59e0b;animation:rellenoPulso 1.4s ease-in-out infinite;}
+[data-theme="dark"] .relleno-auto .relleno-barra-sucia-texto{color:#fbbf24;}
+@keyframes rellenoSube{from{opacity:0;transform:translateY(10px);}}
+
+/* ---------- Progreso de la sincronización ---------- */
+.relleno-auto .relleno-reloj{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:999px;background:var(--gris-claro);border:1px solid var(--borde);font-size:.74rem;font-weight:700;font-variant-numeric:tabular-nums;color:var(--texto-suave);white-space:nowrap;}
+
+/* ---------- Buscar IDs ---------- */
+.relleno-auto .relleno-ids{padding:0;}
+.relleno-auto .relleno-ids-cab{position:sticky;top:0;z-index:1;display:flex;align-items:center;gap:10px;padding:8px;border-bottom:1px solid var(--borde);background:var(--tarjeta);}
+.relleno-auto .relleno-ids-filtro{flex:1 1 auto;min-width:0;height:38px;padding:0 12px;border:1.5px solid var(--borde);border-radius:9px;background:var(--fondo-alt);color:var(--texto);font-family:inherit;font-size:.86rem;}
+.relleno-auto .relleno-ids-filtro:focus{outline:none;border-color:var(--celeste);box-shadow:0 0 0 3px rgba(91,184,232,.18);}
+.relleno-auto .relleno-ids-cuenta{flex:0 0 auto;font-size:.74rem;font-weight:700;color:var(--texto-suave);font-variant-numeric:tabular-nums;}
+.relleno-auto .relleno-ids-lista{padding:6px;}
+.relleno-auto .relleno-ids-lista button span{flex:1 1 auto;min-width:0;}
+.relleno-auto .relleno-ids-lista button .relleno-chip{font-style:normal;}
+.relleno-auto .relleno-ids-ayuda{margin:0;padding:8px 12px 10px;border-top:1px solid var(--borde);font-size:.74rem;color:var(--texto-suave);}
+
+/* ---------- Equipos sin reconocer ---------- */
+.relleno-auto .relleno-sinalias-cab{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 12px;margin-bottom:10px;font-size:.84rem;color:var(--texto-suave);}
+.relleno-auto .relleno-alias-fila.con-sugerencia{border-color:rgba(22,163,74,.4);background:linear-gradient(90deg,rgba(22,163,74,.07),transparent 55%),var(--gris-claro);}
+.relleno-auto .relleno-alias-buscar{width:100%;max-width:340px;height:38px;margin:0 0 10px;padding:0 12px;border:1.5px solid var(--borde);border-radius:9px;background:var(--tarjeta);color:var(--texto);font-family:inherit;font-size:.86rem;}
+.relleno-auto .relleno-alias-buscar:focus{outline:none;border-color:var(--celeste);box-shadow:0 0 0 3px rgba(91,184,232,.18);}
+.relleno-auto .relleno-alias-filas{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:0 10px;}
+.relleno-auto .relleno-alias-filas .relleno-alias-fila[hidden]{display:none !important;}
+
+@media (max-width:760px){
+  .relleno-auto .relleno-ligas-estado{grid-template-columns:1fr;}
+  .relleno-auto .relleno-barra-sucia{bottom:8px;}
+  .relleno-auto .relleno-barra-sucia .relleno-btn{flex:1 1 auto;}
+}

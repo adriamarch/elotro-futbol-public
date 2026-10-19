@@ -1,0 +1,229 @@
+/* ==========================================================================
+   SELECTOR DE FOCO ÚNICO — ventana (ver admin/js/foco-selector.js)
+   Usa las variables de css/style.css, así que sigue el tema claro/oscuro.
+   ========================================================================== */
+
+html.fsel-abierto{overflow:hidden;}
+
+.fsel-overlay{
+  position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;
+  padding:16px;background:rgba(10,18,32,.66);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);
+  animation:fsel-fundido .16s ease;overscroll-behavior:contain;
+}
+.fsel-overlay[hidden]{display:none;}
+@keyframes fsel-fundido{from{opacity:0;}to{opacity:1;}}
+
+.fsel-modal{
+  display:flex;flex-direction:column;width:min(900px,100%);max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);
+  background:var(--tarjeta,#fff);color:var(--texto,#1a1c22);border-radius:18px;overflow:hidden;
+  box-shadow:0 24px 70px rgba(0,0,0,.42),0 0 0 1px rgba(127,127,127,.16);animation:fsel-sube .2s cubic-bezier(.2,.8,.2,1);
+  background-image:linear-gradient(90deg,var(--rojo,#d1132e),var(--celeste,#5bb8e8));
+  background-size:100% 3px;background-repeat:no-repeat;background-position:top left;
+}
+@keyframes fsel-sube{from{opacity:0;transform:translateY(14px) scale(.985);}to{opacity:1;transform:none;}}
+
+/* ---- Cabecera ---- */
+.fsel-cab{display:flex;align-items:flex-start;gap:12px;padding:20px 22px 14px;}
+.fsel-cab-texto{flex:1;min-width:0;}
+.fsel-kicker{
+  display:inline-block;margin-bottom:6px;padding:3px 10px;border-radius:20px;
+  background:var(--gris-claro,#eef1f5);color:var(--gris-texto,#5a6270);font-size:.72rem;font-weight:700;letter-spacing:.02em;
+}
+.fsel-titulo{
+  margin:0 0 4px;font-family:var(--font-tit,inherit);font-size:1.2rem;line-height:1.25;letter-spacing:.4px;
+  text-transform:uppercase;color:var(--marino-texto,var(--texto,#1a1c22));
+}
+.fsel-texto{margin:0;font-size:.86rem;line-height:1.5;color:var(--gris-texto,#5a6270);}
+.fsel-cerrar{
+  flex-shrink:0;width:36px;height:36px;border:none;border-radius:50%;cursor:pointer;
+  background:var(--gris-claro,#eef1f5);color:var(--gris-texto,#5a6270);font-size:1.5rem;line-height:1;
+  display:flex;align-items:center;justify-content:center;transition:background .15s,color .15s;
+}
+.fsel-cerrar:hover{background:var(--rojo,#d1132e);color:#fff;}
+.fsel-cerrar[hidden]{display:none;}
+
+/* ---- Cuerpo ---- */
+.fsel-cuerpo{
+  display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:18px;padding:4px 22px 18px;
+  overflow:auto;min-height:0;overscroll-behavior:contain;
+  scrollbar-width:thin;scrollbar-color:var(--borde,#d6d9e0) transparent;
+}
+
+.fsel-escenario{
+  position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;min-height:220px;padding:14px;
+  border-radius:14px;background:var(--gris-claro,#eef1f5);
+  background-image:linear-gradient(45deg,rgba(0,0,0,.035) 25%,transparent 25%,transparent 75%,rgba(0,0,0,.035) 75%),
+                   linear-gradient(45deg,rgba(0,0,0,.035) 25%,transparent 25%,transparent 75%,rgba(0,0,0,.035) 75%);
+  background-size:20px 20px;background-position:0 0,10px 10px;
+}
+.fsel-marco{
+  position:relative;display:inline-block;max-width:100%;line-height:0;border-radius:8px;
+  cursor:crosshair;touch-action:none;outline:none;box-shadow:0 6px 24px rgba(0,0,0,.25);
+}
+.fsel-marco:focus-visible{box-shadow:0 0 0 3px var(--celeste,#5bb8e8),0 6px 24px rgba(0,0,0,.25);}
+.fsel-img{
+  display:block;max-width:100%;max-height:min(56vh,520px);width:auto;height:auto;border-radius:8px;
+  user-select:none;-webkit-user-select:none;-webkit-user-drag:none;
+}
+
+/* El punto: anillo blanco + punto rojo + mira */
+.fsel-marcador{
+  position:absolute;width:46px;height:46px;transform:translate(-50%,-50%);pointer-events:none;
+  border-radius:50%;border:3px solid #fff;box-sizing:border-box;
+  box-shadow:0 0 0 2px rgba(0,0,0,.45),0 4px 14px rgba(0,0,0,.45);
+  transition:left .12s ease,top .12s ease;
+}
+.fsel-marcador::before{
+  content:"";position:absolute;left:50%;top:50%;width:12px;height:12px;margin:-6px 0 0 -6px;
+  border-radius:50%;background:var(--rojo,#d1132e);box-shadow:0 0 0 2px #fff;
+}
+.fsel-marcador::after{
+  content:"";position:absolute;inset:-12px;border-radius:50%;pointer-events:none;
+  background:
+    linear-gradient(#fff,#fff) center top/2px 8px no-repeat,
+    linear-gradient(#fff,#fff) center bottom/2px 8px no-repeat,
+    linear-gradient(#fff,#fff) left center/8px 2px no-repeat,
+    linear-gradient(#fff,#fff) right center/8px 2px no-repeat;
+  filter:drop-shadow(0 0 1.5px rgba(0,0,0,.7));
+}
+.fsel-marco:active .fsel-marcador{transition:none;}
+.fsel-sin-elegir .fsel-marcador{animation:fsel-pulso 1.4s ease-in-out infinite;}
+@keyframes fsel-pulso{
+  0%,100%{box-shadow:0 0 0 2px rgba(0,0,0,.45),0 4px 14px rgba(0,0,0,.45),0 0 0 0 rgba(209,19,46,.55);}
+  50%{box-shadow:0 0 0 2px rgba(0,0,0,.45),0 4px 14px rgba(0,0,0,.45),0 0 0 14px rgba(209,19,46,0);}
+}
+
+.fsel-pista{
+  max-width:100%;padding:6px 14px;border-radius:20px;text-align:center;
+  background:var(--tarjeta,#fff);color:var(--gris-texto,#5a6270);font-size:.78rem;font-weight:600;line-height:1.35;
+  pointer-events:none;box-shadow:0 1px 5px rgba(0,0,0,.16);
+}
+/* Se oculta sin quitarle el hueco, para que la foto no "salte" al elegir el punto */
+.fsel-pista[hidden]{display:block;visibility:hidden;}
+
+.fsel-aviso{display:none;max-width:340px;padding:14px 16px;border:1.5px dashed var(--borde,#d6d9e0);border-radius:12px;text-align:center;font-size:.86rem;line-height:1.5;color:var(--gris-texto,#5a6270);}
+.fsel-error .fsel-aviso{display:block;}
+.fsel-error .fsel-marco,
+.fsel-error .fsel-pista{display:none;}
+
+/* ---- Vista previa única ---- */
+.fsel-lado{display:flex;flex-direction:column;gap:12px;min-width:0;}
+.fsel-etiqueta{margin:0;font-size:.74rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gris-texto,#5a6270);}
+.fsel-tabs{
+  display:flex;gap:4px;padding:4px;border-radius:999px;background:var(--gris-claro,#eef1f5);
+  overflow-x:auto;scrollbar-width:none;
+}
+.fsel-tabs::-webkit-scrollbar{display:none;}
+.fsel-tabs[hidden]{display:none;}
+.fsel-tab{
+  flex:1 0 auto;border:none;border-radius:999px;padding:7px 12px;cursor:pointer;background:transparent;
+  color:var(--gris-texto,#5a6270);font:inherit;font-size:.78rem;font-weight:600;white-space:nowrap;
+  transition:background .15s,color .15s,box-shadow .15s;
+}
+.fsel-tab:hover:not(.activo){color:var(--texto,#1a1c22);}
+.fsel-tab.activo{background:var(--tarjeta,#fff);color:var(--marino,#0c1b2e);box-shadow:0 1px 4px rgba(0,0,0,.18);}
+.fsel-previa-caja{
+  display:flex;align-items:center;justify-content:center;min-height:200px;padding:14px;border-radius:14px;
+  background:var(--gris-claro,#eef1f5);
+}
+.fsel-previa{
+  position:relative;max-width:100%;overflow:hidden;border-radius:8px;background:rgba(0,0,0,.08);
+  box-shadow:0 4px 16px rgba(0,0,0,.2);transition:width .18s ease;
+}
+.fsel-previa.fsel-redonda{border-radius:50%;}
+.fsel-previa img{display:block;width:100%;height:100%;object-fit:cover;}
+.fsel-valor{margin:0;min-height:1.2em;text-align:center;font-size:.76rem;font-variant-numeric:tabular-nums;color:var(--gris-texto,#5a6270);}
+
+/* ---- Pie ---- */
+.fsel-pie{
+  display:flex;align-items:center;gap:10px;padding:14px 22px;border-top:1px solid var(--borde,#e7e9ee);
+  background:var(--tarjeta,#fff);box-shadow:0 -10px 18px -14px rgba(8,16,28,.35);
+}
+.fsel-relleno{flex:1;}
+.fsel-btn{
+  border-radius:999px;padding:10px 20px;cursor:pointer;font:inherit;font-size:.88rem;font-weight:700;
+  border:1.5px solid transparent;transition:background .15s,border-color .15s,color .15s,opacity .15s,transform .1s;
+}
+.fsel-btn[hidden]{display:none;}
+.fsel-btn:active:not(:disabled){transform:scale(.98);}
+.fsel-btn-pri{background:var(--celeste,#5bb8e8);color:#0c1b2e;}
+.fsel-btn-pri:hover:not(:disabled){background:#3fa6dc;}
+.fsel-btn-pri:disabled{opacity:.45;cursor:not-allowed;}
+.fsel-btn-sec{background:transparent;color:var(--texto,#1a1c22);border-color:var(--borde,#d6d9e0);}
+.fsel-btn-sec:hover{border-color:var(--celeste,#5bb8e8);color:var(--celeste,#5bb8e8);}
+.fsel-btn-texto{background:transparent;color:var(--rojo,#d1132e);padding-left:4px;padding-right:4px;}
+.fsel-btn-texto:hover{text-decoration:underline;}
+.fsel-btn:focus-visible,.fsel-tab:focus-visible,.fsel-cerrar:focus-visible{outline:3px solid var(--celeste,#5bb8e8);outline-offset:2px;}
+
+/* ---- Móvil: hoja que sube desde abajo ---- */
+@media (max-width:760px){
+  .fsel-overlay{padding:0;align-items:flex-end;}
+  .fsel-modal{width:100%;max-height:96vh;max-height:96dvh;border-radius:18px 18px 0 0;animation-name:fsel-sube-movil;}
+  @keyframes fsel-sube-movil{from{transform:translateY(40px);opacity:.6;}to{transform:none;opacity:1;}}
+  .fsel-cab{padding:16px 16px 10px;}
+  .fsel-cuerpo{grid-template-columns:1fr;padding:2px 16px 14px;gap:14px;}
+  .fsel-escenario{min-height:160px;padding:10px;}
+  .fsel-img{max-height:42vh;max-height:42dvh;}
+  .fsel-cerrar{width:40px;height:40px;}
+  .fsel-escenario{gap:10px;}
+  .fsel-previa-caja{min-height:0;padding:10px;}
+  .fsel-pie{flex-wrap:wrap;padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));}
+  .fsel-relleno{display:none;}
+  .fsel-btn-pri{order:-1;flex:1 1 100%;padding:13px 20px;}
+  .fsel-btn-sec{flex:1;}
+  .fsel-btn-texto{flex:0 0 auto;}
+}
+@media (prefers-reduced-motion:reduce){
+  .fsel-overlay,.fsel-modal,.fsel-sin-elegir .fsel-marcador{animation:none;}
+  .fsel-cerrar,.fsel-btn,.fsel-tab{transition:none;}
+  .fsel-marcador,.fsel-previa{transition:none;}
+}
+
+/* El botón "Foco" que abre la ventana */
+.btn-foco.activo{background:var(--celeste,#5bb8e8);color:#0c1b2e;border-color:var(--celeste,#5bb8e8);}
+
+/* ---- Modo oscuro ---- */
+[data-theme="dark"] .fsel-overlay{background:rgba(0,0,0,.72);}
+[data-theme="dark"] .fsel-modal{box-shadow:0 24px 70px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.08);}
+[data-theme="dark"] .fsel-escenario{
+  background-image:linear-gradient(45deg,rgba(255,255,255,.04) 25%,transparent 25%,transparent 75%,rgba(255,255,255,.04) 75%),
+                   linear-gradient(45deg,rgba(255,255,255,.04) 25%,transparent 25%,transparent 75%,rgba(255,255,255,.04) 75%);
+}
+[data-theme="dark"] .fsel-pie{box-shadow:0 -10px 18px -14px rgba(0,0,0,.7);}
+[data-theme="dark"] .fsel-tab.activo{color:var(--texto,#e7eaf0);background:var(--panel-hover,#212a3c);}
+
+/* ---- Modo oscuro: retoques de contraste (v4) ----
+   En oscuro --gris-claro (#171d29) es casi igual que --tarjeta (#1a2130), así que
+   las chapas, el botón cerrar, las pestañas y los recuadros se "fundían" con el
+   fondo. Se usan velos blancos translúcidos para separarlos, y el rojo de marca
+   se aclara donde se usa como texto. */
+[data-theme="dark"] .fsel-kicker{background:rgba(255,255,255,.09);color:#c3cbda;}
+[data-theme="dark"] .fsel-cerrar{background:rgba(255,255,255,.09);color:#c3cbda;}
+[data-theme="dark"] .fsel-cerrar:hover{background:var(--rojo,#d1132e);color:#fff;}
+[data-theme="dark"] .fsel-texto,
+[data-theme="dark"] .fsel-etiqueta,
+[data-theme="dark"] .fsel-valor,
+[data-theme="dark"] .fsel-aviso{color:#aab4c7;}
+[data-theme="dark"] .fsel-escenario,
+[data-theme="dark"] .fsel-previa-caja{background-color:#0f141d;box-shadow:inset 0 0 0 1px rgba(255,255,255,.07);}
+[data-theme="dark"] .fsel-tabs{background:#0f141d;box-shadow:inset 0 0 0 1px rgba(255,255,255,.07);}
+[data-theme="dark"] .fsel-tab{color:#aab4c7;}
+[data-theme="dark"] .fsel-tab:hover:not(.activo){color:#fff;}
+[data-theme="dark"] .fsel-tab.activo{background:#2a3550;color:#fff;box-shadow:0 1px 4px rgba(0,0,0,.5),inset 0 0 0 1px rgba(255,255,255,.1);}
+[data-theme="dark"] .fsel-pista{background:#26304a;color:#e7eaf0;box-shadow:0 1px 6px rgba(0,0,0,.5),inset 0 0 0 1px rgba(255,255,255,.1);}
+[data-theme="dark"] .fsel-aviso{border-color:rgba(255,255,255,.22);}
+[data-theme="dark"] .fsel-previa{background:rgba(255,255,255,.08);box-shadow:0 4px 16px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.1);}
+[data-theme="dark"] .fsel-marco{box-shadow:0 6px 24px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.12);}
+[data-theme="dark"] .fsel-pie{background:var(--tarjeta,#1a2130);border-top-color:rgba(255,255,255,.1);}
+[data-theme="dark"] .fsel-btn-sec{color:#e7eaf0;border-color:rgba(255,255,255,.28);}
+[data-theme="dark"] .fsel-btn-sec:hover{border-color:var(--celeste-claro,#a8dcf5);color:var(--celeste-claro,#a8dcf5);background:rgba(91,184,232,.1);}
+[data-theme="dark"] .fsel-btn-texto{background:transparent;color:#f87171;border-color:transparent;}
+[data-theme="dark"] .fsel-btn-texto:hover{background:rgba(248,113,113,.12);color:#fca5a5;text-decoration:none;}
+[data-theme="dark"] .fsel-btn-pri{background:var(--celeste,#5bb8e8);color:#0c1b2e;}
+[data-theme="dark"] .fsel-btn-pri:hover:not(:disabled){background:var(--celeste-claro,#a8dcf5);}
+[data-theme="dark"] .fsel-btn-pri:disabled{opacity:.4;}
+[data-theme="dark"] .fsel-btn:focus-visible,
+[data-theme="dark"] .fsel-tab:focus-visible,
+[data-theme="dark"] .fsel-cerrar:focus-visible{outline-color:var(--celeste-claro,#a8dcf5);}
+/* Botón "Foco" que abre la ventana (en el formulario) */
+[data-theme="dark"] .btn-foco.activo{background:var(--celeste,#5bb8e8);color:#0c1b2e;border-color:var(--celeste,#5bb8e8);}

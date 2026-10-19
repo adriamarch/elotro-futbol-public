@@ -1,8 +1,23 @@
 User-agent: *
+Allow: /
 Disallow: /admin/
-Disallow: /contenido.html
-Disallow: /buscar.html
+Disallow: /panel
+Disallow: /newsletter_preview
+Disallow: /mantenimiento
+Disallow: /api/
+Disallow: /contenido
+Disallow: /buscar
+Disallow: /cuenta
+Disallow: /guardadas
+Disallow: /acceso
+Disallow: /recuperar-cuenta
+Disallow: /verificar-cuenta
+Disallow: /panel-analiticas
+Disallow: /*?preview=
+Disallow: /*&preview=
 
 Sitemap: https://elotrofutbol.media/sitemap.xml
 Sitemap: https://elotrofutbol.media/sitemap-noticias.xml
+Sitemap: https://elotrofutbol.media/sitemap-clubes.xml
+Sitemap: https://elotrofutbol.media/sitemap-jugadores.xml
 Sitemap: https://elotrofutbol.media/sitemap-news.xml

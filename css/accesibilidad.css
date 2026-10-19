@@ -1,0 +1,55 @@
+/* Accesibilidad y móvil — compartido por la web pública y el panel.
+   Solo añade: no cambia colores ni maquetación existentes. */
+
+/* Enlace "Saltar al contenido": solo visible al enfocarlo con teclado */
+.eof-skip{position:fixed;left:12px;top:-60px;z-index:100000;background:#0b2545;color:#fff;
+  padding:10px 16px;border-radius:8px;font:600 14px/1.2 Inter,system-ui,sans-serif;text-decoration:none;
+  box-shadow:0 4px 16px rgba(0,0,0,.35);transition:top .15s ease;}
+.eof-skip:focus,.eof-skip:focus-visible{top:calc(12px + env(safe-area-inset-top,0px));outline:3px solid #5bb8e8;outline-offset:2px;}
+main:focus,[data-eof-main]:focus{outline:none;}
+
+/* Foco visible coherente para teclado (no afecta al ratón/táctil) */
+a:focus-visible,button:focus-visible,summary:focus-visible,
+[role="button"]:focus-visible,[role="tab"]:focus-visible,[tabindex]:focus-visible,
+input:focus-visible,select:focus-visible,textarea:focus-visible{
+  outline:3px solid #5bb8e8;outline-offset:2px;}
+input:focus-visible,select:focus-visible,textarea:focus-visible{outline-offset:0;}
+
+/* Texto solo para lectores de pantalla */
+.eof-sr{position:absolute!important;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;
+  clip:rect(0 0 0 0);white-space:nowrap;border:0;}
+
+/* Respeta "reducir movimiento" del sistema */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;
+    transition-duration:.01ms!important;scroll-behavior:auto!important;}
+}
+
+/* Modo alto contraste forzado: los bordes no desaparecen */
+@media (forced-colors:active){
+  button,input,select,textarea{border:1px solid ButtonText;}
+  .eof-skip{border:2px solid LinkText;}
+}
+
+/* Móvil / táctil */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%;}
+img,video,svg{max-width:100%;}
+@media (pointer:coarse){
+  /* Objetivos táctiles de al menos 44px en controles de icono y pestañas */
+  button,.theme-toggle,.nav-toggle,.btn-usuario,.btn-login,
+  .tabs button,.subtabs button,[role="tab"],summary{min-height:44px;}
+  .theme-toggle,.nav-toggle,.btn-usuario,.btn-login,.lect-header-btn,
+  .notif-campana,.uh-cerrar,.modal-newsletter-cerrar{min-width:44px;}
+  nav.main-nav a,nav.main-nav .nav-grupo-btn{min-height:44px;display:inline-flex;align-items:center;}
+}
+@media (max-width:900px){
+  /* iOS hace zoom al enfocar campos con letra menor de 16px */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),select,textarea{font-size:16px;}
+  /* Tablas anchas: desplazamiento horizontal en vez de romper la página */
+  .tabla-scroll,.table-wrap,.tabla-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  /* Modales ajustados a la pantalla y respetando la zona segura de iPhone */
+  [role="dialog"]{max-width:100vw;max-height:calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));overflow-y:auto;}
+}
+body{padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px);}
+input[type="search"]{-webkit-appearance:none;appearance:none;}
+input[type="search"]::-webkit-search-cancel-button{-webkit-appearance:none;}

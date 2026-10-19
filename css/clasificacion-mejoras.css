@@ -1,0 +1,139 @@
+/* ============================================================
+   Clasificación — diseño moderno
+   Se carga después de style.css y listados-ui.css (que aporta tokens,
+   filtros, desplegable y la base común de tabla). Solo CSS: el marcado
+   lo genera clasificacion.html tal cual.
+
+   - Posición como insignia de color según zona (ascenso / playoff /
+     descenso), en vez de una franja fina a la izquierda.
+   - Cabecera clara, filas con más aire, escudos más grandes.
+   - Pts como columna protagonista, fija a la derecha.
+   - Fila "en vivo": cada celda lleva su propia capa roja pulsante, así
+     parpadean todas a la vez (también las fijas, que son opacas).
+   - Móvil: se ocultan GF y GC para que la tabla quepa sin desplazar.
+   ============================================================ */
+
+/* ---------- Posición ---------- */
+/* neutraliza la franja border-left de zona que aún define style.css */
+.clasificacion-tabla tbody tr[data-zona] td.col-pos{border-left:0;}
+.clasificacion-tabla .clas-pos{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:30px;
+  height:30px;
+  border-radius:10px;
+  background:var(--fondo-alt);
+  color:var(--texto-suave);
+  font-family:var(--font-tit);
+  font-size:.92rem;
+  font-weight:700;
+  letter-spacing:.2px;
+}
+.clasificacion-tabla tbody tr[data-zona="ascenso"] .clas-pos{background:var(--ui-verde);color:#fff;box-shadow:0 6px 12px -6px var(--ui-verde);}
+.clasificacion-tabla tbody tr[data-zona="playoff"] .clas-pos{background:var(--celeste);color:#0c1b2e;box-shadow:0 6px 12px -6px var(--celeste);}
+.clasificacion-tabla tbody tr[data-zona="descenso"] .clas-pos{background:var(--rojo);color:#fff;box-shadow:0 6px 12px -6px var(--rojo);}
+
+/* ---------- Equipo ---------- */
+.clasificacion-tabla tbody td.col-equipo{font-weight:600;white-space:nowrap;}
+.clasificacion-tabla .equipo-enlace{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  color:var(--marino-texto);
+  text-decoration:none;
+  transition:color .15s;
+}
+.clasificacion-tabla .equipo-enlace:hover{color:var(--celeste);}
+.clasificacion-tabla .clas-escudo{
+  width:28px;
+  height:28px;
+  object-fit:contain;
+  flex-shrink:0;
+  filter:drop-shadow(0 1px 2px rgba(12,27,46,.18));
+}
+.clasificacion-tabla td.col-equipo .equipo-enlace > span:not(.en-vivo-punto){
+  overflow:hidden;
+  text-overflow:ellipsis;
+  max-width:16rem;
+}
+.clasificacion-tabla .equipo-enlace .en-vivo-punto{margin-left:2px;flex-shrink:0;}
+.clasificacion-tabla .equipo-enlace:focus-visible{
+  outline:none;
+  border-radius:8px;
+  box-shadow:var(--ui-anillo);
+}
+
+/* ---------- Números ---------- */
+.clasificacion-tabla tbody td:nth-child(n+3):not(.col-puntos){color:var(--texto-suave);font-weight:500;}
+.clasificacion-tabla tbody td:nth-child(3),
+.clasificacion-tabla tbody td:nth-child(9){color:var(--texto);font-weight:600;}   /* PJ y DG */
+[data-theme="dark"] .clasificacion-tabla td.col-puntos-en-vivo,
+.clasificacion-tabla td.col-puntos-en-vivo{color:var(--ui-rojo-txt);}
+
+/* ---------- Fila en juego ---------- */
+@keyframes filaEnVivoCelda{
+  0%,100%{opacity:.08;}
+  50%{opacity:.24;}
+}
+.clasificacion-tabla tbody tr.fila-en-vivo,
+.clasificacion-tabla tbody tr.fila-en-vivo:hover{
+  animation:none;
+  background:none;
+  box-shadow:none;
+}
+.clasificacion-tabla tbody tr.fila-en-vivo td:not(.col-pos):not(.col-equipo):not(.col-puntos){
+  position:relative;
+  z-index:0;
+}
+.clasificacion-tabla tbody tr.fila-en-vivo td::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:-1;
+  background:var(--rojo);
+  opacity:.08;
+  pointer-events:none;
+  animation:filaEnVivoCelda 1.6s ease-in-out infinite;
+}
+/* Marca lateral roja en la primera celda de la fila en vivo */
+.clasificacion-tabla tbody tr.fila-en-vivo td.col-pos{box-shadow:inset 3px 0 0 var(--rojo);}
+@media (prefers-reduced-motion: reduce){
+  .clasificacion-tabla tbody tr.fila-en-vivo td::before{animation:none;opacity:.15;}
+}
+
+/* ---------- Leyenda ---------- */
+.clasificacion-leyenda{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin:0 0 32px;
+  padding:0;
+  font-size:.78rem;
+  color:var(--texto-suave);
+}
+.clasificacion-leyenda > span{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:6px 12px;
+  background:var(--tarjeta);
+  border:1px solid var(--borde);
+  border-radius:999px;
+  font-weight:500;
+}
+.clasificacion-leyenda i{width:10px;height:10px;border-radius:50%;}
+
+/* ---------- Móvil ---------- */
+@media(max-width:520px){
+  .clasificacion-tabla{min-width:0;}
+  /* GF y GC fuera: DG ya resume la diferencia y así no hay que desplazar */
+  .clasificacion-tabla :is(thead th, tbody td):is(:nth-child(7),:nth-child(8)){display:none;}
+  .clasificacion-tabla .clas-pos{width:28px;height:28px;border-radius:9px;font-size:.86rem;}
+  .clasificacion-tabla .clas-escudo{width:24px;height:24px;}
+  .clasificacion-tabla .equipo-enlace{gap:8px;}
+  .clasificacion-tabla td.col-equipo .equipo-enlace > span:not(.en-vivo-punto){max-width:6.4rem;}
+  .clasificacion-tabla thead th.col-equipo,
+  .clasificacion-tabla tbody td.col-equipo{padding-right:8px;}
+  .clasificacion-leyenda > span{padding:5px 10px;}
+}

@@ -242,6 +242,9 @@ window.eofCookiesAceptadas = function () {
 };
 
 function eofCookiesInit() {
+  // Con una CMP externa certificada (EOF_ADS_CONFIG.consentimiento = "tcf" en
+  // ads.js) no se muestra este banner propio: lo gestiona la CMP externa.
+  if (window.EOF_CMP_EXTERNO === true) return;
   const guardado = eofCookiesLeerPreferencias();
   if (guardado) {
     eofCookiesAplicarConsentimiento(guardado.analiticas, guardado.publicidad);

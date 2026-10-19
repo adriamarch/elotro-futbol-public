@@ -1,106 +1,142 @@
 // ============================================================================
-// ELOTROFÚTBOLTV — Sistema de espacios publicitarios
+// ELOTROFÚTBOLTV — Sistema de espacios publicitarios MULTI-RED
 // ============================================================================
-// Un único motor de anuncios para todo el sitio, pensado para poder activar
-// progresivamente: hoy mismo puede funcionar solo con AdSense (auto ads o
-// anuncios manuales), y el día que se dé de alta una cuenta de Google Ad
-// Manager (GAM) con header bidding (Prebid.js), basta con rellenar
-// EOF_ADS_CONFIG más abajo -- no hay que tocar ninguna página, porque todas
-// llaman a las mismas funciones de este archivo (adSlot()/insertarAdsEnGrid()).
+// Un único motor para todo el sitio. Las páginas siguen llamando a las mismas
+// funciones de siempre (adSlot(), insertarAdsEnGrid(), initAds()), así que
+// activar o desactivar redes NO requiere tocar ninguna página: solo este
+// archivo (bloque EOF_ADS_CONFIG).
 //
-// Modos soportados (se elige automáticamente según la configuración):
-//   1) "gam"     -> Google Publisher Tag (GPT) + Prebid.js (header bidding).
-//                   Es el modo recomendado para un medio con volumen: permite
-//                   pujar varias redes (AdSense/AdX vía GAM y SSPs de terceros)
-//                   por cada hueco antes de pedir el anuncio a GAM.
-//   2) "adsense" -> Google AdSense "clásico" (anuncios manuales por unidad),
-//                   sin pasar por GAM. Más simple de dar de alta, sirve como
-//                   modo intermedio o de respaldo mientras se aprueba GAM.
-//   3) "none"    -> sin proveedor configurado: NO se pinta ningún hueco
-//                   publicitario (ni caja vacía, ni etiqueta "Publicidad").
-//                   Para verlos igualmente en local/desarrollo (con su alto
-//                   reservado), poner window.EOF_ADS_MOSTRAR_HUECOS = true
-//                   en un <script> antes de cargar este archivo.
+// REDES SOPORTADAS (cada una se activa sola cuando tiene sus IDs rellenos):
+//   google        Google AdSense o Google Ad Manager (+ Prebid vía GAM)
+//   prebid        Header bidding SIN Google: varias SSPs pujan y gana la
+//                 mejor oferta (necesita js/prebid.js, ver ANUNCIOS-REDES.md)
+//   medianet      Media.net (contextual, Yahoo!/Bing)
+//   ezoic         Ezoic (modo standalone: ellos deciden qué anuncio y cuándo)
+//   taboola       Taboola (widgets de contenido recomendado/patrocinado)
+//   personalizada Cualquier otra red: pegas su código HTML/JS en un hueco
 //
-// ---------- CÓMO ACTIVAR LA PUBLICIDAD DE VERDAD ----------
-// 1. Rellenar los datos en EOF_ADS_CONFIG (más abajo en este mismo archivo,
-//    o sobrescribiendo window.EOF_ADS_CONFIG desde un <script> ANTES de
-//    cargar este archivo, igual que ya se hace con EOF_SECONDARY_API_URL en
-//    config.js).
-// 2. Elegir "proveedor": "gam", "adsense" o "none".
-// 3. Si es "gam": rellenar networkCode y, para cada adUnit de "slots", su
-//    ruta completa de GAM (p.ej. "/1234567/eof_home_leaderboard"). Si además
-//    se quiere header bidding, activar prebid.activo y añadir los bidders en
-//    prebid.bidders (cada uno con su placementId/zoneId real, que da el SSP
-//    al darte de alta).
-// 4. Si es "adsense": rellenar clienteAdsense ("ca-pub-XXXXXXXXXXXXXXXX") y,
-//    para cada slot, su slotId de AdSense (el "data-ad-slot" que da AdSense
-//    al crear la unidad de anuncio).
+// CÓMO SE REPARTEN LOS HUECOS (cascada / "waterfall"):
+//   Para cada hueco (cabecera, pie, noticia_final...) se mira la lista
+//   EOF_ADS_CONFIG.prioridad (global o por hueco). La primera red que esté
+//   configurada para ese hueco lo intenta. Si Google (AdSense/GAM) o Prebid
+//   devuelven el hueco VACÍO ("sin relleno"), se pasa automáticamente a la
+//   siguiente red de la lista. Si ninguna rellena, el hueco se colapsa (sin
+//   caja vacía). Así cada hueco nunca queda sin monetizar mientras alguna red
+//   tenga anuncio.
+//
+// CONSENTIMIENTO (RGPD/TCF): ninguna red carga hasta que haya consentimiento
+//   de "publicidad". Dos modos en EOF_ADS_CONFIG.consentimiento:
+//     "propio" -> el banner de js/cookies.js (modo histórico del sitio).
+//     "tcf"    -> una CMP certificada IAB TCF v2.2 (Google Funding Choices,
+//                 Didomi, Cookiebot, Quantcast...). Para servir anuncios a
+//                 lectores de España la mayoría de redes exigen esto.
+//     "ninguno"-> no se espera a nada (la red gestiona su propio aviso, p.ej.
+//                 Ezoic con su CMP). Úsalo solo si estás seguro.
+//
+// Con todo vacío (estado inicial) NO se pinta ningún hueco ni etiqueta
+// "Publicidad". Para verlos en local: window.EOF_ADS_MOSTRAR_HUECOS = true
+// ANTES de cargar este archivo.
 // ============================================================================
 
 const EOF_ADS_CONFIG = window.EOF_ADS_CONFIG || {
-  // "gam" | "adsense" | "none"
-  proveedor: "none",
+  consentimiento: "propio", // "propio" | "tcf" | "ninguno"
 
-  // ---------- Google Ad Manager (GPT) ----------
-  gam: {
-    // Código de red de GAM, ej: "23456789"
-    networkCode: "",
-    // Habilita el "single request" de GPT (todos los slots de la página se
-    // piden en una sola petición a GAM, más eficiente que uno a uno).
-    singleRequest: true,
-    // Refresco automático de slots que llevan tiempo visibles sin
-    // interacción (0 = desactivado). En segundos.
-    refreshSegundos: 0,
+  // Orden en el que se prueban las redes. "porSlot" sobrescribe "global" para
+  // huecos concretos (p.ej. Taboola primero al final de la noticia).
+  prioridad: {
+    global: ["google", "prebid", "medianet", "ezoic", "taboola", "personalizada"],
+    porSlot: {
+      // noticia_final: ["taboola", "google", "medianet"],
+    },
   },
 
-  // ---------- Header bidding (Prebid.js) ----------
-  // Solo se usa si proveedor === "gam". Prebid puja con varios SSPs antes
-  // de pedir el anuncio a GAM, y el resultado se envía a GPT como
-  // "targeting" (hb_pb, hb_bidder...) para que GAM pueda competir esa puja
-  // frente a sus propias campañas/AdX.
+  // ---------- 1) GOOGLE ----------
+  // proveedor: "gam" | "adsense" | "none". Mientras AdSense no te apruebe,
+  // déjalo en "none" y el resto de redes funcionan igualmente.
+  proveedor: "none",
+  gam: {
+    networkCode: "", // p.ej. "23456789"
+    singleRequest: true,
+    refreshSegundos: 0, // 0 = sin refresco automático
+  },
+  adsense: {
+    clienteAdsense: "ca-pub-7347856722927942",
+    autoAds: false, // true = Google coloca los anuncios; false = huecos manuales (slotId abajo)
+  },
+
+  // ---------- 2) PREBID (header bidding) ----------
+  // sinGAM:false -> la puja ganadora se manda a GAM como targeting (necesita GAM).
+  // sinGAM:true  -> NO hace falta Google: se pinta directamente el anuncio con
+  //                 la puja más alta (si supera precioMinimo, en CPM).
   prebid: {
     activo: false,
+    sinGAM: true,
     timeoutMs: 1200,
-    // Cada bidder real se añade aquí con sus IDs (los da cada SSP al darte
-    // de alta). Ejemplo ya preparado para un par de proveedores habituales;
-    // se pueden borrar/añadir los que se contraten.
+    precioMinimo: 0.3,
     bidders: [
       // { nombre: "appnexus", params: { placementId: "0" } },
       // { nombre: "rubicon", params: { accountId: "0", siteId: "0", zoneId: "0" } },
+      // { nombre: "pubmatic", params: { publisherId: "0", adSlot: "0" } },
+      // { nombre: "ix", params: { siteId: "0" } },
     ],
   },
 
-  // ---------- Google AdSense (modo simple, sin GAM) ----------
-  adsense: {
-    // "ca-pub-XXXXXXXXXXXXXXXX"
-    clienteAdsense: "",
-    // Si se activan los "Auto ads" de AdSense (el propio Google decide
-    // dónde insertar anuncios en la página), no hace falta rellenar los
-    // slotId de cada hueco individual: basta con este script suelto y
-    // AdSense coloca sus propios anuncios. Si se prefiere control manual
-    // (los huecos concretos definidos más abajo en EOF_AD_SLOTS), se deja
-    // en false y se rellena cada slotId.
-    autoAds: false,
-  },
+  // ---------- 3) OTRAS REDES ----------
+  redes: {
+    // Media.net: en su panel creas "ad units" por tamaño; cada una tiene un
+    // CRID. Una unidad por tamaño (escritorio/móvil) y hueco. "crid" puede ser
+    // un texto o una lista (para huecos que se repiten, como entre_noticias).
+    medianet: {
+      activo: false,
+      cid: "", // p.ej. "8CUXXXXXX" (customer id, sale en su código)
+      versionId: "", // medianet_versionId, sale en su código (opcional)
+      slots: {
+        // cabecera: [
+        //   { minAncho: 1024, crid: "123456789", tamano: "728x90" },
+        //   { minAncho: 0, crid: "123456790", tamano: "320x50" },
+        // ],
+        // entre_noticias: [{ minAncho: 0, crid: ["111", "112"], tamano: "300x250" }],
+      },
+    },
 
-  // GDPR/CCPA: gestionado por el CMP propio del sitio (ver js/cookies.js),
-  // que fija window.EOF_CONSENTIMIENTO_PUBLICIDAD y llama a initAds() en
-  // cuanto el usuario acepta la categoría "publicidad". Con esto en true,
-  // este archivo espera antes de cargar cualquier script de publicidad a
-  // que exista window.EOF_CONSENTIMIENTO_PUBLICIDAD === true.
-  esperarConsentimiento: true,
+    // Ezoic (standalone): los IDs de colocación (placeholders) salen de su
+    // panel. Ezoic decide qué anunciantes pujan, así que NO lo combines con
+    // AdSense/GAM en el mismo hueco (pon solo uno de los dos por hueco).
+    ezoic: {
+      activo: false,
+      usarCMPEzoic: false, // true = carga la CMP "Gatekeeper" de Ezoic (pon consentimiento:"ninguno")
+      slots: {
+        // cabecera: [101], entre_noticias: [102, 103], noticia_intext: [104],
+        // noticia_final: [105], pie: [106], lateral: [107],
+      },
+    },
+
+    // Taboola: widgets de recomendación (suelen pagar bien en medios de
+    // noticias, pero exigen aprobación y un mínimo de tráfico).
+    taboola: {
+      activo: false,
+      publisherId: "", // p.ej. "elotrofutbol-network" (te lo da Taboola)
+      slots: {
+        // noticia_final: { modo: "thumbnails-a", placement: "Below Article Thumbnails" },
+        // pie: { modo: "thumbnails-a", placement: "Below Homepage Thumbnails" },
+      },
+    },
+
+    // Cualquier otra red (Amazon, Setupad, AdPlus, ventas directas...).
+    // "html" se inserta tal cual (los <script> se ejecutan). "scripts" son
+    // librerías que se cargan una sola vez en la página.
+    personalizada: {
+      activo: false,
+      scripts: [],
+      slots: {
+        // cabecera: { html: '<div id="mi-red-cabecera"></div><script>/* ... */<\/script>' },
+      },
+    },
+  },
 };
 
 // ---------- Definición de los huecos publicitarios del sitio ----------
-// Cada slot define su tamaño "responsive" mediante varios formatos
-// admitidos por tamaño de pantalla (GPT los llama "size mapping"; en modo
-// AdSense simple se usa igualmente para reservar el alto y elegir el
-// formato más adecuado). Los nombres (key) son los que se usan al llamar
-// a adSlot("key") desde las páginas.
 const EOF_AD_SLOTS = {
-  // Cabecera de portada/categoría: banner grande en escritorio, banner
-  // mediano en tablet, banner pequeño en móvil.
   cabecera: {
     gamAdUnit: "/0000000/eof_cabecera",
     adsenseSlotId: "",
@@ -110,8 +146,6 @@ const EOF_AD_SLOTS = {
       { minAncho: 0, tamanos: [[320, 100], [300, 100]] },
     ],
   },
-  // Intercalado en medio de los listados de noticias (portada, categoría):
-  // formato cuadrado/rectángulo, se repite cada N tarjetas.
   entre_noticias: {
     gamAdUnit: "/0000000/eof_entre_noticias",
     adsenseSlotId: "",
@@ -120,8 +154,6 @@ const EOF_AD_SLOTS = {
       { minAncho: 0, tamanos: [[300, 250]] },
     ],
   },
-  // Barra lateral (si el layout la usa) o, en su ausencia, bloque tras el
-  // hero de portada.
   lateral: {
     gamAdUnit: "/0000000/eof_lateral",
     adsenseSlotId: "",
@@ -130,7 +162,6 @@ const EOF_AD_SLOTS = {
       { minAncho: 0, tamanos: [[300, 250]] },
     ],
   },
-  // Dentro del cuerpo de una noticia, tras el primer bloque de texto.
   noticia_intext: {
     gamAdUnit: "/0000000/eof_noticia_intext",
     adsenseSlotId: "",
@@ -139,7 +170,6 @@ const EOF_AD_SLOTS = {
       { minAncho: 0, tamanos: [[300, 250]] },
     ],
   },
-  // Al final de la noticia, antes de "Noticias similares".
   noticia_final: {
     gamAdUnit: "/0000000/eof_noticia_final",
     adsenseSlotId: "",
@@ -148,7 +178,6 @@ const EOF_AD_SLOTS = {
       { minAncho: 0, tamanos: [[320, 100], [300, 250]] },
     ],
   },
-  // Pie de página, antes del footer.
   pie: {
     gamAdUnit: "/0000000/eof_pie",
     adsenseSlotId: "",
@@ -159,64 +188,84 @@ const EOF_AD_SLOTS = {
   },
 };
 
-// Cada cuántas tarjetas se intercala un anuncio "entre_noticias" en un
-// listado (categoría, búsqueda...). Se deja un espaciado amplio a
-// propósito: la idea es un único anuncio discreto en listados normales,
-// y como mucho un segundo en listados muy largos, nunca una fila de
-// anuncios verticales seguidos rompiendo la lectura.
+// Cada cuántas tarjetas se intercala un anuncio "entre_noticias" en un listado.
 const EOF_ADS_CADA_N_TARJETAS = 12;
+// Dentro de una noticia: después de qué párrafo se inserta "noticia_intext" y
+// cuántos párrafos mínimo debe tener el texto para que merezca la pena.
+const EOF_ADS_INTEXT_TRAS_PARRAFO = 2;
+const EOF_ADS_INTEXT_MIN_PARRAFOS = 5;
 
 // ============================================================================
-// Motor interno: no hace falta tocar nada de aquí abajo para configurar el
-// sitio (eso se hace arriba, en EOF_ADS_CONFIG/EOF_AD_SLOTS).
+// Motor interno
 // ============================================================================
 
 let _eofAdsGptListo = false;
 let _eofAdsPrebidListo = false;
 let _eofAdsContador = 0;
-const _eofAdsSlotsDefinidosGPT = new Map(); // key del slot -> googletag slot
+const _eofAdsSlotsDefinidosGPT = new Map(); // divId -> googletag slot
+const _eofAdsGamCallbacks = new Map(); // divId -> función a llamar si GAM no rellena
+const _eofAdsIdsUsados = new Set(); // ids de Ezoic/Media.net ya colocados en esta página
 
-function eofAdsProveedorActivo() {
-  return EOF_ADS_CONFIG.proveedor || "none";
+const eofAdsDev = () => window.EOF_ADS_MOSTRAR_HUECOS === true;
+if (eofAdsDev()) document.documentElement.classList.add("eof-ads-dev");
+const eofAdsRed = (nombre) => (EOF_ADS_CONFIG.redes && EOF_ADS_CONFIG.redes[nombre]) || {};
+
+// ---------- Consentimiento ----------
+if (EOF_ADS_CONFIG.consentimiento === "tcf") {
+  // Con una CMP externa certificada, desactiva el banner propio de cookies.js
+  // (cookies.js comprueba este indicador al arrancar).
+  window.EOF_CMP_EXTERNO = true;
 }
 
 function eofAdsPuedeCargar() {
-  // El consentimiento de cookies (categoría "publicidad" del CMP propio,
-  // ver js/cookies.js) es la única condición para servir anuncios, salvo
-  // que EOF_ADS_CONFIG.esperarConsentimiento esté a false (por ejemplo,
-  // en un entorno sin CMP activo todavía).
-  if (!EOF_ADS_CONFIG.esperarConsentimiento) return true;
+  if (EOF_ADS_CONFIG.consentimiento === "ninguno") return true;
   return window.EOF_CONSENTIMIENTO_PUBLICIDAD === true;
 }
 
-// ¿Hay de verdad un anuncio que servir en este hueco? Solo entonces se
-// pinta el contenedor. Se considera configurado cuando:
-//   - gam:     hay networkCode y el adUnit del hueco no es el de ejemplo
-//              ("/0000000/...").
-//   - adsense: hay clienteAdsense, el hueco tiene su adsenseSlotId, y no se
-//              usan Auto ads (con Auto ads es Google quien coloca los
-//              anuncios, y los contenedores manuales sobran).
-// Con proveedor "none" (o datos a medio rellenar) devuelve false, salvo que
-// window.EOF_ADS_MOSTRAR_HUECOS === true (modo desarrollo).
-function eofAdsSlotConfigurado(slotDef) {
-  if (window.EOF_ADS_MOSTRAR_HUECOS === true) return true;
-  const proveedor = eofAdsProveedorActivo();
-  if (proveedor === "gam") {
-    const ad = (slotDef && slotDef.gamAdUnit) || "";
-    return !!EOF_ADS_CONFIG.gam.networkCode && !!ad && !ad.startsWith("/0000000/");
-  }
-  if (proveedor === "adsense") {
-    if (EOF_ADS_CONFIG.adsense.autoAds) return false;
-    return !!EOF_ADS_CONFIG.adsense.clienteAdsense && !!(slotDef && slotDef.adsenseSlotId);
-  }
-  return false;
+function eofAdsEscucharTCF() {
+  let intentos = 0;
+  const conectar = () => {
+    if (typeof window.__tcfapi === "function") {
+      window.__tcfapi("addEventListener", 2, (tcData, ok) => {
+        if (!ok || !tcData) return;
+        if (tcData.eventStatus !== "tcloaded" && tcData.eventStatus !== "useractioncomplete") return;
+        const consiente =
+          tcData.gdprApplies === false ||
+          !!(tcData.purpose && tcData.purpose.consents && tcData.purpose.consents[1]);
+        window.EOF_CONSENTIMIENTO_PUBLICIDAD = consiente;
+        if (consiente) {
+          document.dispatchEvent(new CustomEvent("eof:cookies-aceptadas"));
+          initAds();
+        }
+      });
+    } else if (++intentos < 75) {
+      setTimeout(conectar, 200); // la CMP puede tardar unos segundos en cargar
+    }
+  };
+  conectar();
+}
+if (EOF_ADS_CONFIG.consentimiento === "tcf") eofAdsEscucharTCF();
+
+// ---------- Utilidades ----------
+function eofAdsCargarScript(src, atributos) {
+  return new Promise((resolve, reject) => {
+    if (document.querySelector(`script[src="${src}"]`)) return resolve();
+    const s = document.createElement("script");
+    s.src = src;
+    s.async = true;
+    if (atributos) Object.keys(atributos).forEach((k) => s.setAttribute(k, atributos[k]));
+    s.onload = resolve;
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
 }
 
-// Alto reservado (el mayor de los tamaños del formato aplicable al ancho
-// actual de ventana) para que el contenedor nunca haga saltar el resto del
-// contenido al cargar el anuncio de verdad (evita Cumulative Layout Shift).
+function eofAdsAnchoVentana() {
+  return window.innerWidth || document.documentElement.clientWidth || 0;
+}
+
 function eofAdsFormatoActual(slotDef) {
-  const ancho = window.innerWidth || document.documentElement.clientWidth || 0;
+  const ancho = eofAdsAnchoVentana();
   const formatos = [...slotDef.formatos].sort((a, b) => b.minAncho - a.minAncho);
   return formatos.find((f) => ancho >= f.minAncho) || formatos[formatos.length - 1];
 }
@@ -227,62 +276,48 @@ function eofAdsAltoReservado(slotDef) {
   return Math.max(...formato.tamanos.map((t) => t[1]));
 }
 
-// Construye el HTML del contenedor de un slot: una caja responsive con
-// alto mínimo reservado, una etiqueta "Publicidad" (transparencia hacia el
-// lector, y habitual/recomendado por las políticas de los propios
-// proveedores) y un div interno donde se inserta el anuncio real.
-//
-// key: identificador del slot (debe existir en EOF_AD_SLOTS).
-// idUnico: opcional, para poder repetir el mismo slot varias veces en la
-// misma página (p.ej. "entre_noticias" repetido en un listado largo) sin
-// que los ids choquen entre sí.
-function adSlotHTML(key, idUnico) {
-  const slotDef = EOF_AD_SLOTS[key];
-  if (!slotDef) return "";
-  // Sin publicidad realmente configurada para este hueco, no se pinta nada:
-  // así no aparecen cajas vacías ni la etiqueta "Publicidad" antes de tiempo.
-  if (!eofAdsSlotConfigurado(slotDef)) return "";
-  const id = `eof-ad-${key}-${idUnico || ++_eofAdsContador}`;
-  const alto = eofAdsAltoReservado(slotDef);
-  return `
-    <div class="eof-ad-wrap eof-ad-${key}" data-ad-key="${key}">
-      <span class="eof-ad-etiqueta">Publicidad</span>
-      <div id="${id}" class="eof-ad-contenedor" style="min-height:${alto}px;"></div>
-    </div>`;
+// De una lista [{minAncho,...}] devuelve la entrada aplicable al ancho actual.
+function eofAdsPorAncho(lista) {
+  if (!Array.isArray(lista) || !lista.length) return null;
+  const ancho = eofAdsAnchoVentana();
+  const orden = [...lista].sort((a, b) => b.minAncho - a.minAncho);
+  return orden.find((u) => ancho >= (u.minAncho || 0)) || null;
 }
 
-// Inserta y "dispara" un slot en un contenedor ya existente en el DOM
-// (por ejemplo tras hacer innerHTML con adSlotHTML en algún punto de la
-// página). Se puede llamar a mano justo después de insertar el HTML, o
-// dejar que initAds() lo haga automáticamente al cargar la página con
-// document.querySelectorAll(".eof-ad-contenedor").
-function eofAdsSolicitarSlot(divId, key) {
-  const slotDef = EOF_AD_SLOTS[key];
-  if (!slotDef || !eofAdsPuedeCargar()) return;
-
-  const proveedor = eofAdsProveedorActivo();
-
-  if (proveedor === "gam") {
-    eofAdsSolicitarSlotGAM(divId, key, slotDef);
-  } else if (proveedor === "adsense") {
-    eofAdsSolicitarSlotAdsense(divId, key, slotDef);
-  }
-  // proveedor === "none": se deja el contenedor vacío (con su alto
-  // reservado ya puesto por adSlotHTML), sin pedir nada a ningún proveedor.
+function eofAdsPrimerLibre(valor) {
+  const lista = Array.isArray(valor) ? valor : [valor];
+  return lista.find((v) => v !== undefined && v !== null && v !== "" && !_eofAdsIdsUsados.has(String(v)));
 }
 
-// ---------- Modo Google Ad Manager (GPT) + Prebid ----------
-function eofAdsCargarScript(src) {
-  return new Promise((resolve, reject) => {
-    if (document.querySelector(`script[src="${src}"]`)) return resolve();
-    const s = document.createElement("script");
-    s.src = src;
-    s.async = true;
-    s.onload = resolve;
-    s.onerror = reject;
-    document.head.appendChild(s);
-  });
-}
+// ============================================================================
+// ADAPTADORES (uno por red). Interfaz común:
+//   configurado(key, slotDef) -> ¿esta red puede llenar este hueco?
+//   alto(key, slotDef)        -> alto a reservar (px) o null para usar el estándar
+//   solicitar(divId, key, slotDef, alVaciar) -> pide el anuncio; si no hay
+//                               relleno llama a alVaciar() (pasa a la siguiente red)
+// ============================================================================
+const EOF_ADS_ADAPTADORES = {};
+
+// ---------- GOOGLE (AdSense / GAM) ----------
+EOF_ADS_ADAPTADORES.google = {
+  configurado(key, slotDef) {
+    const proveedor = EOF_ADS_CONFIG.proveedor || "none";
+    if (proveedor === "gam") {
+      const ad = (slotDef && slotDef.gamAdUnit) || "";
+      return !!EOF_ADS_CONFIG.gam.networkCode && !!ad && !ad.startsWith("/0000000/");
+    }
+    if (proveedor === "adsense") {
+      if (EOF_ADS_CONFIG.adsense.autoAds) return false;
+      return !!EOF_ADS_CONFIG.adsense.clienteAdsense && !!(slotDef && slotDef.adsenseSlotId);
+    }
+    return false;
+  },
+  alto: () => null,
+  solicitar(divId, key, slotDef, alVaciar) {
+    if (EOF_ADS_CONFIG.proveedor === "gam") eofAdsSolicitarSlotGAM(divId, key, slotDef, alVaciar);
+    else eofAdsSolicitarSlotAdsense(divId, key, slotDef, alVaciar);
+  },
+};
 
 async function eofAdsAsegurarGPT() {
   if (_eofAdsGptListo) return;
@@ -290,8 +325,21 @@ async function eofAdsAsegurarGPT() {
   await eofAdsCargarScript("https://securepubads.g.doubleclick.net/tag/js/gpt.js");
   await new Promise((resolve) => {
     googletag.cmd.push(() => {
-      googletag.pubads().enableSingleRequest && EOF_ADS_CONFIG.gam.singleRequest && googletag.pubads().enableSingleRequest();
-      googletag.pubads().collapseEmptyDivs();
+      const pubads = googletag.pubads();
+      // Los slots se piden uno a uno (cuando se acercan a la pantalla) con
+      // refresh(): así no hay doble petición ni se piden huecos que nunca se ven.
+      pubads.disableInitialLoad();
+      pubads.collapseEmptyDivs();
+      pubads.addEventListener("slotRenderEnded", (ev) => {
+        const divId = ev.slot.getSlotElementId();
+        const cb = _eofAdsGamCallbacks.get(divId);
+        if (ev.isEmpty && cb) {
+          _eofAdsGamCallbacks.delete(divId);
+          googletag.destroySlots([ev.slot]);
+          _eofAdsSlotsDefinidosGPT.delete(divId);
+          cb();
+        }
+      });
       if (EOF_ADS_CONFIG.gam.refreshSegundos > 0) {
         setInterval(() => {
           const slots = googletag.pubads().getSlots();
@@ -307,38 +355,38 @@ async function eofAdsAsegurarGPT() {
 
 async function eofAdsAsegurarPrebid() {
   if (!EOF_ADS_CONFIG.prebid.activo || _eofAdsPrebidListo) return;
-  window.pbjs = window.pbjs || { que: [] };
-  // Prebid se autoaloja o se sirve desde un CDN propio del proyecto en un
-  // caso real (el build de Prebid depende de qué adaptadores de bidders se
-  // incluyan); aquí se deja la carga preparada apuntando a un archivo local
-  // que se generaría con el "Prebid.js download builder" oficial y se
-  // colocaría en public/js/prebid.js.
-  await eofAdsCargarScript("js/prebid.js").catch(() => {
-    console.warn("[ads] Prebid.js no encontrado en js/prebid.js. Genera tu build en https://docs.prebid.org/download.html y colócalo ahí, o desactiva EOF_ADS_CONFIG.prebid.activo.");
+  window.pbjs = window.pbjs || {};
+  window.pbjs.que = window.pbjs.que || [];
+  // Build propio generado con https://docs.prebid.org/download.html
+  // (con los adaptadores de TUS bidders) y colocado en public/js/prebid.js
+  await eofAdsCargarScript("/js/prebid.js").catch(() => {
+    console.warn("[ads] Prebid.js no encontrado en /js/prebid.js. Genera tu build en https://docs.prebid.org/download.html o desactiva EOF_ADS_CONFIG.prebid.activo.");
   });
   _eofAdsPrebidListo = true;
 }
 
-function eofAdsDefinirSlotGAM(key, slotDef, divId) {
+function eofAdsTodosTamanos(slotDef) {
+  return [...new Set(slotDef.formatos.flatMap((f) => f.tamanos.map((t) => t.join("x"))))].map((s) => s.split("x").map(Number));
+}
+
+function eofAdsDefinirSlotGAM(slotDef, divId) {
   if (_eofAdsSlotsDefinidosGPT.has(divId)) return _eofAdsSlotsDefinidosGPT.get(divId);
-  const formato = eofAdsFormatoActual(slotDef);
-  const todosTamanos = [...new Set(slotDef.formatos.flatMap((f) => f.tamanos))];
   const mapping = googletag.sizeMapping();
   slotDef.formatos
     .slice()
     .sort((a, b) => a.minAncho - b.minAncho)
     .forEach((f) => mapping.addSize([f.minAncho, 0], f.tamanos));
   const gSlot = googletag
-    .defineSlot(slotDef.gamAdUnit, todosTamanos, divId)
+    .defineSlot(slotDef.gamAdUnit, eofAdsTodosTamanos(slotDef), divId)
     .defineSizeMapping(mapping.build())
     .addService(googletag.pubads());
   _eofAdsSlotsDefinidosGPT.set(divId, gSlot);
   return gSlot;
 }
 
-function eofAdsPujarPrebid(bids) {
+function eofAdsPujarPrebidGAM(bids) {
   return new Promise((resolve) => {
-    if (!EOF_ADS_CONFIG.prebid.activo || !EOF_ADS_CONFIG.prebid.bidders.length) return resolve();
+    if (!EOF_ADS_CONFIG.prebid.activo || !EOF_ADS_CONFIG.prebid.bidders.length || EOF_ADS_CONFIG.prebid.sinGAM) return resolve();
     pbjs.que.push(() => {
       pbjs.addAdUnits(bids);
       pbjs.requestBids({
@@ -352,40 +400,39 @@ function eofAdsPujarPrebid(bids) {
   });
 }
 
-async function eofAdsSolicitarSlotGAM(divId, key, slotDef) {
-  await eofAdsAsegurarGPT();
-  await eofAdsAsegurarPrebid();
-
+async function eofAdsSolicitarSlotGAM(divId, key, slotDef, alVaciar) {
+  try {
+    await eofAdsAsegurarGPT();
+    await eofAdsAsegurarPrebid();
+  } catch (e) {
+    return alVaciar(); // GPT bloqueado (adblock...): siguiente red
+  }
   googletag.cmd.push(async () => {
-    const gSlot = eofAdsDefinirSlotGAM(key, slotDef, divId);
-
-    if (EOF_ADS_CONFIG.prebid.activo && EOF_ADS_CONFIG.prebid.bidders.length) {
-      const bids = [{
-        code: divId,
-        mediaTypes: { banner: { sizes: [...new Set(slotDef.formatos.flatMap((f) => f.tamanos))] } },
-        bids: EOF_ADS_CONFIG.prebid.bidders.map((b) => ({ bidder: b.nombre, params: b.params })),
-      }];
-      await eofAdsPujarPrebid(bids);
-    }
-
+    const gSlot = eofAdsDefinirSlotGAM(slotDef, divId);
+    _eofAdsGamCallbacks.set(divId, alVaciar);
+    const bids = [{
+      code: divId,
+      mediaTypes: { banner: { sizes: eofAdsTodosTamanos(slotDef) } },
+      bids: EOF_ADS_CONFIG.prebid.bidders.map((b) => ({ bidder: b.nombre, params: b.params })),
+    }];
+    await eofAdsPujarPrebidGAM(bids);
     googletag.display(divId);
     googletag.pubads().refresh([gSlot]);
   });
 }
 
-// ---------- Modo AdSense (sin GAM) ----------
 let _eofAdsenseScriptCargado = false;
 async function eofAdsAsegurarAdsenseScript() {
   if (_eofAdsenseScriptCargado || !EOF_ADS_CONFIG.adsense.clienteAdsense) return;
   await eofAdsCargarScript(
-    `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(EOF_ADS_CONFIG.adsense.clienteAdsense)}`
+    `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(EOF_ADS_CONFIG.adsense.clienteAdsense)}`,
+    { crossorigin: "anonymous" }
   ).catch(() => {});
   window.adsbygoogle = window.adsbygoogle || [];
   _eofAdsenseScriptCargado = true;
 }
 
-async function eofAdsSolicitarSlotAdsense(divId, key, slotDef) {
-  if (!slotDef.adsenseSlotId || !EOF_ADS_CONFIG.adsense.clienteAdsense) return;
+async function eofAdsSolicitarSlotAdsense(divId, key, slotDef, alVaciar) {
   await eofAdsAsegurarAdsenseScript();
   const contenedor = document.getElementById(divId);
   if (!contenedor) return;
@@ -397,75 +444,348 @@ async function eofAdsSolicitarSlotAdsense(divId, key, slotDef) {
   ins.setAttribute("data-ad-format", "auto");
   ins.setAttribute("data-full-width-responsive", "true");
   contenedor.appendChild(ins);
+  // AdSense marca el <ins> con data-ad-status="unfilled" cuando no hay anuncio.
+  if (window.MutationObserver) {
+    const obs = new MutationObserver(() => {
+      if (ins.getAttribute("data-ad-status") === "unfilled") {
+        obs.disconnect();
+        ins.remove();
+        alVaciar();
+      }
+    });
+    obs.observe(ins, { attributes: true, attributeFilter: ["data-ad-status"] });
+  }
   try {
     (window.adsbygoogle = window.adsbygoogle || []).push({});
   } catch (err) {
     console.warn("[ads] Error al solicitar anuncio de AdSense:", err);
+    alVaciar();
   }
 }
 
-// Modo "Auto ads" de AdSense: un único script suelto en la página basta,
-// Google decide dónde colocar los anuncios sin necesidad de los
-// contenedores manuales de arriba.
 async function eofAdsActivarAutoAds() {
   if (!eofAdsPuedeCargar() || !EOF_ADS_CONFIG.adsense.clienteAdsense) return;
   await eofAdsCargarScript(
-    `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(EOF_ADS_CONFIG.adsense.clienteAdsense)}`
+    `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(EOF_ADS_CONFIG.adsense.clienteAdsense)}`,
+    { crossorigin: "anonymous" }
   ).catch(() => {});
   window.adsbygoogle = window.adsbygoogle || [];
   try {
     adsbygoogle.push({ google_ad_client: EOF_ADS_CONFIG.adsense.clienteAdsense, enable_page_level_ads: true });
   } catch (err) {
-    // Auto ads solo se puede activar una vez por página; un segundo intento
-    // (p.ej. si initAds() se llamara dos veces) lanza, se ignora.
+    // Auto ads solo se activa una vez por página.
   }
 }
 
-// ---------- API pública ----------
+// ---------- PREBID standalone (sin Google) ----------
+EOF_ADS_ADAPTADORES.prebid = {
+  configurado() {
+    const p = EOF_ADS_CONFIG.prebid;
+    return !!(p.activo && p.sinGAM && p.bidders && p.bidders.length);
+  },
+  alto: () => null,
+  async solicitar(divId, key, slotDef, alVaciar) {
+    await eofAdsAsegurarPrebid();
+    if (!window.pbjs || !pbjs.que) return alVaciar();
+    const p = EOF_ADS_CONFIG.prebid;
+    pbjs.que.push(() => {
+      pbjs.addAdUnits([{
+        code: divId,
+        mediaTypes: { banner: { sizes: eofAdsTodosTamanos(slotDef) } },
+        bids: p.bidders.map((b) => ({ bidder: b.nombre, params: b.params })),
+      }]);
+      pbjs.requestBids({
+        adUnitCodes: [divId],
+        timeout: p.timeoutMs,
+        bidsBackHandler: () => {
+          const mejor = (pbjs.getHighestCpmBids(divId) || [])[0];
+          const contenedor = document.getElementById(divId);
+          if (!mejor || !contenedor || mejor.cpm < (p.precioMinimo || 0)) return alVaciar();
+          const iframe = document.createElement("iframe");
+          iframe.width = mejor.width;
+          iframe.height = mejor.height;
+          iframe.style.cssText = "border:0;max-width:100%;";
+          iframe.setAttribute("scrolling", "no");
+          iframe.setAttribute("title", "Publicidad");
+          contenedor.appendChild(iframe);
+          pbjs.renderAd(iframe.contentWindow.document, mejor.adId);
+        },
+      });
+    });
+  },
+};
 
-// Devuelve el HTML de un hueco publicitario listo para insertar en
-// cualquier plantilla (portada, categoría, noticia...). Uso típico:
-//   contenedor.innerHTML += adSlot("cabecera");
-// Tras insertarlo en el DOM, hay que llamar a initAds() (o dejar que la
-// llamada automática en DOMContentLoaded lo recoja) para que se solicite
-// el anuncio de verdad.
+// ---------- MEDIA.NET ----------
+EOF_ADS_ADAPTADORES.medianet = {
+  configurado(key) {
+    const c = eofAdsRed("medianet");
+    if (!c.activo || !c.cid) return false;
+    const u = eofAdsPorAncho((c.slots || {})[key]);
+    return !!(u && eofAdsPrimerLibre(u.crid));
+  },
+  alto(key) {
+    const u = eofAdsPorAncho((eofAdsRed("medianet").slots || {})[key]);
+    const h = u && parseInt(String(u.tamano).split("x")[1], 10);
+    return h || null;
+  },
+  async solicitar(divId, key, slotDef, alVaciar) {
+    const c = eofAdsRed("medianet");
+    const u = eofAdsPorAncho((c.slots || {})[key]);
+    const crid = u && eofAdsPrimerLibre(u.crid);
+    const contenedor = document.getElementById(divId);
+    if (!crid || !contenedor) return alVaciar();
+    _eofAdsIdsUsados.add(String(crid));
+    window._mNHandle = window._mNHandle || {};
+    window._mNHandle.queue = window._mNHandle.queue || [];
+    if (c.versionId) window.medianet_versionId = c.versionId;
+    contenedor.innerHTML = `<div id="${crid}"></div>`;
+    try {
+      await eofAdsCargarScript(`https://contextual.media.net/dmedianet.js?cid=${encodeURIComponent(c.cid)}`);
+      window._mNHandle.queue.push(() => {
+        window._mNDetails.loadTag(String(crid), u.tamano, String(crid));
+      });
+    } catch (e) {
+      alVaciar();
+    }
+  },
+};
+
+// ---------- EZOIC (standalone) ----------
+let _eofAdsEzoicListo = null;
+function eofAdsAsegurarEzoic() {
+  if (_eofAdsEzoicListo) return _eofAdsEzoicListo;
+  const c = eofAdsRed("ezoic");
+  _eofAdsEzoicListo = (async () => {
+    if (c.usarCMPEzoic) {
+      await eofAdsCargarScript("https://cmp.gatekeeperconsent.com/min.js", { "data-cfasync": "false" }).catch(() => {});
+      await eofAdsCargarScript("https://the.gatekeeperconsent.com/cmp.min.js", { "data-cfasync": "false" }).catch(() => {});
+    }
+    window.ezstandalone = window.ezstandalone || {};
+    ezstandalone.cmd = ezstandalone.cmd || [];
+    await eofAdsCargarScript("https://www.ezojs.com/ezoic/sa.min.js");
+  })();
+  return _eofAdsEzoicListo;
+}
+
+EOF_ADS_ADAPTADORES.ezoic = {
+  configurado(key) {
+    const c = eofAdsRed("ezoic");
+    return !!(c.activo && eofAdsPrimerLibre((c.slots || {})[key]));
+  },
+  alto: () => null,
+  async solicitar(divId, key, slotDef, alVaciar) {
+    const c = eofAdsRed("ezoic");
+    const id = eofAdsPrimerLibre((c.slots || {})[key]);
+    const contenedor = document.getElementById(divId);
+    if (id === undefined || !contenedor) return alVaciar();
+    _eofAdsIdsUsados.add(String(id));
+    contenedor.innerHTML = `<div id="ezoic-pub-ad-placeholder-${id}"></div>`;
+    try {
+      await eofAdsAsegurarEzoic();
+      window.ezstandalone.cmd.push(() => window.ezstandalone.showAds(Number(id)));
+    } catch (e) {
+      alVaciar();
+    }
+  },
+};
+
+// ---------- TABOOLA ----------
+let _eofAdsTaboolaIniciado = false;
+let _eofAdsTaboolaFlush = null;
+function eofAdsTaboolaTipoPagina() {
+  if (window.EOF_TABOOLA_TIPO_PAGINA) return window.EOF_TABOOLA_TIPO_PAGINA;
+  const ruta = location.pathname.toLowerCase();
+  if (ruta.includes("noticia")) return "article";
+  if (ruta === "/" || ruta.endsWith("/index.html")) return "home";
+  return "category";
+}
+
+EOF_ADS_ADAPTADORES.taboola = {
+  configurado(key) {
+    const c = eofAdsRed("taboola");
+    return !!(c.activo && c.publisherId && (c.slots || {})[key]);
+  },
+  alto: () => 0, // el widget fija su propio alto
+  async solicitar(divId, key, slotDef, alVaciar) {
+    const c = eofAdsRed("taboola");
+    const cfg = c.slots[key];
+    window._taboola = window._taboola || [];
+    if (!_eofAdsTaboolaIniciado) {
+      _eofAdsTaboolaIniciado = true;
+      const tipo = eofAdsTaboolaTipoPagina();
+      window._taboola.push({ [tipo]: "auto" });
+      eofAdsCargarScript(`https://cdn.taboola.com/libtrc/${encodeURIComponent(c.publisherId)}/loader.js`, { id: "tb_loader_script" }).catch(() => alVaciar());
+    }
+    window._taboola.push({
+      mode: cfg.modo || "thumbnails-a",
+      container: divId,
+      placement: cfg.placement || key,
+      target_type: cfg.tipoContenido || "mix",
+    });
+    clearTimeout(_eofAdsTaboolaFlush);
+    _eofAdsTaboolaFlush = setTimeout(() => window._taboola.push({ flush: true }), 150);
+  },
+};
+
+// ---------- PERSONALIZADA (cualquier otra red) ----------
+EOF_ADS_ADAPTADORES.personalizada = {
+  configurado(key) {
+    const c = eofAdsRed("personalizada");
+    return !!(c.activo && c.slots && c.slots[key] && c.slots[key].html);
+  },
+  alto: () => null,
+  async solicitar(divId, key, slotDef, alVaciar) {
+    const c = eofAdsRed("personalizada");
+    const contenedor = document.getElementById(divId);
+    if (!contenedor) return alVaciar();
+    try {
+      for (const src of c.scripts || []) await eofAdsCargarScript(src);
+      // createContextualFragment ejecuta los <script> del HTML pegado
+      contenedor.appendChild(document.createRange().createContextualFragment(c.slots[key].html));
+    } catch (e) {
+      alVaciar();
+    }
+  },
+};
+
+// ============================================================================
+// Cascada de redes por hueco
+// ============================================================================
+function eofAdsCadena(key) {
+  const slotDef = EOF_AD_SLOTS[key];
+  if (!slotDef) return [];
+  const prio = EOF_ADS_CONFIG.prioridad || {};
+  const orden = (prio.porSlot && prio.porSlot[key]) || prio.global || Object.keys(EOF_ADS_ADAPTADORES);
+  return orden.filter((n) => EOF_ADS_ADAPTADORES[n] && EOF_ADS_ADAPTADORES[n].configurado(key, slotDef));
+}
+
+// ¿Hay alguna red que pueda servir este hueco? (o modo desarrollo)
+function eofAdsSlotConfigurado(keyOSlotDef) {
+  if (eofAdsDev()) return true;
+  const key = typeof keyOSlotDef === "string"
+    ? keyOSlotDef
+    : Object.keys(EOF_AD_SLOTS).find((k) => EOF_AD_SLOTS[k] === keyOSlotDef);
+  if (!key) return false;
+  return eofAdsCadena(key).length > 0;
+}
+
+function eofAdsAltoHueco(key) {
+  const slotDef = EOF_AD_SLOTS[key];
+  const cadena = eofAdsCadena(key);
+  if (cadena.length) {
+    const a = EOF_ADS_ADAPTADORES[cadena[0]].alto(key, slotDef);
+    if (a !== null && a !== undefined) return a;
+  }
+  return eofAdsAltoReservado(slotDef);
+}
+
+function eofAdsMarcarVacio(div) {
+  const wrap = div.closest("[data-ad-key]");
+  if (wrap) wrap.classList.add("eof-ad-vacio");
+}
+
+function eofAdsSolicitarSlot(divId, key) {
+  const slotDef = EOF_AD_SLOTS[key];
+  const div = document.getElementById(divId);
+  if (!slotDef || !div || !eofAdsPuedeCargar()) return;
+
+  const cadena = eofAdsCadena(key);
+  if (!cadena.length) return; // modo desarrollo: se deja la caja reservada
+  const wrap = div.closest("[data-ad-key]");
+  let paso = 0;
+
+  const siguiente = () => {
+    const nombre = cadena[paso++];
+    if (!nombre) {
+      div.innerHTML = "";
+      return eofAdsMarcarVacio(div);
+    }
+    div.innerHTML = "";
+    div.removeAttribute("data-ad-llena");
+    if (wrap) wrap.setAttribute("data-ad-red", nombre);
+    let usado = false;
+    const alVaciar = () => {
+      if (usado) return;
+      usado = true;
+      siguiente();
+    };
+    try {
+      const r = EOF_ADS_ADAPTADORES[nombre].solicitar(divId, key, slotDef, alVaciar);
+      if (r && typeof r.catch === "function") r.catch(alVaciar);
+    } catch (e) {
+      alVaciar();
+    }
+  };
+  siguiente();
+}
+
+// ============================================================================
+// API pública (la misma de siempre)
+// ============================================================================
+
+// HTML de un hueco publicitario listo para insertar en cualquier plantilla.
+function adSlotHTML(key, idUnico) {
+  const slotDef = EOF_AD_SLOTS[key];
+  if (!slotDef) return "";
+  if (!eofAdsSlotConfigurado(key)) return "";
+  const id = `eof-ad-${key}-${idUnico || ++_eofAdsContador}`;
+  const alto = eofAdsAltoHueco(key);
+  return `
+    <div class="eof-ad-wrap eof-ad-${key}" data-ad-key="${key}">
+      <span class="eof-ad-etiqueta">Publicidad</span>
+      <div id="${id}" class="eof-ad-contenedor" style="min-height:${alto}px;"></div>
+    </div>`;
+}
+
 function adSlot(key, idUnico) {
   return adSlotHTML(key, idUnico);
 }
 
-// Recorre el DOM buscando contenedores de anuncio pendientes de solicitar
-// (los que tiene adSlotHTML) y dispara la petición a GAM/AdSense según el
-// proveedor configurado. Se puede llamar tantas veces como haga falta
-// (p.ej. tras insertar más tarjetas de noticias por scroll infinito): solo
-// actúa sobre los contenedores que todavía no se han solicitado.
+// Pide los anuncios de los contenedores pendientes. Se pide cuando el hueco
+// está a punto de entrar en pantalla (mejor visibilidad = mejor CPM, y no se
+// gastan peticiones en huecos que nadie llega a ver). Puede llamarse varias
+// veces: solo actúa sobre los contenedores aún no solicitados.
+let _eofAdsObservador = null;
+function eofAdsObservarContenedor(div) {
+  const lanzar = () => {
+    const wrap = div.closest("[data-ad-key]");
+    const key = wrap && wrap.dataset.adKey;
+    if (key) eofAdsSolicitarSlot(div.id, key);
+  };
+  if (!("IntersectionObserver" in window)) return lanzar();
+  if (!_eofAdsObservador) {
+    _eofAdsObservador = new IntersectionObserver((entradas) => {
+      entradas.forEach((e) => {
+        if (!e.isIntersecting) return;
+        _eofAdsObservador.unobserve(e.target);
+        const wrap = e.target.closest("[data-ad-key]");
+        const key = wrap && wrap.dataset.adKey;
+        if (key) eofAdsSolicitarSlot(e.target.id, key);
+      });
+    }, { rootMargin: "400px 0px" });
+  }
+  _eofAdsObservador.observe(div);
+}
+
 function initAds() {
   if (!eofAdsPuedeCargar()) return;
 
-  if (eofAdsProveedorActivo() === "adsense" && EOF_ADS_CONFIG.adsense.autoAds) {
+  if (EOF_ADS_CONFIG.proveedor === "adsense" && EOF_ADS_CONFIG.adsense.autoAds) {
     eofAdsActivarAutoAds();
-    return; // con Auto ads no se solicitan los contenedores manuales
   }
 
   document.querySelectorAll(".eof-ad-contenedor:not([data-ad-solicitado])").forEach((div) => {
-    const wrap = div.closest("[data-ad-key]");
-    const key = wrap && wrap.dataset.adKey;
-    if (!key) return;
     div.setAttribute("data-ad-solicitado", "1");
-    eofAdsSolicitarSlot(div.id, key);
+    eofAdsObservarContenedor(div);
   });
 }
 
-// Inserta huecos "entre_noticias" dentro de un listado de tarjetas ya
-// pintado, cada EOF_ADS_CADA_N_TARJETAS tarjetas. Pensado para llamarse
-// justo después de pintar un grid de noticias (portada, categoría,
-// búsqueda...): selectorGrid es el contenedor que ya tiene las tarjetas
-// (p.ej. ".grid-noticias") como hijos directos.
+// Inserta huecos "entre_noticias" en un listado de tarjetas ya pintado.
 function insertarAdsEnGrid(selectorGrid) {
   const grid = typeof selectorGrid === "string" ? document.querySelector(selectorGrid) : selectorGrid;
   if (!grid) return;
-  // Sin publicidad configurada no se intercala nada en el listado.
-  if (!EOF_AD_SLOTS.entre_noticias || !eofAdsSlotConfigurado(EOF_AD_SLOTS.entre_noticias)) return;
-  const tarjetas = [...grid.children].filter((el) => !el.classList.contains("eof-ad-wrap"));
+  if (!eofAdsSlotConfigurado("entre_noticias")) return;
+  const tarjetas = [...grid.children].filter((el) => !el.classList.contains("eof-ad-grid-item"));
   if (tarjetas.length < EOF_ADS_CADA_N_TARJETAS) return;
 
   for (let i = EOF_ADS_CADA_N_TARJETAS; i < tarjetas.length; i += EOF_ADS_CADA_N_TARJETAS) {
@@ -479,21 +799,29 @@ function insertarAdsEnGrid(selectorGrid) {
   initAds();
 }
 
-// Se dispara sola al cargar cualquier página que incluya este script,
-// para recoger los slots ya presentes en el HTML estático (cabecera, pie,
-// noticia_final...) sin que cada página tenga que acordarse de llamar a
-// initAds() a mano. Los que se insertan dinámicamente después (listados
-// paginados, entre_noticias...) sí necesitan su propia llamada a
-// initAds()/insertarAdsEnGrid() justo después de pintarse.
+// Inserta un hueco dentro del texto de una noticia (tras el párrafo
+// EOF_ADS_INTEXT_TRAS_PARRAFO), solo si el texto es lo bastante largo.
+function insertarAdIntext(cuerpo) {
+  const el = typeof cuerpo === "string" ? document.querySelector(cuerpo) : cuerpo;
+  if (!el || el.querySelector(".eof-ad-noticia_intext")) return;
+  if (!eofAdsSlotConfigurado("noticia_intext")) return;
+  const parrafos = [...el.children].filter((n) => n.tagName === "P" && n.textContent.trim().length > 40);
+  if (parrafos.length < EOF_ADS_INTEXT_MIN_PARRAFOS) return;
+  const ref = parrafos[EOF_ADS_INTEXT_TRAS_PARRAFO - 1];
+  if (!ref) return;
+  const wrapper = document.createElement("div");
+  wrapper.className = "eof-ad-intext-item";
+  wrapper.innerHTML = adSlot("noticia_intext");
+  ref.insertAdjacentElement("afterend", wrapper);
+  initAds();
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   initAds();
 });
 
-// Si cambia el ancho de ventana de forma relevante (p.ej. girar el móvil),
-// se recalcula el alto reservado de los contenedores que aún no se hayan
-// solicitado, para que la reserva de espacio siga siendo correcta al
-// nuevo tamaño. No se vuelve a pedir el anuncio ya servido (para eso está
-// el refresco opcional de GPT, EOF_ADS_CONFIG.gam.refreshSegundos).
+// Si cambia el ancho de ventana, se recalcula el alto reservado de los
+// contenedores que aún no se hayan solicitado.
 let _eofAdsResizeTimer;
 window.addEventListener("resize", () => {
   clearTimeout(_eofAdsResizeTimer);
@@ -501,8 +829,7 @@ window.addEventListener("resize", () => {
     document.querySelectorAll(".eof-ad-contenedor:not([data-ad-solicitado])").forEach((div) => {
       const wrap = div.closest("[data-ad-key]");
       const key = wrap && wrap.dataset.adKey;
-      const slotDef = key && EOF_AD_SLOTS[key];
-      if (slotDef) div.style.minHeight = `${eofAdsAltoReservado(slotDef)}px`;
+      if (key && EOF_AD_SLOTS[key]) div.style.minHeight = `${eofAdsAltoHueco(key)}px`;
     });
   }, 200);
 });

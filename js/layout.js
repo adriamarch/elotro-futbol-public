@@ -1,13 +1,77 @@
-const NAV_ITEMS = [
-  { key: "inicio", label: "Portada", href: "index.html" },
-  { key: "hypermotion", label: "LaLiga Hypermotion", href: "categoria.html?cat=hypermotion" },
-  { key: "primera_federacion", label: "Primera Federación", href: "categoria.html?cat=primera_federacion" },
-  { key: "segunda_federacion", label: "Segunda Federación", href: "categoria.html?cat=segunda_federacion" },
-  { key: "arbitraje", label: "Arbitraje", href: "categoria.html?cat=arbitraje" },
-  { key: "jurisdiccion", label: "Jurisdicción deportiva", href: "categoria.html?cat=jurisdiccion" },
-  { key: "calendario", label: "Calendario", href: "calendario.html" },
-  { key: "clasificacion", label: "Clasificación", href: "clasificacion.html" },
-  { key: "predicciones", label: "Porras", href: "predicciones.html" },
+// Carga bajo demanda el antispam (Cloudflare Turnstile) para los formularios de
+// newsletter que viven en el pie/modal de todas las páginas.
+function eofCargarTurnstile() {
+  if (window.EOFTurnstile) return Promise.resolve();
+  if (window.__eofTurnstileCarga) return window.__eofTurnstileCarga;
+  window.__eofTurnstileCarga = new Promise((ok) => {
+    const sc = document.createElement("script");
+    sc.src = "/js/turnstile.js?v=2";
+    sc.async = true;
+    sc.onload = () => ok();
+    sc.onerror = () => ok(); // sin el script el servidor decidirá
+    document.head.appendChild(sc);
+  });
+  return window.__eofTurnstileCarga;
+}
+// Precalienta el captcha del formulario de newsletter al enfocarlo o cuando el
+// pie de página entra en pantalla, para no esperar al pulsar "Suscribirme".
+function eofPrecalentarNewsletter(form) {
+  if (!form || form.__eofPre) return;
+  form.__eofPre = true;
+  const arrancar = async () => {
+    await eofCargarTurnstile();
+    const cont = form.querySelector("[data-eof-turnstile]");
+    if (window.EOFTurnstile && cont) window.EOFTurnstile.precalentar(cont);
+  };
+  form.addEventListener("focusin", arrancar, { once: true });
+  if ("IntersectionObserver" in window) {
+    const io = new IntersectionObserver((es) => {
+      if (es.some((x) => x.isIntersecting)) { io.disconnect(); arrancar(); }
+    }, { rootMargin: "300px" });
+    io.observe(form);
+  }
+}
+async function eofTokenNewsletter(form) {
+  await eofCargarTurnstile();
+  const cont = form && form.querySelector("[data-eof-turnstile]");
+  if (!window.EOFTurnstile || !cont) return { cont, token: "", web: "" };
+  const token = await window.EOFTurnstile.esperarToken(cont);
+  return { cont, token, web: window.EOFTurnstile.trampa(cont) };
+}
+
+// Estructura de la barra de navegación. "enlace" = enlace suelto;
+// "grupo" = botón con desplegable al pasar el ratón por encima. Dentro
+// de un grupo, un item con clubes:true abre además una cascada lateral
+// con los clubes de esa competición (Ligas). Las "key" coinciden con
+// document.body.dataset.page para marcar la opción activa.
+const NAV_MENU = [
+  { tipo: "enlace", key: "inicio", label: "Portada", href: "" },
+  {
+    tipo: "grupo", id: "ligas", label: "Ligas",
+    items: [
+      { key: "hypermotion", label: "LaLiga Hypermotion", href: "categoria?cat=hypermotion", clubes: true },
+      { key: "primera_federacion", label: "Primera Federación", href: "categoria?cat=primera_federacion", clubes: true },
+      { key: "segunda_federacion", label: "Segunda Federación", href: "categoria?cat=segunda_federacion", clubes: true },
+    ],
+  },
+  {
+    tipo: "grupo", id: "campeonatos", label: "Campeonatos",
+    items: [
+      { key: "copa_del_rey", label: "Copa del Rey", href: "categoria?cat=copa_del_rey" },
+      { key: "copa_federacion", label: "Copa Federación", href: "categoria?cat=copa_federacion" },
+    ],
+  },
+  {
+    tipo: "grupo", id: "secciones", label: "Secciones específicas",
+    items: [
+      { key: "arbitraje", label: "Arbitraje", href: "categoria?cat=arbitraje" },
+      { key: "jurisdiccion", label: "Jurisdicción deportiva", href: "categoria?cat=jurisdiccion" },
+    ],
+  },
+  { tipo: "enlace", key: "calendario", label: "Calendario", href: "calendario" },
+  { tipo: "enlace", key: "clasificacion", label: "Clasificación", href: "clasificacion" },
+  { tipo: "enlace", key: "estadisticas", label: "Estadísticas", href: "estadisticas" },
+  { tipo: "enlace", key: "predicciones", label: "Porras", href: "predicciones" },
 ];
 
 const ICONOS_REDES = {
@@ -36,16 +100,58 @@ function baseHref() {
   return "/";
 }
 
+// Cascada lateral con los clubes de una liga (aparece al pasar por
+// encima de la liga dentro del desplegable "Ligas").
 function clubSubmenuHTML(cat, clubes) {
   const items = clubes
-    .map((club) => `<li><a href="${baseHref()}categoria.html?cat=${encodeURIComponent(cat)}&club=${encodeURIComponent(club)}">${club}</a></li>`)
+    .map((club) => `<li><a href="${baseHref()}categoria?cat=${encodeURIComponent(cat)}&club=${encodeURIComponent(club)}">${club}</a></li>`)
     .join("");
-  return `<ul class="submenu">${items}</ul>`;
+  return `<ul class="nav-flyout">${items}</ul>`;
+}
+
+// Clubes que se muestran en el menú para una competición. Segunda
+// Federación tiene 90 clubes en clubs.js (para los desplegables del
+// panel, Calendario y Clasificación), pero en la cabecera solo salen los
+// que cubrimos editorialmente (CLUBS_SEGUNDA_FEDERACION_CUBIERTOS_PORTADA).
+function clubesParaMenu(key) {
+  if (key === "segunda_federacion" && typeof CLUBS_SEGUNDA_FEDERACION_CUBIERTOS_PORTADA !== "undefined") {
+    return CLUBS_SEGUNDA_FEDERACION_CUBIERTOS_PORTADA.slice().sort((a, b) => a.localeCompare(b, "es"));
+  }
+  return typeof getClubsForCategoria === "function" ? getClubsForCategoria(key) : [];
+}
+
+function navMenuHTML(activePage) {
+  return NAV_MENU.map((entrada) => {
+    if (entrada.tipo === "enlace") {
+      const activo = entrada.key === activePage ? "activo" : "";
+      return `<li><a href="${baseHref()}${entrada.href}" class="${activo}">${entrada.label}</a></li>`;
+    }
+    const hijoActivo = entrada.items.some((it) => it.key === activePage);
+    const itemsHTML = entrada.items.map((it) => {
+      const activo = it.key === activePage ? "activo" : "";
+      const clubes = it.clubes ? clubesParaMenu(it.key) : [];
+      if (clubes.length) {
+        return `
+          <li class="nav-liga">
+            <a href="${baseHref()}${it.href}" class="${activo}">${it.label}</a>
+            <button type="button" class="nav-liga-toggle" aria-label="Ver clubes de ${it.label}">▸</button>
+            ${clubSubmenuHTML(it.key, clubes)}
+          </li>`;
+      }
+      return `<li><a href="${baseHref()}${it.href}" class="${activo}">${it.label}</a></li>`;
+    }).join("");
+    return `
+      <li class="nav-grupo">
+        <button type="button" class="nav-grupo-btn ${hijoActivo ? "activo" : ""}" aria-haspopup="true" aria-expanded="false">${entrada.label}<span class="nav-caret" aria-hidden="true">▾</span></button>
+        <ul class="nav-drop">${itemsHTML}</ul>
+      </li>`;
+  }).join("");
 }
 
 function iconosRedesHTML() {
   return Object.entries(SITE.redes)
-    .map(([key, url]) => `<a href="${url}" target="_blank" rel="noopener" title="${NOMBRES_REDES[key] || key}">${ICONOS_REDES[key] || ""}</a>`)
+    .filter(([, url]) => urlExternaSegura(url))
+    .map(([key, url]) => `<a href="${urlExternaSegura(url)}" target="_blank" rel="noopener" title="${escapeHtml(NOMBRES_REDES[key] || key)}">${ICONOS_REDES[key] || ""}</a>`)
     .join("");
 }
 
@@ -100,10 +206,13 @@ function iniciales(nombre) {
 
 function avatarHTML(user, clase = "user-avatar") {
   if (user && user.avatar_url) {
-    const foco = user.avatar_foco || "50% 50%";
-    return `<span class="${clase} user-avatar-foto" style="background-image:url('${user.avatar_url}');background-size:cover;background-position:${foco}"></span>`;
+    const urlAvatar = urlSeguraParaCss(user.avatar_url);
+    if (urlAvatar) {
+      // El foco se valida y se pinta con el motor común (js/foco.js).
+      return `<span class="${clase} user-avatar-foto foco-bg" style="background-image:url('${urlAvatar}');${EOF_FOCO.estilo(user.avatar_foco)}"></span>`;
+    }
   }
-  return `<span class="${clase}">${iniciales(user && user.nombre) || "?"}</span>`;
+  return `<span class="${clase}">${escapeHtml(iniciales(user && user.nombre)) || "?"}</span>`;
 }
 
 function accesoHeaderHTML() {
@@ -129,13 +238,27 @@ function accesoHeaderHTML() {
           </div>
         </div>
         <a href="${baseHref()}admin/panel.html?ajustes=perfil">Editar perfil</a>
-        <a href="${baseHref()}admin/panel.html?ajustes=password">Cambiar contraseña</a>
+        <a href="${baseHref()}admin/panel.html?ajustes=seguridad">Seguridad</a>
         <a href="${baseHref()}admin/panel.html?ajustes=progreso">Mi progreso</a>
         <a href="${baseHref()}admin/panel.html?ajustes=sesiones">Dispositivos</a>
+        <a href="${baseHref()}admin/panel.html?ajustes=preferencias">Preferencias</a>
         <a href="${baseHref()}admin/panel.html">Ir al panel</a>
+        ${user.rol === "admin" ? `<a href="${baseHref()}panel-analiticas.html">Analíticas</a>` : ""}
         <button type="button" id="btnCerrarSesion">Cerrar sesión</button>
       </div>
     </div>`;
+}
+
+// Icono de "Mis guardadas" con contador (lo rellena js/lecturas.js con
+// EOFLecturas.pintarInsignia). Se ve siempre, con o sin sesión: los visitantes
+// también guardan (en su navegador).
+function guardadasHeaderHTML() {
+  return `<a href="${baseHref()}guardadas" class="theme-toggle lect-header-btn" aria-label="Mis guardadas" title="Mis guardadas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg><span class="lect-badge" hidden></span></a>`;
+}
+
+// renderHeader() sustituye la cabecera entera: hay que volver a pintar el contador.
+function pintarInsigniaGuardadas() {
+  if (window.EOFLecturas && typeof EOFLecturas.pintarInsignia === "function") EOFLecturas.pintarInsignia();
 }
 
 function accesoLectorHeaderHTML() {
@@ -150,7 +273,7 @@ function accesoLectorHeaderHTML() {
   const reader = sesionLectorActual();
   const volver = encodeURIComponent(location.pathname + location.search);
   if (!reader) {
-    return `<a href="${baseHref()}acceso.html?volver=${volver}" class="btn-login" aria-label="Acceso" title="Iniciar sesión o registrarte"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></a>`;
+    return `<a href="${baseHref()}acceso?volver=${volver}" class="btn-login" aria-label="Acceso" title="Iniciar sesión o registrarte"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></a>`;
   }
   return `
     <div class="user-menu" id="lectorMenu">
@@ -166,9 +289,12 @@ function accesoLectorHeaderHTML() {
             <span>Lector</span>
           </div>
         </div>
-        <a href="${baseHref()}cuenta.html">Editar perfil</a>
-        <a href="${baseHref()}acceso.html?cuenta=password">Cambiar contraseña</a>
-        <a href="${baseHref()}cuenta.html?tab=sesiones">Dispositivos</a>
+        <a href="${baseHref()}cuenta">Editar perfil</a>
+        <a href="${baseHref()}cuenta?tab=guardadas">Guardadas</a>
+        <a href="${baseHref()}cuenta?tab=historial">Historial</a>
+        <a href="${baseHref()}cuenta?tab=password">Seguridad</a>
+        <a href="${baseHref()}cuenta?tab=preferencias">Preferencias</a>
+        <a href="${baseHref()}cuenta?tab=sesiones">Dispositivos</a>
         <button type="button" id="btnCerrarSesionLectorHeader">Cerrar sesión</button>
       </div>
     </div>`;
@@ -176,19 +302,7 @@ function accesoLectorHeaderHTML() {
 
 function renderHeader() {
   const activePage = document.body.dataset.page || "";
-  const navHTML = NAV_ITEMS.map((item) => {
-    const activo = item.key === activePage ? "activo" : "";
-    const clubes = typeof getClubsForCategoria === "function" ? getClubsForCategoria(item.key) : [];
-    if (clubes.length) {
-      return `
-        <li class="tiene-submenu">
-          <a href="${baseHref()}${item.href}" class="${activo}">${item.label}</a>
-          <button type="button" class="submenu-toggle" aria-label="Ver clubes de ${item.label}">▾</button>
-          ${clubSubmenuHTML(item.key, clubes)}
-        </li>`;
-    }
-    return `<li><a href="${baseHref()}${item.href}" class="${activo}">${item.label}</a></li>`;
-  }).join("");
+  const navHTML = navMenuHTML(activePage);
 
   const redesMini = iconosRedesHTML();
 
@@ -202,12 +316,13 @@ function renderHeader() {
 
     <header class="main-header">
       <div class="wrap">
-        <a href="${baseHref()}index.html" class="brand">
-          <img src="${baseHref()}img/logo.png" alt="ELOTROFÚTBOLTV - logo oficial">
+        <a href="${baseHref()}" class="brand">
+          <img class="brand-logo brand-logo-claro" src="${baseHref()}img/logo-blanco.png" alt="ELOTROFÚTBOLTV - logo oficial">
+          <img class="brand-logo brand-logo-oscuro" src="${baseHref()}img/logo.png" alt="" aria-hidden="true">
           <span class="brand-text">EL<span class="brand-rojo">OTROFÚTBOL</span>TV</span>
         </a>
         <div class="search-box" id="searchBox">
-          <input type="text" id="searchInput" autocomplete="off" placeholder="Buscar noticias, crónicas...">
+          <input type="search" id="searchInput" autocomplete="off" enterkeyhint="search" aria-label="Buscar noticias y crónicas" placeholder="Buscar noticias, crónicas...">
           <div class="search-resultados" id="searchResultados"></div>
         </div>
         <div class="header-right">
@@ -215,9 +330,10 @@ function renderHeader() {
             <svg class="theme-icon-luna" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
             <svg class="theme-icon-sol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2.4M12 19.1v2.4M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M2.5 12h2.4M19.1 12h2.4M4.9 19.1l1.7-1.7M17.4 6.6l1.7-1.7"/></svg>
           </button>
+          ${guardadasHeaderHTML()}
           ${accesoHeaderHTML()}
           ${accesoLectorHeaderHTML()}
-          <button class="nav-toggle" id="navToggle">☰</button>
+          <button type="button" class="nav-toggle" id="navToggle" aria-label="Abrir menú de navegación" aria-controls="navList" aria-expanded="false">☰</button>
         </div>
       </div>
     </header>
@@ -247,6 +363,7 @@ function renderBloqueNewsletter() {
           </div>
           <form class="newsletter-form" id="newsletterForm">
             <input type="email" id="newsletterEmail" placeholder="Tu correo electrónico" required autocomplete="email">
+            <div data-eof-turnstile style="margin:.4rem 0 0"></div>
             <button type="submit">Suscribirme</button>
           </form>
         </div>`;
@@ -401,10 +518,11 @@ function renderFooter() {
                   <input type="email" id="modalNewsletterEmail" placeholder="tucorreo@ejemplo.com" required autocomplete="email" inputmode="email">
                 </div>
                 <p class="modal-newsletter-error" id="modalNewsletterError" role="alert" hidden></p>
+                <div data-eof-turnstile style="margin:.4rem 0"></div>
                 <button type="submit">Quiero suscribirme</button>
               </form>
               <button type="button" class="modal-newsletter-omitir" onclick="cerrarModalNewsletter()">Ahora no, gracias</button>
-              <p class="modal-newsletter-legal">Al suscribirte aceptas nuestra <a href="${baseHref()}politica-privacidad.html">política de privacidad</a>.</p>
+              <p class="modal-newsletter-legal">Al suscribirte aceptas nuestra <a href="${baseHref()}politica-privacidad">política de privacidad</a>.</p>
             </div>
 
             <div class="modal-newsletter-exito" role="status" hidden>
@@ -428,41 +546,46 @@ function renderFooter() {
           <div>
             <h4>Secciones</h4>
             <ul>
-              <li><a href="${baseHref()}categoria.html?cat=hypermotion">LaLiga Hypermotion</a></li>
-              <li><a href="${baseHref()}categoria.html?cat=primera_federacion">Primera Federación</a></li>
-              <li><a href="${baseHref()}categoria.html?cat=segunda_federacion">Segunda Federación</a></li>
-              <li><a href="${baseHref()}categoria.html?cat=arbitraje">Arbitraje</a></li>
-              <li><a href="${baseHref()}categoria.html?cat=jurisdiccion">Jurisdicción deportiva</a></li>
+              <li><a href="${baseHref()}categoria?cat=hypermotion">LaLiga Hypermotion</a></li>
+              <li><a href="${baseHref()}categoria?cat=primera_federacion">Primera Federación</a></li>
+              <li><a href="${baseHref()}categoria?cat=segunda_federacion">Segunda Federación</a></li>
+              <li><a href="${baseHref()}categoria?cat=copa_del_rey">Copa del Rey</a></li>
+              <li><a href="${baseHref()}categoria?cat=copa_federacion">Copa Federación</a></li>
+              <li><a href="${baseHref()}categoria?cat=arbitraje">Arbitraje</a></li>
+              <li><a href="${baseHref()}categoria?cat=jurisdiccion">Jurisdicción deportiva</a></li>
             </ul>
           </div>
           <div>
             <h4>Resultados</h4>
             <ul>
-              <li><a href="${baseHref()}calendario.html">Calendario</a></li>
-              <li><a href="${baseHref()}clasificacion.html">Clasificación</a></li>
-              <li><a href="${baseHref()}predicciones.html">Porras</a></li>
-              <li><a href="${baseHref()}galerias.html">Galería de contenido</a></li>
-              <li><a href="${baseHref()}buscar.html">Buscar noticias</a></li>
+              <li><a href="${baseHref()}calendario">Calendario</a></li>
+              <li><a href="${baseHref()}clasificacion">Clasificación</a></li>
+              <li><a href="${baseHref()}estadisticas">Estadísticas</a></li>
+              <li><a href="${baseHref()}predicciones">Porras</a></li>
+              <li><a href="${baseHref()}noticias-rapidas">Noticias rápidas</a></li>
+              <li><a href="${baseHref()}galerias">Galería de contenido</a></li>
+              <li><a href="${baseHref()}buscar">Buscar noticias</a></li>
+              <li><a href="${baseHref()}guardadas">Mis guardadas</a></li>
             </ul>
           </div>
           <div>
             <h4>El medio</h4>
             <ul>
-              <li><a href="${baseHref()}index.html">Portada</a></li>
-              <li><a href="${baseHref()}quienes-somos.html">Quiénes somos</a></li>
-              <li><a href="${baseHref()}linea-editorial.html">Línea editorial</a></li>
-              <li><a href="${baseHref()}contacto.html">Contacto de prensa</a></li>
-              <li><a href="${baseHref()}widgets.html">Widgets para tu web</a></li>
-              <li><a href="${baseHref()}transparencia.html">Portal de transparencia</a></li>
-              <li><a href="${baseHref()}estado.html">Estado del servicio</a></li>
-              <li><a href="${baseHref()}acceso.html">Acceso</a></li>
+              <li><a href="${baseHref()}">Portada</a></li>
+              <li><a href="${baseHref()}quienes-somos">Quiénes somos</a></li>
+              <li><a href="${baseHref()}linea-editorial">Línea editorial</a></li>
+              <li><a href="${baseHref()}contacto">Contacto de prensa</a></li>
+              <li><a href="${baseHref()}widgets">Widgets para tu web</a></li>
+              <li><a href="${baseHref()}transparencia">Portal de transparencia</a></li>
+              <li><a href="${baseHref()}estado">Estado del servicio</a></li>
+              <li><a href="${baseHref()}acceso">Acceso</a></li>
             </ul>
           </div>
           <div>
             <h4>Legal</h4>
             <ul>
-              <li><a href="${baseHref()}politica-privacidad.html">Política de privacidad</a></li>
-              <li><a href="${baseHref()}politica-cookies.html">Política de cookies</a></li>
+              <li><a href="${baseHref()}politica-privacidad">Política de privacidad</a></li>
+              <li><a href="${baseHref()}politica-cookies">Política de cookies</a></li>
               <li><button type="button" class="footer-link-boton" onclick="if(window.eofAbrirPreferenciasCookies)eofAbrirPreferenciasCookies();">Configurar cookies</button></li>
             </ul>
           </div>
@@ -613,7 +736,17 @@ document.addEventListener("DOMContentLoaded", () => {
   const headerEl = document.getElementById("site-header");
   const footerEl = document.getElementById("site-footer");
   if (headerEl) headerEl.innerHTML = renderHeader();
+  pintarInsigniaGuardadas();
   if (footerEl) footerEl.innerHTML = renderFooter();
+  // Notificaciones push + PWA (manifest y service worker): se carga
+  // aparte, desde aqui, para que llegue a todas las paginas publicas sin
+  // tener que tocar el <head> de cada una. Ver js/push.js.
+  if (!document.querySelector('script[src*="js/push.js"]')) {
+    const scriptPush = document.createElement("script");
+    scriptPush.src = "/js/push.js?v=6";
+    scriptPush.defer = true;
+    document.head.appendChild(scriptPush);
+  }
   // Ajusta el carrusel de "Con el apoyo de" (nº de copias de logos y
   // velocidad de la animación) una vez el footer ya está en el DOM y se
   // puede medir su ancho real; ver inicializarCarruselPatrocinadoresFooter().
@@ -660,6 +793,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (headerEl && typeof cargarCustomClubs === "function") {
     cargarCustomClubs().then(() => {
       headerEl.innerHTML = renderHeader();
+      pintarInsigniaGuardadas();
       pintarFechaHoy();
       reengancharMenu();
       inicializarBusquedaEnVivo();
@@ -770,6 +904,7 @@ function inicializarModalNewsletter() {
   const modal = document.getElementById("modalNewsletter");
   const form = document.getElementById("modalNewsletterForm");
   if (!modal || !form) return;
+  eofPrecalentarNewsletter(form);
 
   const estado = estadoModalNewsletter();
   if (!estado.suscrito && estado.veces < 2) {
@@ -817,11 +952,13 @@ function inicializarModalNewsletter() {
     boton.disabled = true;
     boton.textContent = "Enviando...";
     try {
+      const ts = await eofTokenNewsletter(form);
       const res = await apiFetch("/api/newsletter/suscribir", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, turnstileToken: ts.token, web: ts.web }),
       });
+      if (window.EOFTurnstile) window.EOFTurnstile.reiniciar(ts.cont);
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "No se pudo completar la suscripción");
@@ -867,6 +1004,7 @@ function inicializarToggleTema() {
     if (!btn) return;
     const esOscuroAhora = document.documentElement.getAttribute("data-theme") === "dark";
     const nuevo = esOscuroAhora ? "light" : "dark";
+    if (window.EOFTema) { window.EOFTema.fijar(nuevo); return; }
     if (nuevo === "dark") {
       document.documentElement.setAttribute("data-theme", "dark");
     } else {
@@ -900,6 +1038,7 @@ function inicializarFormularioNewsletter() {
     });
   }
   if (!form) return;
+  eofPrecalentarNewsletter(form);
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const input = document.getElementById("newsletterEmail");
@@ -910,11 +1049,13 @@ function inicializarFormularioNewsletter() {
     boton.disabled = true;
     boton.textContent = "Enviando...";
     try {
+      const ts = await eofTokenNewsletter(form);
       const res = await apiFetch("/api/newsletter/suscribir", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, turnstileToken: ts.token, web: ts.web }),
       });
+      if (window.EOFTurnstile) window.EOFTurnstile.reiniciar(ts.cont);
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "No se pudo completar la suscripción");
@@ -947,29 +1088,49 @@ function reengancharMenu() {
   if (toggle && navList) {
     toggle.addEventListener("click", () => navList.classList.toggle("abierta"));
   }
-  document.querySelectorAll("li.tiene-submenu").forEach((li) => {
-    li.addEventListener("mouseenter", () => {
-      if (window.innerWidth > 900) li.classList.add("abierto");
+  // En escritorio con ratón los desplegables se abren solo con CSS
+  // (:hover). Con táctil, o en móvil (menú en acordeón), se abren
+  // pulsando: la clase "abierto" es la que los muestra.
+  const hoverReal = () => window.innerWidth > 900 && window.matchMedia("(hover: hover)").matches;
+  const cerrarMenus = (excepto) => {
+    document.querySelectorAll("nav.main-nav .abierto").forEach((el) => {
+      if (excepto && (el === excepto || el.contains(excepto) || excepto.contains(el))) return;
+      el.classList.remove("abierto");
+      const b = el.querySelector(":scope > .nav-grupo-btn");
+      if (b) b.setAttribute("aria-expanded", "false");
     });
-    li.addEventListener("mouseleave", () => {
-      if (window.innerWidth > 900) li.classList.remove("abierto");
-    });
-  });
-  document.querySelectorAll(".submenu-toggle").forEach((btn) => {
+  };
+  document.querySelectorAll(".nav-grupo-btn").forEach((btn) => {
     btn.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
+      if (hoverReal()) return; // ya se abre con el ratón
       const li = btn.closest("li");
       const yaAbierto = li.classList.contains("abierto");
-      document.querySelectorAll("li.tiene-submenu.abierto").forEach((otro) => otro.classList.remove("abierto"));
+      cerrarMenus();
+      if (!yaAbierto) {
+        li.classList.add("abierto");
+        btn.setAttribute("aria-expanded", "true");
+      }
+    });
+  });
+  document.querySelectorAll(".nav-liga-toggle").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (hoverReal()) return; // con ratón la cascada sale por :hover
+      const li = btn.closest("li");
+      const yaAbierto = li.classList.contains("abierto");
+      // Se cierran las otras ligas, pero el grupo "Ligas" se queda abierto.
+      li.parentElement.querySelectorAll(":scope > li.nav-liga.abierto").forEach((otra) => otra.classList.remove("abierto"));
       if (!yaAbierto) li.classList.add("abierto");
     });
   });
 }
 document.addEventListener("click", (e) => {
-  if (window.innerWidth <= 900 && !e.target.closest("li.tiene-submenu")) {
-    document.querySelectorAll("li.tiene-submenu.abierto").forEach((li) => li.classList.remove("abierto"));
-  }
+  if (e.target.closest(".nav-grupo")) return;
+  document.querySelectorAll("nav.main-nav .abierto").forEach((el) => el.classList.remove("abierto"));
+  document.querySelectorAll(".nav-grupo-btn[aria-expanded=true]").forEach((b) => b.setAttribute("aria-expanded", "false"));
 });
 
 // Desplegable del nombre de usuario en la cabecera (sesión iniciada
@@ -1047,10 +1208,17 @@ function inicializarBusquedaEnVivo() {
   let temporizador;
   let controlador;
 
+  // En la página de resultados el cuadro conserva lo buscado.
+  if (!input.value && /\/buscar(\.html)?$/.test(location.pathname)) {
+    const qActual = new URLSearchParams(location.search).get("q");
+    if (qActual) input.value = qActual;
+  }
+
   input.addEventListener("input", () => {
     clearTimeout(temporizador);
     const q = input.value.trim();
     if (!q) {
+      if (controlador) controlador.abort();   // que una respuesta tardía no reabra el desplegable
       resultadosEl.classList.remove("visible");
       resultadosEl.innerHTML = "";
       return;
@@ -1075,40 +1243,70 @@ function inicializarBusquedaEnVivo() {
     const clubes = (typeof buscarClubesPorTexto === "function") ? buscarClubesPorTexto(q) : [];
     const clubesAMostrar = clubes.slice(0, MAX_CLUBES_EN_BUSCADOR);
     const itemClubHTML = clubesAMostrar.map(club => `
-      <a class="search-item search-item-club" href="${baseHref()}categoria.html?cat=${encodeURIComponent(club.categoria)}&club=${encodeURIComponent(club.nombre)}">
+      <a class="search-item search-item-club" href="${baseHref()}categoria?cat=${encodeURIComponent(club.categoria)}&club=${encodeURIComponent(club.nombre)}">
         <span class="search-item-cat">Ficha del equipo</span>
         <span class="search-item-titulo">${escapeHtml(club.nombre)}</span>
       </a>`).join("");
 
     try {
       const res = await apiFetch(`/api/articles?q=${encodeURIComponent(q)}&limit=6`, { signal: controlador.signal });
-      const { articles = [] } = await res.json();
+      const { articles = [], busqueda = null } = await res.json();
+      if (input.value.trim() !== q) return;   // el texto ya cambió: respuesta obsoleta
       if (!articles.length && !clubesAMostrar.length) {
         resultadosEl.innerHTML = `<div class="search-vacio">Sin resultados para "${escapeHtml(q)}"</div>`;
         return;
       }
-      resultadosEl.innerHTML = itemClubHTML + articles.map(a => `
+      // Si el texto tenía una errata, el servidor busca con la forma corregida
+      // y lo indica en "busqueda.corregido": se avisa para que no sorprenda.
+      const avisoCorreccion = busqueda && busqueda.corregido
+        ? `<div class="search-vacio">Mostrando resultados para <strong>${escapeHtml(busqueda.corregido)}</strong></div>`
+        : "";
+      resultadosEl.innerHTML = avisoCorreccion + itemClubHTML + articles.map(a => `
         <a class="search-item" href="${urlNoticia(a.categoria, a.slug)}">
           <span class="search-item-cat">${categoriaLabel(a.categoria)}</span>
           <span class="search-item-titulo">${escapeHtml(a.titulo)}</span>
         </a>`).join("") +
-        `<a class="search-vermas" href="${baseHref()}buscar.html?q=${encodeURIComponent(q)}">Ver todos los resultados →</a>`;
+        `<a class="search-vermas" href="${baseHref()}buscar?q=${encodeURIComponent(q)}&todos=1">Ver todos los resultados →</a>`;
     } catch (err) {
       if (err.name === "AbortError") return;
       resultadosEl.innerHTML = itemClubHTML || `<div class="search-vacio">No se ha podido buscar. Inténtalo de nuevo.</div>`;
     }
   }
 
+  // Flechas arriba/abajo recorren las sugerencias; Intro abre la marcada.
+  const opciones = () => [...resultadosEl.querySelectorAll("a.search-item, a.search-vermas")];
+  const marcar = (lista, i) => {
+    lista.forEach((a, k) => a.classList.toggle("search-activo", k === i));
+    if (lista[i]) lista[i].scrollIntoView({ block: "nearest" });
+  };
+
   input.addEventListener("keydown", (e) => {
+    const lista = resultadosEl.classList.contains("visible") ? opciones() : [];
+    const actual = lista.findIndex((a) => a.classList.contains("search-activo"));
+    if (e.key === "ArrowDown" && lista.length) {
+      e.preventDefault();
+      marcar(lista, actual + 1 >= lista.length ? 0 : actual + 1);
+      return;
+    }
+    if (e.key === "ArrowUp" && lista.length) {
+      e.preventDefault();
+      marcar(lista, actual <= 0 ? lista.length - 1 : actual - 1);
+      return;
+    }
+    if (e.key === "Enter" && actual >= 0) {
+      e.preventDefault();
+      lista[actual].click();
+      return;
+    }
     if (e.key === "Enter" && input.value.trim()) {
-      // Si el texto escrito coincide con el nombre de un equipo, "Intro"
-      // lleva directamente a la ficha de ese club en vez de a los
-      // resultados de búsqueda de artículos.
-      const club = (typeof buscarClubPorTexto === "function") ? buscarClubPorTexto(input.value.trim()) : null;
-      if (club) {
-        location.href = `${baseHref()}categoria.html?cat=${encodeURIComponent(club.categoria)}&club=${encodeURIComponent(club.nombre)}`;
+      // Si el texto coincide con UN solo equipo, "Intro" lleva a su ficha. Con
+      // varios (p. ej. "nas") no se elige a ciegas: se muestran los resultados,
+      // donde aparecen todos los equipos como accesos directos.
+      const clubes = (typeof buscarClubesPorTexto === "function") ? buscarClubesPorTexto(input.value.trim()) : [];
+      if (clubes.length === 1) {
+        location.href = `${baseHref()}categoria?cat=${encodeURIComponent(clubes[0].categoria)}&club=${encodeURIComponent(clubes[0].nombre)}`;
       } else {
-        location.href = `${baseHref()}buscar.html?q=${encodeURIComponent(input.value.trim())}`;
+        location.href = `${baseHref()}buscar?q=${encodeURIComponent(input.value.trim())}&todos=1`;
       }
     }
     if (e.key === "Escape") {
