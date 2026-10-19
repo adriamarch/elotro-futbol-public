@@ -246,7 +246,10 @@ function poblarFiltroGrupo(results) {
     if (grupoActual) { grupoActual = ""; }
     return;
   }
-  const obligatorio = competicionActual === "segunda_federacion";
+  // Primera RFEF también: sus 2 grupos suman 760 partidos y con "Todos los grupos" la
+  // API (límite 500, recorta por fecha DESC) dejaba fuera las jornadas ya jugadas y el
+  // calendario arrancaba en una "Jornada 1" con todo por jugar.
+  const obligatorio = competicionActual === "segunda_federacion" || competicionActual === "primera_federacion";
   selectGrupo.innerHTML = (obligatorio ? "" : `<option value="">Todos los grupos</option>`) +
     grupos.map(g => `<option value="${escapeHtml(g)}">${escapeHtml(g)}</option>`).join("");
   if (obligatorio) {

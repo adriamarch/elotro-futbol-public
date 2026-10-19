@@ -389,7 +389,7 @@
 .func-hist-fecha{display:flex;flex-direction:column;line-height:1.3;}
 .func-hist-fecha b{font-size:.84rem;color:var(--marino-texto);}
 .func-hist-fecha span{font-size:.72rem;color:var(--texto-suave);}
-.func-hist-desc{color:var(--texto);line-height:1.45;overflow-wrap:anywhere;}
+.func-hist-desc{color:var(--texto);line-height:1.45;overflow-wrap:anywhere;white-space:pre-line;}
 .func-hist-ip{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.76rem;color:var(--texto-suave);}
 .func-paginacion{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:16px;}
 .func-paginacion .ayuda-editor{margin:0 !important;padding:0 !important;background:none !important;border:none !important;}

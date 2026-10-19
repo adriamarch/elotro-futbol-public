@@ -1479,6 +1479,21 @@ if (!puedeProgramarNoticia()) {
   if (avisoBannerUrgentePermiso) avisoBannerUrgentePermiso.style.display = "none";
 }
 
+// Una noticia programada no puede ser de "última hora" (el banner dura 2 h desde
+// que se guarda y habría caducado antes de publicarse): al programar se oculta
+// el interruptor y se desmarca; al dejar de programar vuelve a aparecer.
+function sincronizarUltimaHoraConProgramada() {
+  if (!bloqueBannerUrgente || !checkBannerUrgente || !puedeProgramarNoticia()) return;
+  const programada = Boolean(checkProgramarNoticia?.checked);
+  if (programada && checkBannerUrgente.checked) {
+    checkBannerUrgente.checked = false;
+    const span = document.getElementById("bannerUrgenteEstado");
+    if (span) { span.style.display = "none"; span.textContent = ""; }
+    try { actualizarContadorCaracteres(); } catch { /* el editor aún no está listo */ }
+  }
+  bloqueBannerUrgente.style.display = programada ? "none" : "";
+}
+
 function sincronizarProgramarConPublicado() {
   if (!bloqueProgramarNoticia || !puedeProgramarNoticia()) return;
   // Programar solo tiene sentido si la noticia se va a guardar como NO
@@ -1496,6 +1511,7 @@ function sincronizarProgramarConPublicado() {
   // ver en una noticia ya publicada: solo aplica a algo que todavía no
   // está publicado (se oculta el bloque, no solo se desmarca el check).
   bloqueProgramarNoticia.style.display = (checkPublicado.checked || !puedeProgramarNoticia()) ? "none" : "";
+  sincronizarUltimaHoraConProgramada();
 }
 checkPublicado?.addEventListener("change", sincronizarProgramarConPublicado);
 
@@ -1515,6 +1531,7 @@ function sincronizarCampoFechaProgramada() {
   campoFechaProgramada.style.display = activo ? "" : "none";
   ayudaProgramarNoticia.style.display = activo ? "" : "none";
   if (!activo) inputProgramadoPara.value = "";
+  sincronizarUltimaHoraConProgramada();
   if (typeof window.refrescarProgramarUI === "function") window.refrescarProgramarUI();
 }
 checkProgramarNoticia?.addEventListener("change", () => { sincronizarCampoFechaProgramada(); actualizarTextoBotonGuardar(); sincronizarDestacadoConPublicado(); });
@@ -19308,6 +19325,11 @@ function rellenoPintarEstado(datos) {
     const r = (informe.ligas || {})[clave] || {};
     const t = resumen[clave];
     const nombre = RELLENO_NOMBRES_CORTOS[comp] || comp;
+    // Lo que hizo la ÚLTIMA pasada sobre esta liga (también la de la GitHub Action), no el acumulado del ciclo.
+    const up = (estado.ultima_pasada_ligas || {})[clave];
+    const chipUltimaPasada = up
+      ? `<span class="relleno-chip nuevos" title="${rellenoEsc(rellenoFecha(up.at))} · El detalle partido a partido está en Funcionalidades → Historial">última pasada ${rellenoEsc(rellenoRelativa(up.at))}: +${up.insertados ?? 0} nuevos · ${up.modificados ?? 0} actualizados</span>`
+      : `<span class="relleno-chip" title="Aún no hay ninguna pasada registrada para esta liga">última pasada: sin datos</span>`;
     const pct = t && t.total ? Math.round((t.finalizados / t.total) * 100) : 0;
     return `<li class="relleno-informe-fila relleno-liga-estado${r.error ? " con-error" : ""}">
       <div class="rle-cab">
@@ -19320,7 +19342,7 @@ function rellenoPintarEstado(datos) {
         <span class="relleno-chip" title="Partidos que cubre el relleno automático / los de redacción">${t.automaticos} auto · ${t.redaccion} redacción</span>
         ${t.ultima_jornada ? `<span class="relleno-chip" title="Última jornada con resultados">J${t.ultima_jornada}</span>` : ""}`
         : `<span class="relleno-chip aviso" title="Esta liga está configurada pero todavía no tiene partidos">Pulsa «Sincronizar todo (GitHub Action)»</span>`}
-        <span class="relleno-chip nuevos" title="Lo que cambió en la última pasada">última pasada: +${r.insertados ?? 0} nuevos · ${r.actualizados ?? 0} actualizados</span>
+        ${chipUltimaPasada}
       </div>
       ${r.error ? `<span class="relleno-informe-error">${rellenoEsc(r.error)}</span>` : ""}
     </li>`;
@@ -19494,7 +19516,7 @@ function rellenoPintarProgreso(estado, texto, pct = null) {
 
 function rellenoTotales(informe) {
   const t = { n: 0, a: 0 };
-  Object.values(informe?.ligas || {}).forEach((r) => { t.n += r.insertados || 0; t.a += r.actualizados || 0; });
+  Object.values(informe?.ligas || {}).forEach((r) => { t.n += r.insertados || 0; t.a += (r.modificados ?? r.actualizados) || 0; });
   return t;
 }
 
