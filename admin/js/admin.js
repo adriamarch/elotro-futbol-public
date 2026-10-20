@@ -19661,8 +19661,8 @@ async function rellenoLanzarAction() {
     return;
   }
   const ok = await EOF.confirmar(
-    "Se lanzará la GitHub Action que descarga todas las jornadas de TheSportsDB y las guarda en la web. Tarda unos 10 minutos y el panel se actualizará solo al terminar. ¿Continuar?",
-    { textoConfirmar: "Sincronizar" }
+    "Se lanzará la GitHub Action en modo SUSTITUCIÓN TOTAL: los datos de TheSportsDB (equipos, jornada, fecha y hora, sede y, si ya hay, el resultado) pisarán los de TODOS los partidos de las ligas configuradas, también los que un redactor haya editado a mano o estén en juego. Se conservan el autor, los eventos, el MVP y las galerías. No se borra ningún partido. Tarda unos 10 minutos y el panel se actualizará solo al terminar. ¿Continuar?",
+    { textoConfirmar: "Sustituir todo" }
   );
   if (!ok) return;
 
@@ -19688,7 +19688,7 @@ async function rellenoLanzarAction() {
 
   try {
     rellenoPintarProgreso("curso", "Lanzando la Action en GitHub…");
-    const lanzado = await apiFetch("/api/admin/sync-partidos/lanzar-action", { method: "POST" });
+    const lanzado = await apiFetch("/api/admin/sync-partidos/lanzar-action", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reemplazo_total: true }) });
     const desde = lanzado.desde;
     let vistaRun = null;
     const limite = Date.now() + 40 * 60 * 1000;
