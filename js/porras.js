@@ -225,9 +225,8 @@ function porrasInicioTemporada() {
   return `${anioInicio}-07-01`;
 }
 
-function porrasPoblarFiltroGrupo(partidos) {
+function porrasPoblarFiltroGrupo(grupos) {
   const selectGrupo = porrasFiltroGrupo();
-  const grupos = [...new Set(partidos.map((p) => p.grupo).filter(Boolean))].sort((a, b) => a.localeCompare(b, "es"));
   if (!grupos.length) {
     selectGrupo.hidden = true;
     selectGrupo.innerHTML = "";
@@ -250,11 +249,20 @@ async function cargarCategoriaPorras() {
     const desdeFecha = porrasInicioTemporada();
     // Igual que clasificación: primero sin filtrar por grupo, para poder
     // poblar el desplegable con todos los grupos que existan.
-    const paramsSinGrupo = new URLSearchParams({ competicion: PORRAS_COMPETICION_ACTUAL, desde_fecha: desdeFecha, limit: "500" });
-    const { results: paraDescubrirGrupos } = await conReintento(() =>
-      apiFetch(`/api/results?${paramsSinGrupo.toString()}`).then((r) => r.json())
-    );
-    porrasPoblarFiltroGrupo(paraDescubrirGrupos);
+    // Los grupos vienen de /api/results/filtros (SELECT DISTINCT), no de los
+    // 500 partidos de /api/results, que dejaban grupos fuera del desplegable.
+    let gruposDisponibles;
+    try {
+      const pf = new URLSearchParams({ competicion: PORRAS_COMPETICION_ACTUAL, desde_fecha: desdeFecha });
+      const rf = await conReintento(() => apiFetch(`/api/results/filtros?${pf.toString()}`).then((r) => { if (!r.ok) throw new Error("filtros"); return r.json(); }));
+      if (!Array.isArray(rf.grupos)) throw new Error("filtros");
+      gruposDisponibles = rf.grupos;
+    } catch (e) {
+      const ps = new URLSearchParams({ competicion: PORRAS_COMPETICION_ACTUAL, desde_fecha: desdeFecha, limit: "500" });
+      const { results: rs } = await conReintento(() => apiFetch(`/api/results?${ps.toString()}`).then((r) => r.json()));
+      gruposDisponibles = [...new Set(rs.map((p) => p.grupo).filter(Boolean))].sort((a, b) => a.localeCompare(b, "es"));
+    }
+    porrasPoblarFiltroGrupo(gruposDisponibles);
 
     if (PORRAS_GRUPO_ACTUAL) {
       const paramsConGrupo = new URLSearchParams({ competicion: PORRAS_COMPETICION_ACTUAL, grupo: PORRAS_GRUPO_ACTUAL, desde_fecha: desdeFecha, limit: "500" });
@@ -263,7 +271,11 @@ async function cargarCategoriaPorras() {
       );
       PORRAS_PARTIDOS_CATEGORIA = delGrupo;
     } else {
-      PORRAS_PARTIDOS_CATEGORIA = paraDescubrirGrupos;
+      const paramsComp = new URLSearchParams({ competicion: PORRAS_COMPETICION_ACTUAL, desde_fecha: desdeFecha, limit: "500" });
+      const { results: todosComp } = await conReintento(() =>
+        apiFetch(`/api/results?${paramsComp.toString()}`).then((r) => r.json())
+      );
+      PORRAS_PARTIDOS_CATEGORIA = todosComp;
     }
 
     pintarNavJornadas();

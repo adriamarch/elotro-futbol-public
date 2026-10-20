@@ -238,8 +238,7 @@ selectGrupo.addEventListener("change", () => {
 // salte de un grupo a otro sin ningún criterio claro. Por eso, igual
 // que en Clasificación, aquí se obliga a elegir siempre un grupo
 // concreto (el primero, si no había ninguno seleccionado todavía).
-function poblarFiltroGrupo(results) {
-  let grupos = [...new Set(results.map(r => r.grupo).filter(Boolean))].sort((a, b) => a.localeCompare(b, "es"));
+function poblarFiltroGrupo(grupos) {
   if (!grupos.length) {
     selectGrupo.hidden = true;
     selectGrupo.innerHTML = "";
@@ -279,6 +278,26 @@ function inicioTemporadaActual() {
   return `${anioInicio}-07-01`;
 }
 
+// Grupos y equipos de una competición desde /api/results/filtros. Si el
+// endpoint falla (p.ej. backend aún sin desplegar), se cae al método antiguo
+// (derivarlos de los partidos devueltos), que es el que tenía el límite de 500.
+async function obtenerFiltros(competicion, desdeFecha, grupo) {
+  try {
+    const p = new URLSearchParams({ competicion, desde_fecha: desdeFecha, con_no_cubiertos: "1" });
+    if (grupo) p.set("grupo", grupo);
+    const r = await conReintento(() => apiFetch(`/api/results/filtros?${p}`).then(x => { if (!x.ok) throw new Error("filtros"); return x.json(); }));
+    if (Array.isArray(r.grupos) && Array.isArray(r.equipos)) return r;
+  } catch (e) {}
+  const p = new URLSearchParams({ competicion, desde_fecha: desdeFecha, limit: "500", con_no_cubiertos: "1" });
+  if (grupo) p.set("grupo", grupo);
+  const { results } = await conReintento(() => apiFetch(`/api/results?${p}`).then(x => x.json()));
+  const cmp = (a, b) => a.localeCompare(b, "es");
+  return {
+    grupos: [...new Set(results.map(r => r.grupo).filter(Boolean))].sort(cmp),
+    equipos: [...new Set(results.flatMap(r => [r.equipo_local, r.equipo_visitante]).filter(Boolean))].sort(cmp),
+  };
+}
+
 // ---------- Carga de datos ----------
 async function cargarTodo() {
   const cont = document.getElementById("calendarioCont");
@@ -296,12 +315,15 @@ async function cargarTodo() {
     // "limit=500" ya no tiene que cubrir el histórico completo de todas
     // las temporadas jugadas, solo la actual, y no se pierden nombres de
     // grupo ni jornadas bajas por culpa de partidos antiguos.
+    //
+    // Los nombres de grupo ya NO se sacan de los partidos devueltos por
+    // /api/results (que recorta a 500 por fecha DESC y, con la temporada
+    // entera cargada, dejaba fuera grupos enteros, p.ej. Segunda RFEF
+    // grupos 2 y 5): los da /api/results/filtros con SELECT DISTINCT.
     const paramsBase = new URLSearchParams({ competicion: competicionActual, desde_fecha: desdeFecha, limit: "500", con_no_cubiertos: "1" });
     const paramsSinGrupo = paramsBase.toString();
-    const { results: resultsParaGrupos } = await conReintento(() =>
-      apiFetch(`/api/results?${paramsSinGrupo}`).then(r => r.json())
-    );
-    poblarFiltroGrupo(resultsParaGrupos);
+    const filtros = await obtenerFiltros(competicionActual, desdeFecha);
+    poblarFiltroGrupo(filtros.grupos);
 
     // Con el grupo ya decidido (fijado por poblarFiltroGrupo si hacía
     // falta, p.ej. en Segunda Federación), se piden los partidos DE ESE
@@ -311,9 +333,9 @@ async function cargarTodo() {
     // jornada más alta ni de temporadas anteriores acumuladas.
     const paramsFinal = new URLSearchParams({ competicion: competicionActual, desde_fecha: desdeFecha, limit: "500", con_no_cubiertos: "1" });
     if (grupoActual) paramsFinal.set("grupo", grupoActual);
-    const { results: todos } = grupoActual
-      ? await conReintento(() => apiFetch(`/api/results?${paramsFinal.toString()}`).then(r => r.json()))
-      : { results: resultsParaGrupos };
+    const { results: todos } = await conReintento(() =>
+      apiFetch(`/api/results?${(grupoActual ? paramsFinal : paramsBase).toString()}`).then(r => r.json())
+    );
 
     RESULTADOS_COMPETICION = todos;
 
@@ -331,7 +353,12 @@ async function cargarTodo() {
     PARTIDOS_CACHE = {};
     RESULTADOS_COMPETICION.forEach(r => { PARTIDOS_CACHE[r.id] = r; });
 
-    poblarFiltroEquipo();
+    // Equipos del desplegable: los del grupo elegido (o de toda la
+    // competición), también desde el backend para no depender del límite.
+    const equiposFiltro = grupoActual
+      ? (await obtenerFiltros(competicionActual, desdeFecha, grupoActual)).equipos
+      : filtros.equipos;
+    poblarFiltroEquipo(equiposFiltro);
     poblarExportacion();
     pintarCalendario();
   } catch (err) {
@@ -418,9 +445,7 @@ function agruparPorJornada() {
 const selectEquipo = document.getElementById("filtroEquipo");
 const btnTemporada = document.getElementById("btnTemporada");
 
-function poblarFiltroEquipo() {
-  const equipos = [...new Set(RESULTADOS_COMPETICION.flatMap(r => [r.equipo_local, r.equipo_visitante]).filter(Boolean))]
-    .sort((a, b) => a.localeCompare(b, "es"));
+function poblarFiltroEquipo(equipos) {
   if (!equipos.length) {
     selectEquipo.hidden = true;
     selectEquipo.innerHTML = "";

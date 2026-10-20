@@ -145,8 +145,7 @@ selectGrupo.addEventListener("change", () => {
   cargarTodo();
 });
 
-function poblarFiltroGrupo(results) {
-  const grupos = [...new Set(results.map(r => r.grupo).filter(Boolean))].sort((a, b) => a.localeCompare(b, "es"));
+function poblarFiltroGrupo(grupos) {
   if (!grupos.length) {
     selectGrupo.hidden = true;
     selectGrupo.innerHTML = "";
@@ -196,6 +195,25 @@ function hayPartidoEnJuego(partidos) {
   return partidos.some(p => p.estado === "en_juego");
 }
 
+// Grupos y si hay partido en juego de una competición, desde
+// /api/results/filtros (SELECT DISTINCT en el backend, sin el límite de 500
+// de /api/results, que con la temporada entera dejaba grupos fuera del
+// desplegable). Si el endpoint falla, se cae al método antiguo.
+async function obtenerFiltros(competicion, desdeFecha) {
+  try {
+    const p = new URLSearchParams({ competicion, desde_fecha: desdeFecha });
+    const r = await conReintento(() => apiFetch(`/api/results/filtros?${p}`).then(x => { if (!x.ok) throw new Error("filtros"); return x.json(); }));
+    if (Array.isArray(r.grupos)) return r;
+  } catch (e) {}
+  const p = new URLSearchParams({ competicion, desde_fecha: desdeFecha, limit: "500" });
+  const { results } = await conReintento(() => apiFetch(`/api/results?${p}`).then(x => x.json()));
+  return {
+    grupos: [...new Set(results.map(r => r.grupo).filter(Boolean))].sort((a, b) => a.localeCompare(b, "es")),
+    hay_en_juego: results.some(r => r.estado === "en_juego"),
+    _results: results,
+  };
+}
+
 // ---------- Carga de datos ----------
 async function cargarTodo() {
   const contClas = document.getElementById("clasificacionCont");
@@ -211,13 +229,11 @@ async function cargarTodo() {
     // "limit=500" podía llenarse con partidos de un único grupo/
     // temporada antigua y dejar fuera nombres de grupo que sí existen
     // en la temporada actual.
-    const paramsSinGrupo = new URLSearchParams({ competicion: competicionActual, desde_fecha: desdeFecha, limit: "500" });
-    const { results: paraDescubrirGrupos } = await conReintento(() => apiFetch(`/api/results?${paramsSinGrupo.toString()}`).then(r => r.json()));
-    poblarFiltroGrupo(paraDescubrirGrupos);
-    // Esta petición ya trae TODOS los grupos de la competición, así que
-    // se aprovecha para saber si hay partidos en vivo en cualquiera de
-    // ellos (no solo en el que se vaya a mostrar en la tabla).
-    HAY_PARTIDO_EN_VIVO_COMPETICION = hayPartidoEnJuego(paraDescubrirGrupos);
+    // (Ahora los grupos y el "hay partido en vivo" los da
+    // /api/results/filtros, no los 500 partidos de /api/results.)
+    const filtros = await obtenerFiltros(competicionActual, desdeFecha);
+    poblarFiltroGrupo(filtros.grupos);
+    HAY_PARTIDO_EN_VIVO_COMPETICION = !!filtros.hay_en_juego;
 
     // Para la clasificación en sí, se vuelve a pedir ya filtrando por
     // "grupo" (o por la competición entera si no tiene grupos, como
@@ -231,7 +247,8 @@ async function cargarTodo() {
       const { results: delGrupo } = await conReintento(() => apiFetch(`/api/results?${paramsConGrupo.toString()}`).then(r => r.json()));
       RESULTADOS_COMPETICION = delGrupo;
     } else {
-      RESULTADOS_COMPETICION = paraDescubrirGrupos;
+      const paramsComp = new URLSearchParams({ competicion: competicionActual, desde_fecha: desdeFecha, limit: "500" });
+      ({ results: RESULTADOS_COMPETICION } = await conReintento(() => apiFetch(`/api/results?${paramsComp.toString()}`).then(r => r.json())));
     }
 
     PARTIDOS_CACHE = {};
@@ -442,12 +459,10 @@ function iniciarAutoActualizacion() {
       // saber si hay partidos en vivo en cualquiera de ellos. Si ya
       // no hay grupo (competición sin grupos), es la misma petición que
       // "nuevos" y no hace falta repetirla.
-      let todosLosGrupos = nuevos;
-      if (grupoActual) {
-        const paramsTodos = new URLSearchParams({ competicion: competicionActual, desde_fecha: desdeFecha, limit: "500" });
-        ({ results: todosLosGrupos } = await apiFetch(`/api/results?${paramsTodos.toString()}`).then(r => r.json()));
-      }
-      HAY_PARTIDO_EN_VIVO_COMPETICION = hayPartidoEnJuego(todosLosGrupos);
+      // Se pregunta a /api/results/filtros (ligero, sin el límite de 500).
+      HAY_PARTIDO_EN_VIVO_COMPETICION = grupoActual
+        ? !!(await obtenerFiltros(competicionActual, desdeFecha)).hay_en_juego
+        : hayPartidoEnJuego(nuevos);
 
       // Solo se repinta si algo realmente ha cambiado (evita parpadeos
       // y reordenar la tabla sin motivo en cada tic del intervalo). El
