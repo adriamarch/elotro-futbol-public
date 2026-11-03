@@ -176,6 +176,12 @@ const CLUBS_BY_CATEGORY = {
     "Xerez CD",
     "Yeclano Deportivo",
   ],
+  // Tercera Federación (Tercera RFEF). De momento solo los clubes que cubrimos
+  // editorialmente; se amplía añadiendo nombres aquí (y su grupo en GRUPO_POR_CLUB).
+  tercera_federacion: [
+    "CF Fuenlabrada",
+    "Sporting Atlético",
+  ],
 };
 
 // ---------- Clubes de Segunda Federación cubiertos editorialmente ----------
@@ -646,6 +652,7 @@ const FILIAL_A_SLUG_PRIMER_EQUIPO = {
   "Villarreal CF B": "villarreal-cf-b",
   "Atlético Madrileño": "atletico-madrileno",
   "Celta Fortuna": "celta-fortuna",
+  "Sporting Atlético": "real-sporting",
 };
 
 // Sufijos de equipo filial: además del mapa explícito de arriba, esto
@@ -910,6 +917,9 @@ const ESTADIO_POR_CLUB = {
   "Salamanca UDS": "El Helmántico",
   "UB Conquense": "La Fuensanta",
   "UD San Sebastián de los Reyes": "José Luis de la Hoz",
+  // Tercera Federación
+  "CF Fuenlabrada": "Fernando Torres",
+  "Sporting Atlético": "Pepe Ortiz (Mareo)",
 };
 
 // Devuelve el estadio habitual de un club (o cadena vacía si no está en
@@ -1073,6 +1083,9 @@ const GRUPO_POR_CLUB = {
   "Salamanca UDS": "Grupo 5",
   "UB Conquense": "Grupo 5",
   "UD San Sebastián de los Reyes": "Grupo 5",
+  // Tercera Federación
+  "CF Fuenlabrada": "Grupo 7",
+  "Sporting Atlético": "Grupo 2",
 };
 
 // Devuelve el grupo regional habitual de un club (o cadena vacía si no
@@ -1088,4 +1101,52 @@ function getGrupoClub(nombreEquipo) {
     if (oficial) return GRUPO_POR_CLUB[oficial];
   }
   return "";
+}
+// ---------- IDIOMA PROPIO DEL CLUB ----------
+// Idioma en el que se redactan los correos a los clubes (p. ej. "Copiar
+// correo" de las acreditaciones): "ca" catalán, "eu" euskera, "gl" gallego.
+// Cualquier club que no esté aquí (o personalizado) = "es" (castellano).
+// Criterio: clubes de comunidades/territorios donde la lengua propia es la
+// de uso institucional habitual del club: Cataluña, Baleares y Andorra
+// (catalán), Euskadi (euskera) y Galicia (gallego). Deliberadamente NO se
+// incluyen los clubes de la Comunitat Valenciana (valenciano) ni los de
+// Navarra (euskera solo en parte): si se quiere, basta con añadir sus
+// nombres a la lista correspondiente.
+const CLUBS_IDIOMA_PROPIO = {
+  ca: [
+    // Cataluña
+    "FC Barcelona Atlètic", "Girona FC", "Girona FC B", "RCD Espanyol", "RCD Espanyol B",
+    "CE Sabadell", "CE Europa", "UE Sant Andreu", "Gimnàstic de Tarragona", "Reus FC Reddis",
+    "Terrassa", "CE Manresa", "UE Olot", "AE Prat",
+    // Baleares
+    "RCD Mallorca", "RCD Mallorca B", "CD Atlético Baleares", "Manacor", "Poblense", "UD Poblense", "UD Ibiza",
+    // Andorra
+    "FC Andorra",
+  ],
+  eu: [
+    "Athletic Club", "Bilbao Athletic", "Real Sociedad B", "Barakaldo CF", "Arenas Club",
+    "CD Basconia", "Club Portugalete", "Deportivo Alavés", "Deportivo Alavés B", "SD Eibar",
+    "SD Eibar B", "SD Amorebieta", "SD Gernika", "Sestao River", "Real Unión Club", "Anaitasuna",
+  ],
+  gl: [
+    "Celta de Vigo", "Celta Fortuna", "RC Deportivo", "RC Deportivo Fabril", "CD Lugo",
+    "Pontevedra CF", "Racing Club Ferrol", "UD Ourense", "Ourense CF", "Arosa SC",
+    "Bergantiños", "Coruxo", "SD Compostela", "Auriense",
+  ],
+};
+
+const IDIOMA_POR_SLUG_CLUB = (() => {
+  const m = {};
+  for (const [idioma, nombres] of Object.entries(CLUBS_IDIOMA_PROPIO)) {
+    for (const n of nombres) m[slugEquipo(n)] = idioma;
+  }
+  return m;
+})();
+
+// Devuelve "ca", "eu", "gl" o "es" para un club. Entiende los alias de
+// nombre (p. ej. "Arosa", "Celta B") igual que getGrupoClub.
+function getIdiomaClub(nombreEquipo) {
+  const slug = slugEquipo(String(nombreEquipo || ""));
+  if (!slug) return "es";
+  return IDIOMA_POR_SLUG_CLUB[slug] || IDIOMA_POR_SLUG_CLUB[ALIAS_ESCUDOS[slug]] || "es";
 }

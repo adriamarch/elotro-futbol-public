@@ -1,1 +1,30 @@
+# Archivos que NO deben subirse como assets públicos del sitio.
+# (wrangler.jsonc usa "directory": "." así que, sin esto, todo lo que hay
+# en esta carpeta se serviría en https://elotrofutbol.media/<archivo>.)
+#
+# Código del Worker y configuración de despliegue
 _worker.js
+src-worker.js
+wrangler.jsonc
+wrangler.toml
+.assetsignore
+
+# Control de versiones, caché y entorno
+.git
+.gitignore
+.wrangler
+node_modules
+.env
+.env.*
+credenciales.txt
+*.log
+
+# Herramientas de actualización de datos y workflows (no son parte del sitio)
+herramientas
+.github
+
+# Documentación interna / copias de trabajo
+*.md
+*.map
+*.sql
+*.bak

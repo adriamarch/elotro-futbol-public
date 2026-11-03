@@ -1,0 +1,205 @@
+name: Actualizar jugadores (Flashscore)
+
+# Lunes y jueves (y a mano) hace TODO el proceso solo.
+# ESTE FICHERO VIVE EN elotro-futbol-public: la raíz del repo ES la carpeta public/ de la web
+# (data/, js/, wrangler.jsonc…) y las herramientas están en herramientas/.
+# Los secrets de Cloudflare hay que crearlos en ESTE repo (Settings > Secrets and variables > Actions).
+#
+#   1. Descubre los clubes de cada competición/grupo de competiciones.json y
+#      actualiza equipos.json (los marcados "manual" no se tocan).
+#   2. Descarga la plantilla de cada club y escribe data/jugadores/*.json.
+#   3. PUBLICA solo, si hay cambios:
+#        - Con los secrets CLOUDFLARE_API_TOKEN y CLOUDFLARE_ACCOUNT_ID (los
+#          mismos que usan las copias de seguridad): commit en main + despliegue
+#          con wrangler. Cero intervención.
+#        - Sin esos secrets: abre un PULL REQUEST y hay que fusionarlo y
+#          desplegar a mano (npx wrangler deploy).
+#      Las protecciones del scraper impiden sobrescribir un club con datos
+#      sospechosos (0 jugadores, plantilla mucho más corta, columnas cambiadas).
+#
+# Fuente: Flashscore.es (herramientas/flashscore). Las URLs de cada competición
+# están en herramientas/flashscore/competiciones.json y no cambian por temporada.
+# Opcional: secret FS_USER_AGENT con un contacto real, p. ej.
+#   "ElOtroFutbolTV-datos/1.0 (contacto: tu-correo@dominio)"
+#
+# Si Flashscore bloquea las IPs de GitHub, el primer "Run workflow" fallará
+# con errores de descarga: en ese caso ejecútalo en local (ver README).
+on:
+  schedule:
+    - cron: "17 5 * * 1"   # lunes 05:17 UTC, después del fin de semana de jornada
+    - cron: "17 5 * * 4"   # jueves 05:17 UTC, tras los partidos entre semana
+  workflow_dispatch:
+    inputs:
+      temporada:
+        description: "Temporada esperada (p. ej. 2026/2027). Vacío = la calcula sola según la fecha"
+        default: ""
+      solo:
+        description: "Solo estos slugs de club, separados por espacios (vacío = todos)"
+        default: ""
+      descubrir:
+        description: "Descubrir clubes antes de descargar (desmárcalo para usar equipos.json tal cual)"
+        type: boolean
+        default: true
+      revisar_sin_plantilla:
+        description: "Mirar también los clubes marcados sin_plantilla (por defecto solo el primer lunes de cada mes)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write          # para abrir una incidencia si la actualización automática falla
+
+concurrency:
+  group: actualizar-jugadores
+  cancel-in-progress: false
+
+jobs:
+  actualizar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      TEMPORADA: ${{ github.event.inputs.temporada }}
+      HAY_CLOUDFLARE: ${{ secrets.CLOUDFLARE_API_TOKEN != '' && secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
+      SOLO: ${{ github.event.inputs.solo }}
+      DESCUBRIR: ${{ github.event.inputs.descubrir || 'true' }}
+      REVISAR_SIN: ${{ github.event.inputs.revisar_sin_plantilla }}
+      FS_USER_AGENT: ${{ secrets.FS_USER_AGENT }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: herramientas/lapreferente/requirements.txt
+
+      - name: "Temporada automática (de julio a junio)"
+        run: |
+          if [ -z "$TEMPORADA" ]; then
+            Y=$(date -u +%Y); M=$(date -u +%-m)
+            if [ "$M" -ge 7 ]; then TEMPORADA="$Y/$((Y+1))"; else TEMPORADA="$((Y-1))/$Y"; fi
+          fi
+          echo "TEMPORADA=$TEMPORADA" >> "$GITHUB_ENV"
+          echo "Temporada: $TEMPORADA"
+
+      - name: Dependencias
+        run: pip install -r herramientas/lapreferente/requirements.txt
+
+      - name: Tests del scraper (si fallan, no se descarga nada)
+        run: |
+          python3 herramientas/flashscore/tests/test_flashscore.py
+          node herramientas/flashscore/tests/test_front.mjs
+
+      - name: Exportar clubes del sitio
+        run: node herramientas/lapreferente/exportar_clubes.mjs
+
+      - name: Descubrir clubes (competiciones.json -> equipos.json)
+        if: env.DESCUBRIR != 'false'
+        # Si Flashscore no responde pero ya hay un equipos.json, se sigue con el que hay.
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          python3 herramientas/flashscore/flashscore.py descubrir-todo | tee informe-descubrir.txt
+
+      - name: Comprobar equipos.json
+        run: |
+          python3 - <<'PY'
+          import json, sys
+          try:
+              n = len(json.load(open("herramientas/flashscore/equipos.json", encoding="utf-8")))
+          except Exception as exc:
+              n = 0
+          if n == 0:
+              print("::error::herramientas/flashscore/equipos.json falta o está vacío. Ejecuta 'descubrir-todo' en local y commitéalo.")
+              sys.exit(1)
+          print(f"{n} equipos en equipos.json")
+          PY
+
+      - name: Descargar plantillas
+        run: |
+          # pipefail: sin él, "| tee" se traga el código de salida y el job siempre sale verde.
+          set -o pipefail
+          # Se toleran hasta 10 clubes con problemas (renombrados, 404...);
+          # más que eso casi seguro es un bloqueo o un cambio de HTML.
+          ARGS="--temporada $TEMPORADA --max-problemas 10"
+          if [ -n "$SOLO" ]; then ARGS="$ARGS --solo $SOLO"; fi
+          # Los clubes marcados "sin_plantilla" (Segunda Federación: Flashscore no publica sus
+          # jugadores) no se descargan cada semana. Se revisan el primer lunes de cada mes, o a
+          # petición, por si Flashscore empieza a publicarlos.
+          if [ "$REVISAR_SIN" = "true" ] || { [ "$(date -u +%u)" = "1" ] && [ "$(date -u +%-d)" -le 7 ]; }; then
+            ARGS="$ARGS --revisar-sin-plantilla"
+          fi
+          python3 herramientas/flashscore/flashscore.py plantillas $ARGS | tee informe.txt
+
+      # /estadisticas lee estos agregados (solo Flashscore), no los JSON de cada club.
+      - name: Generar estadísticas agregadas
+        run: python3 herramientas/flashscore/estadisticas.py
+
+      - name: ¿Hay cambios?
+        id: cambios
+        run: |
+          git add -N data/jugadores data/estadisticas herramientas/flashscore/equipos.json
+          if git diff --quiet -- data/jugadores data/estadisticas herramientas/flashscore/equipos.json; then
+            echo "hay=false" >> "$GITHUB_OUTPUT"; echo "Sin cambios: nada que publicar."
+          else
+            echo "hay=true" >> "$GITHUB_OUTPUT"
+            git diff --stat -- data/jugadores data/estadisticas herramientas/flashscore/equipos.json | tail -3
+          fi
+
+      # --- Publicación automática (si hay secrets de Cloudflare) ---------------
+      - name: Commit en main
+        if: steps.cambios.outputs.hay == 'true' && env.HAY_CLOUDFLARE == 'true'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/jugadores data/estadisticas herramientas/flashscore/equipos.json
+          git commit -m "Datos de jugadores (Flashscore) $TEMPORADA"
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+
+      - name: Desplegar sitio
+        if: steps.cambios.outputs.hay == 'true' && env.HAY_CLOUDFLARE == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4 deploy
+
+      # --- Alternativa: sin secrets, pull request para revisar a mano ----------
+      - name: Abrir pull request con los cambios
+        if: steps.cambios.outputs.hay == 'true' && env.HAY_CLOUDFLARE != 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: bot/actualizar-jugadores
+          delete-branch: true
+          add-paths: |
+            data/jugadores/
+            data/estadisticas/
+            herramientas/flashscore/equipos.json
+          commit-message: "Datos de jugadores (Flashscore) ${{ env.TEMPORADA }}"
+          title: "Datos de jugadores (Flashscore) – actualización"
+          body: |
+            Actualización automática desde Flashscore.es (temporada ${{ env.TEMPORADA }}).
+
+            Revisa el diff antes de fusionar: son datos **no oficiales**.
+            Si cambia `equipos.json`, es que han entrado o salido clubes.
+            Al fusionar, despliega para publicarlo (`npx wrangler deploy`).
+            Para que esto sea automático, añade los secrets CLOUDFLARE_API_TOKEN y CLOUDFLARE_ACCOUNT_ID.
+
+      # --- Si algo falla en una ejecución programada, avisa con una incidencia ---
+      - name: Avisar del fallo (incidencia en GitHub)
+        if: failure() && github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TITULO="Falla la actualización automática de jugadores (Flashscore)"
+          URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          CUERPO="La ejecución programada de «Actualizar jugadores (Flashscore)» ha fallado: $URL. Causas habituales: Flashscore bloquea las IPs de GitHub o ha cambiado su HTML (mira el paso «Descargar plantillas»). Los datos publicados no se han tocado. Si se bloquea desde GitHub, ejecuta herramientas/flashscore/actualizar-local.ps1 en local."
+          EXISTENTE=$(gh issue list --state open --search "$TITULO in:title" --json number --jq '.[0].number // empty')
+          if [ -n "$EXISTENTE" ]; then
+            gh issue comment "$EXISTENTE" --body "Vuelve a fallar: $URL"
+          else
+            gh issue create --title "$TITULO" --body "$CUERPO"
+          fi

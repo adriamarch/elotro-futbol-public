@@ -6,12 +6,6 @@ Disallow: /newsletter_preview
 Disallow: /mantenimiento
 Disallow: /api/
 Disallow: /contenido
-Disallow: /buscar
-Disallow: /cuenta
-Disallow: /guardadas
-Disallow: /acceso
-Disallow: /recuperar-cuenta
-Disallow: /verificar-cuenta
 Disallow: /panel-analiticas
 Disallow: /*?preview=
 Disallow: /*&preview=

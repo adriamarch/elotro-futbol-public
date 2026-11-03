@@ -111,14 +111,14 @@
       // ----- El panel -----
       {
         id: "menu", capitulo: "panel", esencial: true,
-        selector: ".tabs", lado: "abajo",
+        selector: ["#menuLateralBarra", "#menuLateral", ".tabs"], lado: "abajo",
         titulo: "Tu menú principal",
         texto: function (c) {
           return c.esFotografo
-            ? "Cada pestaña es una zona de trabajo. El tuyo es un menú corto, justo con lo que necesitas: <strong>Contenido</strong>, <strong>Votaciones</strong>, la <strong>Tienda</strong> y tu cuenta. Debajo de cada pestaña hay una segunda fila de botones: las <strong>subpestañas</strong>."
-            : "Cada pestaña es una zona de trabajo: <strong>Noticias</strong>, <strong>Resultados</strong>, <strong>Contenido</strong>… Debajo de cada una hay una segunda fila de botones, las <strong>subpestañas</strong>. Qué pestañas ves depende de tu rol y de tu nivel, así que el menú de un compañero puede ser distinto al tuyo.";
+            ? "Este menú es tu mapa: cada entrada es una zona de trabajo. El tuyo es corto, justo con lo que necesitas: <strong>Contenido</strong>, <strong>Votaciones</strong> y la <strong>Tienda</strong>. Tu cuenta está en el menú de arriba a la derecha."
+            : "El menú agrupa las secciones por tarea: <strong>Redacción</strong>, <strong>Equipo</strong>, <strong>Audiencia</strong> y <strong>Administración</strong>. Dentro de algunas secciones hay botones arriba para cambiar de vista (por ejemplo, Nueva / Ver). Qué entradas ves depende de tu rol y de tu nivel, así que el menú de un compañero puede ser distinto al tuyo.";
         },
-        consejo: "Si tu pantalla es estrecha, desliza el menú hacia los lados para ver todas las pestañas."
+        consejo: "En el móvil el menú se abre con el botón de las tres rayas. Puedes cambiarlo a barra superior en Preferencias."
       },
 
       // ----- Noticias -----
@@ -132,7 +132,7 @@
         id: "noticias-titular", capitulo: "noticias", esencial: true, roles: ["admin", "redactor"],
         tab: "noticias", subtab: "nueva", selector: "#nn-sec-titular",
         titulo: "Empieza por el titular",
-        texto: "Escribe el <strong>título</strong> (obligatorio) y, si quieres, un <strong>subtítulo</strong> que lo amplíe. Un buen titular es corto, concreto y cuenta lo importante.",
+        texto: "Escribe el <strong>título</strong> <span class='nn-req' title='Obligatorio'>*</span> y, si quieres, un <strong>subtítulo</strong> que lo amplíe. Un buen titular es corto, concreto y cuenta lo importante.",
         consejo: "Los campos marcados con <strong>*</strong> son obligatorios."
       },
       {
@@ -297,7 +297,7 @@
       },
       {
         id: "funcionalidades", capitulo: "administracion", roles: ["admin", "redactor"],
-        tab: "funcionalidades", selector: "#subtabsFuncionalidades",
+        tab: "funcionalidades", selector: ["#menuLateralBarra", "#menuLateral", "#subtabsFuncionalidades"],
         titulo: "Funcionalidades",
         texto: function (c) {
           return c.esAdmin
@@ -320,8 +320,7 @@
         alSalir: function () { const m = document.getElementById("cuentaMenu"); if (m) m.classList.remove("abierto"); },
         titulo: "Tu menú de cuenta",
         texto: function (c) {
-          return "<strong>Editar perfil</strong> es tu página de autor pública; <strong>Seguridad</strong>, tu contraseña y la verificación en dos pasos; <strong>Mi progreso</strong>, tu nivel; <strong>Dispositivos</strong>, dónde tienes la sesión abierta; y <strong>Preferencias</strong>, cómo ves el panel." +
-            (c.esAdmin ? " También tienes el acceso a <strong>Analíticas</strong>." : "") +
+          return "<strong>Ajustes de cuenta</strong> reúne tu perfil público, la seguridad (contraseña y verificación en dos pasos), tu progreso y tus dispositivos; y <strong>Preferencias</strong>, cómo ves el panel." +
             " Y aquí mismo puedes volver a abrir este tutorial con <strong>Ver tutorial</strong>.";
         },
         consejo: function (c) {
@@ -921,6 +920,8 @@
       try { focoPrevio.focus({ preventScroll: true }); } catch (e) {}
     }
     focoPrevio = null;
+    // Aviso para «Tu primera tarea» (js/primera-tarea.js): el tutorial ya terminó.
+    try { document.dispatchEvent(new CustomEvent("eof:tutorial-cerrado")); } catch (e) {}
   }
 
   function iniciar(opciones) {
@@ -1004,7 +1005,8 @@
       const a = document.createElement("a");
       a.href = "javascript:void(0)";
       a.setAttribute("data-tut-abrir", "1");
-      a.textContent = "Ver tutorial";
+      // Mismo formato que el resto de opciones del desplegable (icono + texto).
+      a.innerHTML = '<span class="ud-ico" aria-hidden="true"><svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></span>Ver tutorial';
       a.addEventListener("click", function () {
         menu.classList.remove("abierto");
         iniciar();

@@ -1,4 +1,5 @@
 {
+  "id": "/",
   "name": "ELOTROFÚTBOLTV",
   "short_name": "ElOtroFútbol",
   "description": "Noticias, crónicas y resultados del fútbol no profesional.",
@@ -9,8 +10,49 @@
   "background_color": "#0c1b2e",
   "theme_color": "#0c1b2e",
   "icons": [
-    { "src": "/img/icon-192.png?v=2", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/img/icon-512.png?v=2", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/img/icon-maskable-512.png?v=2", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "/img/icon-192.png?v=2",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/img/icon-512.png?v=2",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/img/icon-maskable-512.png?v=2",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": [
+    "news",
+    "sports"
+  ],
+  "shortcuts": [
+    {
+      "name": "Calendario de partidos",
+      "short_name": "Calendario",
+      "url": "/calendario"
+    },
+    {
+      "name": "Clasificación",
+      "short_name": "Clasificación",
+      "url": "/clasificacion"
+    },
+    {
+      "name": "Noticias rápidas",
+      "short_name": "Rápidas",
+      "url": "/noticias-rapidas"
+    },
+    {
+      "name": "Porras de la jornada",
+      "short_name": "Porras",
+      "url": "/predicciones"
+    }
   ]
 }

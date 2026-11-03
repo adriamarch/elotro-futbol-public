@@ -3,8 +3,9 @@
 <head>
 <meta name="google-adsense-account" content="ca-pub-7347856722927942">
 <script src="js/tema.js?v=2"></script>
-<script src="js/preferencias.js?v=3"></script>
+<script src="js/preferencias.js?v=20"></script>
 <meta charset="UTF-8">
+<script src="/js/splash.js?v=2"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,8 +18,9 @@
 <link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=3">
 <link rel="apple-touch-icon" href="/img/apple-touch-icon.png?v=2">
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&family=Playfair+Display:wght@700;800&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=25">
-<link rel="stylesheet" href="css/accesibilidad.css?v=1">
+<link rel="stylesheet" href="css/style.css?v=35">
+<link rel="stylesheet" href="css/modales-mejoras.css?v=1">
+<link rel="stylesheet" href="css/accesibilidad.css?v=2">
 <script src="js/accesibilidad.js?v=1" defer></script>
 <link rel="stylesheet" href="css/foco.css?v=1">
 <style>
@@ -38,6 +40,8 @@ mark{background:rgba(209,19,46,.16);color:inherit;border-radius:3px;padding:0 .1
 .busq-mas{text-align:center;margin:1.5rem 0;}
 .busq-mas button{cursor:pointer;border:0;}
 </style>
+<link rel="stylesheet" href="css/app-movil.css?v=8">
+<script src="js/app-movil.js?v=5" defer></script>
 </head>
 <body>
 
@@ -71,13 +75,13 @@ mark{background:rgba(209,19,46,.16);color:inherit;border-radius:3px;padding:0 .1
 
 <script src="js/ui-alertas.js?v=5"></script>
 <script src="js/foco.js?v=1"></script>
-<script src="js/config.js?v=25"></script>
+<script src="js/config.js?v=36"></script>
 <script src="js/seo.js?v=5"></script>
-<script src="js/clubs.js?v=6"></script>
+<script src="js/clubs.js?v=8"></script>
 <script src="js/lector-auth.js?v=13"></script>
-<script src="js/lecturas.js?v=7"></script>
-<script src="js/layout.js?v=22"></script>
-<script src="js/main.js?v=14"></script>
+<script src="js/lecturas.js?v=8"></script>
+<script src="js/layout.js?v=30"></script>
+<script src="js/main.js?v=33"></script>
 <script src="js/cookies.js?v=2"></script>
 <script src="js/ads.js?v=3"></script>
 <script>
@@ -86,7 +90,7 @@ document.getElementById("ad-cabecera-buscar").innerHTML = adSlot("cabecera");
 <script>
 const TIPOS_BUSQUEDA = {
   noticia: "Noticias", previa: "Previas", cronica: "Crónicas",
-  analisis: "Análisis", opinion: "Opinión", entrevista: "Entrevistas", uno_por_uno: "1x1 de jugadores",
+  analisis: "Análisis", opinion: "Opinión", entrevista: "Entrevistas", uno_por_uno: "1x1 de jugadores", rdp_previa: "Ruedas de prensa previas", rdp_post: "Ruedas de prensa posteriores",
 };
 const POR_PAGINA = 20;
 const FILTROS = ["categoria", "tipo", "desde", "hasta", "orden"];

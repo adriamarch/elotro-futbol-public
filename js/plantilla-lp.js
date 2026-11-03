@@ -1,6 +1,9 @@
-// Plantilla completa del club desde LaPreferente (/plantilla).
+// Plantilla completa del club desde Flashscore (/plantilla y ficha del equipo).
 // Datos estáticos en /data/jugadores/{slug-del-club}.json, que genera
-// herramientas/lapreferente/lapreferente.py (workflow «Actualizar jugadores»).
+// herramientas/flashscore/flashscore.py (workflow «Actualizar jugadores»).
+// REGLA: en toda la web las estadísticas externas salen de Flashscore. Un JSON de
+// otra fuente (p. ej. LaPreferente, que quedó en clubes que Flashscore no publica)
+// se ignora al cargarlo: ver lpEsFlashscore().
 // Van en su propia tabla, con la fuente a la vista: NO se mezclan con lo que
 // calcula la redacción con el minuto a minuto. Si un jugador de la redacción
 // se reconoce de forma inequívoca en la plantilla, su nombre enlaza a su ficha.
@@ -13,6 +16,12 @@ const LP_PLURAL_POSICION = {
 };
 const LP_ORDEN_POSICION = ["Portero", "Defensa", "Centrocampista", "Delantero"];
 const LP_CACHE = { slug: null, doc: null };
+const LP_URL_FLASHSCORE = /^https:\/\/(www\.)?flashscore\.(com|es)\//;
+
+// ¿El documento viene de Flashscore? Se mira el nombre de la fuente y su URL.
+function lpEsFlashscore(doc) {
+  return !!doc && /flashscore/i.test(String(doc.fuente || "")) && LP_URL_FLASHSCORE.test(String(doc.fuente_url || ""));
+}
 
 function lpNormalizar(t) {
   return String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
@@ -24,7 +33,7 @@ function lpTokens(t) { const n = lpNormalizar(t); return n ? n.split(" ") : []; 
 function lpContenidos(corto, largo) {
   return corto.length > 0 && corto.every((t) => largo.some((l) => l === t || (t.length === 1 && l.startsWith(t))));
 }
-// Devuelve el jugador de LaPreferente SOLO si la coincidencia es inequívoca.
+// Devuelve el jugador de Flashscore SOLO si la coincidencia es inequívoca.
 function lpBuscar(jugadoresLP, nombre) {
   const buscado = lpTokens(nombre);
   if (!buscado.length) return null;
@@ -38,8 +47,8 @@ function lpBuscar(jugadoresLP, nombre) {
   return null;
 }
 
-// Mapa id de LaPreferente -> jugador de la redacción. Si dos jugadores de la
-// redacción caen en el mismo de LaPreferente, es ambiguo y no se enlaza ninguno.
+// Mapa id de Flashscore -> jugador de la redacción. Si dos jugadores de la
+// redacción caen en el mismo de Flashscore, es ambiguo y no se enlaza ninguno.
 function lpEmparejar(jugadoresLP, jugadoresRed) {
   const mapa = new Map();
   (jugadoresRed || []).forEach((j) => {
@@ -52,8 +61,8 @@ function lpEmparejar(jugadoresLP, jugadoresRed) {
   return mapa;
 }
 
-// Carga el JSON del club. Devuelve null si no existe o no tiene jugadores
-// (la sección es opcional: sin datos, la plantilla se ve como siempre).
+// Carga el JSON del club. Devuelve null si no existe, no tiene jugadores o NO es de
+// Flashscore (la sección es opcional: sin datos, la plantilla se ve como siempre).
 async function lpCargarPlantilla(club) {
   const slug = slugEquipo(club);
   if (LP_CACHE.slug === slug) return LP_CACHE.doc;
@@ -62,7 +71,7 @@ async function lpCargarPlantilla(club) {
     const res = await fetch(`${baseHref()}data/jugadores/${slug}.json`);
     if (res.ok && /json/i.test(res.headers.get("Content-Type") || "")) {
       const d = await res.json();
-      if (d && Array.isArray(d.jugadores) && d.jugadores.length) doc = d;
+      if (d && Array.isArray(d.jugadores) && d.jugadores.length && lpEsFlashscore(d)) doc = d;
     }
   } catch (e) { /* opcional */ }
   LP_CACHE.slug = slug;
@@ -70,16 +79,41 @@ async function lpCargarPlantilla(club) {
   return doc;
 }
 
-function lpNum(v) { return v === null || v === undefined ? "—" : v; }
+// «Flashscore.es» -> «Flashscore» (etiqueta corta junto a los títulos).
+function lpEtiquetaFuente(doc) {
+  return String((doc && doc.fuente) || "Fuente externa").replace(/\.(es|com)$/i, "");
+}
 
-function lpFila(p, red, fichaHref) {
+function lpNum(v) { return v === null || v === undefined ? "—" : v; }
+function lpTiene(v) { return v !== null && v !== undefined; }
+// Cada fuente da columnas distintas (Flashscore trae asistencias, no titularidades); La tabla enseña lo que haya, sin columnas vacías.
+function lpModo(doc) {
+  const js = (doc && doc.jugadores) || [];
+  return { conTit: js.some((p) => lpTiene(p.pt)), conEnc: js.some((p) => lpTiene(p.encajados)) };
+}
+
+// Clubes cuya plantilla de Flashscore es la del primer equipo, no la del filial (ver
+// EXCLUIR_SLUGS en herramientas/flashscore/estadisticas.py: mantener las dos listas iguales).
+const LP_SIN_FICHA = new Set(["bilbao-athletic", "real-madrid-castilla", "atletico-madrileno", "fc-barcelona-atletic", "valencia-mestalla"]);
+
+// Enlace a la ficha de Flashscore de un jugador (jugador.html?f=…). "" si ese club no tiene fichas.
+function lpHrefFicha(doc, p) {
+  if (!doc || !p || !p.id || !doc.club || !LP_PLURAL_COMPETICION[doc.competicion]) return "";
+  const slug = slugEquipo(doc.club);
+  if (LP_SIN_FICHA.has(slug)) return "";
+  return `${baseHref()}jugador?c=${encodeURIComponent(doc.competicion)}&e=${encodeURIComponent(slug)}&f=${encodeURIComponent(p.id)}`;
+}
+const LP_PLURAL_COMPETICION = { hypermotion: 1, primera_federacion: 1 };
+
+function lpFila(p, red, fichaHref, modo, hrefFs) {
   const nombre = escapeHtml(p.alias || p.nombre || "—");
   const detalle = [p.nombre && p.alias && p.nombre !== p.alias ? p.nombre : "", p.demarcacion]
     .filter(Boolean).map(escapeHtml).join(" · ");
   const celdaNombre = red
     ? `<a class="stats-jugador-nombre" href="${fichaHref(red)}" title="Ver su ficha con estadísticas de la redacción">${nombre}</a>`
+    : hrefFs ? `<a class="stats-jugador-nombre" href="${hrefFs}">${nombre}</a>`
     : `<span class="lp-nombre">${nombre}</span>`;
-  const portero = p.posicion === "Portero";
+  const portero = p.posicion === "Portero" && modo.conEnc;
   const goles = portero
     ? `<span class="lp-enc" title="Goles encajados">${lpNum(p.encajados)}<small> enc.</small></span>`
     : lpNum(p.goles);
@@ -87,7 +121,7 @@ function lpFila(p, red, fichaHref) {
     <tr>
       <td class="col-jugador">${celdaNombre}${detalle ? `<small>${detalle}</small>` : ""}</td>
       <td class="num">${p.edad ? lpNum(p.edad) : "—"}</td>
-      <td class="num">${lpNum(p.pj)}</td><td class="num">${lpNum(p.pt)}</td>
+      <td class="num">${lpNum(p.pj)}</td><td class="num">${modo.conTit ? lpNum(p.pt) : lpNum(p.asistencias)}</td>
       <td class="num">${p.min === null || p.min === undefined ? "—" : Number(p.min).toLocaleString("es-ES")}</td>
       <td class="num col-puntos">${goles}</td>
       <td class="num">${lpNum(p.ta)}</td><td class="num">${lpNum(p.tr)}</td>
@@ -95,9 +129,11 @@ function lpFila(p, red, fichaHref) {
 }
 
 // HTML de la sección. «fichaHref» es la función de plantilla.js que construye el enlace a la ficha.
-function lpHtmlPlantilla(doc, jugadoresRed, fichaHref) {
+function lpHtmlPlantilla(doc, jugadoresRed, fichaHref, opciones) {
+  const sinTitulo = !!(opciones && opciones.sinTitulo);
   if (!doc) return "";
   const emparejados = lpEmparejar(doc.jugadores, jugadoresRed);
+  const modo = lpModo(doc);
   const grupos = new Map();
   doc.jugadores.forEach((p) => {
     const clave = LP_PLURAL_POSICION[p.posicion] ? p.posicion : "otros";
@@ -111,14 +147,14 @@ function lpHtmlPlantilla(doc, jugadoresRed, fichaHref) {
       String(a.alias || a.nombre).localeCompare(String(b.alias || b.nombre), "es"));
     const titulo = k === "otros" ? "Otros" : LP_PLURAL_POSICION[k];
     return `<tr class="plantilla-lp-grupo"><th colspan="8" scope="colgroup">${titulo} (${lista.length})</th></tr>`
-      + lista.map((p) => lpFila(p, emparejados.get(p.id) || null, fichaHref)).join("");
+      + lista.map((p) => lpFila(p, emparejados.get(p.id) || null, fichaHref, modo, lpHrefFicha(doc, p))).join("");
   }).join("");
   const fecha = doc.actualizado ? ` Actualizado el ${escapeHtml(String(doc.actualizado).split("-").reverse().join("/"))}.` : "";
-  const urlOk = typeof doc.fuente_url === "string" && doc.fuente_url.startsWith("https://www.lapreferente.com/");
-  const enlace = urlOk ? ` <a href="${escapeHtml(doc.fuente_url)}" target="_blank" rel="noopener nofollow">Ver plantilla en LaPreferente ↗</a>` : "";
+  const urlOk = typeof doc.fuente_url === "string" && /^https:\/\/(www\.)?(lapreferente\.com|flashscore\.(com|es))\//.test(doc.fuente_url);
+  const enlace = urlOk ? ` <a href="${escapeHtml(doc.fuente_url)}" target="_blank" rel="noopener nofollow">Ver plantilla en ${escapeHtml(doc.fuente || "la fuente")} ↗</a>` : "";
   return `
     <section class="plantilla-lp" aria-label="Plantilla completa del club">
-      <h2 class="plantilla-lp-titulo">Plantilla completa ${escapeHtml(doc.temporada || "")} <span class="ficha-externo-etiqueta">Fuente externa</span></h2>
+      ${sinTitulo ? "" : `<h2 class="plantilla-lp-titulo">Plantilla completa ${escapeHtml(doc.temporada || "")} <span class="ficha-externo-etiqueta">${escapeHtml(lpEtiquetaFuente(doc))}</span></h2>`}
       <p class="plantilla-lp-meta">${doc.jugadores.length} jugadores. Datos no oficiales de ${escapeHtml(doc.fuente || "una fuente externa")}; suman todas las competiciones del club y pueden diferir de las cifras de la redacción.${fecha}${enlace}</p>
       <div class="clasificacion-tabla-wrap">
         <table class="clasificacion-tabla stats-tabla plantilla-lp-tabla">
@@ -126,9 +162,9 @@ function lpHtmlPlantilla(doc, jugadoresRed, fichaHref) {
             <th class="col-equipo col-jugador">Jugador</th>
             <th class="num" title="Edad">Edad</th>
             <th class="num" title="Partidos jugados">PJ</th>
-            <th class="num" title="Partidos de titular">Tit.</th>
+            ${modo.conTit ? '<th class="num" title="Partidos de titular">Tit.</th>' : '<th class="num" title="Asistencias">Asist.</th>'}
             <th class="num" title="Minutos jugados">Min.</th>
-            <th class="num" title="Goles (en porteros, goles encajados)">G</th>
+            <th class="num" title="${modo.conEnc ? 'Goles (en porteros, goles encajados)' : 'Goles'}">G</th>
             <th class="num" title="Tarjetas amarillas">🟨</th>
             <th class="num" title="Tarjetas rojas">🟥</th>
           </tr></thead>

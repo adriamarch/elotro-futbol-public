@@ -1,0 +1,50 @@
+/* Insignias por hitos: tira de "Mi progreso" justo debajo del nivel actual (redactores y fotógrafos). */
+.hitos{
+  margin:0 0 22px; padding:16px 18px;
+  border-radius:16px;
+  background:var(--tarjeta,#fff);
+  border:1px solid var(--borde,#e2e6ee);
+  box-shadow:0 6px 20px rgba(12,27,46,.05);
+}
+.hitos-cab{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px;}
+.hitos-resumen{padding:2px 10px; border-radius:999px; font-size:.76rem; font-weight:600; color:var(--gris-texto,#667085); background:rgba(12,27,46,.06);}
+
+.hitos-lista{list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:12px;}
+.hito{
+  display:flex; align-items:flex-start; gap:12px; min-width:0;
+  padding:12px; border-radius:12px;
+  border:1px solid var(--borde,#e2e6ee);
+  background:var(--fondo-suave,#f7f8fb);
+  transition:transform .15s ease, box-shadow .15s ease;
+}
+.hito-icono{
+  flex:0 0 auto; width:42px; height:42px; display:flex; align-items:center; justify-content:center;
+  font-size:1.35rem; line-height:1; border-radius:50%;
+  background:rgba(12,27,46,.08);
+}
+.hito-texto{min-width:0; display:flex; flex-direction:column; gap:3px;}
+.hito-nombre{font-size:.92rem; color:var(--marino,#0c1b2e);}
+.hito-desc{font-size:.78rem; line-height:1.35; color:var(--gris-texto,#667085);}
+.hito-estado{margin-top:2px; font-size:.76rem; font-weight:600; color:var(--gris-texto,#667085);}
+.hito-estado-ok{color:var(--nivel-1,#16a34a);}
+
+.hito-barra{height:6px; margin-top:6px; border-radius:999px; background:rgba(12,27,46,.1); overflow:hidden;}
+.hito-barra-relleno{height:100%; border-radius:inherit; background:linear-gradient(90deg,var(--nivel-2,#2563eb),var(--nivel-3,#7c3aed)); transition:width .4s ease;}
+
+/* Conseguida: color y un pequeño brillo. Pendiente: en gris, sin competir con las conseguidas. */
+.hito-conseguida{
+  background:linear-gradient(135deg,var(--nivel-1-suave,#ecfdf3),var(--tarjeta,#fff) 80%);
+  border-color:rgba(22,163,74,.35);
+}
+.hito-conseguida .hito-icono{background:linear-gradient(135deg,#ffd166,#f59e0b); box-shadow:0 3px 10px rgba(245,158,11,.35);}
+.hito-conseguida:hover{transform:translateY(-1px); box-shadow:0 6px 16px rgba(12,27,46,.08);}
+.hito-bloqueada .hito-icono{filter:grayscale(1); opacity:.6;}
+.hito-bloqueada .hito-nombre{color:var(--gris-texto,#667085);}
+
+@media (max-width:520px){
+  .hitos{padding:14px;}
+  .hitos-lista{grid-template-columns:1fr;}
+}
+@media (prefers-reduced-motion:reduce){
+  .hito, .hito-barra-relleno{transition:none;}
+}

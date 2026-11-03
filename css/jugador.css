@@ -1,217 +1,317 @@
-/* Ficha de jugador (jugador.html) y cabecera de plantilla.
-   Reutiliza la tabla de clasificación y las variables del tema.
+/* Ficha de jugador (jugador.html).
+   Cabecera «hero» marino como la ficha de club, con el dorsal enorme de marca de agua y las cifras clave
+   en una franja; debajo, bloques con título de acento rojo y tablas en tarjeta.
+   Titulares en la serif del sitio (Playfair), cifras en Oswald, cuerpo en Inter.
+   Usa las variables del tema (--fondo, --tarjeta, --borde, --texto-suave...), así el modo oscuro funciona
+   sin reglas aparte; solo los verdes/rojos de texto tienen versión oscura propia (abajo).
+   Regla del sitio: el texto usa --marino-texto, nunca --marino (en oscuro sería ilegible);
+   dentro del hero (fondo marino fijo en ambos modos) el texto es blanco a propósito. */
 
-   Idea de diseño: la cabecera es un campo visto desde arriba (línea de
-   medio campo y círculo central) y el dorsal del jugador va dentro del
-   círculo, grande y en contorno. Es lo único llamativo; todo lo demás
-   (tarjetas, gráfico, tabla) se mantiene sobrio para que mande el dato.
-
-   Regla del sitio: el texto usa --marino-texto, nunca --marino (en modo
-   oscuro --marino sería ilegible). La cabecera es oscura en los dos temas,
-   por eso allí el texto es blanco fijo. */
-
-.ficha-jugador{padding-bottom:40px;}
+.ficha-jugador{
+  --fj-radio:18px;
+  --fj-ok:#1b7a46;      --fj-ok-bg:#e3f4ea;
+  --fj-ko:#b4112a;      --fj-ko-bg:#fce7ea;
+  --fj-rojo-txt:var(--rojo);
+  --fj-hover:var(--ui-hover,color-mix(in srgb,var(--celeste) 10%,var(--tarjeta)));
+  --fj-linea:var(--ui-linea,var(--borde));
+  padding-bottom:56px;max-width:980px;
+}
+[data-theme="dark"] .ficha-jugador{
+  --fj-ok:#63d492;      --fj-ok-bg:rgba(99,212,146,.14);
+  --fj-ko:#ff8a99;      --fj-ko-bg:rgba(255,138,153,.14);
+  --fj-rojo-txt:#ff7487;
+}
+.sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;}
+.ficha-jugador a:focus-visible{outline:3px solid var(--celeste);outline-offset:3px;border-radius:4px;}
 
 /* ---------- Migas ---------- */
-.ficha-migas{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:6px 0 16px;font-size:.85rem;color:var(--texto-suave);}
-.ficha-migas a{color:var(--rojo);font-weight:600;text-decoration:none;}
-.ficha-migas a:hover{text-decoration:underline;}
+.ficha-migas{display:flex;flex-wrap:wrap;gap:2px 8px;margin:8px 0 16px;font-size:.82rem;color:var(--texto-suave);}
+.ficha-migas a{color:var(--texto-suave);text-decoration:none;border-bottom:1px solid transparent;transition:color .15s,border-color .15s;}
+.ficha-migas a:hover{color:var(--marino-texto);border-bottom-color:currentColor;}
+.ficha-migas>span[aria-hidden]{opacity:.5;}
 
-/* ---------- Cabecera: campo + dorsal ---------- */
+/* ---------- Cabecera (hero) ---------- */
 .ficha-cabecera{
-  --campo-x:85%;
-  position:relative;isolation:isolate;overflow:hidden;
-  display:flex;align-items:center;gap:30px;
-  padding:36px 36px 62px;border-radius:var(--radio-lg,18px);color:#fff;
+  position:relative;overflow:hidden;isolation:isolate;
+  display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:"escudo ident" "cifras cifras";
+  gap:22px 28px;align-items:center;
+  margin:0 0 30px;padding:30px 34px 0;border-radius:24px;color:#fff;
   background:
-    radial-gradient(circle at var(--campo-x) 50%, transparent 0 96px, rgba(255,255,255,.09) 97px 99px, transparent 100px),
-    linear-gradient(90deg, transparent calc(var(--campo-x) - 1px), rgba(255,255,255,.09) calc(var(--campo-x) - 1px) calc(var(--campo-x) + 1px), transparent calc(var(--campo-x) + 1px)),
-    radial-gradient(70% 140% at 100% 0%, rgba(91,184,232,.28), transparent 60%),
-    radial-gradient(60% 120% at 0% 100%, rgba(209,19,46,.30), transparent 60%),
-    linear-gradient(135deg,var(--marino),var(--marino2));
-  box-shadow:var(--sombra-lg);
+    radial-gradient(520px 260px at 92% -10%,color-mix(in srgb,var(--celeste) 36%,transparent),transparent 70%),
+    radial-gradient(420px 240px at -5% 115%,color-mix(in srgb,var(--rojo) 42%,transparent),transparent 70%),
+    linear-gradient(135deg,#0c1b2e 0%,#142c4c 100%);
+  border:1px solid rgba(255,255,255,.08);
+  box-shadow:0 1px 2px rgba(12,27,46,.1),0 22px 48px -22px rgba(12,27,46,.55);
 }
-/* El dorsal, en contorno, centrado en el círculo del campo. El número real
-   sigue estando como texto en el título; este es solo decorativo. */
-.ficha-cabecera[data-dorsal]::after{
-  content:attr(data-dorsal);
-  position:absolute;left:var(--campo-x);top:50%;transform:translate(-50%,-50%);z-index:-1;
-  font-family:var(--font-tit);font-weight:700;font-size:clamp(7rem,17vw,12rem);line-height:1;letter-spacing:-.02em;
-  color:transparent;-webkit-text-stroke:2px rgba(255,255,255,.22);
-  pointer-events:none;user-select:none;
+.ficha-cabecera::before{
+  content:"";position:absolute;inset:0;z-index:-1;opacity:.5;pointer-events:none;
+  background:repeating-linear-gradient(115deg,rgba(255,255,255,.035) 0 2px,transparent 2px 14px);
 }
-.ficha-escudo-wrap{
-  flex:none;width:108px;height:108px;border-radius:50%;display:grid;place-items:center;
-  background:#fff;
-  box-shadow:0 0 0 6px rgba(255,255,255,.14),0 16px 30px -12px rgba(0,0,0,.7);
+.ficha-cabecera::after{
+  content:"";position:absolute;left:0;right:0;bottom:0;height:4px;
+  background:linear-gradient(90deg,var(--rojo),var(--celeste));
 }
-.ficha-escudo{width:76px;height:76px;object-fit:contain;}
-.ficha-ident{min-width:0;flex:1;max-width:min(100%,calc(var(--campo-x) - 190px));}
-.ficha-nombre{
-  display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin:0 0 10px;
-  font-family:var(--font-headline,var(--font-tit));font-size:clamp(1.9rem,4.2vw,2.9rem);line-height:1.1;color:#fff;
-  overflow-wrap:anywhere;text-wrap:balance;
-}
-.ficha-dorsal{
-  display:inline-grid;place-items:center;min-width:40px;height:40px;padding:0 10px;border-radius:12px;
-  font-family:var(--font-tit);font-size:1.25rem;font-weight:700;color:var(--marino);
-  background:linear-gradient(135deg,#fff,var(--celeste-claro));
-}
-.ficha-club{
-  display:inline-flex;align-items:center;gap:8px;padding:6px 14px 6px 16px;border-radius:999px;
-  background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);
-  color:#fff;font-weight:600;font-size:1rem;text-decoration:none;
-  transition:background .15s,border-color .15s;
-}
-.ficha-club::after{content:"›";color:var(--celeste-claro);font-size:1.2em;line-height:1;transition:transform .15s;}
-.ficha-club:hover{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.35);}
-.ficha-club:hover::after{transform:translateX(3px);}
-.ficha-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;}
-.ficha-chips:empty{display:none;}
-.ficha-chip{padding:5px 12px;border-radius:999px;font-size:.78rem;font-weight:600;background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.22);}
-.ficha-chip-oro{background:linear-gradient(135deg,#f6c945,#d49a0f);color:#3a2a00;border-color:transparent;}
-.ficha-chip-podio{background:rgba(246,201,69,.2);border-color:rgba(246,201,69,.55);}
+.ficha-cabecera:not(:has(.ficha-hero-cifras)){padding-bottom:30px;}
 
-/* ---------- Tarjetas de datos (montadas sobre el borde de la cabecera) ---------- */
-.ficha-datos{
-  position:relative;z-index:2;display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:12px;
-  margin:-34px 22px 0;
+/* Dorsal: marca de agua gigante detrás del texto */
+.ficha-dorsal{
+  position:absolute;z-index:-1;right:24px;top:4px;
+  font-family:var(--font-tit);font-weight:700;font-size:clamp(6.5rem,17vw,11.5rem);line-height:1;letter-spacing:-.02em;
+  color:rgba(255,255,255,.07);pointer-events:none;user-select:none;
 }
-.ficha-dato{
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:18px 10px 16px;text-align:center;
-  background:var(--tarjeta);border:1px solid var(--borde);border-radius:14px;box-shadow:var(--sombra-md);
+
+.ficha-escudo-wrap{
+  grid-area:escudo;display:grid;place-items:center;width:112px;height:112px;padding:16px;border-radius:50%;
+  background:#fff;box-shadow:0 0 0 6px rgba(255,255,255,.12),0 14px 30px -10px rgba(0,0,0,.55);
 }
-.ficha-dato-valor{font-family:var(--font-tit);font-size:2.1rem;font-weight:700;line-height:1;color:var(--marino-texto);font-variant-numeric:tabular-nums;}
-.ficha-dato-valor small{font-size:1rem;color:var(--texto-suave);font-weight:500;}
-.ficha-dato-etiqueta{font-size:.8rem;line-height:1.25;color:var(--texto-suave);}
-.ficha-dato.destacado{border-top:3px solid var(--rojo);padding-top:16px;}
-.ficha-dato.destacado .ficha-dato-valor{color:var(--rojo);font-size:2.5rem;}
+.ficha-escudo{width:100%;height:100%;object-fit:contain;}
+
+.ficha-ident{grid-area:ident;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:8px;}
+.ficha-kicker{
+  margin:0;font-family:var(--font-tit);font-size:.76rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--celeste);
+}
+.ficha-nombre{
+  margin:0;font-family:var(--font-headline,Georgia,serif);font-weight:800;color:#fff;
+  font-size:clamp(1.9rem,4.8vw,3.1rem);line-height:1.06;letter-spacing:-.01em;
+  overflow-wrap:anywhere;text-wrap:balance;text-shadow:0 2px 14px rgba(0,0,0,.25);
+}
+.ficha-chips{list-style:none;margin:2px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:8px;}
+.ficha-chip{
+  display:inline-flex;align-items:center;padding:4px 13px;border-radius:999px;
+  background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.16);
+  font-size:.84rem;font-weight:500;line-height:1.5;color:#fff;
+}
+/* Especificidad alta a propósito: app-movil.css colorea «main li a:not([class])» en azul. */
+.ficha-jugador .ficha-chips .ficha-chip a{color:#fff;text-decoration:none;}
+.ficha-chip:has(a){transition:background .15s,border-color .15s;}
+.ficha-chip:has(a):hover{background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.34);}
+.ficha-jugador .ficha-chips .ficha-chip a:focus-visible{outline-color:#fff;}
+
+/* Franja de cifras clave, de borde a borde del hero */
+.ficha-hero-cifras{
+  grid-area:cifras;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin:8px -34px 0;padding:0 0 4px;
+  background:rgba(4,12,24,.4);border-top:1px solid rgba(255,255,255,.1);
+}
+.ficha-hero-cifras>div{padding:16px 10px 15px;text-align:center;min-width:0;}
+.ficha-hero-cifras>div+div{border-left:1px solid rgba(255,255,255,.1);}
+.ficha-hero-cifras dt{
+  margin:0 0 4px;font-size:.68rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.66);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.ficha-hero-cifras dd{margin:0;font-family:var(--font-tit);font-size:2.1rem;font-weight:700;line-height:1.05;color:#fff;font-variant-numeric:tabular-nums;}
+.ficha-hero-cifras .fuerte dd{color:var(--celeste-claro);}
+
+/* ---------- Texto de entrada ---------- */
+.ficha-lead{
+  margin:0 0 8px;max-width:64ch;padding:2px 0 2px 18px;border-left:4px solid var(--rojo);
+  font-family:var(--font-body,Georgia,serif);font-size:1.15rem;line-height:1.6;color:var(--marino-texto);
+}
+.ficha-puestos{
+  margin:0 0 8px;padding:12px 16px;border:1px solid var(--borde);border-radius:14px;background:var(--fondo-alt);
+  font-size:.92rem;line-height:1.55;color:var(--texto-suave);
+}
+.ficha-puestos b{color:var(--marino-texto);font-weight:600;}
 
 /* ---------- Bloques ---------- */
-.ficha-bloque{margin-top:36px;}
+.ficha-bloque{margin-top:38px;}
 .ficha-titulo{
-  display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px;margin:0 0 16px;
-  font-family:var(--font-tit);font-size:1.35rem;font-weight:700;letter-spacing:.2px;color:var(--marino-texto);
+  display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;column-gap:12px;margin:0 0 16px;
+  font-family:var(--font-headline,Georgia,serif);font-size:1.4rem;font-weight:700;line-height:1.2;color:var(--marino-texto);
 }
-.ficha-titulo::before{content:"";flex:none;width:5px;height:1.15em;border-radius:3px;background:var(--rojo);}
+.ficha-titulo::before{content:"";align-self:stretch;width:5px;min-height:1.15em;border-radius:3px;background:var(--rojo);}
+.ficha-ver-plantilla{
+  justify-self:end;padding:6px 14px;border:1px solid var(--borde);border-radius:999px;background:var(--tarjeta);
+  font-family:var(--font-text);font-size:.8rem;font-weight:600;color:var(--marino-texto);text-decoration:none;white-space:nowrap;
+  transition:border-color .15s,background .15s;
+}
+.ficha-ver-plantilla:hover{border-color:var(--celeste);background:var(--fj-hover);}
+.ficha-linea{margin:0 0 14px;font-size:.95rem;line-height:1.5;color:var(--texto-suave);}
+.ficha-nota{margin:14px 2px 0;max-width:82ch;font-size:.8rem;line-height:1.6;color:var(--texto-suave);}
+.ficha-nota a{color:var(--marino-texto);text-decoration:underline;text-decoration-color:var(--borde);text-underline-offset:3px;transition:text-decoration-color .15s;}
+.ficha-nota a:hover{text-decoration-color:currentColor;}
+.ficha-nd{color:var(--texto-suave);opacity:.7;}
+
+/* El contenedor de tabla del sitio ya es una tarjeta (listados-ui.css); aquí solo se ajusta el margen. */
+.ficha-jugador .clasificacion-tabla-wrap{margin-bottom:0;border-radius:var(--fj-radio);}
+
+/* ---------- Tablas propias: estadísticas (Flashscore) y plantilla ---------- */
+.ficha-stats,.ficha-plantel{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;}
+.ficha-stats th,.ficha-stats td,.ficha-plantel th,.ficha-plantel td{
+  padding:13px 16px;border-bottom:1px solid var(--fj-linea);text-align:left;font-size:.93rem;vertical-align:middle;
+}
+.ficha-stats thead th,.ficha-plantel thead th{
+  padding:13px 16px;background:var(--fondo-alt);border-bottom:1px solid var(--borde);
+  font-size:.68rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--texto-suave);white-space:nowrap;
+}
+.ficha-stats tbody tr,.ficha-plantel tbody tr{transition:background-color .12s;}
+.ficha-stats tbody tr:hover,.ficha-plantel tbody tr:hover{background-color:var(--fj-hover);}
+.ficha-stats tbody th,.ficha-plantel tbody th{font-weight:600;color:var(--marino-texto);}
+.ficha-stats .num,.ficha-plantel .num{text-align:right;}
+.ficha-stats td.fuerte{font-family:var(--font-tit);font-size:1.4rem;font-weight:700;line-height:1;color:var(--marino-texto);}
+.ficha-stats .col-puesto small{color:var(--texto-suave);font-size:.78rem;}
+.ficha-stats tbody tr:last-child th,.ficha-stats tbody tr:last-child td,
+.ficha-plantel tbody tr:last-child th,.ficha-plantel tbody tr:last-child td{border-bottom:0;}
+/* Podio: los tres primeros puestos de la fila */
+.ficha-top{
+  display:inline-block;padding:1px 9px;border-radius:999px;font-weight:700;color:var(--marino-texto);
+  background:color-mix(in srgb,var(--pz-oro,#f5b301) 28%,transparent);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--pz-oro,#f5b301) 55%,transparent);
+}
+.ficha-plantel th a{color:var(--marino-texto);text-decoration:none;border-bottom:1px solid var(--borde);transition:border-color .15s,color .15s;}
+.ficha-plantel th a:hover{color:var(--marino-texto);border-bottom-color:var(--celeste);}
+.ficha-plantel .col-pos{color:var(--texto-suave);}
+.ficha-plantel td.num:first-child{color:var(--texto-suave);width:3.5rem;}
+
+/* ---------- Franja de cifras (ficha de la redacción y bloque de Flashscore): mosaico de tarjetas ---------- */
+.ficha-resumen{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:12px;margin:0;padding:0;}
+.ficha-resumen>div{
+  min-width:0;padding:14px 16px 13px;border:1px solid var(--borde);border-radius:14px;background:var(--tarjeta);box-shadow:var(--sombra-sm);
+}
+.ficha-resumen dt{margin:0 0 4px;font-size:.68rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--texto-suave);}
+.ficha-resumen dd{margin:0;font-family:var(--font-tit);font-size:2rem;font-weight:700;line-height:1.1;color:var(--marino-texto);font-variant-numeric:tabular-nums;}
+.ficha-resumen dd small{font-family:var(--font-text);font-size:.9rem;font-weight:400;color:var(--texto-suave);}
+.ficha-resumen .fuerte{border-top:3px solid var(--rojo);}
+@media(min-width:641px){
+  .ficha-resumen:has(>:nth-child(7)){grid-template-columns:repeat(4,minmax(0,1fr));}
+  .ficha-resumen:has(>:nth-child(6):last-child){grid-template-columns:repeat(3,minmax(0,1fr));}
+}
+.ficha-resumen .fuerte dd{color:var(--fj-rojo-txt);}
 
 /* ---------- Goles por tramos ---------- */
 .ficha-tramos{
-  display:grid;grid-template-columns:repeat(6,1fr);gap:12px;align-items:end;height:220px;padding:22px 20px 14px;
-  background:var(--tarjeta);border:1px solid var(--borde);border-radius:var(--radio-md,12px);box-shadow:var(--sombra-sm);
+  display:grid;grid-template-columns:repeat(6,1fr);gap:12px;align-items:end;height:250px;padding:18px 20px 14px;
+  border:1px solid var(--borde);border-radius:var(--fj-radio);background:var(--tarjeta);box-shadow:var(--sombra-sm);
 }
 .ficha-tramo{display:flex;flex-direction:column;align-items:center;gap:8px;height:100%;min-width:0;}
-.ficha-tramo-num{font-family:var(--font-tit);font-size:1.1rem;font-weight:700;color:var(--marino-texto);font-variant-numeric:tabular-nums;}
-.ficha-tramo-barra{flex:1;width:100%;max-width:56px;display:flex;align-items:flex-end;background:var(--fondo-alt);border-radius:10px;overflow:hidden;}
+.ficha-tramo-num{font-family:var(--font-tit);font-size:1.05rem;font-weight:700;color:var(--marino-texto);font-variant-numeric:tabular-nums;}
+.ficha-tramo-cero .ficha-tramo-num{color:var(--texto-suave);font-weight:500;}
+.ficha-tramo-barra{flex:1;width:100%;max-width:64px;display:flex;align-items:flex-end;border-bottom:1px solid var(--borde);}
 .ficha-tramo-barra span{
-  display:block;width:100%;min-height:4px;border-radius:10px 10px 0 0;
-  background:linear-gradient(180deg,var(--celeste),#2f93c9);
-  transform-origin:bottom;animation:ficha-crece .7s cubic-bezier(.2,.7,.2,1) both;
+  display:block;width:100%;min-height:3px;border-radius:8px 8px 0 0;
+  background:linear-gradient(180deg,var(--celeste),#2f86b8);
 }
-.ficha-tramo:nth-child(2) .ficha-tramo-barra span{animation-delay:.05s;}
-.ficha-tramo:nth-child(3) .ficha-tramo-barra span{animation-delay:.1s;}
-.ficha-tramo:nth-child(4) .ficha-tramo-barra span{animation-delay:.15s;}
-.ficha-tramo:nth-child(5) .ficha-tramo-barra span{animation-delay:.2s;}
-.ficha-tramo:nth-child(6) .ficha-tramo-barra span{animation-delay:.25s;}
-.ficha-tramo-et{font-size:.76rem;color:var(--texto-suave);white-space:nowrap;}
-@keyframes ficha-crece{from{transform:scaleY(0);}to{transform:scaleY(1);}}
+.ficha-tramo-max .ficha-tramo-barra span{background:linear-gradient(180deg,#ff5d73,var(--rojo));}
+.ficha-tramo-cero .ficha-tramo-barra span{background:var(--borde);border-radius:2px;}
+.ficha-tramo-et{font-size:.76rem;font-weight:500;color:var(--texto-suave);white-space:nowrap;}
 
-/* ---------- Partido a partido ---------- */
-.ficha-tabla td,.ficha-tabla th{vertical-align:middle;}
-.ficha-tabla tbody tr:nth-child(even) td{background:color-mix(in srgb,var(--fondo-alt) 55%,transparent);}
-.ficha-tabla tbody tr:has(.ficha-mvp) td.col-jor{box-shadow:inset 4px 0 0 #f6c945;}   /* franja dorada: fue MVP */
+/* ---------- Partido a partido (usa .clasificacion-tabla; se anulan sus columnas fijas) ---------- */
+.ficha-jugador .ficha-tabla{min-width:0;}
+.ficha-jugador .ficha-tabla :is(thead th:first-child,tbody td:first-child,thead th:last-child,tbody td:last-child){
+  position:static;width:auto;min-width:0;max-width:none;
+}
+.ficha-jugador .ficha-tabla thead th{padding:13px 14px;text-align:left;}
+.ficha-jugador .ficha-tabla thead th:last-child{background:var(--fondo-alt);color:var(--texto-suave);}
+.ficha-jugador .ficha-tabla tbody td{height:auto;padding:12px 14px;text-align:left;vertical-align:middle;}
+.ficha-jugador .ficha-tabla thead th:first-child,.ficha-jugador .ficha-tabla tbody td:first-child{padding-left:16px;}
+.ficha-jugador .ficha-tabla :is(thead th.col-res,tbody td.col-res){text-align:center;}
 .ficha-tabla .col-jor{white-space:nowrap;font-weight:700;color:var(--marino-texto);}
 .ficha-tabla .col-jor small{display:block;font-weight:400;font-size:.72rem;color:var(--texto-suave);}
-.ficha-tabla .col-rival{text-align:left;white-space:nowrap;}
-.ficha-rival{display:inline-flex;align-items:center;gap:8px;color:var(--marino-texto);text-decoration:none;}
-.ficha-rival:hover{color:var(--celeste);}
+.ficha-tabla .col-rival{white-space:nowrap;}
+.ficha-rival{display:inline-flex;align-items:center;gap:10px;color:var(--marino-texto);text-decoration:none;font-weight:600;}
+.ficha-rival:hover span{text-decoration:underline;text-underline-offset:3px;}
 .ficha-rival span{overflow:hidden;text-overflow:ellipsis;max-width:13rem;}
+.ficha-tabla .clas-escudo{width:26px;height:26px;}
+
+/* Resultado: píldora de color según V/E/D (el color no es lo único: lleva marcador y title) */
 .ficha-res{
-  display:inline-block;min-width:46px;padding:3px 9px;border-radius:8px;text-align:center;
-  font-family:var(--font-tit);font-weight:700;font-size:.86rem;letter-spacing:.3px;color:#fff;
+  display:inline-block;min-width:3.5em;padding:3px 11px;border-radius:999px;text-align:center;
+  font-family:var(--font-tit);font-weight:700;font-size:.95rem;letter-spacing:.3px;
+  color:var(--marino-texto);background:var(--fondo-alt);
 }
-.ficha-res-V{background:#1f9d57;}
-.ficha-res-E{background:#7d889a;}
-.ficha-res-D{background:var(--rojo);}
-.ficha-tabla .col-rol{font-size:.8rem;color:var(--texto-suave);white-space:nowrap;}
-.ficha-tabla .col-ev{text-align:left;}
+.ficha-res-V{color:var(--fj-ok);background:var(--fj-ok-bg);}
+.ficha-res-D{color:var(--fj-ko);background:var(--fj-ko-bg);}
+.ficha-res-E{color:var(--texto-suave);background:var(--fondo-alt);}
+.ficha-tabla .col-rol{white-space:nowrap;}
+.ficha-tabla td.col-rol{font-size:.82rem;color:var(--texto-suave);}
+.ficha-tabla .col-ev{white-space:normal;}
 .ficha-ev{
-  display:inline-block;margin:2px 6px 2px 0;padding:2px 9px;border-radius:999px;
-  background:var(--fondo-alt);border:1px solid var(--borde);font-size:.8rem;white-space:nowrap;
+  display:inline-flex;align-items:center;gap:5px;margin:2px 6px 2px 0;padding:2px 10px;border-radius:999px;
+  border:1px solid var(--borde);background:var(--fondo-alt);font-size:.82rem;white-space:nowrap;
+}
+.ficha-ev-gol{
+  font-weight:700;color:var(--marino-texto);
+  background:color-mix(in srgb,var(--celeste) 20%,transparent);border-color:color-mix(in srgb,var(--celeste) 55%,transparent);
 }
 .ficha-sin-ev{font-size:.8rem;color:var(--texto-suave);}
-.ficha-vacio{padding:28px 24px;text-align:center;color:var(--texto-suave);background:var(--fondo-alt);border:1px dashed var(--borde);border-radius:var(--radio-md,12px);}
-
-/* ---------- Compañeros ---------- */
-.ficha-companeros{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;}
-.ficha-companero{
-  display:grid;grid-template-columns:auto 1fr;align-items:center;column-gap:12px;row-gap:2px;padding:12px 14px;text-decoration:none;
-  background:var(--tarjeta);border:1px solid var(--borde);border-radius:var(--radio-md,12px);
-  transition:border-color .15s,transform .15s,box-shadow .15s;
+.ficha-mvp{
+  margin-left:6px;padding:2px 7px;border-radius:5px;font-size:.66rem;font-weight:800;letter-spacing:.06em;
+  background:var(--pz-oro,#f5b301);color:#1a1c22;
 }
-.ficha-companero:hover{border-color:var(--celeste);transform:translateY(-2px);box-shadow:var(--sombra-md);}
-.ficha-companero .stats-dorsal{grid-row:1 / span 2;min-width:40px;height:40px;border-radius:12px;font-size:1.05rem;}
-.ficha-companero-nombre{font-weight:700;color:var(--marino-texto);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.ficha-companero-datos{font-size:.8rem;color:var(--texto-suave);}
-.ficha-companero:not(:has(.stats-dorsal)){grid-template-columns:1fr;}
+.ficha-vacio{padding:24px 0;color:var(--texto-suave);}
 
-/* ---------- Estadísticas de fuente externa (LaPreferente) ---------- */
-.ficha-externo .ficha-datos{margin:12px 0 0;z-index:auto;}
-.ficha-externo-etiqueta{
-  display:inline-block;vertical-align:middle;padding:2px 10px;border-radius:999px;
-  font-family:var(--font-text);font-size:.7rem;font-weight:700;color:var(--texto-suave);border:1px solid var(--borde);background:var(--fondo-alt);
+/* Tarjetas dibujadas con CSS */
+.tj{display:inline-block;width:.62em;height:.86em;margin-right:2px;border-radius:1.5px;vertical-align:-.1em;}
+.tj-a{background:#f2c200;}
+.tj-r{background:#d1132e;}
+
+/* ---------- Compañeros (ficha de la redacción): tarjetas ---------- */
+.ficha-companeros{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;}
+.ficha-companeros a{
+  display:grid;grid-template-columns:2rem 1fr auto;align-items:center;gap:12px;padding:12px 14px;
+  border:1px solid var(--borde);border-radius:14px;background:var(--tarjeta);box-shadow:var(--sombra-sm);
+  text-decoration:none;color:var(--marino-texto);
+  transition:transform .15s,border-color .15s,box-shadow .15s;
 }
-.ficha-externo-meta{margin:-4px 0 0;font-size:.9rem;color:var(--texto-suave);}
-.ficha-externo-fuente{margin:12px 0 0;font-size:.78rem;line-height:1.45;color:var(--texto-suave);}
-.ficha-externo-fuente a{color:inherit;text-decoration:underline;}
-
-/* ---------- MVP y enlace a la plantilla ---------- */
-.ficha-mvp{display:inline-block;margin-left:4px;padding:1px 8px;border-radius:999px;font-size:.7rem;font-weight:700;background:rgba(246,201,69,.22);color:#8a6200;white-space:nowrap;}
-.ficha-ver-plantilla{margin-left:auto;font-family:var(--font-text);font-size:.82rem;font-weight:700;color:var(--celeste);text-decoration:none;white-space:nowrap;}
-.ficha-ver-plantilla:hover{text-decoration:underline;}
-
-/* ---------- Modo oscuro ---------- */
-[data-theme="dark"] .ficha-dato.destacado .ficha-dato-valor{color:#ff7a8b;}
-[data-theme="dark"] .ficha-dato{box-shadow:0 12px 28px -14px rgba(0,0,0,.75);}
-[data-theme="dark"] .ficha-tramo-barra{background:#232b3b;}
-[data-theme="dark"] .ficha-migas a{color:#ff7a8b;}
-[data-theme="dark"] .ficha-mvp{color:#f6c945;}
-
-/* ---------- Tablet ---------- */
-@media(max-width:900px){
-  .ficha-cabecera{--campo-x:88%;padding:30px 24px 58px;gap:22px;}
-  .ficha-cabecera[data-dorsal]::after{font-size:clamp(6rem,24vw,9rem);-webkit-text-stroke-color:rgba(255,255,255,.14);}
-  .ficha-ident{max-width:100%;}
-  .ficha-datos{margin:-34px 14px 0;}
+.ficha-companeros a:hover{transform:translateY(-2px);border-color:var(--celeste);box-shadow:var(--sombra-md);}
+.ficha-comp-dorsal{
+  display:grid;place-items:center;width:2rem;height:2rem;border-radius:50%;
+  background:var(--marino);color:#fff;font-family:var(--font-tit);font-size:.82rem;font-weight:700;font-variant-numeric:tabular-nums;
 }
+[data-theme="dark"] .ficha-comp-dorsal{background:#2d3f5c;}
+.ficha-jugador .ficha-comp-nombre{color:var(--marino-texto);}
+.ficha-comp-nombre{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ficha-comp-datos{font-size:.78rem;color:var(--texto-suave);white-space:nowrap;}
+.ficha-companeros a:not(:has(.ficha-comp-dorsal)){grid-template-columns:1fr auto;}
 
-/* ---------- Móvil ---------- */
+/* ---------- Entrada suave (solo si la persona no pide menos movimiento) ---------- */
+@media(prefers-reduced-motion:no-preference){
+  .ficha-cabecera,.ficha-lead,.ficha-puestos,.ficha-bloque{animation:fj-entra .5s cubic-bezier(.2,.7,.2,1) both;}
+  .ficha-lead,.ficha-puestos{animation-delay:.05s;}
+  .ficha-bloque{animation-delay:.1s;}
+  .ficha-tramo-barra span{transform-origin:bottom;animation:fj-barra .7s .2s cubic-bezier(.2,.7,.2,1) both;}
+}
+@keyframes fj-entra{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+@keyframes fj-barra{from{transform:scaleY(0);}to{transform:scaleY(1);}}
+
+/* ---------- Tablet / móvil ---------- */
 @media(max-width:640px){
-  .ficha-cabecera{flex-direction:column;align-items:flex-start;gap:16px;padding:24px 18px 52px;--campo-x:82%;}
-  .ficha-cabecera{
-    background:
-      radial-gradient(70% 140% at 100% 0%, rgba(91,184,232,.28), transparent 60%),
-      radial-gradient(60% 120% at 0% 100%, rgba(209,19,46,.30), transparent 60%),
-      linear-gradient(135deg,var(--marino),var(--marino2));
-  }
-  .ficha-cabecera[data-dorsal]::after{top:30%;left:auto;right:6px;transform:translateY(-50%);font-size:7.5rem;-webkit-text-stroke-width:1.5px;}
-  .ficha-escudo-wrap{width:84px;height:84px;}
-  .ficha-escudo{width:58px;height:58px;}
-  .ficha-datos{grid-template-columns:repeat(2,1fr);gap:10px;margin:-30px 10px 0;}
-  .ficha-dato{padding:14px 8px;}
-  .ficha-dato-valor{font-size:1.75rem;}
-  .ficha-dato.destacado .ficha-dato-valor{font-size:2.1rem;}
-  .ficha-dato:last-child:nth-child(odd){grid-column:1 / -1;}
-  .ficha-tramos{height:170px;gap:6px;padding:16px 10px 10px;}
-  .ficha-rival span{max-width:8rem;}
-  .ficha-companeros{grid-template-columns:1fr;}
-  .ficha-tabla .col-rol{display:none;}          /* el rol (titular/suplente) se omite en móvil */
-  .ficha-tabla .col-ev{white-space:normal;min-width:120px;}
-  .ficha-tabla .col-jor{padding-left:12px;}
-  .ficha-ev{margin:2px 4px 2px 0;padding:2px 7px;font-size:.74rem;}
+  .ficha-cabecera{grid-template-columns:auto minmax(0,1fr);gap:16px 16px;margin-bottom:24px;padding:20px 18px 0;border-radius:20px;}
+  .ficha-cabecera:not(:has(.ficha-hero-cifras)){padding-bottom:22px;}
+  .ficha-escudo-wrap{width:76px;height:76px;padding:11px;box-shadow:0 0 0 4px rgba(255,255,255,.12),0 10px 22px -8px rgba(0,0,0,.55);}
+  .ficha-dorsal{right:8px;top:8px;font-size:5.5rem;color:rgba(255,255,255,.06);}
+  .ficha-kicker{font-size:.68rem;letter-spacing:.12em;}
+  .ficha-nombre{font-size:1.75rem;}
+  .ficha-chip{padding:3px 11px;font-size:.78rem;}
+  .ficha-hero-cifras{margin:4px -18px 0;}
+  .ficha-hero-cifras>div{padding:13px 4px 12px;}
+  .ficha-hero-cifras dt{font-size:.6rem;letter-spacing:.06em;}
+  .ficha-hero-cifras dd{font-size:1.65rem;}
+  .ficha-lead{font-size:1.05rem;padding-left:14px;}
+  .ficha-bloque{margin-top:30px;}
+  .ficha-titulo{font-size:1.25rem;}
+  .ficha-stats th,.ficha-stats td,.ficha-plantel th,.ficha-plantel td{padding:11px 10px;font-size:.88rem;}
+  .ficha-stats thead th,.ficha-plantel thead th{padding:11px 10px;font-size:.62rem;letter-spacing:.05em;}
+  .ficha-stats .col-med,.ficha-stats .col-puesto small{display:none;}   /* en pantalla estrecha solo el puesto, sin «de N» */
+  .ficha-stats td.fuerte{font-size:1.2rem;}
+  .ficha-resumen{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+  .ficha-resumen dd{font-size:1.7rem;}
+  .ficha-tramos{height:200px;gap:6px;padding:14px 12px 10px;}
+  .ficha-rival{gap:7px;}
+  .ficha-rival span{max-width:5.8rem;}
+  .ficha-tabla .clas-escudo{width:22px;height:22px;}
+  .ficha-jugador .ficha-tabla thead th{padding:11px 8px;font-size:.6rem;letter-spacing:.05em;}
+  .ficha-jugador .ficha-tabla tbody td{padding:10px 8px;}
+  .ficha-jugador .ficha-tabla thead th:first-child,.ficha-jugador .ficha-tabla tbody td:first-child{padding-left:12px;}
+  .ficha-res{min-width:3em;padding:3px 8px;font-size:.88rem;}
+  .ficha-ev{padding:2px 8px;font-size:.78rem;margin-right:4px;}
+  .ficha-plantel .col-pos{display:none;}
+  .ficha-tabla .col-rol{display:none;}
+  .ficha-tabla .col-ev{white-space:normal;min-width:0;}
+  .ficha-companeros{grid-template-columns:1fr;gap:10px;}
+  .ficha-ver-plantilla{padding:5px 12px;}
 }
-
-@media(prefers-reduced-motion:reduce){
-  .ficha-tramo-barra span{animation:none;}
-  .ficha-companero,.ficha-club,.ficha-club::after{transition:none;}
+@media(max-width:360px){
+  .ficha-hero-cifras dd{font-size:1.45rem;}
+  .ficha-nombre{font-size:1.55rem;}
 }

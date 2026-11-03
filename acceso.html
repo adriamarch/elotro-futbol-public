@@ -3,8 +3,9 @@
 <head>
 <meta name="google-adsense-account" content="ca-pub-7347856722927942">
 <script src="js/tema.js?v=2"></script>
-<script src="js/preferencias.js?v=3"></script>
+<script src="js/preferencias.js?v=20"></script>
 <meta charset="UTF-8">
+<script src="/js/splash.js?v=2"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -20,232 +21,230 @@
 <link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=3">
 <link rel="apple-touch-icon" href="/img/apple-touch-icon.png?v=2">
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&display=swap" onload="this.onload=null;this.rel='stylesheet'"><noscript><link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet"></noscript>
-<link rel="stylesheet" href="css/style.css?v=25">
-<link rel="stylesheet" href="css/accesibilidad.css?v=1">
+<link rel="stylesheet" href="css/style.css?v=35">
+<link rel="stylesheet" href="css/modales-mejoras.css?v=1">
+<link rel="stylesheet" href="css/accesibilidad.css?v=2">
 <script src="js/accesibilidad.js?v=1" defer></script>
 <link rel="stylesheet" href="css/foco.css?v=1">
 <style>
+
   /* =====================================================================
-     ACCESO — estilos de la página (v2)
-     Mantiene todos los ids/clases que usa lector-auth.js y main.js.
+     ACCESO — estilos de la página (v3)
+     Mantiene todos los ids/clases que usan lector-auth.js y main.js.
+     Idea: la tarjeta de acceso está sobre el punto de saque de un campo
+     dibujado a línea; el resto es sobrio y comparte radios y tamaños.
      ===================================================================== */
-  :root{--acc-radio:20px;--acc-ease:cubic-bezier(.22,.8,.3,1);}
+  :root{
+    --acc-radio:22px;--acc-r:12px;--acc-ease:cubic-bezier(.22,.8,.3,1);
+    --acc-linea:rgba(255,255,255,.1);
+    --acc-foco:#2f86c0;            /* el celeste de marca no llega a 3:1 sobre blanco */
+  }
+  [data-theme="dark"]{--acc-foco:var(--celeste);}
   html{-webkit-text-size-adjust:100%;}
   body{background:var(--marino);min-height:100vh;min-height:100dvh;}
 
-  /* ---------- Fondo: degradado de marca + luces suaves + rejilla ---------- */
+  /* ---------- Fondo: campo dibujado a línea ---------- */
   .acceso-fondo{
     min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;
     padding:84px 20px 56px;position:relative;overflow:hidden;isolation:isolate;
-    background:
-      radial-gradient(1100px 600px at 50% -10%, rgba(91,184,232,.16), transparent 60%),
-      linear-gradient(180deg, rgba(255,255,255,.03), rgba(0,0,0,.28));
+    background:radial-gradient(ellipse 70% 60% at 50% 46%, var(--marino2), var(--marino) 72%);
   }
-  .acceso-fondo::before,.acceso-fondo::after{
-    content:"";position:absolute;z-index:-1;pointer-events:none;border-radius:50%;filter:blur(70px);
+  .acceso-campo{
+    position:absolute;inset:0;width:100%;height:100%;z-index:-1;pointer-events:none;
+    color:#fff;
+    -webkit-mask-image:radial-gradient(ellipse 75% 70% at 50% 50%, #000 40%, transparent 100%);
+            mask-image:radial-gradient(ellipse 75% 70% at 50% 50%, #000 40%, transparent 100%);
   }
-  .acceso-fondo::before{
-    width:460px;height:460px;left:-140px;top:8%;
-    background:radial-gradient(circle, rgba(91,184,232,.30), transparent 68%);
-    animation:accesoLuz 14s ease-in-out infinite alternate;
+  .acceso-campo *{
+    fill:none;stroke:currentColor;stroke-width:1.6;stroke-opacity:.13;stroke-linecap:round;
+    stroke-dasharray:1;animation:accesoTrazo 1.7s var(--acc-ease) .15s both;
   }
-  .acceso-fondo::after{
-    width:520px;height:520px;right:-170px;bottom:-6%;
-    background:radial-gradient(circle, rgba(209,19,46,.30), transparent 68%);
-    animation:accesoLuz 17s ease-in-out infinite alternate-reverse;
-  }
-  @keyframes accesoLuz{from{transform:translate3d(0,0,0) scale(1);}to{transform:translate3d(40px,-30px,0) scale(1.12);}}
-  .acceso-shell::before{
-    content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.5;
-    background-image:
-      linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
-    background-size:44px 44px;
-    -webkit-mask-image:radial-gradient(ellipse at center, #000 20%, transparent 75%);
-            mask-image:radial-gradient(ellipse at center, #000 20%, transparent 75%);
-  }
+  .acceso-campo .punto{fill:var(--celeste);stroke:none;fill-opacity:.7;stroke-dasharray:none;animation:accesoPunto .5s ease 1.3s both;}
+  @keyframes accesoTrazo{from{stroke-dashoffset:1;}to{stroke-dashoffset:0;}}
+  @keyframes accesoPunto{from{opacity:0;transform:scale(.4);}to{opacity:1;transform:none;}}
 
   .acceso-shell{position:relative;z-index:1;width:100%;max-width:440px;}
 
   /* ---------- Logo ---------- */
-  .acceso-logo-wrap{display:flex;flex-direction:column;align-items:center;gap:12px;margin-bottom:24px;text-align:center;}
-  .acceso-logo-wrap img{height:72px;width:auto;filter:drop-shadow(0 8px 18px rgba(0,0,0,.45));}
-  .acceso-logo-wrap span{font-family:var(--font-tit);font-size:1.25rem;text-transform:uppercase;color:#fff;letter-spacing:.8px;}
+  .acceso-logo-wrap{display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:22px;text-align:center;}
+  .acceso-logo-wrap img{height:64px;width:auto;filter:drop-shadow(0 8px 18px rgba(0,0,0,.45));}
+  .acceso-logo-wrap span{font-family:var(--font-tit);font-size:1.15rem;text-transform:uppercase;color:#fff;letter-spacing:.8px;}
   .acceso-logo-wrap span .brand-rojo{color:var(--rojo);}
 
   /* ---------- Selector Lector / Colaborador ---------- */
   .modo-tabs{
-    display:flex;justify-content:center;gap:4px;margin:0 auto 18px;width:fit-content;
-    background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);
-    border-radius:999px;padding:4px;
-    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
-    box-shadow:0 6px 24px rgba(0,0,0,.2), inset 0 1px 0 rgba(255,255,255,.08);
+    display:flex;justify-content:center;gap:2px;margin:0 auto 16px;width:fit-content;
+    background:rgba(255,255,255,.06);border:1px solid var(--acc-linea);
+    border-radius:14px;padding:3px;
+    -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
   }
   .modo-tab{
     border:none;background:none;cursor:pointer;display:flex;align-items:center;gap:7px;
-    padding:8px 20px;border-radius:999px;
-    font-family:var(--font-tit);font-size:.74rem;letter-spacing:.8px;text-transform:uppercase;
-    color:rgba(255,255,255,.66);transition:background .2s,color .2s,box-shadow .2s,transform .2s;
+    padding:8px 18px;border-radius:11px;
+    font-family:var(--font-text);font-size:.85rem;font-weight:600;
+    color:rgba(255,255,255,.72);transition:background .18s,color .18s;
   }
-  .modo-tab svg{width:14px;height:14px;opacity:.85;}
+  .modo-tab svg{width:15px;height:15px;}
   .modo-tab:hover{color:#fff;background:rgba(255,255,255,.08);}
-  .modo-tab.activa{background:#fff;color:var(--marino);box-shadow:0 4px 14px rgba(0,0,0,.28);}
+  .modo-tab.activa{background:#fff;color:var(--marino);}
   .modo-tab.activa:hover{background:#fff;}
-  .modo-tab.activa svg{opacity:1;}
 
   /* ---------- Tarjeta ---------- */
   .acceso-box{
-    position:relative;overflow:hidden;
-    background:var(--tarjeta);padding:38px 36px 34px;border-radius:var(--acc-radio);
-    border:1px solid rgba(255,255,255,.08);
-    box-shadow:0 1px 0 rgba(255,255,255,.06) inset, 0 30px 80px -10px rgba(0,0,0,.55), 0 10px 30px rgba(0,0,0,.25);
+    position:relative;
+    background:var(--tarjeta);padding:34px 32px 30px;border-radius:var(--acc-radio);
+    border:1px solid var(--acc-linea);
+    box-shadow:0 30px 70px -18px rgba(0,0,0,.6), 0 4px 14px rgba(0,0,0,.18);
     animation:accesoAparece .4s var(--acc-ease);
   }
-  .acceso-box::before{
-    content:"";position:absolute;left:0;right:0;top:0;height:4px;
-    background:linear-gradient(90deg, var(--rojo), var(--celeste));
-  }
-  @keyframes accesoAparece{from{opacity:0;transform:translateY(14px) scale(.985);}to{opacity:1;transform:none;}}
-  .pantalla.activa{animation:accesoPantalla .28s var(--acc-ease);}
+  @keyframes accesoAparece{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:none;}}
+  .pantalla.activa{animation:accesoPantalla .26s var(--acc-ease);}
   @keyframes accesoPantalla{from{opacity:0;transform:translateX(8px);}to{opacity:1;transform:none;}}
 
-  .acceso-box h2{margin:0 0 6px;font-family:var(--font-tit);font-size:1.5rem;line-height:1.2;color:var(--marino-texto);letter-spacing:.2px;}
-  .acceso-box p.sub{margin:0 0 24px;font-size:.88rem;color:var(--texto-suave);line-height:1.55;}
+  .acceso-box h2{margin:0 0 8px;font-family:var(--font-tit);font-weight:500;font-size:1.6rem;line-height:1.15;color:var(--marino-texto);}
+  .acceso-box p.sub{margin:0 0 22px;font-size:.9rem;color:var(--texto-suave);line-height:1.55;max-width:60ch;}
 
-  /* Sub-pestañas Iniciar sesión / Crear cuenta */
-  .lector-tabs{display:flex;gap:4px;margin-bottom:26px;background:var(--fondo-alt);border:1px solid var(--borde);border-radius:12px;padding:4px;}
+  /* Sub-pestañas Iniciar sesión / Crear cuenta: subrayado */
+  .lector-tabs{display:flex;margin:-6px 0 24px;border-bottom:1px solid var(--borde);}
   .lector-tab{
-    flex:1;text-align:center;padding:10px 0;border:none;background:none;border-radius:9px;cursor:pointer;
-    font-family:var(--font-tit);font-size:.78rem;text-transform:uppercase;letter-spacing:.5px;
-    color:var(--texto-suave);transition:background .2s,color .2s,box-shadow .2s;
+    flex:1;text-align:center;padding:11px 0 12px;border:none;background:none;cursor:pointer;margin-bottom:-1px;
+    border-bottom:2px solid transparent;
+    font-family:var(--font-text);font-size:.92rem;font-weight:600;
+    color:var(--texto-suave);transition:color .15s,border-color .15s;
   }
   .lector-tab:hover{color:var(--marino-texto);}
-  .lector-tab.activa{background:var(--tarjeta);color:var(--marino-texto);box-shadow:0 2px 8px rgba(12,27,46,.14), 0 0 0 1px var(--borde);}
+  .lector-tab.activa{color:var(--marino-texto);border-bottom-color:var(--rojo);}
 
   /* ---------- Formularios ---------- */
-  .acceso-box label{display:block;font-size:.8rem;margin:16px 0 7px;font-weight:700;letter-spacing:.2px;color:var(--marino-texto);}
+  .acceso-box label{display:block;font-size:.84rem;margin:16px 0 6px;font-weight:600;color:var(--marino-texto);}
   .acceso-box input{
-    width:100%;padding:13px 14px;font-size:1rem;font-family:inherit;line-height:1.2;
-    border:1.5px solid var(--borde);border-radius:12px;background:var(--fondo-alt);color:var(--texto);
-    transition:border-color .18s,box-shadow .18s,background .18s;
+    width:100%;height:48px;padding:0 14px;font-size:1rem;font-family:inherit;
+    border:1.5px solid var(--borde);border-radius:var(--acc-r);background:var(--fondo-alt);color:var(--texto);
+    transition:border-color .16s,box-shadow .16s,background .16s;
   }
   .acceso-box input::placeholder{color:var(--texto-suave);opacity:.7;}
-  .acceso-box input:hover{border-color:color-mix(in srgb, var(--celeste) 45%, var(--borde));}
-  .acceso-box input:focus{outline:none;border-color:var(--celeste);background:var(--tarjeta);box-shadow:0 0 0 4px rgba(91,184,232,.22);}
+  .acceso-box input:hover{border-color:color-mix(in srgb, var(--texto) 28%, var(--borde));}
+  .acceso-box input:focus{outline:none;border-color:var(--acc-foco);background:var(--tarjeta);box-shadow:0 0 0 4px color-mix(in srgb, var(--acc-foco) 22%, transparent);}
   .acceso-box input:-webkit-autofill{-webkit-text-fill-color:var(--texto);box-shadow:0 0 0 1000px var(--fondo-alt) inset;transition:background-color 9999s;}
 
+  /* Campo de contraseña con ojo (lo inyecta el script del final) */
+  .campo-pass{position:relative;}
+  .campo-pass input{padding-right:50px;}
+  .ver-pass{
+    position:absolute;right:4px;top:50%;transform:translateY(-50%);width:40px;height:40px;
+    display:grid;place-items:center;border:none;background:none;cursor:pointer;border-radius:10px;
+    color:var(--texto-suave);transition:color .15s,background .15s;
+  }
+  .ver-pass:hover{color:var(--marino-texto);background:color-mix(in srgb, var(--texto) 8%, transparent);}
+  .ver-pass svg{width:20px;height:20px;}
+  .ver-pass .ojo-off{display:none;}
+  .ver-pass[aria-pressed="true"] .ojo-on{display:none;}
+  .ver-pass[aria-pressed="true"] .ojo-off{display:block;}
+
   .acceso-box button[type="submit"],.acceso-box .btn-principal{
-    position:relative;overflow:hidden;width:100%;margin-top:26px;padding:14px;
-    background:linear-gradient(135deg, var(--rojo), var(--rojo-oscuro));color:#fff;
-    border:none;border-radius:999px;font-family:var(--font-tit);text-transform:uppercase;
-    font-size:.98rem;letter-spacing:.8px;cursor:pointer;
-    box-shadow:0 8px 20px rgba(209,19,46,.32), inset 0 1px 0 rgba(255,255,255,.22);
-    transition:transform .18s,box-shadow .18s,filter .18s;
+    width:100%;height:50px;margin-top:22px;padding:0 16px;
+    background:var(--rojo);color:#fff;border:none;border-radius:var(--acc-r);
+    font-family:var(--font-tit);font-weight:500;font-size:1.05rem;letter-spacing:.4px;cursor:pointer;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.2), 0 8px 18px -6px rgba(209,19,46,.55);
+    transition:filter .15s,transform .15s,box-shadow .15s;
   }
-  .acceso-box button[type="submit"]::after,.acceso-box .btn-principal::after{
-    content:"";position:absolute;top:0;bottom:0;left:-60%;width:40%;pointer-events:none;
-    background:linear-gradient(100deg, transparent, rgba(255,255,255,.28), transparent);transform:skewX(-20deg);
-  }
-  .acceso-box button[type="submit"]:hover,.acceso-box .btn-principal:hover{transform:translateY(-2px);box-shadow:0 14px 28px rgba(209,19,46,.42), inset 0 1px 0 rgba(255,255,255,.25);}
-  .acceso-box button[type="submit"]:hover::after,.acceso-box .btn-principal:hover::after{left:130%;transition:left .65s ease;}
-  .acceso-box button[type="submit"]:active,.acceso-box .btn-principal:active{transform:translateY(0);filter:brightness(.95);}
-  .acceso-box button[type="submit"]:disabled,.acceso-box .btn-principal:disabled{opacity:.6;cursor:default;transform:none;box-shadow:none;}
-  .acceso-box button[type="submit"]:disabled::after,.acceso-box .btn-principal:disabled::after{display:none;}
+  .acceso-box button[type="submit"]:hover,.acceso-box .btn-principal:hover{filter:brightness(1.08);box-shadow:inset 0 1px 0 rgba(255,255,255,.2), 0 12px 22px -6px rgba(209,19,46,.6);}
+  .acceso-box button[type="submit"]:active,.acceso-box .btn-principal:active{transform:translateY(1px);filter:brightness(.95);}
+  .acceso-box button[type="submit"]:disabled,.acceso-box .btn-principal:disabled{opacity:.55;cursor:default;filter:none;transform:none;box-shadow:none;}
 
   /* Accesibilidad: foco visible en todo lo pulsable */
   .modo-tab:focus-visible,.lector-tab:focus-visible,.enlace-olvido:focus-visible,.volver-portada:focus-visible,
   .theme-toggle-acceso:focus-visible,.acceso-box button:focus-visible,.btn-google:focus-visible,
   .btn-microsoft:focus-visible,.btn-discord:focus-visible,.btn-x:focus-visible{
-    outline:3px solid var(--celeste);outline-offset:2px;
+    outline:3px solid var(--acc-foco);outline-offset:2px;
   }
+  .modo-tab:focus-visible,.volver-portada:focus-visible,.theme-toggle-acceso:focus-visible{outline-color:var(--celeste);}
 
-  /* ---------- Mensajes ---------- */
-  .acceso-msg{font-size:.86rem;line-height:1.45;margin-top:16px;padding:11px 14px;border-radius:10px;border-left:4px solid transparent;display:none;}
-  .acceso-msg-error{color:#7a1c2b;background:#fdecef;border-left-color:var(--rojo);display:block;animation:accesoAparece .25s var(--acc-ease);}
-  .acceso-msg-ok{color:#166534;background:#dcfce7;border-left-color:#22a55a;display:block;animation:accesoAparece .25s var(--acc-ease);}
-  [data-theme="dark"] .acceso-msg-error{background:#3a1a20;color:#f5a3ae;}
-  [data-theme="dark"] .acceso-msg-ok{background:#123321;color:#7fe0a3;}
+  /* ---------- Mensajes (con icono, sin franja lateral) ---------- */
+  .acceso-msg{
+    position:relative;font-size:.86rem;line-height:1.45;margin-top:16px;padding:11px 14px 11px 40px;
+    border-radius:var(--acc-r);border:1px solid transparent;display:none;
+  }
+  .acceso-msg::before{
+    content:"";position:absolute;left:14px;top:11px;width:18px;height:18px;background:currentColor;
+    -webkit-mask:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='black'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Ccircle%20cx='12'%20cy='12'%20r='9.2'/%3E%3Cpath%20d='M12%207.8v5.2M12%2016.4h.01'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='black'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Ccircle%20cx='12'%20cy='12'%20r='9.2'/%3E%3Cpath%20d='M12%207.8v5.2M12%2016.4h.01'/%3E%3C/svg%3E") center/contain no-repeat;
+  }
+  .acceso-msg-ok::before{-webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='black'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Ccircle%20cx='12'%20cy='12'%20r='9.2'/%3E%3Cpath%20d='M8%2012.5l2.7%202.7L16%209.5'/%3E%3C/svg%3E");mask-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='black'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Ccircle%20cx='12'%20cy='12'%20r='9.2'/%3E%3Cpath%20d='M8%2012.5l2.7%202.7L16%209.5'/%3E%3C/svg%3E");}
+  .acceso-msg-error{color:#8a1226;background:#fdecef;border-color:#f6c6cf;display:block;animation:accesoAparece .22s var(--acc-ease);}
+  .acceso-msg-ok{color:#166534;background:#e6f8ec;border-color:#b9e9c9;display:block;animation:accesoAparece .22s var(--acc-ease);}
+  [data-theme="dark"] .acceso-msg-error{background:#3a1a20;color:#f5a3ae;border-color:#5a2530;}
+  [data-theme="dark"] .acceso-msg-ok{background:#123321;color:#7fe0a3;border-color:#1d5233;}
 
   /* ---------- Separador ---------- */
-  .separador-o{display:flex;align-items:center;gap:14px;margin:22px 0;color:var(--texto-suave);font-size:.74rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;}
-  .separador-o::before,.separador-o::after{content:"";flex:1;height:1px;background:linear-gradient(90deg, transparent, var(--borde) 40%, var(--borde));}
-  .separador-o::after{background:linear-gradient(270deg, transparent, var(--borde) 40%, var(--borde));}
+  .separador-o{display:flex;align-items:center;gap:14px;margin:22px 0 4px;color:var(--texto-suave);font-size:.8rem;font-weight:500;}
+  .separador-o::before,.separador-o::after{content:"";flex:1;height:1px;background:var(--borde);}
 
-  /* ---------- Botones sociales (base común) ----------
-     Google y Microsoft abren popup; Discord y X redirigen. El JS
-     (lector-auth.js) engancha por id/clase, así que solo cambia el aspecto. */
-  .google-btn-wrap{width:100%;}
-  .microsoft-btn-wrap,.discord-btn-wrap,.x-btn-wrap{width:100%;margin-top:10px;}
+  /* ---------- Botones sociales ----------
+     Google ocupa toda la fila; Microsoft, Discord y X van en una fila de tres
+     solo con su icono (el texto sigue en el DOM para lectores de pantalla).
+     lector-auth.js engancha por id/clase, así que solo cambia el aspecto. */
+  .acceso-social{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+  .acceso-social .google-btn-wrap{grid-column:1/-1;}
+  .google-btn-wrap,.microsoft-btn-wrap,.discord-btn-wrap,.x-btn-wrap{width:100%;margin:0;}
   .btn-google,.btn-microsoft,.btn-discord,.btn-x{
-    width:100%;display:flex;align-items:center;justify-content:center;gap:11px;
-    padding:13px 18px;border-radius:999px;
-    font-family:var(--font-tit);font-size:.88rem;letter-spacing:.5px;text-transform:uppercase;
-    cursor:pointer;transition:border-color .18s,box-shadow .18s,transform .18s,filter .18s,background .18s;
+    width:100%;height:48px;display:flex;align-items:center;justify-content:center;gap:11px;padding:0 14px;
+    border-radius:var(--acc-r);background:var(--tarjeta);color:var(--texto);border:1.5px solid var(--borde);
+    font-family:var(--font-text);font-size:.92rem;font-weight:600;
+    cursor:pointer;transition:border-color .16s,background .16s,transform .16s;
   }
-  .btn-google svg,.btn-microsoft svg,.btn-discord svg,.btn-x svg{width:19px;height:19px;flex-shrink:0;}
-  .btn-google:active,.btn-microsoft:active,.btn-discord:active,.btn-x:active{transform:translateY(0);box-shadow:none;}
-  .btn-google:disabled,.btn-microsoft:disabled,.btn-discord:disabled,.btn-x:disabled{opacity:.6;cursor:default;transform:none;box-shadow:none;}
-
-  /* Google y Microsoft: neutros */
-  .btn-google,.btn-microsoft{background:var(--tarjeta);color:var(--texto);border:1.5px solid var(--borde);}
-  .btn-google:hover,.btn-microsoft:hover{border-color:var(--celeste);background:var(--fondo-alt);box-shadow:0 8px 20px rgba(12,27,46,.12);transform:translateY(-2px);}
-  [data-theme="dark"] .btn-google:hover,[data-theme="dark"] .btn-microsoft:hover{box-shadow:0 8px 20px rgba(0,0,0,.4);}
-
-  /* Discord: blurple de marca */
-  .btn-discord{background:#5865F2;color:#fff;border:1.5px solid #5865F2;}
-  .btn-discord svg{fill:#fff;}
-  .btn-discord:hover{filter:brightness(1.08);box-shadow:0 8px 20px rgba(88,101,242,.4);transform:translateY(-2px);}
-
-  /* X: negro (blanco en oscuro) */
-  .btn-x{background:#000;color:#fff;border:1.5px solid #000;}
-  .btn-x svg{width:17px;height:17px;fill:#fff;}
-  .btn-x:hover{filter:brightness(1.3);box-shadow:0 8px 20px rgba(0,0,0,.35);transform:translateY(-2px);}
-  [data-theme="dark"] .btn-x{background:#fff;color:#000;border-color:#fff;}
-  [data-theme="dark"] .btn-x svg{fill:#000;}
-  [data-theme="dark"] .btn-x:hover{box-shadow:0 8px 20px rgba(255,255,255,.2);}
+  .btn-google svg,.btn-microsoft svg,.btn-discord svg,.btn-x svg{width:20px;height:20px;flex-shrink:0;}
+  .btn-google:hover,.btn-microsoft:hover,.btn-discord:hover,.btn-x:hover{
+    border-color:color-mix(in srgb, var(--texto) 32%, var(--borde));background:var(--fondo-alt);
+  }
+  .btn-google:active,.btn-microsoft:active,.btn-discord:active,.btn-x:active{transform:translateY(1px);}
+  .btn-google:disabled,.btn-microsoft:disabled,.btn-discord:disabled,.btn-x:disabled{opacity:.6;cursor:default;}
+  .btn-discord svg{fill:#5865F2;}
+  .btn-x svg{fill:var(--texto);width:18px;height:18px;}
+  .acceso-social .btn-microsoft-texto,.acceso-social .btn-discord-texto,.acceso-social .btn-x-texto{
+    position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;
+  }
+  .acceso-social .btn-microsoft,.acceso-social .btn-discord,.acceso-social .btn-x{position:relative;}
 
   /* Spinners */
   .btn-google .btn-google-spinner,.btn-microsoft .btn-microsoft-spinner,
   .btn-discord .btn-discord-spinner,.btn-x .btn-x-spinner{
     width:16px;height:16px;border-radius:50%;display:none;
-    border:2px solid var(--borde);border-top-color:var(--celeste);
+    border:2px solid var(--borde);border-top-color:var(--acc-foco);
     animation:girarSpinnerGoogle .7s linear infinite;
   }
-  .btn-discord .btn-discord-spinner{border-color:rgba(255,255,255,.4);border-top-color:#fff;}
-  .btn-x .btn-x-spinner{border-color:rgba(255,255,255,.4);border-top-color:#fff;}
-  [data-theme="dark"] .btn-x .btn-x-spinner{border-color:rgba(0,0,0,.3);border-top-color:#000;}
   .btn-google.cargando .btn-google-spinner,.btn-microsoft.cargando .btn-microsoft-spinner,
   .btn-discord.cargando .btn-discord-spinner,.btn-x.cargando .btn-x-spinner{display:inline-block;}
   .btn-google.cargando .btn-google-logo,.btn-google.cargando .btn-google-texto,
-  .btn-microsoft.cargando .btn-microsoft-logo,.btn-microsoft.cargando .btn-microsoft-texto,
-  .btn-discord.cargando .btn-discord-logo,.btn-discord.cargando .btn-discord-texto,
-  .btn-x.cargando .btn-x-logo,.btn-x.cargando .btn-x-texto{opacity:.5;}
+  .btn-microsoft.cargando .btn-microsoft-logo,.btn-discord.cargando .btn-discord-logo,.btn-x.cargando .btn-x-logo{opacity:.45;}
+  .acceso-social .cargando .btn-microsoft-logo,.acceso-social .cargando .btn-discord-logo,.acceso-social .cargando .btn-x-logo{display:none;}
   @keyframes girarSpinnerGoogle{to{transform:rotate(360deg);}}
 
   /* ---------- Enlaces ---------- */
   .enlace-olvido{
-    display:block;width:fit-content;margin:18px auto 0;padding:4px 6px;font-size:.84rem;font-family:inherit;
-    color:var(--celeste);background:none;border:none;cursor:pointer;border-radius:6px;
-    text-decoration:underline;text-underline-offset:3px;text-decoration-color:transparent;
-    transition:color .15s,text-decoration-color .15s;
+    display:block;width:fit-content;margin:18px auto 0;padding:6px 8px;font-size:.88rem;font-family:inherit;font-weight:500;
+    color:var(--marino-texto);background:none;border:none;cursor:pointer;border-radius:8px;
+    text-decoration:underline;text-underline-offset:3px;text-decoration-color:color-mix(in srgb, currentColor 35%, transparent);
+    transition:text-decoration-color .15s,background .15s;
   }
-  .enlace-olvido:hover{color:var(--marino-texto);text-decoration-color:currentColor;}
+  .enlace-olvido:hover{text-decoration-color:currentColor;background:color-mix(in srgb, var(--texto) 6%, transparent);}
   .volver-portada{
-    display:block;width:fit-content;margin:22px auto 0;padding:6px 10px;font-size:.84rem;border-radius:8px;
-    color:rgba(255,255,255,.7);text-decoration:none;transition:color .15s,background .15s;
+    display:block;width:fit-content;margin:20px auto 0;padding:8px 12px;font-size:.88rem;border-radius:10px;
+    color:rgba(255,255,255,.75);text-decoration:none;transition:color .15s,background .15s;
   }
   .volver-portada:hover{color:#fff;background:rgba(255,255,255,.08);}
 
   .pantalla{display:none;}
   .pantalla.activa{display:block;}
-  .ayuda-form{font-size:.84rem;color:var(--texto-suave);margin:0 0 6px;line-height:1.55;}
+  .ayuda-form{font-size:.88rem;color:var(--texto-suave);margin:0 0 6px;line-height:1.55;}
+  .acceso-box h2 + .ayuda-form{margin-top:2px;}
+
   /* Verificación en dos pasos (admins) */
   .qr-2fa{display:flex;justify-content:center;margin:12px 0 8px;}
   .qr-2fa svg{width:min(220px,70vw);height:auto;background:#fff;padding:8px;border-radius:12px;border:1px solid var(--borde,#d9e1ea);}
   .clave-2fa{display:block;text-align:center;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.95rem;letter-spacing:.08em;word-break:break-all;padding:10px 12px;margin:0 0 14px;border-radius:10px;background:var(--fondo-alt,#eef3f8);color:var(--marino-texto);user-select:all;}
   .pasos-2fa{margin:0 0 8px;padding-left:1.2rem;font-size:.84rem;line-height:1.55;color:var(--texto-suave);}
-  .codigo-2fa-input{text-align:center;font-size:1.3rem;letter-spacing:.35em;font-variant-numeric:tabular-nums;}
-  .codigo-2fa-input.modo-recuperacion{font-size:1rem;letter-spacing:.12em;}
+  .acceso-box .codigo-2fa-input{text-align:center;font-size:1.3rem;letter-spacing:.35em;font-variant-numeric:tabular-nums;}
+  .acceso-box .codigo-2fa-input.modo-recuperacion{font-size:1rem;letter-spacing:.12em;}
 
   /* ---------- Códigos de recuperación (se muestran una sola vez) ---------- */
   .rec-cabecera{display:flex;flex-direction:column;align-items:center;text-align:center;gap:12px;margin-bottom:4px;}
@@ -360,7 +359,7 @@
   /* ---------- Overlay (pedir correo en el primer inicio de sesión) ---------- */
   .overlay{
     display:none;position:fixed;inset:0;align-items:center;justify-content:center;z-index:50;padding:20px;
-    background:rgba(8,16,28,.68);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+    background:rgba(8,16,28,.7);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
   }
   .overlay.activo{display:flex;}
   .overlay .acceso-box{width:100%;}
@@ -369,11 +368,11 @@
   .theme-toggle-acceso{
     position:fixed;top:18px;right:18px;z-index:60;width:42px;height:42px;
     display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;
-    background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.25);border-radius:50%;
+    background:rgba(255,255,255,.08);border:1px solid var(--acc-linea);border-radius:12px;
     -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
-    transition:background .18s,transform .25s var(--acc-ease);
+    transition:background .18s;
   }
-  .theme-toggle-acceso:hover{background:rgba(255,255,255,.18);transform:rotate(18deg) scale(1.05);}
+  .theme-toggle-acceso:hover{background:rgba(255,255,255,.18);}
   .theme-toggle-acceso svg{width:19px;height:19px;}
   .theme-toggle-acceso .theme-icon-sol{display:none;}
   [data-theme="dark"] .theme-toggle-acceso .theme-icon-luna{display:none;}
@@ -382,22 +381,25 @@
   /* ---------- Responsive ---------- */
   @media(max-width:480px){
     .acceso-fondo{padding:72px 14px 36px;align-items:flex-start;}
-    .acceso-box{padding:30px 22px 26px;border-radius:18px;}
-    .acceso-box h2{font-size:1.32rem;}
-    .acceso-logo-wrap img{height:58px;}
-    .acceso-logo-wrap span{font-size:1.1rem;}
+    .acceso-box{padding:28px 20px 24px;border-radius:18px;}
+    .acceso-box h2{font-size:1.4rem;}
+    .acceso-logo-wrap img{height:54px;}
+    .acceso-logo-wrap span{font-size:1.05rem;}
     .acceso-box input{font-size:16px;} /* evita el zoom automático de iOS */
+    .lector-tabs{margin-top:-4px;}
   }
   @media(max-width:360px){
-    .btn-google,.btn-microsoft,.btn-discord,.btn-x{font-size:.8rem;padding:12px 10px;gap:8px;}
-    .modo-tab{padding:8px 14px;}
+    .modo-tab{padding:8px 13px;}
+    .acceso-box{padding:24px 16px 22px;}
   }
   @media(prefers-reduced-motion:reduce){
-    .acceso-fondo::before,.acceso-fondo::after{animation:none;}
+    .acceso-campo *,.acceso-campo .punto{animation:none;}
     .acceso-box,.pantalla.activa,.acceso-msg-error,.acceso-msg-ok{animation:none;}
     *{transition-duration:.01ms !important;}
   }
 </style>
+<link rel="stylesheet" href="css/app-movil.css?v=8">
+<script src="js/app-movil.js?v=5" defer></script>
 </head>
 <body data-page="acceso">
 
@@ -407,6 +409,16 @@
   </button>
 
   <div class="acceso-fondo">
+    <svg class="acceso-campo" viewBox="0 0 1200 760" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+      <rect pathLength="1" x="40" y="40" width="1120" height="680" rx="6"/>
+      <path pathLength="1" d="M600 40V720"/>
+      <circle pathLength="1" cx="600" cy="380" r="300"/>
+      <rect pathLength="1" x="40" y="165" width="176" height="430"/>
+      <rect pathLength="1" x="40" y="265" width="66" height="230"/>
+      <rect pathLength="1" x="984" y="165" width="176" height="430"/>
+      <rect pathLength="1" x="1094" y="265" width="66" height="230"/>
+      <circle class="punto" cx="600" cy="380" r="5"/>
+    </svg>
     <div class="acceso-shell">
 
       <div class="acceso-logo-wrap">
@@ -440,42 +452,44 @@
           </div>
 
           <div id="bloqueLogin">
-            <h2>Iniciar sesión</h2>
-            <p class="sub">Accede a tu cuenta de lector: comenta las noticias con tu nombre, guarda tu porra de cada jornada, entra en el ranking y disfruta de todo lo que iremos añadiendo próximamente.</p>
+            <h2>Te damos la bienvenida</h2>
+            <p class="sub">Entra para comentar las noticias con tu nombre, guardar tu porra de cada jornada y aparecer en el ranking.</p>
 
-            <div class="google-btn-wrap">
-              <button type="button" class="btn-google" id="googleBtnLogin">
-                <svg class="btn-google-logo" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l6-6C34.5 5.1 29.5 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21 21-9.4 21-21c0-1.4-.1-2.7-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.8 1.1 8 3l6-6C34.5 6.1 29.5 4 24 4c-7.7 0-14.3 4.3-17.7 10.7z"/><path fill="#4CAF50" d="M24 44c5.4 0 10.3-2.1 14-5.5l-6.5-5.4c-2 1.5-4.6 2.5-7.5 2.5-5.3 0-9.7-3.3-11.3-8l-6.5 5C9.6 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.2 5.6l6.5 5.4C40.9 36.6 44 30.9 44 24c0-1.4-.1-2.7-.4-3.5z"/></svg>
-                <span class="btn-google-texto">Continuar con Google</span>
-                <span class="btn-google-spinner"></span>
-              </button>
-            </div>
-            <div class="microsoft-btn-wrap">
-              <button type="button" class="btn-microsoft" id="microsoftBtnLogin">
-                <svg class="btn-microsoft-logo" viewBox="0 0 23 23" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="1" width="10" height="10" fill="#F25022"/><rect x="12" y="1" width="10" height="10" fill="#7FBA00"/><rect x="1" y="12" width="10" height="10" fill="#00A4EF"/><rect x="12" y="12" width="10" height="10" fill="#FFB900"/></svg>
-                <span class="btn-microsoft-texto">Continuar con Microsoft</span>
-                <span class="btn-microsoft-spinner"></span>
-              </button>
-            </div>
-            <div class="discord-btn-wrap">
-              <button type="button" class="btn-discord" id="discordBtnLogin">
-                <svg class="btn-discord-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20.3 4.4A19.7 19.7 0 0 0 15.4 3c-.2.4-.5.9-.7 1.4a18.3 18.3 0 0 0-5.4 0A9.8 9.8 0 0 0 8.6 3a19.7 19.7 0 0 0-4.9 1.5C1 9 .3 13.5.6 18a19.8 19.8 0 0 0 6 3c.5-.6.9-1.3 1.3-2a12.8 12.8 0 0 1-2-1c.2-.1.3-.3.5-.4a14.1 14.1 0 0 0 12 0l.5.4a12.8 12.8 0 0 1-2 1c.4.7.8 1.4 1.3 2a19.7 19.7 0 0 0 6-3c.4-5.2-1-9.7-3.9-13.6ZM8.7 15.3c-1.1 0-2-1-2-2.3 0-1.2.9-2.3 2-2.3s2 1 2 2.3c0 1.3-.9 2.3-2 2.3Zm6.6 0c-1.1 0-2-1-2-2.3 0-1.2.9-2.3 2-2.3s2 1 2 2.3c0 1.3-.9 2.3-2 2.3Z"/></svg>
-                <span class="btn-discord-texto">Continuar con Discord</span>
-                <span class="btn-discord-spinner"></span>
-              </button>
-            </div>
-            <div class="x-btn-wrap">
-              <button type="button" class="btn-x" id="xBtnLogin">
-                <svg class="btn-x-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M18.9 2.4h3.2l-7 8 8.2 10.8h-6.4l-5-6.6-5.8 6.6H2.9l7.5-8.6L2.5 2.4h6.6l4.6 6.1 5.2-6.1Zm-1.1 17h1.8L7.3 4.2H5.4l12.4 15.2Z"/></svg>
-                <span class="btn-x-texto">Continuar con X</span>
-                <span class="btn-x-spinner"></span>
-              </button>
+            <div class="acceso-social">
+  <div class="google-btn-wrap">
+                <button type="button" class="btn-google" id="googleBtnLogin">
+                  <svg class="btn-google-logo" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l6-6C34.5 5.1 29.5 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21 21-9.4 21-21c0-1.4-.1-2.7-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.8 1.1 8 3l6-6C34.5 6.1 29.5 4 24 4c-7.7 0-14.3 4.3-17.7 10.7z"/><path fill="#4CAF50" d="M24 44c5.4 0 10.3-2.1 14-5.5l-6.5-5.4c-2 1.5-4.6 2.5-7.5 2.5-5.3 0-9.7-3.3-11.3-8l-6.5 5C9.6 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.2 5.6l6.5 5.4C40.9 36.6 44 30.9 44 24c0-1.4-.1-2.7-.4-3.5z"/></svg>
+                  <span class="btn-google-texto">Continuar con Google</span>
+                  <span class="btn-google-spinner"></span>
+                </button>
+              </div>
+              <div class="microsoft-btn-wrap">
+                <button type="button" class="btn-microsoft" id="microsoftBtnLogin" title="Continuar con Microsoft">
+                  <svg class="btn-microsoft-logo" viewBox="0 0 23 23" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="1" width="10" height="10" fill="#F25022"/><rect x="12" y="1" width="10" height="10" fill="#7FBA00"/><rect x="1" y="12" width="10" height="10" fill="#00A4EF"/><rect x="12" y="12" width="10" height="10" fill="#FFB900"/></svg>
+                  <span class="btn-microsoft-texto">Continuar con Microsoft</span>
+                  <span class="btn-microsoft-spinner"></span>
+                </button>
+              </div>
+              <div class="discord-btn-wrap">
+                <button type="button" class="btn-discord" id="discordBtnLogin" title="Continuar con Discord">
+                  <svg class="btn-discord-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20.3 4.4A19.7 19.7 0 0 0 15.4 3c-.2.4-.5.9-.7 1.4a18.3 18.3 0 0 0-5.4 0A9.8 9.8 0 0 0 8.6 3a19.7 19.7 0 0 0-4.9 1.5C1 9 .3 13.5.6 18a19.8 19.8 0 0 0 6 3c.5-.6.9-1.3 1.3-2a12.8 12.8 0 0 1-2-1c.2-.1.3-.3.5-.4a14.1 14.1 0 0 0 12 0l.5.4a12.8 12.8 0 0 1-2 1c.4.7.8 1.4 1.3 2a19.7 19.7 0 0 0 6-3c.4-5.2-1-9.7-3.9-13.6ZM8.7 15.3c-1.1 0-2-1-2-2.3 0-1.2.9-2.3 2-2.3s2 1 2 2.3c0 1.3-.9 2.3-2 2.3Zm6.6 0c-1.1 0-2-1-2-2.3 0-1.2.9-2.3 2-2.3s2 1 2 2.3c0 1.3-.9 2.3-2 2.3Z"/></svg>
+                  <span class="btn-discord-texto">Continuar con Discord</span>
+                  <span class="btn-discord-spinner"></span>
+                </button>
+              </div>
+              <div class="x-btn-wrap">
+                <button type="button" class="btn-x" id="xBtnLogin" title="Continuar con X">
+                  <svg class="btn-x-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M18.9 2.4h3.2l-7 8 8.2 10.8h-6.4l-5-6.6-5.8 6.6H2.9l7.5-8.6L2.5 2.4h6.6l4.6 6.1 5.2-6.1Zm-1.1 17h1.8L7.3 4.2H5.4l12.4 15.2Z"/></svg>
+                  <span class="btn-x-texto">Continuar con X</span>
+                  <span class="btn-x-spinner"></span>
+                </button>
+              </div>
             </div>
             <div class="separador-o">o con tu correo</div>
 
             <form id="formLogin" novalidate>
               <label for="loginEmail">Correo electrónico</label>
-              <input type="email" id="loginEmail" required autocomplete="email">
+              <input type="email" id="loginEmail" autocapitalize="none" spellcheck="false" required autocomplete="email">
               <label for="loginPassword">Contraseña</label>
               <input type="password" id="loginPassword" required autocomplete="current-password">
               <button type="submit" id="btnLogin">Entrar</button>
@@ -485,36 +499,38 @@
           </div>
 
           <div id="bloqueRegistro" style="display:none">
-            <h2>Crear cuenta</h2>
-            <p class="sub">Crea tu cuenta de lector: firma tus comentarios con tu nombre, guarda tu porra de cada jornada, aparece en el ranking y aprovecha todas las funciones que iremos añadiendo.</p>
+            <h2>Crea tu cuenta de lector</h2>
+            <p class="sub">Firma tus comentarios, guarda tu porra de cada jornada y aparece en el ranking.</p>
 
-            <div class="google-btn-wrap">
-              <button type="button" class="btn-google" id="googleBtnRegistro">
-                <svg class="btn-google-logo" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l6-6C34.5 5.1 29.5 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21 21-9.4 21-21c0-1.4-.1-2.7-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.8 1.1 8 3l6-6C34.5 6.1 29.5 4 24 4c-7.7 0-14.3 4.3-17.7 10.7z"/><path fill="#4CAF50" d="M24 44c5.4 0 10.3-2.1 14-5.5l-6.5-5.4c-2 1.5-4.6 2.5-7.5 2.5-5.3 0-9.7-3.3-11.3-8l-6.5 5C9.6 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.2 5.6l6.5 5.4C40.9 36.6 44 30.9 44 24c0-1.4-.1-2.7-.4-3.5z"/></svg>
-                <span class="btn-google-texto">Registrarme con Google</span>
-                <span class="btn-google-spinner"></span>
-              </button>
-            </div>
-            <div class="microsoft-btn-wrap">
-              <button type="button" class="btn-microsoft" id="microsoftBtnRegistro">
-                <svg class="btn-microsoft-logo" viewBox="0 0 23 23" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="1" width="10" height="10" fill="#F25022"/><rect x="12" y="1" width="10" height="10" fill="#7FBA00"/><rect x="1" y="12" width="10" height="10" fill="#00A4EF"/><rect x="12" y="12" width="10" height="10" fill="#FFB900"/></svg>
-                <span class="btn-microsoft-texto">Registrarme con Microsoft</span>
-                <span class="btn-microsoft-spinner"></span>
-              </button>
-            </div>
-            <div class="discord-btn-wrap">
-              <button type="button" class="btn-discord" id="discordBtnRegistro">
-                <svg class="btn-discord-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20.3 4.4A19.7 19.7 0 0 0 15.4 3c-.2.4-.5.9-.7 1.4a18.3 18.3 0 0 0-5.4 0A9.8 9.8 0 0 0 8.6 3a19.7 19.7 0 0 0-4.9 1.5C1 9 .3 13.5.6 18a19.8 19.8 0 0 0 6 3c.5-.6.9-1.3 1.3-2a12.8 12.8 0 0 1-2-1c.2-.1.3-.3.5-.4a14.1 14.1 0 0 0 12 0l.5.4a12.8 12.8 0 0 1-2 1c.4.7.8 1.4 1.3 2a19.7 19.7 0 0 0 6-3c.4-5.2-1-9.7-3.9-13.6ZM8.7 15.3c-1.1 0-2-1-2-2.3 0-1.2.9-2.3 2-2.3s2 1 2 2.3c0 1.3-.9 2.3-2 2.3Zm6.6 0c-1.1 0-2-1-2-2.3 0-1.2.9-2.3 2-2.3s2 1 2 2.3c0 1.3-.9 2.3-2 2.3Z"/></svg>
-                <span class="btn-discord-texto">Registrarme con Discord</span>
-                <span class="btn-discord-spinner"></span>
-              </button>
-            </div>
-            <div class="x-btn-wrap">
-              <button type="button" class="btn-x" id="xBtnRegistro">
-                <svg class="btn-x-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M18.9 2.4h3.2l-7 8 8.2 10.8h-6.4l-5-6.6-5.8 6.6H2.9l7.5-8.6L2.5 2.4h6.6l4.6 6.1 5.2-6.1Zm-1.1 17h1.8L7.3 4.2H5.4l12.4 15.2Z"/></svg>
-                <span class="btn-x-texto">Registrarme con X</span>
-                <span class="btn-x-spinner"></span>
-              </button>
+            <div class="acceso-social">
+  <div class="google-btn-wrap">
+                <button type="button" class="btn-google" id="googleBtnRegistro">
+                  <svg class="btn-google-logo" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l6-6C34.5 5.1 29.5 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21 21-9.4 21-21c0-1.4-.1-2.7-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.8 1.1 8 3l6-6C34.5 6.1 29.5 4 24 4c-7.7 0-14.3 4.3-17.7 10.7z"/><path fill="#4CAF50" d="M24 44c5.4 0 10.3-2.1 14-5.5l-6.5-5.4c-2 1.5-4.6 2.5-7.5 2.5-5.3 0-9.7-3.3-11.3-8l-6.5 5C9.6 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.2 5.6l6.5 5.4C40.9 36.6 44 30.9 44 24c0-1.4-.1-2.7-.4-3.5z"/></svg>
+                  <span class="btn-google-texto">Registrarme con Google</span>
+                  <span class="btn-google-spinner"></span>
+                </button>
+              </div>
+              <div class="microsoft-btn-wrap">
+                <button type="button" class="btn-microsoft" id="microsoftBtnRegistro" title="Registrarme con Microsoft">
+                  <svg class="btn-microsoft-logo" viewBox="0 0 23 23" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="1" width="10" height="10" fill="#F25022"/><rect x="12" y="1" width="10" height="10" fill="#7FBA00"/><rect x="1" y="12" width="10" height="10" fill="#00A4EF"/><rect x="12" y="12" width="10" height="10" fill="#FFB900"/></svg>
+                  <span class="btn-microsoft-texto">Registrarme con Microsoft</span>
+                  <span class="btn-microsoft-spinner"></span>
+                </button>
+              </div>
+              <div class="discord-btn-wrap">
+                <button type="button" class="btn-discord" id="discordBtnRegistro" title="Registrarme con Discord">
+                  <svg class="btn-discord-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20.3 4.4A19.7 19.7 0 0 0 15.4 3c-.2.4-.5.9-.7 1.4a18.3 18.3 0 0 0-5.4 0A9.8 9.8 0 0 0 8.6 3a19.7 19.7 0 0 0-4.9 1.5C1 9 .3 13.5.6 18a19.8 19.8 0 0 0 6 3c.5-.6.9-1.3 1.3-2a12.8 12.8 0 0 1-2-1c.2-.1.3-.3.5-.4a14.1 14.1 0 0 0 12 0l.5.4a12.8 12.8 0 0 1-2 1c.4.7.8 1.4 1.3 2a19.7 19.7 0 0 0 6-3c.4-5.2-1-9.7-3.9-13.6ZM8.7 15.3c-1.1 0-2-1-2-2.3 0-1.2.9-2.3 2-2.3s2 1 2 2.3c0 1.3-.9 2.3-2 2.3Zm6.6 0c-1.1 0-2-1-2-2.3 0-1.2.9-2.3 2-2.3s2 1 2 2.3c0 1.3-.9 2.3-2 2.3Z"/></svg>
+                  <span class="btn-discord-texto">Registrarme con Discord</span>
+                  <span class="btn-discord-spinner"></span>
+                </button>
+              </div>
+              <div class="x-btn-wrap">
+                <button type="button" class="btn-x" id="xBtnRegistro" title="Registrarme con X">
+                  <svg class="btn-x-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M18.9 2.4h3.2l-7 8 8.2 10.8h-6.4l-5-6.6-5.8 6.6H2.9l7.5-8.6L2.5 2.4h6.6l4.6 6.1 5.2-6.1Zm-1.1 17h1.8L7.3 4.2H5.4l12.4 15.2Z"/></svg>
+                  <span class="btn-x-texto">Registrarme con X</span>
+                  <span class="btn-x-spinner"></span>
+                </button>
+              </div>
             </div>
             <div class="separador-o">o con tu correo</div>
 
@@ -522,7 +538,7 @@
               <label for="regNombre">Nombre</label>
               <input type="text" id="regNombre" required maxlength="80" autocomplete="name">
               <label for="regEmail">Correo electrónico</label>
-              <input type="email" id="regEmail" required autocomplete="email">
+              <input type="email" id="regEmail" autocapitalize="none" spellcheck="false" required autocomplete="email">
               <label for="regPassword">Contraseña</label>
               <input type="password" id="regPassword" required minlength="8" autocomplete="new-password">
               <div data-eof-turnstile style="margin:0 0 .8rem"></div>
@@ -537,7 +553,7 @@
           <p class="sub">Introduce tu correo. Si tienes una cuenta, te enviaremos un enlace para poner una contraseña nueva (caduca en 30 minutos).</p>
           <form id="formOlvidoLector" novalidate>
             <label for="olvidoEmailLector">Correo electrónico</label>
-            <input type="email" id="olvidoEmailLector" required autocomplete="email">
+            <input type="email" id="olvidoEmailLector" autocapitalize="none" spellcheck="false" required autocomplete="email">
             <div data-eof-turnstile style="margin:0 0 .8rem"></div>
             <button type="submit" id="btnOlvidoLector">Enviar enlace</button>
           </form>
@@ -571,7 +587,7 @@
           <p class="sub">Panel interno para el equipo editorial.</p>
           <form id="loginFormRedactor">
             <label for="username">Usuario</label>
-            <input type="text" id="username" required autocomplete="username">
+            <input type="text" id="username" autocapitalize="none" spellcheck="false" required autocomplete="username">
             <label for="password">Contraseña</label>
             <input type="password" id="password" required autocomplete="current-password">
             <button type="submit">Entrar</button>
@@ -586,9 +602,9 @@
           <p class="ayuda-form">Introduce tu usuario y el correo electrónico asociado a tu cuenta. Si coinciden, te enviaremos un enlace para poner una contraseña nueva (caduca en 30 minutos).</p>
           <form id="formOlvido">
             <label for="ol_username">Usuario</label>
-            <input type="text" id="ol_username" required autocomplete="username">
+            <input type="text" id="ol_username" autocapitalize="none" spellcheck="false" required autocomplete="username">
             <label for="ol_email">Correo electrónico</label>
-            <input type="email" id="ol_email" required autocomplete="email">
+            <input type="email" id="ol_email" autocapitalize="none" spellcheck="false" required autocomplete="email">
             <div data-eof-turnstile style="margin:0 0 .8rem"></div>
             <button type="submit">Enviar enlace</button>
             <p id="errorOlvido" class="acceso-msg acceso-msg-error" style="display:none"></p>
@@ -691,10 +707,10 @@
         <img src="img/logo.png" alt="ELOTROFÚTBOLTV - logo oficial">
         <span style="color:var(--marino-texto)">EL<span class="brand-rojo">OTROFÚTBOL</span>TV</span>
       </div>
-      <p class="ayuda-form">Es tu primer inicio de sesión. Indica tu correo electrónico para poder recuperar tu contraseña más adelante si la olvidas.</p>
+      <p class="ayuda-form" id="textoEmailInicial">Es tu primer inicio de sesión. Indica tu correo electrónico para poder recuperar tu contraseña más adelante si la olvidas.</p>
       <form id="formEmailInicial">
         <label for="emailInicial">Correo electrónico</label>
-        <input type="email" id="emailInicial" required autocomplete="email">
+        <input type="email" id="emailInicial" autocapitalize="none" spellcheck="false" required autocomplete="email">
         <button type="submit">Continuar</button>
         <p id="errorEmailInicial" class="acceso-msg acceso-msg-error" style="display:none"></p>
       </form>
@@ -706,15 +722,15 @@
 <script src="js/ui-alertas.js?v=5"></script>
 <script src="js/foco.js?v=1"></script>
 <script src="js/vendor/qrcode.js"></script>
-<script src="js/config.js?v=25"></script>
+<script src="js/config.js?v=36"></script>
 <script src="js/seo.js?v=5"></script>
 <script src="js/lector-auth.js?v=13"></script>
-<script src="js/lecturas.js?v=7"></script>
+<script src="js/lecturas.js?v=8"></script>
 <script src="js/turnstile.js?v=2"></script>
-<script src="js/layout.js?v=22"></script>
+<script src="js/layout.js?v=30"></script>
 <script src="js/cookies.js?v=2"></script>
 <script src="js/ads.js?v=3"></script>
-<script src="js/main.js?v=14"></script>
+<script src="js/main.js?v=33"></script>
 <script>
 fijarSeoBasico({
   titulo: "Acceso — ELOTROFÚTBOLTV",
@@ -1003,11 +1019,20 @@ async function completarLoginRedactor(data) {
   // apiFetch() en admin.js).
   try { sessionStorage.setItem("eof_login_en", String(Date.now())); } catch {}
 
-  // Primer inicio de sesión: si la cuenta todavía no tiene correo
-  // electrónico guardado, se pide antes de entrar al panel (así luego
-  // se puede usar "He olvidado mi contraseña").
-  if (!data.user.email) {
+  // Primer inicio de sesión: lo decide el servidor (data.primer_acceso,
+  // columna users.primer_acceso_at), ya NO el hecho de que falte el correo:
+  // el correo se guarda al crear la cuenta. En el primer acceso se pide
+  // confirmar (o corregir) el correo antes de entrar al panel, y si por
+  // cualquier motivo la cuenta sigue sin correo, se pide igualmente (así
+  // luego se puede usar "He olvidado mi contraseña").
+  if (data.primer_acceso || !data.user.email) {
+    const inputEmail = document.getElementById("emailInicial");
+    inputEmail.value = data.user.email || "";
+    document.getElementById("textoEmailInicial").textContent = data.user.email
+      ? "Es tu primer inicio de sesión. Confirma tu correo electrónico (o cámbialo si no es el correcto) para poder recuperar tu contraseña más adelante si la olvidas."
+      : "Es tu primer inicio de sesión. Indica tu correo electrónico para poder recuperar tu contraseña más adelante si la olvidas.";
     document.getElementById("overlayEmail").classList.add("activo");
+    inputEmail.focus();
   } else {
     const volver = new URLSearchParams(location.search).get("volver");
     location.href = urlVolverSegura(volver, "admin/panel.html");
@@ -1353,6 +1378,32 @@ document.getElementById("formOlvido").addEventListener("submit", async (e) => {
       err.textContent = "No se ha podido conectar con el servidor.";
       err.style.display = "block";
     }
+  });
+})();
+</script>
+<script>
+// Botón "ver contraseña" en todos los campos de contraseña de esta página.
+// Solo cambia el type del input; ids, formularios y validaciones siguen igual.
+(function () {
+  const OJOS = '<svg class="ojo-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><svg class="ojo-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18"/><path d="M6.6 6.6C3.9 8.3 2 12 2 12s3.6 7 10 7c1.8 0 3.4-.5 4.8-1.2"/><path d="M9.9 5.2A9.6 9.6 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.1 4"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>';
+  document.querySelectorAll('.acceso-box input[type="password"]').forEach((inp) => {
+    const envoltura = document.createElement("div");
+    envoltura.className = "campo-pass";
+    inp.parentNode.insertBefore(envoltura, inp);
+    envoltura.appendChild(inp);
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "ver-pass";
+    b.setAttribute("aria-label", "Mostrar contraseña");
+    b.setAttribute("aria-pressed", "false");
+    b.innerHTML = OJOS;
+    b.addEventListener("click", () => {
+      const ver = inp.type === "password";
+      inp.type = ver ? "text" : "password";
+      b.setAttribute("aria-pressed", String(ver));
+      b.setAttribute("aria-label", ver ? "Ocultar contraseña" : "Mostrar contraseña");
+    });
+    envoltura.appendChild(b);
   });
 })();
 </script>

@@ -3,8 +3,9 @@
 <head>
 <meta name="google-adsense-account" content="ca-pub-7347856722927942">
 <script src="js/tema.js?v=2"></script>
-<script src="js/preferencias.js?v=3"></script>
+<script src="js/preferencias.js?v=20"></script>
 <meta charset="UTF-8">
+<script src="/js/splash.js?v=2"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,28 +20,84 @@
 <link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=3">
 <link rel="apple-touch-icon" href="/img/apple-touch-icon.png?v=2">
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&display=swap" onload="this.onload=null;this.rel='stylesheet'"><noscript><link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet"></noscript>
-<link rel="stylesheet" href="css/style.css?v=25">
-<link rel="stylesheet" href="css/accesibilidad.css?v=1">
+<link rel="stylesheet" href="css/style.css?v=35">
+<link rel="stylesheet" href="css/modales-mejoras.css?v=1">
+<link rel="stylesheet" href="css/accesibilidad.css?v=2">
 <script src="js/accesibilidad.js?v=1" defer></script>
 <link rel="stylesheet" href="css/foco.css?v=1">
 <style>
-  .cuenta-wrap{max-width:420px;margin:70px auto;padding:0 16px;}
-  .cuenta-box{background:var(--tarjeta);padding:34px 30px;border-radius:12px;box-shadow:0 4px 24px rgba(12,27,46,.08);border:1px solid var(--borde);text-align:center;}
-  .cuenta-box h2{margin:0 0 4px;font-family:var(--font-tit);font-size:1.25rem;color:var(--marino-texto);}
-  .cuenta-box p.sub{margin:0 0 20px;font-size:.85rem;color:var(--texto-suave);}
-  .cuenta-box label{display:block;font-size:.85rem;margin:14px 0 6px;font-weight:600;color:var(--marino-texto);text-align:left;}
-  .cuenta-box input{width:100%;padding:11px 12px;border:1.5px solid var(--borde);border-radius:8px;font-size:.95rem;background:var(--tarjeta);color:var(--texto);}
-  .cuenta-box input:focus{outline:none;border-color:var(--celeste);box-shadow:0 0 0 3px rgba(91,184,232,.15);}
-  .cuenta-box button[type="submit"]{width:100%;margin-top:22px;padding:13px;background:linear-gradient(135deg, var(--rojo), var(--rojo-oscuro));color:#fff;border:none;border-radius:26px;font-family:var(--font-tit);text-transform:uppercase;font-size:.95rem;cursor:pointer;letter-spacing:.4px;}
-  .cuenta-box button[type="submit"]:disabled{opacity:.6;cursor:default;}
-  .cuenta-msg{font-size:.85rem;margin-top:14px;padding:10px 12px;border-radius:8px;display:none;}
-  .cuenta-msg-error{color:#7a1c2b;background:#fdecef;display:block;}
-  .cuenta-msg-ok{color:#166534;background:#dcfce7;display:block;}
-  [data-theme="dark"] .cuenta-msg-error{background:#3a1a20;color:#f5a3ae;}
-  [data-theme="dark"] .cuenta-msg-ok{background:#123321;color:#7fe0a3;}
-  .icono-estado{font-size:2.4rem;margin-bottom:6px;}
-  a.btn-volver{display:inline-block;margin-top:20px;padding:11px 26px;background:linear-gradient(135deg, var(--rojo), var(--rojo-oscuro));color:#fff;border-radius:26px;text-decoration:none;font-family:var(--font-tit);text-transform:uppercase;font-size:.9rem;}
+  /* Páginas de cuenta (confirmar / recuperar): mismo lenguaje que acceso.html */
+  :root{--acc-ease:cubic-bezier(.22,.8,.3,1);--acc-foco:#2f86c0;}
+  [data-theme="dark"]{--acc-foco:var(--celeste);}
+  .cuenta-wrap{max-width:440px;margin:64px auto;padding:0 16px;}
+  .cuenta-box{
+    background:var(--tarjeta);padding:34px 32px 30px;border-radius:22px;text-align:center;
+    border:1px solid var(--borde);box-shadow:0 24px 50px -26px rgba(12,27,46,.35), 0 2px 8px rgba(12,27,46,.05);
+    animation:cuentaAparece .35s var(--acc-ease);
+  }
+  @keyframes cuentaAparece{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+  .cuenta-box h2{margin:0 0 8px;font-family:var(--font-tit);font-weight:500;font-size:1.5rem;line-height:1.2;color:var(--marino-texto);}
+  .cuenta-box p{margin:0 0 6px;font-size:.92rem;line-height:1.55;color:var(--texto-suave);}
+  .cuenta-box p.sub{margin:0 0 20px;}
+  .cuenta-box label{display:block;font-size:.84rem;margin:16px 0 6px;font-weight:600;color:var(--marino-texto);text-align:left;}
+  .cuenta-box input{
+    width:100%;height:48px;padding:0 14px;font-size:1rem;font-family:inherit;
+    border:1.5px solid var(--borde);border-radius:12px;background:var(--fondo-alt);color:var(--texto);
+    transition:border-color .16s,box-shadow .16s,background .16s;
+  }
+  .cuenta-box input:hover{border-color:color-mix(in srgb, var(--texto) 28%, var(--borde));}
+  .cuenta-box input:focus{outline:none;border-color:var(--acc-foco);background:var(--tarjeta);box-shadow:0 0 0 4px color-mix(in srgb, var(--acc-foco) 22%, transparent);}
+  .campo-pass{position:relative;}
+  .campo-pass input{padding-right:50px;}
+  .ver-pass{
+    position:absolute;right:4px;top:50%;transform:translateY(-50%);width:40px;height:40px;
+    display:grid;place-items:center;border:none;background:none;cursor:pointer;border-radius:10px;color:var(--texto-suave);
+  }
+  .ver-pass:hover{color:var(--marino-texto);background:color-mix(in srgb, var(--texto) 8%, transparent);}
+  .ver-pass:focus-visible{outline:3px solid var(--acc-foco);outline-offset:2px;}
+  .ver-pass svg{width:20px;height:20px;}
+  .ver-pass .ojo-off{display:none;}
+  .ver-pass[aria-pressed="true"] .ojo-on{display:none;}
+  .ver-pass[aria-pressed="true"] .ojo-off{display:block;}
+  .cuenta-box button[type="submit"],a.btn-volver,.cuenta-box a.btn-volver{
+    display:flex;align-items:center;justify-content:center;width:100%;height:50px;margin-top:22px;padding:0 16px;
+    background:var(--rojo);color:#fff;border:none;border-radius:12px;text-decoration:none;cursor:pointer;
+    font-family:var(--font-tit);font-weight:500;font-size:1.05rem;letter-spacing:.4px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.2), 0 8px 18px -6px rgba(209,19,46,.55);
+    transition:filter .15s,transform .15s;
+  }
+  .cuenta-box button[type="submit"]:hover,a.btn-volver:hover{filter:brightness(1.08);}
+  .cuenta-box button[type="submit"]:active,a.btn-volver:active{transform:translateY(1px);}
+  .cuenta-box button[type="submit"]:focus-visible,a.btn-volver:focus-visible{outline:3px solid var(--acc-foco);outline-offset:2px;}
+  .cuenta-box button[type="submit"]:disabled{opacity:.55;cursor:default;filter:none;transform:none;box-shadow:none;}
+  .cuenta-box .cuenta-msg{
+    position:relative;font-size:.86rem;line-height:1.45;margin:16px 0 0;padding:11px 14px 11px 40px;text-align:left;
+    border-radius:12px;border:1px solid transparent;display:none;
+  }
+  .cuenta-box .cuenta-msg::before{
+    content:"";position:absolute;left:14px;top:11px;width:18px;height:18px;background:currentColor;
+    -webkit-mask:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='black'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Ccircle%20cx='12'%20cy='12'%20r='9.2'/%3E%3Cpath%20d='M12%207.8v5.2M12%2016.4h.01'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='black'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Ccircle%20cx='12'%20cy='12'%20r='9.2'/%3E%3Cpath%20d='M12%207.8v5.2M12%2016.4h.01'/%3E%3C/svg%3E") center/contain no-repeat;
+  }
+  .cuenta-box .cuenta-msg-ok::before{-webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='black'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Ccircle%20cx='12'%20cy='12'%20r='9.2'/%3E%3Cpath%20d='M8%2012.5l2.7%202.7L16%209.5'/%3E%3C/svg%3E");mask-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='black'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Ccircle%20cx='12'%20cy='12'%20r='9.2'/%3E%3Cpath%20d='M8%2012.5l2.7%202.7L16%209.5'/%3E%3C/svg%3E");}
+  .cuenta-box .cuenta-msg-error{color:#8a1226;background:#fdecef;border-color:#f6c6cf;display:block;}
+  .cuenta-box .cuenta-msg-ok{color:#166534;background:#e6f8ec;border-color:#b9e9c9;display:block;}
+  [data-theme="dark"] .cuenta-box .cuenta-msg-error{background:#3a1a20;color:#f5a3ae;border-color:#5a2530;}
+  [data-theme="dark"] .cuenta-box .cuenta-msg-ok{background:#123321;color:#7fe0a3;border-color:#1d5233;}
+  /* Estado: insignia con icono (antes eran emojis) */
+  .icono-estado{width:60px;height:60px;margin:0 auto 16px;border-radius:50%;display:grid;place-items:center;}
+  .icono-estado svg{width:28px;height:28px;}
+  .icono-estado.is-ok{background:#e6f8ec;color:#166534;}
+  .icono-estado.is-aviso{background:#fff4dc;color:#a15c00;}
+  .icono-estado.is-carga{background:var(--fondo-alt);}
+  .icono-estado.is-carga::after{content:"";width:26px;height:26px;border-radius:50%;border:3px solid var(--borde);border-top-color:var(--acc-foco);animation:cuentaGira .8s linear infinite;}
+  [data-theme="dark"] .icono-estado.is-ok{background:#123321;color:#7fe0a3;}
+  [data-theme="dark"] .icono-estado.is-aviso{background:#34280f;color:#f6d48a;}
+  @keyframes cuentaGira{to{transform:rotate(360deg);}}
+  @media(max-width:480px){.cuenta-wrap{margin:36px auto;}.cuenta-box{padding:28px 20px 24px;border-radius:18px;}.cuenta-box input{font-size:16px;}}
+  @media(prefers-reduced-motion:reduce){.cuenta-box{animation:none;}.icono-estado.is-carga::after{animation-duration:2.4s;}*{transition-duration:.01ms !important;}}
 </style>
+<link rel="stylesheet" href="css/app-movil.css?v=8">
+<script src="js/app-movil.js?v=5" defer></script>
 </head>
 <body>
 
@@ -52,7 +109,10 @@
     <p class="sub">Elige una contraseña de al menos 8 caracteres.</p>
     <form id="formNueva" novalidate>
       <label for="nuevaPassword">Nueva contraseña</label>
-      <input type="password" id="nuevaPassword" required minlength="8" autocomplete="new-password">
+      <div class="campo-pass">
+        <input type="password" id="nuevaPassword" required minlength="8" autocomplete="new-password">
+        <button type="button" class="ver-pass" id="verNuevaPassword" aria-label="Mostrar contraseña" aria-pressed="false"><svg class="ojo-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><svg class="ojo-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18"/><path d="M6.6 6.6C3.9 8.3 2 12 2 12s3.6 7 10 7c1.8 0 3.4-.5 4.8-1.2"/><path d="M9.9 5.2A9.6 9.6 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.1 4"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg></button>
+      </div>
       <button type="submit" id="btnNueva">Guardar contraseña</button>
     </form>
     <p id="msgNueva" class="cuenta-msg"></p>
@@ -63,18 +123,27 @@
 
 <script src="js/ui-alertas.js?v=5"></script>
 <script src="js/foco.js?v=1"></script>
-<script src="js/config.js?v=25"></script>
+<script src="js/config.js?v=36"></script>
 <script src="js/lector-auth.js?v=13"></script>
-<script src="js/lecturas.js?v=7"></script>
-<script src="js/layout.js?v=22"></script>
+<script src="js/lecturas.js?v=8"></script>
+<script src="js/layout.js?v=30"></script>
 <script src="js/cookies.js?v=2"></script>
 <script src="js/ads.js?v=3"></script>
-<script src="js/main.js?v=14"></script>
+<script src="js/main.js?v=33"></script>
 <script>
 const TOKEN_RECUPERAR = new URLSearchParams(location.search).get("token");
 if (!TOKEN_RECUPERAR) {
-  document.getElementById("cajaRecuperar").innerHTML = `<div class="icono-estado">⚠️</div><h2>Enlace incompleto</h2><p class="sub">Falta el código en el enlace. Pide uno nuevo desde "He olvidado mi contraseña".</p><a class="btn-volver" href="/acceso">Ir a mi cuenta</a>`;
+  document.getElementById("cajaRecuperar").innerHTML = `<div class="icono-estado is-aviso" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l9 15.5H3z"/><path d="M12 10v4.2M12 17.2h.01"/></svg></div><h2>Enlace incompleto</h2><p class="sub">Falta el código en el enlace. Pide uno nuevo desde "He olvidado mi contraseña".</p><a class="btn-volver" href="/acceso">Ir a mi cuenta</a>`;
 }
+
+document.getElementById("verNuevaPassword")?.addEventListener("click", (e) => {
+  const inp = document.getElementById("nuevaPassword");
+  const b = e.currentTarget;
+  const ver = inp.type === "password";
+  inp.type = ver ? "text" : "password";
+  b.setAttribute("aria-pressed", String(ver));
+  b.setAttribute("aria-label", ver ? "Ocultar contraseña" : "Mostrar contraseña");
+});
 
 document.getElementById("formNueva")?.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -91,7 +160,7 @@ document.getElementById("formNueva")?.addEventListener("submit", async (e) => {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "No se ha podido cambiar la contraseña");
-    document.getElementById("cajaRecuperar").innerHTML = `<div class="icono-estado">✅</div><h2>Contraseña actualizada</h2><p class="sub">Ya puedes iniciar sesión con tu nueva contraseña.</p><a class="btn-volver" href="/acceso">Iniciar sesión</a>`;
+    document.getElementById("cajaRecuperar").innerHTML = `<div class="icono-estado is-ok" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div><h2>Contraseña actualizada</h2><p class="sub">Ya puedes iniciar sesión con tu nueva contraseña.</p><a class="btn-volver" href="/acceso">Iniciar sesión</a>`;
   } catch (err) {
     msg.textContent = err.message;
     msg.className = "cuenta-msg cuenta-msg-error";

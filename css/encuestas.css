@@ -21,6 +21,75 @@ body[data-page="inicio"] .encuesta-widget{
 .encuesta-widget.con-resultados::before{background:linear-gradient(90deg,var(--celeste),var(--marino2));}
 .encuestas-portada-grid .encuesta-widget{margin:0;max-width:none;}
 
+/* =========================================================================
+   PORTADA: la rejilla se adapta a cuántas encuestas hay (data-n lo pone
+   main.js). Flex con wrap: la última fila se reparte sola el ancho, así no
+   quedan huecos ni una tarjeta estirada de más.
+     1 → tarjeta ancha, pregunta a la izquierda y opciones a la derecha
+     2 → dos columnas iguales
+     3 → tres columnas (en pantallas medias 2 + 1 a todo el ancho)
+     4 → 2 × 2
+     5+ → tres columnas, la última fila se reparte
+   Se usa body[data-page="inicio"] para ganar a la regla genérica del widget
+   (que pone márgenes automáticos y max-width pensados para la noticia).
+   ========================================================================= */
+.encuestas-portada-grid{display:flex;flex-wrap:wrap;gap:20px;}
+body[data-page="inicio"] .encuestas-portada-grid > *{flex:1 1 100%;min-width:0;}
+body[data-page="inicio"] .encuestas-portada-grid .encuesta-widget{
+  margin:0;max-width:none;display:flex;flex-direction:column;
+}
+.encuestas-portada-grid .encuesta-etiqueta{align-self:flex-start;}
+.encuestas-portada-grid .encuesta-form,
+.encuestas-portada-grid .encuesta-resultados{flex:0 0 auto;}
+/* El pie de resultados queda siempre abajo aunque las tarjetas vecinas sean más altas */
+.encuestas-portada-grid .encuesta-total{margin-top:auto;padding-top:14px;}
+.encuestas-portada-grid .encuesta-resultados{margin-bottom:22px;}
+
+@media(min-width:700px){
+  body[data-page="inicio"] .encuestas-portada-grid > *{flex-basis:calc(50% - 10px);}
+  body[data-page="inicio"] .encuestas-portada-grid[data-n="1"] > *{flex-basis:100%;}
+}
+@media(min-width:1040px){
+  body[data-page="inicio"] .encuestas-portada-grid[data-n="3"] > *,
+  body[data-page="inicio"] .encuestas-portada-grid[data-n="5"] > *,
+  body[data-page="inicio"] .encuestas-portada-grid[data-n="6"] > *,
+  body[data-page="inicio"] .encuestas-portada-grid[data-n="7"] > *,
+  body[data-page="inicio"] .encuestas-portada-grid[data-n="8"] > *,
+  body[data-page="inicio"] .encuestas-portada-grid[data-n="9"] > *{flex-basis:calc(33.333% - 14px);}
+  /* Con tres columnas la tarjeta es más estrecha: texto y relleno algo más compactos */
+  body[data-page="inicio"] .encuestas-portada-grid:not([data-n="1"]):not([data-n="2"]):not([data-n="4"]) .encuesta-widget{padding:24px 20px 20px;}
+  body[data-page="inicio"] .encuestas-portada-grid:not([data-n="1"]):not([data-n="2"]):not([data-n="4"]) .encuesta-pregunta{font-size:1.18rem;margin-bottom:16px;}
+}
+
+/* --- Una sola encuesta: en pantallas anchas se reparte en dos columnas --- */
+@media(min-width:820px){
+  body[data-page="inicio"] .encuestas-portada-grid[data-n="1"] .encuesta-widget{
+    display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);
+    grid-template-rows:auto 1fr auto;column-gap:44px;padding:34px 38px 30px;
+  }
+  .encuestas-portada-grid[data-n="1"] .encuesta-etiqueta{grid-column:1;grid-row:1;justify-self:start;align-self:start;}
+  .encuestas-portada-grid[data-n="1"] .encuesta-pregunta{
+    grid-column:1;grid-row:2;align-self:start;margin:0;
+    font-size:clamp(1.5rem,2.2vw,1.9rem);line-height:1.25;
+  }
+  .encuestas-portada-grid[data-n="1"] .encuesta-form,
+  .encuestas-portada-grid[data-n="1"] .encuesta-resultados{
+    grid-column:2;grid-row:1 / span 2;align-self:center;margin:0;
+    padding-left:44px;border-left:1px solid var(--borde);
+  }
+  .encuestas-portada-grid[data-n="1"] .encuesta-total{
+    grid-column:2;grid-row:3;margin:18px 0 0;padding-left:44px;
+  }
+  /* Con la tarjeta ancha el botón no necesita ocupar todo el ancho */
+  .encuestas-portada-grid[data-n="1"] .btn-votar-encuesta{align-self:flex-start;}
+}
+/* Pantallas medias/móvil con una sola encuesta: no la estiramos más de la cuenta */
+@media(min-width:601px) and (max-width:819px){
+  body[data-page="inicio"] .encuestas-portada-grid[data-n="1"] .encuesta-widget{
+    max-width:640px;margin-inline:auto;
+  }
+}
+
 /* Etiqueta ("Encuesta" / "Gracias por votar" / "Encuesta cerrada") */
 .encuesta-etiqueta{
   display:inline-flex;align-items:center;gap:7px;margin-bottom:12px;
@@ -112,6 +181,7 @@ body[data-page="inicio"] .encuesta-widget{
   height:100%;min-width:4px;border-radius:999px;
   background:linear-gradient(90deg,#8d99ad,#b4bdcc);
   transform-origin:left center;animation:encuesta-barra .8s cubic-bezier(.2,.8,.2,1) both;
+  transition:width .8s cubic-bezier(.2,.8,.2,1);
 }
 .encuesta-lider .encuesta-barra-relleno{background:linear-gradient(90deg,var(--celeste),#2f93c9);}
 .encuesta-mi-voto .encuesta-barra-relleno{background:linear-gradient(90deg,#ff5a6e,var(--rojo));}
@@ -147,7 +217,8 @@ body[data-page="inicio"] .encuesta-widget{
 @media(max-width:600px){
   .encuesta-widget,
   body[data-page="inicio"] .encuesta-widget{margin:34px 0 0;padding:22px 16px 18px;}
-  .encuestas-portada-grid .encuesta-widget{margin:0;}
+  body[data-page="inicio"] .encuestas-portada-grid .encuesta-widget{margin:0;padding:22px 16px 18px;}
+  .encuestas-portada-grid{gap:16px;}
   .encuesta-pregunta{font-size:1.2rem;margin-bottom:16px;}
   .encuesta-opcion{padding:13px 14px;}
 }
@@ -156,3 +227,8 @@ body[data-page="inicio"] .encuesta-widget{
   .encuesta-opcion,.btn-votar-encuesta{transition:none;}
 }
 @media print{.encuesta-widget{display:none !important;}}
+
+/* Actualización en directo: el total de votos "late" al subir */
+.encuesta-total-sube{animation:encuesta-total-sube .9s ease-out 1;}
+@keyframes encuesta-total-sube{0%{transform:scale(1);color:inherit;}30%{transform:scale(1.12);color:var(--celeste);}100%{transform:scale(1);color:inherit;}}
+@media (prefers-reduced-motion:reduce){.encuesta-total-sube{animation:none;}.encuesta-barra-relleno{transition:none;}}

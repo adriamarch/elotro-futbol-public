@@ -206,61 +206,149 @@ button{font-family:inherit;}
 }
 .btn-login:hover::after{opacity:1;visibility:visible;transform:translateY(0);}
 
-/* ---------- SESIÓN INICIADA (cabecera pública) ---------- */
+/* ---------- SESIÓN INICIADA (cabecera pública y panel) ---------- */
+/* ---------- CUENTA: botón + desplegable ----------
+   UN SOLO diseño para toda la web: cabecera pública (lector y redactor) y
+   cabecera del panel usan exactamente estas reglas. No se retoca en otros
+   CSS (solo los ajustes de tamaño móvil del propio botón). */
 .user-menu{position:relative;flex-shrink:0;}
 .btn-usuario{
   display:inline-flex;align-items:center;gap:8px;
-  background:var(--marino);border:1.5px solid var(--marino2);
-  padding:5px 12px 5px 5px;border-radius:20px;
-  cursor:pointer;transition:border-color .15s, box-shadow .15s;
-  font-family:var(--font-text);
+  background:linear-gradient(180deg,var(--marino2),var(--marino));
+  border:1.5px solid rgba(255,255,255,.14);
+  padding:4px 12px 4px 4px;border-radius:999px;
+  cursor:pointer;color:#fff;font-family:var(--font-text);
+  transition:border-color .18s, box-shadow .18s, transform .18s;
 }
-.btn-usuario:hover{border-color:var(--rojo);box-shadow:0 3px 10px rgba(209,19,46,.25);}
+.btn-usuario:hover{border-color:var(--rojo);box-shadow:0 3px 12px rgba(209,19,46,.28);}
+.btn-usuario:active{transform:scale(.97);}
+.user-menu:has(.user-dropdown.abierto) .btn-usuario{
+  border-color:var(--celeste);box-shadow:0 0 0 3px rgba(91,184,232,.28);
+}
+/* Chevron que gira al abrir (solo cuando se ve el nombre) */
+.btn-usuario::after{
+  content:"";flex-shrink:0;width:6px;height:6px;margin:-2px 0 0 2px;
+  border-right:2px solid rgba(255,255,255,.8);border-bottom:2px solid rgba(255,255,255,.8);
+  transform:rotate(45deg);transition:transform .22s cubic-bezier(.2,.8,.2,1), margin .22s;
+}
+.user-menu:has(.user-dropdown.abierto) .btn-usuario::after{transform:rotate(225deg);margin-top:3px;}
+
 .user-avatar{
-  width:28px;height:28px;border-radius:50%;
+  width:30px;height:30px;border-radius:50%;
   background:linear-gradient(135deg, var(--rojo), var(--rojo-oscuro));
   border:2px solid #fff;
-  color:#fff;font-size:.72rem;font-weight:700;
+  color:#fff;font-size:.72rem;font-weight:700;letter-spacing:.2px;
   display:flex;align-items:center;justify-content:center;flex-shrink:0;
 }
 .user-avatar.user-avatar-foto{background-color:transparent;}
-.user-nombre{font-size:.82rem;font-weight:600;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.35);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.user-nombre{font-size:.84rem;font-weight:600;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.35);max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+/* Panel desplegable */
 .user-dropdown{
-  position:absolute;top:calc(100% + 10px);right:0;
-  background:var(--tarjeta);color:var(--texto);border-radius:10px;
-  box-shadow:0 10px 30px rgba(12,27,46,.16);
-  min-width:190px;padding:8px;
-  opacity:0;visibility:hidden;pointer-events:none;transform:translateY(-6px);
-  transition:opacity .15s, transform .15s, visibility .15s;
+  position:absolute;top:calc(100% + 12px);right:0;
+  width:max-content;min-width:255px;max-width:min(330px,calc(100vw - 24px));
+  background:var(--tarjeta);color:var(--texto);
+  border:1px solid var(--borde);border-radius:18px;padding:8px;
+  box-shadow:0 2px 6px rgba(12,27,46,.06), 0 20px 48px rgba(12,27,46,.22);
+  opacity:0;visibility:hidden;pointer-events:none;
+  transform:translateY(-8px) scale(.97);transform-origin:top right;
+  transition:opacity .18s ease, transform .24s cubic-bezier(.2,.8,.2,1), visibility .18s;
   z-index:200;
 }
-.user-dropdown.abierto{opacity:1;visibility:visible;pointer-events:auto;transform:translateY(0);}
-.user-dropdown-info{padding:8px 10px 10px;border-bottom:1px solid var(--borde);margin-bottom:6px;display:flex;align-items:center;gap:10px;}
-.user-dropdown-info strong{display:block;font-size:.85rem;color:var(--marino-texto);}
-.user-dropdown-info span{font-size:.72rem;color:#9aa0ab;text-transform:uppercase;letter-spacing:.4px;}
-.user-avatar-grande{width:38px;height:38px;font-size:.95rem;flex-shrink:0;}
-.user-dropdown-textos{display:flex;flex-direction:column;min-width:0;}
-.user-dropdown a,.user-dropdown button{
-  display:block;width:100%;text-align:left;
-  padding:8px 10px;border-radius:6px;border:none;background:none;
-  font-family:var(--font-text);font-size:.85rem;color:var(--marino-texto);
-  cursor:pointer;text-decoration:none;
+.user-dropdown.abierto{opacity:1;visibility:visible;pointer-events:auto;transform:translateY(0) scale(1);}
+/* Flechita que apunta al botón */
+.user-dropdown::before{
+  content:"";position:absolute;top:-7px;right:18px;width:12px;height:12px;
+  background:var(--tarjeta);border-left:1px solid var(--borde);border-top:1px solid var(--borde);
+  border-top-left-radius:4px;transform:rotate(45deg);
 }
-.user-dropdown a:hover,.user-dropdown button:hover{background:var(--fondo-alt);}
+
+/* Cabecera del desplegable: avatar + nombre + rol */
+.user-dropdown-info{
+  position:relative;display:flex;align-items:center;gap:12px;
+  padding:12px;margin-bottom:6px;border-radius:12px;
+  background:linear-gradient(135deg, rgba(91,184,232,.16), rgba(91,184,232,.04));
+  border:1px solid rgba(91,184,232,.24);
+}
+.user-avatar-grande{width:44px;height:44px;font-size:1rem;flex-shrink:0;box-shadow:0 0 0 3px rgba(91,184,232,.3);}
+.user-dropdown-textos{display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:0;}
+.user-dropdown-textos strong{
+  display:block;max-width:100%;font-size:.94rem;font-weight:700;line-height:1.2;
+  color:var(--marino-texto);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.user-dropdown-textos span{
+  display:inline-block;padding:2px 9px;border-radius:999px;
+  font-size:.64rem;font-weight:700;text-transform:uppercase;letter-spacing:.7px;line-height:1.5;
+  color:#17719e;background:rgba(91,184,232,.2);
+}
+.user-dropdown-textos span:empty{display:none;}
+
+/* Opciones */
+.user-dropdown a,.user-dropdown button{
+  display:flex;align-items:center;gap:12px;width:100%;text-align:left;
+  padding:8px 10px;border-radius:12px;border:none;background:none;
+  font-family:var(--font-text);font-size:.89rem;font-weight:500;line-height:1.25;
+  color:var(--marino-texto);cursor:pointer;text-decoration:none;
+  transition:background .15s, color .15s;
+}
+.user-dropdown a:hover,.user-dropdown button:hover,
+.user-dropdown a:focus-visible,.user-dropdown button:focus-visible{
+  background:color-mix(in srgb, var(--celeste) 13%, transparent);
+}
+.user-menu .user-dropdown a:focus-visible,.user-menu .user-dropdown button:focus-visible{
+  outline:none;box-shadow:inset 0 0 0 2px var(--celeste);
+}
+.user-dropdown .ud-ico{
+  flex:none;display:inline-flex;align-items:center;justify-content:center;
+  width:34px;height:34px;border-radius:10px;
+  background:color-mix(in srgb, var(--texto) 7%, transparent);color:var(--texto-suave);
+  transition:background .15s, color .15s, transform .18s;
+}
+.user-dropdown .ud-ico svg{width:18px;height:18px;display:block;stroke:currentColor;fill:none;}
+.user-dropdown a:hover .ud-ico,.user-dropdown button:hover .ud-ico,
+.user-dropdown a:focus-visible .ud-ico,.user-dropdown button:focus-visible .ud-ico{
+  background:rgba(91,184,232,.24);color:#17719e;transform:scale(1.06);
+}
+.user-dropdown .ud-sep{height:1px;margin:6px 10px;background:var(--borde);}
+
+/* Cerrar sesión (peligro) */
 .user-dropdown button{color:var(--rojo);}
+.user-dropdown button .ud-ico{background:rgba(209,19,46,.1);color:var(--rojo);}
+.user-dropdown button:hover,.user-dropdown button:focus-visible{background:rgba(209,19,46,.09);}
+.user-dropdown button:hover .ud-ico,.user-dropdown button:focus-visible .ud-ico{background:rgba(209,19,46,.18);color:var(--rojo);}
+
 .user-dropdown-proximamente{
   display:flex;align-items:center;justify-content:space-between;gap:8px;
-  padding:8px 10px;border-radius:6px;
-  font-family:var(--font-text);font-size:.85rem;color:#9aa0ab;
+  padding:8px 10px;border-radius:12px;
+  font-family:var(--font-text);font-size:.89rem;color:var(--texto-suave);
   cursor:default;
 }
 .user-dropdown-proximamente span.etiqueta-proximamente{
   font-size:.62rem;text-transform:uppercase;letter-spacing:.3px;
-  background:var(--fondo-alt);color:#9aa0ab;border-radius:20px;padding:2px 8px;
+  background:var(--fondo-alt);color:var(--texto-suave);border-radius:20px;padding:2px 8px;
   flex-shrink:0;
 }
-@media (max-width:600px){
+
+/* Modo oscuro */
+[data-theme="dark"] .user-dropdown{
+  box-shadow:0 2px 6px rgba(0,0,0,.35), 0 22px 50px rgba(0,0,0,.55);
+}
+[data-theme="dark"] .user-dropdown-info{
+  background:linear-gradient(135deg, rgba(91,184,232,.16), rgba(91,184,232,.05));
+  border-color:rgba(91,184,232,.28);
+}
+[data-theme="dark"] .user-dropdown-textos span{color:var(--celeste-claro);background:rgba(91,184,232,.18);}
+[data-theme="dark"] .user-dropdown a:hover .ud-ico,[data-theme="dark"] .user-dropdown button:hover .ud-ico,
+[data-theme="dark"] .user-dropdown a:focus-visible .ud-ico{color:var(--celeste-claro);}
+[data-theme="dark"] .user-dropdown button,[data-theme="dark"] .user-dropdown button .ud-ico,
+[data-theme="dark"] .user-dropdown button:hover .ud-ico{color:#ff7d8d;}
+
+@media (max-width:780px){
   .user-nombre{display:none;}
+  .btn-usuario::after{display:none;}
+}
+@media (prefers-reduced-motion:reduce){
+  .user-dropdown,.btn-usuario,.btn-usuario::after,.user-dropdown .ud-ico{transition:none;}
 }
 
 /* ---------- NAVEGACIÓN ---------- */
@@ -1036,6 +1124,7 @@ main.wrap{padding-top:28px;padding-bottom:60px;}
    marcan con atributos data- en vez de :nth-child fijo. */
 .clasificacion-tabla tr[data-zona="ascenso"] td.col-pos{border-left:4px solid #2e9e57;}
 .clasificacion-tabla tr[data-zona="playoff"] td.col-pos{border-left:4px solid var(--celeste);}
+.clasificacion-tabla tr[data-zona="playout"] td.col-pos{border-left:4px solid #8e5bd9;}
 .clasificacion-tabla tr[data-zona="descenso"] td.col-pos{border-left:4px solid var(--rojo);}
 .clasificacion-tabla td.col-pos{padding-left:10px;}
 .clasificacion-leyenda{display:flex;gap:16px;flex-wrap:wrap;font-size:.78rem;color:var(--texto-suave);margin:-14px 0 26px;}
@@ -1043,6 +1132,7 @@ main.wrap{padding-top:28px;padding-bottom:60px;}
 .clasificacion-leyenda i{width:10px;height:10px;border-radius:2px;display:inline-block;}
 .clasificacion-leyenda .i-ascenso{background:#2e9e57;}
 .clasificacion-leyenda .i-playoff{background:var(--celeste);}
+.clasificacion-leyenda .i-playout{background:#8e5bd9;}
 .clasificacion-leyenda .i-descenso{background:var(--rojo);}
 /* Fila de un equipo con partido "en_juego" ahora mismo: reutiliza el
    punto animado (.en-vivo-punto) ya usado en las tarjetas de partido, y
@@ -1492,7 +1582,7 @@ main.wrap{padding-top:28px;padding-bottom:60px;}
 .modal-partido-nombre-link{color:inherit;font:inherit;text-decoration:none;}
 .modal-partido-nombre-link:hover{color:var(--celeste);text-decoration:underline;}
 .modal-partido-marcador{display:flex;flex-direction:column;align-items:center;gap:12px;}
-.modal-partido-marcador span:first-child{
+.modal-partido-marcador > span:first-child{
   font-family:var(--font-tit);font-size:1.7rem;font-weight:700;color:var(--marino-texto);
   background:var(--gris-claro);padding:6px 16px;border-radius:8px;
   transition:background .25s,color .25s,box-shadow .25s;
@@ -1577,7 +1667,7 @@ main.wrap{padding-top:28px;padding-bottom:60px;}
   }
   .modal-partido-escudo{width:42px;height:42px;}
   .modal-partido-nombre{font-size:.78rem;}
-  .modal-partido-marcador span:first-child{font-size:1.4rem;padding:5px 12px;}
+  .modal-partido-marcador > span:first-child{font-size:1.4rem;padding:5px 12px;}
   .modal-evento-contenido{font-size:.78rem;padding:7px 9px;}
   .mev-icono{width:15px;height:15px;}
 }
@@ -3361,7 +3451,7 @@ body:has(.eof-modal-overlay){
   color: #fff;
 }
 .modal-partido-nombre-link:hover{ color: var(--celeste-claro); }
-.modal-partido-marcador span:first-child{
+.modal-partido-marcador > span:first-child{
   padding: 8px 20px;
   border-radius: 14px;
   background: rgba(255,255,255,.12);
@@ -3374,7 +3464,7 @@ body:has(.eof-modal-overlay){
   font-variant-numeric: tabular-nums;
 }
 /* El marcador lleva un <span> anidado: sin esto se dibujaría una caja doble */
-.modal-partido-marcador span:first-child span{
+.modal-partido-marcador > span:first-child span{
   padding: 0;
   border: 0;
   border-radius: 0;
@@ -3492,7 +3582,7 @@ body:has(.eof-modal-overlay){
   }
   .modal-partido-escudo{ width: 50px; height: 50px; }
   .modal-partido-nombre{ font-size: .84rem; }
-  .modal-partido-marcador span:first-child{ font-size: 1.5rem; padding: 6px 14px; }
+  .modal-partido-marcador > span:first-child{ font-size: 1.5rem; padding: 6px 14px; }
   .modal-partido-caja{ padding-bottom:calc(26px + env(safe-area-inset-bottom,0px)); }
 }
 /* ---------- Comparador de equipos y detalle de estadística ---------- */
@@ -3660,3 +3750,272 @@ body:has(.eof-modal-overlay){
     width:36px;height:36px;min-width:36px;min-height:36px;
   }
 }
+
+/* ---- Actualización en directo (js/en-vivo.js): destello breve en lo que acaba de aparecer o cambiar ---- */
+@keyframes eof-vivo-destello{
+  0%{box-shadow:0 0 0 0 rgba(229,57,53,.55);transform:translateY(-6px);opacity:.2;}
+  35%{box-shadow:0 0 0 6px rgba(229,57,53,.18);transform:none;opacity:1;}
+  100%{box-shadow:0 0 0 0 rgba(229,57,53,0);}
+}
+.eof-vivo-nuevo{animation:eof-vivo-destello 1.8s ease-out 1;}
+@media (prefers-reduced-motion: reduce){
+  .eof-vivo-nuevo{animation:none;}
+}
+
+/* ---------- CONTEXTO DE NOTICIA: competición · tipo + equipos ----------
+   Etiqueta que va encima del titular (ver contextoNoticiaHTML en config.js).
+   Dos líneas de texto, sin píldoras ni fondos:
+     1) COMPETICIÓN · TIPO        (logo opcional, tipo en rojo)
+     2) escudo Equipo  vs  escudo Equipo
+   Los nombres NO se recortan: si no caben, el segundo equipo baja de línea.
+   Todo el tamaño sale de dos variables por variante (--ctx-fs, --ctx-img). */
+.ctx-noticia{
+  --ctx-fs:.68rem;          /* texto de la línea de competición */
+  --ctx-fs-eq:.82rem;       /* texto de los equipos */
+  --ctx-img:18px;           /* logo y escudos */
+  --ctx-color:var(--texto-suave);
+  --ctx-color-eq:var(--marino-texto);
+  --ctx-acento:var(--rojo);
+  display:flex;flex-direction:column;align-items:flex-start;gap:4px;
+  min-width:0;max-width:100%;
+}
+.ctx-fila{display:flex;align-items:center;min-width:0;max-width:100%;}
+
+/* Línea 1: competición · tipo */
+.ctx-fila-cat{
+  gap:0 6px;flex-wrap:nowrap;
+  font-family:var(--font-tit);font-weight:600;font-size:var(--ctx-fs);line-height:1.2;
+  letter-spacing:.6px;text-transform:uppercase;color:var(--ctx-color);
+}
+.ctx-cat{display:inline-flex;align-items:center;gap:6px;min-width:0;}
+.ctx-cat-texto{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ctx-tipo{flex:0 0 auto;color:var(--ctx-acento);font-weight:700;white-space:nowrap;}
+.ctx-cat+.ctx-tipo::before{content:"·";margin-right:6px;color:var(--ctx-color);font-weight:400;}
+
+/* Línea 2: equipos (se ajusta a varias líneas, no se recorta) */
+.ctx-equipos{
+  flex-wrap:wrap;align-items:center;gap:3px 10px;
+  font-family:var(--font-text);font-weight:600;font-size:var(--ctx-fs-eq);line-height:1.25;
+  color:var(--ctx-color-eq);
+}
+.ctx-eq{display:inline-flex;align-items:center;gap:6px;min-width:0;max-width:100%;}
+.ctx-eq-nombre{min-width:0;overflow-wrap:anywhere;}
+.ctx-vs{
+  flex:0 0 auto;margin-right:2px;
+  font-family:var(--font-tit);font-weight:600;font-size:.66rem;letter-spacing:.8px;
+  text-transform:uppercase;color:var(--ctx-color);opacity:.8;
+}
+
+/* Imágenes de la etiqueta. Alta especificidad a propósito: las reglas
+   genéricas de foto (.card img, .grid-noticias .card img, :first-child,
+   :hover, shimmer de carga...) casan también con estos <img> y, sin esto,
+   los deformaban (alto 104px, aspect-ratio, order...). */
+html body .ctx-noticia .ctx-fila .ctx-eq img.ctx-escudo,
+html body .ctx-noticia .ctx-fila .ctx-cat img.ctx-logo{
+  width:var(--ctx-img) !important;height:var(--ctx-img) !important;
+  min-width:0 !important;max-width:none !important;aspect-ratio:1 / 1 !important;
+  object-fit:contain !important;flex:0 0 auto !important;order:0 !important;
+  margin:0 !important;transform:none !important;animation:none !important;transition:none !important;
+  position:static !important;inset:auto !important;z-index:auto !important;opacity:1 !important; /* .hero-principal img los saca de flujo */
+}
+html body .ctx-noticia .ctx-fila .ctx-eq img.ctx-escudo{
+  background:none !important;border-radius:0 !important;padding:0 !important;
+  filter:drop-shadow(0 1px 1.5px rgba(12,27,46,.25));
+}
+html body .ctx-noticia .ctx-fila .ctx-cat img.ctx-logo{
+  background:#fff !important;border-radius:50% !important;padding:2px !important;
+  box-shadow:0 0 0 1px rgba(12,27,46,.14);
+}
+
+/* Tarjetas: un poco de aire hasta el titular */
+.card .cbody>.ctx-noticia{margin-bottom:2px;}
+
+/* Compacta (filas, miniaturas): más pequeña y sin logo ni tipo */
+.ctx-compacta{--ctx-fs:.62rem;--ctx-fs-eq:.74rem;--ctx-img:15px;gap:2px;}
+.ctx-compacta .ctx-equipos{gap:2px 8px;}
+
+/* Hero: sobre foto oscura */
+.ctx-hero{
+  --ctx-fs:.74rem;--ctx-fs-eq:.95rem;--ctx-img:22px;
+  --ctx-color:rgba(255,255,255,.82);--ctx-color-eq:#fff;--ctx-acento:#fff;
+  gap:6px;margin-bottom:10px;text-shadow:0 1px 3px rgba(0,0,0,.55);
+}
+.ctx-hero .ctx-tipo{
+  padding:3px 8px;border-radius:999px;background:var(--rojo);color:#fff;text-shadow:none;
+  letter-spacing:.7px;
+}
+.ctx-hero .ctx-cat+.ctx-tipo::before{content:none;}
+.ctx-hero .ctx-fila-cat{gap:0 8px;}
+.ctx-hero .ctx-vs{opacity:1;}
+
+/* Cabecera de la noticia: más grande, con presencia */
+.ctx-cabecera{--ctx-fs:.78rem;--ctx-fs-eq:1rem;--ctx-img:26px;gap:8px;margin-bottom:6px;}
+.ctx-cabecera .ctx-fila-cat{gap:0 8px;}
+.ctx-cabecera .ctx-equipos{gap:6px 14px;font-weight:700;}
+.ctx-cabecera .ctx-vs{font-size:.74rem;}
+
+@media (max-width:560px){
+  .ctx-hero{--ctx-fs-eq:.88rem;--ctx-img:20px;}
+  .ctx-cabecera{--ctx-fs-eq:.95rem;--ctx-img:24px;}
+}
+
+
+/* =========================================================================
+   ETIQUETAS DE TARJETA v2: competición + tipo como "chips" legibles
+   (sustituye el texto suelto de antes, que se perdía sobre fotos y fondos).
+   Y fila de hashtags de la cabecera de la noticia.
+   ========================================================================= */
+.ctx-noticia .ctx-fila-cat{flex-wrap:wrap;gap:5px 6px;align-items:center;font-size:var(--ctx-fs);}
+.ctx-noticia .ctx-cat{
+  gap:6px;padding:4px 10px;border-radius:999px;max-width:100%;
+  background:var(--gris-claro);border:1px solid rgba(128,140,160,.28);
+  color:var(--marino-texto);line-height:1.1;
+}
+.ctx-noticia .ctx-cat.ctx-cat-con-logo{padding-left:4px;}
+.ctx-noticia .ctx-tipo{
+  display:inline-flex;align-items:center;padding:4px 10px;border-radius:999px;
+  background:var(--rojo);color:#fff;font-weight:700;line-height:1.1;letter-spacing:.7px;
+  box-shadow:0 1px 4px rgba(209,19,46,.35);
+}
+.ctx-noticia .ctx-cat+.ctx-tipo::before{content:none;}
+
+/* Tarjetas normales */
+.ctx-card{--ctx-fs:.66rem;--ctx-img:18px;gap:0;}
+.card .cbody>.ctx-noticia{margin-bottom:6px;}
+
+/* Hero: sobre la foto, cristal oscuro para que se lea con cualquier imagen */
+.ctx-hero{--ctx-fs:.72rem;--ctx-img:20px;margin-bottom:12px;text-shadow:none;}
+.ctx-hero .ctx-cat{
+  background:rgba(8,18,34,.58);border-color:rgba(255,255,255,.30);color:#fff;
+  -webkit-backdrop-filter:blur(8px) saturate(1.2);backdrop-filter:blur(8px) saturate(1.2);
+}
+.ctx-hero .ctx-tipo{padding:4px 10px;box-shadow:0 2px 8px rgba(0,0,0,.35);}
+
+/* Compacta (miniaturas del hero y filas): chips pequeños */
+.ctx-compacta{--ctx-fs:.58rem;gap:0;}
+.ctx-compacta .ctx-fila-cat{gap:4px 5px;}
+.ctx-compacta .ctx-cat{padding:3px 8px;}
+.ctx-compacta .ctx-tipo{padding:3px 8px;box-shadow:none;}
+.mini-card .ctx-noticia{margin-bottom:5px;}
+.mini-card .ctx-cat{background:rgba(255,255,255,.92);border-color:rgba(12,27,46,.12);color:#0c1b2e;}
+[data-theme="dark"] .mini-card .ctx-cat{background:var(--gris-claro);color:var(--marino-texto);border-color:rgba(128,140,160,.28);}
+
+/* Hashtags de la cabecera de la noticia */
+.hashtags-noticia{display:flex;flex-wrap:wrap;gap:6px 8px;margin:0 0 12px;}
+.hashtags-noticia .hashtag{
+  display:inline-flex;align-items:center;gap:1px;padding:5px 12px 5px 9px;border-radius:999px;
+  font-family:var(--font-tit);font-weight:600;font-size:.78rem;letter-spacing:.3px;line-height:1.1;
+  color:var(--marino-texto);text-decoration:none;
+  background:var(--gris-claro);border:1px solid rgba(128,140,160,.26);
+  transition:background .2s,color .2s,border-color .2s,transform .2s;
+}
+.hashtags-noticia .hashtag-almohadilla{color:var(--rojo);font-weight:700;margin-right:1px;}
+.hashtags-noticia .hashtag:first-child{background:var(--rojo);border-color:var(--rojo);color:#fff;}
+.hashtags-noticia .hashtag:first-child .hashtag-almohadilla{color:rgba(255,255,255,.75);}
+.hashtags-noticia .hashtag:hover,.hashtags-noticia .hashtag:focus-visible{
+  background:var(--marino);border-color:var(--marino);color:#fff;transform:translateY(-1px);
+}
+.hashtags-noticia .hashtag:hover .hashtag-almohadilla,.hashtags-noticia .hashtag:focus-visible .hashtag-almohadilla{color:rgba(255,255,255,.75);}
+@media (max-width:560px){
+  .hashtags-noticia{gap:5px 6px;}
+  .hashtags-noticia .hashtag{font-size:.72rem;padding:4px 10px 4px 8px;}
+}
+
+
+/* =========================================================================
+   ETIQUETA DISCRETA v3: CATEGORÍA — TIPO (Previa, Crónica...)
+   Texto pequeño, sin chips ni fondos, TODO del mismo color (rojo de marca;
+   rosado en modo oscuro): logo, competición, guion y tipo. El guion es una
+   rayita corta redondeada que hereda el color del texto (currentColor).
+   Aplica a todas las tarjetas (portada, listados, filas, miniaturas,
+   relacionadas...). La cabecera de la noticia sigue con sus hashtags y el
+   hero (sobre foto) usa la misma etiqueta en blanco.
+   ========================================================================= */
+.ctx-noticia:not(.ctx-cabecera){--ctx-txt:var(--rojo);}
+[data-theme="dark"] .ctx-noticia:not(.ctx-cabecera){--ctx-txt:#ff7285;}
+.ctx-noticia.ctx-hero{--ctx-txt:#fff;}
+
+.ctx-noticia:not(.ctx-cabecera) .ctx-fila-cat{
+  display:inline-flex;align-items:center;flex-wrap:nowrap;gap:0;
+  width:fit-content;max-width:100%;padding:0;background:none;border:0;border-radius:0;box-shadow:none;
+  color:var(--ctx-txt);font-size:.64rem;font-weight:700;letter-spacing:.55px;line-height:1.2;
+}
+.ctx-noticia:not(.ctx-cabecera) .ctx-fila-cat .ctx-cat,
+.ctx-noticia:not(.ctx-cabecera) .ctx-fila-cat .ctx-cat.ctx-cat-con-logo{
+  gap:6px;padding:0;background:none;border:0;border-radius:0;box-shadow:none;
+  color:inherit;-webkit-backdrop-filter:none;backdrop-filter:none;
+}
+.ctx-noticia:not(.ctx-cabecera) .ctx-fila-cat .ctx-tipo{
+  padding:0;background:none;border:0;border-radius:0;box-shadow:none;
+  color:inherit;font-weight:700;letter-spacing:inherit;
+}
+.ctx-noticia:not(.ctx-cabecera) .ctx-fila-cat .ctx-cat+.ctx-tipo::before{
+  content:"";display:inline-block;flex:none;width:11px;height:2px;border-radius:2px;
+  margin:0 8px;background:currentColor;opacity:.85;vertical-align:middle;
+}
+/* Sin categoría (solo tipo): sin rayita colgando */
+.ctx-noticia:not(.ctx-cabecera) .ctx-fila-cat .ctx-tipo:first-child::before{content:none;}
+
+/* Logos de competición en la etiqueta: más pequeños y discretos */
+.ctx-noticia:not(.ctx-cabecera){--ctx-img:15px;}
+.ctx-noticia.ctx-hero{--ctx-img:18px;}
+
+/* Hero sobre foto: texto blanco con sombra suave para leerse con cualquier imagen */
+.ctx-noticia.ctx-hero .ctx-fila-cat{font-size:.7rem;text-shadow:0 1px 4px rgba(0,0,0,.65);}
+
+/* Compacta (filas y miniaturas): un punto más pequeña */
+.ctx-noticia.ctx-compacta .ctx-fila-cat{font-size:.58rem;letter-spacing:.45px;}
+.ctx-noticia.ctx-compacta .ctx-fila-cat .ctx-cat+.ctx-tipo::before{width:9px;margin:0 6px;}
+
+/* Miniaturas del hero y tarjetas en modo claro/oscuro: nada de chips */
+.mini-card .ctx-fila-cat .ctx-cat,
+[data-theme="dark"] .mini-card .ctx-fila-cat .ctx-cat{background:none;border:0;color:inherit;}
+
+/* Hero de la portada: la etiqueta "CATEGORÍA — TIPO" va en una píldora de
+   cristal oscuro para que se lea bien sobre cualquier foto. */
+.ctx-noticia.ctx-hero .ctx-fila-cat{
+  padding:6px 13px;border-radius:999px;text-shadow:none;
+  background:linear-gradient(135deg,rgba(8,18,34,.72),rgba(8,18,34,.52));
+  border:1px solid rgba(255,255,255,.22);
+  box-shadow:0 4px 14px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.14);
+  -webkit-backdrop-filter:blur(10px) saturate(1.3);backdrop-filter:blur(10px) saturate(1.3);
+}
+.ctx-noticia.ctx-hero .ctx-fila-cat:has(.ctx-cat-con-logo){padding-left:6px;}
+.ctx-noticia.ctx-hero .ctx-fila-cat .ctx-cat+.ctx-tipo::before{background:var(--rojo);opacity:1;width:12px;}
+.ctx-noticia.ctx-hero .ctx-fila-cat .ctx-tipo{color:#ff8b9b;}
+
+
+/* ---------- Galerías destacadas (menú, crónica, modal de partido) ---------- */
+nav.main-nav a.nav-destacado{
+  display:inline-flex;align-items:center;gap:7px;
+  background:linear-gradient(135deg,var(--rojo),#a8101f);color:#fff;
+  border-radius:999px;padding-left:13px;padding-right:15px;
+  box-shadow:0 3px 12px rgba(209,19,46,.35);
+}
+nav.main-nav a.nav-destacado svg{width:15px;height:15px;flex-shrink:0;}
+nav.main-nav a.nav-destacado:hover{background:linear-gradient(135deg,#e0182f,var(--rojo));filter:brightness(1.05);}
+nav.main-nav a.nav-destacado.activo{box-shadow:0 0 0 2px rgba(255,255,255,.7),0 3px 12px rgba(209,19,46,.35);}
+
+/* Cartel de la galería dentro de la crónica: más alto y con foto protagonista. */
+.cartel-galeria-articulo{min-height:112px;padding:22px 22px;border-color:rgba(91,184,232,.45);
+  box-shadow:0 10px 28px rgba(0,0,0,.28);}
+.cartel-galeria-articulo .cartel-galeria-icono{width:56px;height:56px;background:var(--rojo);border-color:rgba(255,255,255,.55);}
+.cartel-galeria-articulo .cartel-galeria-icono svg{width:27px;height:27px;}
+.cartel-galeria-articulo .cartel-galeria-titulo{font-size:1.02rem;}
+.cartel-galeria-articulo .cartel-galeria-desc{font-size:.86rem;}
+.cartel-galeria-articulo .cartel-galeria-boton{padding:12px 18px;font-size:.78rem;background:var(--rojo);color:#fff;}
+.cartel-galeria-articulo:hover .cartel-galeria-boton{background:#fff;color:var(--rojo);}
+@media(max-width:520px){
+  .cartel-galeria-articulo{min-height:92px;padding:16px 14px;}
+  .cartel-galeria-articulo .cartel-galeria-icono{width:44px;height:44px;}
+  .cartel-galeria-articulo .cartel-galeria-icono svg{width:21px;height:21px;}
+  .cartel-galeria-articulo .cartel-galeria-titulo{font-size:.84rem;}
+}
+
+/* Botón "Ver galería de fotos" del modal de partido: llamativo, no un enlace más. */
+#modalEnlaceGaleria:not([hidden]){
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  background:var(--rojo);color:#fff;font-weight:700;border-radius:12px;padding:12px 16px;
+  box-shadow:0 6px 16px rgba(209,19,46,.3);
+}
+#modalEnlaceGaleria:not([hidden]):hover{filter:brightness(1.08);}

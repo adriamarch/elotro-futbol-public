@@ -50,11 +50,37 @@ const ICONO_SIN_CUBRIR = `<svg class="sin-cubrir-icono" viewBox="0 0 24 24" fill
 const TEXTO_SIN_CUBRIR_LARGO = "Este partido ya se ha jugado, pero todavía no se ha cubierto ni actualizado en la web. El marcador es provisional y no cuenta en la clasificación ni en las estadísticas hasta que la redacción lo confirme.";
 
 const TIPOS_EVENTO_HITO_SIN_COBERTURA = ["inicio_partido", "descanso", "fin_descanso", "fin_partido"];
-function partidoNoCubierto(estado, eventos) {
-  if (estado !== "finalizado") return false;
+// Partido que se rellena solo desde una fuente externa y al que ningún redactor
+// ha tomado (fuente "auto…" y sin autor): mientras se juega, solo tiene
+// marcador, sin minuto a minuto.
+function esPartidoAutomaticoSinRedactor(p) {
+  return !!p && String(p.fuente || "").startsWith("auto") && !p.autor_id;
+}
+// partidoNoCubierto(estado, eventos, p):
+//  - finalizado: sin ningún evento real (solo hitos), como siempre.
+//  - en_juego: sin ningún evento que demuestre que alguien lo está cubriendo.
+//    El cron del Worker pone solo tres hitos en cualquier partido en juego
+//    ("inicio_partido" al llegar la hora, y "descanso"/"fin_descanso" con
+//    var_motivo = 'automatico' al llegar al 45'), así que esos NO cuentan como
+//    cobertura, ni siquiera si el partido tiene redactor asignado. Cuenta
+//    como cobertura cualquier otro evento (gol, tarjeta, cambio...) o un
+//    descanso/reanudación pulsado a mano por un redactor (sin marca
+//    'automatico'). En cuanto aparece uno, la web vuelve a enseñar el minuto
+//    a minuto y los eventos (el modal y la página de minuto a minuto ya se
+//    refrescan solos cuando cambian los eventos).
+function esEventoSinCoberturaEnVivo(ev) {
+  if (!ev) return true;
+  if (ev.tipo === "inicio_partido") return true; // lo crea el cron o el botón de inicio: no prueba que se esté eventando
+  if ((ev.tipo === "descanso" || ev.tipo === "fin_descanso") && ev.var_motivo === "automatico") return true;
+  return false;
+}
+function partidoNoCubierto(estado, eventos, p) {
   const lista = eventos || [];
+  if (estado === "en_juego") return lista.every(esEventoSinCoberturaEnVivo);
+  if (estado !== "finalizado") return false;
   return lista.every(ev => TIPOS_EVENTO_HITO_SIN_COBERTURA.includes(ev.tipo));
 }
+const TEXTO_EN_VIVO_SIN_CUBRIR = "Este partido se está jugando, pero la redacción no lo está cubriendo minuto a minuto. Solo mostramos el marcador, que puede no estar al minuto. Si empezamos a cubrirlo, aparecerán aquí los eventos.";
 
 // ---------- Orden cronológico de partidos ----------
 // Convierte fecha_partido (que puede venir con o sin "Z"/offset, o con
@@ -168,6 +194,9 @@ function eventoAnadidoVisiblePublico(ev, p) {
 // Minuto del reloj en el que acaba el añadido anunciado (45+N o 90+N), o null.
 function limiteAnadidoPublico(p) {
   const a = anadidoAnunciadoPublico(p);
+  // "Seguir jugando": la redacción deja correr el reloj pasado el añadido
+  // anunciado (la cifra no cambia), así que no hay tope.
+  if (a && Number(p.anadido_seguir) === 1) return null;
   return a ? (a.parte === 1 ? 45 : 90) + a.minutos : null;
 }
 
@@ -179,15 +208,13 @@ function minutoEnVivoTexto(p) {
   const a = anadidoVisiblePublico(p);
   // Con el partido parado (descanso/pausa) no se enseña el "(+N)".
   const parado = p.cronometro_pausado_en !== null && p.cronometro_pausado_en !== undefined;
-  // Ya dentro del añadido se ve también cuánto queda: "(+3 · quedan 2')".
+  // Solo se enseña el añadido anunciado: "(+3)". Sin "quedan X'" ni "último
+  // min.": el reloj ya marca 45+2' / 90+3'.
   let sufijo = "";
   if (a && !parado) {
     const base = a.parte === 1 ? 45 : 90;
     const quedan = base + a.minutos - minuto;
-    sufijo = minuto < base ? ` (+${a.minutos})`
-      : quedan <= 0 ? ` (+${a.minutos} · final)`
-      : quedan === 1 ? ` (+${a.minutos} · último min.)`
-      : ` (+${a.minutos} · quedan ${quedan}')`;
+    sufijo = quedan <= 0 && minuto >= base ? ` (+${a.minutos} · final)` : ` (+${a.minutos})`;
   }
   // Pasado el 90 se muestra como 90+3', no 93'. En la 1ª parte con añadido
   // anunciado, pasado el 45 se muestra como 45+2'.
@@ -251,7 +278,7 @@ let INTERVALO_AUTOREFRESCO_PARTIDOS = null;
 function firmaEventos(eventos) {
   if (!eventos || !eventos.length) return "0";
   return eventos.length + ":" + eventos
-    .map(e => [e.id, e.minuto, e.minuto_extra, e.tipo, e.equipo, e.jugador, e.jugador_sale, e.jugador_asistencia, e.bajar_gol, e.var_motivo, e.var_decision, e.orden].join("|"))
+    .map(e => [e.id, e.minuto, e.minuto_extra, e.tipo, e.equipo, e.jugador, e.jugador_sale, e.jugador_asistencia, e.bajar_gol, e.var_motivo, e.var_decision, e.es_penalti, e.motivo_tarjeta, e.orden].join("|"))
     .join(",");
 }
 
@@ -314,7 +341,8 @@ function actualizarPartidoEnPantalla(resultado, eventos) {
     || anterior.cronometro_pausado_en !== resultado.cronometro_pausado_en
     || anterior.ajuste_cronometro_minutos !== resultado.ajuste_cronometro_minutos
     || anterior.anadido_minutos !== resultado.anadido_minutos
-    || anterior.anadido_parte !== resultado.anadido_parte;
+    || anterior.anadido_parte !== resultado.anadido_parte
+    || (anterior.anadido_seguir ?? null) !== (resultado.anadido_seguir ?? null);
 
   if (eventos !== null) {
     const firmaNueva = firmaEventos(eventos);
@@ -592,9 +620,14 @@ async function abrirModalPartido(id, { forzarRefrescoRed = true } = {}) {
   // seguir. Con el partido todavía "programado" no hay nada que ver ahí.
   const enlaceMinutoAMinuto = document.getElementById("modalEnlaceMinutoAMinuto");
   if (enlaceMinutoAMinuto) {
-    const puedeMinutoAMinuto = p.estado === "en_juego" || p.estado === "finalizado";
+    // En juego: oculto hasta saber, con los eventos ya cargados (más abajo),
+    // si el partido se está cubriendo de verdad; así no parpadea el botón.
+    const puedeMinutoAMinuto = p.estado === "finalizado";
     enlaceMinutoAMinuto.hidden = !puedeMinutoAMinuto;
-    if (puedeMinutoAMinuto) enlaceMinutoAMinuto.href = `/minuto-a-minuto?id=${p.id}`;
+    // El href se pone SIEMPRE (también en "en_juego"): antes solo se asignaba
+    // en finalizado y, si el partido pasaba a cubrirse en directo, el botón
+    // se mostraba con href="" y llevaba a index.html.
+    enlaceMinutoAMinuto.href = `/minuto-a-minuto?id=${p.id}`;
   }
 
   // Si el partido tiene una (o varias) noticia ya publicada vinculada
@@ -621,6 +654,7 @@ async function abrirModalPartido(id, { forzarRefrescoRed = true } = {}) {
   modal.setAttribute("aria-hidden", "false");
   modal.dataset.partidoIdAbierto = String(p.id);
   document.body.style.overflow = "hidden";
+  document.body.classList.add("eof-modal-abierto");
 
   const cont = document.getElementById("modalPartidoEventos");
 
@@ -652,7 +686,7 @@ async function abrirModalPartido(id, { forzarRefrescoRed = true } = {}) {
     // eventos ya en mano, la visibilidad calculada más arriba solo por
     // estado.
     if (enlaceMinutoAMinuto) {
-      const hayAlgoQueVer = p.estado === "en_juego" || (p.estado === "finalizado" && !partidoNoCubierto(p.estado, eventos));
+      const hayAlgoQueVer = (p.estado === "en_juego" || p.estado === "finalizado") && !partidoNoCubierto(p.estado, eventos, p);
       enlaceMinutoAMinuto.hidden = !hayAlgoQueVer;
     }
     // La alineación se pinta aparte, debajo del bloque de eventos: se usa
@@ -678,7 +712,11 @@ function renderEventosModal(eventos) {
   const avisoSinCubrir = esFinalizadoSinCubrir(p)
     ? `<div class="modal-sin-cubrir">${ICONO_SIN_CUBRIR}<div><strong>Pendiente de cobertura</strong><span>${escapeHtml(TEXTO_SIN_CUBRIR_LARGO)}</span></div></div>`
     : "";
-  if (p && partidoNoCubierto(p.estado, eventos)) {
+  if (p && partidoNoCubierto(p.estado, eventos, p)) {
+    if (p.estado === "en_juego") {
+      cont.innerHTML = `<div class="modal-sin-cubrir">${ICONO_SIN_CUBRIR}<div><strong>Partido sin cobertura en directo</strong><span>${escapeHtml(TEXTO_EN_VIVO_SIN_CUBRIR)}</span></div></div>`;
+      return;
+    }
     cont.innerHTML = avisoSinCubrir || `<p class="modal-partido-sin-eventos">Este partido no ha sido cubierto minuto a minuto.</p>`;
     return;
   }
@@ -706,7 +744,7 @@ function renderEventosModalPartido(eventos) {
             ${iconoEventoPublico(ev.tipo)}
             <span class="mev-texto">
               <span class="mev-minuto">${formatMinutoEventoPublico(ev)}</span>
-              ${ev.tipo === "nota" ? escapeHtml(ev.jugador || "") : escapeHtml(ETIQUETAS_EVENTO_PUBLICO[ev.tipo] || ev.tipo)}
+              ${ev.tipo === "nota" ? escapeHtml(ev.jugador || "") : escapeHtml(etiquetaEventoPublico(ev))}
             </span>
           </div>
         </div>`;
@@ -718,7 +756,7 @@ function renderEventosModalPartido(eventos) {
         ${iconoEventoPublico(ev.tipo)}
         <span class="mev-texto">
           <span class="mev-minuto">${formatMinutoEventoPublico(ev)}</span>
-          ${escapeHtml(ETIQUETAS_EVENTO_PUBLICO[ev.tipo] || ev.tipo)}${detalleJugadorEventoPublico(ev)}
+          ${escapeHtml(etiquetaEventoPublico(ev))}${detalleJugadorEventoPublico(ev)}
         </span>
       </div>
       ${ev.equipo === "local" ? `<span class="mev-hueco"></span>` : ""}
@@ -744,7 +782,7 @@ function renderTandaPenaltisModal(eventosTanda) {
               ${iconoEventoPublico(ev.tipo)}
               <span class="mev-texto">
                 <span class="mev-minuto">${formatMinutoEventoPublico(ev)}</span>
-                ${escapeHtml(ETIQUETAS_EVENTO_PUBLICO[ev.tipo] || ev.tipo)}${detalleJugadorEventoPublico(ev)}
+                ${escapeHtml(etiquetaEventoPublico(ev))}${detalleJugadorEventoPublico(ev)}
               </span>
             </div>
             ${ev.equipo === "local" ? `<span class="mev-hueco"></span>` : ""}
@@ -759,6 +797,7 @@ function cerrarModalPartido() {
   modal.setAttribute("aria-hidden", "true");
   delete modal.dataset.partidoIdAbierto;
   document.body.style.overflow = "";
+  document.body.classList.remove("eof-modal-abierto");
 }
 
 // Engancha los listeners de clic/teclado del modal a un contenedor que

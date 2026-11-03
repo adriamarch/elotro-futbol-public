@@ -42,6 +42,11 @@ document.addEventListener("click", (e) => {
 }, true);
 
 document.addEventListener("keydown", (e) => {
+  // Con el modal de "Penalti pitado" abierto, Escape solo cierra ese modal.
+  if (e.key === "Escape" && document.getElementById("mamModalPenalti")?.classList.contains("mam-abierto")) {
+    mamCerrarPenalti();
+    return;
+  }
   if (e.key === "Escape" && document.getElementById("panelMinutoAMinuto")?.classList.contains("mam-abierto")) {
     cerrarPanelMinutoAMinuto();
   }
@@ -119,6 +124,10 @@ const MAM_TIPOS_SIN_EQUIPO = [
 // porque piden un número de lanzamiento en vez de un minuto y no
 // dependen del cronómetro del partido (se tiran con el partido ya
 // "Final").
+// Tarjetas que admiten "motivo" (texto libre corto, columna motivo_tarjeta).
+const MAM_TIPOS_TARJETA = ["amarilla", "doble_amarilla", "roja"];
+const MAM_MOTIVOS_TARJETA = ["Falta", "Juego peligroso", "Protestas", "Pérdida de tiempo", "Simulación", "Mano", "Conducta antideportiva", "Entrada por detrás", "Celebración"];
+
 const MAM_TIPOS_TANDA_PENALTIS = ["penalti_marcado", "penalti_fallado_tanda"];
 
 // Clave de sessionStorage donde se guarda qué partido tiene abierto el
@@ -168,6 +177,7 @@ async function abrirPanelMinutoAMinuto(resultadoId) {
       return EOF.toast("Solo puedes acceder al panel de Minuto a Minuto el día del partido.", "error");
     }
     renderPanelMinutoAMinuto();
+    mamPintarAvisosPush();
     await recargarEventosMinutoAMinuto();
     document.getElementById("panelMinutoAMinuto").classList.add("mam-abierto");
     document.body.style.overflow = "hidden";
@@ -248,6 +258,9 @@ function mamAnadidoAnunciado(parte) {
   if (!r) return 0;
   const n = Number(r.anadido_minutos);
   if (!Number.isInteger(n) || n <= 0 || n > 15) return 0;
+  // Un añadido de la 1ª parte deja de valer en cuanto empieza la 2ª (evento fin_descanso):
+  // si el panel aún guarda el dato viejo, no debe frenar el reloj en 45+N ni enseñar el "+N".
+  if (parte === 1 && Array.isArray(MAM_EVENTOS) && MAM_EVENTOS.some((ev) => ev.tipo === "fin_descanso")) return 0;
   return Number(r.anadido_parte) === parte ? n : 0;
 }
 
@@ -266,9 +279,18 @@ function mamParteDelAnadido() {
   return parte === 1 || parte === 2 ? parte : (mamEnSegundaParte() ? 2 : 1);
 }
 
+// "Seguir jugando": el redactor ha decidido que el reloj siga pasado el añadido
+// anunciado SIN cambiar la cifra (+6 se queda en +6). Con eso puesto no hay tope
+// ni cierre automático: el descanso / el final los pita él a mano.
+function mamSigueTrasAnadido() {
+  const r = MAM_RESULTADO;
+  return !!(r && Number(r.anadido_seguir) === 1 && mamAnadidoAnunciado(mamParteDelAnadido()) > 0);
+}
+
 function mamLimiteAnadido() {
   const parte = mamParteDelAnadido();
   const n = mamAnadidoAnunciado(parte);
+  if (n > 0 && mamSigueTrasAnadido()) return null;
   return n > 0 ? (parte === 2 ? 90 : 45) + n : null;
 }
 
@@ -282,6 +304,22 @@ function mamMinutoBruto() {
     return r.cronometro_pausado_en;
   }
   if (!r.inicio_cronometro_at) return 0;
+  const inicio = mamInicioCronometroMs();
+  if (inicio === null) return 0;
+  // Si se ha corregido a mano el minuto mientras el cronómetro estaba
+  // corriendo (ver mamEditarMinuto/ajustar_minuto en el backend), el
+  // desplazamiento queda guardado en ajuste_cronometro_minutos y hay
+  // que sumarlo aquí; si no, el reloj seguía mostrando el minuto de
+  // antes de la corrección hasta que se reiniciaba el cronómetro.
+  const ajuste = Number.isInteger(r.ajuste_cronometro_minutos) ? r.ajuste_cronometro_minutos : 0;
+  return Math.max(0, Math.floor((Date.now() - inicio) / 60000) + ajuste);
+}
+
+// Instante (ms) en que arrancó el cronómetro, o null si falta o no se puede
+// leer. Lo usan el minuto del reloj y la cuenta atrás del fin del añadido.
+function mamInicioCronometroMs() {
+  const r = MAM_RESULTADO;
+  if (!r || !r.inicio_cronometro_at) return null;
   // Normaliza el formato antes de parsear: el backend manda
   // "YYYY-MM-DD HH:MM:SS" (sin T ni Z), pero por robustez aceptamos
   // también variantes que ya traigan "T" y/o zona horaria, en vez de
@@ -295,15 +333,28 @@ function mamMinutoBruto() {
   const inicio = new Date(raw).getTime();
   if (isNaN(inicio)) {
     console.error("minutoEnVivo: no se ha podido parsear inicio_cronometro_at =", r.inicio_cronometro_at);
-    return 0;
+    return null;
   }
-  // Si se ha corregido a mano el minuto mientras el cronómetro estaba
-  // corriendo (ver mamEditarMinuto/ajustar_minuto en el backend), el
-  // desplazamiento queda guardado en ajuste_cronometro_minutos y hay
-  // que sumarlo aquí; si no, el reloj seguía mostrando el minuto de
-  // antes de la corrección hasta que se reiniciaba el cronómetro.
+  return inicio;
+}
+
+// Margen (en minutos) que da el servidor tras agotarse el añadido anunciado
+// antes de poner solo el descanso / el final. Debe coincidir con
+// MINUTOS_GRACIA_FIN_ANADIDO del worker. Durante ese minuto el panel enseña el
+// aviso con cuenta atrás (mamGestionarFinAnadido).
+const MAM_GRACIA_FIN_ANADIDO_MIN = 1;
+
+// Milisegundos que faltan para que el servidor cierre el añadido (el reloj
+// real llega a límite + margen), o null si no hay añadido que cerrar. Sale del
+// propio reloj y no de un temporizador local: si se recarga la página dentro
+// del margen, el aviso reaparece con el tiempo que de verdad queda.
+function mamMsParaCierreAnadido() {
+  const r = MAM_RESULTADO;
+  const limite = mamLimiteAnadido();
+  const inicio = mamInicioCronometroMs();
+  if (!r || limite === null || inicio === null) return null;
   const ajuste = Number.isInteger(r.ajuste_cronometro_minutos) ? r.ajuste_cronometro_minutos : 0;
-  return Math.max(0, Math.floor((Date.now() - inicio) / 60000) + ajuste);
+  return inicio + (limite + MAM_GRACIA_FIN_ANADIDO_MIN - ajuste) * 60000 - Date.now();
 }
 
 function minutoEnVivo() {
@@ -316,13 +367,15 @@ function minutoEnVivo() {
 }
 
 // ---------- Fin automático del añadido ----------
-// El servidor (cron) pone el descanso en 45+N y el final en 90+N, pero solo
-// pasa una vez por minuto y el panel solo se entera cada 15 s: el reloj se
-// quedaba "congelado" en el límite hasta 75 s sin que nada se parase. Ahora,
-// en cuanto el reloj de ESTE panel llega al límite, se avisa al servidor
-// (acción "cerrar_anadido", que vuelve a comprobar el reloj real y es
-// idempotente, igual que el cron) y se repinta todo al momento. Si el aviso
-// falla (red) se reintenta cada 3 s; el cron sigue siendo la red de seguridad.
+// Al agotarse el añadido anunciado (45+N / 90+N) NO se cierra al instante: el
+// panel abre un aviso con cuenta atrás de 1 minuto (mamGestionarFinAnadido) en
+// el que el redactor puede seguir jugando (+1') o pitar ya. Si no hace nada,
+// al acabar la cuenta se avisa al servidor (acción "cerrar_anadido", que
+// vuelve a comprobar el reloj real y es idempotente, igual que el cron, y que
+// también espera ese margen) y se repinta todo al momento. El servidor (cron)
+// pasa solo una vez por minuto y el panel solo se entera cada 15 s, así que no
+// se espera a ellos. Si el aviso falla (red) se reintenta cada 3 s; el cron
+// sigue siendo la red de seguridad.
 let MAM_CIERRE_ANADIDO_EN_CURSO = false;
 let MAM_CIERRE_ANADIDO_ULTIMO = 0;
 let MAM_CIERRE_ANADIDO_ERROR_AVISADO = "";
@@ -339,7 +392,7 @@ function mamAnadidoAgotado() {
   return limite !== null && mamMinutoBruto() >= limite;
 }
 
-async function mamComprobarFinAnadido() {
+async function mamComprobarFinAnadido(forzar) {
   if (MAM_CIERRE_ANADIDO_EN_CURSO || !mamAnadidoAgotado()) return;
   if (Date.now() - MAM_CIERRE_ANADIDO_ULTIMO < MAM_CIERRE_ANADIDO_REINTENTO_MS) return;
   MAM_CIERRE_ANADIDO_ULTIMO = Date.now();
@@ -348,7 +401,7 @@ async function mamComprobarFinAnadido() {
   const parte = mamParteDelAnadido();
   const n = mamAnadidoAnunciado(parte);
   try {
-    const { resultado } = await apiFetch(`/api/results/${id}/cronometro`, { method: "POST", body: JSON.stringify({ accion: "cerrar_anadido" }) });
+    const { resultado } = await apiFetch(`/api/results/${id}/cronometro`, { method: "POST", body: JSON.stringify(forzar ? { accion: "cerrar_anadido", forzar: true } : { accion: "cerrar_anadido" }) });
     if (!MAM_RESULTADO || MAM_RESULTADO.id !== id) return;
     if (resultado) MAM_RESULTADO = resultado;
     await recargarResultadoYEventos();
@@ -375,6 +428,111 @@ async function mamComprobarFinAnadido() {
     }
   }
   finally { MAM_CIERRE_ANADIDO_EN_CURSO = false; }
+}
+
+// ---------- Aviso de fin de añadido (modal con cuenta atrás) ----------
+// Se llama cada segundo desde actualizarRelojEnPantalla. Mientras el añadido
+// está agotado y queda margen, enseña el modal con los segundos que faltan; al
+// llegar a 0 (o si se pidió "Pitar ya") cierra la parte llamando al servidor;
+// y si el añadido deja de estar agotado (se prolongó, se pitó a mano, otro
+// panel lo cerró...) lo esconde.
+let MAM_FIN_ANADIDO_PROLONGANDO = false;
+let MAM_FIN_ANADIDO_FORZADO = false;
+
+function mamGestionarFinAnadido(agotado) {
+  if (!agotado) {
+    MAM_FIN_ANADIDO_FORZADO = false;
+    mamCerrarAvisoFinAnadido();
+    return;
+  }
+  if (MAM_FIN_ANADIDO_PROLONGANDO) return;
+  const resto = mamMsParaCierreAnadido();
+  if (MAM_FIN_ANADIDO_FORZADO || resto === null || resto <= 0) {
+    mamCerrarAvisoFinAnadido();
+    mamComprobarFinAnadido(MAM_FIN_ANADIDO_FORZADO);
+    return;
+  }
+  mamPintarAvisoFinAnadido(resto);
+}
+
+function mamCerrarAvisoFinAnadido() {
+  document.getElementById("mamModalFinAnadido")?.classList.remove("mam-abierto");
+}
+
+function mamPintarAvisoFinAnadido(resto) {
+  const modal = document.getElementById("mamModalFinAnadido");
+  if (!modal) return;
+  const parte = mamParteDelAnadido();
+  const n = mamAnadidoAnunciado(parte);
+  const base = parte === 2 ? 90 : 45;
+  const total = MAM_GRACIA_FIN_ANADIDO_MIN * 60000;
+  const seg = Math.max(0, Math.ceil(Math.min(resto, total) / 1000));
+  const poner = (id, txt) => { const el = document.getElementById(id); if (el && el.textContent !== txt) el.textContent = txt; };
+  const que = parte === 1 ? "el descanso" : "el final del partido";
+  poner("mamFinParte", `${parte}ª parte`);
+  poner("mamFinSub", `Se han cumplido los ${base}+${n}' de añadido`);
+  poner("mamFinCuenta", `${Math.floor(seg / 60)}:${String(seg % 60).padStart(2, "0")}`);
+  poner("mamFinSeguir", "Seguir jugando");
+  poner("mamFinCerrar", parte === 1 ? "Pitar descanso ya" : "Pitar final ya");
+  const info = document.getElementById("mamFinInfo");
+  const html = `<span class="mam-an-info-icono">⏱</span><span>Si no haces nada, ${que} se pondrá solo en el <b>${base}+${n}'</b> al acabar la cuenta atrás. ¿Sigue el juego? Pulsa <b>Seguir jugando</b>: el reloj continúa, el añadido anunciado se queda en <b>+${n}'</b> y ${parte === 1 ? "el descanso" : "el final"} lo pitas tú.</span>`;
+  if (info && info.dataset.html !== html) { info.innerHTML = html; info.dataset.html = html; }
+  const barra = document.getElementById("mamFinBarra");
+  if (barra) barra.style.width = `${Math.max(0, Math.min(100, (resto / total) * 100))}%`;
+  document.getElementById("mamFinCuenta")?.classList.toggle("mam-fin-urgente", seg <= 10);
+  if (!modal.classList.contains("mam-abierto")) {
+    modal.classList.add("mam-abierto");
+    // El foco va al botón principal, salvo que el redactor esté escribiendo
+    // (un evento, un nombre...): así una pulsación de espacio o intro no
+    // activa "Seguir jugando" sin querer.
+    const activo = document.activeElement;
+    const escribiendo = activo && /^(INPUT|TEXTAREA|SELECT)$/.test(activo.tagName);
+    if (!escribiendo) setTimeout(() => document.getElementById("mamFinSeguir")?.focus({ preventScroll: true }), 60);
+  }
+}
+
+// "Seguir jugando": el reloj sigue corriendo y el añadido anunciado NO cambia
+// (+6 se queda en +6). No vuelve a salir el aviso ni se cierra solo: el
+// descanso / el final se pitan a mano.
+async function mamProlongarAnadido() {
+  if (!MAM_RESULTADO || MAM_FIN_ANADIDO_PROLONGANDO) return;
+  const id = MAM_RESULTADO.id;
+  MAM_FIN_ANADIDO_PROLONGANDO = true;
+  const boton = document.getElementById("mamFinSeguir");
+  if (boton) boton.disabled = true;
+  try {
+    const { resultado } = await apiFetch(`/api/results/${id}/cronometro`, { method: "POST", body: JSON.stringify({ accion: "prolongar_anadido" }) });
+    if (!MAM_RESULTADO || MAM_RESULTADO.id !== id) return;
+    if (resultado) MAM_RESULTADO = resultado;
+    mamCerrarAvisoFinAnadido();
+    await recargarResultadoYEventos();
+    if (!MAM_RESULTADO || MAM_RESULTADO.id !== id) return;
+    renderBotoneraMinutoAMinuto();
+    renderTimelineMinutoAMinuto();
+    actualizarRelojEnPantalla();
+    const parte = mamParteDelAnadido();
+    EOF.toast(`El reloj sigue corriendo. El añadido anunciado se queda en +${mamAnadidoAnunciado(parte)}'; pita tú ${parte === 1 ? "el descanso" : "el final"}.`, "exito");
+  } catch (err) {
+    mamCerrarAvisoFinAnadido();
+    EOF.toast("No se ha podido seguir: " + (err?.message || "error de red"), "error");
+    // Puede que el servidor ya lo haya cerrado: se pone el panel al día.
+    try {
+      await recargarResultadoYEventos();
+      renderBotoneraMinutoAMinuto();
+      renderTimelineMinutoAMinuto();
+      actualizarRelojEnPantalla();
+    } catch { /* se reintenta en el siguiente sondeo */ }
+  } finally {
+    MAM_FIN_ANADIDO_PROLONGANDO = false;
+    if (boton) boton.disabled = false;
+  }
+}
+
+// "Pitar ya": cierra la parte sin esperar a que acabe la cuenta atrás.
+function mamCerrarAnadidoAhora() {
+  MAM_FIN_ANADIDO_FORZADO = true;
+  mamCerrarAvisoFinAnadido();
+  mamComprobarFinAnadido(true);
 }
 
 // Los navegadores limitan (throttle) los setInterval de las pestañas en
@@ -417,7 +575,7 @@ async function mamSincronizarConServidor() {
   try {
     const { resultado } = await apiFetch(`/api/results/${id}`);
     if (!resultado || !MAM_RESULTADO || MAM_RESULTADO.id !== id) return;
-    const campos = ["cronometro_pausado_en", "inicio_cronometro_at", "ajuste_cronometro_minutos", "estado", "anadido_minutos", "anadido_parte"];
+    const campos = ["cronometro_pausado_en", "inicio_cronometro_at", "ajuste_cronometro_minutos", "estado", "anadido_minutos", "anadido_parte", "anadido_seguir"];
     const cambio = campos.some((k) => (MAM_RESULTADO[k] ?? null) !== (resultado[k] ?? null));
     if (!cambio) return;
     await recargarResultadoYEventos();
@@ -527,7 +685,7 @@ function actualizarRelojEnPantalla() {
   const agotado = Boolean(corriendo) && !finalizado && !anulado && mamAnadidoAgotado();
   el.classList.toggle("mam-reloj-corriendo", Boolean(corriendo) && !finalizado && !anulado && !agotado);
   el.classList.toggle("mam-reloj-agotado", agotado);
-  if (agotado) mamComprobarFinAnadido();
+  mamGestionarFinAnadido(agotado);
   mamActualizarEventoAnadido();
   // El botón de "Descanso" pasa de deshabilitado a habilitado justo al
   // llegar al minuto 40, sin esperar a que se repinte la botonera por
@@ -619,8 +777,15 @@ async function mamEditarMinuto() {
     return EOF.toast("El cronómetro todavía no se ha iniciado.", "error");
   }
   const actual = minutoEnVivo();
-  const texto = await EOF.preguntar("Corregir el minuto del cronómetro a:", String(actual), { placeholder: "Ej. 23" });
-  if (texto === null) return; // cancelado
+  let texto;
+  if (window.EOFModalesPartido) {
+    const dato = await EOFModalesPartido.pedirMinuto(MAM_RESULTADO, actual); // modal bonito (modales-partido.js)
+    if (!dato) return; // cancelado
+    texto = String(dato.minuto);
+  } else {
+    texto = await EOF.preguntar("Corregir el minuto del cronómetro a:", String(actual), { placeholder: "Ej. 23" });
+    if (texto === null) return; // cancelado
+  }
   const minuto = parseInt(texto, 10);
   if (isNaN(minuto) || minuto < 0 || minuto > 130) {
     return EOF.toast("El minuto debe ser un número entre 0 y 130.", "error");
@@ -682,7 +847,14 @@ async function mamReanudarTrasHidratacion() {
 async function mamMarcarRetrasado() {
   if (!MAM_RESULTADO) return;
   const actual = MAM_RESULTADO.fecha_partido ? MAM_RESULTADO.fecha_partido.slice(11, 16) : "";
-  const nuevaHora = await EOF.preguntar("Nueva hora prevista de inicio (HH:MM):", actual, { placeholder: "Ej. 17:30" });
+  let nuevaHora;
+  if (window.EOFModalesPartido) {
+    const dato = await EOFModalesPartido.pedirHora(MAM_RESULTADO); // modal bonito (modales-partido.js)
+    if (!dato) return; // cancelado
+    nuevaHora = dato.hora;
+  } else {
+    nuevaHora = await EOF.preguntar("Nueva hora prevista de inicio (HH:MM):", actual, { placeholder: "Ej. 17:30" });
+  }
   if (nuevaHora === null) return; // cancelado
   if (!/^\d{1,2}:\d{2}$/.test(nuevaHora.trim())) {
     return EOF.toast("Formato de hora no válido. Usa HH:MM (ej. 17:30).", "error");
@@ -705,7 +877,10 @@ async function mamMarcarRetrasado() {
 
 async function mamMarcarAnulado() {
   if (!MAM_RESULTADO) return;
-  if (!(await EOF.confirmar("¿Anular este partido? Se marcará como \"Anulado\" y el cronómetro se detendrá.", { peligroso: true, textoConfirmar: "Anular" }))) return;
+  const confirmadoAnular = window.EOFModalesPartido
+    ? await EOFModalesPartido.confirmarAnular(MAM_RESULTADO) // modal bonito (modales-partido.js)
+    : await EOF.confirmar("¿Anular este partido? Se marcará como \"Anulado\" y el cronómetro se detendrá.", { peligroso: true, textoConfirmar: "Anular" });
+  if (!confirmadoAnular) return;
   const minuto = minutoEnVivo();
   try {
     await mamPausarCronometro(minuto);
@@ -777,6 +952,9 @@ async function registrarEventoMinutoAMinuto(tipo, equipo, opciones = {}) {
     bajar_gol: opciones.bajarGol === true,
     var_motivo: opciones.varMotivo || null,
     var_decision: opciones.varDecision || null,
+    motivo_tarjeta: MAM_TIPOS_TARJETA.includes(tipo) ? (opciones.motivoTarjeta || null) : null,
+    // Solo para tipo "gol": el gol fue de penalti (ver mamAbrirPenalti).
+    es_penalti: tipo === "gol" && opciones.esPenalti === true,
     // Permite forzar el desempate dentro de un mismo minuto/minuto_extra
     // (ver ORDER BY minuto, minuto_extra, orden en el backend). Se usa,
     // por ejemplo, para que "Comienza la 2ª parte" quede siempre después
@@ -787,7 +965,7 @@ async function registrarEventoMinutoAMinuto(tipo, equipo, opciones = {}) {
     await apiFetch(`/api/results/${MAM_RESULTADO.id}/eventos`, { method: "POST", body: JSON.stringify(body) });
     await recargarResultadoYEventos();
     renderBotoneraMinutoAMinuto();
-    EOF.toast(`${MAM_ETIQUETAS[tipo] || tipo} registrado (${minutoExtra ? `${minuto}+${minutoExtra}` : minuto}')`, "exito");
+    EOF.toast(`${mamEtiquetaTipo(tipo, opciones.esPenalti === true)} registrado (${minutoExtra ? `${minuto}+${minutoExtra}` : minuto}')`, "exito");
   } catch (err) {
     EOF.toast("Error registrando el evento: " + err.message, "error");
   }
@@ -805,7 +983,43 @@ async function recargarResultadoYEventos() {
     const { resultado } = await apiFetch(`/api/results/${MAM_RESULTADO.id}`);
     if (resultado) MAM_RESULTADO = resultado;
   } catch { /* si falla, seguimos con los datos que ya teníamos en memoria */ }
+  mamPintarAvisosPush();
   await recargarEventosMinutoAMinuto();
+}
+
+// ---------- Interruptor de notificaciones push ----------
+// results.avisos_push: 0 = este partido no manda notificaciones; NULL/1 = sí (por defecto).
+// Lo respeta el servidor en TODOS los avisos del partido (goles, descanso, final, VAR,
+// correcciones y añadido, también los automáticos), no solo los de este panel.
+function mamAvisosPushActivos() {
+  const v = MAM_RESULTADO ? MAM_RESULTADO.avisos_push : null;
+  return !(v === 0 || v === "0" || v === false);
+}
+
+function mamPintarAvisosPush() {
+  const input = document.getElementById("mamAvisosPush");
+  if (!input || !MAM_RESULTADO) return;
+  const on = mamAvisosPushActivos();
+  input.checked = on;
+  const sub = document.getElementById("mamAvisosPushSub");
+  if (sub) sub.textContent = on ? "Se avisará a los suscriptores" : "Este partido no avisará a nadie";
+  document.getElementById("mamPush")?.classList.toggle("mam-push-off", !on);
+}
+
+async function mamCambiarAvisosPush(input) {
+  if (!MAM_RESULTADO) return;
+  const activos = input.checked;
+  input.disabled = true;
+  try {
+    await apiFetch(`/api/results/${MAM_RESULTADO.id}/avisos-push`, { method: "POST", body: JSON.stringify({ activos }) });
+    MAM_RESULTADO.avisos_push = activos ? 1 : 0;
+    mamPintarAvisosPush();
+    EOF.toast(activos ? "Notificaciones push activadas para este partido" : "Notificaciones push desactivadas: no se avisará a los suscriptores", "exito");
+  } catch (err) {
+    input.checked = !activos;
+    EOF.toast("No se pudo cambiar el aviso: " + err.message, "error");
+  }
+  input.disabled = false;
 }
 
 async function mamEliminarEvento(eventoId) {
@@ -835,7 +1049,72 @@ let MAM_EVENTO_EDITANDO_ID = null;
 // dentro del mismo minuto (ver mamComenzarSegundaParte).
 let MAM_EVENTO_EDITANDO_ORDEN = 0;
 
-function mamAbrirFormularioEvento(tipo, equipo) {
+// Etiqueta de un tipo de evento. El gol de penalti es un "gol" con
+// es_penalti = 1 (cuenta como cualquier otro gol en marcador y
+// goleadores) pero se rotula aparte.
+function mamEtiquetaTipo(tipo, esPenalti) {
+  if (tipo === "gol" && esPenalti) return "Gol de penalti";
+  return MAM_ETIQUETAS[tipo] || tipo;
+}
+
+// ---------- Penalti pitado ----------
+// Botón "Penalti pitado" de cada equipo (el equipo es el que lo lanza):
+// abre un modal con dos opciones grandes, Metido / Fallado, y al elegir
+// una se abre el formulario de siempre (minuto + jugador) ya preparado:
+//   · Metido  -> evento "gol" con es_penalti = 1 (suma al marcador).
+//   · Fallado -> evento "penalti_fallado" (no toca el marcador).
+// La tanda de penaltis de un partido eliminatorio es otra cosa y tiene
+// su propio botón (mamAbrirTandaPenaltis).
+let MAM_PENALTI_EQUIPO = null;
+
+function mamAbrirPenalti(equipo) {
+  if (!MAM_RESULTADO) return;
+  MAM_PENALTI_EQUIPO = equipo;
+  document.getElementById("mamPenaltiEquipo").textContent =
+    equipo === "local" ? MAM_RESULTADO.equipo_local : MAM_RESULTADO.equipo_visitante;
+  document.getElementById("mamModalPenalti").classList.add("mam-abierto");
+}
+
+function mamCerrarPenalti() {
+  MAM_PENALTI_EQUIPO = null;
+  document.getElementById("mamModalPenalti")?.classList.remove("mam-abierto");
+}
+
+function mamResolverPenalti(resultado) {
+  const equipo = MAM_PENALTI_EQUIPO;
+  mamCerrarPenalti();
+  if (!equipo) return;
+  if (resultado === "metido") mamAbrirFormularioEvento("gol", equipo, { penalti: true });
+  else mamAbrirFormularioEvento("penalti_fallado", equipo);
+}
+
+// Casilla "Gol de penalti" del formulario (solo para tipo "gol"). La
+// deja marcada o no según el origen (botón Penalti pitado / botón Gol /
+// evento que se edita) y ajusta lo que depende de ella: un gol de
+// penalti no lleva asistencia, y el jugador pasa a ser el lanzador.
+function mamPrepararFilaPenalti(tipo, activo) {
+  const fila = document.getElementById("mamFilaEsPenalti");
+  const casilla = document.getElementById("mamFormEsPenalti");
+  if (!fila || !casilla) return;
+  fila.style.display = tipo === "gol" ? "flex" : "none";
+  casilla.checked = tipo === "gol" && activo === true;
+  mamActualizarFormPenalti();
+}
+
+function mamActualizarFormPenalti() {
+  const tipo = document.getElementById("mamFormTipo").value;
+  const esPenalti = tipo === "gol" && document.getElementById("mamFormEsPenalti").checked;
+  const conAsistencia = (tipo === "gol" && !esPenalti) || tipo === "gol_var";
+  document.getElementById("mamFilaAsistencia").style.display = conAsistencia ? "flex" : "none";
+  if (!conAsistencia) document.getElementById("mamFormAsistencia").value = "";
+  const labelJugador = document.getElementById("mamFormLabelJugador");
+  if (labelJugador) {
+    labelJugador.textContent = (esPenalti || tipo === "penalti_fallado") ? "Lanzador"
+      : (tipo === "var" ? "Jugador implicado" : "Jugador");
+  }
+}
+
+function mamAbrirFormularioEvento(tipo, equipo, opciones = {}) {
   MAM_EVENTO_EDITANDO_ID = null;
   MAM_EVENTO_EDITANDO_ORDEN = 0;
   const esCambio = tipo === "cambio";
@@ -847,7 +1126,7 @@ function mamAbrirFormularioEvento(tipo, equipo) {
   const esGolConAsistencia = tipo === "gol" || tipo === "gol_var";
   document.getElementById("mamFormTipo").value = tipo;
   document.getElementById("mamFormEquipo").value = equipo || "";
-  document.getElementById("mamFormTitulo").textContent = `${MAM_ETIQUETAS[tipo] || tipo}${equipo ? " — " + (equipo === "local" ? MAM_RESULTADO.equipo_local : MAM_RESULTADO.equipo_visitante) : ""}`;
+  document.getElementById("mamFormTitulo").textContent = `${mamEtiquetaTipo(tipo, opciones.penalti === true)}${equipo ? " — " + (equipo === "local" ? MAM_RESULTADO.equipo_local : MAM_RESULTADO.equipo_visitante) : ""}`;
   const minutoReloj = dividirMinutoConAñadido(minutoEnVivo(), null, mamEnSegundaParte());
   document.getElementById("mamFormMinuto").value = minutoReloj.minuto;
   document.getElementById("mamFormMinutoExtra").value = minutoReloj.minutoExtra ?? "";
@@ -873,8 +1152,35 @@ function mamAbrirFormularioEvento(tipo, equipo) {
   document.getElementById("mamFilaBajarGol").style.display = esGolVar ? "flex" : "none";
   document.getElementById("mamFormBajarGol").checked = false;
   mamPrepararFilaVar(tipo, null);
+  mamPrepararFilaIncidencia(tipo, null);
+  mamPrepararFilaPenalti(tipo, opciones.penalti === true);
   document.querySelector("#mamFormEvento .btn-primari").textContent = "Guardar";
   document.getElementById("mamModalEvento").classList.add("mam-abierto");
+}
+
+// "Otra incidencia" no es de un jugador: el texto libre se guarda en
+// "jugador" (así lo lee la web pública), pero el formulario lo pedía como
+// "Nombre del jugador (opcional)" con un campo de dorsal, y al editar el
+// texto se partía por " · ". Aquí se convierte en una descripción
+// obligatoria, sin dorsal, y se respeta el texto tal cual.
+function mamPrepararFilaIncidencia(tipo, ev) {
+  const esOtro = tipo === "otro";
+  // Motivo de la tarjeta: solo en amarilla / doble amarilla / roja.
+  const filaMotivo = document.getElementById("mamFilaMotivo");
+  if (filaMotivo) {
+    filaMotivo.style.display = MAM_TIPOS_TARJETA.includes(tipo) ? "flex" : "none";
+    document.getElementById("mamFormMotivo").value = (ev && ev.motivo_tarjeta) || "";
+  }
+  const inp = document.getElementById("mamFormJugador");
+  const divDorsal = document.getElementById("mamDivDorsal");
+  if (divDorsal) divDorsal.style.display = esOtro ? "none" : "";
+  inp.required = esOtro;
+  if (!esOtro) return;
+  document.getElementById("mamFormDorsal").value = "";
+  const label = document.getElementById("mamFormLabelJugador");
+  if (label) label.textContent = "Descripción de la incidencia *";
+  inp.placeholder = "Ej. Lesión de un jugador, partido parado por la grada...";
+  if (ev) inp.value = ev.jugador || "";
 }
 
 // Muestra u oculta los campos propios de la "Revisión VAR" (equipo,
@@ -920,7 +1226,7 @@ function mamAbrirFormularioEdicionEvento(ev) {
   const sinEquipo = MAM_TIPOS_SIN_EQUIPO.includes(tipo);
   document.getElementById("mamFormTipo").value = tipo;
   document.getElementById("mamFormEquipo").value = sinEquipo ? "" : (ev.equipo || "");
-  document.getElementById("mamFormTitulo").textContent = `Editar: ${MAM_ETIQUETAS[tipo] || tipo}${!sinEquipo && ev.equipo ? " — " + (ev.equipo === "local" ? MAM_RESULTADO.equipo_local : MAM_RESULTADO.equipo_visitante) : ""}`;
+  document.getElementById("mamFormTitulo").textContent = `Editar: ${mamEtiquetaTipo(tipo, !!ev.es_penalti)}${!sinEquipo && ev.equipo ? " — " + (ev.equipo === "local" ? MAM_RESULTADO.equipo_local : MAM_RESULTADO.equipo_visitante) : ""}`;
   document.getElementById("mamFormMinuto").value = ev.minuto ?? 0;
   document.getElementById("mamFormMinutoExtra").value = ev.minuto_extra ?? "";
   const { dorsal, nombre } = separarDorsalYJugadorMAM(esCambio ? null : ev.jugador);
@@ -937,6 +1243,8 @@ function mamAbrirFormularioEdicionEvento(ev) {
   document.getElementById("mamFilaBajarGol").style.display = esGolVar ? "flex" : "none";
   document.getElementById("mamFormBajarGol").checked = !!ev.bajar_gol;
   mamPrepararFilaVar(tipo, ev);
+  mamPrepararFilaIncidencia(tipo, ev);
+  mamPrepararFilaPenalti(tipo, !!ev.es_penalti);
   document.querySelector("#mamFormEvento .btn-primari").textContent = "Guardar cambios";
   document.getElementById("mamModalEvento").classList.add("mam-abierto");
 }
@@ -994,22 +1302,27 @@ async function mamGuardarFormularioEvento(e) {
   const jugadorSale = tipo === "cambio"
     ? combinarDorsalYJugador(document.getElementById("mamFormDorsalSale").value, document.getElementById("mamFormJugadorSale").value)
     : null;
-  const jugadorAsistencia = (tipo === "gol" || tipo === "gol_var")
+  // Gol de penalti: casilla del formulario (solo existe para tipo "gol").
+  // Un gol de penalti no lleva asistencia.
+  const esPenalti = tipo === "gol" && document.getElementById("mamFormEsPenalti").checked;
+  const jugadorAsistencia = ((tipo === "gol" && !esPenalti) || tipo === "gol_var")
     ? (document.getElementById("mamFormAsistencia").value.trim() || null)
     : null;
   // Solo relevante para "gol_var": si estaba marcado, el backend resta 1
   // gol al marcador del equipo; si no, el evento se registra sin tocar
   // el marcador (ver recalcularMarcadorDesdeEventos en el worker).
   const bajarGol = tipo === "gol_var" ? document.getElementById("mamFormBajarGol").checked : false;
+  if (tipo === "otro" && !jugador) return EOF.toast("Describe la incidencia", "error");
+  const motivoTarjeta = MAM_TIPOS_TARJETA.includes(tipo) ? (document.getElementById("mamFormMotivo").value.trim() || null) : null;
   const eventoIdEditando = MAM_EVENTO_EDITANDO_ID;
   const ordenEditando = MAM_EVENTO_EDITANDO_ORDEN;
   mamCerrarFormularioEvento();
   if (eventoIdEditando) {
     await mamActualizarEvento(eventoIdEditando, tipo, equipo, {
-      minutoForzado: minuto, minutoExtraForzado: minutoExtra, jugador, jugadorSale, jugadorAsistencia, bajarGol, varMotivo, varDecision, orden: ordenEditando,
+      minutoForzado: minuto, minutoExtraForzado: minutoExtra, jugador, jugadorSale, jugadorAsistencia, bajarGol, esPenalti, varMotivo, varDecision, motivoTarjeta, orden: ordenEditando,
     });
   } else {
-    await registrarEventoMinutoAMinuto(tipo, equipo, { minutoManual: true, minutoForzado: minuto, minutoExtraForzado: minutoExtra, jugador, jugadorSale, jugadorAsistencia, bajarGol, varMotivo, varDecision });
+    await registrarEventoMinutoAMinuto(tipo, equipo, { minutoManual: true, minutoForzado: minuto, minutoExtraForzado: minutoExtra, jugador, jugadorSale, jugadorAsistencia, bajarGol, esPenalti, varMotivo, varDecision, motivoTarjeta });
   }
 }
 
@@ -1031,6 +1344,8 @@ async function mamActualizarEvento(eventoId, tipo, equipo, opciones = {}) {
     bajar_gol: opciones.bajarGol === true,
     var_motivo: opciones.varMotivo || null,
     var_decision: opciones.varDecision || null,
+    motivo_tarjeta: MAM_TIPOS_TARJETA.includes(tipo) ? (opciones.motivoTarjeta || null) : null,
+    es_penalti: tipo === "gol" && opciones.esPenalti === true,
     // Se conserva el "orden" que ya tuviera el evento (p.ej. el 1 que
     // fuerza "fin_descanso" para quedar detrás de "descanso" en el
     // timeline), para que corregir un evento no le haga perder su
@@ -1041,7 +1356,7 @@ async function mamActualizarEvento(eventoId, tipo, equipo, opciones = {}) {
     await apiFetch(`/api/results/${MAM_RESULTADO.id}/eventos/${eventoId}`, { method: "PUT", body: JSON.stringify(body) });
     await recargarResultadoYEventos();
     renderBotoneraMinutoAMinuto();
-    EOF.toast(`${MAM_ETIQUETAS[tipo] || tipo} actualizado (${minutoExtra ? `${minuto}+${minutoExtra}` : minuto}')`, "exito");
+    EOF.toast(`${mamEtiquetaTipo(tipo, opciones.esPenalti === true)} actualizado (${minutoExtra ? `${minuto}+${minutoExtra}` : minuto}')`, "exito");
   } catch (err) {
     EOF.toast("Error actualizando el evento: " + err.message, "error");
   }
@@ -1073,7 +1388,13 @@ function renderPanelMinutoAMinuto() {
             <span>${escapeHtml(r.equipo_visitante)}</span>
           </div>
         </div>
-        <div class="mam-cabecera-controles" id="mamControlesCronometro"></div>
+        <div class="mam-cabecera-controles" id="mamControlesCronometro">
+          <label class="mam-push" id="mamPush" title="Si lo desactivas, este partido no enviará ninguna notificación push (goles, descanso, final, VAR, añadido…)">
+            <input type="checkbox" id="mamAvisosPush" onchange="mamCambiarAvisosPush(this)">
+            <span class="mam-push-interruptor" aria-hidden="true"></span>
+            <span class="mam-push-texto"><b>Notificaciones push</b><small id="mamAvisosPushSub"></small></span>
+          </label>
+        </div>
       </div>
 
       <div class="mam-cuerpo">
@@ -1123,13 +1444,20 @@ function renderPanelMinutoAMinuto() {
             </div>
           </div>
           <div class="mam-fila-jugador">
-            <div>
+            <div id="mamDivDorsal">
               <label>Dorsal</label>
               <input type="text" id="mamFormDorsal" inputmode="numeric" placeholder="9">
             </div>
             <div>
               <label id="mamFormLabelJugador">Jugador</label>
               <input type="text" id="mamFormJugador" placeholder="Nombre (opcional)">
+            </div>
+          </div>
+          <div class="mam-fila-jugador" id="mamFilaMotivo" style="display:none">
+            <div style="flex:1">
+              <label>Motivo (opcional)</label>
+              <input type="text" id="mamFormMotivo" maxlength="80" list="mamListaMotivos" placeholder="Ej. Falta, protestas, pérdida de tiempo..." autocomplete="off">
+              <datalist id="mamListaMotivos">${MAM_MOTIVOS_TARJETA.map((m) => `<option value="${m}"></option>`).join("")}</datalist>
             </div>
           </div>
           <div class="mam-fila-jugador" id="mamFilaJugadorSale" style="display:none">
@@ -1147,6 +1475,12 @@ function renderPanelMinutoAMinuto() {
               <label>Asistencia</label>
               <input type="text" id="mamFormAsistencia" placeholder="Jugador que da la asistencia (opcional)">
             </div>
+          </div>
+          <div class="mam-fila-checkbox mam-fila-penalti" id="mamFilaEsPenalti" style="display:none">
+            <label class="mam-checkbox-label">
+              <input type="checkbox" id="mamFormEsPenalti" onchange="mamActualizarFormPenalti()">
+              Gol de penalti
+            </label>
           </div>
           <p class="mam-ayuda-golpp" id="mamFilaAyudaGolPP" style="display:none">El jugador indicado arriba es el de este equipo que se lo mete en su propia portería: el gol sumará en el marcador al equipo contrario.</p>
           <div class="mam-fila-checkbox" id="mamFilaBajarGol" style="display:none">
@@ -1191,6 +1525,53 @@ function renderPanelMinutoAMinuto() {
               <button type="button" class="btn-secundari mam-anadido-quitar" id="mamAnadidoQuitar" onclick="mamEnviarAnadido(0)">Quitar añadido</button>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+      <div class="mam-modal-overlay" id="mamModalFinAnadido">
+      <div class="mam-modal-caja" role="alertdialog" aria-modal="true" aria-labelledby="mamFinTitulo" aria-describedby="mamFinSub">
+        <div class="mam-anadido-cabecera">
+          <span class="mam-anadido-parte" id="mamFinParte">1ª parte</span>
+          <h4 id="mamFinTitulo">Se acabó el añadido</h4>
+          <p class="mam-anadido-sub" id="mamFinSub"></p>
+          <div class="mam-anadido-vista mam-fin-cuenta" id="mamFinCuenta" role="timer" aria-live="off">1:00</div>
+          <div class="mam-fin-barra" aria-hidden="true"><i id="mamFinBarra"></i></div>
+        </div>
+        <div class="mam-anadido-cuerpo">
+          <div class="mam-an-info mam-an-info-ok" id="mamFinInfo"></div>
+          <div class="mam-an-acciones">
+            <button type="button" class="btn-primari mam-an-confirmar" id="mamFinSeguir" onclick="mamProlongarAnadido()">Seguir jugando</button>
+            <div class="mam-an-secundarias">
+              <button type="button" class="btn-secundari" id="mamFinCerrar" onclick="mamCerrarAnadidoAhora()">Pitar descanso ya</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+      <div class="mam-modal-overlay" id="mamModalPenalti" onclick="if(event.target===this) mamCerrarPenalti()">
+      <div class="mam-modal-caja" role="dialog" aria-modal="true" aria-labelledby="mamPenaltiTitulo">
+        <div class="mam-penalti-cabecera">
+          <span class="mam-penalti-pito" aria-hidden="true">🎯</span>
+          <h4 id="mamPenaltiTitulo">Penalti pitado</h4>
+          <p class="mam-penalti-equipo" id="mamPenaltiEquipo"></p>
+        </div>
+        <div class="mam-penalti-cuerpo">
+          <p class="mam-penalti-pregunta">¿Cómo ha acabado el penalti?</p>
+          <div class="mam-penalti-opciones">
+            <button type="button" class="mam-penalti-opcion mam-penalti-metido" onclick="mamResolverPenalti('metido')">
+              <span class="mam-penalti-icono" aria-hidden="true">⚽</span>
+              <b>Metido</b>
+              <small>Gol de penalti</small>
+            </button>
+            <button type="button" class="mam-penalti-opcion mam-penalti-fallado" onclick="mamResolverPenalti('fallado')">
+              <span class="mam-penalti-icono" aria-hidden="true">❌</span>
+              <b>Fallado</b>
+              <small>Parado o fuera</small>
+            </button>
+          </div>
+          <button type="button" class="btn-secundari mam-penalti-cancelar" onclick="mamCerrarPenalti()">Cancelar</button>
         </div>
       </div>
     </div>
@@ -1293,7 +1674,7 @@ function mamEstadisticasCierre() {
   const cuenta = (tipos, equipo) => MAM_EVENTOS.filter((ev) => tipos.includes(ev.tipo) && ev.equipo === equipo).length;
   return [
     { etiqueta: "Goles", local: r.goles_local ?? 0, visitante: r.goles_visitante ?? 0 },
-    { etiqueta: "Amarillas", local: cuenta(["amarilla"], "local"), visitante: cuenta(["amarilla"], "visitante") },
+    { etiqueta: "Amarillas", local: cuenta(["amarilla", "doble_amarilla"], "local"), visitante: cuenta(["amarilla", "doble_amarilla"], "visitante") },
     { etiqueta: "Expulsiones", local: cuenta(["roja", "doble_amarilla"], "local"), visitante: cuenta(["roja", "doble_amarilla"], "visitante") },
     { etiqueta: "Cambios", local: cuenta(["cambio"], "local"), visitante: cuenta(["cambio"], "visitante") },
   ];
@@ -1451,7 +1832,7 @@ function renderBotoneraMinutoAMinuto() {
         <button type="button" class="mam-boton mam-boton-doble" onclick="mamAbrirFormularioEvento('doble_amarilla','local')">🟨🟥<br>2ª amarilla</button>
         <button type="button" class="mam-boton mam-boton-roja" onclick="mamAbrirFormularioEvento('roja','local')">🟥<br>Roja</button>
         <button type="button" class="mam-boton mam-boton-cambio" onclick="mamAbrirFormularioEvento('cambio','local')">🔄<br>Cambio</button>
-        <button type="button" class="mam-boton mam-boton-fallado" onclick="mamAbrirFormularioEvento('penalti_fallado','local')">❌<br>Penalti fallado</button>
+        <button type="button" class="mam-boton mam-boton-penalti" onclick="mamAbrirPenalti('local')">🎯<br>Penalti pitado</button>
         <button type="button" class="mam-boton mam-boton-golvar" onclick="mamAbrirFormularioEvento('gol_var','local')">🚫⚽<br>Gol anulado (VAR)</button>
       </div>
     </div>
@@ -1476,7 +1857,7 @@ function renderBotoneraMinutoAMinuto() {
         <button type="button" class="mam-boton mam-boton-doble" onclick="mamAbrirFormularioEvento('doble_amarilla','visitante')">🟨🟥<br>2ª amarilla</button>
         <button type="button" class="mam-boton mam-boton-roja" onclick="mamAbrirFormularioEvento('roja','visitante')">🟥<br>Roja</button>
         <button type="button" class="mam-boton mam-boton-cambio" onclick="mamAbrirFormularioEvento('cambio','visitante')">🔄<br>Cambio</button>
-        <button type="button" class="mam-boton mam-boton-fallado" onclick="mamAbrirFormularioEvento('penalti_fallado','visitante')">❌<br>Penalti fallado</button>
+        <button type="button" class="mam-boton mam-boton-penalti" onclick="mamAbrirPenalti('visitante')">🎯<br>Penalti pitado</button>
         <button type="button" class="mam-boton mam-boton-golvar" onclick="mamAbrirFormularioEvento('gol_var','visitante')">🚫⚽<br>Gol anulado (VAR)</button>
       </div>
     </div>`;
@@ -1687,7 +2068,10 @@ async function mamComenzarSegundaParte() {
 async function mamPitarFinal() {
   const añadido = await mamPedirAnadido(2, "final");
   if (añadido === null) return; // cancelado
-  if (!(await EOF.confirmar("¿Dar el partido por finalizado? El resultado pasará a estado \"Finalizado\".", { textoConfirmar: "Finalizar" }))) return;
+  const confirmadoFinal = window.EOFModalesPartido && MAM_RESULTADO
+    ? await EOFModalesPartido.confirmarFinalizar(MAM_RESULTADO) // modal bonito (modales-partido.js)
+    : await EOF.confirmar("¿Dar el partido por finalizado? El resultado pasará a estado \"Finalizado\".", { textoConfirmar: "Finalizar" });
+  if (!confirmadoFinal) return;
   if (!MAM_RESULTADO) {
     return EOF.toast("El panel de Minuto a Minuto se ha cerrado. Ábrelo de nuevo para continuar.", "error");
   }
@@ -1839,6 +2223,8 @@ function renderTimelineMinutoAMinuto() {
       detalle = [motivo, decision, jugadorVar].filter(Boolean).join(" · ");
     } else if (ev.tipo === "anadido") {
       detalle = "";
+    } else if (MAM_TIPOS_TARJETA.includes(ev.tipo)) {
+      detalle = [ev.jugador ? escapeHtml(ev.jugador) : "", ev.motivo_tarjeta ? `Motivo: ${escapeHtml(ev.motivo_tarjeta)}` : ""].filter(Boolean).join(" · ");
     } else if (ev.jugador) {
       detalle = escapeHtml(ev.jugador);
     }
@@ -1869,10 +2255,10 @@ function renderTimelineMinutoAMinuto() {
       </div>`;
     }
     return `
-      <div class="mam-evento-item mam-evento-${ev.tipo}">
+      <div class="mam-evento-item mam-evento-${ev.tipo}${ev.tipo === "gol" && ev.es_penalti ? " mam-evento-penalti" : ""}">
         <span class="mam-evento-minuto">${ev.minuto_extra ? `${ev.minuto}+${ev.minuto_extra}'` : `${ev.minuto}'`}</span>
         <span class="mam-evento-texto">
-          <b>${escapeHtml(MAM_ETIQUETAS[ev.tipo] || ev.tipo)}</b>
+          <b>${escapeHtml(mamEtiquetaTipo(ev.tipo, !!ev.es_penalti))}</b>
           ${sinEquipo ? "" : ` · ${escapeHtml(nombreEquipo)}`}
           ${detalle ? ` · ${detalle}` : ""}
         </span>

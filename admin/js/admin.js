@@ -14,6 +14,12 @@ function argJs(valor) {
 // 'RESULTADOS_CACHE' before initialization) si algún código la consulta
 // antes de que se ejecute la línea donde antes se declaraba, más abajo.
 let RESULTADOS_CACHE = {};
+// "En vivo" de Noticias > Ver noticias y Resultados > Ver resultados (ver el bloque EN VIVO más abajo).
+// huella: la que corresponde a lo que se está viendo (null = sin tiempo real, p. ej. si el worker aún no lo tiene).
+const EN_VIVO_LISTAS = {
+  articulos: { url: "/api/articles/huella", panel: "panel-noticias", subpanel: "subpanel-lista", tabla: "tablaArticulos", indicador: "envivoArticulos", huella: null, ocupado: false },
+  resultados: { url: "/api/results/huella", panel: "panel-resultados", subpanel: "subpanel-listaResultados", tabla: "tablaResultados", indicador: "envivoResultados", huella: null, ocupado: false },
+};
 
 // Los collages ya guardados se mantienen aparte de "imagenesLista"
 // mientras se edita la noticia (no son filas normales de foto): cada
@@ -202,6 +208,22 @@ const NIVELES_ETIQUETA = {
   3: { emoji: "🟣", nombre: "Maestro" },
   4: { emoji: "🟠", nombre: "Experto" },
 };
+// Niveles de fotografía (F1–F2): misma columna users.nivel (1 = F1, 2 = F2). Mismo
+// criterio que NIVELES_FOTO_INFO del Worker; aquí solo lo mínimo para la tabla de Usuarios.
+const NIVELES_FOTO_ETIQUETA = {
+  1: { emoji: "📷", etiqueta: "F1", nombre: "Fotógrafo colaborador" },
+  2: { emoji: "🌟", etiqueta: "F2", nombre: "Fotógrafo de referencia" },
+};
+// Criterios de valoración F1 → F2 de respaldo (la fuente buena es NIVELES_FOTO_CRITERIOS del Worker).
+const NIVELES_FOTO_CRITERIOS_RESPALDO = [
+  { id: "calidad_tecnica", nombre: "Calidad técnica", descripcion: "Nitidez, exposición, encuadre y presentación del material." },
+  { id: "criterio_periodistico", nombre: "Criterio periodístico", descripcion: "Capacidad para captar momentos relevantes y representar adecuadamente el acontecimiento." },
+  { id: "variedad", nombre: "Variedad", descripcion: "Diversidad de situaciones, protagonistas y planos." },
+  { id: "fiabilidad", nombre: "Fiabilidad", descripcion: "Cumplimiento de los compromisos y plazos acordados." },
+  { id: "autonomia", nombre: "Autonomía", descripcion: "Capacidad para preparar, realizar y entregar una cobertura correctamente." },
+  { id: "profesionalidad", nombre: "Profesionalidad", descripcion: "Comunicación, respeto a las normas y coordinación con el resto del equipo." },
+  { id: "evolucion", nombre: "Evolución", descripcion: "Capacidad para incorporar indicaciones y mejorar el trabajo." },
+];
 if (!TOKEN_ACTUAL() || !USER) {
   // Si se llegó sin sesión a una URL con querystring propio (p. ej.
   // panel.html?minuto_a_minuto=<id>, abierto en pestaña nueva desde el
@@ -227,6 +249,44 @@ if (!TOKEN_ACTUAL() || !USER) {
 // recarga la página automáticamente para que no pueda seguir haciendo
 // nada con permisos que ya no tiene (o para que aproveche los nuevos sin
 // tener que volver a entrar).
+// El toggle "Publicada" del formulario de noticias solo se muestra a los
+// administradores y a los redactores de Nivel 2+. A un redactor de Nivel 1
+// se le oculta: sus noticias nuevas se guardan siempre como borrador (para
+// revisión). Solo se oculta el control, NO se toca su valor: si un Nivel 1
+// edita una noticia suya que ya estaba publicada, el checkbox sigue marcado
+// (aunque no se vea) y el guardado no la devuelve a borrador.
+// Si ese redactor introduce un PIN de "Última hora" correcto, el interruptor
+// aparece ya marcado y habilitado (pinUltimaHoraDesbloqueado guarda el PIN
+// para mandarlo al guardar). El PIN se renueva en el servidor cada vez que se
+// usa para publicar, así que tras guardar vuelve a bloquearse.
+let pinUltimaHoraDesbloqueado = null;
+function aplicarVisibilidadPublicada() {
+  const opcion = document.getElementById("opcionPublicada");
+  const bloque = document.getElementById("bloqueDesbloqueoPublicar");
+  if (!USER) return;
+  const esNivel1 = USER.rol !== "admin" && (USER.nivel || 1) < 2;
+  if (!esNivel1) pinUltimaHoraDesbloqueado = null;
+  const yaPublicada = document.getElementById("articlePublicadoOriginal")?.value === "1";
+  if (opcion) opcion.style.display = (esNivel1 && !pinUltimaHoraDesbloqueado) ? "none" : "";
+  // Nivel 1: el interruptor "Marcar como última hora" (con candado) está siempre a la
+  // vista mientras la noticia no esté publicada; queda marcado una vez validado el PIN y
+  // al desmarcarlo se vuelve a bloquear. Nivel 2+ y admin usan directamente el interruptor
+  // del banner (ver más abajo, junto a puedeProgramarNoticia).
+  if (bloque) bloque.style.display = (esNivel1 && !yaPublicada) ? "" : "none";
+  const chkUhPin = document.getElementById("ultimaHoraPin");
+  if (chkUhPin) chkUhPin.checked = Boolean(pinUltimaHoraDesbloqueado);
+  const opcionUhPin = document.getElementById("opcionUltimaHoraPin");
+  if (opcionUhPin) opcionUhPin.classList.toggle("con-candado", !pinUltimaHoraDesbloqueado);
+  const subUhPin = document.getElementById("ultimaHoraPinSub");
+  if (subUhPin) subUhPin.textContent = pinUltimaHoraDesbloqueado
+    ? "PIN correcto: se publica, activa el banner y queda destacada"
+    : "Publica, activa el banner y la destaca con tu PIN";
+  // El banner se activa solo con el PIN (el interruptor propio queda oculto para Nivel 1:
+  // su valor lo fija el desbloqueo del PIN).
+  const bloqueBanner = document.getElementById("bloqueBannerUrgente");
+  if (bloqueBanner && esNivel1) bloqueBanner.style.display = "none";
+}
+
 async function refrescarNivelUsuario() {
   if (!USER) return;
   try {
@@ -241,6 +301,7 @@ async function refrescarNivelUsuario() {
       // Un ascenso/descenso de nivel recién llegado puede cambiar si toca
       // mostrar el bloque de "Programar publicación" (ver más abajo).
       if (typeof aplicarFechaPreferenciaObligatoria === "function") aplicarFechaPreferenciaObligatoria();
+      aplicarVisibilidadPublicada();
       if (typeof bloqueProgramarNoticia !== "undefined" && bloqueProgramarNoticia) {
         bloqueProgramarNoticia.style.display = puedeProgramarNoticia() ? "" : "none";
       }
@@ -261,6 +322,7 @@ refrescarNivelUsuario();
 // así que cada 20s es suficiente sin machacar la API a lo tonto.
 const INTERVALO_VIGILANCIA_NIVEL_MS = 20000;
 async function vigilarCambioNivelORol() {
+  if (document.hidden) return; // con la pestaña oculta no se sondea; al volver se comprueba (ver abajo)
   const cambio = await refrescarNivelUsuario();
   if (!cambio) return;
   // Se avisa con un toast antes de recargar, para que a la persona le dé
@@ -275,6 +337,7 @@ async function vigilarCambioNivelORol() {
   setTimeout(() => location.reload(), 2500);
 }
 setInterval(vigilarCambioNivelORol, INTERVALO_VIGILANCIA_NIVEL_MS);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) vigilarCambioNivelORol(); });
 
 // Clubes "personalizados" (añadidos a mano desde "Otro equipo") cargados
 // del servidor; se piden en cuanto arranca el panel para que estén
@@ -336,16 +399,16 @@ if (USER) {
   if (checkPublicadoInicial) {
     checkPublicadoInicial.checked = USER.rol === "admin" || (USER.nivel || 1) >= 2;
   }
+  aplicarVisibilidadPublicada();
   document.getElementById("userNombre").textContent = USER.nombre;
   document.getElementById("cuentaNombreCompleto").textContent = USER.nombre;
   document.getElementById("cuentaRolEtiqueta").textContent =
     USER.rol === "admin" ? "Administrador" : (USER.rol === "fotografo" ? "Fotógrafo" : "Redactor");
-  // El panel de analíticas (public/panel-analiticas.html) solo admite
+  // La pestaña Analíticas (admin/js/analiticas-panel.js) solo admite
   // administradores en el Worker (ver /api/admin/analiticas/*), así que
-  // ni se muestra el enlace a quien no lo sea.
-  if (document.getElementById("enlaceAnaliticas") && USER.rol !== "admin") {
-    document.getElementById("enlaceAnaliticas").remove();
-  }
+  // solo se muestra a ellos (viene oculta en panel.html).
+  const tabAnaliticas = document.getElementById("tabAnaliticas");
+  if (tabAnaliticas) tabAnaliticas.style.display = USER.rol === "admin" ? "" : "none";
   if (document.getElementById("ajustesNombre")) {
     document.getElementById("ajustesNombre").textContent = USER.nombre;
     document.getElementById("ajustesUsername").textContent = USER.username;
@@ -385,6 +448,8 @@ if (USER) {
     if (subtabSolFormularios) subtabSolFormularios.style.display = "none";
     const subtabFuncJugadores = document.getElementById("subtabFuncJugadores_btn");
     if (subtabFuncJugadores) subtabFuncJugadores.style.display = "none";
+    const subtabFuncResponsabilidades = document.getElementById("subtabFuncResponsabilidades_btn");
+    if (subtabFuncResponsabilidades) subtabFuncResponsabilidades.style.display = "none";
     const subtabFuncHistorial = document.getElementById("subtabFuncHistorial_btn");
     if (subtabFuncHistorial) subtabFuncHistorial.style.display = "none";
     const subtabFuncComentarios = document.getElementById("subtabFuncComentarios_btn");
@@ -416,12 +481,12 @@ if (USER) {
     // función, pero no todos los caminos hasta el formulario pasan por
     // ahí — p. ej. el primer click en la subtab "nueva").
     // El calendario de jornadas (fechas de inicio/fin de cada jornada
-    // para el resto del sitio) solo lo puede tocar un redactor a partir
-    // de Nivel 3: para Nivel 1 y 2 la subtab ni se muestra.
-    if (nivelActualRedactor < 3) {
-      const subtabCalendarioJornadas = document.getElementById("subtabCalendarioJornadas_btn");
-      if (subtabCalendarioJornadas) subtabCalendarioJornadas.style.display = "none";
-    }
+    // para el resto del sitio) es solo de administradores (el Worker lo
+    // exige en /api/jornadas-calendario). Ningún redactor lo ve, sea del
+    // nivel que sea: antes se mostraba a partir de Nivel 3, pero ahí solo
+    // le devolvía un 403.
+    const subtabCalendarioJornadas = document.getElementById("subtabCalendarioJornadas_btn");
+    if (subtabCalendarioJornadas) subtabCalendarioJornadas.style.display = "none";
     const avisoPublicadoRedactorNivel2 = document.getElementById("avisoPublicadoRedactorNivel2");
     if (nivelActualRedactor >= 2) {
       if (avisoPublicadoRedactorNivel2) {
@@ -477,33 +542,182 @@ if (USER) {
     document.querySelectorAll("#panel-contenido > .subpanel").forEach((p) => p.classList.remove("activo"));
     document.getElementById("subtabsContenido")?.querySelector('[data-subtab="subir"]')?.classList.add("activo");
     document.getElementById("subpanel-subir")?.classList.add("activo");
-    // "Mi progreso" (Ajustes de cuenta) muestra el sistema de niveles de
-    // redactor (artículos publicados, audiencia, requisitos para
-    // ascender...), que no aplica a un fotógrafo — igual que ya no se le
-    // muestra ningún nivel en "Usuarios" (ver arriba, columna "Nivel").
-    const subtabProgreso = document.querySelector('#subtabsAjustes button[data-subtab="progreso"]');
-    if (subtabProgreso) subtabProgreso.style.display = "none";
+    // "Mi progreso" (Ajustes de cuenta) SÍ se le deja a un fotógrafo: en vez del
+    // sistema de redactor (N1–N4, con cifras de publicaciones) ve el suyo, F1–F2,
+    // con sus funciones y criterios de valoración (ver pintarProgresoFotografo).
   }
 
   // ---------- Cierre de sesión por inactividad (15 minutos) ----------
+  // A los 13 minutos sin actividad sale un aviso con cuenta atrás de 2:00 y,
+  // además, el título de la pestaña cambia ("⏳ 1:59 · ¿Sigues ahí?") para que se
+  // vea aunque el panel esté en otra pestaña. Si no se hace nada, a los 15 min se
+  // cierra la sesión. Se calcula con la hora real (no con un temporizador
+  // largo) porque los navegadores frenan los temporizadores de pestañas ocultas.
   const INACTIVIDAD_LIMITE_MS = 15 * 60 * 1000;
-  let temporizadorInactividad;
-  function reiniciarTemporizadorInactividad() {
-    clearTimeout(temporizadorInactividad);
-    temporizadorInactividad = setTimeout(() => {
-      // Antes de cerrar la sesión, forzamos el guardado del borrador que
-      // se estuviera escribiendo (aunque no cumpla los requisitos mínimos
-      // de longitud), para no perder el trabajo. Se guarda solo en este
-      // navegador (localStorage), no en el servidor, precisamente porque
-      // puede no cumplir las validaciones del backend.
-      guardarBorradorLocalDeEmergencia();
-      EOF.alertaModal("Se ha cerrado la sesión por inactividad.", { tipo: "info" }).then(logout);
-    }, INACTIVIDAD_LIMITE_MS);
+  const INACTIVIDAD_AVISO_MS = 2 * 60 * 1000;
+  const TITULO_PANEL_ORIGINAL = document.title;
+  let inactividadVence = Date.now() + INACTIVIDAD_LIMITE_MS;
+  let avisoInactividadEl = null;
+  let cerrandoPorInactividad = false;
+
+  function formatoCuentaAtras(ms) {
+    const total = Math.max(0, Math.ceil(ms / 1000));
+    return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
   }
+
+  function crearAvisoInactividad() {
+    const el = document.createElement("div");
+    el.className = "aviso-inactividad";
+    el.setAttribute("role", "alertdialog");
+    el.setAttribute("aria-live", "assertive");
+    el.setAttribute("aria-labelledby", "avisoInactTitulo");
+    el.innerHTML = `
+      <div class="aviso-inactividad-tarjeta">
+        <div class="aviso-inactividad-reloj" aria-hidden="true">
+          <svg viewBox="0 0 120 120" width="132" height="132">
+            <circle class="aviso-inactividad-pista" cx="60" cy="60" r="52"></circle>
+            <circle class="aviso-inactividad-progreso" cx="60" cy="60" r="52" pathLength="100"></circle>
+          </svg>
+          <span class="aviso-inactividad-tiempo" id="avisoInactTiempo">2:00</span>
+        </div>
+        <h2 id="avisoInactTitulo">¿Sigues ahí?</h2>
+        <p>Llevas un buen rato sin actividad. Por seguridad, <strong>cerraremos tu sesión</strong> cuando llegue a cero.</p>
+        <p class="aviso-inactividad-nota">Si estabas escribiendo, guardaremos un borrador en este navegador para que puedas recuperarlo al volver a entrar.</p>
+        <div class="aviso-inactividad-botones">
+          <button type="button" class="aviso-inactividad-seguir" id="avisoInactSeguir">Seguir conectado</button>
+          <button type="button" class="aviso-inactividad-salir" id="avisoInactSalir">Cerrar sesión ahora</button>
+        </div>
+      </div>`;
+    document.body.appendChild(el);
+    el.querySelector("#avisoInactSeguir").addEventListener("click", () => reiniciarTemporizadorInactividad({ type: "click" }));
+    el.querySelector("#avisoInactSalir").addEventListener("click", () => {
+      guardarBorradorLocalDeEmergencia();
+      logout();
+    });
+    return el;
+  }
+
+  function mostrarAvisoInactividad(restanteMs) {
+    if (!avisoInactividadEl) avisoInactividadEl = crearAvisoInactividad();
+    const visibleAntes = avisoInactividadEl.classList.contains("visible");
+    avisoInactividadEl.classList.add("visible");
+    const texto = formatoCuentaAtras(restanteMs);
+    const tiempoEl = avisoInactividadEl.querySelector("#avisoInactTiempo");
+    if (tiempoEl) tiempoEl.textContent = texto;
+    const progreso = avisoInactividadEl.querySelector(".aviso-inactividad-progreso");
+    if (progreso) progreso.style.strokeDashoffset = String(100 - Math.max(0, Math.min(100, (restanteMs / INACTIVIDAD_AVISO_MS) * 100)));
+    avisoInactividadEl.classList.toggle("urgente", restanteMs <= 30 * 1000);
+    // Título de la pestaña: alterna dos mensajes para llamar la atención desde otra pestaña.
+    const par = Math.ceil(restanteMs / 1000) % 2 === 0;
+    document.title = par ? `⏳ ${texto} · ¿Sigues ahí?` : `⚠️ Se cerrará tu sesión`;
+    if (!visibleAntes) {
+      const btn = avisoInactividadEl.querySelector("#avisoInactSeguir");
+      if (btn && !document.hidden) btn.focus({ preventScroll: true });
+    }
+  }
+
+  function ocultarAvisoInactividad() {
+    if (avisoInactividadEl) avisoInactividadEl.classList.remove("visible", "urgente");
+    if (document.title !== TITULO_PANEL_ORIGINAL) document.title = TITULO_PANEL_ORIGINAL;
+  }
+
+  function reiniciarTemporizadorInactividad(evento) {
+    if (cerrandoPorInactividad) return;
+    // Con el aviso en pantalla, un simple movimiento del ratón o un scroll no
+    // cuentan: hay que pulsar, teclear o tocar (así no se descarta sin querer).
+    const avisoVisible = avisoInactividadEl && avisoInactividadEl.classList.contains("visible");
+    if (avisoVisible && evento && (evento.type === "mousemove" || evento.type === "scroll")) return;
+    inactividadVence = Date.now() + INACTIVIDAD_LIMITE_MS;
+    if (avisoVisible) ocultarAvisoInactividad();
+  }
+
+  function cerrarSesionPorInactividad() {
+    cerrandoPorInactividad = true;
+    clearInterval(intervaloInactividad);
+    // Antes de cerrar la sesión, forzamos el guardado del borrador que
+    // se estuviera escribiendo (aunque no cumpla los requisitos mínimos
+    // de longitud), para no perder el trabajo. Se guarda solo en este
+    // navegador (localStorage), no en el servidor, precisamente porque
+    // puede no cumplir las validaciones del backend.
+    guardarBorradorLocalDeEmergencia();
+    if (avisoInactividadEl) avisoInactividadEl.classList.remove("visible", "urgente");
+    document.title = "🔒 Sesión cerrada · ELOTROFÚTBOLTV";
+    mostrarSesionCerradaPorInactividad().then(logout);
+  }
+
+  // Pantalla que se ve tras el cierre por inactividad. Sustituye al antiguo
+  // alertaModal de texto plano. Solo enseña la fila del borrador si de verdad
+  // hay uno guardado en este navegador. Devuelve una promesa que se resuelve
+  // al pulsar el botón (o Enter/Escape), para encadenar el logout.
+  function mostrarSesionCerradaPorInactividad() {
+    return new Promise((resolve) => {
+      let hayBorrador = false;
+      try { hayBorrador = !!localStorage.getItem(CLAVE_BORRADOR_EMERGENCIA); } catch (_) {}
+      const el = document.createElement("div");
+      el.className = "sesion-cerrada";
+      el.setAttribute("role", "alertdialog");
+      el.setAttribute("aria-modal", "true");
+      el.setAttribute("aria-labelledby", "sesionCerradaTitulo");
+      el.innerHTML = `
+        <div class="sesion-cerrada-fondo" aria-hidden="true"><span></span><span></span></div>
+        <div class="sesion-cerrada-tarjeta">
+          <div class="sesion-cerrada-icono" aria-hidden="true">
+            <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+              <path class="sesion-cerrada-arco" d="M15 21v-6a9 9 0 0 1 18 0v6"/>
+              <rect x="9" y="21" width="30" height="21" rx="6" fill="currentColor" fill-opacity=".14"/>
+              <circle cx="24" cy="30.5" r="2.6" fill="currentColor" stroke="none"/>
+              <path d="M24 33v3.5"/>
+            </svg>
+          </div>
+          <h2 id="sesionCerradaTitulo">Sesión cerrada</h2>
+          <p class="sesion-cerrada-sub">Llevabas <strong>15 minutos</strong> sin actividad en el panel, así que hemos cerrado tu sesión.</p>
+          <ul class="sesion-cerrada-lista">
+            <li>
+              <span class="sesion-cerrada-chip" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4.5 6v5.5c0 4.6 3.1 8.2 7.5 9.5 4.4-1.3 7.5-4.9 7.5-9.5V6z"/><path d="m9 12 2 2 4-4"/></svg></span>
+              <span>Lo hacemos para <strong>proteger tu cuenta</strong> si te alejas del ordenador.</span>
+            </li>
+            ${hayBorrador ? `<li class="sesion-cerrada-borrador">
+              <span class="sesion-cerrada-chip" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></svg></span>
+              <span>Tu <strong>borrador está a salvo</strong> en este navegador: podrás recuperarlo al volver a entrar.</span>
+            </li>` : ""}
+          </ul>
+          <button type="button" class="sesion-cerrada-boton" id="sesionCerradaBoton">
+            Volver a entrar
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </button>
+        </div>`;
+      document.body.appendChild(el);
+      const boton = el.querySelector("#sesionCerradaBoton");
+      let hecho = false;
+      const seguir = () => {
+        if (hecho) return;
+        hecho = true;
+        document.removeEventListener("keydown", alTeclear, true);
+        resolve();
+      };
+      const alTeclear = (e) => {
+        if (e.key === "Escape" || e.key === "Enter") { e.preventDefault(); seguir(); }
+      };
+      document.addEventListener("keydown", alTeclear, true);
+      boton.addEventListener("click", seguir);
+      requestAnimationFrame(() => { el.classList.add("visible"); boton.focus({ preventScroll: true }); });
+    });
+  }
+
+  function comprobarInactividad() {
+    if (cerrandoPorInactividad) return;
+    const restante = inactividadVence - Date.now();
+    if (restante <= 0) return cerrarSesionPorInactividad();
+    if (restante <= INACTIVIDAD_AVISO_MS) mostrarAvisoInactividad(restante);
+  }
+
   ["mousemove", "mousedown", "keydown", "scroll", "touchstart", "click"].forEach((evento) => {
     document.addEventListener(evento, reiniciarTemporizadorInactividad, { passive: true });
   });
-  reiniciarTemporizadorInactividad();
+  const intervaloInactividad = setInterval(comprobarInactividad, 1000);
+  // Al volver a la pestaña tras estar oculta, se comprueba al instante (el
+  // intervalo pudo ir con retraso mientras estaba en segundo plano).
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) comprobarInactividad(); });
 
   // ---------- Campanita: avisos push de la redacción ----------
   // Solo la ven admins y redactores de Nivel 4 (el servidor lo vuelve a
@@ -531,9 +745,20 @@ if (USER) {
     cuentaBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       cuentaMenu.classList.toggle("abierto");
+      cuentaBtn.setAttribute("aria-expanded", String(cuentaMenu.classList.contains("abierto")));
     });
     document.addEventListener("click", (e) => {
-      if (!e.target.closest("#cuentaWrap")) cuentaMenu.classList.remove("abierto");
+      if (!e.target.closest("#cuentaWrap")) {
+        cuentaMenu.classList.remove("abierto");
+        cuentaBtn.setAttribute("aria-expanded", "false");
+      }
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && cuentaMenu.classList.contains("abierto")) {
+        cuentaMenu.classList.remove("abierto");
+        cuentaBtn.setAttribute("aria-expanded", "false");
+        cuentaBtn.focus();
+      }
     });
   }
 }
@@ -544,7 +769,7 @@ function irAAjustesCuenta(seccion) {
   document.getElementById("tabAjustesOculto").click();
   // "password" ya no es una pestaña: cambiar la contraseña vive dentro de Seguridad (los enlaces antiguos siguen funcionando).
   if (seccion === "password") seccion = "seguridad";
-  const subtab = ["sesiones", "seguridad", "progreso", "preferencias"].includes(seccion) ? seccion : "perfil";
+  const subtab = ["sesiones", "seguridad", "progreso", "resumenMes", "preferencias"].includes(seccion) ? seccion : "perfil";
   const btnSubtab = document.querySelector(`#subtabsAjustes button[data-subtab="${subtab}"]`);
   if (btnSubtab) btnSubtab.click();
 }
@@ -909,6 +1134,12 @@ const EOF_ACCIONES_EN_CURSO = new Set();
 
 async function apiFetch(path, options = {}) {
   const esEscrituraAdmin = ["POST", "PUT", "PATCH", "DELETE"].includes(String(options.method || "GET").toUpperCase());
+  // Cualquier escritura sobre resultados invalida la lista completa compartida (ver pedirResultadosCompletos).
+  // Se invalida otra vez 2 s después por si una lectura que ya estaba en vuelo la rellenó con datos anteriores.
+  if (esEscrituraAdmin && /^\/api\/results(\/|\?|$)/.test(path)) {
+    invalidarResultadosCompletos();
+    setTimeout(invalidarResultadosCompletos, 2000);
+  }
   let res = await window.eofApiFetch(path, { ...options, headers: authHeaders() });
   if (res.status === 401) {
     // Antes de dar la sesión por caducada de verdad, se reintenta UNA vez
@@ -1125,6 +1356,61 @@ function iconoFoco() {
   return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/></svg>`;
 }
 
+// ---------- Grupos de pestañas ----------
+// Las pestañas principales están agrupadas por tipo de tarea (data-grupo:
+// editorial / comunidad / admin). Entre grupo y grupo se dibuja un separador
+// en el primer botón VISIBLE de cada grupo (los botones que dependen del rol
+// se ocultan con style.display, así que se recalcula cuando cambian).
+function marcarGruposTabs() {
+  const botones = [...document.querySelectorAll(".tabs button[data-grupo]")];
+  let anterior = null;
+  botones.forEach((b) => {
+    b.classList.remove("tab-inicio-grupo");
+    if (b.style.display === "none") return;
+    if (anterior !== null && b.dataset.grupo !== anterior) b.classList.add("tab-inicio-grupo");
+    anterior = b.dataset.grupo;
+  });
+}
+marcarGruposTabs();
+(function () {
+  const barra = document.querySelector(".tabs");
+  if (!barra || typeof MutationObserver === "undefined") return;
+  new MutationObserver(marcarGruposTabs).observe(barra, { attributes: true, attributeFilter: ["style"], subtree: true });
+})();
+
+// ---------- Analíticas: pestaña con carga perezosa ----------
+// El marcado vive en panel.html (#panel-analiticas) pero su JS (más de 3.000
+// líneas + Chart.js) solo se descarga la primera vez que se abre la pestaña.
+// Al cambiar de pestaña y volver NO se recarga nada: los datos y gráficos se
+// quedan como estaban (hay un botón "Actualizar" dentro del panel).
+let ANALITICAS_SCRIPT = null;
+function eofAbrirAnaliticas() {
+  if (USER.rol !== "admin") return;
+  if (window.eofAnaliticasPanel) {
+    window.eofAnaliticasPanel.abrir();
+    return;
+  }
+  if (!ANALITICAS_SCRIPT) {
+    ANALITICAS_SCRIPT = new Promise((resolve, reject) => {
+      const s = document.createElement("script");
+      s.src = "/admin/js/analiticas-panel.js?v=1";
+      s.onload = resolve;
+      s.onerror = () => {
+        ANALITICAS_SCRIPT = null; // permite reintentar al volver a abrir la pestaña
+        reject(new Error("No se pudo cargar admin/js/analiticas-panel.js"));
+      };
+      document.head.appendChild(s);
+    });
+  }
+  ANALITICAS_SCRIPT
+    .then(() => { if (window.eofAnaliticasPanel) window.eofAnaliticasPanel.abrir(); })
+    .catch((err) => {
+      console.error(err);
+      const estado = document.getElementById("estadoConexion");
+      if (estado) estado.textContent = "No se pudo cargar el módulo de analíticas. Vuelve a abrir la pestaña o recarga la página.";
+    });
+}
+
 // ---------- Tabs ----------
 const tituloSeccion = document.getElementById("tituloSeccion");
 document.querySelectorAll(".tabs button").forEach(btn => {
@@ -1149,12 +1435,13 @@ document.querySelectorAll(".tabs button").forEach(btn => {
       const subtabActivo = document.querySelector("#subtabsTienda button.activo");
       if (subtabActivo) cargaSubtabTienda(subtabActivo.dataset.subtab);
     }
+    if (btn.dataset.tab === "analiticas") eofAbrirAnaliticas();
     // "Funcionalidades" y "Usuarios" son exclusivas (o casi) de
     // administrador, así que la cabecera pasa a decir "Administración".
     // Para un colaborador (redactor o fotógrafo), "Funcionalidades" solo
     // da acceso a Equipos, así que se queda como "Colaboración".
     const esFuncionalidadesSoloAdmin = btn.dataset.tab === "funcionalidades" && USER.rol === "admin";
-    if (tituloSeccion) tituloSeccion.textContent = (esFuncionalidadesSoloAdmin || btn.dataset.tab === "usuarios") ? "Administración" : (btn.dataset.tab === "ajustes" ? "Ajustes de cuenta" : "Colaboración");
+    if (tituloSeccion) tituloSeccion.textContent = (esFuncionalidadesSoloAdmin || btn.dataset.tab === "usuarios") ? "Administración" : (btn.dataset.tab === "ajustes" ? "Ajustes de cuenta" : (btn.dataset.tab === "analiticas" ? "Analíticas" : "Colaboración"));
   });
 });
 
@@ -1168,7 +1455,7 @@ function cargaSubtabSolicitudes(subtab) {
 
 // Carga los datos correspondientes al abrir cada subtab de nivel 2 dentro
 // de "Funcionalidades" (Comentarios, Encuestas, Newsletter, Historial,
-// Redes sociales, Equipos, Información), igual que antes hacía cada tab de primer nivel.
+// Redes sociales, Equipos, Información, Responsabilidades), igual que antes hacía cada tab de primer nivel.
 function cargaSubtabFuncionalidades(subtab) {
   if (subtab === "comentarios") cargaComentarios("pendiente");
   if (subtab === "encuestas") cargaEncuestas();
@@ -1179,6 +1466,7 @@ function cargaSubtabFuncionalidades(subtab) {
   if (subtab === "equipos") cargaEquiposInfo();
   if (subtab === "jugadores" && window.EOFJugadores) window.EOFJugadores.cargar();
   if (subtab === "informacion" && window.EOFOrganigrama) window.EOFOrganigrama.cargar();
+  if (subtab === "responsabilidades" && window.EOFResponsabilidades) window.EOFResponsabilidades.cargar();
 }
 
 // Un colaborador (redactor o fotógrafo) no tiene el subtab "Redes
@@ -1242,6 +1530,7 @@ function listaTodosLosClubesFederativos() {
     ...(typeof getClubsForCategoria === "function" ? getClubsForCategoria("hypermotion") : []),
     ...(typeof getClubsForCategoria === "function" ? getClubsForCategoria("primera_federacion") : []),
     ...(typeof getClubsForCategoria === "function" ? getClubsForCategoria("segunda_federacion") : []),
+    ...(typeof getClubsForCategoria === "function" ? getClubsForCategoria("tercera_federacion") : []),
   ];
 }
 
@@ -1251,6 +1540,7 @@ const COMPETICIONES_CLUB_AGRUPADO = [
   { clave: "hypermotion", etiqueta: "LaLiga Hypermotion" },
   { clave: "primera_federacion", etiqueta: "Primera Federación" },
   { clave: "segunda_federacion", etiqueta: "Segunda Federación" },
+  { clave: "tercera_federacion", etiqueta: "Tercera Federación" },
 ];
 
 // Añade al select un <optgroup> con la etiqueta dada y las opciones
@@ -1590,7 +1880,7 @@ function aplicarFechaPreferenciaObligatoria() {
   const obligatoria = esRedactorNivel1();
   const titulo = bloqueFechaPreferencia?.querySelector(".opcion-toggle-titulo");
   const sub = bloqueFechaPreferencia?.querySelector(".opcion-toggle-sub");
-  if (titulo) titulo.textContent = obligatoria ? "Fecha de preferencia (obligatoria)" : "Fecha de preferencia";
+  if (titulo) titulo.innerHTML = obligatoria ? 'Fecha de preferencia <span class="nn-req" title="Obligatoria">*</span>' : "Fecha de preferencia";
   if (sub) sub.textContent = obligatoria ? "Indica cuándo te gustaría que se publique (no programa nada)" : "Sugiere cuándo publicarla (no programa nada). Desaparece al programarla";
   if (obligatoria && checkFechaPreferenciaActiva && !checkPublicado?.checked) {
     checkFechaPreferenciaActiva.checked = true;
@@ -2052,6 +2342,7 @@ function crearFilaImagen(valor = "", esPortada = false, posicion = "galeria", fo
       fila.dataset.posicion = chip.dataset.posicion;
       btnElegirParrafo.hidden = chip.dataset.posicion !== "personalizada";
       if (chip.dataset.posicion === "personalizada") abrirSelectorParrafo(fila);
+      else if (chip.dataset.posicion === "inicio") comprobarHuecoFotoEditada(fila);
     });
   });
   btnElegirParrafo.addEventListener("click", () => abrirSelectorParrafo(fila));
@@ -2214,6 +2505,7 @@ document.getElementById("btnConfirmarParrafo").addEventListener("click", () => {
   FILA_SELECTOR_PARRAFO_ACTUAL.dataset.trasParrafo = n;
   const btnTexto = FILA_SELECTOR_PARRAFO_ACTUAL.querySelector(".btn-elegir-parrafo-texto");
   if (btnTexto) btnTexto.textContent = `tras párrafo ${n}`;
+  if (FILA_SELECTOR_PARRAFO_ACTUAL.classList.contains("fila-imagen")) comprobarHuecoFotoEditada(FILA_SELECTOR_PARRAFO_ACTUAL);
   cerrarModalSelectorParrafo();
 });
 
@@ -2468,6 +2760,118 @@ function posicionPorDefecto(indiceTotal) {
   return "galeria";
 }
 
+// ---------- Regla: nunca dos fotos seguidas ----------
+// En el cuerpo de una noticia no puede haber dos fotos (ni una foto y un
+// collage) pegadas sin texto entre ellas: dos al "inicio", dos tras el
+// mismo párrafo, o una al "inicio" justo debajo de la portada que ya se
+// ve arriba como foto de cabecera. La que llega segunda pasa sola a la
+// "Galería al final" y se avisa. El servidor aplica la misma regla
+// (separarFotosSeguidas en worker/src/index.js y worker-secondary), esto
+// es para que se vea al momento en el panel. Los tweets no cuentan.
+function hayMarcadorVinculado() {
+  // Con marcador de partido la foto de cabecera pasa a la galería final
+  // (ver noticia.html), así que ya no queda pegada al inicio del texto.
+  return !!(selectResultadoArticulo && selectResultadoArticulo.value);
+}
+
+function huecoDeFotoTexto(posicion, trasParrafo) {
+  if (posicion === "inicio") return "inicio";
+  if (posicion === "personalizada" || posicion === "collage") {
+    return "p" + Math.max(1, parseInt(trasParrafo, 10) || 1);
+  }
+  return null;
+}
+
+function filaImagenTieneFoto(fila) {
+  return !!fila.querySelector(".imagen-url-input").value.trim();
+}
+
+// Portada que NO va dentro del texto: se pinta arriba (cabecera) y el
+// cuerpo empieza justo debajo, así que cuenta como foto en el "inicio".
+function esFilaCabecera(fila) {
+  const radio = fila.querySelector('input[type="radio"]');
+  return !!(radio && radio.checked) && fila.dataset.posicion !== "inicio" && fila.dataset.posicion !== "personalizada";
+}
+
+function huecosOcupadosPorFotos({ excluirFila = null, excluirCollage = null } = {}) {
+  const ocupados = new Set();
+  [...imagenesLista.querySelectorAll(".fila-imagen")].forEach((fila) => {
+    if (fila === excluirFila || !filaImagenTieneFoto(fila)) return;
+    const h = huecoDeFotoTexto(fila.dataset.posicion, fila.dataset.trasParrafo);
+    if (h) ocupados.add(h);
+    else if (esFilaCabecera(fila) && !hayMarcadorVinculado()) ocupados.add("inicio");
+  });
+  COLLAGES_ARTICULO.forEach((c) => {
+    if (c === excluirCollage) return;
+    const h = huecoDeFotoTexto(c.posicion, c.trasParrafo);
+    if (h) ocupados.add(h);
+  });
+  return ocupados;
+}
+
+function moverFilaFotoAGaleria(fila) {
+  fila.dataset.posicion = "galeria";
+  fila.querySelectorAll(".imagen-posicion-chip").forEach((chip) => {
+    chip.classList.toggle("activo", chip.dataset.posicion === "galeria");
+  });
+  const btnParrafo = fila.querySelector(".btn-elegir-parrafo");
+  if (btnParrafo) btnParrafo.hidden = true;
+}
+
+const AVISO_FOTOS_SEGUIDAS = "No puede haber dos fotos seguidas: la segunda se ha pasado a la galería final.";
+
+// Al elegir posición para UNA foto: si ese hueco ya lo ocupa otra foto o
+// collage, la foto que se está colocando (la segunda) va a la galería.
+function comprobarHuecoFotoEditada(fila) {
+  const h = huecoDeFotoTexto(fila.dataset.posicion, fila.dataset.trasParrafo);
+  if (!h || !huecosOcupadosPorFotos({ excluirFila: fila }).has(h)) return false;
+  moverFilaFotoAGaleria(fila);
+  EOF.toast(AVISO_FOTOS_SEGUIDAS, "info");
+  return true;
+}
+
+// Repaso completo antes de guardar/previsualizar (cubre noticias antiguas,
+// cambios de portada y collages). Respeta el orden: la primera se queda,
+// las siguientes en el mismo hueco pasan a la galería.
+function aplicarReglaFotosSeguidas() {
+  const ocupados = new Set();
+  const filas = [...imagenesLista.querySelectorAll(".fila-imagen")].filter(filaImagenTieneFoto);
+  if (!hayMarcadorVinculado() && filas.some(esFilaCabecera)) ocupados.add("inicio");
+  let movidas = 0;
+  filas.forEach((fila) => {
+    const h = huecoDeFotoTexto(fila.dataset.posicion, fila.dataset.trasParrafo);
+    if (!h) return;
+    if (ocupados.has(h)) {
+      moverFilaFotoAGaleria(fila);
+      movidas++;
+    } else {
+      ocupados.add(h);
+    }
+  });
+  let cambioCollages = false;
+  COLLAGES_ARTICULO.forEach((c) => {
+    const h = huecoDeFotoTexto(c.posicion, c.trasParrafo);
+    if (!h) return;
+    if (ocupados.has(h)) {
+      c.posicion = "galeria";
+      movidas++;
+      cambioCollages = true;
+    } else {
+      ocupados.add(h);
+    }
+  });
+  if (cambioCollages) pintarListaCollages();
+  if (movidas) EOF.toast(AVISO_FOTOS_SEGUIDAS, "info");
+  return movidas;
+}
+
+// Array de "imagenes" listo para mandar al servidor (fotos + collages +
+// tweets), con la regla ya aplicada.
+function obtenerImagenesParaEnviar() {
+  aplicarReglaFotosSeguidas();
+  return obtenerImagenesFormulario().concat(collagesArticuloAImagenes()).concat(obtenerTweetsFormulario());
+}
+
 btnAddImagen.addEventListener("click", () => {
   const totalActual = imagenesLista.querySelectorAll(".fila-imagen").length;
   crearFilaImagen("", false, posicionPorDefecto(totalActual));
@@ -2510,6 +2914,7 @@ const NOMBRE_TIPO_PLANTILLA = {
   noticia: "noticia", previa: "previa", cronica: "crónica",
   analisis: "análisis", opinion: "opinión", entrevista: "entrevista",
   uno_por_uno: "1x1 de jugadores",
+  rdp_previa: "rueda de prensa previa", rdp_post: "rueda de prensa posterior",
 };
 function actualizarEtiquetaBotonPlantilla() {
   const btn = document.querySelector('#editorToolbar [data-accion="plantilla"]');
@@ -2542,6 +2947,27 @@ let CATEGORIA_AUTOMATICA_ACTUAL = null;
 
 function esTipoConClubAutomatico(tipo) {
   return tipo === "previa" || tipo === "cronica";
+}
+
+// Categorías en las que una previa/crónica puede guardarse SIN resultado
+// vinculado (de ellas no llevamos los resultados en el sistema). Debe
+// coincidir con CATEGORIAS_PREVIA_CRONICA_SIN_RESULTADO del backend
+// (worker/src/index.js). Con resultado vinculado todo sigue igual (club y
+// categoría automáticos); sin él, se usan la categoría y el club elegidos
+// a mano en los desplegables normales.
+const CATEGORIAS_PREVIA_CRONICA_SIN_RESULTADO = ["tercera_federacion", "copa_del_rey", "copa_federacion"];
+function categoriaAdmiteSinResultado(categoria) {
+  return CATEGORIAS_PREVIA_CRONICA_SIN_RESULTADO.includes(categoria);
+}
+function hayResultadoVinculadoArticulo() {
+  const v = typeof selectResultadoArticulo !== "undefined" && selectResultadoArticulo ? selectResultadoArticulo.value : "";
+  return Boolean(v) && v !== "__nuevo__";
+}
+// true cuando club y categoría se derivan del resultado vinculado: tipo
+// previa/crónica Y hay un resultado elegido. Sin resultado (solo válido en
+// las categorías de arriba) se usan los desplegables normales.
+function usaClubAutomatico() {
+  return esTipoConClubAutomatico(document.getElementById("tipo")?.value) && hayResultadoVinculadoArticulo();
 }
 
 // Comprueba que el estado del partido vinculado sea coherente con el
@@ -2582,7 +3008,9 @@ function actualizarClubAutomatico() {
   const resultado = idResultado && idResultado !== "__nuevo__"
     ? RESULTADOS_ARTICULO_TODOS.find((x) => String(x.id) === String(idResultado))
     : null;
-  const tipoCorregido = tipoCorregidoSegunEstadoResultado(selectTipoArticulo?.value, resultado);
+  // Un admin puede cambiar libremente entre previa y crónica: no se le
+  // corrige el tipo según el estado del partido.
+  const tipoCorregido = USER.rol === "admin" ? null : tipoCorregidoSegunEstadoResultado(selectTipoArticulo?.value, resultado);
   if (tipoCorregido && selectTipoArticulo) {
     selectTipoArticulo.value = tipoCorregido;
     // La corrección puede cambiar si hace falta la ficha técnica
@@ -2591,13 +3019,23 @@ function actualizarClubAutomatico() {
     actualizarVisibilidadFichaTecnica();
     aplicarPlantillaSegunTipo({ silencioso: true });
   }
-  const esAutomatico = esTipoConClubAutomatico(selectTipoArticulo?.value);
-  // Para previa/crónica el resultado vinculado es OBLIGATORIO: el rótulo
-  // no debe decir "(opcional)" en ese caso (sí en el resto de tipos).
+  const esPreviaCronica = esTipoConClubAutomatico(selectTipoArticulo?.value);
+  // Modo automático (club y categoría salen del partido) solo si hay un
+  // resultado vinculado; sin él se ven los desplegables normales para
+  // poder elegir, p. ej., Tercera Federación o Copa del Rey.
+  const esAutomatico = esPreviaCronica && hayResultadoVinculadoArticulo();
+  // Para previa/crónica el resultado vinculado es OBLIGATORIO salvo en
+  // Tercera Federación y las copas, donde es opcional (igual que en el
+  // resto de tipos).
+  const categoriaEfectiva = (resultado && resultado.competicion) || document.getElementById("categoria")?.value;
+  const resultadoObligatorio = esPreviaCronica && !categoriaAdmiteSinResultado(categoriaEfectiva);
   const etiquetaResultado = document.getElementById("resultadoVinculadoLabel");
-  if (etiquetaResultado) etiquetaResultado.textContent = esAutomatico ? "Resultado vinculado *" : "Resultado vinculado (opcional)";
+  if (etiquetaResultado) etiquetaResultado.innerHTML = resultadoObligatorio ? 'Resultado vinculado <span class="nn-req" title="Obligatorio">*</span>' : "Resultado vinculado (opcional)";
   const avisoResultado = document.getElementById("resultadoVinculadoObligatorioAviso");
-  if (avisoResultado) avisoResultado.style.display = esAutomatico ? "" : "none";
+  if (avisoResultado) {
+    avisoResultado.textContent = "En previas y crónicas el resultado vinculado es obligatorio, salvo en Tercera Federación, Copa del Rey y Copa Federación.";
+    avisoResultado.style.display = resultadoObligatorio ? "" : "none";
+  }
   clubWrapNormal.style.display = esAutomatico ? "none" : "";
   clubWrapAutomatico.style.display = esAutomatico ? "" : "none";
   if (categoriaWrapNormal && categoriaWrapAutomatico) {
@@ -2634,6 +3072,9 @@ function actualizarClubAutomatico() {
   }
 }
 selectTipoArticulo?.addEventListener("change", actualizarClubAutomatico);
+// Al cambiar la categoría a mano (solo visible sin resultado vinculado) se
+// refresca si el resultado es obligatorio u opcional.
+document.getElementById("categoria")?.addEventListener("change", actualizarClubAutomatico);
 
 // Crea una fila con un input de texto y un botón para quitarla, usada
 // tanto para goleadores como para tarjetas (misma estructura, solo
@@ -2889,7 +3330,7 @@ async function autorrellenarFichaTecnicaDesdeResultado(r) {
   try {
     const { eventos = [] } = await apiFetch(`/api/results/${r.id}/eventos`);
     if (!eventos.length) return;
-    const nombreEquipo = (ev) => ev.equipo === "visitante" ? r.equipo_visitante : r.equipo_local;
+    const nombreEquipo = (ev) => ev.equipo === "visitante" ? r.equipo_visitante : (ev.equipo === "local" ? r.equipo_local : "");
     if (listaFichaGoleadores) {
       const goleadores = eventos
         .filter((ev) => ["gol", "gol_var", "gol_pp"].includes(ev.tipo) && ev.jugador)
@@ -2906,7 +3347,7 @@ async function autorrellenarFichaTecnicaDesdeResultado(r) {
       const etiquetasTarjeta = { amarilla: "Amarilla", doble_amarilla: "Doble amarilla", roja: "Roja" };
       const tarjetas = eventos
         .filter((ev) => ["amarilla", "doble_amarilla", "roja"].includes(ev.tipo))
-        .map((ev) => `${etiquetaMinutoFichaTecnica(ev)} ${etiquetasTarjeta[ev.tipo]}${ev.jugador ? ` - ${ev.jugador}` : ""} (${nombreEquipo(ev)})`);
+        .map((ev) => `${etiquetaMinutoFichaTecnica(ev)} ${etiquetasTarjeta[ev.tipo]}${ev.jugador ? ` - ${ev.jugador}` : ""}${nombreEquipo(ev) ? ` (${nombreEquipo(ev)})` : ""}${ev.motivo_tarjeta ? ` · ${ev.motivo_tarjeta}` : ""}`);
       if (tarjetas.length) {
         listaFichaTarjetas.innerHTML = "";
         tarjetas.forEach((t) => crearFilaFichaLista(listaFichaTarjetas, t, "Ej. 34' Amarilla - Vencedor"));
@@ -3003,6 +3444,41 @@ document.addEventListener("click", (e) => {
   if (!e.target.closest(".autocompletar-resultado")) cerrarSugerenciasResultadoArticulo();
 });
 
+// ---------- Lista completa de resultados: UNA petición compartida ----------
+// El panel pedía "/api/results?limit=0" (todos los partidos, SELECT * sin límite) por separado al
+// arrancar (desplegable de la noticia), al abrir "Nueva noticia", al abrir Resultados y cada minuto.
+// Ahora las peticiones simultáneas comparten la misma respuesta y, para el desplegable, se reutiliza
+// la última durante 30 s. Cualquier escritura en /api/results* la invalida (ver apiFetch).
+let RESULTADOS_COMPLETOS_CACHE = null;      // { t, gen, results }
+let RESULTADOS_COMPLETOS_PENDIENTE = null;  // { gen, promesa }
+let RESULTADOS_COMPLETOS_GEN = 0;
+const RESULTADOS_COMPLETOS_TTL_MS = 30000;
+function invalidarResultadosCompletos() {
+  RESULTADOS_COMPLETOS_GEN++;
+  RESULTADOS_COMPLETOS_CACHE = null;
+}
+// opciones.forzar = true: no usa la copia reciente (sí comparte una petición que ya esté en vuelo).
+async function pedirResultadosCompletos(opciones) {
+  const forzar = !!(opciones && opciones.forzar);
+  const c = RESULTADOS_COMPLETOS_CACHE;
+  if (!forzar && c && c.gen === RESULTADOS_COMPLETOS_GEN && Date.now() - c.t < RESULTADOS_COMPLETOS_TTL_MS) {
+    return c.results.slice();
+  }
+  const p = RESULTADOS_COMPLETOS_PENDIENTE;
+  if (p && p.gen === RESULTADOS_COMPLETOS_GEN) return (await p.promesa).slice();
+  const gen = RESULTADOS_COMPLETOS_GEN;
+  const promesa = (async () => {
+    const { results = [] } = await apiFetch(`/api/results?limit=0`);
+    if (gen === RESULTADOS_COMPLETOS_GEN) RESULTADOS_COMPLETOS_CACHE = { t: Date.now(), gen, results };
+    return results;
+  })();
+  const entrada = { gen, promesa };
+  RESULTADOS_COMPLETOS_PENDIENTE = entrada;
+  const limpiar = () => { if (RESULTADOS_COMPLETOS_PENDIENTE === entrada) RESULTADOS_COMPLETOS_PENDIENTE = null; };
+  promesa.then(limpiar, limpiar);
+  return (await promesa).slice();
+}
+
 async function cargarResultadosSelect(seleccionado) {
   if (!selectResultadoArticulo) return;
   try {
@@ -3017,7 +3493,7 @@ async function cargarResultadosSelect(seleccionado) {
     // por encima de 500 se ignora y cae en el default de 100), así que
     // en la práctica esta llamada se estaba quedando en 100 igualmente.
     // Se ajusta a 500, que es el máximo que el backend admite de verdad.
-    const { results = [] } = await apiFetch(`/api/results?limit=0`);
+    const results = await pedirResultadosCompletos();
     RESULTADOS_ARTICULO_TODOS = results;
     const actual = seleccionado ? results.find((r) => String(r.id) === String(seleccionado)) : null;
     fijarResultadoArticulo(seleccionado || "", actual ? etiquetaResultado(actual) : "", false);
@@ -3437,7 +3913,12 @@ function comprobarBorradorLocalDeEmergencia() {
 // 2000 y 8000 caracteres (se cuenta el texto "de verdad", sin las
 // etiquetas HTML del editor), igual que valida el worker al guardar.
 const CONTENIDO_MIN = 1500;
-const CONTENIDO_MAX = 8000;
+const CONTENIDO_MAX_BASE = 8000;
+const CONTENIDO_MAX_OPINION = 8500; // los artículos de opinión admiten más texto
+// Máximo según el tipo elegido en el formulario (se lee en cada uso).
+function contenidoMaxActual() {
+  return document.getElementById("tipo")?.value === "opinion" ? CONTENIDO_MAX_OPINION : CONTENIDO_MAX_BASE;
+}
 const contadorCaracteres = document.getElementById("contadorCaracteres");
 
 function longitudContenidoActual() {
@@ -3455,6 +3936,7 @@ function esUltimaHoraSinMinimo(ultimaHoraPin) {
 function actualizarContadorCaracteres() {
   if (!contadorCaracteres) return;
   const n = longitudContenidoActual();
+  const CONTENIDO_MAX = contenidoMaxActual();
   const sinMinimo = esUltimaHoraSinMinimo(null);
   contadorCaracteres.textContent = sinMinimo
     ? `${n} caracteres (última hora: sin mínimo, máximo ${CONTENIDO_MAX})`
@@ -3470,6 +3952,7 @@ function actualizarContadorCaracteres() {
 }
 contenidoEditor.addEventListener("input", actualizarContadorCaracteres);
 if (checkBannerUrgente) checkBannerUrgente.addEventListener("change", actualizarContadorCaracteres);
+document.getElementById("tipo")?.addEventListener("change", actualizarContadorCaracteres);
 contenidoEditor.addEventListener("paste", () => setTimeout(actualizarContadorCaracteres, 0));
 contenidoEditor.addEventListener("keyup", actualizarContadorCaracteres);
 contenidoEditor.addEventListener("blur", actualizarContadorCaracteres);
@@ -3570,6 +4053,28 @@ const PLANTILLAS_POR_TIPO = {
   <p><b>Delantero (nombre) — 0</b>: breve comentario sobre su actuación.</p>
   <h3>Mejor y peor del partido</h3>
   <p>Quién ha sido el jugador más destacado y quién se ha quedado por debajo de su nivel.</p>
+`,
+  rdp_previa: `
+  <p class="entradilla">Escribe aquí la <b>entradilla</b>: quién comparece, ante qué partido y la declaración más llamativa de la rueda de prensa.</p>
+  <p>Contexto breve: cuándo y dónde se ha celebrado la rueda de prensa, y qué partido se juega y cuándo.</p>
+  <h3>Estado del equipo</h3>
+  <p>Lesiones, sancionados, dudas y estado de ánimo del vestuario, según el entrenador o el jugador que comparece.</p>
+  <h3>El rival</h3>
+  <p>Qué opina del rival y qué espera encontrarse.</p>
+  <blockquote>Escribe aquí la frase más destacada de la rueda de prensa.</blockquote>
+  <h3>Lo que se juega el equipo</h3>
+  <p>Qué hay en juego en este partido y cuál es el objetivo.</p>
+`,
+  rdp_post: `
+  <p class="entradilla">Escribe aquí la <b>entradilla</b>: quién comparece, resultado del partido y la declaración más llamativa tras el encuentro.</p>
+  <p>Contexto breve: contra quién se ha jugado, el resultado y cuándo y dónde se ha celebrado la rueda de prensa.</p>
+  <h3>Valoración del partido</h3>
+  <p>Cómo ha visto el partido quien comparece y qué ha decidido el resultado.</p>
+  <h3>Los jugadores y el árbitro</h3>
+  <p>Menciones a jugadores concretos, lesiones, decisiones arbitrales o cualquier otro asunto que se haya tratado.</p>
+  <blockquote>Escribe aquí la frase más destacada de la rueda de prensa.</blockquote>
+  <h3>Lo que viene</h3>
+  <p>Qué supone el resultado y cuál es el próximo compromiso.</p>
 `,
 };
 // Sigue existiendo con este nombre porque la plantilla de "noticia" es la
@@ -4085,17 +4590,17 @@ function snapshotFormularioArticulo() {
     // Igual que en guardarArticulo: para previa/crónica la categoría y el
     // club "reales" son CATEGORIA_AUTOMATICA_ACTUAL y
     // CLUB_AUTOMATICO_ACTUAL, no los <select> ocultos.
-    categoria: esTipoConClubAutomatico(document.getElementById("tipo").value)
+    categoria: usaClubAutomatico()
       ? CATEGORIA_AUTOMATICA_ACTUAL
       : document.getElementById("categoria").value,
     categorias_adicionales: categoriasAdicionalesPicker ? categoriasAdicionalesPicker.obtenerSeleccion().slice().sort() : [],
-    club: esTipoConClubAutomatico(document.getElementById("tipo").value)
+    club: usaClubAutomatico()
       ? CLUB_AUTOMATICO_ACTUAL
       : document.getElementById("club").value,
     autor_id: selectAutor ? selectAutor.value : "",
     coautor_id: selectCoautor ? selectCoautor.value : "",
     imagen_url: obtenerPortadaSeleccionada(),
-    imagenes: obtenerImagenesFormulario().concat(collagesArticuloAImagenes()).concat(obtenerTweetsFormulario()),
+    imagenes: obtenerImagenesParaEnviar(),
     resultado_id: selectResultadoArticulo.value || "",
     contenido: contenidoEditor.innerHTML,
     destacado: document.getElementById("destacado").checked,
@@ -4175,6 +4680,7 @@ async function guardarArticulo(ultimaHoraPin, estadoBorrador, preferenciaFechas)
       contenidoEditor.focus();
       return false;
     }
+    const CONTENIDO_MAX = contenidoMaxActual();
     if (longitudContenido > CONTENIDO_MAX) {
       EOF.toast(`El contenido no puede superar los ${CONTENIDO_MAX} caracteres (tiene ${longitudContenido}).`, "error");
       contenidoEditor.focus();
@@ -4202,15 +4708,22 @@ async function guardarArticulo(ultimaHoraPin, estadoBorrador, preferenciaFechas)
   // desplegable "Tipo" se autocorrige en cuanto ocurre (ver
   // actualizarClubAutomatico), así que si sigue en "previa"/"cronica" es
   // porque encaja con el resultado vinculado o porque no hay ninguno.
-  if (esTipoConClubAutomatico(document.getElementById("tipo").value) && (!CLUB_AUTOMATICO_ACTUAL || CLUB_AUTOMATICO_ACTUAL.length < 2 || !CATEGORIA_AUTOMATICA_ACTUAL)) {
-    EOF.toast("Una previa o crónica debe tener un resultado vinculado (con sus dos equipos y su competición) para poder guardarse. Vincúlalo en \"Resultado vinculado\" más abajo.", "error");
-    return false;
+  if (esTipoConClubAutomatico(document.getElementById("tipo").value)) {
+    if (usaClubAutomatico()) {
+      if (!CLUB_AUTOMATICO_ACTUAL || CLUB_AUTOMATICO_ACTUAL.length < 2 || !CATEGORIA_AUTOMATICA_ACTUAL) {
+        EOF.toast("El resultado vinculado debe tener sus dos equipos y su competición para poder guardar la previa o crónica.", "error");
+        return false;
+      }
+    } else if (!categoriaAdmiteSinResultado(document.getElementById("categoria").value)) {
+      EOF.toast("Una previa o crónica debe tener un resultado vinculado (con sus dos equipos y su competición) para poder guardarse; solo es opcional en Tercera Federación, Copa del Rey y Copa Federación. Vincúlalo en \"Resultado vinculado\" más abajo.", "error");
+      return false;
+    }
   }
   // Aviso si la ficha técnica trae bastantes menos datos que la de la crónica anterior (ver
   // confirmarFichaNoPierdeDatos). Los guardados de borrador "en proceso" no preguntan.
   if (estadoBorrador !== "en_proceso" && !(await confirmarFichaNoPierdeDatos())) return false;
   const id = document.getElementById("articleId").value;
-  const imagenes = obtenerImagenesFormulario().concat(collagesArticuloAImagenes()).concat(obtenerTweetsFormulario());
+  const imagenes = obtenerImagenesParaEnviar();
   const body = {
     titulo: document.getElementById("titulo").value,
     subtitulo: document.getElementById("subtitulo").value,
@@ -4222,7 +4735,7 @@ async function guardarArticulo(ultimaHoraPin, estadoBorrador, preferenciaFechas)
     // todas formas para previa/crónica (nunca se fía de lo que mande el
     // panel para ese caso), esto es solo para que quien vea el JSON de
     // la petición ya lleve el valor correcto.
-    categoria: esTipoConClubAutomatico(document.getElementById("tipo").value)
+    categoria: usaClubAutomatico()
       ? CATEGORIA_AUTOMATICA_ACTUAL
       : document.getElementById("categoria").value,
     categorias_adicionales: categoriasAdicionalesPicker ? categoriasAdicionalesPicker.obtenerSeleccion() : [],
@@ -4233,7 +4746,7 @@ async function guardarArticulo(ultimaHoraPin, estadoBorrador, preferenciaFechas)
     // recalcularlo de todas formas para previa/crónica (nunca se fía de
     // lo que mande el panel para ese caso), esto es solo para que quien
     // vea el JSON de la petición ya lleve el valor correcto.
-    club: esTipoConClubAutomatico(document.getElementById("tipo").value)
+    club: usaClubAutomatico()
       ? CLUB_AUTOMATICO_ACTUAL
       : document.getElementById("club").value,
     autor_id: selectAutor ? selectAutor.value : undefined,
@@ -4275,6 +4788,13 @@ async function guardarArticulo(ultimaHoraPin, estadoBorrador, preferenciaFechas)
   if (!body.publicado && estadoBorrador === "terminado" && preferenciaFechas) {
     if (preferenciaFechas.fecha_preferencia_desde) body.fecha_preferencia_desde = preferenciaFechas.fecha_preferencia_desde;
     if (preferenciaFechas.fecha_preferencia_hasta) body.fecha_preferencia_hasta = preferenciaFechas.fecha_preferencia_hasta;
+  }
+  // Feedback al autor: al aprobar/programar una pieza ajena se ofrece una nota
+  // breve del revisor (ver js/feedback-revision.js). Cancelar no guarda nada.
+  if (id && window.EOFFeedback) {
+    const notaRevisor = await EOFFeedback.pedirNotaAlGuardar(body, ARTICULOS_CACHE[id]);
+    if (notaRevisor === null) return false;
+    if (notaRevisor) body.nota_revisor = notaRevisor;
   }
   try {
     let slugResultado = null;
@@ -4319,6 +4839,16 @@ async function guardarArticulo(ultimaHoraPin, estadoBorrador, preferenciaFechas)
     document.querySelector('#panel-noticias .subtabs button[data-subtab="lista"]').click();
     window.scrollTo({ top: 0, behavior: "smooth" });
     EOF.toast(id ? "Noticia guardada" : "Noticia creada", "exito");
+    // PRECALENTADO de la vista previa para redes: se abre la noticia en segundo
+    // plano para que el servidor ya tenga verificada la imagen social y en caché
+    // la noticia; así X/Facebook/WhatsApp reciben la tarjeta al instante y no
+    // se rinden por tardar. Es invisible y nunca da error al usuario.
+    if ((publicadoFinal || programadoParaValor) && slugResultado && !fueraCalendario) {
+      try {
+        const urlPre = urlNoticia(body.categoria, slugResultado);
+        setTimeout(() => { fetch(urlPre, { cache: "no-store", credentials: "omit" }).catch(() => {}); }, 800);
+      } catch { /* solo es una optimización */ }
+    }
     // Si es una noticia nueva y se ha publicado (no un borrador), se ofrece
     // directamente el texto para compartirla en redes. Si se ha programado,
     // también se ofrece: el texto se puede preparar ya, aunque el enlace no
@@ -4358,10 +4888,26 @@ formArticle.addEventListener("submit", async (e) => {
   // nivel máximo). USER.nivel se refresca al arrancar el panel (ver
   // refrescarNivelUsuario) para que un ascenso reciente tenga efecto
   // sin tener que volver a iniciar sesión.
+  // El PIN solo se pide para PUBLICAR una noticia que todavía no lo estaba.
+  // Editar una noticia que ya está publicada (corregir una errata, cambiar
+  // una foto...) es libre y NUNCA pide PIN, sea cual sea el nivel.
   const quierePublicar = document.getElementById("publicado").checked;
+  const yaEstabaPublicada = document.getElementById("articlePublicadoOriginal").value === "1";
   const nivelUsuarioActual = USER.rol === "admin" ? 4 : (USER.nivel || 1);
-  if (USER.rol !== "admin" && nivelUsuarioActual < 2 && quierePublicar) {
-    abrirModalPinUltimaHora("articulo");
+  if (USER.rol !== "admin" && nivelUsuarioActual < 2 && quierePublicar && !yaEstabaPublicada) {
+    // PIN ya validado al desbloquear el interruptor: se manda tal cual.
+    if (pinUltimaHoraDesbloqueado) {
+      const okPin = await guardarArticulo(pinUltimaHoraDesbloqueado);
+      if (okPin) {
+        // El servidor renueva el PIN al usarlo: vuelve a quedar bloqueado.
+        pinUltimaHoraDesbloqueado = null;
+        aplicarVisibilidadPublicada();
+      } else {
+        await revalidarPinDesbloqueado();
+      }
+      return;
+    }
+    abrirModalPinUltimaHora("guardar");
     return;
   }
   // Si se está programando la publicación (solo admin), se guarda
@@ -4388,6 +4934,13 @@ formArticle.addEventListener("submit", async (e) => {
   // mostrar el modal de nuevo.
   const estadoBorradorOriginal = document.getElementById("articleEstadoBorradorOriginal").value;
   const programadoParaOriginal = document.getElementById("articleProgramadoParaOriginal").value === "1";
+  // NUNCA se devuelve a "en revisión" (ni a borrador) una noticia que ya estaba
+  // publicada o programada: si se ha desmarcado "Publicada" y tampoco hay una
+  // programación, se avisa y no se guarda (el servidor lo impone igualmente).
+  if (!quierePublicar && (document.getElementById("articlePublicadoOriginal").value === "1" || programadoParaOriginal)) {
+    EOF.toast("Esta noticia ya está publicada o programada: no puede volver a revisión ni a borrador. Deja marcada \"Publicada\" o programa una fecha.", "error");
+    return;
+  }
   if (!quierePublicar) {
     // Igual que con un borrador que ya estaba "terminado": si la noticia
     // estaba programada (en revisión, lista para publicarse sola) y ahora
@@ -4545,10 +5098,10 @@ async function construirArticleParaPreview() {
     // Igual que al guardar: para previa/crónica se usan la categoría y
     // el club calculados automáticamente (CATEGORIA_AUTOMATICA_ACTUAL y
     // CLUB_AUTOMATICO_ACTUAL), no los <select> ocultos.
-    categoria: esTipoConClubAutomatico(document.getElementById("tipo").value)
+    categoria: usaClubAutomatico()
       ? CATEGORIA_AUTOMATICA_ACTUAL
       : document.getElementById("categoria").value,
-    club: esTipoConClubAutomatico(document.getElementById("tipo").value)
+    club: usaClubAutomatico()
       ? CLUB_AUTOMATICO_ACTUAL
       : document.getElementById("club").value,
     tipo: selectTipoArticulo ? selectTipoArticulo.value : undefined,
@@ -4557,7 +5110,7 @@ async function construirArticleParaPreview() {
     coautor_id: coautorId || null,
     coautor_nombre: coautorNombre || null,
     imagen_url: obtenerPortadaSeleccionada(),
-    imagenes: obtenerImagenesFormulario().concat(collagesArticuloAImagenes()).concat(obtenerTweetsFormulario()),
+    imagenes: obtenerImagenesParaEnviar(),
     contenido: contenidoEditor.innerHTML,
     fecha_publicacion: new Date().toISOString(),
     resultado,
@@ -4711,7 +5264,17 @@ pinInputs.forEach((inp, i) => {
   });
 });
 
-function abrirModalPinUltimaHora() {
+// "guardar": el PIN se manda al guardar (flujo de siempre). "desbloquear": solo
+// se comprueba el PIN para mostrar el interruptor "Publicada" (Nivel 1).
+let modoPinUltimaHora = "guardar";
+function abrirModalPinUltimaHora(modo) {
+  modoPinUltimaHora = modo === "desbloquear" ? "desbloquear" : "guardar";
+  const btnOk = document.getElementById("btnConfirmarPinUltimaHora");
+  if (btnOk) btnOk.textContent = modoPinUltimaHora === "desbloquear" ? "Desbloquear" : "Publicar ahora";
+  const btnBorrador = document.getElementById("btnGuardarComoBorradorPin");
+  if (btnBorrador) btnBorrador.style.display = modoPinUltimaHora === "desbloquear" ? "none" : "";
+  const errPrevio = document.getElementById("errPinUltimaHora");
+  if (errPrevio) errPrevio.style.display = "none";
   limpiarPinUltimaHoraInputs();
   document.getElementById("modalPinUltimaHora").classList.add("abierto");
   setTimeout(() => pinInputs[0] && pinInputs[0].focus(), 50);
@@ -4733,6 +5296,41 @@ document.getElementById("btnConfirmarPinUltimaHora")?.addEventListener("click", 
     errEl.style.display = "block";
     return;
   }
+  if (modoPinUltimaHora === "desbloquear") {
+    let valido = false;
+    try {
+      const r = await apiFetch(`/api/ultima-hora/verificar`, { method: "POST", body: JSON.stringify({ pin }) });
+      valido = !!(r && r.ok);
+    } catch (err) {
+      errEl.textContent = (err && err.message) || "No se ha podido comprobar el PIN. Inténtalo de nuevo.";
+      errEl.style.display = "block";
+      return;
+    }
+    if (!valido) {
+      errEl.textContent = "PIN incorrecto. Revísalo e inténtalo de nuevo.";
+      errEl.style.display = "block";
+      limpiarPinUltimaHoraInputs();
+      setTimeout(() => pinInputs[0] && pinInputs[0].focus(), 50);
+      return;
+    }
+    pinUltimaHoraDesbloqueado = pin;
+    const chk = document.getElementById("publicado");
+    if (chk) chk.checked = true;
+    // "Última hora" con PIN también activa el banner de última hora.
+    if (checkBannerUrgente) {
+      checkBannerUrgente.checked = true;
+      try { actualizarContadorCaracteres(); } catch { /* el editor aún no está listo */ }
+    }
+    sincronizarDestacadoConPublicado();
+    // PIN correcto: la noticia también queda destacada por defecto (se puede desmarcar).
+    if (checkDestacado) checkDestacado.checked = true;
+    sincronizarProgramarConPublicado();
+    sincronizarFechaPreferenciaConPublicado();
+    aplicarVisibilidadPublicada();
+    cerrarModalPinUltimaHora();
+    EOF.toast("PIN correcto: la noticia se publicará como última hora, activará el banner y quedará destacada.", "success");
+    return;
+  }
   const ok = await guardarArticulo(pin);
   if (ok) {
     cerrarModalPinUltimaHora();
@@ -4743,6 +5341,47 @@ document.getElementById("btnConfirmarPinUltimaHora")?.addEventListener("click", 
     setTimeout(() => pinInputs[0] && pinInputs[0].focus(), 50);
   }
 });
+// Interruptor "Marcar como última hora" de Nivel 1: al marcarlo pide el PIN (no se queda
+// marcado hasta que el PIN es correcto); al desmarcarlo se vuelve a bloquear.
+document.getElementById("ultimaHoraPin")?.addEventListener("change", (e) => {
+  if (e.target.checked) {
+    e.target.checked = false;
+    abrirModalPinUltimaHora("desbloquear");
+    return;
+  }
+  if (!pinUltimaHoraDesbloqueado) return;
+  pinUltimaHoraDesbloqueado = null;
+  const chk = document.getElementById("publicado");
+  if (chk && document.getElementById("articlePublicadoOriginal").value !== "1") chk.checked = false;
+  if (checkBannerUrgente) checkBannerUrgente.checked = false;
+  sincronizarDestacadoConPublicado();
+  sincronizarProgramarConPublicado();
+  sincronizarFechaPreferenciaConPublicado();
+  aplicarVisibilidadPublicada();
+  try { actualizarContadorCaracteres(); } catch { /* el editor aún no está listo */ }
+});
+
+// Tras un guardado fallido con el PIN desbloqueado: si el PIN ya no vale
+// (caducado/renovado), se vuelve a bloquear; si sigue valiendo (p. ej. fallo de
+// validación del formulario) se mantiene desbloqueado.
+async function revalidarPinDesbloqueado() {
+  if (!pinUltimaHoraDesbloqueado) return;
+  try {
+    const r = await apiFetch(`/api/ultima-hora/verificar`, { method: "POST", body: JSON.stringify({ pin: pinUltimaHoraDesbloqueado }) });
+    if (r && r.ok) return;
+  } catch (err) {
+    return;
+  }
+  pinUltimaHoraDesbloqueado = null;
+  const chk = document.getElementById("publicado");
+  if (chk && document.getElementById("articlePublicadoOriginal").value !== "1") chk.checked = false;
+  if (checkBannerUrgente) checkBannerUrgente.checked = false;
+  sincronizarDestacadoConPublicado();
+  sincronizarProgramarConPublicado();
+  sincronizarFechaPreferenciaConPublicado();
+  aplicarVisibilidadPublicada();
+  EOF.toast("El PIN ya no es válido (se renueva cada vez que se usa). Vuelve a introducirlo para publicar.", "error");
+}
 document.getElementById("btnGuardarComoBorradorPin")?.addEventListener("click", async () => {
   document.getElementById("publicado").checked = false;
   sincronizarDestacadoConPublicado();
@@ -4781,6 +5420,8 @@ function cancelarEdicion() {
   sincronizarDestacadoConPublicado();
   sincronizarProgramarConPublicado();
   sincronizarFechaPreferenciaConPublicado();
+  pinUltimaHoraDesbloqueado = null;
+  aplicarVisibilidadPublicada();
   sincronizarCampoFechaProgramada();
   actualizarTextoBotonGuardar();
   document.getElementById("btnCancelar").style.display = "none";
@@ -4842,8 +5483,8 @@ function nivelUsuarioConectado() {
   return USER.rol === "admin" ? 4 : (USER.nivel || 1);
 }
 
-// Un borrador "terminado" (ya avisado por email a la redacción) queda
-// bloqueado para todo el mundo salvo un admin, hasta que se publique.
+// Un borrador "terminado" (ya avisado por email a la redacción) no se puede
+// BORRAR salvo por un admin, hasta que se publique. Editarlo sí se permite.
 function articuloBloqueadoPorTerminado(a) {
   return !a.publicado && a.estado_borrador === "terminado";
 }
@@ -4856,7 +5497,8 @@ function puedeGestionarArticulo(a) {
   // Worker en puedeEditar(). Por eso este atajo va ANTES del bloqueo por
   // "terminado": para un Nivel 4 ese bloqueo no aplica.
   if (nivelUsuarioConectado() >= 4) return true;
-  if (articuloBloqueadoPorTerminado(a)) return false;
+  // Un borrador "terminado" (en revisión) sigue siendo editable por su
+  // autor/coautor: ya no se bloquea aquí (sí sigue bloqueado el borrado).
   return a.autor_id === USER.id || a.coautor_id === USER.id || PERMISOS_TEMPORALES_ARTICULO.has(a.id);
 }
 // El borrado NO se abre al atajo de Nivel 4: revisar/corregir contenido
@@ -4898,6 +5540,13 @@ function articuloEnRevision(a) {
 function articuloBorradorEnProceso(a) {
   return !a.publicado && !a.programado_para && a.estado_borrador !== "terminado";
 }
+// Publicada SIN revisión por un redactor de Nivel 2 (el servidor manda
+// sin_revision_redes: últimas 48 h, sin etiqueta de redes y sin anotar como subida).
+// Nadie de Nivel 4 pasa por estas noticias antes de que salgan, así que se les
+// señala aquí para que las suban a redes (basta con etiquetarlas o compartirlas).
+function articuloPorSubirARedes(a) {
+  return !!a && !!a.sin_revision_redes && !a.redes_destino;
+}
 
 // ---------- Organización para redes (carruseles de Instagram) ----------
 // Las noticias y crónicas menos importantes se suben a X sin portada y a
@@ -4915,6 +5564,9 @@ const REDES_DESTINOS = {
 };
 // Orden en que se muestran las ligas dentro de cada carrusel (el resto, después, por nombre).
 const ORDEN_CATEGORIAS_CARRUSEL = ["hypermotion", "primera_federacion", "segunda_federacion"];
+// En redes (carruseles, hashtag, plantillas de X/Instagram) la Tercera Federación
+// va siempre junto con la Segunda RFEF: misma liga/carrusel, mismo hashtag y misma etiqueta.
+function categoriaParaRedes(c) { return c === "tercera_federacion" ? "segunda_federacion" : c; }
 let SELECCION_REDES = new Set(); // ids marcados con la casilla del listado
 let FILTRO_REDES = "";           // "" | carousel_1 | carousel_2 | individual
 let FILTRO_REDES_CAT = "";       // "" = todas las ligas de la etiqueta; o una categoría
@@ -4987,12 +5639,16 @@ function planSubidaGrupo(arts) {
     sinOrden: items.length > 1 && items[0].ms === ultima.ms,
   };
 }
+function badgePorSubirARedes(a) {
+  if (!puedeOrganizarRedes() || !articuloPorSubirARedes(a)) return "";
+  return ` <span class="badge-por-subir-redes" title="Publicada sin revisión (autor de Nivel 2). Nadie la ha marcado ni subido a redes todavía: márcala como carrusel o individual, o pulsa Compartir.">📣 Sin subir a redes</span>`;
+}
 function badgeRedesDestino(a) {
   if (!puedeOrganizarRedes()) return "";
   const d = REDES_DESTINOS[a.redes_destino];
   if (!d) return "";
-  const liga = a.redes_destino !== "individual" && a.categoria ? ` · ${escapeHtml(categoriaLabel(a.categoria))}` : "";
-  return ` <span class="badge-redes badge-redes-${a.redes_destino}" title="Marcada para subir a redes: ${d.etiqueta}${liga ? " (" + escapeHtml(categoriaLabel(a.categoria)) + ")" : ""}. ${a.publicado ? "La noticia ya está publicada: sigue en su carrusel para poder compartirlo." : "Al publicarse seguirá en su carrusel 48 h para poder compartirlo."}">${d.corta}${liga}</span>`;
+  const liga = a.redes_destino !== "individual" && a.categoria ? ` · ${escapeHtml(categoriaLabel(categoriaParaRedes(a.categoria)))}` : "";
+  return ` <span class="badge-redes badge-redes-${a.redes_destino}" title="Marcada para subir a redes: ${d.etiqueta}${liga ? " (" + escapeHtml(categoriaLabel(categoriaParaRedes(a.categoria))) + ")" : ""}. ${a.publicado ? "La noticia ya está publicada: sigue en su carrusel para poder compartirlo." : "Al publicarse seguirá en su carrusel 48 h para poder compartirlo."}">${d.corta}${liga}</span>`;
 }
 
 // Pinta los controles «Anterior / números / Siguiente» dentro del
@@ -5160,7 +5816,10 @@ function ordenarPorPreferenciaFechas(articles) {
   return resultado;
 }
 
-async function cargaListaArticulos() {
+// opciones.silencioso: refresco "en vivo" en segundo plano: mantiene la página y el buscador, no vuelve a pedir permisos
+// y, si falla, no sustituye la lista por un error (se reintenta en el siguiente sondeo).
+async function cargaListaArticulos(opciones) {
+  const silencioso = !!(opciones && opciones.silencioso === true);
   const cos = document.getElementById("tablaArticulos");
   // Antes esto vaciaba la tabla y ponía "Cargando..." SIEMPRE, incluso
   // cuando ya había una lista pintada de una visita anterior a esta
@@ -5176,7 +5835,9 @@ async function cargaListaArticulos() {
     cos.innerHTML = "<tr><td colspan='6'>Cargando...</td></tr>";
   }
   try {
-    await cargarPermisosTemporalesVigentes();
+    if (!silencioso) await cargarPermisosTemporalesVigentes();
+    // La huella se pide ANTES que la lista: si algo cambia entre las dos peticiones se detecta en el siguiente sondeo.
+    const huellaPrevia = await enVivoPedirHuella(EN_VIVO_LISTAS.articulos.url);
     // Antes se pedían solo las últimas 200 noticias: con más de 200 en
     // total, cualquier noticia más antigua quedaba fuera del panel de
     // Redacción > Noticias (el buscador de esta lista solo filtra en
@@ -5188,9 +5849,12 @@ async function cargaListaArticulos() {
     ARTICULOS_CACHE = {};
     articles.forEach((a) => { ARTICULOS_CACHE[a.id] = a; });
     ARTICULOS_LISTA_COMPLETA = ordenarPorPreferenciaFechas(articles);
-    ARTICULOS_PAGINA_ACTUAL = 1;
+    if (!silencioso) ARTICULOS_PAGINA_ACTUAL = 1;
     pintarListaArticulos();
+    EN_VIVO_LISTAS.articulos.huella = huellaPrevia;
+    enVivoIndicador("articulos", huellaPrevia ? (silencioso ? "actualizado" : "vivo") : "oculto");
   } catch (err) {
+    if (silencioso) return;
     cos.innerHTML = `<tr><td colspan="6">Error cargando: ${err.message}</td></tr>`;
   }
 }
@@ -5221,7 +5885,15 @@ async function quitarBannerUrgente(a) {
     EOF.toast("No se ha podido identificar la noticia. Recarga el listado e inténtalo de nuevo.", "error");
     return;
   }
-  if (!confirm(`¿Quitar el banner de "Última hora" de "${a.titulo}"? Dejará de verse en la web al momento.`)) return;
+  const quitar = window.EOFModalesPartido
+    ? await EOFModalesPartido.confirmarAccion({
+        icono: "aviso", titulo: "Quitar banner de última hora", sub: "Dejará de destacarse arriba en la web.",
+        cabecera: { etiqueta: "Noticia", texto: a.titulo },
+        items: ["El banner <b>desaparece de la web al momento</b>.", "La noticia sigue publicada con normalidad; solo se retira el aviso rojo.", "Podrás volver a ponerlo cuando quieras."],
+        confirmar: "Quitar banner", peligroso: true,
+      })
+    : confirm(`¿Quitar el banner de "Última hora" de "${a.titulo}"? Dejará de verse en la web al momento.`);
+  if (!quitar) return;
   try {
     await apiFetch(`/api/articles/${a.id}/banner-urgente`, { method: "DELETE" });
     EOF.toast("Banner de última hora retirado.", "exito");
@@ -5267,11 +5939,14 @@ function pintarListaArticulos() {
     if (nRev) nRev.textContent = String(ARTICULOS_LISTA_COMPLETA.filter(articuloEnRevision).length);
     const nProc = document.getElementById("contadorEnProceso");
     if (nProc) nProc.textContent = String(ARTICULOS_LISTA_COMPLETA.filter(articuloBorradorEnProceso).length);
+    const nRedes = document.getElementById("contadorPorSubirRedes");
+    if (nRedes) nRedes.textContent = String(ARTICULOS_LISTA_COMPLETA.filter(articuloPorSubirARedes).length);
   }
   const pasaFiltroEstado = (a) =>
     !FILTRO_ESTADO_NOTICIAS
     || (FILTRO_ESTADO_NOTICIAS === "revision" && articuloEnRevision(a))
-    || (FILTRO_ESTADO_NOTICIAS === "proceso" && articuloBorradorEnProceso(a));
+    || (FILTRO_ESTADO_NOTICIAS === "proceso" && articuloBorradorEnProceso(a))
+    || (FILTRO_ESTADO_NOTICIAS === "redes" && articuloPorSubirARedes(a));
   // Organización para redes: resumen/filtro por etiqueta y barra de acciones.
   const puedeRedes = puedeOrganizarRedes();
   if (!puedeRedes) { FILTRO_REDES = ""; FILTRO_REDES_CAT = ""; SELECCION_REDES.clear(); }
@@ -5281,7 +5956,7 @@ function pintarListaArticulos() {
     if (!x || !articuloEtiquetableRedes(x)) SELECCION_REDES.delete(id);
   });
   const pasaFiltroRedes = (a) => !FILTRO_REDES
-    || (a.redes_destino === FILTRO_REDES && (!FILTRO_REDES_CAT || a.categoria === FILTRO_REDES_CAT));
+    || (a.redes_destino === FILTRO_REDES && (!FILTRO_REDES_CAT || categoriaParaRedes(a.categoria) === FILTRO_REDES_CAT));
   const articulosFiltrados = ARTICULOS_LISTA_COMPLETA.filter(a =>
     pasaFiltroEstado(a) && pasaFiltroRedes(a) && articuloCoincideBusqueda(a, textoBusqueda));
 
@@ -5368,10 +6043,10 @@ function pintarListaArticulos() {
         <td data-label="Estado"><div class="celda-estado-noticia">${a.programado_para
             ? `<span class="badge-estado programado" title="Se publicará sola el ${formatFechaConHora(a.programado_para)}">Programada · ${formatFechaConHora(a.programado_para)}</span>`
             : `<span class="badge-estado ${a.publicado ? "publicado" : (a.estado_borrador === "terminado" ? "borrador-terminado" : "borrador-proceso")}">${a.publicado ? "Publicada" : (a.estado_borrador === "terminado" ? "En revisión" : "Borrador (en proceso)")}</span>`
-          }${badgePreferenciaFechas}${badgeUrgenciaPreferencia}${badgeBannerUrgente(a)}${badgeRedesDestino(a)}</div></td>
+          }${badgePreferenciaFechas}${badgeUrgenciaPreferencia}${badgeBannerUrgente(a)}${badgeRedesDestino(a)}${badgePorSubirARedes(a)}</div></td>
         <td class="acciones" data-label="">${botonesAccion}${(a.banner_urgente && puedeGestionar) ? `<button class="btn-quitar-uh" data-accion="quitar-banner-urgente" data-id="${a.id}" title="Quita el banner de última hora antes de que expire por sí solo">✕ Última hora</button>` : ""}</td>
       </tr>`;
-    }).join("") || `<tr><td colspan='6'>${FILTRO_REDES && !textoBusqueda ? "Ninguna noticia tiene esa etiqueta ahora mismo." : FILTRO_ESTADO_NOTICIAS && !textoBusqueda ? (FILTRO_ESTADO_NOTICIAS === "revision" ? "No hay noticias en revisión ahora mismo." : "No hay borradores en proceso ahora mismo.") : (textoBusqueda ? "Ninguna noticia coincide con la búsqueda." : "Todavía no hay noticias.")}</td></tr>`;
+    }).join("") || `<tr><td colspan='6'>${FILTRO_REDES && !textoBusqueda ? "Ninguna noticia tiene esa etiqueta ahora mismo." : FILTRO_ESTADO_NOTICIAS && !textoBusqueda ? (FILTRO_ESTADO_NOTICIAS === "revision" ? "No hay noticias en revisión ahora mismo." : (FILTRO_ESTADO_NOTICIAS === "redes" ? "No hay noticias pendientes de subir a redes. ¡Todo al día!" : "No hay borradores en proceso ahora mismo.")) : (textoBusqueda ? "Ninguna noticia coincide con la búsqueda." : "Todavía no hay noticias.")}</td></tr>`;
   } catch (err) {
     cos.innerHTML = `<tr><td colspan="6">Error mostrando el listado: ${err.message}</td></tr>`;
   }
@@ -5390,7 +6065,7 @@ function pintarListaArticulos() {
 function gruposRedes(clave) {
   const porCat = new Map();
   ARTICULOS_LISTA_COMPLETA.filter((a) => a.redes_destino === clave && articuloEtiquetableRedes(a)).forEach((a) => {
-    const c = a.categoria || "";
+    const c = categoriaParaRedes(a.categoria) || "";
     if (!porCat.has(c)) porCat.set(c, []);
     porCat.get(c).push(a);
   });
@@ -5549,7 +6224,7 @@ function manejarClicRedes(ev) {
     if (clave === "seleccion") {
       abrirModalCompartirCarrusel([...SELECCION_REDES].map((id) => ARTICULOS_CACHE[id]).filter(Boolean), "Selección");
     } else if (REDES_DESTINOS[clave]) {
-      const arts = ARTICULOS_LISTA_COMPLETA.filter((a) => a.redes_destino === clave && articuloEtiquetableRedes(a) && (!cat || a.categoria === cat));
+      const arts = ARTICULOS_LISTA_COMPLETA.filter((a) => a.redes_destino === clave && articuloEtiquetableRedes(a) && (!cat || categoriaParaRedes(a.categoria) === cat));
       abrirModalCompartirCarrusel(arts, cat ? `${REDES_DESTINOS[clave].corta} - ${categoriaLabel(cat)}` : REDES_DESTINOS[clave].etiqueta);
     }
     return;
@@ -5584,6 +6259,7 @@ document.getElementById("filtrosNoticias")?.addEventListener("click", (ev) => {
 // umbral de 10h) para que no se quede congelado con los datos de cuando
 // se cargó la lista por última vez.
 setInterval(() => {
+  if (document.hidden) return;
   if (Array.isArray(ARTICULOS_LISTA_COMPLETA) && ARTICULOS_LISTA_COMPLETA.length
       && document.getElementById("subpanel-lista")?.classList.contains("activo")) {
     pintarListaArticulos();
@@ -5598,6 +6274,7 @@ setInterval(() => {
 // deja así hasta el próximo repintado por minuto, que ya lo quitará (ha
 // expirado la preferencia, pasa a "caducada").
 setInterval(() => {
+  if (document.hidden) return;
   document.querySelectorAll(".badge-urgencia-preferencia[data-hasta-ms]").forEach((el) => {
     const restanteMs = Number(el.dataset.hastaMs) - Date.now();
     el.textContent = formatoCronometro(restanteMs);
@@ -5627,7 +6304,15 @@ document.getElementById("tablaArticulos")?.addEventListener("click", (ev) => {
 // vea que todavía tiene que seguir trabajándolo y no quede a la espera
 // de que un admin lo publique.
 async function devolverArticuloAEnProceso(a) {
-  if (!confirm(`¿Devolver "${a.titulo}" a borrador "en proceso"? El redactor podrá seguir editándolo antes de volver a marcarlo como terminado.`)) return;
+  const devolver = window.EOFModalesPartido
+    ? await EOFModalesPartido.confirmarAccion({
+        icono: "reloj", titulo: "Devolver a «en proceso»", sub: "El redactor podrá seguir trabajándola.",
+        cabecera: { etiqueta: "Borrador", texto: a.titulo },
+        items: ["Pasa de «terminado» a <b>«en proceso»</b>.", "Ya no queda a la espera de que un admin la publique.", "El contenido no cambia: se conserva tal cual está guardado."],
+        confirmar: "Devolver a en proceso",
+      })
+    : confirm(`¿Devolver "${a.titulo}" a borrador "en proceso"? El redactor podrá seguir editándolo antes de volver a marcarlo como terminado.`);
+  if (!devolver) return;
   try {
     await apiFetch(`/api/articles/${a.id}`, {
       method: "PUT",
@@ -5681,6 +6366,8 @@ async function editarArticulo(a) {
   document.getElementById("articleId").value = a.id;
   document.getElementById("articleSlug").value = a.slug || "";
   document.getElementById("articlePublicadoOriginal").value = a.publicado ? "1" : "0";
+  pinUltimaHoraDesbloqueado = null;
+  aplicarVisibilidadPublicada();
   document.getElementById("articleEstadoBorradorOriginal").value = a.estado_borrador || "";
   // Se guarda también si la noticia estaba programada al abrir el
   // formulario (con "programado_para" pendiente, no publicada): al
@@ -5815,7 +6502,16 @@ async function editarArticulo(a) {
 }
 
 async function eliminarArticulo(id) {
-  if (!(await EOF.confirmar("¿Seguro que quieres eliminar esta noticia?", { peligroso: true, textoConfirmar: "Eliminar" }))) return;
+  const aEliminar = (typeof ARTICULOS_CACHE !== "undefined" && ARTICULOS_CACHE[id]) || null;
+  const eliminar = window.EOFModalesPartido && aEliminar
+    ? await EOFModalesPartido.confirmarAccion({
+        icono: "papelera", titulo: "Eliminar noticia", sub: "Esta acción es definitiva.",
+        cabecera: { etiqueta: aEliminar.publicado ? "Noticia publicada" : "Borrador", texto: aEliminar.titulo },
+        items: [aEliminar.publicado ? "Dejará de verse en la web <b>al momento</b>." : "Se borra el borrador y todo su contenido.", "Se pierden también sus <b>comentarios y estadísticas de lectura</b>.", "<b>No se puede deshacer.</b>"],
+        confirmar: "Sí, eliminar noticia", peligroso: true,
+      })
+    : await EOF.confirmar("¿Seguro que quieres eliminar esta noticia?", { peligroso: true, textoConfirmar: "Eliminar" });
+  if (!eliminar) return;
   try {
     await apiFetch(`/api/articles/${id}`, { method: "DELETE" });
     cargaListaArticulos();
@@ -6106,8 +6802,12 @@ function poblarSelectsEquipo(valorLocalPrevio, valorVisitantePrevio) {
   // "Otro equipo (no está en la lista)" solo se ofrece en amistosos: en
   // las ligas fijas la lista de clubes es la oficial de esa competición
   // y no debe poder saltarse.
-  rLocalPicker.poblar(clubes, valorLocalPrevio, esAmistoso);
-  rVisitantePicker.poblar(clubes, valorVisitantePrevio, esAmistoso);
+  // Tercera Federación solo tiene en clubs.js los clubes que cubrimos
+  // editorialmente (2), así que, como en los amistosos, hay que poder
+  // elegir "Otro equipo" para el rival (nombre + escudo opcional).
+  const permiteOtroEquipo = esAmistoso || rCompeticion.value === "tercera_federacion";
+  rLocalPicker.poblar(clubes, valorLocalPrevio, permiteOtroEquipo);
+  rVisitantePicker.poblar(clubes, valorVisitantePrevio, permiteOtroEquipo);
   actualizarVisibilidadOtro(rLocalPicker, rLocalOtroWrap);
   actualizarVisibilidadOtro(rVisitantePicker, rVisitanteOtroWrap);
 }
@@ -6373,7 +7073,7 @@ function leerEquipoDelFormulario(picker, nombreOtroInput, escudoOtroUrl) {
 // Competiciones que tienen su propia lista de clubes en clubs.js (y por
 // tanto tiene sentido guardarles ahí un club "personalizado" nuevo). Un
 // amistoso no pertenece a ninguna de ellas, así que no aparece aquí.
-const CATEGORIAS_CON_LISTA_CLUBES = ["hypermotion", "primera_federacion", "segunda_federacion"];
+const CATEGORIAS_CON_LISTA_CLUBES = ["hypermotion", "primera_federacion", "segunda_federacion", "tercera_federacion"];
 
 // Si el equipo se ha introducido mediante "Otro equipo (no está en la
 // lista)", lo guarda en el servidor (tabla custom_clubs) para que a
@@ -6710,6 +7410,21 @@ formResultado.addEventListener("submit", async (e) => {
         // ningún caso en que sea correcto: lo que toca es editar el
         // partido que ya está.
         if (err.status === 409 && err.data?.duplicado_bloqueante) {
+          // Creando el resultado desde el editor de una noticia: si el partido YA existe
+          // (p. ej. lo puso el calendario automático), se ofrece vincularlo a la noticia
+          // en vez de dejar al redactor sin salida (sobre todo con la jornada llena).
+          const existente = err.data.partido_existente;
+          if (creandoResultadoDesdeNoticia && existente && existente.id) {
+            const vincular = await EOF.confirmar(
+              `${err.data.mensaje || err.data.error}\n\n¿Quieres vincular ese partido a esta noticia?`,
+              { textoConfirmar: "Vincular el existente", textoCancelar: "Cancelar" }
+            );
+            if (!vincular) return;
+            await cargarResultadosSelect(String(existente.id));
+            cerrarModalNuevoResultado();
+            EOF.toast("Partido existente vinculado a la noticia", "exito");
+            return;
+          }
           return EOF.toast(err.data.mensaje || err.data.error, "error");
         }
         if (err.status === 409 && err.data?.posible_duplicado) {
@@ -7193,7 +7908,30 @@ function avisoAnuladoPendienteHTML(r) {
 // con el foco en la fecha, para poner la nueva fecha y guardar. Los goles y
 // eventos que hubiera se conservan (por si el partido se reanuda); se pueden
 // retocar en el mismo formulario.
-function reprogramarPartidoAnulado(r) {
+async function reprogramarPartidoAnulado(r) {
+  // Con el modal bonito (modales-partido.js): se elige día y hora y se guarda directamente,
+  // sin entrar al formulario. Si el modal no se ha cargado, se usa el método de siempre.
+  if (window.EOFModalesPartido) {
+    // Un partido retrasado conserva en fecha_partido la fecha ORIGINAL y guarda la
+    // nueva en fecha_partido_retrasado: el modal debe partir de esa última.
+    const base = r.estado === "retrasado" && r.fecha_partido_retrasado
+      ? { ...r, fecha_partido: r.fecha_partido_retrasado }
+      : r;
+    const dato = await EOFModalesPartido.pedirFechaHora(base);
+    if (!dato) return; // cancelado
+    try {
+      await apiFetch(`/api/results/${r.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ ...cuerpoResultadoParaPutDesdeLista(r), fecha_partido: dato.fecha_partido, estado: "programado" }),
+      });
+      try { sessionStorage.removeItem(CLAVE_CACHE_ANULADOS); } catch (e) {}
+      EOF.toast("Partido reprogramado: vuelve a «Por jugar».", "exito");
+      cargaListaResultados();
+    } catch (err) {
+      EOF.toast("Error: " + err.message, "error");
+    }
+    return;
+  }
   editarResultado(r);
   const est = document.getElementById("r_estado");
   if (est) { est.value = "programado"; est.dispatchEvent(new Event("change", { bubbles: true })); }
@@ -7202,7 +7940,9 @@ function reprogramarPartidoAnulado(r) {
   EOF.toast("Pon la nueva fecha y hora, y pulsa «Guardar resultado».", "info");
 }
 
-async function cargaListaResultados() {
+// opciones.silencioso: igual que en cargaListaArticulos (refresco "en vivo": conserva página, filtros y buscador).
+async function cargaListaResultados(opciones) {
+  const silencioso = !!(opciones && opciones.silencioso === true);
   const cos = document.getElementById("tablaResultados");
   // Igual que en cargaListaArticulos(): no vaciar una tabla que ya tiene
   // datos de una visita anterior a esta subpestaña, para no provocar el
@@ -7211,7 +7951,8 @@ async function cargaListaResultados() {
     cos.innerHTML = "<tr><td colspan='6'>Cargando...</td></tr>";
   }
   try {
-    await cargarPermisosTemporalesVigentes();
+    if (!silencioso) await cargarPermisosTemporalesVigentes();
+    const huellaPrevia = await enVivoPedirHuella(EN_VIVO_LISTAS.resultados.url);
     // Antes se pedían solo los últimos 200 resultados (ordenados por
     // jornada/fecha en el backend). Con varias competiciones mezcladas,
     // eso dejaba fuera jornadas bajas (p.ej. la Jornada 1 de Primera
@@ -7227,18 +7968,21 @@ async function cargaListaResultados() {
     // cualquier "limit" por encima de 500 se ignora y cae en el default
     // de 100), así que "2000" se estaba quedando, en la práctica, en 100.
     // Se ajusta a 500, el máximo real que el backend admite.
-    const { results = [] } = await apiFetch(`/api/results?limit=0`);
+    const results = await pedirResultadosCompletos({ forzar: true });
     RESULTADOS_CACHE = {};
     results.forEach((r) => { RESULTADOS_CACHE[r.id] = r; });
     // Orden (ver ordenarResultadosPorCercaniaAhora): los partidos en
     // juego siempre arriba del todo y, debajo, el resto por cercanía a
     // la hora actual (el que empieza dentro de un minuto, el primero).
     RESULTADOS_LISTA_COMPLETA = ordenarResultadosPorCercaniaAhora(results);
-    RESULTADOS_PAGINA_ACTUAL = 1;
+    if (!silencioso) RESULTADOS_PAGINA_ACTUAL = 1;
     poblarFiltroCompeticionResultados();
     poblarFiltroEquipoResultados();
     pintarListaResultados();
+    EN_VIVO_LISTAS.resultados.huella = huellaPrevia;
+    enVivoIndicador("resultados", huellaPrevia ? (silencioso ? "actualizado" : "vivo") : "oculto");
   } catch (err) {
+    if (silencioso) return;
     cos.innerHTML = `<tr><td colspan="6">Error cargando: ${err.message}</td></tr>`;
   }
 }
@@ -7298,12 +8042,12 @@ function pintarListaResultados() {
       // sentido abrir el panel en vivo para eventarlo).
       const puedeAccederMinutoAMinuto = puedeGestionar && r.estado !== "finalizado" && r.estado !== "anulado" && dentroDelDiaDelPartidoFrontend(r.fecha_partido);
       const botonMinutoAMinuto = puedeAccederMinutoAMinuto
-        ? `<button class="btn-minuto-a-minuto" data-accion="minuto-a-minuto" data-id="${r.id}">⚽ Minuto a minuto</button>`
+        ? `<button class="btn-minuto-a-minuto" data-accion="minuto-a-minuto" data-id="${r.id}"><i class="ico-res ico-res-minuto" aria-hidden="true"></i>Minuto a minuto</button>`
         : "";
       const botonesAccion = puedeGestionar
-        ? `<button class="editar" data-accion="editar" data-id="${r.id}">Editar</button>
-           <button class="eliminar" data-accion="eliminar" data-id="${r.id}">Eliminar</button>`
-        : `<button class="solicitar" data-accion="solicitar" data-id="${r.id}">Solicitar edición</button>`;
+        ? `<button class="editar" data-accion="editar" data-id="${r.id}"><i class="ico-res ico-res-editar" aria-hidden="true"></i>Editar</button>
+           <button class="eliminar" data-accion="eliminar" data-id="${r.id}"><i class="ico-res ico-res-eliminar" aria-hidden="true"></i>Eliminar</button>`
+        : `<button class="solicitar" data-accion="solicitar" data-id="${r.id}"><i class="ico-res ico-res-solicitar" aria-hidden="true"></i>Solicitar edición</button>`;
       // Retrasar/anular un partido ya no depende de entrar al panel de
       // Minuto a Minuto (pensado para ir eventando en directo): son
       // cambios de estado puntuales, así que también se pueden hacer
@@ -7311,11 +8055,17 @@ function pintarListaResultados() {
       // no ha acabado ni está ya anulado.
       const puedeRetrasarOAnular = puedeGestionar && r.estado !== "finalizado" && r.estado !== "anulado";
       const botonesEstadoPartido = puedeRetrasarOAnular
-        ? `<button class="btn-retrasar-partido" data-accion="retrasar-partido" data-id="${r.id}" title="Marcar como retrasado">🕒 Retrasar</button>
-           <button class="btn-anular-partido" data-accion="anular-partido" data-id="${r.id}" title="Anular partido">🚫 Anular</button>`
+        ? `<button class="btn-retrasar-partido" data-accion="retrasar-partido" data-id="${r.id}" title="Marcar como retrasado"><i class="ico-res ico-res-retrasar" aria-hidden="true"></i>Retrasar</button>
+           <button class="btn-anular-partido" data-accion="anular-partido" data-id="${r.id}" title="Anular partido"><i class="ico-res ico-res-anular" aria-hidden="true"></i>Anular</button>`
         : "";
-      const botonReprogramar = puedeGestionar && r.estado === "anulado"
-        ? `<button class="btn-reprogramar-partido" data-accion="reprogramar-partido" data-id="${r.id}" title="Ponerle nueva fecha: vuelve a Por jugar">📅 Reprogramar</button>`
+      // Anulado o retrasado (aplazado): ambos acaban jugándose otro día, así que
+      // los dos pueden reprogramarse desde el modal de calendario + hora.
+      // Finalizado que cerró el cron sin que nadie lo cubriera: confirmar el marcador desde un modal.
+      const botonConfirmarResultado = puedeGestionar && r.estado === "finalizado" && Number(r.finalizado_no_cubierto) === 1
+        ? `<button class="btn-confirmar-resultado" data-accion="confirmar-resultado" data-id="${r.id}" title="Revisar el marcador y darlo por cubierto"><i class="ico-res ico-res-confirmar" aria-hidden="true"></i>Confirmar resultado</button>`
+        : "";
+      const botonReprogramar = puedeGestionar && (r.estado === "anulado" || r.estado === "retrasado")
+        ? `<button class="btn-reprogramar-partido" data-accion="reprogramar-partido" data-id="${r.id}" title="Ponerle nueva fecha: vuelve a Por jugar"><i class="ico-res ico-res-reprogramar" aria-hidden="true"></i>Reprogramar</button>`
         : "";
       return `
       <tr class="${!esMio && USER.rol !== "admin" ? "fila-de-otro" : ""}${Number(r.partidazo) === 1 && r.estado !== "anulado" ? " fila-partidazo" : ""}" data-resultado-id="${r.id}">
@@ -7324,7 +8074,7 @@ function pintarListaResultados() {
         <td data-label="Partido">${celdaPartidoResultadoHTML(r)}</td>
         <td data-label="Resultado"><span class="marcador-lista${r.estado === "programado" ? " marcador-lista-vs" : ""}">${r.estado === "programado" ? "vs" : `${r.goles_local ?? 0} : ${r.goles_visitante ?? 0}`}</span>${(r.penaltis_local !== null && r.penaltis_local !== undefined && r.penaltis_visitante !== null && r.penaltis_visitante !== undefined) ? `<br><small class="penaltis-tag-admin">(${r.penaltis_local} - ${r.penaltis_visitante} pen.)</small>` : ""}</td>
         <td data-label="Estado">${estadoResultadoBadgeHTML(r)} ${avisoAnuladoPendienteHTML(r)} ${avisoFinalizadoNoCubiertoHTML(r)}</td>
-        <td class="acciones" data-label="">${botonMinutoAMinuto}${botonesEstadoPartido}${botonReprogramar}${botonesAccion}</td>
+        <td class="acciones" data-label="">${botonMinutoAMinuto}${botonConfirmarResultado}${botonesEstadoPartido}${botonReprogramar}${botonesAccion}</td>
       </tr>`;
     }).join("") || `<tr><td colspan='6'>${
       filtroSoloPartidazosResultadosActivo
@@ -7574,10 +8324,13 @@ function avisoFinalizadoNoCubiertoHTML(r) {
 // partidos que la carga inicial sí había traído) y luego se repinta el
 // aviso sobre esos datos frescos.
 setInterval(async () => {
+  if (document.hidden) return;
   const tabla = document.getElementById("tablaResultados");
   if (!tabla || !tabla.querySelector("tr[data-resultado-id]")) return;
-  try {
-    const { results = [] } = await apiFetch(`/api/results?limit=0`);
+  // Con el "en vivo" activo (ver EN VIVO más abajo) los datos ya se renuevan solos en cuanto cambian en el
+  // servidor, así que aquí solo se recalculan los avisos por hora; sin él se sigue pidiendo la lista como antes.
+  if (EN_VIVO_LISTAS.resultados.huella === null) try {
+    const results = await pedirResultadosCompletos({ forzar: true });
     results.forEach((r) => { RESULTADOS_CACHE[r.id] = r; });
     // Reordena con los datos frescos (un partido que pasa a "en juego"
     // sube solo) y repinta únicamente si lo que se ve en la página
@@ -7611,6 +8364,85 @@ setInterval(async () => {
 }, 60000);
 
 
+
+// ---------- EN VIVO: Noticias > Ver noticias y Resultados > Ver resultados ----------
+// Igual que la bandeja de acreditaciones: cada pocos segundos (solo con la pestaña a la vista, la lista abierta y
+// actividad reciente en el panel) se pide una "huella" muy ligera y solo se descarga la lista si ha cambiado, sin
+// mover de página ni tocar el buscador ni los filtros. Si el worker no tiene la huella, la lista sigue como siempre.
+// Si estás escribiendo en un campo de la lista o tienes un aviso abierto, el cambio espera a que termines.
+const EN_VIVO_LISTAS_MS = 10000;
+const EN_VIVO_INACTIVIDAD_MS = 10 * 60 * 1000; // sin tocar nada durante este tiempo, se pausa el sondeo
+let enVivoUltimaActividad = Date.now();
+["pointerdown", "keydown", "scroll", "touchstart"].forEach((ev) => {
+  window.addEventListener(ev, () => { enVivoUltimaActividad = Date.now(); }, { passive: true, capture: true });
+});
+
+async function enVivoPedirHuella(url) {
+  try {
+    const r = await apiFetch(url);
+    return r && r.huella ? String(r.huella) : null;
+  } catch {
+    return null;
+  }
+}
+
+function enVivoListaActiva(c) {
+  return !!(document.getElementById(c.panel)?.classList.contains("activo")
+    && document.getElementById(c.subpanel)?.classList.contains("activo"));
+}
+
+function enVivoListaOcupada(c) {
+  const cont = document.getElementById(c.tabla);
+  if (!cont) return false;
+  const a = document.activeElement;
+  if (a && cont.contains(a) && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName)) return true;
+  return !!cont.querySelector(".aviso-abierto");
+}
+
+const enVivoTemporizadores = {};
+function enVivoIndicador(clave, estado) {
+  const c = EN_VIVO_LISTAS[clave];
+  const el = c && document.getElementById(c.indicador);
+  if (!el) return;
+  el.hidden = estado === "oculto";
+  el.classList.toggle("espera", estado === "espera" || estado === "pausa");
+  const texto = el.querySelector(".lista-envivo-txt");
+  if (texto) {
+    texto.textContent = estado === "espera" ? "Hay cambios nuevos (se verán al terminar)"
+      : estado === "pausa" ? "En pausa por inactividad"
+      : estado === "actualizado" ? "Actualizado ahora"
+      : "En vivo";
+  }
+  clearTimeout(enVivoTemporizadores[clave]);
+  if (estado === "actualizado") {
+    enVivoTemporizadores[clave] = setTimeout(() => enVivoIndicador(clave, "vivo"), 3000);
+  }
+}
+
+async function enVivoComprobar(clave) {
+  const c = EN_VIVO_LISTAS[clave];
+  if (!c || c.ocupado || c.huella === null) return;
+  if (document.visibilityState !== "visible" || !enVivoListaActiva(c)) return;
+  if (Date.now() - enVivoUltimaActividad > EN_VIVO_INACTIVIDAD_MS) { enVivoIndicador(clave, "pausa"); return; }
+  c.ocupado = true;
+  try {
+    const h = await enVivoPedirHuella(c.url);
+    if (!h) return;
+    if (h === c.huella) { enVivoIndicador(clave, "vivo"); return; }
+    if (enVivoListaOcupada(c)) { enVivoIndicador(clave, "espera"); return; }
+    if (clave === "articulos") await cargaListaArticulos({ silencioso: true });
+    else await cargaListaResultados({ silencioso: true });
+  } finally {
+    c.ocupado = false;
+  }
+}
+
+function enVivoComprobarTodas() {
+  Object.keys(EN_VIVO_LISTAS).forEach((clave) => { enVivoComprobar(clave).catch(() => {}); });
+}
+setInterval(enVivoComprobarTodas, EN_VIVO_LISTAS_MS);
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") enVivoComprobarTodas(); });
+document.addEventListener("focusout", () => { setTimeout(enVivoComprobarTodas, 300); });
 
 // El aviso ⚠ de datos faltantes muestra su detalle en un tooltip propio
 // (no el title nativo del navegador, que tarda en aparecer y no
@@ -7658,6 +8490,7 @@ document.getElementById("tablaResultados")?.addEventListener("click", (ev) => {
   else if (btn.dataset.accion === "retrasar-partido") retrasarPartidoDesdeLista(r);
   else if (btn.dataset.accion === "anular-partido") anularPartidoDesdeLista(r);
   else if (btn.dataset.accion === "reprogramar-partido") reprogramarPartidoAnulado(r);
+  else if (btn.dataset.accion === "confirmar-resultado") confirmarResultadoSinCubrir(r);
 });
 document.addEventListener("click", (e) => {
   if (!e.target.closest(".resultado-aviso-datos")) {
@@ -8096,6 +8929,9 @@ function actualizarVisibilidadAsistencia() {
   // marcador, igual que en el modal de Minuto a Minuto.
   document.getElementById("ev_bajar_gol_wrap").style.display = esGolVar ? "flex" : "none";
   if (!esGolVar) document.getElementById("ev_bajar_gol").checked = false;
+  // "Gol de penalti" solo aplica al tipo "gol" normal (columna es_penalti).
+  document.getElementById("ev_es_penalti_wrap").style.display = tipo === "gol" ? "flex" : "none";
+  if (tipo !== "gol") document.getElementById("ev_es_penalti").checked = false;
   // El tiempo añadido solo se pide para "Descanso" y "Final del
   // partido": son los dos momentos en los que el cronómetro se pausa
   // pero el minuto que se guarda en el timeline es el reglamentario
@@ -8162,6 +8998,7 @@ function cargarEventoEnFormulario(ev) {
   }
   document.getElementById("ev_asistencia").value = ev.jugador_asistencia || "";
   actualizarVisibilidadAsistencia();
+  document.getElementById("ev_es_penalti").checked = ev.tipo === "gol" && !!ev.es_penalti;
   if (ev.tipo === "cambio") document.getElementById("ev_sale").value = ev.jugador_asistencia || "";
   document.querySelector("#formEventoPartido .btn-anadir-evento").textContent = "Guardar cambios del evento";
   document.getElementById("btnCancelarEvento").style.display = "inline-block";
@@ -8233,6 +9070,8 @@ document.getElementById("formEventoPartido").addEventListener("submit", async (e
     // Solo aplica a "gol_var": si el gol ya se había sumado al marcador
     // antes de la revisión, el backend resta un gol al equipo del evento.
     bajar_gol: tipoEvento === "gol_var" ? document.getElementById("ev_bajar_gol").checked : false,
+    // Gol de penalti: sigue siendo un "gol" normal con la marca es_penalti.
+    es_penalti: tipoEvento === "gol" ? document.getElementById("ev_es_penalti").checked : false,
     // Al editar se conserva el "orden" que ya tuviera el evento (ver
     // EVENTO_PARTIDO_EDITANDO_ORDEN); al crear uno nuevo se deja en 0
     // salvo que la acción de cronómetro haya forzado otro (p.ej.
@@ -8395,8 +9234,30 @@ async function eliminarTandaPenalti(eventoId) {
   }
 }
 
+// «Confirmar resultado»: el partido lo cerró el cron solo (finalizado_no_cubierto = 1). Se revisa el
+// marcador en un modal y se guarda; el PUT limpia el aviso y el partido pasa a contar en clasificación.
+async function confirmarResultadoSinCubrir(r) {
+  if (!window.EOFModalesPartido) { editarResultado(r); return; } // sin modal: formulario de siempre
+  const dato = await EOFModalesPartido.confirmarMarcador(r);
+  if (!dato) return; // cancelado
+  try {
+    await apiFetch(`/api/results/${r.id}`, {
+      method: "PUT",
+      body: JSON.stringify({ ...cuerpoResultadoParaPutDesdeLista(r), goles_local: dato.goles_local, goles_visitante: dato.goles_visitante, estado: "finalizado" }),
+    });
+    EOF.toast(`Resultado confirmado: ${dato.goles_local} - ${dato.goles_visitante}`, "exito");
+    cargaListaResultados();
+  } catch (err) {
+    EOF.toast("Error: " + err.message, "error");
+  }
+}
+
 async function eliminarResultado(id) {
-  if (!(await EOF.confirmar("¿Seguro que quieres eliminar este resultado?", { peligroso: true, textoConfirmar: "Eliminar" }))) return;
+  const rEliminar = (typeof RESULTADOS_CACHE !== "undefined" && RESULTADOS_CACHE[id]) || null;
+  const confirmado = window.EOFModalesPartido && rEliminar
+    ? await EOFModalesPartido.confirmarEliminar(rEliminar) // modal bonito (modales-partido.js)
+    : await EOF.confirmar("¿Seguro que quieres eliminar este resultado?", { peligroso: true, textoConfirmar: "Eliminar" });
+  if (!confirmado) return;
   try {
     await apiFetch(`/api/results/${id}`, { method: "DELETE" });
     cargaListaResultados();
@@ -8426,13 +9287,22 @@ function cuerpoResultadoParaPutDesdeLista(r) {
 // Resultados, sin tener que entrar al panel de Minuto a Minuto (pensado
 // para ir eventando en directo, no para este cambio puntual de estado).
 async function retrasarPartidoDesdeLista(r) {
-  const actual = r.fecha_partido ? r.fecha_partido.slice(11, 16) : "";
-  const nuevaHora = await EOF.preguntar("Nueva hora prevista de inicio (HH:MM):", actual, { placeholder: "Ej. 17:30" });
+  // Si ya estaba retrasado, se parte de su fecha/hora retrasada (no de la original).
+  const rBase = r.estado === "retrasado" && r.fecha_partido_retrasado ? { ...r, fecha_partido: r.fecha_partido_retrasado } : r;
+  const actual = rBase.fecha_partido ? rBase.fecha_partido.slice(11, 16) : "";
+  let nuevaHora;
+  if (window.EOFModalesPartido) {
+    const dato = await EOFModalesPartido.pedirHora(rBase); // modal bonito (modales-partido.js)
+    if (!dato) return; // cancelado
+    nuevaHora = dato.hora;
+  } else {
+    nuevaHora = await EOF.preguntar("Nueva hora prevista de inicio (HH:MM):", actual, { placeholder: "Ej. 17:30" });
+  }
   if (nuevaHora === null) return; // cancelado
   if (!/^\d{1,2}:\d{2}$/.test(nuevaHora.trim())) {
     return EOF.toast("Formato de hora no válido. Usa HH:MM (ej. 17:30).", "error");
   }
-  const fecha = r.fecha_partido ? r.fecha_partido.slice(0, 10) : "";
+  const fecha = rBase.fecha_partido ? rBase.fecha_partido.slice(0, 10) : "";
   const fechaPartidoRetrasado = fecha ? `${fecha}T${nuevaHora.trim().padStart(5, "0")}` : null;
   try {
     await apiFetch(`/api/results/${r.id}`, {
@@ -8651,7 +9521,10 @@ async function actualizarEstadoCronometroDesdeEventoResultado(tipo) {
 // a Minuto) para que no se quede corriendo de fondo aunque el partido ya
 // no cuente.
 async function anularPartidoDesdeLista(r) {
-  if (!(await EOF.confirmar("¿Anular este partido? Se marcará como \"Anulado\".", { peligroso: true, textoConfirmar: "Anular" }))) return;
+  const confirmado = window.EOFModalesPartido
+    ? await EOFModalesPartido.confirmarAnular(r) // modal bonito (modales-partido.js)
+    : await EOF.confirmar("¿Anular este partido? Se marcará como \"Anulado\".", { peligroso: true, textoConfirmar: "Anular" });
+  if (!confirmado) return;
   try {
     if (r.estado === "en_juego") {
       await apiFetch(`/api/results/${r.id}/cronometro`, {
@@ -8728,6 +9601,7 @@ async function poblarSelectEquiposInfo() {
     ...getClubsForCategoria("hypermotion"),
     ...getClubsForCategoria("primera_federacion"),
     ...getClubsForCategoria("segunda_federacion"),
+    ...getClubsForCategoria("tercera_federacion"),
   ];
   const unicos = [...new Set(todos)].sort((a, b) => a.localeCompare(b, "es"));
   select.innerHTML = '<option value="">— Selecciona un club —</option>' +
@@ -8785,7 +9659,7 @@ async function cargaEquiposInfoPendientes() {
     solicitudes.forEach((s) => { EQUIPOS_INFO_PENDIENTES_CACHE[s.id] = s; });
     // Mensaje cuando un colaborador no tiene ninguna propuesta pendiente
     // (quien puede resolver ya ve su propio "No hay propuestas pendientes").
-    if (vacio) vacio.style.display = (!puede_resolver && !solicitudes.length) ? "block" : "none";
+    if (vacio) vacio.style.display = (!puede_resolver && !solicitudes.length) ? "flex" : "none";
     actualizarBadgePropuestasEquipos(puede_resolver ? solicitudes.length : 0);
 
     if (puede_resolver) {
@@ -8793,7 +9667,9 @@ async function cargaEquiposInfoPendientes() {
       bloque.style.display = "block";
       lista.innerHTML = solicitudes.length
         ? solicitudes.map(s => pintarTarjetaEquipoInfoPendiente(s, { conBotones: true })).join("")
-        : `<p class="solicitudes-vacio">No hay propuestas pendientes.</p>`;
+        : `<p class="prop-vacio"><b>Todo al día</b>No hay propuestas pendientes.</p>`;
+      const cont = document.getElementById("propContador");
+      if (cont) { cont.textContent = String(solicitudes.length); cont.style.display = solicitudes.length ? "" : "none"; }
     } else {
       bloque.style.display = "none";
       if (bloqueMias) {
@@ -8802,7 +9678,7 @@ async function cargaEquiposInfoPendientes() {
       }
     }
   } catch (err) {
-    lista.innerHTML = `<p class="solicitudes-vacio">No se han podido cargar las propuestas.</p>`;
+    lista.innerHTML = `<p class="prop-vacio">No se han podido cargar las propuestas.</p>`;
   }
 }
 
@@ -8814,43 +9690,72 @@ function actualizarBadgePropuestasEquipos(n) {
   b.style.display = n > 0 ? "inline-flex" : "none";
 }
 
+const PROP_ICONOS = {
+  entrenador: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>',
+  estadio: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9c0-2 4-4 9-4s9 2 9 4-4 4-9 4-9-2-9-4z"/><path d="M3 9v7c0 2 4 4 9 4s9-2 9-4V9"/></svg>',
+  fundacion: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>',
+  ciudad: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-5.6 7-11a7 7 0 10-14 0c0 5.4 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>',
+  ok: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  no: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  reloj: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+};
+
 function pintarTarjetaEquipoInfoPendiente(s, { conBotones }) {
-  const botones = conBotones
-    ? `<div class="func-item-acc">
-         <button class="aprobar" data-accion-equipo-info="aprobar" data-id="${s.id}">Aprobar</button>
-         <button class="rechazar" data-accion-equipo-info="rechazar" data-id="${s.id}">Rechazar</button>
+  const dato = (clave, et, v) => `
+        <div class="prop-dato t-${clave}${v ? "" : " vacio"}">
+          <span class="prop-dato-ico">${PROP_ICONOS[clave]}</span>
+          <div><dt>${et}</dt><dd title="${v ? escapeHtml(String(v)) : ""}">${v ? escapeHtml(String(v)) : "Sin indicar"}</dd></div>
+        </div>`;
+  const hace = typeof acredHace === "function" ? acredHace(s.created_at) : "";
+  const inicial = escapeHtml((Array.from(String(s.club || "?"))[0] || "?").toUpperCase());
+  const quien = conBotones ? `Propuesta por <b>${escapeHtml(s.solicitante_nombre || "—")}</b> · ` : "Enviada ";
+  const pie = conBotones
+    ? `<div class="prop-acc">
+         <button type="button" class="acred-btn acred-btn-ok" data-accion-equipo-info="aprobar" data-id="${s.id}">${PROP_ICONOS.ok}Aprobar</button>
+         <button type="button" class="acred-btn acred-btn-no" data-accion-equipo-info="rechazar" data-id="${s.id}">${PROP_ICONOS.no}Rechazar</button>
        </div>`
-    : "";
-  const dato = (et, v) => `<div><dt>${et}</dt><dd class="${v ? "" : "vacio"}">${v ? escapeHtml(String(v)) : "—"}</dd></div>`;
+    : `<div class="prop-espera">${PROP_ICONOS.reloj}<span>Esperando a que un administrador la apruebe</span></div>`;
   return `
-    <article class="func-item func-propuesta estado-pendiente">
-      <div class="func-item-main">
-        <div class="func-item-top">
-          <strong>${escapeHtml(s.club)}</strong>
-          <span class="func-chip ambar">Pendiente</span>
-          <time>${conBotones ? `Propuesta por ${escapeHtml(s.solicitante_nombre || "—")} · ` : ""}${formatFechaSolicitud(s.created_at)}</time>
+    <article class="prop-card" data-id="${s.id}">
+      <header class="prop-cab">
+        <span class="prop-escudo"><img src="${escapeHtml(escudoUrlAdmin(s.club))}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:this.dataset.i}))" data-i="${inicial}"></span>
+        <div class="prop-tit">
+          <h4>${escapeHtml(s.club)}</h4>
+          <p>${quien}<time title="${escapeHtml(formatFechaSolicitud(s.created_at))}">${hace ? escapeHtml(hace) : escapeHtml(formatFechaSolicitud(s.created_at))}</time></p>
         </div>
-        <dl class="func-equipo-datos" style="margin-top:12px;">
-          ${dato("Entrenador", s.entrenador)}${dato("Estadio", s.estadio)}${dato("Fundación", s.fundacion)}${dato("Ciudad", s.ciudad)}
-        </dl>
-      </div>
-      ${botones}
+        <span class="prop-estado">Pendiente</span>
+      </header>
+      <dl class="prop-datos">${dato("entrenador", "Entrenador", s.entrenador)}${dato("estadio", "Estadio", s.estadio)}${dato("fundacion", "Fundación", s.fundacion)}${dato("ciudad", "Ciudad", s.ciudad)}
+      </dl>
+      ${pie}
     </article>`;
 }
 
 document.getElementById("listaEquiposInfoPendientes")?.addEventListener("click", async (ev) => {
   const btn = ev.target.closest("[data-accion-equipo-info]");
-  if (!btn) return;
+  if (!btn || btn.disabled) return;
   const id = btn.dataset.id;
   const accion = btn.dataset.accionEquipoInfo;
+  const prop = EQUIPOS_INFO_PENDIENTES_CACHE[id] || {};
   if (accion === "rechazar") {
-    if (!(await EOF.confirmar("¿Rechazar esta propuesta de ficha de equipo?", { textoConfirmar: "Rechazar" }))) return;
+    const r = await acredConfirmar({
+      tono: "no", icono: "rechazada",
+      titulo: "¿Rechazar esta propuesta?",
+      texto: "La ficha no se aplicará. Quien la propuso no podrá recuperarla desde aquí.",
+      personas: [{ nombre: prop.club || "Propuesta de equipo", email: prop.solicitante_nombre ? `Propuesta de ${prop.solicitante_nombre}` : "" }],
+      cancelar: "No, volver",
+      botones: [{ id: "ok", texto: "Sí, rechazar", clase: "acred-btn-no" }],
+    });
+    if (r !== "ok") return;
   }
+  const botones = btn.closest(".prop-acc")?.querySelectorAll("button") || [btn];
+  botones.forEach((b) => { b.disabled = true; });
   try {
     await apiFetch(`/api/admin/club-info/solicitudes/${id}`, { method: "POST", body: JSON.stringify({ accion }) });
     EOF.toast(accion === "aprobar" ? "Propuesta aprobada." : "Propuesta rechazada.", "exito");
     cargaEquiposInfo();
   } catch (err) {
+    botones.forEach((b) => { b.disabled = false; });
     EOF.toast("Error: " + err.message, "error");
   }
 });
@@ -8890,6 +9795,10 @@ if (formEquipoInfo) {
     const club = document.getElementById("equipoInfoClub").value;
     if (!club) { errMsg.textContent = "Selecciona un club"; errMsg.style.display = "block"; return; }
 
+    // Un solo envío a la vez: un doble toque no debe duplicar la propuesta
+    const btnEnviar = formEquipoInfo.querySelector('button[type="submit"]');
+    if (btnEnviar) { if (btnEnviar.disabled) return; btnEnviar.disabled = true; }
+
     try {
       const resultado = await apiFetch(`/api/club-info`, {
         method: "PUT",
@@ -8910,18 +9819,40 @@ if (formEquipoInfo) {
       msgOk.style.display = "block";
       setTimeout(() => (msgOk.style.display = "none"), 4000);
       if (!resultado.pendiente) document.getElementById("btnBorrarEquipoInfo").style.display = "inline-block";
+      else {
+        // Propuesta enviada: se vacía todo el formulario (club incluido) para obligar a
+        // escribir la siguiente desde cero y no reenviar la misma por error
+        formEquipoInfo.reset();
+        document.getElementById("equipoInfoClub").value = "";
+        pintarFormularioEquipoInfo(null);
+      }
       cargaEquiposInfo();
     } catch (err) {
       errMsg.textContent = err.message;
       errMsg.style.display = "block";
+    } finally {
+      if (btnEnviar) btnEnviar.disabled = false;
     }
   });
+}
+
+// Confirmación con modal bonito (modales-partido.js); si no está cargado, el confirm() de siempre.
+async function confirmarBorradoModal(cfg, textoNativo) {
+  if (window.EOFModalesPartido && EOFModalesPartido.confirmarAccion) {
+    return EOFModalesPartido.confirmarAccion({ icono: "papelera", peligroso: true, ...cfg });
+  }
+  return confirm(textoNativo);
 }
 
 document.getElementById("btnBorrarEquipoInfo")?.addEventListener("click", async () => {
   const club = document.getElementById("equipoInfoClub").value;
   if (!club) return;
-  if (!confirm(`¿Borrar la ficha del ${club}? Dejará de mostrarse el recuadro en su página.`)) return;
+  if (!(await confirmarBorradoModal({
+    titulo: "Borrar ficha del club", sub: "Se quita el recuadro de datos de su página.",
+    cabecera: { etiqueta: "Club", texto: club },
+    items: ["Entrenador, estadio, año de fundación y ciudad <b>dejan de mostrarse</b> en la web.", "El club y sus partidos no se tocan.", "Puedes volver a rellenar la ficha cuando quieras."],
+    confirmar: "Sí, borrar ficha",
+  }, `¿Borrar la ficha del ${club}? Dejará de mostrarse el recuadro en su página.`))) return;
   try {
     await apiFetch(`/api/club-info?club=${encodeURIComponent(club)}`, { method: "DELETE" });
     document.getElementById("formEquipoInfo").reset();
@@ -9043,7 +9974,11 @@ document.getElementById("subpanel-comentarios")?.addEventListener("click", async
   }
 
   if (idBorrar) {
-    if (!confirm("¿Borrar este comentario? No se puede deshacer.")) return;
+    if (!(await confirmarBorradoModal({
+      titulo: "Borrar comentario", sub: "Esta acción es definitiva.",
+      items: ["El comentario desaparece de la web y del panel.", "También se borran sus <b>votos y denuncias</b>.", "<b>No se puede deshacer.</b> Si solo quieres ocultarlo, usa «Rechazar»."],
+      confirmar: "Sí, borrar comentario",
+    }, "¿Borrar este comentario? No se puede deshacer."))) return;
     try {
       await apiFetch(`/api/admin/comments/${idBorrar}`, { method: "DELETE" });
       const subtabActivo = document.querySelector("#subpanel-comentarios .subtabs button.activo");
@@ -9210,7 +10145,7 @@ function formatearFechaSesion(iso) {
 // ---------- MI PROGRESO (sistema de niveles) ----------
 // Nombres de cada tipo de contenido tal y como se muestran en el
 // desglose de progreso (coinciden con articles.tipo en el Worker).
-const NIVELES_TIPO_LABEL = { noticia: "Noticias", previa: "Previas", cronica: "Crónicas", analisis: "Análisis", opinion: "Artículos de opinión", entrevista: "Entrevistas", uno_por_uno: "1x1 de jugadores" };
+const NIVELES_TIPO_LABEL = { noticia: "Noticias", previa: "Previas", cronica: "Crónicas", analisis: "Análisis", opinion: "Artículos de opinión", entrevista: "Entrevistas", uno_por_uno: "1x1 de jugadores", rdp_previa: "Rueda de prensa previa", rdp_post: "Rueda de prensa posterior" };
 
 // Iconos (SVG, en vez de emoji de tipo de contenido) para el desglose
 // de publicaciones de "Mi progreso".
@@ -9224,6 +10159,8 @@ const NIVELES_TIPO_ICONO = {
   analisis: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 16v-4M12 16V8M17 16v-7"/></svg>',
   opinion: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/></svg>',
   entrevista: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/></svg>',
+  rdp_previa: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/></svg>',
+  rdp_post: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/></svg>',
   uno_por_uno: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3 20v-1a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v1"/><path d="M17 11l2 2 3-3"/></svg>',
 };
 
@@ -9354,7 +10291,246 @@ function pasePasoNivelesHTML(data) {
     </section>`;
 }
 
+// ---------- MI PROGRESO de un fotógrafo (F1–F2) ----------
+// Sin cifras mínimas: se muestran las funciones de cada nivel y los criterios con los que
+// dirección valora el ascenso. El pase reutiliza el estilo del de redacción (ver
+// niveles-fotografia.css para la versión de 2 niveles).
+const FOTO_ICONO_CAMARA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13" r="3.5"/></svg>';
+
+function nivelInsigniaFotoHTML(nivel, info, extra = "") {
+  return `
+    <div class="nivel-insignia nivel-insignia-${nivel} nivel-insignia-foto">
+      <div class="nivel-insignia-icono">${FOTO_ICONO_CAMARA}</div>
+      <div class="nivel-insignia-texto">
+        <span class="nivel-insignia-eyebrow">${escapeHtml(info.etiqueta || `F${nivel}`)}</span>
+        <strong>${escapeHtml(info.nombre)}</strong>
+        <p>${escapeHtml(info.descripcion || "")}</p>
+        ${extra}
+      </div>
+    </div>`;
+}
+
+function paseFotografoHTML(data) {
+  const { nivel_actual, niveles } = data;
+  const lista = (Array.isArray(niveles) && niveles.length ? niveles : [
+    { nivel: 1, ...NIVELES_FOTO_ETIQUETA[1], descripcion: "", funciones: [] },
+    { nivel: 2, ...NIVELES_FOTO_ETIQUETA[2], descripcion: "", funciones: [] },
+  ]).slice().sort((x, y) => x.nivel - y.nivel);
+  const maximo = lista[lista.length - 1]?.nivel || 2;
+  const porDefecto = Math.min(maximo, nivel_actual + 1);
+  const sel = lista.some((n) => n.nivel === PASE_NIVEL_SELECCIONADO) ? PASE_NIVEL_SELECCIONADO : porDefecto;
+  const estadoDe = (nv) => nv < nivel_actual ? "hecho" : (nv === nivel_actual ? "actual" : (nv === nivel_actual + 1 ? "siguiente" : "bloqueado"));
+
+  const tarjetas = lista.map((n) => {
+    const estado = estadoDe(n.nivel);
+    const funciones = (n.funciones || []).map((f) => `<li>${escapeHtml(f)}</li>`).join("");
+    let pie;
+    if (estado === "hecho") pie = `<div class="pase-pie pase-pie-ok">✅ Superado</div>`;
+    else if (estado === "actual") pie = `<div class="pase-pie pase-pie-ok">⭐ Tu nivel actual</div>`;
+    else pie = `<div class="pase-pie">🎯 Lo decide la dirección tras una valoración global de tu trabajo</div>`;
+    const etiqueta = estado === "actual" ? "ESTÁS AQUÍ" : (estado === "siguiente" ? "SIGUIENTE" : "");
+    const iconoNodo = estado === "bloqueado" ? PASE_ICONO_CANDADO : FOTO_ICONO_CAMARA;
+    return `
+      <article class="pase-nivel pase-nivel-${n.nivel} pase-${estado} ${n.nivel === sel ? "pase-sel" : ""}" data-nivel="${n.nivel}">
+        <div class="pase-nodo">${iconoNodo}${estado === "hecho" ? `<span class="pase-nodo-check">${PASE_ICONO_CHECK}</span>` : ""}</div>
+        ${etiqueta ? `<span class="pase-etiqueta">${etiqueta}</span>` : ""}
+        <span class="pase-eyebrow">${escapeHtml(n.etiqueta || `F${n.nivel}`)}</span>
+        <h4 class="pase-nombre">${escapeHtml(n.nombre)}</h4>
+        <p class="pase-desc">${escapeHtml(n.descripcion || "")}</p>
+        ${funciones ? `<span class="pase-req-titulo">Funciones</span><ul class="pase-funciones">${funciones}</ul>` : ""}
+        ${n.ventajas ? `<p class="pase-ventajas">${escapeHtml(n.ventajas)}</p>` : ""}
+        ${pie}
+      </article>`;
+  }).join("");
+
+  const pasos = lista.map((n) => {
+    const estado = estadoDe(n.nivel);
+    const icono = estado === "bloqueado" ? PASE_ICONO_CANDADO : FOTO_ICONO_CAMARA;
+    return `
+      <button type="button" class="pase-paso pase-paso-${n.nivel} pase-${estado} ${n.nivel === sel ? "sel" : ""}" data-pase-sel="${n.nivel}" role="tab" aria-selected="${n.nivel === sel}" aria-label="${escapeHtml(n.etiqueta || `F${n.nivel}`)}: ${escapeHtml(n.nombre)}">
+        <span class="pase-paso-nodo">${icono}${estado === "hecho" ? `<span class="pase-nodo-check">${PASE_ICONO_CHECK}</span>` : ""}</span>
+        <span class="pase-paso-txt">${escapeHtml(n.etiqueta || `F${n.nivel}`)}</span>
+      </button>`;
+  }).join("");
+  const avance = lista.length > 1 ? Math.max(0, Math.min(1, (nivel_actual - lista[0].nivel) / (lista.length - 1))) : 0;
+
+  return `
+    <section class="pase pase-foto">
+      <div class="pase-cab">
+        <h3 class="titulo-subseccion" style="margin:0;">Niveles de fotografía</h3>
+        <span class="pase-resumen">F${nivel_actual} de F${maximo}</span>
+      </div>
+      <div class="pase-pasos" role="tablist" style="--p:${avance};--pc:var(--nivel-${Math.min(4, Math.max(1, nivel_actual))});">${pasos}</div>
+      <div class="pase-pista">${tarjetas}</div>
+    </section>`;
+}
+
+function pintarProgresoFotografo(cont, data) {
+  const { nivel_actual, nivel_info, nivel_nota, nivel_maximo, siguiente_nivel_info, criterios, actividad } = data;
+  const lista = Array.isArray(criterios) && criterios.length ? criterios : NIVELES_FOTO_CRITERIOS_RESPALDO;
+
+  const bloqueActividad = actividad ? `
+    <h3 class="titulo-subseccion">Mi actividad</h3>
+    <div class="nivel-stats-grid">
+      <div class="nivel-stat"><div class="nivel-stat-icono">${FOTO_ICONO_CAMARA}</div><div class="nivel-stat-num">${actividad.partidos || 0}</div><div class="nivel-stat-label">Partidos con galería</div></div>
+      <div class="nivel-stat"><div class="nivel-stat-icono">${FOTO_ICONO_CAMARA}</div><div class="nivel-stat-num">${actividad.fotos || 0}</div><div class="nivel-stat-label">Fotos en galerías</div></div>
+    </div>
+    <p class="ayuda-editor nivel-ayuda">Son datos orientativos, no requisitos: en fotografía no hay un número mínimo de partidos ni de fotografías para ascender, porque la disponibilidad y las oportunidades de cobertura varían de una persona a otra.</p>` : "";
+
+  const filasCriterios = lista.map((c) => `
+    <li class="foto-criterio"><strong>${escapeHtml(c.nombre)}</strong><span>${escapeHtml(c.descripcion || "")}</span></li>`).join("");
+
+  const aviso = nivel_maximo
+    ? `<div class="nivel-maximo-aviso">
+         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 6v6c0 5 3.4 8.4 8 10 4.6-1.6 8-5 8-10V6l-8-4Z"/><path d="m9 12 2 2 4-4"/></svg>
+         <div>
+           <strong>Eres fotógrafo de referencia (F2)</strong>
+           <p>Es el nivel más alto de fotografía. Ser F2 no garantiza cargos de coordinación, acreditaciones ni asignaciones concretas de partidos: los cargos dependen de una designación específica de la dirección.</p>
+         </div>
+       </div>`
+    : `<p class="ayuda-editor nivel-ayuda">Para pasar a ${escapeHtml((siguiente_nivel_info && siguiente_nivel_info.etiqueta) || "F2")} se hace una valoración global de tu trabajo con estos criterios. La propone el responsable de fotografía (si lo hay) y la autoriza la dirección. El nivel no garantiza coordinación, acreditaciones, partidos concretos ni la publicación de todo el material entregado.</p>`;
+
+  cont.innerHTML = `
+    <h3 class="titulo-subseccion nivel-titulo-principal" style="margin-top:0;">Mi progreso</h3>
+    ${nivelInsigniaFotoHTML(nivel_actual, nivel_info, nivel_nota ? `<div class="nivel-nota">📝 Nota de la dirección: ${escapeHtml(nivel_nota)}</div>` : "")}
+    ${insigniasHitosHTML(data.insignias)}
+    ${paseFotografoHTML(data)}
+    ${rachaSemanalHTML(data.racha)}
+    ${bloqueActividad}
+    <h3 class="titulo-subseccion">Cómo se valora el ascenso</h3>
+    <ul class="foto-criterios">${filasCriterios}</ul>
+    ${aviso}
+    <p class="ayuda-editor nivel-ayuda">La pérdida de nivel solo se valora ante problemas reiterados o circunstancias relevantes, de forma proporcional: un error puntual no supone bajar de nivel.</p>
+  `;
+}
+
+// ---------- Rachas semanales (tarjeta de "Mi progreso") ----------
+// Los datos llegan ya calculados en /api/me/nivel (campo `racha`); aquí solo se pintan.
+const RACHA_ICONO_LLAMA = `<svg viewBox="0 0 24 24" aria-hidden="true"><path class="racha-llama-ext" d="M12 2c.6 3 2.2 4.6 3.9 6.4C17.6 10.2 19 12 19 14.6A7 7 0 0 1 5 14.6c0-2 .9-3.6 2.1-4.9.4 1.2 1 2 1.9 2.6C8.7 9 9.8 4.7 12 2Z"/><path class="racha-llama-int" d="M12 12.2c.3 1.3 1.1 1.9 1.8 2.7.6.7 1.2 1.4 1.2 2.4a3 3 0 0 1-6 0c0-.9.4-1.6 1-2.2.2.5.5.8.9 1 0-1.6.4-3.2 1.1-3.9Z"/></svg>`;
+
+function rachaFechaCorta(iso) {
+  try {
+    return new Date(`${iso}T12:00:00`).toLocaleDateString("es-ES", { day: "numeric", month: "short" });
+  } catch { return iso; }
+}
+
+function rachaTextoSemana(s) {
+  const partes = [];
+  if (s.publicaciones) partes.push(`${s.publicaciones} publicación${s.publicaciones === 1 ? "" : "es"}`);
+  if (s.fotos) partes.push(`${s.fotos} foto${s.fotos === 1 ? "" : "s"}`);
+  const base = `Semana del ${rachaFechaCorta(s.inicio)}`;
+  return partes.length ? `${base} · ${partes.join(" y ")}` : `${base} · sin actividad`;
+}
+
+function rachaSemanalHTML(racha) {
+  if (!racha) return "";
+  const n = Number(racha.actual) || 0;
+  const estado = n === 0 ? "apagada" : (racha.en_riesgo ? "riesgo" : "viva");
+  const sem = (k) => `semana${k === 1 ? "" : "s"}`;
+
+  let titular;
+  let detalle;
+  if (n === 0) {
+    titular = "Empieza tu racha";
+    detalle = "Publica algo o sube fotos a una galería esta semana y arrancará tu racha.";
+  } else if (racha.en_riesgo) {
+    const d = Number(racha.dias_restantes) || 0;
+    titular = "¡No la pierdas!";
+    detalle = d <= 0
+      ? "Hoy es el último día de la semana: con una publicación o una foto en galería mantienes tu racha."
+      : `Te quedan ${d + 1} días (hoy incluido) para sumar actividad esta semana y mantener tu racha de ${n} ${sem(n)}.`;
+  } else {
+    titular = "¡Racha en marcha!";
+    detalle = "Esta semana ya cuenta. Sigue así y la semana que viene sumará otra más.";
+  }
+
+  const celdas = (racha.semanas || []).map((s) => {
+    const clases = ["racha-celda", s.activa ? "activa" : "", s.actual ? "actual" : ""].filter(Boolean).join(" ");
+    return `<span class="${clases}" title="${escapeHtml(rachaTextoSemana(s))}" aria-label="${escapeHtml(rachaTextoSemana(s))}"></span>`;
+  }).join("");
+
+  const actualSemana = (racha.semanas || []).find((s) => s.actual) || { publicaciones: 0, fotos: 0 };
+  const prox = racha.proximo_hito;
+  const hitoAct = racha.hito_actual;
+  const maxHito = (racha.hitos && racha.hitos.length) ? racha.hitos[racha.hitos.length - 1].semanas : 52;
+  const hitoPct = prox ? Math.min(100, Math.round((n / prox.semanas) * 100)) : 100;
+
+  const bloqueHito = prox
+    ? `<div class="racha-hito">
+         <div class="racha-hito-cab"><span>Próximo hito: <strong>${escapeHtml(prox.nombre)}</strong> (${prox.semanas} semanas)</span><span>${n} / ${prox.semanas}</span></div>
+         <div class="racha-hito-pista"><div class="racha-hito-relleno" style="width:${hitoPct}%"></div></div>
+         <p class="racha-hito-nota">Te ${prox.faltan === 1 ? "falta 1 semana" : `faltan ${prox.faltan} semanas`} para desbloquearlo.</p>
+       </div>`
+    : `<div class="racha-hito racha-hito-max"><strong>🏆 ¡Has superado el hito más alto (${maxHito} semanas)!</strong></div>`;
+
+  return `
+    <section class="racha racha-${estado}" aria-label="Rachas semanales">
+      <div class="racha-cabecera">
+        <div class="racha-llama" aria-hidden="true">${RACHA_ICONO_LLAMA}</div>
+        <div class="racha-cifra">
+          <span class="racha-num">${n}</span>
+          <span class="racha-unidad">${sem(n)} seguida${n === 1 ? "" : "s"}</span>
+        </div>
+        <div class="racha-texto">
+          <h3 class="racha-titular">${titular}</h3>
+          <p>${detalle}</p>
+          ${hitoAct ? `<span class="racha-medalla">🏅 ${escapeHtml(hitoAct.nombre)}</span>` : ""}
+          ${n > 0 ? `<button type="button" class="racha-celebrar" data-racha-celebrar>✨ Ver celebración</button>` : ""}
+        </div>
+      </div>
+      <div class="racha-tira" role="img" aria-label="Actividad de las últimas ${(racha.semanas || []).length} semanas">${celdas}</div>
+      <div class="racha-tira-leyenda"><span>hace ${(racha.semanas || []).length} semanas</span><span>esta semana</span></div>
+      <div class="racha-stats">
+        <div><strong>${racha.mejor || 0}</strong><span>Mejor racha</span></div>
+        <div><strong>${racha.semanas_activas_total || 0}</strong><span>Semanas activas</span></div>
+        <div><strong>${actualSemana.publicaciones}</strong><span>Publicaciones esta semana</span></div>
+        <div><strong>${actualSemana.fotos}</strong><span>Fotos en galería esta semana</span></div>
+      </div>
+      ${bloqueHito}
+      <p class="ayuda-editor nivel-ayuda">Una semana (de lunes a domingo) cuenta si publicas un artículo o subes fotos a una galería de partido. Es solo un reconocimiento a la constancia: no es un requisito para subir de nivel.</p>
+    </section>`;
+}
+
+// ---------- Insignias por hitos (junto al nivel actual en "Mi progreso") ----------
+// Los datos llegan calculados en /api/me/nivel (campo `insignias`); aquí solo se pintan. Es una
+// lista corta: primera crónica, 10 fotos publicadas y primer partido cubierto en directo. Las
+// conseguidas salen a color y las pendientes en gris, con la cifra de avance si el hito pide más
+// de una acción (p. ej. 7 / 10 fotos). Clase propia (hito-*): "nivel-insignia" es la del nivel.
+function insigniasHitosHTML(insignias) {
+  if (!Array.isArray(insignias) || !insignias.length) return "";
+  const conseguidas = insignias.filter((i) => i.conseguida).length;
+  const items = insignias.map((i) => {
+    const objetivo = Math.max(1, Number(i.objetivo) || 1);
+    const actual = Math.max(0, Math.min(objetivo, Number(i.actual) || 0));
+    const pct = Math.round((actual / objetivo) * 100);
+    let pie;
+    if (i.conseguida) pie = `<span class="hito-estado hito-estado-ok">✅ Conseguida</span>`;
+    else if (objetivo > 1) pie = `
+        <div class="hito-barra" role="progressbar" aria-valuemin="0" aria-valuemax="${objetivo}" aria-valuenow="${actual}"><div class="hito-barra-relleno" style="width:${pct}%"></div></div>
+        <span class="hito-estado">${actual} / ${objetivo}</span>`;
+    else pie = `<span class="hito-estado">🔒 Por conseguir</span>`;
+    return `
+      <li class="hito ${i.conseguida ? "hito-conseguida" : "hito-bloqueada"}" aria-label="${escapeHtml(i.nombre)}: ${i.conseguida ? "conseguida" : "por conseguir"}">
+        <span class="hito-icono" aria-hidden="true">${escapeHtml(i.emoji || "🏅")}</span>
+        <div class="hito-texto">
+          <strong class="hito-nombre">${escapeHtml(i.nombre)}</strong>
+          <span class="hito-desc">${escapeHtml(i.descripcion || "")}</span>
+          ${pie}
+        </div>
+      </li>`;
+  }).join("");
+  return `
+    <section class="hitos" aria-label="Insignias por hitos">
+      <div class="hitos-cab">
+        <h3 class="titulo-subseccion" style="margin:0;">Insignias</h3>
+        <span class="hitos-resumen">${conseguidas} de ${insignias.length}</span>
+      </div>
+      <ul class="hitos-lista">${items}</ul>
+    </section>`;
+}
+
 function pintarProgresoNivel(cont, data) {
+  if (data && data.es_fotografo) { pintarProgresoFotografo(cont, data); return; }
   const { nivel_actual, nivel_info, nivel_nota, publicaciones, nivel_maximo, siguiente_nivel, siguiente_nivel_info, progreso, es_admin } = data;
 
   let bloquePublicaciones = "";
@@ -9422,7 +10598,9 @@ function pintarProgresoNivel(cont, data) {
   cont.innerHTML = `
     <h3 class="titulo-subseccion nivel-titulo-principal" style="margin-top:0;">Mi progreso</h3>
     ${nivelInsigniaHTML(nivel_actual, nivel_info, nivel_nota ? `<div class="nivel-nota">📝 Nota del administrador: ${escapeHtml(nivel_nota)}</div>` : "")}
+    ${insigniasHitosHTML(data.insignias)}
     ${pasePasoNivelesHTML(data)}
+    ${rachaSemanalHTML(data.racha)}
     ${bloquePublicaciones}
     ${bloqueSiguiente}
   `;
@@ -9463,6 +10641,7 @@ async function cargaMiProgreso() {
 // para que si publica una noticia y vuelve a "Mi progreso" vea las
 // cifras actualizadas sin tener que recargar la página entera.
 setInterval(() => {
+  if (document.hidden) return;
   const subpanel = document.getElementById("subpanel-progreso");
   if (subpanel && subpanel.classList.contains("activo")) cargaMiProgreso();
 }, 30000);
@@ -9520,21 +10699,6 @@ async function cargaSesiones() {
     cont.innerHTML = `<p class="sesiones-vacio">No se han podido cargar los dispositivos.</p>`;
   }
 }
-
-// Interruptor de la API secundaria (por navegador, ver eofSetSecundaria en config.js).
-(function () {
-  const chk = document.getElementById("chkSecundariaActiva");
-  if (!chk) return;
-  const estado = document.getElementById("estadoSecundaria");
-  chk.checked = !!SECONDARY_API;
-  if (estado) estado.textContent = SECONDARY_API ? "Estado: ACTIVADA en este navegador." : "Estado: desactivada.";
-  chk.addEventListener("change", () => {
-    if (!eofSetSecundaria(chk.checked)) {
-      chk.checked = !chk.checked;
-      if (estado) estado.textContent = "No se pudo guardar: el navegador bloquea el almacenamiento local.";
-    }
-  });
-})();
 
 const btnCerrarOtrasSesiones = document.getElementById("btnCerrarOtrasSesiones");
 if (btnCerrarOtrasSesiones) {
@@ -10317,7 +11481,7 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
     inputEl: document.getElementById("partidoSubida_buscador"),
     sugerenciasEl: document.getElementById("partidoSubida_sugerencias"),
     hiddenEl: selectPartidoSubida,
-    alElegir: actualizarEquipoSubidaSegunPartido,
+    alElegir: (resultId) => { actualizarEquipoSubidaSegunPartido(resultId); refrescarPortadaSubida(resultId); },
   });
 
   const dropzone = document.getElementById("dropzone");
@@ -10386,7 +11550,70 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
     info.insertAdjacentHTML("beforeend", htmlCampoEnlace(id, item && item.enlace));
   }
 
+  // ---------- Portada obligatoria de la galería del partido ----------
+  // Si se sube contenido PÚBLICO a un partido, alguna foto de la tanda tiene que
+  // ser la portada de la galería (la que sale en la portada de la web), salvo que
+  // la galería ya tenga una. null = aún no se sabe / no se pudo comprobar (en ese
+  // caso no se bloquea el envío).
+  let portadaExistenteSubida = { resultId: null, tiene: null };
+  function contextoPortadaSubida() {
+    const resultId = selectPartidoSubida.value || null;
+    const publico = !inputVisibilidadSubida || inputVisibilidadSubida.value !== "privado";
+    return { resultId, aplica: !!resultId && publico };
+  }
+  const esFotoSubidaPortada = (a) => a.file.type.startsWith("image/");
+  async function comprobarPortadaExistenteSubida(resultId, forzar) {
+    if (!resultId) return null;
+    if (!forzar && portadaExistenteSubida.resultId === String(resultId) && portadaExistenteSubida.tiene !== null) return portadaExistenteSubida.tiene;
+    let tiene = null;
+    try {
+      const r = await apiFetch(`/api/results/${resultId}/galeria`);
+      tiene = !!(r && r.tienePortada);
+    } catch { tiene = null; }
+    portadaExistenteSubida = { resultId: String(resultId), tiene };
+    return tiene;
+  }
+  async function refrescarPortadaSubida(resultId) {
+    portadaExistenteSubida = { resultId: null, tiene: null };
+    pintarLista();
+    if (resultId) {
+      await comprobarPortadaExistenteSubida(resultId, true);
+      if (selectPartidoSubida.value === String(resultId)) pintarLista();
+    }
+  }
+  function actualizarAvisoPortadaSubida() {
+    let aviso = document.getElementById("avisoPortadaSubida");
+    if (!aviso) {
+      aviso = document.createElement("div");
+      aviso.id = "avisoPortadaSubida";
+      aviso.className = "aviso-portada-subida";
+      aviso.setAttribute("aria-live", "polite");
+      listaArchivos.insertAdjacentElement("beforebegin", aviso);
+    }
+    const ctx = contextoPortadaSubida();
+    const fotos = archivos.filter(esFotoSubidaPortada);
+    aviso.className = "aviso-portada-subida";
+    if (!ctx.aplica || !fotos.length) { aviso.style.display = "none"; aviso.textContent = ""; return; }
+    const hayMarcada = fotos.some((a) => a.esPortada);
+    const existente = portadaExistenteSubida.resultId === String(ctx.resultId) ? portadaExistenteSubida.tiene : null;
+    if (hayMarcada) {
+      aviso.textContent = existente ? "Esta foto sustituirá a la portada actual de la galería." : "Portada elegida ✓";
+      aviso.classList.add("ok");
+    } else if (existente === true) {
+      aviso.textContent = "Esta galería ya tiene portada. Si quieres cambiarla, marca otra foto con «★ Portada».";
+      aviso.classList.add("info");
+    } else {
+      aviso.textContent = "Elige la portada de la galería: pulsa «★ Portada» en la foto que quieras que salga en la portada de la web.";
+      aviso.classList.add("falta");
+    }
+    aviso.style.display = "block";
+  }
+  if (selectorVisibilidad) {
+    selectorVisibilidad.querySelectorAll(".opcion-visibilidad").forEach((boton) => boton.addEventListener("click", () => pintarLista()));
+  }
+
   function pintarLista() {
+    const ctxPortada = contextoPortadaSubida();
     listaArchivos.innerHTML = archivos.map((item) => {
       const { id, file, portadaSegundo, foco } = item;
       const esFoto = file.type.startsWith("image/");
@@ -10400,12 +11627,27 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
             <div class="estado-txt">${pideEnlace(item) ? "Pendiente de pegar el enlace" : "Pendiente de subir"}${foco ? " · encuadre elegido ✓" : ""}</div>
             ${pideEnlace(item) ? htmlCampoEnlace(id, item.enlace) : ""}
           </div>
+          ${esFoto && ctxPortada.aplica ? `<button type="button" class="btn-portada-galeria-subida${item.esPortada ? " activo" : ""}" data-esportada="${id}" aria-pressed="${item.esPortada ? "true" : "false"}" title="Usar esta foto como portada de la galería del partido">${item.esPortada ? "★ Portada elegida" : "★ Portada"}</button>` : ""}
           ${!esFoto ? `<button type="button" class="btn-portada-subida" data-portada="${id}" title="Elegir portada">${Number.isFinite(portadaSegundo) ? "Portada elegida ✓" : "Elegir portada"}</button>` : ""}
           <button type="button" class="quitar" data-quitar="${id}" title="Quitar">✕</button>
         </div>`;
     }).join("");
     actualizarResumen();
+    actualizarAvisoPortadaSubida();
   }
+
+  // Marca (o desmarca) la foto que será la portada de la galería: solo una por tanda.
+  listaArchivos.addEventListener("click", (e) => {
+    const boton = e.target.closest && e.target.closest("[data-esportada]");
+    if (!boton) return;
+    const item = archivos.find((a) => a.id == boton.dataset.esportada);
+    if (!item) return;
+    const nuevo = !item.esPortada;
+    archivos.forEach((a) => { a.esPortada = false; });
+    item.esPortada = nuevo;
+    errMsg.style.display = "none";
+    pintarLista();
+  });
 
   // Guarda lo que se escribe en el campo del enlace sin repintar la lista
   // (repintar haría perder el foco al escribir).
@@ -10503,9 +11745,9 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
   // TIPOS_VIDEO_PERMITIDOS en worker/src/index.js), para poder avisar de
   // un formato no admitido al momento en vez de que el archivo desaparezca
   // sin más al arrastrarlo o seleccionarlo.
-  const TIPOS_IMAGEN_PERMITIDOS_CLIENTE = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif", "image/heic", "image/heif"];
+  const TIPOS_IMAGEN_PERMITIDOS_CLIENTE = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif", "image/heic", "image/heif", "image/bmp", "image/tiff"];
   const TIPOS_VIDEO_PERMITIDOS_CLIENTE = ["video/mp4", "video/quicktime", "video/webm", "video/x-matroska", "video/mpeg"];
-  const EXTENSIONES_IMAGEN_CLIENTE = ["jpg", "jpeg", "png", "webp", "gif", "avif", "heic", "heif"];
+  const EXTENSIONES_IMAGEN_CLIENTE = ["jpg", "jpeg", "jpe", "jfif", "png", "webp", "gif", "avif", "heic", "heif", "bmp", "tif", "tiff"];
   const EXTENSIONES_VIDEO_CLIENTE = ["mp4", "mov", "webm", "mkv", "mpeg", "mpg"];
 
   function extensionDe(nombre) {
@@ -10521,7 +11763,8 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
     for (let i = 0; i < fotos.length; i++) {
       const it = fotos[i];
       if (!archivos.includes(it)) continue;
-      const urlLocal = URL.createObjectURL(it.file);
+      const previa = await crearPreviaLigera(it.file);
+      const urlLocal = previa.url;
       let r = null;
       try {
         r = await EOF_FOCO_SELECTOR.pedir({
@@ -10543,6 +11786,63 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
     actualizarBotonSubir();
   }
 
+  // iOS/Android a veces mandan el archivo SIN tipo MIME (típico: .mov y .heic) o
+  // con uno no estándar ("image/jpg"). Antes esas fotos/vídeos se trataban como
+  // "no es una foto" en varias partes del panel y el servidor llegaba a
+  // rechazarlos. Aquí se les pone el tipo correcto según su extensión nada más
+  // añadirlos (new File no copia los datos: es instantáneo), y todo lo demás
+  // trabaja ya con un tipo fiable.
+  const MIME_POR_EXTENSION = {
+    jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp", gif: "image/gif",
+    avif: "image/avif", heic: "image/heic", heif: "image/heif",
+    jpe: "image/jpeg", jfif: "image/jpeg", bmp: "image/bmp", tif: "image/tiff", tiff: "image/tiff",
+    mp4: "video/mp4", mov: "video/quicktime", webm: "video/webm", mkv: "video/x-matroska", mpeg: "video/mpeg", mpg: "video/mpeg",
+  };
+  function normalizarTipoArchivo(file) {
+    try {
+      let tipo = (file.type || "").toLowerCase();
+      if (tipo === "image/jpg" || tipo === "image/pjpeg" || tipo === "image/jfif") tipo = "image/jpeg";
+      if (tipo === "image/x-ms-bmp" || tipo === "image/x-bmp") tipo = "image/bmp";
+      if (tipo === "image/x-tiff" || tipo === "image/tif") tipo = "image/tiff";
+      const noFiable = !tipo || tipo === "application/octet-stream";
+      const deExtension = MIME_POR_EXTENSION[extensionDe(file.name)];
+      if (noFiable && deExtension) tipo = deExtension;
+      if (tipo === (file.type || "")) return file;
+      return new File([file], file.name, { type: tipo, lastModified: file.lastModified });
+    } catch {
+      return file;
+    }
+  }
+
+  // Versión LIGERA de una foto para el selector de foco: una foto de cámara de
+  // 15-25 MB y 6000 px, mostrada entera en dos <img> a la vez, es lo que
+  // congelaba o cerraba la pestaña en móviles justo al elegir el encuadre. Se
+  // reduce a 1600 px de lado largo (misma proporción, así el punto de foco en %
+  // es idéntico) en JPEG 0,8. Si el navegador no puede decodificarla (HEIC en
+  // Chrome...), se usa la original y el selector ya lo gestiona.
+  async function crearPreviaLigera(file, ladoMax = 1600) {
+    try {
+      const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+      try {
+        const escala = Math.min(1, ladoMax / Math.max(bitmap.width, bitmap.height));
+        if (escala >= 1 && file.size <= 1.5 * 1024 * 1024) return { url: URL.createObjectURL(file) };
+        const w = Math.max(1, Math.round(bitmap.width * escala));
+        const h = Math.max(1, Math.round(bitmap.height * escala));
+        const canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        canvas.getContext("2d").drawImage(bitmap, 0, 0, w, h);
+        const blob = await canvasABlobJpeg(canvas, 0.8);
+        canvas.width = canvas.height = 0;
+        if (blob && blob.size > 0) return { url: URL.createObjectURL(blob) };
+      } finally {
+        if (bitmap.close) bitmap.close();
+      }
+    } catch (err) {
+      console.warn("No se pudo crear la vista previa ligera (se usa la original):", err);
+    }
+    return { url: URL.createObjectURL(file) };
+  }
+
   function agregarArchivos(fileList) {
     errMsg.style.display = "none";
     const duplicadosEnCola = [];
@@ -10550,7 +11850,8 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
     const vacios = [];
     const nuevosEnEstaTanda = [];
 
-    [...fileList].forEach((file) => {
+    [...fileList].forEach((fileOriginal) => {
+      const file = normalizarTipoArchivo(fileOriginal);
       const ext = extensionDe(file.name);
       // El navegador no siempre rellena file.type de forma fiable: en
       // vídeos MOV grabados con iPhone y subidos desde Safari/iOS, o en
@@ -10607,8 +11908,8 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
     if (formatoNoAdmitido.length) {
       partesAviso.push(
         formatoNoAdmitido.length === 1
-          ? `Formato no admitido: ${formatoNoAdmitido[0]}. Solo se admiten fotos (JPG, PNG, WEBP, GIF, AVIF, HEIC/HEIF) o vídeos (MP4, MOV, WEBM, MKV, MPEG).`
-          : `Formato no admitido en estos archivos: ${formatoNoAdmitido.join(", ")}. Solo se admiten fotos (JPG, PNG, WEBP, GIF, AVIF, HEIC/HEIF) o vídeos (MP4, MOV, WEBM, MKV, MPEG).`
+          ? `Formato no admitido: ${formatoNoAdmitido[0]}. Solo se admiten fotos (JPG, JFIF, PNG, WEBP, GIF, AVIF, HEIC/HEIF, BMP, TIFF) o vídeos (MP4, MOV, WEBM, MKV, MPEG).`
+          : `Formato no admitido en estos archivos: ${formatoNoAdmitido.join(", ")}. Solo se admiten fotos (JPG, JFIF, PNG, WEBP, GIF, AVIF, HEIC/HEIF, BMP, TIFF) o vídeos (MP4, MOV, WEBM, MKV, MPEG).`
       );
     }
     if (vacios.length) {
@@ -10665,29 +11966,55 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
   // lo único que permite mostrar el progreso real de la subida, algo
   // importante para vídeos pesados en su calidad original.
 
-  // ---------- Ajuste automático de fotos al límite de Cloudinary ----------
-  // Cloudinary (plan actual) rechaza cualquier imagen de más de 10 MB con
-  // "File size too large. Maximum is 10485760". Las fotos de cámara réflex
-  // suelen pesar 10-14 MB, así que fallaban justo las más pesadas. Aquí, SOLO
-  // si una foto supera el límite, se recodifica como JPEG a resolución
-  // completa con la calidad más alta que quepa por debajo de 10 MB (casi
-  // siempre ~0.85-0.92, imperceptible). Las fotos que ya caben se suben
-  // intactas, byte a byte, como siempre. Nota: al recodificar se pierden los
-  // metadatos EXIF (cámara, fecha...); la orientación sí se conserva.
+  // ---------- Ajuste automático de fotos a los límites de Cloudinary ----------
+  // Cloudinary (plan actual) rechaza una imagen si pesa más de 10 MB O si tiene
+  // más de ~25 megapíxeles (cámaras de 45-60 MP o panorámicas fallaban aunque
+  // pesasen poco). SOLO si una foto se pasa de alguno de los dos límites se
+  // recodifica como JPEG con la mejor calidad que quepa; las que ya caben se
+  // suben intactas, byte a byte. Y si aun así el servidor la rechazase, se
+  // reintenta SOLA bajando un poco más calidad y resolución (4 niveles) ANTES de
+  // pedirle nada a la persona. Se pierden los metadatos EXIF; la orientación se
+  // conserva.
   const LIMITE_FOTO_CLOUDINARY_BYTES = 10 * 1024 * 1024;
-  const OBJETIVO_FOTO_BYTES = Math.floor(9.6 * 1024 * 1024);
+  const LIMITE_FOTO_PIXELES = 24 * 1000 * 1000;
+  const NIVELES_AJUSTE_FOTO = [
+    { maxBytes: Math.floor(9.6 * 1024 * 1024), maxPixeles: 24e6, calidadMax: 0.92, calidadMin: 0.5 },
+    { maxBytes: 6 * 1024 * 1024, maxPixeles: 16e6, calidadMax: 0.85, calidadMin: 0.45 },
+    { maxBytes: 3 * 1024 * 1024, maxPixeles: 8e6, calidadMax: 0.78, calidadMin: 0.4 },
+    { maxBytes: Math.floor(1.5 * 1024 * 1024), maxPixeles: 4e6, calidadMax: 0.7, calidadMin: 0.35 },
+  ];
+  // Fotos que este navegador no sabe decodificar (p. ej. HEIC en Chrome): no
+  // tiene sentido intentar recodificarlas una y otra vez.
+  const FOTOS_NO_DECODIFICABLES = new WeakSet();
 
   function canvasABlobJpeg(canvas, calidad) {
     return new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/jpeg", calidad));
   }
 
-  async function ajustarFotoAlLimite(file) {
-    const esFoto = file.type && file.type.startsWith("image/") && file.type !== "image/gif";
-    if (!esFoto || file.size <= LIMITE_FOTO_CLOUDINARY_BYTES) return file;
+  // Dimensiones sin decodificar la foto entera (rápido y casi sin memoria).
+  function leerDimensionesFoto(file) {
+    return new Promise((resolve) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      let temporizador = null;
+      const fin = (r) => {
+        clearTimeout(temporizador);
+        img.onload = img.onerror = null;
+        URL.revokeObjectURL(url);
+        resolve(r);
+      };
+      temporizador = setTimeout(() => fin(null), 8000);
+      img.onload = () => fin(img.naturalWidth && img.naturalHeight ? { w: img.naturalWidth, h: img.naturalHeight } : null);
+      img.onerror = () => fin(null);
+      img.src = url;
+    });
+  }
+
+  async function recodificarFoto(file, nivel) {
+    const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
     try {
-      const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
-      let escala = 1;
-      for (let intento = 0; intento < 4; intento++) {
+      let escala = Math.min(1, Math.sqrt(nivel.maxPixeles / (bitmap.width * bitmap.height)));
+      for (let intento = 0; intento < 5; intento++) {
         const w = Math.max(1, Math.round(bitmap.width * escala));
         const h = Math.max(1, Math.round(bitmap.height * escala));
         const canvas = document.createElement("canvas");
@@ -10698,29 +12025,250 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
         ctx.fillRect(0, 0, w, h);
         ctx.drawImage(bitmap, 0, 0, w, h);
 
-        let elegido = await canvasABlobJpeg(canvas, 0.92);
-        if (elegido && elegido.size > OBJETIVO_FOTO_BYTES) {
+        let elegido = await canvasABlobJpeg(canvas, nivel.calidadMax);
+        if (elegido && elegido.size > nivel.maxBytes) {
           // Búsqueda binaria de la mejor calidad que quepa.
-          let bajo = 0.5, alto = 0.92, encontrado = null;
+          let bajo = nivel.calidadMin, alto = nivel.calidadMax, encontrado = null;
           for (let i = 0; i < 6; i++) {
             const q = (bajo + alto) / 2;
             const b = await canvasABlobJpeg(canvas, q);
-            if (b && b.size <= OBJETIVO_FOTO_BYTES) { encontrado = b; bajo = q; } else { alto = q; }
+            if (b && b.size <= nivel.maxBytes) { encontrado = b; bajo = q; } else { alto = q; }
           }
           elegido = encontrado;
         }
-        if (elegido && elegido.size <= OBJETIVO_FOTO_BYTES) {
-          if (bitmap.close) bitmap.close();
+        canvas.width = canvas.height = 0; // libera memoria al momento (clave en móvil)
+        if (elegido && elegido.size <= nivel.maxBytes) {
           const nombre = file.name.replace(/\.[^.]+$/, "") + ".jpg";
           return new File([elegido], nombre, { type: "image/jpeg", lastModified: file.lastModified });
         }
-        escala *= 0.85; // ni con calidad 0.5 cabe: se reduce un poco la resolución
+        escala *= 0.85; // ni con la calidad mínima cabe: se reduce un poco la resolución
       }
+    } finally {
       if (bitmap.close) bitmap.close();
+    }
+    return null;
+  }
+
+  // ---------- Reparación de fotos dañadas ----------
+  // Casos habituales: JPG cortado a medias (subida/copia interrumpida), basura antes o
+  // después de la imagen, o metadatos rotos. Primero se prueba la foto tal cual y luego
+  // con los bytes limpios; el navegador (que es más permisivo que Cloudinary) la dibuja
+  // en un lienzo y se guarda como JPG nuevo. Si faltaba parte de la imagen, lo que no
+  // se pueda recuperar saldrá en gris: por eso la tanda avisa de las que se repararon.
+  function limpiarBytesJpeg(bytes) {
+    let ini = -1;
+    for (let i = 0; i + 2 < bytes.length; i++) {
+      if (bytes[i] === 0xFF && bytes[i + 1] === 0xD8 && bytes[i + 2] === 0xFF) { ini = i; break; }
+    }
+    if (ini < 0) return null;
+    let fin = -1;
+    for (let i = bytes.length - 2; i > ini; i--) {
+      if (bytes[i] === 0xFF && bytes[i + 1] === 0xD9) { fin = i + 2; break; }
+    }
+    if (fin < 0) { // sin marca de fin: archivo cortado, se le añade
+      const r = new Uint8Array(bytes.length - ini + 2);
+      r.set(bytes.subarray(ini));
+      r[r.length - 2] = 0xFF;
+      r[r.length - 1] = 0xD9;
+      return r;
+    }
+    return bytes.slice(ini, fin);
+  }
+
+  async function dibujarFotoEnLienzo(blob, maxPixeles) {
+    let fuente, ancho, alto, liberar = () => {};
+    try {
+      const bmp = await createImageBitmap(blob, { imageOrientation: "from-image" });
+      fuente = bmp; ancho = bmp.width; alto = bmp.height;
+      liberar = () => { if (bmp.close) bmp.close(); };
+    } catch {
+      // <img> tolera mejor un JPG truncado que createImageBitmap.
+      const url = URL.createObjectURL(blob);
+      try {
+        const img = new Image();
+        await new Promise((res, rej) => { img.onload = res; img.onerror = () => rej(new Error("No decodificable")); img.src = url; });
+        if (!img.naturalWidth || !img.naturalHeight) throw new Error("Sin dimensiones");
+        fuente = img; ancho = img.naturalWidth; alto = img.naturalHeight;
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    }
+    try {
+      const escala = Math.min(1, Math.sqrt(maxPixeles / (ancho * alto)));
+      const w = Math.max(1, Math.round(ancho * escala));
+      const h = Math.max(1, Math.round(alto * escala));
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(fuente, 0, 0, w, h);
+      return canvas;
+    } finally {
+      liberar();
+    }
+  }
+
+  async function repararFoto(file) {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const candidatos = [file];
+    const limpio = limpiarBytesJpeg(bytes);
+    if (limpio && limpio.length !== bytes.length) candidatos.push(new Blob([limpio], { type: "image/jpeg" }));
+    for (const candidato of candidatos) {
+      try {
+        const canvas = await dibujarFotoEnLienzo(candidato, LIMITE_FOTO_PIXELES);
+        const blob = await canvasABlobJpeg(canvas, 0.92);
+        canvas.width = canvas.height = 0;
+        if (blob && blob.size > 0) {
+          return new File([blob], file.name.replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg", lastModified: file.lastModified });
+        }
+      } catch (err) {
+        console.warn("Reparación: este intento no pudo decodificar la foto:", err);
+      }
+    }
+    return null;
+  }
+
+  // ---------- HEIC/HEIF en navegadores que no lo decodifican (Chrome, Firefox, Edge) ----------
+  // Una foto HEIC de iPhone de 48 MP supera el límite de 25 MP de Cloudinary y,
+  // sin poder decodificarla, el panel no podía reducirla. Se convierte a JPG en el
+  // propio navegador con libheif (versión JavaScript pura, sin WebAssembly: encaja
+  // con la CSP del panel, que no permite eval ni wasm). Solo se carga la librería
+  // (3 MB) cuando hace falta, y solo se convierten las HEIC que el servidor rechaza.
+  const CACHE_HEIC_A_JPG = new WeakMap();
+  let libheifPromesa = null;
+  function esHeicArchivo(file) {
+    return /^image\/hei[cf]$/i.test(file.type || "") || /\.(heic|heif)$/i.test(file.name || "");
+  }
+  function cargarLibheif() {
+    if (!libheifPromesa) {
+      libheifPromesa = new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = "/js/vendor/libheif.js?v=1";
+        s.onload = async () => {
+          try {
+            const g = window.libheif;
+            resolve(typeof g === "function" ? await g() : g);
+          } catch (e) { libheifPromesa = null; reject(e); }
+        };
+        s.onerror = () => { libheifPromesa = null; reject(new Error("No se pudo cargar el conversor de HEIC")); };
+        document.head.appendChild(s);
+      });
+    }
+    return libheifPromesa;
+  }
+  async function convertirHeicAJpeg(file) {
+    if (CACHE_HEIC_A_JPG.has(file)) return CACHE_HEIC_A_JPG.get(file);
+    const lib = await cargarLibheif();
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const imagenes = new lib.HeifDecoder().decode(bytes);
+    if (!imagenes || !imagenes.length) throw new Error("El HEIC no contiene ninguna imagen");
+    const img = imagenes[0];
+    const w = img.get_width(), h = img.get_height();
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    const imageData = ctx.createImageData(w, h);
+    await new Promise((res, rej) => img.display(imageData, (d) => (d ? res(d) : rej(new Error("No se pudo decodificar el HEIC")))));
+    for (const im of imagenes) { try { if (typeof im.free === "function") im.free(); } catch {} }
+    ctx.putImageData(imageData, 0, 0);
+    const blob = await canvasABlobJpeg(canvas, 0.92);
+    canvas.width = canvas.height = 0; // libera memoria al momento
+    if (!blob || !blob.size) throw new Error("No se pudo generar el JPG");
+    const jpg = new File([blob], file.name.replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg", lastModified: file.lastModified });
+    CACHE_HEIC_A_JPG.set(file, jpg);
+    return jpg;
+  }
+
+  // nivelIdx 0 = solo si hace falta (peso o megapíxeles); 1..3 = forzado y más fuerte.
+  // TIFF: ningún navegador salvo Safari lo decodifica, así que no se puede
+  // reducir ni previsualizar. Se convierte a JPG en el navegador con UTIF.js
+  // (JS puro, sin eval/wasm; /js/vendor/utif.js incluye pako para los TIFF
+  // comprimidos con deflate) antes de ajustarlo y subirlo. Si falla, se sube
+  // el TIFF tal cual y el servidor decide.
+  const CACHE_TIFF_A_JPG = new WeakMap();
+  let utifPromesa = null;
+  function esTiffArchivo(file) {
+    return /^image\/tiff?$/i.test(file.type || "") || /\.tiff?$/i.test(file.name || "");
+  }
+  function cargarUtif() {
+    if (!utifPromesa) {
+      utifPromesa = new Promise((resolve, reject) => {
+        if (window.UTIF) return resolve(window.UTIF);
+        const s = document.createElement("script");
+        s.src = "/js/vendor/utif.js?v=1";
+        s.onload = () => (window.UTIF ? resolve(window.UTIF) : (utifPromesa = null, reject(new Error("UTIF no disponible"))));
+        s.onerror = () => { utifPromesa = null; reject(new Error("No se pudo cargar el conversor de TIFF")); };
+        document.head.appendChild(s);
+      });
+    }
+    return utifPromesa;
+  }
+  async function convertirTiffAJpeg(file) {
+    if (CACHE_TIFF_A_JPG.has(file)) return CACHE_TIFF_A_JPG.get(file);
+    const U = await cargarUtif();
+    const buf = await file.arrayBuffer();
+    const ifds = U.decode(buf);
+    if (!ifds || !ifds.length) throw new Error("El TIFF no contiene ninguna imagen");
+    // Si trae varias páginas/miniaturas se usa la de mayor tamaño.
+    ifds.sort((x, y) => ((y.width || y.t256?.[0] || 0) * (y.height || y.t257?.[0] || 0)) - ((x.width || x.t256?.[0] || 0) * (x.height || x.t257?.[0] || 0)));
+    const ifd = ifds[0];
+    U.decodeImage(buf, ifd);
+    const w = ifd.width, h = ifd.height;
+    if (!w || !h) throw new Error("No se pudo decodificar el TIFF");
+    const rgba = U.toRGBA8(ifd);
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    ctx.putImageData(new ImageData(new Uint8ClampedArray(rgba.buffer, rgba.byteOffset, rgba.byteLength), w, h), 0, 0);
+    const blob = await canvasABlobJpeg(canvas, 0.92);
+    canvas.width = canvas.height = 0;
+    if (!blob || !blob.size) throw new Error("No se pudo generar el JPG");
+    const jpg = new File([blob], file.name.replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg", lastModified: file.lastModified });
+    CACHE_TIFF_A_JPG.set(file, jpg);
+    return jpg;
+  }
+
+  async function ajustarFotoAlLimite(file, nivelIdx = 0) {
+    const esFoto = file.type && file.type.startsWith("image/") && file.type !== "image/gif";
+    if (!esFoto) return file;
+    if (esTiffArchivo(file)) {
+      try { file = await convertirTiffAJpeg(file); }
+      catch (errTiff) { console.warn("No se pudo convertir el TIFF a JPG:", errTiff); FOTOS_NO_DECODIFICABLES.add(file); return file; }
+    }
+    const nivel = NIVELES_AJUSTE_FOTO[Math.min(nivelIdx, NIVELES_AJUSTE_FOTO.length - 1)];
+    let hacerlo = nivelIdx > 0 || file.size > LIMITE_FOTO_CLOUDINARY_BYTES;
+    if (!hacerlo) {
+      const dim = await leerDimensionesFoto(file);
+      hacerlo = !!dim && dim.w * dim.h > LIMITE_FOTO_PIXELES;
+    }
+    if (!hacerlo) return file;
+    try {
+      const r = await recodificarFoto(file, nivel);
+      if (r) return r;
     } catch (err) {
-      // El navegador no pudo decodificarla (p. ej. HEIC en Chrome): se
-      // devuelve la original y el servidor dará su mensaje de siempre.
-      console.warn("No se pudo ajustar la foto al límite:", err);
+      // El navegador no pudo decodificarla (p. ej. HEIC en Chrome). Si es HEIC/HEIF
+      // se convierte a JPG con libheif y se sigue el ajuste normal sobre ese JPG
+      // (un nivel menos agresivo, porque el JPG parte de la foto original).
+      let convertida = false;
+      if (esHeicArchivo(file)) {
+        try {
+          const jpg = await convertirHeicAJpeg(file);
+          convertida = true;
+          const nivelHeic = NIVELES_AJUSTE_FOTO[Math.max(0, Math.min(nivelIdx, NIVELES_AJUSTE_FOTO.length - 1) - 1)];
+          const r2 = await recodificarFoto(jpg, nivelHeic);
+          if (r2) return r2;
+        } catch (errHeic) {
+          console.warn("No se pudo convertir el HEIC a JPG:", errHeic);
+        }
+      }
+      // Si ni siquiera se pudo convertir, se devuelve la original y el servidor
+      // dará su mensaje de siempre.
+      if (!convertida) FOTOS_NO_DECODIFICABLES.add(file);
+      console.warn("No se pudo ajustar la foto a los límites:", err);
     }
     return file;
   }
@@ -10731,43 +12279,104 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
   async function subirArchivo(item, ...args) {
     // Vídeo muy pesado: no se sube, se registra el enlace pegado a mano.
     if (pideEnlace(item)) return subirEnlaceExterno(item, ...args);
-    if (!item.ajustado) {
-      const pesaDemasiado = item.file.size > LIMITE_FOTO_CLOUDINARY_BYTES && item.file.type.startsWith("image/");
-      if (pesaDemasiado) {
+    if (!Number.isInteger(item.nivelAjuste)) item.nivelAjuste = 0;
+    const esFotoItem = item.file.type.startsWith("image/");
+    for (;;) {
+      if (!item.ajustado) {
         const fila = listaArchivos.querySelector(`.item-archivo[data-id="${item.id}"]`);
         const estadoTxt = fila && fila.querySelector(".estado-txt");
-        if (estadoTxt) estadoTxt.textContent = "Optimizando foto (supera 10 MB)...";
+        if (estadoTxt && esFotoItem) {
+          if (item.nivelAjuste > 0) estadoTxt.textContent = `Reduciendo calidad para que el servidor la acepte (${item.nivelAjuste}/${NIVELES_AJUSTE_FOTO.length - 1})...`;
+          else if (item.file.size > LIMITE_FOTO_CLOUDINARY_BYTES) estadoTxt.textContent = "Optimizando foto (supera 10 MB)...";
+        }
+        item.ajustado = await ajustarFotoAlLimite(item.origen || item.file, item.nivelAjuste);
       }
-      item.ajustado = await ajustarFotoAlLimite(item.file);
-    }
-    const f = item.ajustado;
-    const itemFinal = { ...item, file: f };
-    try {
-      return await subirArchivoCrudo(itemFinal, ...args);
-    } catch (err) {
-      if (!esRechazoPorPeso(err)) throw err;
-      // Cloudinary (o el servidor) rechaza el archivo por pesado: se pide el
-      // enlace manual en su fila y se avisa de qué hacer.
-      item.necesitaEnlace = true;
-      mostrarCampoEnlace(item.id);
-      const aviso = "Este archivo es demasiado pesado para subirlo directamente. Súbelo tú a MediaFire (o similar), pega el enlace en su fila y pulsa «Subir contenido» otra vez";
-      const fila = listaArchivos.querySelector(`.item-archivo[data-id="${item.id}"]`);
-      if (fila) {
-        fila.classList.add("error");
-        const estadoTxt = fila.querySelector(".estado-txt");
-        if (estadoTxt) estadoTxt.textContent = aviso;
+      const itemFinal = { ...item, file: item.ajustado };
+      try {
+        return await subirArchivoCrudo(itemFinal, ...args);
+      } catch (err) {
+        // Foto dañada: se intenta reparar UNA vez (se decodifica lo que se pueda y se
+        // vuelve a guardar como JPG limpio) y se sube esa versión.
+        if (esFotoItem && esRechazoPorArchivoDanado(err)) {
+          const filaD = listaArchivos.querySelector(`.item-archivo[data-id="${item.id}"]`);
+          if (!item.reparado) {
+            item.reparado = true;
+            if (filaD) {
+              filaD.classList.remove("error");
+              const txt = filaD.querySelector(".estado-txt");
+              if (txt) txt.textContent = "Archivo dañado: intentando repararlo...";
+              const barraD = filaD.querySelector(".barra-progreso i");
+              if (barraD) barraD.style.width = "0%";
+            }
+            let arreglada = null;
+            try { arreglada = await repararFoto(item.file); } catch (errRep) { console.warn("No se pudo reparar la foto:", errRep); }
+            if (arreglada) {
+              item.origen = arreglada;
+              item.ajustado = null;
+              item.nivelAjuste = 0;
+              if (!fotosReparadasTanda.includes(item.file.name)) fotosReparadasTanda.push(item.file.name);
+              continue;
+            }
+          }
+          const avisoDanado = "Archivo dañado que no se ha podido reparar. Quítalo de la lista o vuelve a exportarlo desde el original";
+          if (filaD) {
+            filaD.classList.add("error");
+            const txt = filaD.querySelector(".estado-txt");
+            if (txt) txt.textContent = avisoDanado;
+          }
+          const eDanado = new Error(avisoDanado);
+          eDanado.status = err.status;
+          throw eDanado;
+        }
+        if (!esRechazoPorPeso(err)) throw err;
+        // Es una FOTO y el servidor la rechaza por peso/megapíxeles/formato: antes
+        // de molestar a nadie se prueba solo con menos calidad y resolución.
+        const sePuedeBajarMas = esFotoItem
+          && item.nivelAjuste < NIVELES_AJUSTE_FOTO.length - 1
+          && !FOTOS_NO_DECODIFICABLES.has(item.file);
+        if (sePuedeBajarMas) {
+          item.nivelAjuste++;
+          item.ajustado = null;
+          const fila = listaArchivos.querySelector(`.item-archivo[data-id="${item.id}"]`);
+          if (fila) {
+            fila.classList.remove("error");
+            const barra = fila.querySelector(".barra-progreso i");
+            if (barra) barra.style.width = "0%";
+          }
+          continue;
+        }
+        // Ya no se puede bajar más (o es un vídeo): se pide el enlace manual en su fila.
+        item.necesitaEnlace = true;
+        mostrarCampoEnlace(item.id);
+        const aviso = "Este archivo es demasiado pesado para subirlo directamente. Súbelo tú a MediaFire (o similar), pega el enlace en su fila y pulsa «Subir contenido» otra vez";
+        const fila = listaArchivos.querySelector(`.item-archivo[data-id="${item.id}"]`);
+        if (fila) {
+          fila.classList.add("error");
+          const estadoTxt = fila.querySelector(".estado-txt");
+          if (estadoTxt) estadoTxt.textContent = aviso;
+        }
+        const e = new Error(aviso);
+        e.status = err.status;
+        throw e;
       }
-      const e = new Error(aviso);
-      e.status = err.status;
-      throw e;
     }
+  }
+
+  // ¿Cloudinary dice que el archivo está dañado o no es una imagen válida (y no que pese
+  // demasiado)? Se comprueba ANTES que el peso, porque su mensaje también empieza por
+  // "Cloudinary ha rechazado".
+  function esRechazoPorArchivoDanado(err) {
+    if (!err || err.esDuplicado || err.caidaPrimaria || err.status !== 400) return false;
+    const m = err.message || "";
+    if (/file size|too large|megapix|maximum|dimension/i.test(m)) return false;
+    return /invalid image|invalid file|corrupt|unsupported|not a valid|could not be (decoded|processed|read)|truncated|empty file|damaged|unknown (image )?format|bad (image|file)/i.test(m);
   }
 
   // ¿El fallo se debe al peso del archivo (y no a la sesión, la red o un duplicado)?
   function esRechazoPorPeso(err) {
     if (!err || err.esDuplicado || err.caidaPrimaria) return false;
     if (err.status === 413) return true;
-    return err.status === 400 && /cloudinary ha rechazado|too large|demasiado pesad|file size|maximum|no puede superar/i.test(err.message || "");
+    return err.status === 400 && /cloudinary ha rechazado|too large|demasiado pesad|file size|maximum|megapix|dimension|no puede superar/i.test(err.message || "");
   }
 
   // Contenido MUY pesado: no se sube nada desde aquí. La persona sube el archivo
@@ -10808,7 +12417,9 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
     try {
       r = await fetch(`${eofBaseApiParaSubida()}/api/media`, { method: "POST", headers: { Authorization: `Bearer ${TOKEN_ACTUAL()}` }, body: formData });
     } catch {
-      throw fallo("No se ha podido conectar con el servidor", 0);
+      const errConexion = fallo("No se ha podido conectar con el servidor", 0);
+      errConexion.transitorio = true;
+      throw errConexion;
     }
     if (!r.ok) {
       let mensaje = "No se pudo guardar el enlace", duplicado = false;
@@ -10821,7 +12432,7 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
     return null;
   }
 
-  function subirArchivoCrudo({ id, file, portadaSegundo, foco }, titulo, descripcion, club, resultId, equipo, visibilidad, avisoLote) {
+  function subirArchivoCrudo({ id, file, portadaSegundo, foco, esPortada }, titulo, descripcion, club, resultId, equipo, visibilidad, avisoLote) {
     return new Promise((resolve, reject) => {
       const fila = listaArchivos.querySelector(`.item-archivo[data-id="${id}"]`);
       const barra = fila.querySelector(".barra-progreso i");
@@ -10841,9 +12452,13 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
       if (equipo) formData.append("equipo", equipo);
       if (Number.isFinite(portadaSegundo)) formData.append("portadaSegundo", portadaSegundo);
       if (foco) formData.append("portadaFoco", foco);
+      if (esPortada && resultId && visibilidad !== "privado" && file.type.startsWith("image/")) formData.append("esPortada", "1");
 
       const xhr = new XMLHttpRequest();
-      const baseSubida = eofBaseApiParaSubida();
+      // Las subidas van SIEMPRE a la principal (nunca a Railway): un corte de red en
+      // una foto ya no desvía el resto de la tanda a la secundaria, cuya tabla de
+      // sesiones va con retraso y daba "No autorizado" en fotos sueltas.
+      const baseSubida = PRIMARY_API;
       xhr.open("POST", `${baseSubida}/api/media`);
       xhr.setRequestHeader("Authorization", `Bearer ${TOKEN_ACTUAL()}`);
 
@@ -10859,9 +12474,16 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
         if (xhr.status >= 200 && xhr.status < 300) {
           fila.classList.add("completado");
           estadoTxt.textContent = "Subido correctamente";
-          let galeriaPartidoSlug = null;
-          try { galeriaPartidoSlug = JSON.parse(xhr.responseText).galeriaPartidoSlug || null; } catch {}
-          resolve(galeriaPartidoSlug);
+          let cuerpoOk = {};
+          try { cuerpoOk = JSON.parse(xhr.responseText) || {}; } catch {}
+          if (cuerpoOk.reutilizado) estadoTxt.textContent = "Ya estaba subida (la subida anterior sí se guardó)";
+          resolve({
+            slug: cuerpoOk.galeriaPartidoSlug || null,
+            mediaId: cuerpoOk.mediaId || null,
+            // null = el servidor no lo indica (versión antigua) o no había partido
+            vinculada: typeof cuerpoOk.galeriaVinculada === "boolean" ? cuerpoOk.galeriaVinculada : null,
+            reutilizado: !!cuerpoOk.reutilizado,
+          });
         } else {
           let mensaje = "Error al subir";
           let esDuplicado = false;
@@ -10887,7 +12509,8 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
           // Caída de la principal (gateway/Cloudflare, no un error de la app):
           // se abre el circuito para que el reintento vaya a la secundaria.
           const caidaPrimaria = baseSubida === PRIMARY_API && eofEsCaidaDePrimaria(xhr.status, xhr.getResponseHeader("Content-Type"));
-          if (caidaPrimaria) eofRegistrarFalloPrimaria(true);
+          // (Sin eofRegistrarFalloPrimaria aquí: un fallo de una foto no debe
+          // desviar a Railway el resto del panel ni las demás fotos de la tanda.)
           if (xhr.status === 401) {
             mensaje = "No se ha podido verificar tu sesión. Vuelve a iniciar sesión y pulsa «Subir contenido» otra vez (los archivos pendientes se conservan)";
           }
@@ -10897,6 +12520,9 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
           error.esDuplicado = esDuplicado;
           error.status = xhr.status;
           error.caidaPrimaria = caidaPrimaria;
+          // Fallos que suelen arreglarse solos al repetir (el servidor devuelve
+          // el mismo resultado si la subida anterior sí llegó a guardarse).
+          error.transitorio = [408, 425, 429, 500, 502, 503, 504].includes(xhr.status) || (xhr.status >= 520 && xhr.status <= 530);
           reject(error);
         }
       });
@@ -10904,13 +12530,16 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
         fila.classList.add("error");
         estadoTxt.textContent = "No se ha podido conectar con el servidor";
         const errRed = new Error("Error de red: no se ha podido conectar con el servidor");
-        if (baseSubida === PRIMARY_API) { eofRegistrarFalloPrimaria(true); errRed.caidaPrimaria = true; }
+        errRed.transitorio = true;
+        if (baseSubida === PRIMARY_API) errRed.caidaPrimaria = true;
         reject(errRed);
       });
       xhr.addEventListener("timeout", () => {
         fila.classList.add("error");
         estadoTxt.textContent = "La subida ha tardado demasiado y se ha cancelado";
-        reject(new Error("Tiempo de espera agotado"));
+        const errTiempo = new Error("Tiempo de espera agotado");
+        errTiempo.transitorio = true;
+        reject(errTiempo);
       });
       xhr.addEventListener("abort", () => {
         fila.classList.add("error");
@@ -10926,21 +12555,45 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
     });
   }
 
-  // Reintenta automáticamente un archivo si el servidor responde 401.
-  // Un 401 se produce ANTES de que el servidor guarde nada, así que
-  // reintentar es seguro (no puede duplicar el archivo). Sirve para los
-  // 401 pasajeros (sesión que aún no se ha propagado entre servidores)
-  // en tandas largas de fotos, sin que el fotógrafo tenga que hacer nada.
+  // ¿Merece la pena repetir esta subida tal cual? Sí si el fallo es pasajero:
+  // sesión que aún no se ha propagado (401), caída de la principal, corte de red,
+  // tiempo agotado, saturación (429) o error momentáneo del servidor (5xx).
+  // NO si es un duplicado, un archivo rechazado (400/413) o un problema de
+  // permisos: repetir no lo arreglaría.
+  function esFalloTransitorio(err) {
+    if (!err || err.esDuplicado) return false;
+    return err.status === 401 || !!err.caidaPrimaria || !!err.transitorio;
+  }
+
+  // Si no hay internet, se espera a que vuelva (hasta 2 min) en vez de quemar los
+  // reintentos en vano.
+  function esperarConexion(maxMs = 120000) {
+    if (typeof navigator === "undefined" || navigator.onLine !== false) return Promise.resolve();
+    return new Promise((resolve) => {
+      let temporizador = null;
+      const hecho = () => {
+        clearTimeout(temporizador);
+        window.removeEventListener("online", hecho);
+        resolve();
+      };
+      temporizador = setTimeout(hecho, maxMs);
+      window.addEventListener("online", hecho);
+    });
+  }
+
+  // Reintenta automáticamente un archivo si el fallo es pasajero (ver
+  // esFalloTransitorio), hasta 8 intentos con espera creciente (1,5 s, 3 s, 6 s,
+  // 12 s, 24 s, 30 s, 30 s). Es seguro: si la subida anterior sí llegó a guardarse y solo se perdió
+  // la respuesta, el servidor lo detecta (mismo archivo, misma persona, hace
+  // pocos minutos) y devuelve el resultado en vez de un error de duplicado.
   async function subirConReintento(item, ...args) {
-    const MAX_INTENTOS = 3;
+    const MAX_INTENTOS = 8;
     for (let intento = 1; ; intento++) {
+      await esperarConexion();
       try {
         return await subirArchivo(item, ...args);
       } catch (err) {
-        // 401 pasajero, o caída de la principal (el circuito ya se ha abierto y
-        // el siguiente intento irá a la secundaria; si la subida sí llegó a
-        // aplicarse, el servidor la detecta como "ya subido" y no duplica).
-        if ((err.status !== 401 && !err.caidaPrimaria) || intento >= MAX_INTENTOS) throw err;
+        if (!esFalloTransitorio(err) || intento >= MAX_INTENTOS) throw err;
         const fila = listaArchivos.querySelector(`.item-archivo[data-id="${item.id}"]`);
         if (fila) {
           fila.classList.remove("error");
@@ -10949,15 +12602,48 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
           const barra = fila.querySelector(".barra-progreso i");
           if (barra) barra.style.width = "0%";
         }
-        await new Promise((r) => setTimeout(r, 1500 * intento));
+        const espera = Math.min(30000, 1500 * 2 ** (intento - 1)) + Math.random() * 400;
+        await new Promise((r) => setTimeout(r, espera));
       }
     }
+  }
+
+  // Enlaza una foto YA subida con la galería de su partido. Solo se usa si el
+  // servidor avisa de que la guardó pero no pudo enlazarla (es idempotente:
+  // enlazar dos veces no duplica nada).
+  async function vincularAGaleriaPartidoConReintento(mediaId, resultId, equipo, portada) {
+    for (let intento = 1; intento <= 3; intento++) {
+      try {
+        await esperarConexion();
+        const r = await apiFetch(`/api/results/${resultId}/galeria`, {
+          method: "POST",
+          body: JSON.stringify({ mediaId, equipo: equipo || "", ...(portada ? { portada: true } : {}) }),
+        });
+        const hecho = r && ((Array.isArray(r.vinculadas) && r.vinculadas.length)
+          || (Array.isArray(r.errores) && r.errores.some((x) => /ya estaba/i.test((x && x.error) || ""))));
+        if (hecho) return true;
+      } catch (err) {
+        if (err && err.status === 403) return false; // sin permiso: insistir no sirve
+      }
+      await new Promise((r) => setTimeout(r, 800 * intento));
+    }
+    return false;
   }
 
   // Resumen de la tanda en curso (solo si son varios archivos). Se manda UNA
   // vez al terminar, o al cerrar la pestaña a medias con lo ya subido, para
   // que 80 fotos sean 1 correo y no 80. Nunca rompe la subida si falla.
   let avisoLotePendiente = null; // { fotos, videos, titulo, club, descripcion }
+  let fotosReparadasTanda = []; // nombres de las fotos dañadas que se repararon en esta tanda
+  // Mientras se sube, cerrar o recargar la pestaña pregunta antes (perder una
+  // tanda de 80 fotos a medias por un clic sin querer es lo peor que puede pasar).
+  let subidaEnCurso = false;
+  window.addEventListener("beforeunload", (ev) => {
+    if (!subidaEnCurso) return;
+    ev.preventDefault();
+    ev.returnValue = "";
+    return "";
+  });
   function esVideoArchivo(file) {
     return /^video\//.test(file.type || "") || /\.(mp4|mov|webm|mkv|mpe?g)$/i.test(file.name || "");
   }
@@ -11024,6 +12710,23 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
       return;
     }
 
+    // Portada obligatoria: contenido público de un partido con fotos y sin portada
+    // elegida (ni en esta tanda ni ya en la galería) no se envía.
+    if (resultIdElegido && visibilidadElegida !== "privado") {
+      const fotosTanda = archivos.filter(esFotoSubidaPortada);
+      if (fotosTanda.length && !fotosTanda.some((a) => a.esPortada)) {
+        const tiene = await comprobarPortadaExistenteSubida(resultIdElegido, true);
+        if (tiene !== true && tiene !== null) {
+          errMsg.textContent = "Elige la portada de la galería antes de subir: pulsa «★ Portada» en la foto que quieras que salga en la portada de la web.";
+          errMsg.style.display = "block";
+          actualizarAvisoPortadaSubida();
+          const primeraFoto = listaArchivos.querySelector(".btn-portada-galeria-subida");
+          if (primeraFoto) primeraFoto.focus();
+          return;
+        }
+      }
+    }
+
     // Los archivos muy pesados necesitan su enlace (MediaFire, Drive...) antes de empezar.
     const sinEnlace = archivos.filter((a) => pideEnlace(a) && !/^https:\/\/\S+$/i.test(a.enlace || ""));
     if (sinEnlace.length) {
@@ -11043,35 +12746,101 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
     // Se suben de uno en uno (no en paralelo) para no saturar la subida
     // cuando hay varios vídeos pesados a la vez.
     let subidos = 0;
-    const fallidos = []; // [{ id, file, mensaje, esDuplicado }]
-    let totalIntentado = 0;
+    const fallidos = []; // [{ item, id, file, mensaje, esDuplicado, reintentable }]
     let ultimoSlugGaleria = null;
+    const sinVincular = []; // subidas que se guardaron pero no quedaron en la galería del partido
+    const lista = archivos.slice();
+    const totalArchivos = lista.length;
+    const numeroDe = new Map(lista.map((it, i) => [it, i + 1]));
     // Con más de un archivo, un solo correo de resumen al final (no uno por archivo).
-    const enLote = archivos.length > 1;
+    const enLote = totalArchivos > 1;
     avisoLotePendiente = enLote ? { fotos: 0, videos: 0, titulo, club, descripcion } : null;
-    for (const item of archivos) {
-      totalIntentado++;
+    fotosReparadasTanda = [];
+    subidaEnCurso = true;
+    // Móvil: si la pantalla se apaga, el navegador congela la pestaña y la subida
+    // se corta a mitad. Se mantiene encendida mientras dure la tanda (si el
+    // navegador no lo soporta, simplemente no se hace nada).
+    let bloqueoPantalla = null;
+    const pedirBloqueoPantalla = async () => {
       try {
-        // Si hay varios archivos, se numera el título para diferenciarlos
-        // sin que el redactor tenga que repetirlo campo a campo.
-        const tituloArchivo = archivos.length > 1 ? `${titulo} (${totalIntentado}/${archivos.length})` : titulo;
-        const slug = await subirConReintento(item, tituloArchivo, descripcion, club, resultIdElegido, equipoElegido, visibilidadElegida, enLote);
-        if (slug) ultimoSlugGaleria = slug;
-        subidos++;
-        if (avisoLotePendiente) {
-          if (esVideoArchivo(item.file)) avisoLotePendiente.videos++; else avisoLotePendiente.fotos++;
-        }
+        if (navigator.wakeLock && document.visibilityState === "visible") bloqueoPantalla = await navigator.wakeLock.request("screen");
+      } catch {}
+    };
+    const reactivarBloqueoPantalla = () => { if (subidaEnCurso) pedirBloqueoPantalla(); };
+    document.addEventListener("visibilitychange", reactivarBloqueoPantalla);
+    pedirBloqueoPantalla();
+
+    const subirUno = async (item) => {
+      // Si hay varios archivos, se numera el título para diferenciarlos
+      // sin que el redactor tenga que repetirlo campo a campo.
+      const tituloArchivo = totalArchivos > 1 ? `${titulo} (${numeroDe.get(item)}/${totalArchivos})` : titulo;
+      const res = await subirConReintento(item, tituloArchivo, descripcion, club, resultIdElegido, equipoElegido, visibilidadElegida, enLote);
+      const info = res && typeof res === "object" ? res : {};
+      if (info.slug) ultimoSlugGaleria = info.slug;
+      subidos++;
+      if (avisoLotePendiente) {
+        if (esVideoArchivo(item.file)) avisoLotePendiente.videos++; else avisoLotePendiente.fotos++;
+      }
+      // El servidor avisa si guardó el archivo pero no pudo meterlo en la galería
+      // del partido: se enlaza desde aquí (con reintentos) en vez de dejarlo suelto.
+      if (resultIdElegido && info.mediaId && info.vinculada === false) {
+        const estadoV = listaArchivos.querySelector(`.item-archivo[data-id="${item.id}"] .estado-txt`);
+        if (estadoV) estadoV.textContent = "Subido. Enlazando con la galería del partido...";
+        const ok = await vincularAGaleriaPartidoConReintento(info.mediaId, resultIdElegido, equipoElegido, !!item.esPortada);
+        if (estadoV) estadoV.textContent = ok ? "Subido correctamente" : "Subido, pero SIN enlazar a la galería del partido";
+        if (ok) { if (info.slug) ultimoSlugGaleria = info.slug; } else sinVincular.push(item.file.name);
+      }
+    };
+
+    for (const item of lista) {
+      try {
+        await subirUno(item);
       } catch (err) {
-        fallidos.push({ ...item, mensaje: err.message, esDuplicado: !!err.esDuplicado });
+        fallidos.push({ item, id: item.id, file: item.file, mensaje: err.message, esDuplicado: !!err.esDuplicado, reintentable: esFalloTransitorio(err) });
       }
     }
+
+    // Segunda pasada AUTOMÁTICA solo con los que fallaron por algo pasajero (red,
+    // servidor...), tras una pausa: así una tanda larga no acaba con fallos que
+    // se habrían arreglado solos con esperar unos segundos.
+    // Hasta 3 pasadas extra (tras 4 s, 20 s y 60 s) solo con lo que sigue fallando
+    // por algo pasajero: una caída de red de un minuto ya no deja fotos sin subir.
+    for (const pausaPasada of [4000, 20000, 60000]) {
+      const reintentables = fallidos.filter((f) => f.reintentable);
+      if (!reintentables.length) break;
+      await new Promise((r) => setTimeout(r, pausaPasada));
+      for (const f of reintentables) {
+        fallidos.splice(fallidos.indexOf(f), 1);
+        const fila = listaArchivos.querySelector(`.item-archivo[data-id="${f.item.id}"]`);
+        if (fila) {
+          fila.classList.remove("error");
+          const estadoTxt = fila.querySelector(".estado-txt");
+          if (estadoTxt) estadoTxt.textContent = "Segundo intento...";
+          const barra = fila.querySelector(".barra-progreso i");
+          if (barra) barra.style.width = "0%";
+        }
+        try {
+          await subirUno(f.item);
+        } catch (err) {
+          fallidos.push({ item: f.item, id: f.item.id, file: f.item.file, mensaje: err.message, esDuplicado: !!err.esDuplicado, reintentable: esFalloTransitorio(err) });
+        }
+      }
+    }
+    subidaEnCurso = false;
+    document.removeEventListener("visibilitychange", reactivarBloqueoPantalla);
+    try { if (bloqueoPantalla) await bloqueoPantalla.release(); } catch {}
 
     btnSubir.textContent = "Subir contenido";
     await enviarAvisoLote();
 
     if (fallidos.length === 0) {
       msgOk.textContent = `Se ${subidos === 1 ? "ha" : "han"} subido ${subidos} archivo${subidos === 1 ? "" : "s"} correctamente. Gracias por la aportación.`;
+      if (fotosReparadasTanda.length) msgOk.textContent += ` Se ${fotosReparadasTanda.length === 1 ? "reparó 1 foto dañada" : `repararon ${fotosReparadasTanda.length} fotos dañadas`} antes de subirla${fotosReparadasTanda.length === 1 ? "" : "s"}; revisa que se vea${fotosReparadasTanda.length === 1 ? "" : "n"} completa${fotosReparadasTanda.length === 1 ? "" : "s"}: ${fotosReparadasTanda.join(", ")}.`;
       msgOk.style.display = "block";
+      if (sinVincular.length) {
+        errMsg.textContent = `Atención: ${sinVincular.length === 1 ? "este archivo se subió" : "estos archivos se subieron"} bien pero no ha podido enlazarse a la galería del partido (${sinVincular.join(", ")}). Vincúlalo desde «Galería de partido» o vuelve a subirlo: no se duplicará.`;
+        errMsg.style.display = "block";
+      }
       if (ultimoSlugGaleria) {
         const urlGaleria = `https://elotrofutbol.media/galeria/${ultimoSlugGaleria}`;
         linkGaleriaSubida.innerHTML = tarjetaLinkGaleriaHTML(urlGaleria);
@@ -11087,6 +12856,7 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
       activarSelectorVisibilidad(selectorVisibilidad, inputVisibilidadSubida, "publico");
       sincronizarCarpetaSubida();
       archivos = [];
+      portadaExistenteSubida = { resultId: null, tiene: null };
       pintarLista();
       // Si quien sube tiene la galería de abajo cargada (la suya propia,
       // o la de todos si es admin), la refrescamos para que aparezca sin
@@ -11099,7 +12869,9 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
       // se subieron bien desaparecen), para poder corregir el problema
       // y pulsar "Subir contenido" otra vez sin tener que volver a
       // seleccionar todo desde cero.
-      archivos = fallidos.map(({ id, file, enlace, necesitaEnlace }) => ({ id, file, enlace: enlace || "", necesitaEnlace: !!necesitaEnlace }));
+      // Se conserva el propio elemento (encuadre elegido, portada, foto ya optimizada,
+      // enlace pegado...) para no perder nada ni tener que repetirlo.
+      archivos = fallidos.map((f) => f.item);
       pintarLista();
 
       const duplicados = fallidos.filter((f) => f.esDuplicado);
@@ -11115,6 +12887,7 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
       // y había que ir pasando el ratón por cada fila para enterarse.
       const detalle = fallidos.map((f) => `"${f.file.name}": ${f.mensaje}`).join(" · ");
       errMsg.textContent = partes.join(", ") + `. ${detalle}. Puedes quitar los que no quieras reintentar y volver a pulsar "Subir contenido".`;
+      if (fotosReparadasTanda.length) errMsg.textContent += ` Se ${fotosReparadasTanda.length === 1 ? "reparó 1 foto dañada" : `repararon ${fotosReparadasTanda.length} fotos dañadas`} antes de subirla${fotosReparadasTanda.length === 1 ? "" : "s"}; revisa que se vea${fotosReparadasTanda.length === 1 ? "" : "n"} completa${fotosReparadasTanda.length === 1 ? "" : "s"}: ${fotosReparadasTanda.join(", ")}.`;
       errMsg.style.display = "block";
     }
     actualizarBotonSubir();
@@ -11184,7 +12957,7 @@ function previewEnlaceExternoHtml(m, esFoto) {
 // A partir de la URL de Cloudinary genera una miniatura ligera y recortada:
 // para fotos, la propia imagen redimensionada; para vídeos, un fotograma
 // real (Cloudinary lo extrae solo, sin necesidad de guardar nada aparte).
-function miniaturaCloudinary(url, tipo, portadaSegundo, portadaFoco) {
+function miniaturaCloudinary(url, tipo, portadaSegundo, portadaFoco, opciones) {
   if (!url) return null;
   const marcador = tipo === "video" ? "/video/upload/" : "/image/upload/";
   const idx = url.indexOf(marcador);
@@ -11224,11 +12997,35 @@ function miniaturaCloudinary(url, tipo, portadaSegundo, portadaFoco) {
       recorteFoco = `c_crop,x_${x},y_${y},w_${lado},h_${lado}/`;
     }
   }
-  const recorteFinal = "c_fill,w_400,h_344,q_auto,f_auto";
+  // Por defecto (selector de foco, etc.) se mantiene 400x344. Las tarjetas de la
+  // galería de contenido piden "opciones" para recibir la foto YA con la forma de la
+  // celda (16:10), a doble resolución para pantallas retina, sin ampliar nunca el
+  // original (c_lfill) y en AVIF/WebP (f_auto) con calidad buena (q_auto:good).
+  const recorteFinal = opciones && opciones.ancho
+    ? `c_lfill,w_${opciones.ancho},h_${Math.round(opciones.ancho * 0.625)}${recorteFoco ? "" : ",g_auto"},q_auto:good,f_auto`
+    : "c_fill,w_400,h_344,q_auto,f_auto";
   const transform = (tipo === "video" ? `so_${segundo}/` : "") + recorteFoco + recorteFinal;
   const base = url.slice(0, idx + marcador.length) + transform + "/" + url.slice(idx + marcador.length);
   return tipo === "video" ? base.replace(/\.[a-zA-Z0-9]+$/, ".jpg") : base;
 }
+
+// Miniatura de TARJETA (16:10, 480 px de base) y su srcset: el navegador elige
+// 320-1000 px según el tamaño real de la tarjeta y la densidad de pantalla, así
+// que en retina se ve nítida y en móvil/pantallas normales pesa poco.
+const MINIATURA_TARJETA_BASE = 480;
+const MINIATURA_TARJETA_ANCHOS = [320, 480, 640, 800, 1000];
+function miniaturaTarjetaCloudinary(url, tipo, portadaSegundo, portadaFoco) {
+  return miniaturaCloudinary(url, tipo, portadaSegundo, portadaFoco, { ancho: MINIATURA_TARJETA_BASE });
+}
+function srcsetTarjetaCloudinary(urlMiniatura) {
+  if (!urlMiniatura) return "";
+  const h = (w) => Math.round(w * 0.625);
+  return MINIATURA_TARJETA_ANCHOS
+    .map((w) => `${urlMiniatura.replace(`w_${MINIATURA_TARJETA_BASE},h_${h(MINIATURA_TARJETA_BASE)}`, `w_${w},h_${h(w)}`)} ${w}w`)
+    .join(", ");
+}
+// Las tarjetas miden entre 260 y ~540 px de ancho (auto-fill, mínimo 260px).
+const MINIATURA_TARJETA_SIZES = "(max-width:640px) 94vw, 420px";
 
 function formatoTamanoAdmin(bytes) {
   if (bytes < 1024) return bytes + " B";
@@ -11317,7 +13114,7 @@ function tarjetaMediaHtml(m) {
     const seleccionable = m.visibilidad === "privado" && (USER.rol === "admin" || m.autor_id === USER.id);
     const esFoto = m.tipo === "foto";
     const urlDescarga = m.content_type === "enlace/externo" ? (m.cloudinary_url || "#") : `${eofBaseApiParaSubida()}/api/media/${m.id}/descargar?token=${encodeURIComponent(TOKEN_ACTUAL())}`;
-    const urlMiniatura = miniaturaCloudinary(m.cloudinary_url, esFoto ? "image" : "video", m.portada_segundo, m.portada_foco);
+    const urlMiniatura = miniaturaTarjetaCloudinary(m.cloudinary_url, esFoto ? "image" : "video", m.portada_segundo, m.portada_foco);
     const iconoRespaldo = esFoto ? iconoFotoAdmin : iconoVideoAdmin;
     // La persona que subió el archivo puede editarlo; un admin puede
     // editar cualquier archivo, aunque sea de otra persona (coincide
@@ -11353,7 +13150,7 @@ function tarjetaMediaHtml(m) {
           ${esEnlace
             ? previewEnlaceExternoHtml(m, esFoto)
             : `${urlMiniatura
-              ? `<img src="${urlMiniatura}" alt="" loading="lazy" class="preview-miniatura-media" onerror="const p=this.parentElement;this.remove();p.querySelector('.icono-generico')?.classList.remove('oculto');">`
+              ? `<img src="${urlMiniatura}" srcset="${srcsetTarjetaCloudinary(urlMiniatura)}" sizes="${MINIATURA_TARJETA_SIZES}" decoding="async" alt="" loading="lazy" class="preview-miniatura-media" onerror="const p=this.parentElement;this.remove();p.querySelector('.icono-generico')?.classList.remove('oculto');">`
               : ""}
           <span class="icono-generico ${urlMiniatura ? "oculto" : ""}">${iconoRespaldo}</span>`}
           ${!esFoto && !esEnlace ? `<span class="play-overlay">${iconoPlayAdmin}</span>` : ""}
@@ -11410,7 +13207,7 @@ function pintarCabeceraCarpetasMedia() {
     carpetasMedia.forEach((c) => {
       tarjetas.push(`<button type="button" class="tarjeta-carpeta" data-carpeta="${c.id}" title="${escapeHtml(c.nombre)}">
         <span class="tarjeta-carpeta-icono">${iconoCarpetaAdmin}</span>
-        <span class="tarjeta-carpeta-texto"><b>${escapeHtml(c.nombre)}</b><small>${textoArchivos(contarMediaDeCarpeta(c.id))}</small></span></button>`);
+        <span class="tarjeta-carpeta-texto"><b>${escapeHtml(c.nombre)}</b><small>${esAdmin && contarMediaDeCarpeta(c.id) === 0 ? "Vacía · se borra sola a los 5 días" : textoArchivos(contarMediaDeCarpeta(c.id))}</small></span></button>`);
     });
     tarjetas.push(`<button type="button" class="tarjeta-carpeta tarjeta-carpeta-nueva" data-accion="nueva">
       <span class="tarjeta-carpeta-icono">${iconoCarpetaMasAdmin}</span>
@@ -11739,6 +13536,7 @@ function abrirEnlaceExternoMedia(id) {
 let PARTIDO_GALERIA_SELECCIONADO = "";
 let GALERIA_PARTIDO_ACTUAL = []; // filas de match_gallery del partido elegido
 let GALERIA_PARTIDO_EQUIPOS = { local: "Local", visitante: "Visitante" };
+let GALERIA_PARTIDO_TIENE_PORTADA = true; // se actualiza al cargar; false = aviso "falta portada"
 
 // Buscador de partido de esta pantalla: mismo patrón que "Resultado
 // vinculado" del editor de noticias (ver crearAutocompletarPartido), en
@@ -11808,8 +13606,9 @@ async function cargarGaleriaDePartidoElegido(resultId) {
   const cont = document.getElementById("galeriaPartidoActual");
   if (cont) cont.innerHTML = "<p>Cargando...</p>";
   try {
-    const { galeria = [], equipoLocal, equipoVisitante, urlPublica } = await apiFetch(`/api/results/${resultId}/galeria`);
+    const { galeria = [], equipoLocal, equipoVisitante, urlPublica, tienePortada } = await apiFetch(`/api/results/${resultId}/galeria`);
     GALERIA_PARTIDO_ACTUAL = galeria;
+    GALERIA_PARTIDO_TIENE_PORTADA = !!tienePortada;
     GALERIA_PARTIDO_EQUIPOS = { local: equipoLocal || "Local", visitante: equipoVisitante || "Visitante" };
     const linkPanel = document.getElementById("linkGaleriaPartidoPanel");
     if (linkPanel) {
@@ -11840,19 +13639,27 @@ function pintarGaleriaPartidoActual() {
     cont.innerHTML = "<p>Todavía no hay fotos vinculadas a este partido.</p>";
     return;
   }
-  cont.innerHTML = GALERIA_PARTIDO_ACTUAL.map((g) => {
+  // Hay fotos públicas que podrían ser portada pero ninguna lo es todavía.
+  const hayCandidataPortada = GALERIA_PARTIDO_ACTUAL.some((x) => x.tipo === "foto" && x.visibilidad !== "privado");
+  const avisoPortada = (!GALERIA_PARTIDO_TIENE_PORTADA && hayCandidataPortada)
+    ? `<p class="aviso-portada-galeria" role="alert">Esta galería no tiene portada. Elige una foto con «Usar como portada»: es la imagen que sale en la portada de la web.</p>`
+    : "";
+  cont.innerHTML = avisoPortada + GALERIA_PARTIDO_ACTUAL.map((g) => {
     const esFoto = g.tipo === "foto";
-    const urlMiniatura = miniaturaCloudinary(g.cloudinary_url, esFoto ? "image" : "video");
+    const esPortada = Number(g.es_portada) === 1;
+    const puedeSerPortada = esFoto && g.visibilidad !== "privado" && !esPortada;
+    const urlMiniatura = miniaturaTarjetaCloudinary(g.cloudinary_url, esFoto ? "image" : "video");
     const iconoRespaldo = esFoto ? iconoFotoAdmin : iconoVideoAdmin;
     const etiquetaEquipo = g.equipo === "local" ? GALERIA_PARTIDO_EQUIPOS.local
       : g.equipo === "visitante" ? GALERIA_PARTIDO_EQUIPOS.visitante
       : null;
     return `
-      <div class="tarjeta-media">
+      <div class="tarjeta-media${esPortada ? " es-portada-galeria" : ""}">
         <div class="preview">
           <span class="badge-tipo">${esFoto ? "Foto" : "Vídeo"}</span>
+          ${esPortada ? `<span class="badge-portada-galeria">★ Portada</span>` : ""}
           ${urlMiniatura
-            ? `<img src="${urlMiniatura}" alt="" loading="lazy" class="preview-miniatura-media" onerror="const p=this.parentElement;this.remove();p.querySelector('.icono-generico')?.classList.remove('oculto');">`
+            ? `<img src="${urlMiniatura}" srcset="${srcsetTarjetaCloudinary(urlMiniatura)}" sizes="${MINIATURA_TARJETA_SIZES}" decoding="async" alt="" loading="lazy" class="preview-miniatura-media" onerror="const p=this.parentElement;this.remove();p.querySelector('.icono-generico')?.classList.remove('oculto');">`
             : ""}
           <span class="icono-generico ${urlMiniatura ? "oculto" : ""}">${iconoRespaldo}</span>
         </div>
@@ -11866,6 +13673,7 @@ function pintarGaleriaPartidoActual() {
           </select>
         </div>
         <div class="acciones-media acciones-media-galeria-partido">
+          ${puedeSerPortada ? `<button type="button" class="btn-portada-galeria-partido" onclick="usarComoPortadaGaleriaPartido(${g.id})" title="Usar esta foto como portada de la galería">★ Usar como portada</button>` : ""}
           <button class="btn-quitar-galeria-partido" onclick="quitarDeGaleriaPartido(${g.id})" title="Quitar del partido">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
             <span>Quitar</span>
@@ -11886,6 +13694,21 @@ async function cambiarEquipoGaleriaPartido(idEnlace, equipo) {
     await cargarGaleriaDePartidoElegido(PARTIDO_GALERIA_SELECCIONADO);
   } catch (e) {
     if (err) err.textContent = "No se pudo cambiar el equipo de esta foto: " + e.message;
+  }
+}
+
+async function usarComoPortadaGaleriaPartido(idEnlace) {
+  const err = document.getElementById("errGaleriaPartido");
+  if (err) err.textContent = "";
+  try {
+    await apiFetch(`/api/match-gallery/${idEnlace}`, {
+      method: "PATCH",
+      body: JSON.stringify({ portada: true }),
+    });
+    await cargarGaleriaDePartidoElegido(PARTIDO_GALERIA_SELECCIONADO);
+    if (typeof EOF !== "undefined" && EOF.toast) EOF.toast("Portada de la galería actualizada.", "info");
+  } catch (e) {
+    if (err) err.textContent = "No se pudo cambiar la portada: " + e.message;
   }
 }
 
@@ -11936,13 +13759,13 @@ function pintarGaleriaArticuloVinculada() {
   if (!cont) return;
   cont.innerHTML = GALERIA_ARTICULO_ACTUAL.map((m, i) => {
     const esFoto = m.tipo === "foto";
-    const urlMiniatura = miniaturaCloudinary(m.cloudinary_url, esFoto ? "image" : "video", m.portada_segundo, m.portada_foco);
+    const urlMiniatura = miniaturaTarjetaCloudinary(m.cloudinary_url, esFoto ? "image" : "video", m.portada_segundo, m.portada_foco);
     return `
       <div class="tarjeta-media">
         <div class="preview">
           <span class="badge-tipo">${esFoto ? "Foto" : "Vídeo"}</span>
           ${urlMiniatura
-            ? `<img src="${urlMiniatura}" alt="" loading="lazy" class="preview-miniatura-media">`
+            ? `<img src="${urlMiniatura}" srcset="${srcsetTarjetaCloudinary(urlMiniatura)}" sizes="${MINIATURA_TARJETA_SIZES}" decoding="async" alt="" loading="lazy" class="preview-miniatura-media">`
             : `<span class="icono-generico">${esFoto ? iconoFotoAdmin : iconoVideoAdmin}</span>`}
         </div>
         <div class="cuerpo">
@@ -12144,7 +13967,7 @@ function pintarModalGaleriaArticulo() {
 
 function tarjetaSeleccionableGaleriaArticulo(mediaId, cloudinaryUrl, titulo, tipo, autorNombre) {
   const esFoto = tipo === "foto";
-  const urlMiniatura = miniaturaCloudinary(cloudinaryUrl, esFoto ? "image" : "video");
+  const urlMiniatura = miniaturaTarjetaCloudinary(cloudinaryUrl, esFoto ? "image" : "video");
   const seleccionada = SELECCION_MODAL_GALERIA_ARTICULO.has(mediaId);
   return `
     <div class="tarjeta-media${seleccionada ? " seleccionada" : ""}" onclick="alternarSeleccionModalGaleriaArticulo(${mediaId})">
@@ -12152,7 +13975,7 @@ function tarjetaSeleccionableGaleriaArticulo(mediaId, cloudinaryUrl, titulo, tip
         <span class="badge-tipo">${esFoto ? "Foto" : "Vídeo"}</span>
         <span class="check-seleccion"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>
         ${urlMiniatura
-          ? `<img src="${urlMiniatura}" alt="" loading="lazy" class="preview-miniatura-media">`
+          ? `<img src="${urlMiniatura}" srcset="${srcsetTarjetaCloudinary(urlMiniatura)}" sizes="${MINIATURA_TARJETA_SIZES}" decoding="async" alt="" loading="lazy" class="preview-miniatura-media">`
           : `<span class="icono-generico">${esFoto ? iconoFotoAdmin : iconoVideoAdmin}</span>`}
       </div>
       <div class="cuerpo">
@@ -12206,7 +14029,25 @@ document.getElementById("btnConfirmarGaleriaArticulo")?.addEventListener("click"
 // preview o en el título de un vídeo se abre este modal con controles
 // nativos (play/pausa, avanzar/retroceder, volumen, pantalla completa),
 // para poder revisar el vídeo entero sin tener que descargarlo.
+// Visor profesional compartido con la web pública (js/visor-media.js): zoom,
+// pellizco, deslizar para cambiar o cerrar, tira de miniaturas, descarga...
 function abrirModalReproductorMedia(id) {
+  const m = mediaActual.find((x) => x.id === id);
+  if (!m || !m.cloudinary_url) return;
+  if (!window.VisorMedia) return abrirModalReproductorMediaClasico(id);
+  const lista = mediaActual.filter((x) => x.cloudinary_url && x.content_type !== "enlace/externo");
+  const indice = Math.max(0, lista.findIndex((x) => x.id === id));
+  const items = lista.map((x) => ({
+    tipo: x.tipo === "foto" ? "foto" : "video",
+    url: x.cloudinary_url,
+    thumb: x.tipo === "foto" ? miniaturaTarjetaCloudinary(x.cloudinary_url, "image") : "",
+    titulo: x.titulo || x.nombre_archivo || "",
+    credito: x.autor_nombre ? "© " + x.autor_nombre : "",
+  }));
+  window.VisorMedia.abrir(items, indice, { titulo: "ELOTROFÚTBOLTV" });
+}
+
+function abrirModalReproductorMediaClasico(id) {
   const m = mediaActual.find((x) => x.id === id);
   if (!m || !m.cloudinary_url) return;
   const esFoto = m.tipo === "foto";
@@ -12723,12 +14564,12 @@ function estadoInactividadUsuario(u) {
   const max = i.avisos_maximo || 5;
   const n = i.avisos_enviados || 0;
   if (!u.activo) return { clase: "neutro", texto: "Cuenta inactiva", titulo: "No se avisa a cuentas desactivadas", puntos: false };
-  if (!u.email || !String(u.email).trim()) return { clase: "aviso", texto: "Sin correo", titulo: "No ha puesto correo: no se le pueden mandar avisos", puntos: false };
-  if (i.admins_avisados_at) return { clase: "grave", texto: "Expulsión pendiente", titulo: `Ha recibido los ${max} avisos y los admins ya han sido avisados`, puntos: true };
-  if (n >= max) return { clase: "grave", texto: `${n}/${max} avisos`, titulo: "Ha recibido todos los avisos", puntos: true };
-  if (n > 0) return { clase: "aviso", texto: `${n}/${max} avisos`, titulo: "Avisos de inactividad enviados en el ciclo actual", puntos: true };
+  if (!u.email || !String(u.email).trim()) return { clase: "aviso", texto: "Sin correo para avisos", titulo: "No ha puesto correo: no se le pueden mandar avisos de inactividad", puntos: false };
+  if (i.admins_avisados_at) return { clase: "grave", texto: "Valorar expulsión", titulo: `Ha recibido los ${max} avisos y los admins ya han sido avisados: un admin debe decidir si procede la expulsión`, puntos: true };
+  if (n >= max) return { clase: "grave", texto: `${n} de ${max} avisos`, titulo: "Ha recibido todos los avisos", puntos: true };
+  if (n > 0) return { clase: "aviso", texto: `${n} de ${max} avisos`, titulo: "Avisos de inactividad enviados en el ciclo actual", puntos: true };
   if (i.dias_sin_subir !== null && i.dias_sin_subir !== undefined && i.dias_sin_subir >= (i.dias_hasta_primer_aviso || 30)) {
-    return { clase: "aviso", texto: "Aviso pendiente", titulo: "Ya cumple los días de inactividad: el primer aviso saldrá en la próxima pasada diaria", puntos: true };
+    return { clase: "aviso", texto: "Primer aviso próximo", titulo: "Ya cumple los días de inactividad: el primer aviso saldrá en la próxima pasada diaria", puntos: true };
   }
   return { clase: "ok", texto: "Sin avisos", titulo: "No ha recibido avisos de inactividad", puntos: true };
 }
@@ -13063,6 +14904,16 @@ function usuarioSinCorreo(u) {
   return !(u.email && String(u.email).trim());
 }
 
+// "Sin primer acceso" = la cuenta nunca ha iniciado sesión. Lo marca el
+// servidor en users.primer_acceso_at; antes se deducía de que no tuviera
+// correo, pero el correo ahora se guarda al crear la cuenta. Si la lista viene
+// de una caché o réplica antigua sin ese campo (undefined), se usa el criterio
+// anterior para no marcar a todo el mundo.
+function usuarioSinPrimerAcceso(u) {
+  if (u.primer_acceso_at === undefined) return usuarioSinCorreo(u);
+  return !u.primer_acceso_at;
+}
+
 function usuarioCoincideBusqueda(u, q) {
   if (!q) return true;
   const equipos = Array.isArray(u.equipo) ? u.equipo : (u.equipo ? [u.equipo] : []);
@@ -13072,13 +14923,32 @@ function usuarioCoincideBusqueda(u, q) {
   return q.split(/\s+/).filter(Boolean).every(t => pajar.includes(t));
 }
 
+// "Inactivo" = cuenta desactivada O redactor activo que lleva los días de
+// inactividad del ciclo de avisos (30 por defecto) sin publicar nada. Antes
+// solo contaba lo primero y casi nunca salía nadie; así el filtro sirve para
+// ver de un vistazo a quién hay que mover. Usa u.inactividad (GET /api/users).
+function usuarioDiasSinPublicar(u) {
+  if (u.rol !== "redactor" || !u.activo || !u.inactividad) return null;
+  const d = u.inactividad.dias_sin_subir;
+  return (d === null || d === undefined) ? null : Number(d);
+}
+
+function usuarioInactivoPorActividad(u) {
+  const d = usuarioDiasSinPublicar(u);
+  return d !== null && d >= ((u.inactividad && u.inactividad.dias_hasta_primer_aviso) || 30);
+}
+
+function usuarioEsInactivo(u) {
+  return !u.activo || usuarioInactivoPorActividad(u);
+}
+
 function usuariosFiltrados() {
   const q = usuarioNormalizar(USUARIOS_FILTRO.texto).trim();
   let lista = USUARIOS_LISTA.filter(u => {
     if (USUARIOS_FILTRO.rol !== "todos" && u.rol !== USUARIOS_FILTRO.rol) return false;
     if (USUARIOS_FILTRO.estado === "activos" && !u.activo) return false;
-    if (USUARIOS_FILTRO.estado === "inactivos" && u.activo) return false;
-    if (USUARIOS_FILTRO.estado === "sin_acceso" && !usuarioSinCorreo(u)) return false;
+    if (USUARIOS_FILTRO.estado === "inactivos" && !usuarioEsInactivo(u)) return false;
+    if (USUARIOS_FILTRO.estado === "sin_acceso" && !usuarioSinPrimerAcceso(u)) return false;
     return usuarioCoincideBusqueda(u, q);
   });
   const cmpNombre = (x, y) => String(x.nombre || "").localeCompare(String(y.nombre || ""), "es", { sensitivity: "base" });
@@ -13086,6 +14956,11 @@ function usuariosFiltrados() {
   if (USUARIOS_FILTRO.orden === "recientes") lista.sort((x, y) => fechaDe(y) - fechaDe(x) || cmpNombre(x, y));
   else if (USUARIOS_FILTRO.orden === "antiguos") lista.sort((x, y) => fechaDe(x) - fechaDe(y) || cmpNombre(x, y));
   else if (USUARIOS_FILTRO.orden === "nivel") lista.sort((x, y) => (y.rol === "admin" ? 5 : (y.nivel || 1)) - (x.rol === "admin" ? 5 : (x.nivel || 1)) || cmpNombre(x, y));
+  else if (USUARIOS_FILTRO.estado === "inactivos") {
+    // Los que más llevan sin publicar, primero; las cuentas desactivadas, al final
+    const dias = (u) => { const d = usuarioDiasSinPublicar(u); return d === null ? -1 : d; };
+    lista.sort((x, y) => dias(y) - dias(x) || cmpNombre(x, y));
+  }
   else lista.sort(cmpNombre);
   return lista;
 }
@@ -13166,56 +15041,56 @@ function filaUsuarioHTML(u) {
       const complementarias = (u.categorias_fijas || []).map(categoriaLabel);
       const partesEtiqueta = [...equipos, ...complementarias];
       const etiquetaBoton = partesEtiqueta.length
-        ? escapeHtml(partesEtiqueta.join(" / "))
-        : "— Sin especificar —";
+        ? escapeHtml(partesEtiqueta.join(" · "))
+        : "Sin equipo ni categoría";
       const nivelEsAdmin = u.rol === "admin";
       const esFotografoFila = u.rol === "fotografo";
-      // El sistema de niveles (1-4, con sus requisitos de artículos/
-      // audiencia) es exclusivo de redactores: un fotógrafo no publica
-      // noticias, así que no tiene sentido asignarle ninguno. Antes se
-      // le mostraba igualmente "Nivel 1 — Novato" (solo con el botón
-      // deshabilitado), lo que sugería que sí tenía un nivel de
-      // redactor aunque no aplicara; ahora directamente no se le pinta
-      // ningún nivel.
-      const nivelMostrado = nivelEsAdmin ? 4 : (u.nivel || 1);
-      const nivelInfo = NIVELES_ETIQUETA[nivelMostrado] || NIVELES_ETIQUETA[1];
+      // Un redactor tiene niveles N1–N4 (con requisitos de publicaciones); un
+      // fotógrafo, F1–F2 (valoración global, sin cifras mínimas). Comparten la columna
+      // users.nivel: 1 = F1, 2 = F2 (se recorta por si arrastra un nivel de redacción).
+      const nivelMostrado = nivelEsAdmin ? 4 : (esFotografoFila ? Math.min(Math.max(u.nivel || 1, 1), 2) : (u.nivel || 1));
+      const nivelInfo = esFotografoFila
+        ? (NIVELES_FOTO_ETIQUETA[nivelMostrado] || NIVELES_FOTO_ETIQUETA[1])
+        : (NIVELES_ETIQUETA[nivelMostrado] || NIVELES_ETIQUETA[1]);
+      const nivelTextoBoton = esFotografoFila
+        ? `${nivelInfo.emoji} ${nivelInfo.etiqueta} — ${nivelInfo.nombre}`
+        : `${nivelInfo.emoji} Nivel ${nivelMostrado} — ${nivelInfo.nombre}`;
       // Igual que en la cabecera del panel: si no tiene foto, mostramos
       // sus iniciales en un círculo en lugar de un hueco vacío.
       const avatarHTML = u.avatar_url
         ? `<span class="avatar-usuario" style="background-image:url('${escapeHtml(u.avatar_url)}')"></span>`
         : `<span class="avatar-usuario avatar-usuario-iniciales">${escapeHtml(iniciales(u.nombre) || "?")}</span>`;
       const altaTxt = usuarioFechaAlta(u.created_at);
-      const sinAcceso = !(u.email && String(u.email).trim());
+      const sinAcceso = usuarioSinPrimerAcceso(u);
       return `
       <tr class="${u.activo ? "" : "fila-usuario-inactiva"}">
         <td data-label="Usuario"><span class="celda-usuario">${avatarHTML}<span class="usuario-datos"><span class="usuario-nombre">${escapeHtml(u.username)}</span> <span class="id-usuario-panel" title="ID de usuario (para la ficha de cuentas de X)">#${u.id}</span></span></span></td>
-        <td data-label="Nombre">${escapeHtml(u.nombre)}${altaTxt ? `<span class="usuario-alta">Alta: ${altaTxt}</span>` : ""}</td>
+        <td data-label="Nombre">${escapeHtml(u.nombre)}${Number(u.sin_apellidos) === 1 ? `<span class="usuario-alta" title="Firma solo con su nombre: no se le piden apellidos">Firma solo con nombre</span>` : ""}${altaTxt ? `<span class="usuario-alta">Alta: ${altaTxt}</span>` : ""}</td>
         <td data-label="Rol">
-          <select class="select-rol rol-${u.rol}" onchange="this.className='select-rol rol-'+this.value; cambiarRolUsuario(${u.id}, this.value)" ${u.id === USER.id ? "disabled title='No puedes cambiar tu propio rol'" : ""}>
+          <select class="select-rol rol-${u.rol}" aria-label="Rol de ${escapeHtml(u.username)}" onchange="this.className='select-rol rol-'+this.value; cambiarRolUsuario(${u.id}, this.value)" ${u.id === USER.id ? "disabled title='No puedes cambiar tu propio rol'" : ""}>
             <option value="redactor" ${u.rol === "redactor" ? "selected" : ""}>Redactor</option>
             <option value="fotografo" ${u.rol === "fotografo" ? "selected" : ""}>Fotógrafo</option>
             <option value="admin" ${u.rol === "admin" ? "selected" : ""}>Administrador</option>
           </select>
           ${insignia2faUsuario(u)}
         </td>
-        <td data-label="Correo">${sinAcceso ? `<span class="usuario-sin-acceso" title="Aún no ha puesto su correo, es decir, no ha iniciado sesión por primera vez">Sin primer acceso</span>` : escapeHtml(u.email)}</td>
-        <td data-label="Equipo / Categoría">
+        <td data-label="Correo">${u.email ? escapeHtml(u.email) : `<span class="usuario-sin-correo">Sin correo</span>`}${sinAcceso ? `<span class="usuario-sin-acceso" title="Todavía no ha iniciado sesión nunca">Aún no ha entrado</span>` : ""}</td>
+        <td data-label="Equipo y categoría">
           <button type="button" class="editar btn-equipos-usuario" onclick='abrirModalEquiposUsuario(${u.id}, ${argJs(u.nombre)}, ${argJs(equipos)}, ${argJs(u.categorias_fijas || [])})'>${etiquetaBoton}</button>
         </td>
-        <td data-label="Situación">
+        <td data-label="Nivel y avisos">
           <div class="celda-situacion">
-            ${esFotografoFila
-              ? `<span class="nivel-badge nivel-badge-na" title="El sistema de niveles es solo para redactores; no aplica a un fotógrafo">— No aplica —</span>`
-              : `<button type="button" class="editar btn-nivel-usuario nivel-badge nivel-badge-${nivelMostrado}" ${nivelEsAdmin ? `disabled title="Los administradores están siempre en el nivel máximo y no se puede editar"` : `onclick='abrirModalNivelUsuario(${u.id}, ${argJs(u.nombre)})'`}>${nivelInfo.emoji} Nivel ${nivelMostrado} — ${nivelInfo.nombre}</button>`}
+            <button type="button" class="editar btn-nivel-usuario nivel-badge nivel-badge-${nivelMostrado}${esFotografoFila ? " nivel-badge-foto" : ""}" ${nivelEsAdmin ? `disabled title="Los administradores están siempre en el nivel máximo y no se puede editar"` : `onclick='abrirModalNivelUsuario(${u.id}, ${argJs(u.nombre)})'`}>${nivelTextoBoton}</button>
             ${botonAvisosUsuario(u)}
           </div>
         </td>
-        <td data-label="Estado"><span class="badge-estado usuario-estado ${u.activo ? "publicado" : "borrador"}">${u.activo ? "Activo" : "Inactivo"}</span></td>
+        <td data-label="Estado"><span class="badge-estado usuario-estado ${u.activo ? "publicado" : "borrador"}">${u.activo ? "Activo" : "Inactivo"}</span>${usuarioInactivoPorActividad(u) ? `<span class="usuario-sin-publicar" title="Lleva ${usuarioDiasSinPublicar(u)} días sin publicar ninguna noticia (su última referencia es ${u.inactividad.ultima_noticia ? "la última noticia" : "el alta de la cuenta"})">${usuarioDiasSinPublicar(u)} días sin publicar</span>` : ""}</td>
         <td class="acciones acciones-usuario" data-label="">
-          <button class="editar" onclick="window.open('../autor.html?id=${u.id}', '_blank')" title="Previsualizar el perfil público">Ver perfil</button>
-          <button class="editar" onclick='restablecerPasswordUsuario(${u.id}, ${argJs(u.username)}, ${argJs(u.nombre)})' title="Generar una contraseña nueva">Contraseña</button>
-          <button onclick="alternarActivoUsuario(${u.id}, ${u.activo ? 0 : 1})" ${u.id === USER.id ? "disabled title='No puedes desactivar tu propia cuenta'" : ""}>${u.activo ? "Desactivar" : "Activar"}</button>
-          <button class="eliminar" onclick="eliminarUsuario(${u.id}, ${argJs(u.username)})" ${u.id === USER.id ? "disabled title='No puedes eliminar tu propia cuenta'" : ""}>Eliminar</button>
+          <button class="editar" onclick="window.open('../autor.html?id=${u.id}', '_blank')" title="Previsualizar el perfil público" aria-label="Ver perfil público de ${escapeHtml(u.username)}">Ver perfil</button>
+          <button class="editar" onclick='restablecerPasswordUsuario(${u.id}, ${argJs(u.username)}, ${argJs(u.nombre)})' title="Generar una contraseña nueva" aria-label="Generar contraseña nueva para ${escapeHtml(u.username)}">Nueva contraseña</button>
+          ${u.rol === "admin" ? "" : `<button class="editar" onclick="alternarSinApellidosUsuario(${u.id}, ${Number(u.sin_apellidos) === 1 ? 0 : 1})" title="${Number(u.sin_apellidos) === 1 ? "Volver a exigirle nombre y apellidos" : "Permitir que firme solo con su nombre (no se le pedirán apellidos)"}" aria-label="${Number(u.sin_apellidos) === 1 ? "Exigir apellidos a" : "Permitir firmar sin apellidos a"} ${escapeHtml(u.username)}">${Number(u.sin_apellidos) === 1 ? "Exigir apellidos" : "Sin apellidos"}</button>`}
+          <button aria-label="${u.activo ? 'Desactivar' : 'Activar'} a ${escapeHtml(u.username)}" onclick="alternarActivoUsuario(${u.id}, ${u.activo ? 0 : 1})" ${u.id === USER.id ? "disabled title='No puedes desactivar tu propia cuenta'" : ""}>${u.activo ? "Desactivar" : "Activar"}</button>
+          <button class="eliminar" aria-label="Eliminar a ${escapeHtml(u.username)}" onclick="eliminarUsuario(${u.id}, ${argJs(u.username)})" ${u.id === USER.id ? "disabled title='No puedes eliminar tu propia cuenta'" : ""}>Eliminar</button>
         </td>
       </tr>`;
 }
@@ -13257,8 +15132,8 @@ function renderTablaUsuarios() {
     redactor: todos.filter(u => u.rol === "redactor").length,
     fotografo: todos.filter(u => u.rol === "fotografo").length,
     activos: todos.filter(u => u.activo).length,
-    inactivos: todos.filter(u => !u.activo).length,
-    sin_acceso: todos.filter(usuarioSinCorreo).length,
+    inactivos: todos.filter(usuarioEsInactivo).length,
+    sin_acceso: todos.filter(usuarioSinPrimerAcceso).length,
   };
   document.querySelectorAll("#usuariosChipsRol button[data-rol]").forEach(b => {
     const k = b.dataset.rol;
@@ -13282,7 +15157,7 @@ function renderTablaUsuarios() {
   const users = usuariosFiltrados();
   const hayFiltro = USUARIOS_FILTRO.texto.trim() || USUARIOS_FILTRO.rol !== "todos" || USUARIOS_FILTRO.estado !== "todos";
   const resEl = document.getElementById("usuariosResultado");
-  if (resEl) resEl.textContent = hayFiltro ? `Mostrando ${users.length} de ${todos.length}` : `${todos.length} ${todos.length === 1 ? "usuario" : "usuarios"}`;
+  if (resEl) resEl.textContent = hayFiltro ? `Mostrando ${users.length} de ${todos.length} usuarios` : `${todos.length} ${todos.length === 1 ? "usuario" : "usuarios"}`;
   const limpiarEl = document.getElementById("usuariosLimpiar");
   if (limpiarEl) limpiarEl.style.display = hayFiltro ? "" : "none";
 
@@ -13342,7 +15217,7 @@ async function cargaUsuarios(opts = {}) {
       const contadorEl = document.getElementById("contadorUsuarios");
       const contadorNumeroEl = document.getElementById("contadorUsuariosNumero");
       if (contadorEl && contadorNumeroEl) {
-        const conSesion = lista.filter(u => !usuarioSinCorreo(u)).length;
+        const conSesion = lista.filter(u => !usuarioSinPrimerAcceso(u)).length;
         contadorNumeroEl.textContent = `${conSesion} / ${lista.length}`;
         contadorEl.style.setProperty("--pct", (lista.length ? Math.round(conSesion / lista.length * 100) : 0) + "%");
         contadorEl.style.display = lista.length ? "flex" : "none";
@@ -13399,14 +15274,14 @@ async function cargaLectores() {
 
     cos.innerHTML = readers.map(r => {
       const fecha = r.created_at ? new Date(r.created_at).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" }) : "—";
-      const estadoTexto = !r.activo ? "Inactivo" : (r.email_verificado ? "Verificado" : "Sin verificar");
+      const estadoTexto = !r.activo ? "Inactivo" : (r.email_verificado ? "Correo verificado" : "Correo sin verificar");
       const estadoClase = !r.activo ? "borrador" : (r.email_verificado ? "publicado" : "borrador");
       return `
       <tr>
         <td data-label="Nombre">${escapeHtml(r.nombre)}</td>
         <td data-label="Correo">${escapeHtml(r.email)}</td>
         <td data-label="Estado"><span class="badge-estado ${estadoClase}">${estadoTexto}</span></td>
-        <td data-label="Registrado">${fecha}</td>
+        <td data-label="Fecha de registro">${fecha}</td>
       </tr>`;
     }).join("") || "<tr><td colspan='4'>Todavía no hay lectores registrados.</td></tr>";
   } catch (err) {
@@ -13593,6 +15468,26 @@ if (btnGuardarEquiposUsuario) {
 // Al abrirse pide en paralelo el progreso (mismo cálculo que "Mi
 // progreso", vía /api/users que ya lo trae, así que se reutiliza) y el
 // historial de cambios de nivel de esa persona.
+// ¿El modal de nivel está abierto sobre un fotógrafo? (escala F1–F2 en vez de N1–N4)
+let modalNivelEsFoto = false;
+
+// Opciones del selector y texto de ayuda según la escala (redacción N1–N4 / fotografía F1–F2).
+function configurarModalNivelSegunRol(esFoto) {
+  modalNivelEsFoto = Boolean(esFoto);
+  const select = document.getElementById("nu_nivel_select");
+  const ayuda = document.getElementById("nuAyudaNivel");
+  if (select) {
+    select.innerHTML = esFoto
+      ? `<option value="1">📷 F1 — Fotógrafo colaborador</option><option value="2">🌟 F2 — Fotógrafo de referencia</option>`
+      : `<option value="1">🟢 Nivel 1 — Principiante</option><option value="2">🔵 Nivel 2 — Aprendiz</option><option value="3">🟣 Nivel 3 — Maestro</option><option value="4">🟠 Nivel 4 — Experto</option>`;
+  }
+  if (ayuda) {
+    ayuda.textContent = esFoto
+      ? "En fotografía no hay mínimo de partidos ni de fotografías: valora de forma global la calidad técnica, el criterio periodístico, la variedad, la fiabilidad, la autonomía, la profesionalidad y la evolución. La pérdida de nivel solo ante problemas reiterados, y de forma proporcional."
+      : "Cumplir las cifras mínimas no sube el nivel solo: valora también la calidad del trabajo, la puntualidad y el cumplimiento de las normas antes de decidir el ascenso.";
+  }
+}
+
 async function abrirModalNivelUsuario(id, nombre) {
   document.getElementById("nivelUsuarioId").value = id;
   document.getElementById("nivelUsuarioNombre").textContent = nombre;
@@ -13611,10 +15506,12 @@ async function abrirModalNivelUsuario(id, nombre) {
     const { users = [] } = await apiFetch(`/api/users`);
     const user = users.find((u) => u.id === id);
     const esAdmin = user && user.rol === "admin";
+    const esFoto = Boolean(user && user.rol === "fotografo");
+    configurarModalNivelSegunRol(esFoto);
     const selectNivel = document.getElementById("nu_nivel_select");
     const notaNivel = document.getElementById("nu_nivel_nota");
     const btnGuardar = document.getElementById("btnGuardarNivelUsuario");
-    selectNivel.value = String((esAdmin ? 4 : (user && user.nivel)) || 1);
+    selectNivel.value = String((esAdmin ? 4 : (esFoto ? Math.min((user && user.nivel) || 1, 2) : (user && user.nivel))) || 1);
     selectNivel.disabled = Boolean(esAdmin);
     notaNivel.disabled = Boolean(esAdmin);
     if (btnGuardar) btnGuardar.disabled = Boolean(esAdmin);
@@ -13636,6 +15533,14 @@ function pintarProgresoModalNivel(progresoData) {
   const cont = document.getElementById("nivelUsuarioProgreso");
   if (!progresoData) {
     cont.innerHTML = `<p class="sesiones-vacio">Sin datos de progreso.</p>`;
+    return;
+  }
+  if (progresoData.es_fotografo) {
+    const info = progresoData.nivel_info || NIVELES_FOTO_ETIQUETA[progresoData.nivel_actual] || NIVELES_FOTO_ETIQUETA[1];
+    const criterios = Array.isArray(progresoData.criterios) && progresoData.criterios.length ? progresoData.criterios : NIVELES_FOTO_CRITERIOS_RESPALDO;
+    cont.innerHTML = `
+      <p class="ayuda-editor nivel-ayuda" style="margin:0 0 8px;"><strong>${escapeHtml(info.etiqueta || "")} — ${escapeHtml(info.nombre)}.</strong> ${progresoData.nivel_maximo ? "Es el nivel más alto de fotografía." : "Criterios de la valoración global para el siguiente nivel:"}</p>
+      <ul class="foto-criterios foto-criterios-compacta">${criterios.map((c) => `<li class="foto-criterio"><strong>${escapeHtml(c.nombre)}</strong><span>${escapeHtml(c.descripcion || "")}</span></li>`).join("")}</ul>`;
     return;
   }
   const filas = Object.entries(NIVELES_TIPO_LABEL).map(([tipo, label]) => `
@@ -13664,7 +15569,7 @@ function pintarHistorialNivel(historial) {
   cont.innerHTML = historial.map((h) => `
     <div class="fila-sesion">
       <div class="datos-sesion">
-        <div class="dispositivo-nombre">Nivel ${h.nivel_anterior} → Nivel ${h.nivel_nuevo}</div>
+        <div class="dispositivo-nombre">${modalNivelEsFoto ? `F${h.nivel_anterior} → F${h.nivel_nuevo}` : `Nivel ${h.nivel_anterior} → Nivel ${h.nivel_nuevo}`}</div>
         <div class="detalle-sesion">
           ${formatearFechaSesion(h.created_at)} · por ${escapeHtml(h.cambiado_por_nombre)}
           ${h.motivo ? ` · ${escapeHtml(h.motivo)}` : ""}
@@ -13709,6 +15614,18 @@ if (btnGuardarNivelUsuario) {
       errMsg.style.display = "block";
     }
   });
+}
+
+// Excepción a "nombre y apellidos obligatorios": la persona firma solo con su nombre.
+async function alternarSinApellidosUsuario(id, valor) {
+  if (!usuariosPuedeEscribir()) return;
+  try {
+    await apiFetch(`/api/users/${id}`, { method: "PUT", body: JSON.stringify({ sin_apellidos: !!valor }) });
+    EOF.toast(valor ? "Listo: ya puede firmar solo con su nombre." : "Se le volverán a pedir nombre y apellidos.", "exito");
+    cargaUsuarios();
+  } catch (err) {
+    EOF.toast("Error: " + err.message, "error");
+  }
 }
 
 async function alternarActivoUsuario(id, activo) {
@@ -13939,8 +15856,8 @@ document.getElementById("newsletterBuscador")?.addEventListener("input", filtraN
 // ---------- ACREDITACIONES (formulario público + bandeja de solicitudes) ----------
 // El formulario vive en /acreditacion (public/acreditacion.html) y guarda en
 // la tabla "acreditaciones". Aquí los admins ven las solicitudes, las marcan
-// como pendiente/aprobada/rechazada (control interno, la concesión real la
-// decide el club), las editan, importan desde CSV, las descargan y
+// pendiente -> solicitada (pedida al club) -> aprobada/rechazada, o cancelada
+// (control interno, la concesión real la decide el club), las editan, importan desde CSV, las descargan y
 // personalizan los textos y listas del formulario.
 let ACRED_DATOS = [];
 let ACRED_CONFIG = null;
@@ -13948,7 +15865,7 @@ let ACRED_FILTRO = "";
 let ACRED_EDITANDO = null;
 const ACRED_ABIERTAS = new Set();
 const ACRED_NOTAS = {};
-const ACRED_ESTADOS = { pendiente: "Pendiente", aprobada: "Aprobada", rechazada: "Rechazada" };
+const ACRED_ESTADOS = { pendiente: "Pendiente", solicitada: "Solicitada", aprobada: "Aprobada", rechazada: "Rechazada", cancelada: "Cancelada" };
 const ACRED_CONFIG_DEFECTO = {
   titulo: "Formulario de acreditación | ElOtroFútbol",
   intro: "Solicita tu acreditación para cubrir partidos, ruedas de prensa y actos oficiales de Primera Federación y Segunda Federación.",
@@ -13960,7 +15877,7 @@ const ACRED_CONFIG_DEFECTO = {
   acreditaciones: ["Prensa / Pupitre", "Fotógrafo / Césped", "Cabina de prensa (si el club dispone de ella)"],
   secciones: { solicitante: "Datos del solicitante", cobertura: "Información de la cobertura", confirmacion: "Confirmación" },
   preguntas: {
-    nombre: { etiqueta: "Nombre y apellidos", ayuda: "Tu respuesta", error: "Indica tu nombre y apellidos.", activa: true, obligatoria: true },
+    nombre: { etiqueta: "Nombre completo", ayuda: "Nombre y apellidos", error: "Indica tu nombre completo (nombre y apellidos).", activa: true, obligatoria: true },
     email: { etiqueta: "Correo electrónico", ayuda: "Tu respuesta", error: "Introduce un correo electrónico válido.", activa: true, obligatoria: true },
     dni: { etiqueta: "DNI / NIE", ayuda: "Tu respuesta", error: "Introduce un DNI / NIE válido.", activa: true, obligatoria: true },
     equipo: { etiqueta: "Equipo que deseas cubrir", ayuda: "Elige un equipo…", error: "Elige o escribe el equipo que deseas cubrir.", activa: true, obligatoria: true },
@@ -13995,9 +15912,13 @@ async function cargaAcreditaciones() {
   cos.innerHTML = '<div class="acred-vacio"><strong>Cargando solicitudes…</strong></div>';
   apiFetch("/api/acreditaciones/config").then((c) => { ACRED_CONFIG = c; }).catch(() => {});
   try {
-    const { acreditaciones = [] } = await apiFetch("/api/acreditaciones");
-    ACRED_DATOS = acreditaciones;
+    ACRED_PENDIENTE = null;
+    const resp = await acredPedirLista();
+    ACRED_DATOS = resp.acreditaciones || [];
+    ACRED_V2 = resp.v2 !== false;
     pintarAcreditaciones();
+    acredIniciarEnVivo();
+    acredPintarEnVivo();
   } catch (err) {
     cos.innerHTML = `<div class="acred-vacio"><strong>No se pudieron cargar las solicitudes</strong>${escapeHtml(err.message)}</div>`;
   }
@@ -14123,38 +16044,286 @@ function acredOpcionesDatalist(id, valores) {
   return `<datalist id="${id}">${[...new Set(valores.filter(Boolean))].map((v) => `<option value="${escapeHtml(v)}">`).join("")}</datalist>`;
 }
 
+// ----- Ayudas para el revisor: fechas, plazos, duplicadas -----
+const ACRED_ESTADOS_ORDEN = ["pendiente", "solicitada", "aprobada", "rechazada", "cancelada"];
+const ACRED_ABIERTO = ["pendiente", "solicitada"]; // siguen necesitando acción
+const ACRED_DIAS_PENDIENTE = 3; // pendiente sin tocar a partir de aquí = atascada
+const ACRED_DIAS_CLUB = 5; // pedida al club sin respuesta a partir de aquí = atascada
+let ACRED_VISTA = "";
+let ACRED_V2 = true;
+const ACRED_SEL = new Set();
+const ACRED_HIST = {};
+const ACRED_TXT = {};
+let ACRED_VISIBLES = [];
+
+// ----- Tiempo real: varias personas trabajando a la vez -----
+// Cada pocos segundos se pide una "huella" muy ligera de la bandeja; solo si ha cambiado se descarga la
+// lista completa. Si la persona está escribiendo o editando, los cambios de las demás esperan (aviso
+// arriba) para no borrarle lo que lleva escrito.
+const ACRED_POLL_MS = 7000;
+let ACRED_HUELLA = null;          // huella que corresponde a lo que se ve (null = descargar la lista en el próximo sondeo)
+let ACRED_PENDIENTE = null;       // lista nueva ya descargada pero todavía sin pintar
+let ACRED_POLL_TIMER = null;
+let ACRED_POLL_OCUPADO = false;
+let ACRED_SYNC_FALLOS = 0;
+let ACRED_EN_VIVO_NO_DISPONIBLE = false; // el servidor aún no tiene el endpoint (código antiguo)
+
+// Pide la lista completa y, ANTES, la huella: si algo cambia entre las dos peticiones se detecta en el siguiente sondeo.
+async function acredPedirLista() {
+  let h = null;
+  try { h = await apiFetch("/api/acreditaciones/huella"); } catch {}
+  const resp = await apiFetch("/api/acreditaciones");
+  // Si el último cambio es de hace un instante, otro cambio en ese mismo segundo no alteraría la huella: no se guarda.
+  ACRED_HUELLA = h && h.huella && !h.reciente ? h.huella : null;
+  return resp;
+}
+function acredPanelVisible() {
+  const el = document.getElementById("tablaAcreditaciones");
+  return !!el && el.offsetParent !== null && document.visibilityState === "visible";
+}
+// ¿Hay algo a medias que un repintado borraría? (formulario de edición abierto o escribiendo en un campo de la lista)
+function acredEditandoAhora() {
+  const ae = document.activeElement;
+  const escribiendo = !!(ae && ae.closest && ae.closest("#tablaAcreditaciones") && ae.matches("textarea, input:not([type=checkbox]):not([type=radio]):not([type=button])"));
+  return ACRED_EDITANDO !== null || escribiendo;
+}
+function acredIniciarEnVivo() {
+  if (ACRED_POLL_TIMER || ACRED_EN_VIVO_NO_DISPONIBLE) return;
+  ACRED_POLL_TIMER = setInterval(acredComprobarCambios, ACRED_POLL_MS);
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") acredComprobarCambios(); });
+  window.addEventListener("online", acredComprobarCambios);
+  // Al salir de un campo se aplican enseguida los cambios que estaban esperando.
+  document.addEventListener("focusout", () => { if (ACRED_PENDIENTE) setTimeout(acredAplicarPendientes, 200); });
+}
+async function acredComprobarCambios() {
+  if (ACRED_POLL_OCUPADO || !acredPanelVisible()) return;
+  ACRED_POLL_OCUPADO = true;
+  try {
+    if (ACRED_PENDIENTE) acredAplicarPendientes();
+    const r = await apiFetch("/api/acreditaciones/huella");
+    if (!r || !r.huella) throw new Error("Sin respuesta");
+    ACRED_SYNC_FALLOS = 0;
+    if (r.huella !== ACRED_HUELLA) await acredSincronizar();
+    else acredPintarEnVivo();
+  } catch (err) {
+    if (err && err.status === 404) {
+      // Backend sin actualizar todavía: el panel sigue funcionando sin tiempo real.
+      ACRED_EN_VIVO_NO_DISPONIBLE = true;
+      clearInterval(ACRED_POLL_TIMER);
+      ACRED_POLL_TIMER = null;
+    } else {
+      ACRED_SYNC_FALLOS++;
+    }
+    acredPintarEnVivo();
+  } finally {
+    ACRED_POLL_OCUPADO = false;
+  }
+}
+async function acredSincronizar() {
+  const resp = await acredPedirLista();
+  if (!resp || !Array.isArray(resp.acreditaciones)) return;
+  ACRED_V2 = resp.v2 !== false;
+  ACRED_PENDIENTE = resp.acreditaciones;
+  acredAplicarPendientes();
+}
+function acredDiferencias(antes, despues) {
+  const previas = new Map(antes.map((a) => [a.id, a]));
+  const msgs = [], cambiados = new Set();
+  let nuevas = 0;
+  const nombreEstado = (e) => (ACRED_ESTADOS[e] || e || "").toLowerCase();
+  for (const a of despues) {
+    const p = previas.get(a.id);
+    if (!p) { nuevas++; continue; }
+    if (p.estado !== a.estado) {
+      cambiados.add(a.id);
+      msgs.push(`${a.revisado_por || "Alguien"} ha pasado a ${a.nombre} a ${nombreEstado(a.estado)}`);
+    } else if ((p.nota_admin || "") !== (a.nota_admin || "") || (p.revisado_at || "") !== (a.revisado_at || "") || (p.solicitada_at || "") !== (a.solicitada_at || "")) {
+      cambiados.add(a.id);
+    }
+  }
+  const ids = new Set(despues.map((a) => a.id));
+  const borradas = antes.filter((a) => !ids.has(a.id)).length;
+  if (nuevas) msgs.push(nuevas === 1 ? "Ha llegado 1 solicitud nueva" : `Han llegado ${nuevas} solicitudes nuevas`);
+  if (borradas) msgs.push(borradas === 1 ? "Se ha eliminado 1 solicitud" : `Se han eliminado ${borradas} solicitudes`);
+  return { msgs, cambiados };
+}
+function acredAplicarPendientes() {
+  if (!ACRED_PENDIENTE) { acredPintarEnVivo(); return; }
+  if (acredEditandoAhora()) { acredPintarEnVivo(); return; }
+  const nuevos = ACRED_PENDIENTE;
+  ACRED_PENDIENTE = null;
+  const { msgs, cambiados } = acredDiferencias(ACRED_DATOS, nuevos);
+  ACRED_DATOS = nuevos;
+  const ids = new Set(nuevos.map((a) => a.id));
+  [...ACRED_SEL].forEach((id) => { if (!ids.has(id)) ACRED_SEL.delete(id); });
+  [...ACRED_ABIERTAS].forEach((id) => { if (!ids.has(id)) ACRED_ABIERTAS.delete(id); });
+  cambiados.forEach((id) => { delete ACRED_HIST[id]; });
+  pintarAcreditaciones();
+  acredPintarEnVivo();
+  if (msgs.length) EOF.toast(msgs.slice(0, 3).join(" · ") + (msgs.length > 3 ? ` · y ${msgs.length - 3} cambios más` : ""), "info", 6000);
+}
+// Tras una escritura propia lo que había esperando ya es antiguo: el siguiente sondeo trae la lista al día.
+function acredTrasEscrituraPropia() {
+  ACRED_PENDIENTE = null;
+  ACRED_HUELLA = null;
+}
+// Otra persona se nos ha adelantado (409): se avisa y se trae la lista al momento.
+function acredTrasConflicto(err) {
+  EOF.toast(err.message || "Otra persona ya la ha cambiado. He actualizado el panel.", "error", 6500);
+  ACRED_HUELLA = null;
+  acredSincronizar().catch(() => {});
+}
+function acredPintarEnVivo() {
+  const el = document.getElementById("acredEnVivo");
+  if (!el) return;
+  if (ACRED_EN_VIVO_NO_DISPONIBLE) { el.hidden = true; el.innerHTML = ""; return; }
+  el.hidden = false;
+  if (ACRED_PENDIENTE) {
+    const espera = ACRED_EDITANDO !== null;
+    el.className = "acred-envivo pend";
+    el.innerHTML = `<span class="acred-envivo-punto"></span><span>Otra persona ha hecho cambios.${espera ? " Se verán al terminar de editar." : ""}</span>${espera ? "" : '<button type="button" class="acred-btn acred-btn-sec acred-btn-mini" onclick="acredAplicarPendientes()">Actualizar</button>'}`;
+  } else if (ACRED_SYNC_FALLOS >= 2) {
+    el.className = "acred-envivo off";
+    el.innerHTML = '<span class="acred-envivo-punto"></span><span>Sin conexión con el servidor. Reintentando…</span>';
+  } else {
+    el.className = "acred-envivo";
+    el.innerHTML = '<span class="acred-envivo-punto"></span><span>En vivo · los cambios de otras personas aparecen solos</span>';
+  }
+}
+
+function acredMiNombre() {
+  return (typeof USER !== "undefined" && USER && USER.nombre) || "";
+}
+function acredDate(s) {
+  if (!s) return null;
+  const t = String(s);
+  const d = new Date(t.includes("T") ? t : t.replace(" ", "T") + "Z");
+  return isNaN(d) ? null : d;
+}
+function acredHace(s) {
+  const d = acredDate(s);
+  if (!d) return "";
+  const min = Math.max(0, Math.round((Date.now() - d.getTime()) / 60000));
+  if (min < 2) return "ahora mismo";
+  if (min < 60) return `hace ${min} min`;
+  const h = Math.round(min / 60);
+  if (h < 24) return `hace ${h} h`;
+  return `hace ${Math.floor(h / 24)} d`;
+}
+function acredDiasDesde(s) {
+  const d = acredDate(s);
+  return d ? Math.floor((Date.now() - d.getTime()) / 864e5) : 0;
+}
+function acredAtascada(a) {
+  if (a.estado === "pendiente") return acredDiasDesde(a.created_at) >= ACRED_DIAS_PENDIENTE;
+  if (a.estado === "solicitada") return !!a.solicitada_at && acredDiasDesde(a.solicitada_at) >= ACRED_DIAS_CLUB;
+  return false;
+}
+// Línea pequeña bajo el estado: cuánto lleva esperando o quién la resolvió.
+function acredPulso(a) {
+  if (a.estado === "pendiente") {
+    const d = acredDiasDesde(a.created_at);
+    return d >= ACRED_DIAS_PENDIENTE ? { txt: `Sin revisar · ${d} d`, cls: "alerta" } : { txt: acredHace(a.created_at), cls: "" };
+  }
+  if (a.estado === "solicitada") {
+    return { txt: a.solicitada_at ? `Pedida ${acredHace(a.solicitada_at)}` : "Pedida al club", cls: acredAtascada(a) ? "alerta" : "" };
+  }
+  if (a.revisado_at) return { txt: `${a.revisado_por ? a.revisado_por + " · " : ""}${acredHace(a.revisado_at)}`, cls: "" };
+  return { txt: "", cls: "" };
+}
+function acredIndices() {
+  const clave = (a) => [acredNorm(a.email), acredNorm(a.equipo), acredNorm(a.jornada_partido)].join("|");
+  const grupos = {}, porEmail = {};
+  ACRED_DATOS.forEach((a) => {
+    if (a.estado !== "cancelada" && a.email && a.jornada_partido) (grupos[clave(a)] = grupos[clave(a)] || []).push(a.id);
+    const e = acredNorm(a.email);
+    if (e) (porEmail[e] = porEmail[e] || []).push(a);
+  });
+  return { grupos, porEmail, clave };
+}
+function acredEsDuplicada(a, idx) {
+  return a.estado !== "cancelada" && !!a.email && !!a.jornada_partido && (idx.grupos[idx.clave(a)] || []).length > 1;
+}
+
+function acredVista(v) {
+  ACRED_VISTA = ACRED_VISTA === v ? "" : (v || "");
+  pintarAcreditaciones();
+}
+function acredBuscar(q) {
+  const b = document.getElementById("acredBuscador");
+  if (b) b.value = q || "";
+  ACRED_FILTRO = "";
+  ACRED_VISTA = "";
+  pintarAcreditaciones();
+}
+
 function pintarAcreditaciones() {
   const cos = document.getElementById("tablaAcreditaciones");
   if (!cos) return;
   const buscador = document.getElementById("acredBuscador");
   const qRaw = ((buscador || {}).value || "").trim();
   const q = acredNorm(qRaw);
-  const orden = (document.getElementById("acredOrden") || {}).value || "recientes";
+  const orden = (document.getElementById("acredOrden") || {}).value || "prioridad";
   if (buscador && buscador.parentNode) buscador.parentNode.classList.toggle("con-texto", !!qRaw);
+  const idx = acredIndices();
 
-  // Contadores (siempre sobre el total) y filtro activo.
-  const cuenta = { pendiente: 0, aprobada: 0, rechazada: 0 };
+  // Contadores (siempre sobre el total) y filtro de estado activo.
+  const cuenta = { pendiente: 0, solicitada: 0, aprobada: 0, rechazada: 0, cancelada: 0 };
   ACRED_DATOS.forEach((a) => { if (cuenta[a.estado] !== undefined) cuenta[a.estado]++; });
   const poner = (id, n) => { const e = document.getElementById(id); if (e) e.textContent = n; };
   poner("acredNumTodas", ACRED_DATOS.length);
   poner("acredNumPendiente", cuenta.pendiente);
+  poner("acredNumSolicitada", cuenta.solicitada);
   poner("acredNumAprobada", cuenta.aprobada);
   poner("acredNumRechazada", cuenta.rechazada);
+  poner("acredNumCancelada", cuenta.cancelada);
   document.querySelectorAll("#acredStats .acred-stat").forEach((b) => b.classList.toggle("activo", (b.dataset.filtro || "") === ACRED_FILTRO));
+  const aviso = document.getElementById("acredAviso");
+  if (aviso) aviso.hidden = ACRED_V2;
+
+  // Vistas rápidas (se combinan con el filtro de estado y la búsqueda).
+  const vistas = {
+    atascadas: (a) => acredAtascada(a),
+    duplicadas: (a) => acredEsDuplicada(a, idx),
+  };
+  const defVistas = [
+    ["", "Todas", null, ""],
+    ["atascadas", "Atascadas", ACRED_DATOS.filter(vistas.atascadas).length, `Pendientes sin revisar ${ACRED_DIAS_PENDIENTE}+ días o pedidas al club sin respuesta ${ACRED_DIAS_CLUB}+ días`],
+    ["duplicadas", "Duplicadas", ACRED_DATOS.filter(vistas.duplicadas).length, "Misma persona, equipo y partido repetidos"],
+  ];
+  const contVistas = document.getElementById("acredVistas");
+  if (contVistas) {
+    contVistas.innerHTML = defVistas.map(([k, et, n, tit]) =>
+      `<button type="button" class="acred-chip${ACRED_VISTA === k ? " activo" : ""}${n === 0 ? " vacio" : ""}" onclick="acredVista('${k}')" ${tit ? `title="${escapeHtml(tit)}"` : ""} aria-pressed="${ACRED_VISTA === k}">${et}${n === null ? "" : `<b>${n}</b>`}</button>`
+    ).join("");
+  }
 
   let lista = ACRED_DATOS.filter((a) => {
     if (ACRED_FILTRO && a.estado !== ACRED_FILTRO) return false;
+    if (ACRED_VISTA && vistas[ACRED_VISTA] && !vistas[ACRED_VISTA](a)) return false;
     if (!q) return true;
     return [a.nombre, a.email, a.dni, a.equipo, a.jornada_partido, a.tipo_evento, a.tipo_acreditacion, a.funciones]
       .some((v) => acredNorm(v).includes(q));
   });
+  const porCreada = (x, y) => String(y.created_at || "").localeCompare(String(x.created_at || "")) || y.id - x.id;
   const cmp = {
-    recientes: (x, y) => String(y.created_at || "").localeCompare(String(x.created_at || "")) || y.id - x.id,
+    // Abiertas primero y, entre ellas, las que llevan más tiempo esperando.
+    prioridad: (x, y) => {
+      const ax = ACRED_ABIERTO.includes(x.estado) ? 0 : 1, ay = ACRED_ABIERTO.includes(y.estado) ? 0 : 1;
+      if (ax !== ay) return ax - ay;
+      if (ax === 1) return porCreada(x, y);
+      return -porCreada(x, y);
+    },
+    recientes: porCreada,
     antiguas: (x, y) => String(x.created_at || "").localeCompare(String(y.created_at || "")) || x.id - y.id,
     nombre: (x, y) => String(x.nombre || "").localeCompare(String(y.nombre || ""), "es", { sensitivity: "base" }),
-    equipo: (x, y) => String(x.equipo || "").localeCompare(String(y.equipo || ""), "es", { sensitivity: "base" }),
-  }[orden];
+    equipo: (x, y) => String(x.equipo || "").localeCompare(String(y.equipo || ""), "es", { sensitivity: "base" })
+      || String(x.jornada_partido || "").localeCompare(String(y.jornada_partido || ""), "es", { sensitivity: "base" }),
+  }[orden] || porCreada;
   lista = lista.slice().sort(cmp);
+  ACRED_VISIBLES = lista.map((a) => a.id);
+  // Quita de la selección lo que ya no existe.
+  [...ACRED_SEL].forEach((id) => { if (!ACRED_DATOS.some((a) => a.id === id)) ACRED_SEL.delete(id); });
 
   const resumen = document.getElementById("acredResumen");
   if (resumen) {
@@ -14162,10 +16331,16 @@ function pintarAcreditaciones() {
       ? `Mostrando ${lista.length} de ${ACRED_DATOS.length} solicitudes` + (qRaw ? ` para “${qRaw}”` : "")
       : "";
   }
+  const selTodos = document.getElementById("acredSelTodos");
+  if (selTodos) {
+    selTodos.disabled = !lista.length;
+    selTodos.checked = !!lista.length && lista.every((a) => ACRED_SEL.has(a.id));
+  }
 
   if (!lista.length) {
     cos.innerHTML = `<div class="acred-vacio">${ACRED_ICO.vacio}<strong>${ACRED_DATOS.length ? "Ninguna solicitud coincide" : "Todavía no hay solicitudes"}</strong>${
       ACRED_DATOS.length ? "Prueba con otra búsqueda o cambia el filtro." : "Cuando alguien rellene el formulario aparecerá aquí. También puedes importar solicitudes desde un CSV."}</div>`;
+    acredPintarBarra();
     return;
   }
 
@@ -14174,99 +16349,344 @@ function pintarAcreditaciones() {
   const tipos = [...((ACRED_CONFIG || ACRED_CONFIG_DEFECTO).acreditaciones || []), ...ACRED_DATOS.map((a) => a.tipo_acreditacion)];
   const datalists = acredOpcionesDatalist("acredDlEquipos", eqs) + acredOpcionesDatalist("acredDlEventos", eventos) + acredOpcionesDatalist("acredDlTipos", tipos);
 
-  cos.innerHTML = datalists + lista.map((a, idx) => {
+  cos.innerHTML = datalists + lista.map((a, idx2) => {
     const abierta = ACRED_ABIERTAS.has(a.id);
     const estado = ACRED_ESTADOS[a.estado] ? a.estado : "pendiente";
     const fecha = formatFechaHoraNewsletter(a.created_at) || a.created_at || "";
+    const sel = ACRED_SEL.has(a.id);
+    const pulso = acredPulso(a);
+    const dup = acredEsDuplicada(a, idx);
     const cab = `
-      <button type="button" class="acred-item-cab" onclick="alternarDetalleAcreditacion(${a.id})" aria-expanded="${abierta}">
-        <span class="acred-avatar" aria-hidden="true">${escapeHtml(acredIniciales(a.nombre))}</span>
-        <span class="col"><b>${acredHl(a.nombre, qRaw)}</b><small>${acredHl(a.email, qRaw)}${a.dni ? " · " + acredHl(a.dni, qRaw) : ""}</small></span>
-        <span class="col col-equipo"><b>${acredHl(a.equipo, qRaw)}</b><small>${acredHl(a.tipo_evento, qRaw)}</small></span>
-        <span class="col col-partido"><b>${acredHl(a.tipo_acreditacion, qRaw)}</b><small>${acredHl(a.jornada_partido, qRaw)}</small></span>
-        <span class="acred-fecha">${escapeHtml(fecha)}</span>
-        <span class="acred-estado acred-estado-${estado}">${ACRED_ESTADOS[estado]}</span>
-        ${ACRED_ICO.chev}
-      </button>`;
+      <div class="acred-fila">
+        <label class="acred-sel" title="Seleccionar para acciones en lote">
+          <input type="checkbox" ${sel ? "checked" : ""} onchange="acredSeleccionar(${a.id}, this.checked)" aria-label="Seleccionar la solicitud de ${escapeHtml(a.nombre)}"><i></i>
+        </label>
+        <button type="button" class="acred-item-cab" onclick="alternarDetalleAcreditacion(${a.id})" aria-expanded="${abierta}">
+          <span class="acred-avatar" aria-hidden="true">${escapeHtml(acredIniciales(a.nombre))}</span>
+          <span class="col"><b>${acredHl(a.nombre, qRaw)}${dup ? ' <em class="acred-tag dup" title="Misma persona, equipo y partido">Duplicada</em>' : ""}</b><small>${acredHl(a.email, qRaw)}${a.dni ? " · " + acredHl(a.dni, qRaw) : ""}</small></span>
+          <span class="col col-equipo"><b>${acredHl(a.equipo, qRaw)}</b><small>${acredHl(a.tipo_evento, qRaw)}</small></span>
+          <span class="col col-partido"><b>${acredHl(a.tipo_acreditacion, qRaw)}</b><small>${acredHl(a.jornada_partido, qRaw)}</small></span>
+          <span class="acred-fecha">${escapeHtml(fecha)}</span>
+          <span class="acred-estado-col">
+            <span class="acred-estado-fila"><span class="acred-estado acred-estado-${estado}">${ACRED_ESTADOS[estado]}</span></span>
+            ${pulso.txt ? `<small class="acred-pulso ${pulso.cls}">${escapeHtml(pulso.txt)}</small>` : ""}
+          </span>
+          ${ACRED_ICO.chev}
+        </button>
+      </div>`;
     let cuerpo = "";
-    if (abierta) cuerpo = ACRED_EDITANDO === a.id ? acredCuerpoEdicion(a) : acredCuerpoVista(a, qRaw);
-    return `<article class="acred-item est-${estado}${abierta ? " abierta" : ""}" data-id="${a.id}" style="animation-delay:${Math.min(idx, 10) * 25}ms">${cab}${cuerpo}</article>`;
+    if (abierta) cuerpo = ACRED_EDITANDO === a.id ? acredCuerpoEdicion(a) : acredCuerpoVista(a, qRaw, idx);
+    return `<article class="acred-item est-${estado}${abierta ? " abierta" : ""}${sel ? " seleccionada" : ""}" data-id="${a.id}" style="animation-delay:${Math.min(idx2, 10) * 25}ms">${cab}${cuerpo}</article>`;
   }).join("");
+  acredPintarBarra();
+  ACRED_ABIERTAS.forEach((id) => { if (ACRED_DATOS.some((a) => a.id === id) && ACRED_EDITANDO !== id) acredHistorial(id); });
 }
 
-function acredCuerpoVista(a, q) {
+// ----- Selección y acciones en lote -----
+function acredSeleccionar(id, marcada) {
+  if (marcada) ACRED_SEL.add(id); else ACRED_SEL.delete(id);
+  const art = document.querySelector(`#tablaAcreditaciones .acred-item[data-id="${id}"]`);
+  if (art) art.classList.toggle("seleccionada", marcada);
+  const selTodos = document.getElementById("acredSelTodos");
+  if (selTodos) selTodos.checked = !!ACRED_VISIBLES.length && ACRED_VISIBLES.every((x) => ACRED_SEL.has(x));
+  acredPintarBarra();
+}
+function acredSeleccionarVisibles(marcada) {
+  ACRED_VISIBLES.forEach((id) => { if (marcada) ACRED_SEL.add(id); else ACRED_SEL.delete(id); });
+  pintarAcreditaciones();
+}
+function acredLimpiarSeleccion() {
+  ACRED_SEL.clear();
+  pintarAcreditaciones();
+}
+function acredPintarBarra() {
+  const barra = document.getElementById("acredBarra");
+  if (!barra) return;
+  const n = ACRED_SEL.size;
+  barra.hidden = !n;
+  if (!n) { barra.innerHTML = ""; return; }
+  barra.innerHTML = `
+    <span class="acred-barra-n"><b>${n}</b> seleccionada${n === 1 ? "" : "s"}</span>
+    <div class="acred-barra-acc">
+      <button type="button" class="acred-btn acred-btn-copiar" onclick="acredCopiarCorreoGrupo()" title="Copia un solo correo ya redactado para el club con todas las personas seleccionadas (no cambia ningún estado)">Copiar correo</button>
+      <button type="button" class="acred-btn acred-btn-ok" onclick="acredLote('aprobada')">Aprobar</button>
+      <button type="button" class="acred-btn acred-btn-sol" onclick="acredLote('solicitada')" title="Marca las seleccionadas como pedidas al club (y puedes avisar por correo a cada persona)">Solicitada</button>
+      <button type="button" class="acred-btn acred-btn-no" onclick="acredLote('rechazada')">Rechazar</button>
+    </div>
+    <button type="button" class="acred-barra-x" onclick="acredLimpiarSeleccion()" aria-label="Quitar la selección">Quitar selección</button>`;
+}
+function acredSeleccionadas() {
+  return ACRED_DATOS.filter((a) => ACRED_SEL.has(a.id));
+}
+// Lote con aviso opcional: devuelve true (con correo), false (sin correo) o null (cancelar).
+async function acredPreguntaCorreo(estado, personas) {
+  const n = personas.length;
+  const verbo = { aprobada: "Aprobar", solicitada: "Marcar como solicitadas", rechazada: "Rechazar" }[estado] || "Cambiar";
+  const corto = { aprobada: "Aprobar", solicitada: "Solicitada", rechazada: "Rechazar" }[estado] || "Cambiar";
+  const clase = { aprobada: "acred-btn-ok", solicitada: "acred-btn-sol", rechazada: "acred-btn-no" }[estado] || "";
+  const conCorreo = personas.filter((x) => x.email).length;
+  const sinCorreo = n - conCorreo;
+  const demasiadas = n > 15;
+  const conIndic = estado === "aprobada" ? personas.filter((x) => x.email && acredIndicacionesPropias(x.id)).length : 0;
+  let texto = `Con «${corto} y avisar» se enviará un correo a cada persona (${conCorreo} con correo${sinCorreo ? `, ${sinCorreo} sin correo` : ""}).${conIndic ? ` ${conIndic === 1 ? "Una lleva" : conIndic + " llevan"} las indicaciones que escribiste en su tarjeta; el resto, los textos por defecto.` : ""} Las que ya estén en ese estado se dejan como están.`;
+  let modo = "si";
+  if (demasiadas) { texto = "Para avisar por correo el máximo es de 15 solicitudes por vez. Puedes cambiarlas sin avisar o seleccionar menos."; modo = "aviso"; }
+  const r = await acredConfirmar({
+    tono: ACRED_TONO_ESTADO[estado], icono: estado,
+    titulo: `¿${verbo} ${n} solicitud${n === 1 ? "" : "es"}?`,
+    texto: "Elige si quieres avisar por correo a cada persona.",
+    personas, a: estado, correo: { modo, texto },
+    cancelar: "Cancelar",
+    botones: [
+      { id: "si", texto: `${corto} y avisar`, clase, deshabilitado: demasiadas },
+      { id: "no", texto: `${corto} sin avisar`, clase: "acred-btn-sec" },
+    ],
+  });
+  return r === null ? null : r === "si";
+}
+// Indicaciones escritas a mano en la tarjeta de una solicitud (dónde/cuándo recogerla y mensaje), o null.
+function acredIndicacionesPropias(id) {
+  const tieneR = ("r" + id) in ACRED_TXT, tieneM = ("m" + id) in ACRED_TXT;
+  if (!tieneR && !tieneM) return null;
+  const recogida = tieneR ? String(ACRED_TXT["r" + id] || "").trim() : undefined;
+  const mensaje = tieneM ? String(ACRED_TXT["m" + id] || "").trim() : undefined;
+  if (!recogida && !mensaje) return null;
+  return { ...(recogida !== undefined ? { recogida } : {}), ...(mensaje !== undefined ? { mensaje } : {}) };
+}
+async function acredLote(estado, idsPropios) {
+  const ids = idsPropios || [...ACRED_SEL];
+  if (!ids.length) return;
+  const personas = ids.map((id) => ACRED_DATOS.find((x) => x.id === id)).filter(Boolean);
+  let avisar = false;
+  if (estado === "aprobada" || estado === "rechazada" || estado === "solicitada") {
+    const r = await acredPreguntaCorreo(estado, personas);
+    if (r === null) return;
+    avisar = r;
+  } else if (!idsPropios) {
+    const n = ids.length;
+    const cfg = {
+      pendiente: { titulo: `¿Volver ${n} solicitud${n === 1 ? "" : "es"} a pendiente?`, texto: "Se reabren para revisarlas de nuevo.", btn: "Volver a pendiente", clase: "acred-btn-pend" },
+      cancelada: { titulo: `¿Cancelar ${n} solicitud${n === 1 ? "" : "es"}?`, texto: "Quedan anuladas, pero las puedes reabrir cuando quieras.", btn: "Sí, cancelar", clase: "acred-btn-no" },
+    }[estado] || { titulo: `¿Marcar ${n} solicitud${n === 1 ? "" : "es"} como ${ACRED_ESTADOS[estado].toLowerCase()}?`, texto: "", btn: "Marcar", clase: "" };
+    const r = await acredConfirmar({
+      tono: ACRED_TONO_ESTADO[estado] || "sol", icono: estado, titulo: cfg.titulo, texto: cfg.texto,
+      personas, a: estado, correo: { modo: "no", texto: "No se envía ningún correo." },
+      cancelar: "No, volver", botones: [{ id: "ok", texto: cfg.btn, clase: cfg.clase }],
+    });
+    if (r !== "ok") return;
+  }
+  // Estado que se veía de cada una: el servidor se salta las que otra persona ya haya cambiado.
+  const esperados = {};
+  ids.forEach((id) => { const a = ACRED_DATOS.find((x) => x.id === id); if (a) esperados[id] = a.estado; });
+  // Al aprobar avisando, cada solicitud lleva sus propias indicaciones si las escribiste en su tarjeta
+  const indicaciones = {};
+  if (avisar && estado === "aprobada") ids.forEach((id) => { const ind = acredIndicacionesPropias(id); if (ind) indicaciones[id] = ind; });
+  try {
+    const r = await apiFetch("/api/acreditaciones/lote", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids, estado, enviar_correo: avisar, avisar_solicitada: estado === "solicitada" && avisar, esperados, ...(Object.keys(indicaciones).length ? { indicaciones } : {}) }),
+    });
+    const conflictos = new Set(r.conflictos || []);
+    const ahora = new Date().toISOString().slice(0, 19).replace("T", " ");
+    ids.forEach((id) => {
+      if (conflictos.has(id)) return;
+      const a = ACRED_DATOS.find((x) => x.id === id);
+      if (!a || a.estado === estado) return;
+      a.estado = estado;
+      a.revisado_por = acredMiNombre() || a.revisado_por;
+      a.revisado_at = ahora;
+      if (estado === "solicitada") { a.solicitada_at = ahora; a.solicitada_por = acredMiNombre() || null; }
+      else if (estado === "pendiente") { a.solicitada_at = null; a.solicitada_por = null; }
+      delete ACRED_HIST[id];
+    });
+    ACRED_SEL.clear();
+    if (avisar && estado === "aprobada") ids.forEach((id) => { if (!conflictos.has(id)) { delete ACRED_TXT["r" + id]; delete ACRED_TXT["m" + id]; delete ACRED_TXT["c" + id]; } });
+    acredTrasEscrituraPropia();
+    pintarAcreditaciones();
+    let extra = "";
+    if (avisar) extra = r.correos_fallidos ? ` · ${r.correos_enviados} correos enviados, ${r.correos_fallidos} fallidos` : ` · ${r.correos_enviados} correos enviados`;
+    const enConflicto = conflictos.size ? ` · ${conflictos.size} ya ${conflictos.size === 1 ? "la había" : "las habían"} cambiado otras personas` : "";
+    EOF.toast(`${r.cambiadas} solicitud${r.cambiadas === 1 ? "" : "es"} → ${ACRED_ESTADOS[estado].toLowerCase()}${extra}${enConflicto}`, (r.correos_fallidos || (conflictos.size && !r.cambiadas)) ? "error" : "exito");
+    if (conflictos.size) acredSincronizar().catch(() => {});
+  } catch (err) {
+    EOF.toast("Error: " + err.message, "error");
+  }
+}
+async function acredCopiarCorreoGrupo() {
+  const lista = acredSeleccionadas();
+  if (!lista.length) return;
+  const equipos = [...new Set(lista.map((a) => acredNorm(a.equipo)))];
+  if (equipos.length > 1) { EOF.toast("Selecciona solicitudes de un mismo equipo para redactar un solo correo", "error"); return; }
+  const idioma = acredIdiomaCorreo(lista[0].equipo);
+  await acredCopiarTexto(acredConstruirCorreoClubGrupo(lista), "Correo copiado" + acredAvisoIdioma(idioma) + ". Pégalo en tu correo y envíalo.");
+}
+
+// ----- Detalle de una solicitud -----
+function acredStepper(a) {
+  const est = a.estado;
+  if (est === "cancelada") {
+    return `<div class="acred-pasos cancelada"><span class="acred-cancelada-et">Solicitud cancelada${a.revisado_at ? " · " + escapeHtml(acredHace(a.revisado_at)) : ""}</span></div>`;
+  }
+  const resuelta = est === "aprobada" || est === "rechazada";
+  const hechoSol = !!a.solicitada_at || est === "solicitada";
+  const pasos = [
+    { cl: "hecho", et: "Recibida", sub: acredHace(a.created_at) },
+    { cl: hechoSol ? (est === "solicitada" ? "actual" : "hecho") : (resuelta ? "saltado" : "actual"), et: "Pedida al club", sub: a.solicitada_at ? acredHace(a.solicitada_at) + (a.solicitada_por ? " · " + a.solicitada_por : "") : (resuelta ? "sin pasar por aquí" : "siguiente paso") },
+    { cl: resuelta ? "hecho " + est : "", et: resuelta ? (est === "aprobada" ? "Aprobada" : "Rechazada") : "Resolución del club", sub: resuelta && a.revisado_at ? acredHace(a.revisado_at) + (a.revisado_por ? " · " + a.revisado_por : "") : "" },
+  ];
+  return `<ol class="acred-pasos" aria-label="Progreso de la solicitud">${pasos.map((p) =>
+    `<li class="acred-paso ${p.cl}"><span class="acred-paso-punto"></span><b>${p.et}</b><small>${escapeHtml(p.sub)}</small></li>`).join("")}</ol>`;
+}
+
+function acredCuerpoVista(a, q, idx) {
+  idx = idx || acredIndices();
   const dato = (et, v) => `<div><span>${et}</span><b>${v ? acredHl(v, q) : "—"}</b></div>`;
-  const revisado = (a.revisado_at && a.estado === "pendiente")
-    ? `<p class="acred-revisado">Revisada por <strong>${escapeHtml(a.revisado_por || "—")}</strong> el ${escapeHtml(formatFechaHoraNewsletter(a.revisado_at) || a.revisado_at)}</p>`
-    : "";
   const nota = a.id in ACRED_NOTAS ? ACRED_NOTAS[a.id] : (a.nota_admin || "");
-  // Pendiente: se muestran Aprobar / Rechazar. Ya resuelta (aprobada o
-  // rechazada): se muestra solo el resultado y el cambio de estado queda
-  // escondido tras un botón discreto "···", para evitar toques por error.
-  const resuelta = a.estado === "aprobada" || a.estado === "rechazada";
-  let botonesEstado;
-  if (!resuelta) {
-    botonesEstado = `
-        <button type="button" class="acred-btn acred-btn-ok" onclick="resolverAcreditacion(${a.id}, 'aprobada')">Aprobar</button>
-        <button type="button" class="acred-btn acred-btn-no" onclick="resolverAcreditacion(${a.id}, 'rechazada')">Rechazar</button>`;
+  const est = a.estado;
+  const resuelta = est === "aprobada" || est === "rechazada";
+  const abierta = ACRED_ABIERTO.includes(est);
+  const IC = {
+    aprobada: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+    rechazada: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+    pendiente: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+    solicitada: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v12H8l-4 4V5z"/><path d="M8 10h8"/></svg>',
+    cancelada: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg>',
+  };
+
+  // Contexto: duplicada y solicitudes anteriores de la misma persona.
+  const previas = (idx.porEmail[acredNorm(a.email)] || []).filter((x) => x.id !== a.id);
+  const aprobadas = previas.filter((x) => x.estado === "aprobada").length;
+  const chips = [];
+  if (acredEsDuplicada(a, idx)) chips.push('<span class="acred-ctx dup">Posible duplicada: misma persona, equipo y partido</span>');
+  if (previas.length) {
+    chips.push(`<span class="acred-ctx">${previas.length} solicitud${previas.length === 1 ? "" : "es"} anterior${previas.length === 1 ? "" : "es"} de esta persona${aprobadas ? ` · ${aprobadas} aprobada${aprobadas === 1 ? "" : "s"}` : ""} <button type="button" class="acred-link" data-q="${escapeHtml(a.email)}" onclick="acredBuscar(this.dataset.q)">ver</button></span>`);
+  }
+  if (acredAtascada(a)) chips.push(`<span class="acred-ctx alerta">${est === "pendiente" ? "Lleva días sin revisar" : "El club no ha respondido todavía"}</span>`);
+
+  // Acciones principales según el estado.
+  let principal;
+  if (est === "pendiente") {
+    principal = `
+        <button type="button" class="acred-btn acred-btn-ok" onclick="acredResolverConfirmando(${a.id}, 'aprobada')">Aprobar</button>
+        <button type="button" class="acred-btn acred-btn-sol" onclick="acredSolicitarConfirmando(${a.id})" title="Marca la solicitud como pedida al club y avisa por correo a la persona">Solicitada</button>
+        <button type="button" class="acred-btn acred-btn-no" onclick="acredResolverConfirmando(${a.id}, 'rechazada')">Rechazar</button>`;
+  } else if (est === "solicitada") {
+    principal = `
+        <button type="button" class="acred-btn acred-btn-ok" onclick="acredResolverConfirmando(${a.id}, 'aprobada')">El club la aprueba</button>
+        <button type="button" class="acred-btn acred-btn-no" onclick="acredResolverConfirmando(${a.id}, 'rechazada')">El club la rechaza</button>
+        <button type="button" class="acred-btn acred-btn-sec" onclick="cambiarEstadoAcreditacion(${a.id}, 'pendiente')" title="Reabre la solicitud sin enviar nada">Volver a pendiente</button>`;
   } else {
-    const ap = a.estado === "aprobada";
-    const otra = ap ? "rechazada" : "aprobada";
+    const titulo = { aprobada: "Solicitud aprobada", rechazada: "Solicitud rechazada", cancelada: "Solicitud cancelada" }[est];
     const quien = a.revisado_at
-      ? `Revisada por ${escapeHtml(a.revisado_por || "—")} · ${escapeHtml(formatFechaHoraNewsletter(a.revisado_at) || a.revisado_at)}`
+      ? `${a.revisado_por ? escapeHtml(a.revisado_por) + " · " : ""}${escapeHtml(formatFechaHoraNewsletter(a.revisado_at) || a.revisado_at)}`
       : "Estado ya resuelto";
-    const IC = {
-      aprobada: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
-      rechazada: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
-      pendiente: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+    const opciones = {
+      pendiente: ["Volver a pendiente", "Reabre la solicitud sin enviar nada"],
+      solicitada: ["Marcar como solicitada al club", "Se avisará por correo a la persona"],
+      aprobada: ["Pasar a aprobada", "Se avisará por correo a la persona"],
+      rechazada: ["Pasar a rechazada", "Se avisará por correo a la persona"],
+      cancelada: ["Cancelar la solicitud", "No se envía ningún correo"],
     };
-    botonesEstado = `
-        <details class="acred-mas acred-mas-${a.estado}">
+    principal = `
+        <details class="acred-mas acred-mas-${est}" open>
           <summary>
-            <span class="acred-res-ico">${IC[a.estado]}</span>
-            <span class="acred-res-txt"><b>Solicitud ${ap ? "aprobada" : "rechazada"}</b><small>${quien}</small></span>
+            <span class="acred-res-ico">${IC[est]}</span>
+            <span class="acred-res-txt"><b>${titulo}</b><small>${quien}</small></span>
             <span class="acred-res-cambiar">Cambiar estado <svg class="acred-res-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></span>
           </summary>
           <div class="acred-mas-menu">
-            <button type="button" class="acred-opc acred-opc-${otra}" onclick="cambiarEstadoAcreditacion(${a.id}, '${otra}')">
-              <span class="acred-opc-ico">${IC[otra]}</span>
-              <span class="acred-opc-txt"><b>Pasar a ${otra}</b><small>Se avisará por correo a la persona</small></span>
-            </button>
-            <button type="button" class="acred-opc acred-opc-pendiente" onclick="cambiarEstadoAcreditacion(${a.id}, 'pendiente')">
-              <span class="acred-opc-ico">${IC.pendiente}</span>
-              <span class="acred-opc-txt"><b>Volver a pendiente</b><small>Reabre la solicitud sin enviar nada</small></span>
-            </button>
+            ${ACRED_ESTADOS_ORDEN.filter((e) => e !== est).map((e) => `
+            <button type="button" class="acred-opc acred-opc-${e}" onclick="cambiarEstadoAcreditacion(${a.id}, '${e}')">
+              <span class="acred-opc-ico">${IC[e]}</span>
+              <span class="acred-opc-txt"><b>${opciones[e][0]}</b><small>${opciones[e][1]}</small></span>
+            </button>`).join("")}
           </div>
-        </details>
-        <button type="button" class="acred-btn acred-btn-sec" onclick="resolverAcreditacion(${a.id}, '${a.estado}')">Guardar nota</button>`;
+        </details>`;
   }
+
+  const recogida = ("r" + a.id) in ACRED_TXT ? ACRED_TXT["r" + a.id] : ((ACRED_CONFIG && ACRED_CONFIG.recogida) || "");
+  const mensaje = ("m" + a.id) in ACRED_TXT ? ACRED_TXT["m" + a.id] : "";
   return `
     <div class="acred-cuerpo">
+      ${acredStepper(a)}
+      ${chips.length ? `<div class="acred-contexto">${chips.join("")}</div>` : ""}
       <div class="acred-datos">
         ${dato("Nombre", a.nombre)}${dato("Correo", a.email)}${dato("DNI / NIE", a.dni)}
         ${dato("Equipo", a.equipo)}${dato("Evento", a.tipo_evento)}${dato("Acreditación", a.tipo_acreditacion)}
         ${dato("Jornada y partido", a.jornada_partido)}
       </div>
       <div class="acred-bloque"><h4>Funciones durante la cobertura</h4><p class="acred-funciones">${a.funciones ? acredHl(a.funciones, q) : "—"}</p></div>
-      ${revisado}
       <label for="acredNota-${a.id}">Nota interna (opcional)</label>
       <textarea id="acredNota-${a.id}" maxlength="1000" rows="2" placeholder="Solo la ven los administradores" oninput="ACRED_NOTAS[${a.id}] = this.value">${escapeHtml(nota)}</textarea>
       <div class="acred-correo-bloque">
-        ${a.estado === "pendiente" ? `<label class="acred-correo-chk"><input type="checkbox" id="acredCorreo-${a.id}" checked> Avisar por correo a <b>${escapeHtml(a.email || "la persona")}</b> al aprobar o rechazar</label>` : ""}
+        ${!resuelta ? `<label class="acred-correo-chk"><input type="checkbox" id="acredCorreo-${a.id}" ${ACRED_TXT["c" + a.id] === false ? "" : "checked"} onchange="ACRED_TXT['c${a.id}'] = this.checked"> Avisar por correo a <b>${escapeHtml(a.email || "la persona")}</b> al aprobar o rechazar</label>` : ""}
         <label for="acredRecogida-${a.id}">Dónde y cuándo recogerla (se envía al aprobar o con «Enviar indicaciones»)</label>
-        <textarea id="acredRecogida-${a.id}" maxlength="600" rows="2" placeholder="Ej.: Sala de prensa del estadio, 90 min antes del partido, con tu DNI">${escapeHtml((ACRED_CONFIG && ACRED_CONFIG.recogida) || "")}</textarea>
+        <textarea id="acredRecogida-${a.id}" maxlength="3000" rows="3" class="acred-autoaltura" placeholder="Ej.: Sala de prensa del estadio, 90 min antes del partido, con tu DNI" oninput="ACRED_TXT['r${a.id}'] = this.value">${escapeHtml(recogida)}</textarea>
         <label for="acredMensaje-${a.id}">Mensaje / indicaciones para la persona (opcional; en un rechazo, el motivo)</label>
-        <textarea id="acredMensaje-${a.id}" maxlength="800" rows="2" placeholder="${escapeHtml((ACRED_CONFIG && ACRED_CONFIG.instrucciones_aprobada) || "Instrucciones o motivo")}"></textarea>
+        <textarea id="acredMensaje-${a.id}" maxlength="3000" rows="4" class="acred-autoaltura" placeholder="${escapeHtml((ACRED_CONFIG && ACRED_CONFIG.instrucciones_aprobada) || "Instrucciones o motivo")}" oninput="ACRED_TXT['m${a.id}'] = this.value">${escapeHtml(mensaje)}</textarea>
         <button type="button" class="acred-btn acred-btn-sec" onclick="enviarIndicacionesAcreditacion(${a.id})" title="Envía el correo con estas indicaciones sin aprobar, rechazar ni cambiar el estado">Enviar indicaciones (sin cambiar el estado)</button>
       </div>
       <div class="acred-acciones">
-        ${botonesEstado}
+        ${principal}
         <span class="espacio"></span>
-        <button type="button" class="acred-btn acred-btn-sec" onclick="copiarCorreoClubAcreditacion(${a.id})" title="Copia el correo ya redactado para pegarlo y enviarlo al club">Copiar correo al club</button>
+        <button type="button" class="acred-btn acred-btn-sec" onclick="resolverAcreditacion(${a.id}, '${est}')" title="Guarda la nota interna sin cambiar el estado">Guardar nota</button>
+        <button type="button" class="acred-btn acred-btn-copiar" onclick="copiarCorreoClubAcreditacion(${a.id})" title="Copia el correo ya redactado para pegarlo y enviarlo al club (no cambia el estado)">Copiar correo</button>
+        ${est === "aprobada" && acredEsFotografo(a) ? `<button type="button" class="acred-btn acred-btn-copiar" onclick="copiarCorreoGaleriaAcreditacion(${a.id})" title="Copia el correo para preguntar al fotógrafo si ya ha subido la galería del partido (no cambia el estado)">Correo de galería</button>
+        <button type="button" class="acred-btn acred-btn-sec" onclick="abrirCorreoGaleriaAcreditacion(${a.id})" title="Abre tu programa de correo con el mensaje de la galería ya escrito, dirigido al fotógrafo">Abrir en mi correo</button>` : ""}
+        ${abierta ? `<button type="button" class="acred-btn acred-btn-sec" onclick="cambiarEstadoAcreditacion(${a.id}, 'cancelada')">Cancelar</button>` : ""}
         <button type="button" class="acred-btn acred-btn-sec" onclick="editarAcreditacion(${a.id})">Editar datos</button>
         <button type="button" class="acred-btn acred-btn-peligro" onclick="eliminarAcreditacion(${a.id})">Eliminar</button>
       </div>
+      <div class="acred-bloque acred-hist-bloque"><h4>Historial</h4><ol class="acred-hist" id="acredHist-${a.id}"><li class="acred-hist-cargando">Cargando…</li></ol></div>
     </div>`;
+}
+
+// ----- Historial (viene del registro de actividad) -----
+function acredTextoHistorial(h) {
+  const d = h.detalle || {};
+  const nombreEst = (e) => (ACRED_ESTADOS[e] || e || "").toLowerCase();
+  const m = /^acreditacion_(pendiente|solicitada|aprobada|rechazada|cancelada)$/.exec(h.accion || "");
+  if (m) {
+    const e = m[1];
+    const frase = { pendiente: "Vuelta a pendiente", solicitada: "Pedida al club", aprobada: "Aprobada", rechazada: "Rechazada", cancelada: "Cancelada" }[e];
+    const desde = d.estado_anterior && d.estado_anterior !== e ? ` (antes ${nombreEst(d.estado_anterior)})` : "";
+    return { txt: frase + desde + (d.lote ? " · en lote" : ""), cls: e, nota: d.nota };
+  }
+  switch (h.accion) {
+    case "acreditacion_nota": return { txt: "Nota guardada", cls: "", nota: d.nota };
+    case "acreditacion_editada": return { txt: "Datos de la solicitud editados", cls: "" };
+    case "acreditacion_indicaciones": return { txt: "Indicaciones enviadas por correo", cls: "" };
+    case "acreditacion_gestion": {
+      const t = String(h.descripcion || "").replace(/^Acreditación de [^:]+: /, "");
+      return { txt: t.charAt(0).toUpperCase() + t.slice(1), cls: "" };
+    }
+    default: return { txt: h.descripcion || h.accion || "", cls: "" };
+  }
+}
+function acredPintarHistorial(id) {
+  const el = document.getElementById(`acredHist-${id}`);
+  if (!el) return;
+  const a = ACRED_DATOS.find((x) => x.id === id);
+  const datos = ACRED_HIST[id];
+  if (datos === false) { el.innerHTML = '<li class="acred-hist-cargando">No se pudo cargar el historial.</li>'; return; }
+  const filas = (Array.isArray(datos) ? datos : []).map((h) => {
+    const t = acredTextoHistorial(h);
+    return `<li class="${t.cls}"><span class="acred-hist-punto"></span><div><b>${escapeHtml(t.txt)}</b>${t.nota ? `<em>“${escapeHtml(t.nota)}”</em>` : ""}<small>${escapeHtml(h.usuario || "")} · ${escapeHtml(formatFechaHoraNewsletter(h.fecha) || h.fecha || "")}</small></div></li>`;
+  });
+  if (a) filas.push(`<li class="inicio"><span class="acred-hist-punto"></span><div><b>Solicitud recibida</b><small>${escapeHtml(formatFechaHoraNewsletter(a.created_at) || a.created_at || "")}</small></div></li>`);
+  el.innerHTML = filas.join("");
+}
+async function acredHistorial(id) {
+  if (id in ACRED_HIST) { if (ACRED_HIST[id] !== "cargando") acredPintarHistorial(id); return; }
+  ACRED_HIST[id] = "cargando";
+  try {
+    const r = await apiFetch(`/api/acreditaciones/${id}/historial`);
+    ACRED_HIST[id] = r.historial || [];
+  } catch {
+    ACRED_HIST[id] = false;
+  }
+  acredPintarHistorial(id);
 }
 
 function acredCuerpoEdicion(a) {
@@ -14318,61 +16738,232 @@ function acredParsearPartido(jornadaPartido, equipo) {
 }
 
 // "Prensa / Pupitre" -> "Prensa de pupitre"; quita aclaraciones entre paréntesis.
-function acredTipoLegible(tipo) {
+// Con idioma "ca"/"eu"/"gl" traduce los tipos habituales del formulario; un tipo
+// personalizado que no se reconoce se deja tal cual.
+function acredTipoLegible(tipo, idioma) {
   let t = String(tipo || "").replace(/\(.*?\)/g, "").replace(/\s+/g, " ").trim();
   const p = t.split(/\s*\/\s*/).filter(Boolean);
   if (p.length === 2) t = p[0] + " de " + p[1].charAt(0).toLowerCase() + p[1].slice(1);
+  const tr = ACRED_CORREO_TIPOS[idioma];
+  if (tr) {
+    const n = t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    if (n.includes("fotograf")) return tr.foto;
+    if (n.includes("cabina")) return tr.cabina;
+    if (n.includes("pupitre") || n.startsWith("prensa")) return tr.prensa;
+  }
   return t;
 }
 
-function acredConstruirCorreoClub(a) {
-  const club = (a.equipo || "").trim() || "el club";
+// Idioma del correo al club: el de la lengua propia del club al que se escribe
+// (catalán, euskera o gallego; ver CLUBS_IDIOMA_PROPIO en js/clubs.js). Cualquier
+// otro club, o uno personalizado, recibe el correo en castellano.
+function acredIdiomaCorreo(equipo) {
+  try { return (typeof getIdiomaClub === "function" && ACRED_CORREO_TXT[getIdiomaClub(equipo)]) ? getIdiomaClub(equipo) : "es"; }
+  catch { return "es"; }
+}
+const ACRED_CORREO_TIPOS = {
+  ca: { prensa: "Premsa de pupitre", foto: "Fotògraf de gespa", cabina: "Cabina de premsa" },
+  eu: { prensa: "Prentsa (pupitrea)", foto: "Zelaiko argazkilaria", cabina: "Prentsa-kabina" },
+  gl: { prensa: "Prensa de pupitre", foto: "Fotógrafo de céspede", cabina: "Cabina de prensa" },
+};
+// Textos del correo por idioma. n = número de personas acreditadas (1 = individual).
+// enc(club, rival, partido) devuelve el complemento "para el próximo encuentro…".
+const ACRED_CORREO_TXT = {
+  es: {
+    nombreIdioma: "castellano",
+    clubDefecto: "el club",
+    saludo: (club) => `Estimado departamento de comunicación de ${club}:`,
+    enc: (club, rival, partido) => rival
+      ? `para el próximo encuentro entre ${club} y ${rival}`
+      : (partido ? `para el siguiente encuentro: ${partido}` : "para el próximo encuentro"),
+    solicitud: (n, enc) => `Me pongo en contacto con ustedes para solicitar formalmente ${n === 1 ? "una acreditación de prensa" : "acreditaciones de prensa"} ${enc}.`,
+    datosIndividual: "A continuación, les facilito los datos del profesional que asistirá al partido:",
+    datosGrupo: (n) => `A continuación, les facilito los datos ${n === 1 ? "del profesional que asistirá" : "de los profesionales que asistirán"} al partido (Medio: El Otro Fútbol):`,
+    et: { nombre: "Nombre y apellidos", correo: "Correo electrónico", dni: "DNI", medio: "Medio", funcion: "Función", tipo: "Tipo de acreditación solicitada" },
+    funcionDefecto: "Cobertura informativa del partido",
+    compromiso: "Confirmamos nuestro compromiso de respetar en todo momento las normas de prensa, los derechos audiovisuales y las condiciones establecidas tanto por los clubes como por el estadio.",
+    gracias: (n) => `Agradezco de antemano su tiempo y gestión. Quedo a la espera de su confirmación y de las indicaciones correspondientes para la recogida de ${n === 1 ? "la credencial" : "las credenciales"}.`,
+    atentamente: "Atentamente,", acreditaciones: "Acreditaciones",
+  },
+  ca: {
+    nombreIdioma: "català",
+    clubDefecto: "el club",
+    saludo: (club) => `Benvolgut departament de comunicació de ${club}:`,
+    enc: (club, rival, partido) => rival
+      ? `per al proper partit entre ${club} i ${rival}`
+      : (partido ? `per al següent partit: ${partido}` : "per al proper partit"),
+    solicitud: (n, enc) => `Em poso en contacte amb vostès per sol·licitar formalment ${n === 1 ? "una acreditació de premsa" : "acreditacions de premsa"} ${enc}.`,
+    datosIndividual: "A continuació, els facilito les dades del professional que assistirà al partit:",
+    datosGrupo: (n) => `A continuació, els facilito les dades ${n === 1 ? "del professional que assistirà" : "dels professionals que assistiran"} al partit (Mitjà: El Otro Fútbol):`,
+    et: { nombre: "Nom i cognoms", correo: "Correu electrònic", dni: "DNI", medio: "Mitjà", funcion: "Funció", tipo: "Tipus d'acreditació sol·licitada" },
+    funcionDefecto: "Cobertura informativa del partit",
+    compromiso: "Confirmem el nostre compromís de respectar en tot moment les normes de premsa, els drets audiovisuals i les condicions establertes tant pels clubs com per l'estadi.",
+    gracias: (n) => `Agraeixo per endavant el seu temps i gestió. Resto a l'espera de la seva confirmació i de les indicacions corresponents per a la recollida de ${n === 1 ? "la credencial" : "les credencials"}.`,
+    atentamente: "Atentament,", acreditaciones: "Acreditacions",
+  },
+  eu: {
+    nombreIdioma: "euskera",
+    clubDefecto: "klub",
+    saludo: (club) => `${club} klubeko komunikazio sailari:`,
+    enc: (club, rival, partido) => rival
+      ? `${club} eta ${rival} taldeen arteko hurrengo partidarako`
+      : (partido ? `hurrengo partidarako: ${partido}` : "hurrengo partidarako"),
+    solicitud: (n, enc) => `Zuekin harremanetan jartzen naiz ${enc} ${n === 1 ? "prentsa-akreditazio bat" : "prentsa-akreditazioak"} formalki eskatzeko.`,
+    datosIndividual: "Jarraian, partidara joango den profesionalaren datuak ematen dizkizuet:",
+    datosGrupo: (n) => `Jarraian, partidara joango ${n === 1 ? "den profesionalaren" : "diren profesionalen"} datuak ematen dizkizuet (Hedabidea: El Otro Fútbol):`,
+    et: { nombre: "Izen-abizenak", correo: "Helbide elektronikoa", dni: "NAN", medio: "Hedabidea", funcion: "Eginkizuna", tipo: "Eskatutako akreditazio mota" },
+    funcionDefecto: "Partidaren informazio-estaldura",
+    compromiso: "Prentsa-arauak, ikus-entzunezko eskubideak eta klubek zein estadioak ezarritako baldintzak une oro errespetatzeko konpromisoa berresten dugu.",
+    gracias: (n) => `Aldez aurretik eskerrik asko zuen denboragatik eta kudeaketagatik. Zuen erantzunaren eta ${n === 1 ? "kredentziala" : "kredentzialak"} jasotzeko jarraibideen zain geratzen naiz.`,
+    atentamente: "Adeitasunez,", acreditaciones: "Akreditazioak",
+  },
+  gl: {
+    nombreIdioma: "galego",
+    clubDefecto: "o club",
+    saludo: (club) => `Estimado departamento de comunicación de ${club}:`,
+    enc: (club, rival, partido) => rival
+      ? `para o próximo encontro entre ${club} e ${rival}`
+      : (partido ? `para o seguinte encontro: ${partido}` : "para o próximo encontro"),
+    solicitud: (n, enc) => `Póñome en contacto con vostedes para solicitar formalmente ${n === 1 ? "unha acreditación de prensa" : "acreditacións de prensa"} ${enc}.`,
+    datosIndividual: "A continuación, facilítolles os datos do profesional que asistirá ao partido:",
+    datosGrupo: (n) => `A continuación, facilítolles os datos ${n === 1 ? "do profesional que asistirá" : "dos profesionais que asistirán"} ao partido (Medio: El Otro Fútbol):`,
+    et: { nombre: "Nome e apelidos", correo: "Correo electrónico", dni: "DNI", medio: "Medio", funcion: "Función", tipo: "Tipo de acreditación solicitada" },
+    funcionDefecto: "Cobertura informativa do partido",
+    compromiso: "Confirmamos o noso compromiso de respectar en todo momento as normas de prensa, os dereitos audiovisuais e as condicións establecidas tanto polos clubs como polo estadio.",
+    gracias: (n) => `Agradezo de antemán o seu tempo e xestión. Quedo á espera da súa confirmación e das indicacións correspondentes para a recollida ${n === 1 ? "da credencial" : "das credenciais"}.`,
+    atentamente: "Atentamente,", acreditaciones: "Acreditacións",
+  },
+};
+
+// Correo para el club con UNA persona. Va en el idioma propio del club (ver acredIdiomaCorreo).
+function acredConstruirCorreoClub(a, idiomaForzado) {
+  const idioma = idiomaForzado || acredIdiomaCorreo(a.equipo);
+  const T = ACRED_CORREO_TXT[idioma];
+  const club = (a.equipo || "").trim() || T.clubDefecto;
   const { rival, partido } = acredParsearPartido(a.jornada_partido, a.equipo);
-  const encuentro = rival
-    ? `el próximo encuentro entre ${club} y ${rival}`
-    : (partido ? `el siguiente encuentro: ${partido}` : "el próximo encuentro");
-  let funciones = String(a.funciones || "").replace(/\s+/g, " ").trim() || "Cobertura informativa del partido";
+  const enc = T.enc(club, rival, partido);
+  let funciones = String(a.funciones || "").replace(/\s+/g, " ").trim() || T.funcionDefecto;
   if (!/[.!?]$/.test(funciones)) funciones += ".";
   const firma = (USER && USER.nombre) ? USER.nombre : "";
-  const firmaLineas = ["Atentamente,"];
+  const firmaLineas = [T.atentamente];
   if (firma) firmaLineas.push(firma);
-  firmaLineas.push("Acreditaciones", "El Otro Fútbol");
+  firmaLineas.push(T.acreditaciones, "El Otro Fútbol");
   // Bloques separados por una línea en blanco; dentro de un bloque, saltos simples.
   return [
-    [`Estimado departamento de comunicación de ${club}:`],
-    [`Me pongo en contacto con ustedes para solicitar formalmente una acreditación de prensa para ${encuentro}.`],
+    [T.saludo(club)],
+    [T.solicitud(1, enc)],
     [
-      `A continuación, les facilito los datos del profesional que asistirá al partido:`,
-      `● Nombre y apellidos: ${a.nombre || ""}`,
-      `● Correo electrónico: ${a.email || ""}`,
-      `● DNI: ${a.dni || ""}`,
-      `● Medio: El Otro Fútbol`,
-      `● Función: ${funciones}`,
-      `● Tipo de acreditación solicitada: ${acredTipoLegible(a.tipo_acreditacion)}.`,
+      T.datosIndividual,
+      `● ${T.et.nombre}: ${a.nombre || ""}`,
+      `● ${T.et.correo}: ${a.email || ""}`,
+      `● ${T.et.dni}: ${a.dni || ""}`,
+      `● ${T.et.medio}: El Otro Fútbol`,
+      `● ${T.et.funcion}: ${funciones}`,
+      `● ${T.et.tipo}: ${acredTipoLegible(a.tipo_acreditacion, idioma)}.`,
     ],
-    [`Confirmamos nuestro compromiso de respetar en todo momento las normas de prensa, los derechos audiovisuales y las condiciones establecidas tanto por los clubes como por el estadio.`],
-    [`Agradezco de antemano su tiempo y gestión. Quedo a la espera de su confirmación y de las indicaciones correspondientes para la recogida de la credencial.`],
+    [T.compromiso],
+    [T.gracias(1)],
     firmaLineas,
   ].map((b) => b.join("\n")).join("\n\n");
 }
 
-async function copiarCorreoClubAcreditacion(id) {
-  const a = ACRED_DATOS.find((x) => x.id === id);
-  if (!a) return;
-  const texto = acredConstruirCorreoClub(a);
+// Copia al portapapeles (con respaldo para navegadores sin permiso). Devuelve true si se copió.
+async function acredCopiarTexto(texto, mensajeOk) {
   try {
     await navigator.clipboard.writeText(texto);
-    EOF.toast("Correo para el club copiado. Pégalo en tu correo y envíalo.", "exito");
+    EOF.toast(mensajeOk, "exito");
+    return true;
   } catch {
-    // Sin permiso de portapapeles: se copia con un textarea temporal.
     const ta = document.createElement("textarea");
     ta.value = texto; ta.style.position = "fixed"; ta.style.opacity = "0";
     document.body.appendChild(ta); ta.select();
     let ok = false;
     try { ok = document.execCommand("copy"); } catch { ok = false; }
     ta.remove();
-    EOF.toast(ok ? "Correo para el club copiado" : "No se pudo copiar automáticamente", ok ? "exito" : "error");
+    EOF.toast(ok ? mensajeOk : "No se pudo copiar automáticamente", ok ? "exito" : "error");
+    return ok;
   }
+}
+async function copiarCorreoClubAcreditacion(id) {
+  const a = ACRED_DATOS.find((x) => x.id === id);
+  if (!a) return;
+  const idioma = acredIdiomaCorreo(a.equipo);
+  await acredCopiarTexto(acredConstruirCorreoClub(a), "Correo para el club copiado" + acredAvisoIdioma(idioma) + ". Pégalo en tu correo y envíalo.");
+}
+// Correo para el FOTÓGRAFO acreditado, al acabar el partido: pregunta si ya ha subido
+// la galería fotográfica y explica dónde se sube. Devuelve { asunto, cuerpo }.
+function acredEsFotografo(a) {
+  return /fot[oó]graf|c[eé]sped/i.test(String((a && a.tipo_acreditacion) || ""));
+}
+function acredConstruirCorreoGaleria(a) {
+  const nombre = String((a && a.nombre) || "").trim().split(/\s+/)[0] || "";
+  const { partido } = acredParsearPartido(a.jornada_partido, a.equipo);
+  const equipo = String(a.equipo || "").trim();
+  const cual = partido || String(a.jornada_partido || "").trim() || (equipo ? `el partido de ${equipo}` : "el partido");
+  const firma = (USER && USER.nombre) ? USER.nombre : "";
+  const asunto = `¿Has subido ya la galería de ${cual}? · El Otro Fútbol`;
+  const cuerpo = [
+    nombre ? `Hola ${nombre}:` : "Hola:",
+    `Esperamos que la cobertura de ${cual} haya ido bien. ¡Gracias por acudir en nombre de El Otro Fútbol!`,
+    [
+      "Te escribimos para saber si ya has podido subir la galería fotográfica del partido. Si todavía no, estos son los pasos:",
+      "1. En el panel, entra en Contenido > Subir contenido y sube tus fotos.",
+      "2. Después, en Contenido > Galería de partido, elige el partido y añade las fotos a su galería.",
+    ],
+    "Si ya la tienes subida, ¡mil gracias! Tus fotos se publican con tu crédito.",
+    "Y si has tenido algún problema (acceso al panel, fotos que no se suben, dudas sobre cuáles enviar) o al final no pudiste hacer fotos, responde a este correo y lo vemos sin problema.",
+    ["Un abrazo,", firma, "El Otro Fútbol"].filter(Boolean),
+  ].map((b) => (Array.isArray(b) ? b.join("\n") : b)).join("\n\n");
+  return { asunto, cuerpo };
+}
+async function copiarCorreoGaleriaAcreditacion(id) {
+  const a = ACRED_DATOS.find((x) => x.id === id);
+  if (!a) return;
+  const { asunto, cuerpo } = acredConstruirCorreoGaleria(a);
+  await acredCopiarTexto(`Asunto: ${asunto}\n\n${cuerpo}`, "Correo de la galería copiado. Pégalo en tu correo y envíalo a " + (a.email || "la persona") + ".");
+}
+function abrirCorreoGaleriaAcreditacion(id) {
+  const a = ACRED_DATOS.find((x) => x.id === id);
+  if (!a) return;
+  if (!a.email) { EOF.toast("Esta solicitud no tiene correo.", "error"); return; }
+  const { asunto, cuerpo } = acredConstruirCorreoGaleria(a);
+  window.location.href = `mailto:${encodeURIComponent(a.email)}?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`;
+}
+// Un solo correo para el club con varias personas del mismo equipo.
+function acredAvisoIdioma(idioma) {
+  return idioma && idioma !== "es" ? ` (en ${ACRED_CORREO_TXT[idioma].nombreIdioma})` : "";
+}
+function acredConstruirCorreoClubGrupo(lista, idiomaForzado) {
+  const a0 = lista[0];
+  const idioma = idiomaForzado || acredIdiomaCorreo(a0.equipo);
+  const T = ACRED_CORREO_TXT[idioma];
+  const club = (a0.equipo || "").trim() || T.clubDefecto;
+  const { rival, partido } = acredParsearPartido(a0.jornada_partido, a0.equipo);
+  const enc = T.enc(club, rival, partido);
+  const personas = lista.map((a, i) => {
+    let funciones = String(a.funciones || "").replace(/\s+/g, " ").trim() || T.funcionDefecto;
+    if (!/[.!?]$/.test(funciones)) funciones += ".";
+    return [
+      `${i + 1}. ${a.nombre || ""}`,
+      `   ● ${T.et.correo}: ${a.email || ""}`,
+      `   ● ${T.et.dni}: ${a.dni || ""}`,
+      `   ● ${T.et.funcion}: ${funciones}`,
+      `   ● ${T.et.tipo}: ${acredTipoLegible(a.tipo_acreditacion, idioma)}.`,
+    ].join("\n");
+  });
+  const firma = acredMiNombre();
+  const firmaLineas = [T.atentamente];
+  if (firma) firmaLineas.push(firma);
+  firmaLineas.push(T.acreditaciones, "El Otro Fútbol");
+  return [
+    [T.saludo(club)],
+    [T.solicitud(lista.length, enc)],
+    [T.datosGrupo(lista.length)],
+    [personas.join("\n\n")],
+    [T.compromiso],
+    [T.gracias(lista.length)],
+    firmaLineas,
+  ].map((b) => b.join("\n")).join("\n\n");
 }
 
 function editarAcreditacion(id) { ACRED_EDITANDO = id; pintarAcreditaciones(); }
@@ -14396,7 +16987,9 @@ async function guardarEdicionAcreditacion(id) {
     });
     const a = ACRED_DATOS.find((x) => x.id === id);
     if (a) Object.assign(a, { ...datos, email: datos.email.toLowerCase(), dni: datos.dni.replace(/[\s.-]/g, "").toUpperCase() });
+    delete ACRED_HIST[id];
     ACRED_EDITANDO = null;
+    acredTrasEscrituraPropia();
     pintarAcreditaciones();
     EOF.toast("Datos actualizados", "exito");
   } catch (err) {
@@ -14404,14 +16997,80 @@ async function guardarEdicionAcreditacion(id) {
   }
 }
 
-// Cambio de estado de una solicitud ya resuelta (menú escondido "···"):
-// pide confirmación porque ya había una decisión tomada.
-async function cambiarEstadoAcreditacion(id, estado) {
+// Aprobar / rechazar desde los botones principales: pide confirmación antes de decidir (y de mandar el correo).
+async function acredResolverConfirmando(id, estado) {
   const a = ACRED_DATOS.find((x) => x.id === id);
-  const nombre = a ? a.nombre : "esta solicitud";
-  const destino = estado === "pendiente" ? "pendiente" : ACRED_ESTADOS[estado].toLowerCase();
-  const avisoCorreo = estado === "pendiente" ? "" : " Se enviará un correo a la persona con el nuevo estado.";
-  if (!(await EOF.confirmar(`¿Cambiar la solicitud de "${nombre}" a ${destino}?${avisoCorreo}`, { textoConfirmar: "Cambiar" }))) return;
+  const aprobar = estado === "aprobada";
+  const chk = document.getElementById(`acredCorreo-${id}`);
+  const avisa = chk ? chk.checked : true; // sin casilla, el servidor avisa por defecto
+  const b = (v) => `<b>${escapeHtml(v)}</b>`;
+  // Indicaciones que irán en el correo (las del formulario de la tarjeta; si no está pintado, las guardadas)
+  const recogidaTxt = ((document.getElementById(`acredRecogida-${id}`) || {}).value ?? ACRED_TXT["r" + id] ?? "").trim();
+  const mensajeTxt = ((document.getElementById(`acredMensaje-${id}`) || {}).value ?? ACRED_TXT["m" + id] ?? "").trim();
+  const hayIndicaciones = !!(recogidaTxt || mensajeTxt);
+  const citaInd = [recogidaTxt ? `Dónde y cuándo recogerla: ${recogidaTxt}` : "", mensajeTxt ? `${aprobar ? "Instrucciones" : "Motivo"}: ${mensajeTxt}` : ""].filter(Boolean).join("\n");
+  let correo;
+  if (!avisa) correo = { modo: "no", texto: "No se enviará ningún correo a la persona." };
+  else if (!(a && a.email)) correo = { modo: "aviso", texto: "Esta solicitud no tiene correo: no se podrá avisar a la persona." };
+  else correo = { modo: "si", texto: aprobar
+    ? (hayIndicaciones ? `Se enviará un correo a ${b(a.email)} con la aprobación y estas indicaciones.` : `Se enviará un correo a ${b(a.email)} con la aprobación (sin indicaciones).`)
+    : `Se enviará un correo a ${b(a.email)} avisando de que no se ha aprobado${mensajeTxt ? " y el motivo" : ""}.` };
+  const r = await acredConfirmar({
+    tono: aprobar ? "ok" : "no", icono: estado,
+    titulo: aprobar ? "¿Aprobar esta solicitud?" : "¿Rechazar esta solicitud?",
+    texto: aprobar ? "Quedará como aprobada. La concesión real la decide siempre el club." : "Quedará como rechazada.",
+    personas: a ? [a] : [], de: a && a.estado, a: estado, correo,
+    extra: (avisa && a && a.email && citaInd) ? `<p class="acred-conf-cita">${escapeHtml(citaInd)}</p>` : undefined,
+    cancelar: "No, volver",
+    botones: [{ id: "ok", texto: aprobar ? "Sí, aprobar" : "Sí, rechazar", clase: aprobar ? "acred-btn-ok" : "acred-btn-no" }],
+  });
+  if (r !== "ok") return;
+  resolverAcreditacion(id, estado);
+}
+
+// Botón «Solicitada»: marca la solicitud como pedida al club y AVISA POR CORREO a la persona
+// (el servidor solo envía el correo si el estado cambia de verdad, así que no se duplica).
+async function acredSolicitarConfirmando(id) {
+  const a = ACRED_DATOS.find((x) => x.id === id);
+  const correo = a && a.email
+    ? { modo: "si", texto: `Se enviará un correo a <b>${escapeHtml(a.email)}</b> avisando de que ya se ha pedido al club.` }
+    : { modo: "aviso", texto: "Esta solicitud no tiene correo: no se podrá avisar a la persona." };
+  const r = await acredConfirmar({
+    tono: "sol", icono: "solicitada",
+    titulo: "¿Marcar como solicitada al club?",
+    texto: "Quedará anotado que ya se ha pedido la acreditación al club.",
+    personas: a ? [a] : [], de: a && a.estado, a: "solicitada", correo,
+    cancelar: "No, volver",
+    botones: [{ id: "ok", texto: "Sí, solicitada", clase: "acred-btn-sol" }],
+  });
+  if (r !== "ok") return;
+  resolverAcreditacion(id, "solicitada", { avisarSolicitada: true });
+}
+
+// Cambio de estado desde los botones de una solicitud (a cualquier otra fase):
+// pide confirmación y avisa de si se enviará correo.
+async function cambiarEstadoAcreditacion(id, estado) {
+  if (estado === "solicitada") return acredSolicitarConfirmando(id); // también avisa por correo
+  const a = ACRED_DATOS.find((x) => x.id === id);
+  const manda = estado === "aprobada" || estado === "rechazada";
+  const correo = !manda
+    ? { modo: "no", texto: "No se envía ningún correo." }
+    : (a && a.email
+      ? { modo: "si", texto: `Se enviará un correo a <b>${escapeHtml(a.email)}</b> con el nuevo estado.` }
+      : { modo: "aviso", texto: "Esta solicitud no tiene correo: no se podrá avisar a la persona." });
+  const cfg = {
+    pendiente: { titulo: "¿Volver a pendiente?", texto: "Se reabre la solicitud para revisarla de nuevo.", btn: "Volver a pendiente", clase: "acred-btn-sec" },
+    aprobada: { titulo: "¿Pasar a aprobada?", texto: "Cambiará la decisión que había.", btn: "Sí, aprobar", clase: "acred-btn-ok" },
+    rechazada: { titulo: "¿Pasar a rechazada?", texto: "Cambiará la decisión que había.", btn: "Sí, rechazar", clase: "acred-btn-no" },
+    cancelada: { titulo: "¿Cancelar la solicitud?", texto: "Queda anulada, pero la puedes reabrir cuando quieras.", btn: "Sí, cancelar", clase: "acred-btn-no" },
+  }[estado];
+  const r = await acredConfirmar({
+    tono: ACRED_TONO_ESTADO[estado], icono: estado, titulo: cfg.titulo, texto: cfg.texto,
+    personas: a ? [a] : [], de: a && a.estado, a: estado, correo,
+    cancelar: "No, volver",
+    botones: [{ id: "ok", texto: cfg.btn, clase: cfg.clase === "acred-btn-sec" ? "acred-btn-pend" : cfg.clase }],
+  });
+  if (r !== "ok") return;
   resolverAcreditacion(id, estado);
 }
 
@@ -14425,7 +17084,20 @@ async function enviarIndicacionesAcreditacion(id) {
     EOF.toast("Escribe alguna indicación (dónde recogerla o un mensaje)", "error");
     return;
   }
-  if (!(await EOF.confirmar(`¿Enviar las indicaciones a ${a && a.email ? a.email : "la persona"}? La solicitud seguirá en su estado actual.`, { textoConfirmar: "Enviar" }))) return;
+  const cita = [recogida.trim() ? `Recogida: ${recogida.trim()}` : "", mensaje.trim() ? `Mensaje: ${mensaje.trim()}` : ""].filter(Boolean).join("\n");
+  const rInd = await acredConfirmar({
+    tono: "sol", icono: "correo",
+    titulo: "¿Enviar las indicaciones?",
+    texto: `La solicitud seguirá en su estado actual${a && ACRED_ESTADOS[a.estado] ? " (" + ACRED_ESTADOS[a.estado].toLowerCase() + ")" : ""}.`,
+    personas: a ? [a] : [],
+    correo: a && a.email
+      ? { modo: "si", texto: `Se enviará un correo a <b>${escapeHtml(a.email)}</b> con este texto.` }
+      : { modo: "aviso", texto: "Esta solicitud no tiene correo: no se podrá enviar." },
+    extra: `<p class="acred-conf-cita">${escapeHtml(cita)}</p>`,
+    cancelar: "No, volver",
+    botones: [{ id: "ok", texto: "Enviar indicaciones", clase: "acred-btn-sol", deshabilitado: !(a && a.email) }],
+  });
+  if (rInd !== "ok") return;
   try {
     const resp = await apiFetch(`/api/acreditaciones/${id}`, {
       method: "PATCH",
@@ -14439,7 +17111,7 @@ async function enviarIndicacionesAcreditacion(id) {
   }
 }
 
-async function resolverAcreditacion(id, estado) {
+async function resolverAcreditacion(id, estado, opciones) {
   const notaEl = document.getElementById(`acredNota-${id}`);
   const nota = notaEl ? notaEl.value.trim() : "";
   // Campos del correo (solo existen en solicitudes pendientes). Si no están
@@ -14451,6 +17123,11 @@ async function resolverAcreditacion(id, estado) {
   if (chkCorreo) datosCorreo.enviar_correo = chkCorreo.checked;
   if (recogidaEl) datosCorreo.recogida = recogidaEl.value.trim();
   if (mensajeEl) datosCorreo.mensaje = mensajeEl.value.trim();
+  // Estado que esta persona estaba viendo: si otra ya la movió a otro distinto, el servidor no pisa su decisión.
+  const previa = ACRED_DATOS.find((x) => x.id === id);
+  if (previa && previa.estado !== estado) datosCorreo.estado_esperado = previa.estado;
+  // «Solicitada»: el servidor manda el correo de «ya lo hemos pedido al club» solo si se lo pedimos.
+  if (estado === "solicitada" && opciones && opciones.avisarSolicitada) datosCorreo.avisar_solicitada = true;
   try {
     const resp = await apiFetch(`/api/acreditaciones/${id}`, {
       method: "PATCH",
@@ -14459,30 +17136,49 @@ async function resolverAcreditacion(id, estado) {
     });
     const a = ACRED_DATOS.find((x) => x.id === id);
     if (a) {
+      const antes = a.estado;
+      const ahora = new Date().toISOString().slice(0, 19).replace("T", " ");
       a.estado = estado;
       a.nota_admin = nota || null;
       a.revisado_por = (typeof USER !== "undefined" && USER.nombre) || a.revisado_por;
-      a.revisado_at = new Date().toISOString().slice(0, 19).replace("T", " ");
+      a.revisado_at = ahora;
+      if (estado === "solicitada" && antes !== "solicitada") { a.solicitada_at = ahora; a.solicitada_por = acredMiNombre() || null; }
+      else if (estado === "pendiente" && antes !== "pendiente") { a.solicitada_at = null; a.solicitada_por = null; }
     }
     delete ACRED_NOTAS[id];
+    delete ACRED_HIST[id];
+    delete ACRED_TXT["r" + id];
+    delete ACRED_TXT["m" + id];
+    delete ACRED_TXT["c" + id];
+    acredTrasEscrituraPropia();
     pintarAcreditaciones();
     const cor = resp && resp.correo;
     const extra = cor === "enviado" ? " · correo enviado a la persona" : cor === "no_enviado" ? " · ⚠ no se pudo enviar el correo" : "";
     EOF.toast(`Solicitud marcada como ${ACRED_ESTADOS[estado].toLowerCase()}${extra}`, cor === "no_enviado" ? "error" : "exito");
   } catch (err) {
+    if (err && err.status === 409) { acredTrasConflicto(err); return; }
     EOF.toast("Error: " + err.message, "error");
   }
 }
 
 async function eliminarAcreditacion(id) {
   const a = ACRED_DATOS.find((x) => x.id === id);
-  const nombre = a ? a.nombre : "esta persona";
-  if (!(await EOF.confirmar(`¿Seguro que quieres eliminar la solicitud de "${nombre}"? Esta acción no se puede deshacer.`, { peligroso: true, textoConfirmar: "Eliminar" }))) return;
+  const rEl = await acredConfirmar({
+    tono: "no", icono: "papelera",
+    titulo: "¿Eliminar esta solicitud?",
+    texto: "Se borra para siempre. Esta acción no se puede deshacer.",
+    personas: a ? [a] : [],
+    correo: { modo: "no", texto: "No se envía ningún correo. Si solo quieres anularla, mejor márcala como cancelada." },
+    cancelar: "No, volver",
+    botones: [{ id: "ok", texto: "Sí, eliminar", clase: "acred-btn-no" }],
+  });
+  if (rEl !== "ok") return;
   try {
     await apiFetch(`/api/acreditaciones/${id}`, { method: "DELETE" });
     ACRED_DATOS = ACRED_DATOS.filter((x) => x.id !== id);
     ACRED_ABIERTAS.delete(id);
     if (ACRED_EDITANDO === id) ACRED_EDITANDO = null;
+    acredTrasEscrituraPropia();
     pintarAcreditaciones();
   } catch (err) {
     EOF.toast("Error: " + err.message, "error");
@@ -14490,7 +17186,7 @@ async function eliminarAcreditacion(id) {
 }
 
 // ----- CSV: descargar y plantilla -----
-const ACRED_CSV_CABECERA = ["Fecha", "Nombre", "Correo", "DNI/NIE", "Equipo", "Tipo de evento", "Tipo de acreditación", "Funciones", "Jornada y partido", "Estado", "Nota interna", "Revisada por", "Revisada el"];
+const ACRED_CSV_CABECERA = ["Fecha", "Nombre", "Correo", "DNI/NIE", "Equipo", "Tipo de evento", "Tipo de acreditación", "Funciones", "Jornada y partido", "Estado", "Nota interna", "Revisada por", "Revisada el", "Pedida al club el"];
 function acredCeldaCSV(v) {
   let t = String(v == null ? "" : v);
   // Evita que Excel interprete el contenido como fórmula.
@@ -14513,6 +17209,7 @@ function exportarAcreditacionesCSV() {
   const filas = ACRED_DATOS.map((a) => [
     a.created_at, a.nombre, a.email, a.dni, a.equipo, a.tipo_evento, a.tipo_acreditacion,
     a.funciones, a.jornada_partido, ACRED_ESTADOS[a.estado] || a.estado, a.nota_admin, a.revisado_por, a.revisado_at,
+    a.solicitada_at,
   ]);
   acredDescargar(`acreditaciones-${new Date().toISOString().slice(0, 10)}.csv`, [ACRED_CSV_CABECERA, ...filas]);
 }
@@ -14535,6 +17232,68 @@ function acredModal(html, onCerrar) {
   document.addEventListener("keydown", tecla);
   document.body.appendChild(ov);
   return { ov, cerrar };
+}
+
+// ----- Cuadro de confirmación con el estilo de acreditaciones -----
+// Sustituye a EOF.confirmar en todo el flujo de acreditaciones. Devuelve el id del botón pulsado
+// (o null si se cierra / cancela). Opciones:
+//   tono: ok | no | sol | pend | can  (color)         icono: clave de ACRED_ICONOS
+//   titulo, texto                                      personas: [{nombre, email}]
+//   de / a: estados (muestra «Pendiente → Solicitada»)  correo: {modo: si|no|aviso, texto (HTML)}
+//   extra: HTML libre bajo el correo                   botones: [{id, texto, clase, deshabilitado}]
+const ACRED_ICONOS = {
+  aprobada: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  rechazada: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  pendiente: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  solicitada: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v12H8l-4 4V5z"/><path d="M8 10h8"/></svg>',
+  cancelada: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg>',
+  correo: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>',
+  sincorreo: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6M4 20L20 4"/></svg>',
+  papelera: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>',
+  restaurar: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 108-8M4 4v5h5"/></svg>',
+  flecha: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
+};
+const ACRED_TONO_ESTADO = { pendiente: "pend", solicitada: "sol", aprobada: "ok", rechazada: "no", cancelada: "can" };
+
+function acredConfirmar(o) {
+  return new Promise((resolve) => {
+    let hecho = false;
+    const fin = (v) => { if (!hecho) { hecho = true; resolve(v); } };
+    const tono = o.tono || "sol";
+    const personas = (o.personas || []).filter(Boolean);
+    let quien = "";
+    if (personas.length === 1) {
+      const pe = personas[0];
+      quien = `<div class="acred-conf-persona"><span class="acred-avatar" aria-hidden="true">${escapeHtml(acredIniciales(pe.nombre))}</span><div><b>${escapeHtml(pe.nombre || "Sin nombre")}</b><small>${escapeHtml(pe.email || "Sin correo")}</small></div></div>`;
+    } else if (personas.length > 1) {
+      const vistas = personas.slice(0, 6).map((pe) => `<span class="acred-conf-chip">${escapeHtml(pe.nombre || "Sin nombre")}</span>`).join("");
+      const mas = personas.length > 6 ? `<span class="acred-conf-chip mas">+${personas.length - 6} más</span>` : "";
+      quien = `<div class="acred-conf-grupo"><div class="acred-conf-grupo-n"><b>${personas.length}</b> solicitudes</div><div class="acred-conf-nombres">${vistas}${mas}</div></div>`;
+    }
+    const pill = (e) => `<span class="acred-conf-pill acred-estado-${e}">${escapeHtml(ACRED_ESTADOS[e] || e)}</span>`;
+    const flujo = o.a ? `<div class="acred-conf-flujo">${o.de ? pill(o.de) + `<span class="acred-conf-flecha">${ACRED_ICONOS.flecha}</span>` : '<span class="acred-conf-flujo-et">Nuevo estado</span>'}${pill(o.a)}</div>` : "";
+    const correo = o.correo
+      ? `<div class="acred-conf-correo ${o.correo.modo || "no"}">${(o.correo.modo === "si") ? ACRED_ICONOS.correo : ACRED_ICONOS.sincorreo}<span>${o.correo.texto}</span></div>`
+      : "";
+    const botones = (o.botones || []).map((b, i) => `<button type="button" class="acred-btn ${b.clase || ""}" data-resp="${b.id}"${b.deshabilitado ? " disabled" : ""}${i === 0 && !b.deshabilitado ? " data-foco" : ""}>${escapeHtml(b.texto)}</button>`).join("");
+    const { ov, cerrar } = acredModal(`
+      <div class="acred-modal acred-conf acred-conf-${tono}" role="alertdialog" aria-modal="true" aria-labelledby="acredConfTit"${o.texto ? ' aria-describedby="acredConfTxt"' : ""}>
+        <div class="acred-conf-cab">
+          <button type="button" class="acred-cerrar acred-conf-x" data-cerrar aria-label="Cerrar">×</button>
+          <span class="acred-conf-ico">${ACRED_ICONOS[o.icono] || ACRED_ICONOS.correo}</span>
+          <h3 id="acredConfTit">${escapeHtml(o.titulo || "")}</h3>
+          ${o.texto ? `<p id="acredConfTxt">${escapeHtml(o.texto)}</p>` : ""}
+        </div>
+        <div class="acred-conf-cuerpo">${quien}${flujo}${correo}${o.extra || ""}</div>
+        <div class="acred-modal-pie">
+          <button type="button" class="acred-btn acred-btn-sec" data-cerrar>${escapeHtml(o.cancelar || "Volver")}</button>
+          ${botones}
+        </div>
+      </div>`, () => fin(null));
+    ov.querySelectorAll("[data-resp]").forEach((b) => b.addEventListener("click", () => { fin(b.dataset.resp); cerrar(); }));
+    const foco = ov.querySelector("[data-foco]") || ov.querySelector(".acred-btn");
+    if (foco) foco.focus();
+  });
 }
 
 // ----- Importar -----
@@ -14635,7 +17394,7 @@ function acredAnalizarImportacion(texto) {
       nombre: [g("nombre"), g("apellidos")].filter(Boolean).join(" "), email: g("email").toLowerCase(), dni: g("dni"), equipo: g("equipo"),
       tipo_evento: g("tipo_evento"), tipo_acreditacion: g("tipo_acreditacion"), funciones: g("funciones"),
       jornada_partido: g("jornada_partido"), nota_admin: g("nota_admin"), created_at: acredFechaISO(g("created_at")),
-      estado: /aprob/.test(estadoTxt) ? "aprobada" : /rechaz|deneg/.test(estadoTxt) ? "rechazada" : "pendiente",
+      estado: /aprob/.test(estadoTxt) ? "aprobada" : /rechaz|deneg/.test(estadoTxt) ? "rechazada" : /solicit/.test(estadoTxt) ? "solicitada" : /cancel|anulad/.test(estadoTxt) ? "cancelada" : "pendiente",
     };
     const dni = o.dni.replace(/[\s.-]/g, "");
     let motivo = "";
@@ -14802,13 +17561,13 @@ function abrirEditorFormularioAcreditacion() {
           <div class="acred-campo"><label for="acredCfgTitulo">Título</label><input type="text" id="acredCfgTitulo" maxlength="120" value="${escapeHtml(c.titulo)}"><small>Lo que va antes de “|” es el título de la pantalla del PIN.</small></div>
           <div class="acred-campo"><label for="acredCfgIntro">Introducción</label><textarea id="acredCfgIntro" maxlength="600">${escapeHtml(c.intro)}</textarea></div>
           <div class="acred-campo"><label for="acredCfgAviso">Aviso</label><textarea id="acredCfgAviso" maxlength="800">${escapeHtml(c.aviso)}</textarea></div>
-          <div class="acred-campo"><label for="acredCfgConf">Texto de confirmación (casilla obligatoria)</label><textarea id="acredCfgConf" maxlength="600">${escapeHtml(c.confirmacion)}</textarea></div>
+          <div class="acred-campo"><label for="acredCfgConf">Texto de confirmación <span class="nn-req" title="Casilla obligatoria">*</span></label><textarea id="acredCfgConf" maxlength="600">${escapeHtml(c.confirmacion)}</textarea></div>
           <div class="acred-campo" style="margin:0;"><label for="acredCfgGracias">Mensaje tras enviar</label><textarea id="acredCfgGracias" maxlength="600">${escapeHtml(c.gracias)}</textarea></div>
         </div>
         <div class="acred-grupo"><h4>Correo al aprobar</h4>
           <p style="margin:0 0 12px;font-size:.78rem;color:var(--ac-suave);">Textos por defecto del correo que recibe la persona al aprobar su solicitud. Puedes cambiarlos en cada solicitud antes de aprobarla. Estos datos no se muestran en el formulario público.</p>
-          <div class="acred-campo"><label for="acredCfgRecogida">Dónde y cuándo recoger la acreditación</label><textarea id="acredCfgRecogida" maxlength="600" placeholder="Ej.: Sala de prensa del estadio, 90 minutos antes del partido">${escapeHtml(c.recogida || "")}</textarea></div>
-          <div class="acred-campo" style="margin:0;"><label for="acredCfgInstr">Instrucciones adicionales</label><textarea id="acredCfgInstr" maxlength="800">${escapeHtml(c.instrucciones_aprobada || "")}</textarea></div>
+          <div class="acred-campo"><label for="acredCfgRecogida">Dónde y cuándo recoger la acreditación</label><textarea id="acredCfgRecogida" maxlength="3000" class="acred-autoaltura" placeholder="Ej.: Sala de prensa del estadio, 90 minutos antes del partido">${escapeHtml(c.recogida || "")}</textarea></div>
+          <div class="acred-campo" style="margin:0;"><label for="acredCfgInstr">Instrucciones adicionales</label><textarea id="acredCfgInstr" maxlength="3000" class="acred-autoaltura">${escapeHtml(c.instrucciones_aprobada || "")}</textarea></div>
         </div>
         <div class="acred-grupo"><h4>Preguntas del formulario</h4>
           <p style="margin:0 0 12px;font-size:.78rem;color:var(--ac-suave);">Aquí están todas las preguntas: cambia su texto, ocúltalas u hazlas opcionales. Nombre, correo, equipo y tipo de acreditación no se pueden quitar. Las opciones de “tipo de evento” y “tipo de acreditación” se editan más abajo.</p>
@@ -14901,7 +17660,14 @@ function abrirEditorFormularioAcreditacion() {
     }
   });
   ov.querySelector("#acredCfgRestaurar").addEventListener("click", async () => {
-    if (!(await EOF.confirmar("¿Restaurar los textos y opciones del formulario a sus valores por defecto?", { peligroso: true, textoConfirmar: "Restaurar" }))) return;
+    const rRes = await acredConfirmar({
+      tono: "pend", icono: "restaurar",
+      titulo: "¿Restaurar el formulario?",
+      texto: "Los textos y las opciones volverán a sus valores por defecto. Las solicitudes ya recibidas no se tocan.",
+      cancelar: "No, volver",
+      botones: [{ id: "ok", texto: "Sí, restaurar", clase: "acred-btn-no" }],
+    });
+    if (rRes !== "ok") return;
     try {
       ACRED_CONFIG = await apiFetch("/api/acreditaciones/config", {
         method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ restaurar: true }),
@@ -15046,6 +17812,7 @@ async function abrirFormularioPersonalizado(id) {
       </div>
     </div>
     <div id="formInvitadosCaja"></div>
+    <div id="formResumenCaja"></div>
     <div class="fmz-filtros" id="formRespFiltros"></div>
     <div id="formRespLista"><p class="solicitudes-vacio">Cargando...</p></div>`;
   cargarInvitadosFormulario(); // en paralelo: no hace falta esperar a las invitaciones para ver las respuestas
@@ -15071,11 +17838,105 @@ function formInvEstado(i) {
 function formInvPlaceholder(c) {
   return c && c.alta_usuario ? "Nombre — Equipo\nNombre — Equipo 1 & Equipo 2" : "Una persona por línea";
 }
-function formInvCambiaCampo() {
+const formInvCampoActual = () => {
   const sel = document.getElementById("formInvCampo");
+  return formCamposConInvitaciones(FORM_ACTUAL).find((c) => c.id === (sel && sel.value)) || null;
+};
+// "Luis - Real Madrid", "Luis – Real Madrid" o "Luis—Real Madrid" -> { nombre: "Luis", equipo: "Real Madrid" }
+function formInvPartirLinea(linea) {
+  const t = String(linea || "").replace(/\s+/g, " ").trim();
+  const m = t.match(/\s*[—–]\s*|\s+-{1,2}\s+/);
+  if (!m) return { nombre: t, equipo: "" };
+  return { nombre: t.slice(0, m.index).trim(), equipo: t.slice(m.index + m[0].length).trim() };
+}
+function formInvCambiaCampo() { formInvPintarEntrada(); }
+// Campos que crean usuario: filas "Nombre — Equipo" con el guion ya puesto. El resto: un nombre por línea.
+function formInvPintarEntrada() {
+  const caja = document.getElementById("formInvEntrada");
+  if (!caja) return;
+  const c = formInvCampoActual();
+  if (c && c.alta_usuario) {
+    caja.innerHTML = `
+      <div class="fmz-inv-filas" id="formInvFilas"></div>
+      <div class="fmz-inv-extra">
+        <button type="button" class="acred-btn acred-btn-sec" onclick="formInvAnadirFila(true)">+ Otra persona</button>
+        <button type="button" class="acred-btn acred-btn-sec" onclick="formInvTogglePegar()">Pegar una lista</button>
+      </div>
+      <div class="acred-campo" id="formInvPegarCaja" hidden>
+        <label for="formInvNombres">Una persona por línea (vale «Nombre - Equipo»: el guion se arregla solo)</label>
+        <textarea id="formInvNombres" rows="4" placeholder="${escapeHtml(formInvPlaceholder(c))}"></textarea>
+      </div>`;
+    formInvAnadirFila(false);
+  } else {
+    caja.innerHTML = `<div class="acred-campo"><label for="formInvNombres">Personas (una por línea)</label><textarea id="formInvNombres" rows="3" placeholder="${escapeHtml(formInvPlaceholder(c))}"></textarea></div>`;
+  }
+}
+function formInvAnadirFila(enfocar, nombre = "", equipo = "") {
+  const cont = document.getElementById("formInvFilas");
+  if (!cont) return null;
+  const fila = document.createElement("div");
+  fila.className = "fmz-inv-filap";
+  fila.innerHTML = `
+    <input type="text" class="fmz-inv-nom" placeholder="Nombre" maxlength="120" aria-label="Nombre" autocomplete="off">
+    <span class="fmz-inv-guion" aria-hidden="true">—</span>
+    <input type="text" class="fmz-inv-eq" placeholder="Equipo (varios: Equipo 1 & Equipo 2)" maxlength="160" aria-label="Equipo" autocomplete="off">
+    <button type="button" class="fmz-inv-quitarfila" aria-label="Quitar esta fila" title="Quitar fila">×</button>`;
+  const nom = fila.querySelector(".fmz-inv-nom");
+  const eq = fila.querySelector(".fmz-inv-eq");
+  nom.value = nombre; eq.value = equipo;
+  // Si se pega o se escribe "Nombre - Equipo" en el nombre, se reparte solo en sus dos casillas.
+  const repartir = () => {
+    if (eq.value) return;
+    const p = formInvPartirLinea(nom.value);
+    if (p.equipo && /\s[-–—]{1,2}\s|[—–]/.test(nom.value)) { nom.value = p.nombre; eq.value = p.equipo; eq.focus(); }
+  };
+  nom.addEventListener("input", repartir);
+  nom.addEventListener("paste", (ev) => {
+    const txt = (ev.clipboardData && ev.clipboardData.getData("text")) || "";
+    const lineas = txt.split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
+    if (lineas.length < 2) return;
+    ev.preventDefault();
+    lineas.forEach((l, k) => {
+      const q = formInvPartirLinea(l);
+      if (k === 0) { nom.value = q.nombre; eq.value = q.equipo; }
+      else formInvAnadirFila(false, q.nombre, q.equipo);
+    });
+  });
+  nom.addEventListener("keydown", (ev) => { if (ev.key === "Enter") { ev.preventDefault(); eq.focus(); } });
+  eq.addEventListener("keydown", (ev) => {
+    if (ev.key !== "Enter") return;
+    ev.preventDefault();
+    if (ev.ctrlKey || ev.metaKey) { anadirInvitadosFormulario(); return; }
+    // Enter en la última fila con datos: abre otra fila para seguir escribiendo.
+    const filas = [...cont.querySelectorAll(".fmz-inv-filap")];
+    if (fila === filas[filas.length - 1] && nom.value.trim()) formInvAnadirFila(true);
+    else { const sig = fila.nextElementSibling; if (sig) sig.querySelector(".fmz-inv-nom").focus(); }
+  });
+  fila.querySelector(".fmz-inv-quitarfila").addEventListener("click", () => {
+    if (cont.children.length > 1) fila.remove();
+    else { nom.value = ""; eq.value = ""; nom.focus(); }
+  });
+  cont.appendChild(fila);
+  if (enfocar) nom.focus();
+  return fila;
+}
+function formInvTogglePegar() {
+  const caja = document.getElementById("formInvPegarCaja");
+  if (!caja) return;
+  caja.hidden = !caja.hidden;
+  if (!caja.hidden) document.getElementById("formInvNombres").focus();
+}
+// Personas escritas en el panel, ya en formato "Nombre — Equipo" (filas + lista pegada).
+function formInvPersonasEscritas() {
+  const out = [];
+  document.querySelectorAll("#formInvFilas .fmz-inv-filap").forEach((f) => {
+    const n = f.querySelector(".fmz-inv-nom").value.trim();
+    const e = f.querySelector(".fmz-inv-eq").value.trim();
+    if (n) out.push(e ? `${n} — ${e}` : n);
+  });
   const area = document.getElementById("formInvNombres");
-  if (!sel || !area) return;
-  area.placeholder = formInvPlaceholder(formCamposConInvitaciones(FORM_ACTUAL).find((c) => c.id === sel.value));
+  if (area) area.value.split("\n").map((x) => x.trim()).filter(Boolean).forEach((x) => out.push(x));
+  return out;
 }
 async function cargarInvitadosFormulario() {
   const caja = document.getElementById("formInvitadosCaja");
@@ -15088,7 +17949,14 @@ async function cargarInvitadosFormulario() {
     FORM_INVITADOS = invitados;
   } catch (err) {
     FORM_INVITADOS = [];
-    EOF.toast("No se han podido cargar las invitaciones: " + err.message, "error");
+    // 404 = el servidor publicado aún no tiene esta función (falta desplegar el worker); 500 = falta la migración SQL.
+    const aviso = err && err.status === 404 && !/formulario no encontrado/i.test(err.message || "")
+      ? "El servidor todavía no tiene la función de invitaciones: hay que desplegar el worker (ver LEEME-INVITACIONES.md)."
+      : err && err.status === 500
+        ? "Falta aplicar migracion_formularios_invitados.sql en la base de datos (ver LEEME-INVITACIONES.md)."
+        : "No se han podido cargar las invitaciones: " + (err && err.message);
+    caja.innerHTML = `<section class="fmz-inv"><h4>Personas invitadas</h4><p class="ayuda-editor" style="margin:0;">${escapeHtml(aviso)}</p><button type="button" class="acred-btn acred-btn-sec" style="margin-top:10px;" onclick="cargarInvitadosFormulario()">Reintentar</button></section>`;
+    return;
   }
   // El formulario de alta se pinta una sola vez (así no se pierde lo que se esté escribiendo); después solo se refresca la lista.
   if (!document.getElementById("formInvLista")) pintarFormularioInvitaciones();
@@ -15107,7 +17975,7 @@ function pintarFormularioInvitaciones() {
         ${campos.length > 1
           ? `<div class="acred-campo"><label for="formInvCampo">Lista</label><select id="formInvCampo" onchange="formInvCambiaCampo()">${campos.map((c) => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.etiqueta)}${rolTxt(c)}</option>`).join("")}</select></div>`
           : `<input type="hidden" id="formInvCampo" value="${escapeHtml(campos[0].id)}">`}
-        <div class="acred-campo"><label for="formInvNombres">Personas (una por línea)</label><textarea id="formInvNombres" rows="3" placeholder="${escapeHtml(formInvPlaceholder(campos[0]))}"></textarea></div>
+        <div id="formInvEntrada"></div>
         <div class="fmz-inv-fila">
           <div class="acred-campo"><label for="formInvDias">Caduca a los</label><select id="formInvDias">${FORM_INV_DIAS.map(([d, t]) => `<option value="${d}" ${d === 7 ? "selected" : ""}>${t}</option>`).join("")}</select></div>
           <button type="button" class="acred-btn" id="formInvAnadir" onclick="anadirInvitadosFormulario()">Invitar</button>
@@ -15115,6 +17983,7 @@ function pintarFormularioInvitaciones() {
       </div>
       <div id="formInvLista"></div>
     </section>`;
+  formInvPintarEntrada();
   pintarListaInvitaciones();
 }
 function pintarListaInvitaciones() {
@@ -15146,9 +18015,8 @@ function pintarListaInvitaciones() {
 async function anadirInvitadosFormulario() {
   const f = FORM_ACTUAL;
   if (!f) return;
-  const area = document.getElementById("formInvNombres");
-  const personas = area.value.split("\n").map((x) => x.trim()).filter(Boolean);
-  if (!personas.length) { EOF.toast("Escribe al menos un nombre", "error"); area.focus(); return; }
+  const personas = formInvPersonasEscritas();
+  if (!personas.length) { EOF.toast("Escribe al menos un nombre", "error"); const q = document.querySelector("#formInvFilas .fmz-inv-nom") || document.getElementById("formInvNombres"); if (q) q.focus(); return; }
   const btn = document.getElementById("formInvAnadir");
   btn.disabled = true;
   try {
@@ -15157,7 +18025,18 @@ async function anadirInvitadosFormulario() {
       body: JSON.stringify({ campo_id: document.getElementById("formInvCampo").value, personas, dias: Number(document.getElementById("formInvDias").value) }),
     });
     const omitidas = r.omitidas || [];
-    area.value = omitidas.map((o) => o.opcion).join("\n"); // lo que no se pudo añadir se queda escrito para corregirlo
+    // Se limpia el formulario y solo se queda escrito lo que no se pudo añadir, para corregirlo.
+    formInvPintarEntrada();
+    if (omitidas.length) {
+      const c = formInvCampoActual();
+      if (c && c.alta_usuario) {
+        const cont = document.getElementById("formInvFilas");
+        cont.innerHTML = "";
+        omitidas.forEach((o) => { const q = formInvPartirLinea(o.opcion); formInvAnadirFila(false, q.nombre, q.equipo); });
+      } else {
+        document.getElementById("formInvNombres").value = omitidas.map((o) => o.opcion).join("\n");
+      }
+    }
     const partes = [];
     if (r.anadidas) partes.push(`${r.anadidas} invitada${r.anadidas === 1 ? "" : "s"}`);
     if (r.renovadas) partes.push(`${r.renovadas} renovada${r.renovadas === 1 ? "" : "s"}`);
@@ -15165,7 +18044,9 @@ async function anadirInvitadosFormulario() {
     EOF.toast(partes.join(" · ") || "No había nada que añadir", omitidas.length && !r.anadidas && !r.renovadas ? "error" : "exito");
     await cargarInvitadosFormulario();
   } catch (err) {
-    EOF.toast("Error: " + err.message, "error");
+    EOF.toast(err && err.status === 404 && !/no encontrad/i.test(err.message || "")
+      ? "El servidor todavía no tiene la función de invitaciones: hay que desplegar el worker."
+      : "Error: " + err.message, "error");
   } finally {
     btn.disabled = false;
   }
@@ -15222,6 +18103,7 @@ function pintarRespuestasFormulario() {
   const cont = document.getElementById("formRespLista");
   const filt = document.getElementById("formRespFiltros");
   if (!cont || !FORM_ACTUAL) return;
+  if (typeof pintarResumenFormulario === "function") pintarResumenFormulario(); // gráficos y lectura (formularios-resumen.js)
   const nuevas = FORM_RESP.filter((r) => r.estado === "nueva").length;
   const btn = (est, txt, n) => `<button type="button" class="acred-stat ${FORM_RESP_FILTRO === est ? "activo" : ""}" onclick="filtrarRespuestasFormulario('${est}')"><span class="acred-stat-num">${n}</span><span class="acred-stat-et">${txt}</span></button>`;
   filt.innerHTML = btn("", "Total", FORM_RESP.length) + btn("nueva", "Nuevas", nuevas) + btn("revisada", "Revisadas", FORM_RESP.length - nuevas);
@@ -15237,7 +18119,7 @@ function pintarRespuestasFormulario() {
       const t = formValorTexto(r.datos[c.id]);
       return `<div class="fmz-resp-dato"><span>${escapeHtml(c.etiqueta)}</span><b>${t ? escapeHtml(t).replace(/\n/g, "<br>") : "<i>Sin respuesta</i>"}</b></div>`;
     }).join("");
-    const extra = Object.keys(r.datos).filter((k) => !campos.some((c) => c.id === k))
+    const extra = Object.keys(r.datos).filter((k) => !k.startsWith("_") && !campos.some((c) => c.id === k))
       .map((k) => `<div class="fmz-resp-dato"><span>Campo eliminado</span><b>${escapeHtml(formValorTexto(r.datos[k]))}</b></div>`).join("");
     return `
     <div class="fmz-resp ${r.estado === "nueva" ? "fmz-resp-nueva" : ""}">
@@ -15263,6 +18145,12 @@ function pintarRespuestasFormulario() {
 function formCampoVisible(c, datos) {
   if (!c.mostrar_si) return true;
   const x = datos[c.mostrar_si.campo];
+  // Respuestas antiguas (p. ej. importadas) pueden no traer el campo que condiciona (el rol):
+  // si no está pero la pregunta sí tiene respuesta, se muestra igualmente.
+  if (x == null || x === "" || (Array.isArray(x) && !x.length)) {
+    const v = datos[c.id];
+    return !(v == null || v === "" || (Array.isArray(v) && !v.length));
+  }
   return Array.isArray(x) ? x.includes(c.mostrar_si.igual) : String(x == null ? "" : x) === String(c.mostrar_si.igual);
 }
 // Resumen de la cabecera de cada respuesta: nombre y equipo (sin el rol).
@@ -16062,7 +18950,7 @@ function pintarTarjetaSolicitud(s, { mostrarBotonesRespuesta }) {
   // Detalle ampliado (visible sobre todo para admins, que son quienes
   // gestionan la mayoría de solicitudes): qué es exactamente, quién la
   // pide (con usuario y correo) y de quién es originalmente.
-  const tipoLabel = { noticia: "Noticia", previa: "Previa", cronica: "Crónica", analisis: "Análisis", opinion: "Opinión", entrevista: "Entrevista", uno_por_uno: "1x1 de jugadores" }[s.entidad_tipo] || (s.tipo_entidad === "resultado" ? "Resultado" : "Artículo");
+  const tipoLabel = { noticia: "Noticia", previa: "Previa", cronica: "Crónica", analisis: "Análisis", opinion: "Opinión", entrevista: "Entrevista", uno_por_uno: "1x1 de jugadores", rdp_previa: "Rueda de prensa previa", rdp_post: "Rueda de prensa posterior" }[s.entidad_tipo] || (s.tipo_entidad === "resultado" ? "Resultado" : "Artículo");
   const estadoEntidad = !s.entidad_existe
     ? "Ya no existe"
     : s.entidad_publicado
@@ -16460,7 +19348,7 @@ function hashtagCategoria(categoria) {
     arbitraje: "#Arbitraje",
     jurisdiccion: "#JurisdiccionDeportiva",
   };
-  return mapa[categoria] || "";
+  return mapa[categoriaParaRedes(categoria)] || "";
 }
 
 // Etiqueta con emoji que encabeza el tuit según el tipo de artículo, para
@@ -16475,6 +19363,8 @@ function etiquetaTipoX(tipo) {
     opinion: "📝 OPINIÓN",
     entrevista: "🎤 ENTREVISTA",
     uno_por_uno: "⚽ 1X1 DE JUGADORES",
+    rdp_previa: "🎤 RUEDA DE PRENSA PREVIA",
+    rdp_post: "🎤 RUEDA DE PRENSA POSTERIOR",
   };
   return mapa[tipo] || "📰 NOTICIA";
 }
@@ -16964,6 +19854,8 @@ const TIPOS_CARRUSEL = {
   opinion:   { cab: "📝 OPINIONES",  s: "opinión",   p: "opiniones",  f: true },
   entrevista:{ cab: "🎤 ENTREVISTAS",s: "entrevista",p: "entrevistas",f: true },
   uno_por_uno:{ cab: "⚽ 1X1 DE JUGADORES", s: "1x1 de jugadores", p: "1x1 de jugadores", f: false },
+  rdp_previa:{ cab: "🎤 RUEDAS DE PRENSA PREVIAS", s: "rueda de prensa previa", p: "ruedas de prensa previas", f: true },
+  rdp_post:  { cab: "🎤 RUEDAS DE PRENSA POSTERIORES", s: "rueda de prensa posterior", p: "ruedas de prensa posteriores", f: true },
 };
 const NUMEROS_CARRUSEL = ["", "una", "dos", "tres", "cuatro", "cinco", "seis", "siete", "ocho", "nueve", "diez"];
 const LIMITE_INSTAGRAM = 2200;
@@ -17082,8 +19974,9 @@ async function abrirModalCompartirCarrusel(articulos, titulo) {
   // Grupos por categoría (liga): cada uno es un post de Instagram.
   const porCategoria = new Map();
   validas.slice().sort((x, y) => String(x.programado_para || x.fecha_publicacion || "").localeCompare(String(y.programado_para || y.fecha_publicacion || ""))).forEach((a) => {
-    if (!porCategoria.has(a.categoria)) porCategoria.set(a.categoria, []);
-    porCategoria.get(a.categoria).push(a);
+    const catRedes = categoriaParaRedes(a.categoria);
+    if (!porCategoria.has(catRedes)) porCategoria.set(catRedes, []);
+    porCategoria.get(catRedes).push(a);
   });
   const rango = (c) => { const i = ORDEN_CATEGORIAS_CARRUSEL.indexOf(c); return i === -1 ? 99 : i; };
   const grupos = [...porCategoria.entries()]
@@ -18092,6 +20985,15 @@ document.getElementById("btnGuardarCollage").addEventListener("click", () => {
     trasParrafo: COLLAGE_EDITOR.trasParrafo,
     fotos: fotosValidas,
   };
+  {
+    const hCollage = huecoDeFotoTexto(collageGuardado.posicion, collageGuardado.trasParrafo);
+    const indiceEdicion = COLLAGE_EDITOR._indiceEdicion;
+    const propio = indiceEdicion !== null && indiceEdicion !== undefined ? COLLAGES_ARTICULO[indiceEdicion] : null;
+    if (hCollage && huecosOcupadosPorFotos({ excluirCollage: propio }).has(hCollage)) {
+      collageGuardado.posicion = "galeria";
+      EOF.toast("No puede haber dos fotos seguidas: el collage se ha pasado a la galería final.", "info");
+    }
+  }
   if (COLLAGE_EDITOR._indiceEdicion !== null && COLLAGE_EDITOR._indiceEdicion !== undefined) {
     COLLAGES_ARTICULO[COLLAGE_EDITOR._indiceEdicion] = collageGuardado;
   } else {
@@ -18496,7 +21398,11 @@ document.getElementById("listaEncuestas")?.addEventListener("click", async (e) =
   }
 
   if (idBorrar) {
-    if (!confirm("¿Borrar esta encuesta? Se perderán también sus votos. Esta acción no se puede deshacer.")) return;
+    if (!(await confirmarBorradoModal({
+      titulo: "Borrar encuesta", sub: "Esta acción es definitiva.",
+      items: ["La encuesta desaparece de la portada y de la noticia donde estuviera.", "Se pierden <b>todas sus opciones y sus votos</b>.", "<b>No se puede deshacer.</b> Si solo quieres que no se vote más, usa «Cerrar»: los resultados se siguen viendo."],
+      confirmar: "Sí, borrar encuesta",
+    }, "¿Borrar esta encuesta? Se perderán también sus votos. Esta acción no se puede deshacer."))) return;
     try {
       await apiFetch(`/api/admin/polls/${idBorrar}`, { method: "DELETE" });
       cargaEncuestas();
@@ -21589,7 +24495,12 @@ document.getElementById("tiendaProductosLista")?.addEventListener("click", async
   if (btnBorrar) {
     const id = btnBorrar.dataset.id;
     const prod = TIENDA_PRODUCTOS_GESTION_CACHE[id];
-    if (!confirm(`¿Borrar "${prod ? prod.nombre : "este producto"}" del catálogo? Esta acción no se puede deshacer.`)) return;
+    if (!(await confirmarBorradoModal({
+      titulo: "Borrar producto", sub: "Se quita del catálogo de la tienda.",
+      cabecera: { etiqueta: "Producto", texto: prod ? prod.nombre : "Este producto" },
+      items: ["Desaparece del catálogo <b>al momento</b>.", "<b>No se puede deshacer.</b> Si solo quieres dejar de venderlo, mejor ocúltalo o usa «Duplicar» para guardar una copia."],
+      confirmar: "Sí, borrar producto",
+    }, `¿Borrar "${prod ? prod.nombre : "este producto"}" del catálogo? Esta acción no se puede deshacer.`))) return;
     btnBorrar.disabled = true;
     try {
       await apiFetch(`/api/tienda/productos/${id}`, { method: "DELETE" });
@@ -21828,6 +24739,7 @@ function eofIrASeccion(ir, params) {
   const intentar = () => {
     const btnTab = document.querySelector(`.tabs button[data-tab="${tab}"]`);
     if (!btnTab) return false;
+    if (tab === "analiticas" && USER.rol !== "admin") return true;
     // Enlace directo a un producto de la tienda (?ir=tienda.tiendaCatalogo&producto=<id>).
     // Se marca antes del click para que cargaTiendaCatalogo() abra la ficha al terminar.
     const productoId = parseInt(params.get("producto"), 10);
@@ -22312,7 +25224,11 @@ async function guardarNoticiaRapida(ev) {
     if (bEditar) { nrEditar(bEditar.dataset.nrEditar); return; }
     const bBorrar = ev.target.closest("[data-nr-borrar]");
     if (!bBorrar) return;
-    if (!confirm("¿Borrar esta noticia rápida? No se puede deshacer.")) return;
+    if (!(await confirmarBorradoModal({
+      titulo: "Borrar noticia rápida", sub: "Esta acción es definitiva.",
+      items: ["Desaparece de la web y de «Noticias rápidas» al momento.", "<b>No se puede deshacer.</b>"],
+      confirmar: "Sí, borrar noticia rápida",
+    }, "¿Borrar esta noticia rápida? No se puede deshacer."))) return;
     try {
       await apiFetch(`/api/admin/noticias-rapidas/${bBorrar.dataset.nrBorrar}`, { method: "DELETE" });
       if (document.getElementById("nrId").value === String(bBorrar.dataset.nrBorrar)) nrResetFormulario();
@@ -22684,4 +25600,19 @@ async function enviarAnuncio() {
     anuncioPintarGrupos(); actualizarTotalAnuncio();
   }));
   ["anuncioAsunto", "anuncioMensaje", "anuncioBotonTexto", "anuncioBotonUrl"].forEach((id) => document.getElementById(id)?.addEventListener("input", anuncioActualizarPrevia));
+})();
+
+// Cuadros de texto de acreditaciones (indicaciones, mensaje, ajustes): crecen según el texto
+// para que los mensajes largos se vean enteros y no queden cortados tras un scroll diminuto.
+(function () {
+  function ajustar(t) {
+    if (!t || !t.classList || !t.classList.contains("acred-autoaltura")) return;
+    t.style.height = "auto";
+    t.style.height = Math.min(t.scrollHeight + 2, Math.round(window.innerHeight * 0.6)) + "px";
+  }
+  document.addEventListener("input", (e) => ajustar(e.target));
+  document.addEventListener("focusin", (e) => ajustar(e.target));
+  // Al pintar tarjetas o el modal de ajustes con texto ya escrito, se ajustan al momento.
+  new MutationObserver(() => document.querySelectorAll("textarea.acred-autoaltura").forEach((t) => { if (!t.dataset.aa) { t.dataset.aa = "1"; ajustar(t); } }))
+    .observe(document.body, { childList: true, subtree: true });
 })();

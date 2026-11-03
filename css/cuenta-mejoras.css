@@ -1,0 +1,234 @@
+/* =====================================================================
+   Mi cuenta (cuenta.html) + recuperar-cuenta.html + verificar-cuenta.html
+   ---------------------------------------------------------------------
+   Solo CSS. Se enlaza tras style.css y gana al <style> de cada página por
+   especificidad (body[data-page="cuenta"] / main.cuenta-wrap), no por orden.
+   No toca ids ni clases que use el JS. Modo oscuro vía [data-theme="dark"],
+   igual que el resto del sitio.
+   ===================================================================== */
+
+/* ============================ MI CUENTA ============================ */
+body[data-page="cuenta"] #paginaCuenta{max-width:820px;padding-top:28px;padding-bottom:48px;}
+
+/* Cabecera: tarjeta con banda de marca y avatar con anillo */
+body[data-page="cuenta"] .cuenta-cabecera{
+  position:relative;gap:20px;padding:26px 28px;margin-bottom:22px;overflow:hidden;
+  background:var(--tarjeta);border:1px solid var(--borde);border-radius:18px;box-shadow:var(--sombra-md);
+}
+body[data-page="cuenta"] .cuenta-cabecera::before{
+  content:"";position:absolute;inset:0 0 auto 0;height:5px;
+  background:linear-gradient(90deg,var(--rojo),var(--celeste));
+}
+body[data-page="cuenta"] .cuenta-avatar-grande{
+  width:84px;height:84px;font-size:1.8rem;
+  border:3px solid var(--tarjeta);box-shadow:0 0 0 3px var(--celeste),var(--sombra-md);
+  background-color:var(--celeste);
+}
+body[data-page="cuenta"] .cuenta-cabecera-textos h2{
+  font-family:var(--font-tit);font-size:1.6rem;letter-spacing:.01em;color:var(--marino-texto);
+}
+body[data-page="cuenta"] .cuenta-cabecera-textos p{font-size:.92rem;}
+
+/* Pestañas: una sola fila que se desliza en móvil */
+body[data-page="cuenta"] .cuenta-tabs{
+  width:100%;flex-wrap:nowrap;gap:4px;padding:5px;margin-bottom:22px;
+  background:var(--tarjeta);border:1px solid var(--borde);border-radius:999px;box-shadow:var(--sombra-sm);
+  overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;
+}
+body[data-page="cuenta"] .cuenta-tabs::-webkit-scrollbar{display:none;}
+body[data-page="cuenta"] .cuenta-tab{
+  flex:1 0 auto;white-space:nowrap;padding:10px 18px;border-radius:999px;
+  font-size:.76rem;letter-spacing:.06em;transition:background .18s,color .18s,box-shadow .18s;
+}
+body[data-page="cuenta"] .cuenta-tab:hover:not(.activa){background:var(--fondo-alt);color:var(--marino-texto);}
+body[data-page="cuenta"] .cuenta-tab.activa{
+  background:linear-gradient(135deg,var(--marino),var(--marino2));color:#fff;box-shadow:0 4px 12px rgba(12,27,46,.25);
+}
+body[data-page="cuenta"] .cuenta-tab:focus-visible{outline:2px solid var(--celeste);outline-offset:2px;}
+[data-theme="dark"] body[data-page="cuenta"] .cuenta-tab.activa{
+  background:linear-gradient(135deg,var(--celeste),var(--celeste-claro));color:var(--marino);
+}
+
+/* Paneles y tarjetas */
+body[data-page="cuenta"] .cuenta-panel.activo{animation:cuentaEntrar .28s ease both;}
+@keyframes cuentaEntrar{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+body[data-page="cuenta"] .cuenta-tarjeta{
+  position:relative;padding:28px 30px;border-radius:18px;box-shadow:var(--sombra-md);overflow:hidden;
+}
+body[data-page="cuenta"] .cuenta-panel > .cuenta-tarjeta + .cuenta-tarjeta{margin-top:18px;}
+body[data-page="cuenta"] .cuenta-tarjeta h3{
+  font-family:var(--font-tit);font-size:1.15rem;letter-spacing:.02em;margin:0 0 6px;
+}
+body[data-page="cuenta"] .cuenta-tarjeta .cuenta-ayuda{font-size:.88rem;line-height:1.55;margin-bottom:20px;}
+/* Avisos importantes (correo pendiente de añadir / verificar): resaltados */
+body[data-page="cuenta"] #tarjetaEmailPendienteX,
+body[data-page="cuenta"] #tarjetaVerificarEmail{
+  background:linear-gradient(135deg,rgba(91,184,232,.12),transparent 65%),var(--tarjeta);
+  border-left:5px solid var(--celeste);
+}
+
+/* Formularios */
+body[data-page="cuenta"] #formPerfilLector label,
+body[data-page="cuenta"] #formPasswordLector label,
+body[data-page="cuenta"] #formEmailPendienteX label{
+  font-size:.74rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--texto-suave);margin:20px 0 7px;
+}
+body[data-page="cuenta"] #formPerfilLector label:first-of-type,
+body[data-page="cuenta"] #formPasswordLector label:first-of-type,
+body[data-page="cuenta"] #formEmailPendienteX label:first-of-type{margin-top:0;}
+body[data-page="cuenta"] #formPerfilLector input[type="text"],
+body[data-page="cuenta"] #formPasswordLector input[type="password"],
+body[data-page="cuenta"] #formEmailPendienteX input[type="email"]{
+  padding:12px 14px;border-radius:10px;font-size:.95rem;background:var(--tarjeta);
+  transition:border-color .18s,box-shadow .18s;
+}
+body[data-page="cuenta"] #formPerfilLector input:hover:not(:focus),
+body[data-page="cuenta"] #formPasswordLector input:hover:not(:focus),
+body[data-page="cuenta"] #formEmailPendienteX input:hover:not(:focus){border-color:rgba(91,184,232,.55);}
+body[data-page="cuenta"] #formPerfilLector input:focus,
+body[data-page="cuenta"] #formPasswordLector input:focus,
+body[data-page="cuenta"] #formEmailPendienteX input:focus{box-shadow:0 0 0 4px rgba(91,184,232,.2);}
+/* Contraseña: campos con candado y ancho cómodo */
+body[data-page="cuenta"] #formPasswordLector{max-width:480px;}
+body[data-page="cuenta"] #formPasswordLector input[type="password"]{
+  padding-left:42px;background-repeat:no-repeat;background-position:14px center;background-size:16px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a93a6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='4' y='10' width='16' height='10' rx='2'/%3E%3Cpath d='M8 10V7a4 4 0 0 1 8 0v3'/%3E%3C/svg%3E");
+}
+[data-theme="dark"] body[data-page="cuenta"] #formPasswordLector input[type="password"]{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239aa4b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='4' y='10' width='16' height='10' rx='2'/%3E%3Cpath d='M8 10V7a4 4 0 0 1 8 0v3'/%3E%3C/svg%3E");
+}
+
+/* Foto de perfil */
+body[data-page="cuenta"] .avatar-picker{gap:22px;padding:4px 0;flex-wrap:wrap;}
+body[data-page="cuenta"] .avatar-picker-preview{
+  width:96px;height:96px;border:3px solid var(--tarjeta);
+  box-shadow:0 0 0 2px var(--celeste),var(--sombra-md);
+}
+body[data-page="cuenta"] .avatar-picker-preview:hover{transform:scale(1.04);}
+body[data-page="cuenta"] .avatar-picker-botones{flex-direction:row;flex-wrap:wrap;gap:10px;}
+
+/* Botones */
+body[data-page="cuenta"] .btn-primario-cuenta{
+  padding:13px 28px;border-radius:999px;font-size:.86rem;letter-spacing:.06em;
+  background:linear-gradient(135deg,var(--rojo),var(--rojo-oscuro));
+  box-shadow:0 4px 12px rgba(209,19,46,.28);transition:transform .15s,box-shadow .15s,filter .15s;
+}
+body[data-page="cuenta"] .btn-primario-cuenta:hover:not(:disabled){
+  opacity:1;filter:brightness(1.07);transform:translateY(-1px);box-shadow:0 8px 18px rgba(209,19,46,.32);
+}
+body[data-page="cuenta"] .btn-primario-cuenta:active:not(:disabled){transform:none;}
+body[data-page="cuenta"] .btn-secundario-cuenta{
+  padding:10px 20px;border-radius:999px;background:var(--tarjeta);border:1.5px solid var(--borde);
+  box-shadow:var(--sombra-sm);transition:border-color .15s,color .15s,transform .15s;
+}
+body[data-page="cuenta"] .btn-secundario-cuenta:hover{background:var(--tarjeta);border-color:var(--celeste);color:var(--celeste);transform:translateY(-1px);}
+body[data-page="cuenta"] .btn-primario-cuenta:focus-visible,
+body[data-page="cuenta"] .btn-secundario-cuenta:focus-visible,
+body[data-page="cuenta"] .btn-cerrar-sesion-cuenta:focus-visible{outline:2px solid var(--celeste);outline-offset:3px;}
+
+/* Casilla de avisos */
+body[data-page="cuenta"] .cuenta-check{
+  padding:14px 16px;border:1.5px solid var(--borde);border-radius:12px;background:var(--fondo-alt);
+  transition:border-color .15s,background .15s;
+}
+body[data-page="cuenta"] .cuenta-check:hover{border-color:var(--celeste);}
+
+/* Mensajes de estado: caja con fondo, como en recuperar-cuenta */
+body[data-page="cuenta"] .cuenta-msg-ok,
+body[data-page="cuenta"] .cuenta-msg-error{
+  padding:11px 14px;border-radius:10px;font-weight:600;line-height:1.45;
+}
+body[data-page="cuenta"] .cuenta-msg-ok{background:#dcfce7;color:#166534;border-left:4px solid #16a34a;}
+body[data-page="cuenta"] .cuenta-msg-error{background:#fee2e2;color:#991b1b;border-left:4px solid var(--rojo);}
+body[data-page="cuenta"] .cuenta-msg-ok::before{content:"✓ ";font-weight:800;}
+body[data-page="cuenta"] .cuenta-msg-error::before{content:"⚠ ";}
+[data-theme="dark"] body[data-page="cuenta"] .cuenta-msg-ok{background:#123321;color:#7fe0a3;}
+[data-theme="dark"] body[data-page="cuenta"] .cuenta-msg-error{background:#3b1418;color:#fca5a5;}
+
+/* Dispositivos conectados */
+body[data-page="cuenta"] .lista-sesiones-cuenta{gap:10px;}
+body[data-page="cuenta"] .fila-sesion-cuenta{
+  padding:16px 18px;border:1.5px solid var(--borde);border-radius:14px;background:var(--tarjeta);
+  box-shadow:var(--sombra-sm);transition:box-shadow .18s,border-color .18s,transform .18s;
+}
+body[data-page="cuenta"] .fila-sesion-cuenta:hover{box-shadow:var(--sombra-md);transform:translateY(-1px);}
+body[data-page="cuenta"] .fila-sesion-cuenta.es-actual{
+  border-color:#4ade80;background:linear-gradient(135deg,rgba(74,222,128,.10),transparent 60%),var(--tarjeta);
+}
+body[data-page="cuenta"] .icono-sesion-cuenta{
+  display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:50%;
+  background:linear-gradient(135deg,var(--marino),var(--marino2));color:#fff;
+}
+body[data-page="cuenta"] .icono-sesion-cuenta svg{width:22px;height:22px;}
+body[data-page="cuenta"] .etiqueta-actual-cuenta{background:#16a34a;padding:3px 10px;letter-spacing:.06em;}
+body[data-page="cuenta"] .btn-cerrar-sesion-cuenta{padding:8px 16px;font-weight:600;}
+body[data-page="cuenta"] .sesiones-vacio-cuenta{
+  text-align:center;padding:26px 12px;border:1.5px dashed var(--borde);border-radius:14px;background:var(--fondo-alt);
+}
+
+@media (max-width:640px){
+  body[data-page="cuenta"] .cuenta-cabecera{padding:20px 18px;gap:14px;}
+  body[data-page="cuenta"] .cuenta-avatar-grande{width:68px;height:68px;font-size:1.5rem;}
+  body[data-page="cuenta"] .cuenta-cabecera-textos h2{font-size:1.3rem;}
+  body[data-page="cuenta"] .cuenta-tarjeta{padding:22px 18px;border-radius:14px;}
+  body[data-page="cuenta"] .cuenta-tab{padding:10px 14px;}
+  body[data-page="cuenta"] .avatar-picker{flex-direction:column;align-items:center;text-align:center;}
+  body[data-page="cuenta"] .avatar-picker-botones{justify-content:center;}
+  body[data-page="cuenta"] .btn-primario-cuenta{width:100%;}
+}
+
+/* ============ RECUPERAR / VERIFICAR CUENTA (main.cuenta-wrap) ============ */
+main.cuenta-wrap{max-width:460px;margin:64px auto;padding:0 16px;}
+main.cuenta-wrap .cuenta-box{
+  position:relative;overflow:hidden;padding:40px 34px 34px;border-radius:20px;
+  box-shadow:var(--sombra-lg);border:1px solid var(--borde);
+}
+main.cuenta-wrap .cuenta-box::before{
+  content:"";position:absolute;inset:0 0 auto 0;height:5px;
+  background:linear-gradient(90deg,var(--rojo),var(--celeste));
+}
+main.cuenta-wrap .cuenta-box h2{font-size:1.45rem;letter-spacing:.01em;margin-bottom:8px;}
+main.cuenta-wrap .cuenta-box p{line-height:1.55;}
+main.cuenta-wrap .icono-estado{
+  display:flex;align-items:center;justify-content:center;width:76px;height:76px;margin:0 auto 16px;
+  font-size:2.2rem;border-radius:50%;background:var(--fondo-alt);border:1px solid var(--borde);
+  box-shadow:0 0 0 6px rgba(91,184,232,.12);
+}
+main.cuenta-wrap .cuenta-box label{
+  font-size:.74rem;letter-spacing:.07em;text-transform:uppercase;color:var(--texto-suave);margin:20px 0 7px;
+}
+main.cuenta-wrap .cuenta-box input{padding:13px 14px;border-radius:10px;transition:border-color .18s,box-shadow .18s;}
+main.cuenta-wrap .cuenta-box input:focus{box-shadow:0 0 0 4px rgba(91,184,232,.2);}
+main.cuenta-wrap .cuenta-box button[type="submit"]{
+  padding:14px;letter-spacing:.06em;box-shadow:0 4px 12px rgba(209,19,46,.28);
+  transition:transform .15s,box-shadow .15s,filter .15s;
+}
+main.cuenta-wrap .cuenta-box button[type="submit"]:hover:not(:disabled){
+  filter:brightness(1.07);transform:translateY(-1px);box-shadow:0 8px 18px rgba(209,19,46,.32);
+}
+main.cuenta-wrap .cuenta-box button[type="submit"]:focus-visible,
+main.cuenta-wrap .cuenta-box a.btn-volver:focus-visible{outline:2px solid var(--celeste);outline-offset:3px;}
+main.cuenta-wrap .cuenta-box a.btn-volver{
+  padding:13px 30px;letter-spacing:.06em;box-shadow:0 4px 12px rgba(209,19,46,.28);
+  transition:transform .15s,box-shadow .15s;
+}
+main.cuenta-wrap .cuenta-box a.btn-volver:hover{transform:translateY(-1px);}
+main.cuenta-wrap .cuenta-msg{border-left:4px solid currentColor;text-align:left;font-weight:600;}
+
+@media (max-width:480px){
+  main.cuenta-wrap{margin:36px auto;}
+  main.cuenta-wrap .cuenta-box{padding:32px 22px 26px;}
+}
+
+@media (prefers-reduced-motion:reduce){
+  body[data-page="cuenta"] .cuenta-panel.activo{animation:none;}
+  body[data-page="cuenta"] .fila-sesion-cuenta,
+  body[data-page="cuenta"] .btn-primario-cuenta,
+  body[data-page="cuenta"] .btn-secundario-cuenta,
+  main.cuenta-wrap .cuenta-box button[type="submit"],
+  main.cuenta-wrap .cuenta-box a.btn-volver{transition:none;}
+  body[data-page="cuenta"] .fila-sesion-cuenta:hover,
+  body[data-page="cuenta"] .btn-primario-cuenta:hover,
+  body[data-page="cuenta"] .btn-secundario-cuenta:hover{transform:none;}
+}

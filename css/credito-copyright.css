@@ -1,0 +1,15 @@
+/* Logo de copyright (©) delante de los créditos de las fotos.
+   Se dibuja con CSS (máscara + currentColor) para que tome el color del
+   texto en claro/oscuro y siga funcionando cuando el JS cambia el texto. */
+.credito-foto:not(:empty)::before,
+.vm-credito::before,
+.gal-item-credito:not(:empty)::before,
+.gals-item-credito:not(:empty)::before{
+  content:"";display:inline-block;flex:none;
+  width:1.05em;height:1.05em;margin-right:.42em;vertical-align:-.18em;
+  background-color:currentColor;opacity:.9;font-style:normal;
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9.5'/%3E%3Cpath d='M15.4 9.2a4.2 4.2 0 1 0 0 5.6'/%3E%3C/svg%3E") center/contain no-repeat;
+          mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9.5'/%3E%3Cpath d='M15.4 9.2a4.2 4.2 0 1 0 0 5.6'/%3E%3C/svg%3E") center/contain no-repeat;
+}
+
+.sin-copy::before{display:none !important;}

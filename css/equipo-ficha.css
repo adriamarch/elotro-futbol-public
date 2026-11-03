@@ -1,0 +1,166 @@
+/* =======================================================================
+   FICHA DE EQUIPO (categoria.html?club=…) — cabecera "hero" + botones de
+   sección. Todo acotado a body.ficha-club: no afecta a las páginas de
+   categoría/competición ni a otras páginas. Lo monta js/equipo-ficha.js.
+   ======================================================================= */
+
+body.ficha-club{
+  --ef-rojo:var(--rojo,#d1132e);
+  --ef-celeste:var(--celeste,#5bb8e8);
+  --ef-ancla:calc(var(--club-ancla,0px) + 82px);
+}
+
+/* ---------- Hero ---------- */
+body.ficha-club .club-hero{
+  position:relative;overflow:hidden;isolation:isolate;
+  display:grid;grid-template-columns:auto 1fr;grid-template-areas:"escudo texto" "info info";
+  gap:22px 30px;align-items:center;
+  margin:18px 0 16px;padding:30px 34px 26px;border-radius:24px;color:#fff;
+  background:
+    radial-gradient(520px 260px at 92% -10%,color-mix(in srgb,var(--ef-celeste) 38%,transparent),transparent 70%),
+    radial-gradient(420px 240px at -5% 115%,color-mix(in srgb,var(--ef-rojo) 45%,transparent),transparent 70%),
+    linear-gradient(135deg,#0c1b2e 0%,#142c4c 100%);
+  box-shadow:0 1px 2px rgba(12,27,46,.1),0 22px 48px -20px rgba(12,27,46,.55);
+  border:1px solid rgba(255,255,255,.08);
+}
+body.ficha-club .club-hero::before{
+  content:"";position:absolute;inset:0;z-index:-1;opacity:.5;pointer-events:none;
+  background:repeating-linear-gradient(115deg,rgba(255,255,255,.035) 0 2px,transparent 2px 14px);
+}
+body.ficha-club .club-hero::after{
+  content:"";position:absolute;left:0;right:0;bottom:0;height:4px;
+  background:linear-gradient(90deg,var(--ef-rojo),var(--ef-celeste));
+}
+
+/* Escudo */
+body.ficha-club .club-hero .cabecera-club{grid-area:escudo;margin:0;display:block;}
+body.ficha-club .club-hero .cabecera-club-escudo-wrap{
+  width:132px;height:132px;padding:16px;border-radius:50%;
+  background:#fff;box-shadow:0 0 0 6px rgba(255,255,255,.12),0 14px 30px -10px rgba(0,0,0,.55);
+}
+body.ficha-club .club-hero .cabecera-club-escudo{filter:none;}
+
+/* Texto */
+body.ficha-club .club-hero-texto{grid-area:texto;min-width:0;display:flex;flex-direction:column;gap:6px;}
+body.ficha-club .club-hero-kicker{
+  margin:0;font-family:var(--font-tit);font-size:.74rem;font-weight:700;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--ef-celeste);
+}
+body.ficha-club .club-hero .section-title{
+  margin:0;padding:0;border:0;display:block;color:#fff;text-transform:none;
+  font-size:clamp(1.9rem,4.6vw,3.1rem);line-height:1.05;letter-spacing:-.01em;overflow-wrap:anywhere;
+  white-space:normal;overflow:visible;text-overflow:clip;
+}
+body.ficha-club .club-hero .section-subtitle{
+  margin:2px 0 0;font-size:.84rem;color:rgba(255,255,255,.72);text-transform:none;letter-spacing:.01em;
+  font-family:inherit;
+}
+body.ficha-club .club-hero-acciones{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px;}
+body.ficha-club .club-hero-acciones:empty{display:none;}
+body.ficha-club .club-hero .btn-comparar-equipo{
+  padding:10px 20px;border-radius:999px;border:1.5px solid rgba(255,255,255,.55);color:#fff;
+  background:rgba(255,255,255,.08);backdrop-filter:blur(4px);
+}
+body.ficha-club .club-hero .btn-comparar-equipo:hover{background:#fff;color:#0c1b2e;border-color:#fff;}
+body.ficha-club .club-hero .btn-comparar-equipo:focus-visible{outline:3px solid #ffbf47;outline-offset:2px;}
+
+/* Datos del club (entrenador, estadio, fundación, ciudad) */
+body.ficha-club .club-hero .info-club{
+  grid-area:info;margin:0;padding:0;border:0;border-radius:0;box-shadow:none;background:none;
+}
+body.ficha-club .club-hero .info-club-titulo{display:none;}
+body.ficha-club .club-hero .info-club-datos{grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;}
+body.ficha-club .club-hero .info-club-dato{
+  padding:12px 14px;border-radius:16px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);
+  transition:background .15s,transform .15s;
+}
+body.ficha-club .club-hero .info-club-dato:hover{background:rgba(255,255,255,.12);transform:translateY(-1px);}
+body.ficha-club .club-hero .info-club-icono{background:rgba(255,255,255,.14);color:#fff;}
+body.ficha-club .club-hero .info-club-etiqueta{color:rgba(255,255,255,.62);}
+body.ficha-club .club-hero .info-club-valor{color:#fff;}
+body.ficha-club .club-hero .info-club-enlace{border-bottom-color:rgba(255,255,255,.5);}
+
+/* ---------- Barra de botones por sección ---------- */
+body.ficha-club .club-nav{
+  position:sticky;top:var(--club-nav-top,0px);z-index:40;
+  margin:0 0 26px;padding:8px 0;
+  background:color-mix(in srgb,var(--fondo,#fff) 88%,transparent);
+  backdrop-filter:saturate(1.4) blur(10px);-webkit-backdrop-filter:saturate(1.4) blur(10px);
+}
+body.ficha-club .club-nav-lista{
+  position:relative;display:flex;gap:8px;overflow-x:auto;padding:6px;border-radius:18px;
+  background:var(--fondo-alt);border:1px solid var(--borde);box-shadow:var(--sombra-sm);
+  scrollbar-width:none;scroll-snap-type:x proximity;
+}
+body.ficha-club .club-nav-lista::-webkit-scrollbar{display:none;}
+body.ficha-club .club-nav-btn{
+  flex:0 0 auto;display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:9px 18px;
+  border:1px solid transparent;border-radius:13px;background:none;cursor:pointer;scroll-snap-align:start;
+  font:inherit;font-size:.9rem;font-weight:700;color:var(--texto-suave);
+  transition:background .15s,color .15s,box-shadow .15s,border-color .15s;
+}
+body.ficha-club .club-nav-btn[hidden]{display:none;}
+body.ficha-club .club-nav-btn svg{width:18px;height:18px;flex:none;}
+body.ficha-club .club-nav-btn:hover{color:var(--marino-texto);background:var(--tarjeta);border-color:var(--borde);}
+body.ficha-club .club-nav-btn:focus-visible{outline:3px solid var(--ef-celeste);outline-offset:2px;}
+/* Píldora roja que se desliza hasta el botón activo (la mueve equipo-ficha.js) */
+body.ficha-club .club-nav-indicador{
+  position:absolute;left:0;top:6px;bottom:6px;width:0;border-radius:13px;pointer-events:none;opacity:0;
+  background:linear-gradient(135deg,var(--ef-rojo),color-mix(in srgb,var(--ef-rojo) 72%,#000));
+  box-shadow:0 8px 18px -8px color-mix(in srgb,var(--ef-rojo) 75%,transparent);
+  transition:transform .32s cubic-bezier(.3,.9,.3,1),width .32s cubic-bezier(.3,.9,.3,1),opacity .2s;
+}
+body.ficha-club .club-nav-btn{position:relative;z-index:1;}
+body.ficha-club .club-nav-btn.activo{color:#fff;background:none;border-color:transparent;}
+body.ficha-club .club-nav-btn.activo:hover{background:none;border-color:transparent;}
+body.ficha-club .club-nav-n{
+  min-width:20px;padding:1px 7px;border-radius:999px;font-size:.7rem;font-weight:700;line-height:1.5;text-align:center;
+  background:var(--borde);color:var(--marino-texto);font-variant-numeric:tabular-nums;
+}
+body.ficha-club .club-nav-n[hidden]{display:none;}
+body.ficha-club .club-nav-btn.activo .club-nav-n{background:rgba(255,255,255,.25);color:#fff;}
+body.ficha-club .club-nav-btn--accion{
+  margin-left:auto;border-color:var(--borde);color:var(--marino-texto);background:var(--tarjeta);
+}
+body.ficha-club .club-nav-btn--accion:hover{border-color:var(--ef-rojo);color:var(--ef-rojo);}
+
+/* ---------- Secciones ---------- */
+body.ficha-club #club-resultados,
+body.ficha-club #club-proximos,
+body.ficha-club #plantillaEquipo,
+body.ficha-club #club-noticias{scroll-margin-top:var(--ef-ancla);outline:none;}
+body.ficha-club .partidos-club{margin-top:0;}
+body.ficha-club .pc{margin-top:8px;}
+body.ficha-club .club-seccion-titulo{
+  display:flex;align-items:center;gap:12px;margin:34px 0 18px;
+  font-family:var(--font-tit);font-size:1.7rem;font-weight:700;line-height:1.1;color:var(--marino-texto);
+}
+body.ficha-club .club-seccion-titulo::before{content:"";flex:none;width:5px;height:1.1em;border-radius:3px;background:var(--ef-rojo);}
+body.ficha-club .club-seccion-titulo::after{content:"";flex:1;height:1px;background:var(--borde);}
+
+/* ---------- Móvil ---------- */
+@media (max-width:720px){
+  body.ficha-club .club-hero{
+    grid-template-columns:1fr;grid-template-areas:"escudo" "texto" "info";
+    justify-items:center;text-align:center;padding:26px 18px 22px;gap:16px;border-radius:20px;
+  }
+  body.ficha-club .club-hero .cabecera-club-escudo-wrap{width:104px;height:104px;padding:12px;}
+  body.ficha-club .club-hero-texto{align-items:center;}
+  body.ficha-club .club-hero-acciones{justify-content:center;}
+  body.ficha-club .club-hero .info-club{width:100%;}
+  body.ficha-club .club-hero .info-club-datos{grid-template-columns:1fr 1fr;text-align:left;}
+  body.ficha-club .club-nav{margin-bottom:20px;}
+  body.ficha-club .club-nav-btn{padding:9px 14px;font-size:.84rem;}
+  body.ficha-club .club-nav-btn--accion{margin-left:0;}
+  body.ficha-club .club-seccion-titulo{font-size:1.35rem;margin-top:26px;}
+}
+@media (max-width:400px){
+  body.ficha-club .club-hero .info-club-datos{grid-template-columns:1fr;}
+}
+
+@media (prefers-reduced-motion:reduce){
+  body.ficha-club .club-hero .info-club-dato,
+  body.ficha-club .club-nav-btn,
+  body.ficha-club .club-nav-indicador{transition:none;}
+  body.ficha-club .club-hero .info-club-dato:hover{transform:none;}
+}

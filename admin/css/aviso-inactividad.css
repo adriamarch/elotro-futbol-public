@@ -1,0 +1,59 @@
+/* Aviso de cierre de sesión por inactividad (cuenta atrás de 2 minutos). */
+.aviso-inactividad{position:fixed;inset:0;z-index:100000;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(8,16,30,.66);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);}
+.aviso-inactividad.visible{display:flex;animation:avisoInactEntra .25s ease-out;}
+@keyframes avisoInactEntra{from{opacity:0}to{opacity:1}}
+.aviso-inactividad-tarjeta{width:100%;max-width:400px;text-align:center;padding:28px 26px 24px;border-radius:22px;background:var(--tarjeta,#fff);color:var(--texto,#0c1b2e);border:1px solid var(--borde,#dfe4ec);box-shadow:0 24px 70px rgba(0,0,0,.4);animation:avisoInactSube .3s cubic-bezier(.2,.9,.3,1.2);}
+@keyframes avisoInactSube{from{transform:translateY(14px) scale(.96);opacity:0}to{transform:none;opacity:1}}
+.aviso-inactividad-reloj{position:relative;width:132px;height:132px;margin:0 auto 14px;}
+.aviso-inactividad-reloj svg{transform:rotate(-90deg);display:block;}
+.aviso-inactividad-pista{fill:none;stroke:rgba(120,132,152,.22);stroke-width:9;}
+.aviso-inactividad-progreso{fill:none;stroke:#f59e0b;stroke-width:9;stroke-linecap:round;stroke-dasharray:100;stroke-dashoffset:0;transition:stroke-dashoffset 1s linear,stroke .3s;}
+.aviso-inactividad-tiempo{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:2rem;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:.5px;}
+.aviso-inactividad.urgente .aviso-inactividad-progreso{stroke:#e11d48;}
+.aviso-inactividad.urgente .aviso-inactividad-tiempo{color:#e11d48;animation:avisoInactLate 1s ease-in-out infinite;}
+@keyframes avisoInactLate{50%{transform:scale(1.08)}}
+.aviso-inactividad-tarjeta h2{margin:0 0 8px;font-size:1.35rem;}
+.aviso-inactividad-tarjeta p{margin:0 0 8px;font-size:.95rem;line-height:1.5;}
+.aviso-inactividad-nota{font-size:.82rem !important;opacity:.7;}
+.aviso-inactividad-botones{display:flex;flex-direction:column;gap:8px;margin-top:16px;}
+.aviso-inactividad-seguir{padding:13px 18px;border:0;border-radius:12px;background:var(--celeste,#1d6fe0);color:#fff;font:inherit;font-weight:700;cursor:pointer;}
+.aviso-inactividad-seguir:hover{filter:brightness(1.08);}
+.aviso-inactividad-salir{padding:10px 18px;border:0;background:none;color:inherit;font:inherit;font-size:.88rem;opacity:.7;cursor:pointer;text-decoration:underline;}
+@media (prefers-reduced-motion:reduce){.aviso-inactividad.visible,.aviso-inactividad-tarjeta,.aviso-inactividad.urgente .aviso-inactividad-tiempo{animation:none;}}
+
+/* ---------- Pantalla "Sesión cerrada" tras el cierre por inactividad ---------- */
+.sesion-cerrada{position:fixed;inset:0;z-index:100001;display:flex;align-items:center;justify-content:center;padding:20px;overflow:hidden;background:linear-gradient(160deg,#0a1626 0%,#0f2742 55%,#12335a 100%);opacity:0;transition:opacity .35s ease;}
+.sesion-cerrada.visible{opacity:1;}
+.sesion-cerrada-fondo span{position:absolute;border-radius:50%;filter:blur(70px);opacity:.5;pointer-events:none;}
+.sesion-cerrada-fondo span:first-child{width:380px;height:380px;top:-110px;left:-90px;background:#1d6fe0;animation:sesionCerradaFlota 14s ease-in-out infinite;}
+.sesion-cerrada-fondo span:last-child{width:340px;height:340px;bottom:-120px;right:-80px;background:#d1132e;opacity:.32;animation:sesionCerradaFlota 17s ease-in-out infinite reverse;}
+@keyframes sesionCerradaFlota{50%{transform:translate(36px,28px) scale(1.12)}}
+.sesion-cerrada-tarjeta{position:relative;width:100%;max-width:440px;padding:38px 30px 28px;border-radius:26px;text-align:center;background:var(--tarjeta,#fff);color:var(--texto,#0c1b2e);box-shadow:0 30px 80px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.08);transform:translateY(18px) scale(.95);transition:transform .45s cubic-bezier(.2,.9,.3,1.15);overflow:hidden;}
+.sesion-cerrada.visible .sesion-cerrada-tarjeta{transform:none;}
+.sesion-cerrada-tarjeta::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#d1132e,#1d6fe0);}
+.sesion-cerrada-icono{position:relative;width:86px;height:86px;margin:0 auto 20px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#1d6fe0;background:linear-gradient(145deg,#e8f1fd,#d5e6fb);box-shadow:0 0 0 9px rgba(29,111,224,.09);}
+.sesion-cerrada-icono::after{content:"";position:absolute;inset:-9px;border-radius:50%;border:2px solid rgba(29,111,224,.35);animation:sesionCerradaOnda 2.6s ease-out infinite;}
+@keyframes sesionCerradaOnda{from{transform:scale(.92);opacity:.9}to{transform:scale(1.35);opacity:0}}
+.sesion-cerrada-icono svg{width:46px;height:46px;overflow:visible;}
+.sesion-cerrada-arco{transform-origin:24px 21px;animation:sesionCerradaCandado .7s .35s cubic-bezier(.3,1.4,.5,1) both;}
+@keyframes sesionCerradaCandado{from{transform:translateY(-7px)}to{transform:none}}
+.sesion-cerrada-tarjeta h2{margin:0 0 8px;font-size:1.65rem;font-weight:800;letter-spacing:-.3px;}
+.sesion-cerrada-sub{margin:0 0 20px;font-size:.98rem;line-height:1.55;opacity:.8;}
+.sesion-cerrada-lista{list-style:none;margin:0 0 24px;padding:0;display:flex;flex-direction:column;gap:10px;text-align:left;}
+.sesion-cerrada-lista li{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;font-size:.88rem;line-height:1.45;background:var(--gris-claro,#f1f4f8);border:1px solid var(--borde,#e3e8ef);}
+.sesion-cerrada-chip{flex:0 0 auto;width:36px;height:36px;border-radius:11px;display:flex;align-items:center;justify-content:center;color:#1d6fe0;background:rgba(29,111,224,.12);}
+.sesion-cerrada-chip svg{width:20px;height:20px;}
+.sesion-cerrada-borrador .sesion-cerrada-chip{color:#16a34a;background:rgba(22,163,74,.13);}
+.sesion-cerrada-boton{width:100%;display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:15px 20px;border:0;border-radius:14px;font:inherit;font-size:1rem;font-weight:700;color:#fff;cursor:pointer;background:linear-gradient(135deg,#1d6fe0,#164fb0);box-shadow:0 10px 24px rgba(29,111,224,.38);transition:transform .15s,box-shadow .15s,filter .15s;}
+.sesion-cerrada-boton svg{width:20px;height:20px;transition:transform .2s;}
+.sesion-cerrada-boton:hover{filter:brightness(1.08);box-shadow:0 14px 30px rgba(29,111,224,.46);}
+.sesion-cerrada-boton:hover svg{transform:translateX(4px);}
+.sesion-cerrada-boton:active{transform:translateY(1px);}
+.sesion-cerrada-boton:focus-visible{outline:3px solid rgba(29,111,224,.45);outline-offset:3px;}
+[data-theme="dark"] .sesion-cerrada-tarjeta{box-shadow:0 30px 80px rgba(0,0,0,.65),0 0 0 1px rgba(255,255,255,.1);}
+[data-theme="dark"] .sesion-cerrada-icono{background:linear-gradient(145deg,rgba(29,111,224,.28),rgba(29,111,224,.14));color:#7db4ff;}
+[data-theme="dark"] .sesion-cerrada-lista li{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.09);}
+[data-theme="dark"] .sesion-cerrada-chip{color:#7db4ff;background:rgba(125,180,255,.14);}
+[data-theme="dark"] .sesion-cerrada-borrador .sesion-cerrada-chip{color:#4ade80;background:rgba(74,222,128,.14);}
+@media (max-width:480px){.sesion-cerrada-tarjeta{padding:32px 20px 22px;border-radius:22px}.sesion-cerrada-tarjeta h2{font-size:1.45rem}}
+@media (prefers-reduced-motion:reduce){.sesion-cerrada,.sesion-cerrada-tarjeta,.sesion-cerrada-fondo span,.sesion-cerrada-icono::after,.sesion-cerrada-arco{animation:none;transition:none;}}

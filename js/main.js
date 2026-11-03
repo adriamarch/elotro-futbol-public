@@ -37,14 +37,156 @@ async function iniciarPortada() {
   if (document.getElementById("grid-categoria-home")) tareas.push(cargaNoticiasRecientes());
   await Promise.allSettled(tareas);
   portadaCargaDiferida(() => {
+    if (document.getElementById("seccion-galerias")) cargaGaleriasPortada();
     if (document.getElementById("seccion-entrevista")) cargaEntrevistaDestacada();
     if (document.getElementById("seccion-ranking")) cargaRanking();
+    if (document.getElementById("seccion-reconocimiento")) cargaReconocimiento();
     if (document.getElementById("bloques-competicion")) cargaBloquesCompeticion();
   });
+  iniciarPortadaEnVivo();
 }
 
 // Ejecuta fn una sola vez cuando el centinela (#portada-diferida) está a
 // menos de 900px de la pantalla; sin IntersectionObserver, se ejecuta ya.
+// ---------- Portada en directo ----------
+// Sin recargar la página, la portada se mantiene al día:
+//  - cada ~20 s se piden destacadas + últimas + banner. Si el hero cambia
+//    se repinta el hero; "Última hora" se repinta si cambia (o cada minuto,
+//    para que "hace X min" avance); y si ha cambiado el listado de últimas
+//    (se publicó o editó algo) se refrescan también las "Noticias recientes".
+//  - cada ~2 min se refrescan "Más leídas/Tendencias".
+//  - las encuestas tienen su propia tarea (~15 s): ver iniciarEncuestasEnVivo en encuestas.js.
+// Todo se compara por firma y solo se toca el DOM si algo ha cambiado.
+const VIVO_PORTADA = { firmaHero: null, firmaUltimas: null, firmaUH: null };
+
+// Solo los campos que se ven en las tarjetas: así un cambio de contador
+// interno (vistas, etc.) no provoca repintados.
+function firmaArticulos(lista) {
+  return EOF_VIVO.firma((lista || []).map((a) => a && ({
+    id: a.id, slug: a.slug, t: a.titulo, s: a.subtitulo, c: a.categoria, cl: a.club, tp: a.tipo,
+    f: a.fecha_publicacion, i: a.imagen_url, if: a.imagen_foco, im: a.imagenes,
+    a: a.autor_nombre, co: a.coautor_nombre, r: a.contenido,
+  })));
+}
+function firmaHeroPortada(destacados, ultimas) {
+  return firmaArticulos(destacados) + (destacados.length < 5 ? "|" + firmaArticulos((ultimas || []).slice(0, 8)) : "");
+}
+
+async function pedirJSONVivo(path) {
+  const res = await apiFetch(path);
+  if (!res.ok) throw new Error("HTTP " + res.status + " " + path);
+  return res.json();
+}
+
+async function refrescarPortadaEnVivo() {
+  const [dest, ult, banner] = await Promise.all([
+    pedirJSONVivo("/api/articles?destacado=1&limit=5"),
+    pedirJSONVivo("/api/articles?limit=8"),
+    pedirJSONVivo("/api/articles/banner-urgente").catch(() => null),
+  ]);
+  const destacados = dest.articles, ultimas = ult.articles;
+  if (!Array.isArray(destacados) || !Array.isArray(ultimas)) throw new Error("respuesta inesperada");
+
+  // 1) Hero
+  let heroCambio = false;
+  const hero = document.getElementById("hero");
+  if (hero && destacados.length) {
+    const fh = firmaHeroPortada(destacados, ultimas);
+    if (fh !== VIVO_PORTADA.firmaHero) {
+      VIVO_PORTADA.firmaHero = fh;
+      pintarHero(destacados, ultimas);
+      EOF_VIVO.resaltar(hero);
+      heroCambio = true;
+    }
+  }
+
+  // 2) Última hora (incluye el minuto actual en la firma para que "hace X min" avance)
+  const seccionUH = document.getElementById("seccion-ultima-hora");
+  if (seccionUH) {
+    const urgente = banner && banner.activo && banner.titulo && banner.url ? banner : null;
+    const fu = firmaArticulos(ultimas) + "|" + EOF_VIVO.firma(urgente) + "|" + Math.floor(Date.now() / 60000);
+    if (fu !== VIVO_PORTADA.firmaUH) {
+      VIVO_PORTADA.firmaUH = fu;
+      pintarUltimaHora(seccionUH, ultimas, urgente);
+    }
+  }
+
+  // 3) Noticias recientes: solo si algo se ha publicado/editado o cambió el hero
+  const fUlt = firmaArticulos(ultimas);
+  const ultimasCambiaron = fUlt !== VIVO_PORTADA.firmaUltimas;
+  VIVO_PORTADA.firmaUltimas = fUlt;
+  if ((ultimasCambiaron || heroCambio) && document.getElementById("grid-categoria-home")) {
+    await refrescarRecientesEnVivo();
+  }
+}
+
+async function refrescarRecientesEnVivo() {
+  const cont = document.getElementById("grid-categoria-home");
+  if (!cont || recientesCargando) return;
+  const grid = document.getElementById("grid-recientes");
+  // Si antes no había ninguna noticia reciente, se vuelve a montar el bloque.
+  if (!grid) {
+    const { articles = [] } = await pedirJSONVivo(`/api/articles?limit=${RECIENTES_PAGINA_INICIAL}&offset=0${portadaExcluirParam(PORTADA_HERO)}`);
+    if (articles.length) { recientesOffset = 0; recientesPintados.clear(); await cargaNoticiasRecientes(); }
+    return;
+  }
+  // Se piden tantas como hay pintadas (por si el lector ya pulsó "Ver más").
+  const n = Math.min(40, Math.max(RECIENTES_PAGINA_INICIAL, recientesDatos.length));
+  const { articles = [], hay_mas = false } = await pedirJSONVivo(`/api/articles?limit=${n}&offset=0${portadaExcluirParam(PORTADA_HERO)}`);
+  if (!articles.length) return;
+  if (firmaArticulos(articles) === firmaArticulos(recientesDatos)) return;
+
+  const idsAntes = new Set(recientesDatos.map((a) => a.id));
+  recientesDatos = articles.slice();
+  recientesOffset = articles.length;
+  recientesPintados.clear();
+  articles.forEach((a) => recientesPintados.add(a.id));
+  portadaRegistrar(articles);
+  grid.innerHTML = articles.map(cardHTML).join("");
+  articles.forEach((a) => {
+    if (idsAntes.has(a.id)) return;
+    const tarjeta = grid.querySelector(`[data-art-id="${Number(a.id)}"]`);
+    if (tarjeta) EOF_VIVO.resaltar(tarjeta);
+  });
+  const zonaBoton = document.getElementById("cargar-mas-home");
+  if (zonaBoton) zonaBoton.hidden = !hay_mas;
+}
+
+// Más leídas / tendencias y encuestas cambian más despacio.
+const VIVO_LENTO = { firmaRanking: null, firmaEncuestas: null };
+async function refrescarPortadaLentoEnVivo() {
+  if (document.getElementById("seccion-ranking") && document.getElementById("seccion-ranking").innerHTML.trim()) {
+    const r = await pedirJSONVivo("/api/articles/ranking?limit=5");
+    const f = EOF_VIVO.firma([r.mas_leidas, r.tendencias].map((l) => (l || []).map((a) => [a.id, a.titulo, a.slug])));
+    if (VIVO_LENTO.firmaRanking === null) VIVO_LENTO.firmaRanking = f;
+    else if (f !== VIVO_LENTO.firmaRanking) { VIVO_LENTO.firmaRanking = f; await cargaRanking(); }
+  }
+}
+
+function iniciarPortadaEnVivo() {
+  if (!window.EOF_VIVO) return;
+  EOF_VIVO.cada("portada", refrescarPortadaEnVivo, 20000);
+  EOF_VIVO.cada("portada-lento", refrescarPortadaLentoEnVivo, 120000);
+  // Encuestas: resultados en directo cada ~15 s (ver encuestas.js).
+  if (typeof iniciarEncuestasEnVivo === "function" && document.getElementById("seccion-encuestas-portada")) {
+    iniciarEncuestasEnVivo({
+      nombre: "encuestas-portada",
+      pedir: async () => {
+        const res = await apiFetchLector("/api/polls/portada");
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return (await res.json()).encuestas;
+      },
+      // Se añadió/quitó una encuesta de portada: se vuelve a montar la sección.
+      alCambiarConjunto: () => {
+        const sec = document.getElementById("seccion-encuestas-portada");
+        // Si el lector está eligiendo opción, se espera al siguiente ciclo.
+        if (sec && (sec.matches(":focus-within") || sec.querySelector("input:checked"))) return;
+        return cargaEncuestasPortada();
+      },
+    });
+  }
+}
+
 function portadaCargaDiferida(fn) {
   const centinela = document.getElementById("portada-diferida");
   if (!centinela || typeof IntersectionObserver === "undefined") { fn(); return; }
@@ -81,7 +223,7 @@ function filaNoticiaHTML(a, { numero = "", icono = "" } = {}) {
       ${icono ? `<span class="fila-icono" aria-hidden="true">${icono}</span>` : ""}
       ${EOF_FOCO.img({ src: img, alt: "", foco: portada.foco })}
       <div class="fila-texto">
-        <span class="cat">${escapeHtml(categoriaLabel(a.categoria))}</span>
+        ${contextoNoticiaHTML(a, { variante: "compacta" })}
         <h3>${escapeHtml(a.titulo)}</h3>
         <span class="meta">${formatFecha(a.fecha_publicacion)}</span>
       </div>
@@ -104,6 +246,8 @@ let recientesCargando = false;
 // Ids ya pintados en ESTE grid (solo para no duplicar al paginar; no se
 // mezcla con PORTADA_VISTOS, que también rellenan los módulos de más abajo).
 const recientesPintados = new Set();
+// Artículos que hay ahora mismo en el grid (para detectar cambios en directo).
+let recientesDatos = [];
 
 function pedirRecientes(limit) {
   return conReintento(async () => {
@@ -128,6 +272,7 @@ async function cargaNoticiasRecientes() {
     recientesOffset += articles.length;
     portadaRegistrar(articles);
     articles.forEach((a) => recientesPintados.add(a.id));
+    recientesDatos = articles.slice();
     cont.innerHTML = `<div class="grid-noticias" id="grid-recientes">${articles.map(cardHTML).join("")}</div>`;
     if (zonaBoton) {
       zonaBoton.hidden = !hay_mas;
@@ -148,8 +293,12 @@ async function cargaNoticiasRecientes() {
   }
 }
 
-async function cargarMasRecientes() {
+async function cargarMasRecientes(ev) {
   if (recientesCargando) return;
+  // detail === 0: se activó con el teclado (Enter/Espacio). Con el dedo o el ratón
+  // no se mueve el foco: el botón se deshabilita mientras carga, el foco se pierde
+  // y el navegador pintaría el aro azul de "foco de teclado" sobre la primera tarjeta.
+  const porTeclado = !!ev && ev.detail === 0;
   const boton = document.getElementById("btn-cargar-mas");
   const zonaBoton = document.getElementById("cargar-mas-home");
   const grid = document.getElementById("grid-recientes");
@@ -167,12 +316,13 @@ async function cargarMasRecientes() {
     const nuevas = articles.filter((a) => !recientesPintados.has(a.id));
     portadaRegistrar(articles);
     articles.forEach((a) => recientesPintados.add(a.id));
+    recientesDatos = recientesDatos.concat(nuevas);
     if (nuevas.length) {
       const marca = grid.children.length;
       grid.insertAdjacentHTML("beforeend", nuevas.map(cardHTML).join(""));
-      // Teclado/lector de pantalla: el foco pasa a la primera tarjeta nueva.
+      // Solo con teclado: el foco pasa a la primera tarjeta nueva.
       const primera = grid.children[marca];
-      if (primera && typeof primera.focus === "function") primera.focus({ preventScroll: false });
+      if (porTeclado && primera && typeof primera.focus === "function") primera.focus({ preventScroll: false });
     }
     if (zonaBoton) zonaBoton.hidden = !hay_mas;
     if (!hay_mas && aviso) aviso.textContent = "";
@@ -209,8 +359,9 @@ async function cargaUltimaHora(ultimas) {
   }
   pintarUltimaHora(seccion, ultimas || [], urgente);
 
-  // Se refresca cada 90 s mientras la pestaña esté a la vista.
-  if (!ultimaHoraTemporizador) {
+  // Con en-vivo.js la actualiza refrescarPortadaEnVivo (cada ~20 s); este
+  // intervalo de 90 s solo queda como respaldo si ese módulo no está cargado.
+  if (!window.EOF_VIVO && !ultimaHoraTemporizador) {
     ultimaHoraTemporizador = setInterval(async () => {
       if (document.hidden) return;
       try {
@@ -247,7 +398,7 @@ function pintarUltimaHora(seccion, articulos, urgente) {
         <a href="${urlNoticia(a.categoria, a.slug)}">
           <span class="uh-hora">${textoHace(min)}</span>
           <span class="uh-titulo">${escapeHtml(a.titulo)}</span>
-          <span class="uh-cat">${escapeHtml(categoriaLabel(a.categoria))}</span>
+          <span class="uh-cat">${escapeHtml(categoriaLabel(a.categoria))}${clubArticuloLegible(a.club) ? " · " + escapeHtml(clubArticuloLegible(a.club)) : ""}</span>
         </a>
       </li>`).join("");
 
@@ -303,6 +454,173 @@ async function cargaEntrevistaDestacada() {
   }
 }
 
+// ---------- Galerías de partidos (portada) ----------
+// Tarjetas como las de noticias (.card dentro de .grid-noticias): cada galería
+// de partido sale con la PORTADA que eligió quien la publicó (campo "portada"
+// de GET /api/galerias/partidos; si el servidor aún no la manda, la primera
+// foto), los equipos, el marcador, la fecha y el número de fotos. Chips para
+// filtrar por competición (o "Recientes") y enlace a "Ver todas las galerías".
+// Si no hay ningún partido con fotos, el módulo no sale.
+async function cargaGaleriasPortada() {
+  const seccion = document.getElementById("seccion-galerias");
+  if (!seccion) return;
+
+  const MAX_TARJETAS = 5; // el diseño se adapta a cuántas haya (1, 2, 3, 4 o 5)
+  const ORDEN = ["hypermotion", "primera_federacion", "segunda_federacion", "tercera_federacion", "copa_del_rey", "copa_federacion"];
+  const estado = { comp: "", partidos: [], competiciones: [], cache: {}, peticion: 0 };
+
+  const etiquetaComp = (c) => (typeof CATEGORIES !== "undefined" && CATEGORIES[c]) || c || "";
+  const logoComp = (c) => (typeof CATEGORY_LOGOS !== "undefined" && CATEGORY_LOGOS[c]) || "";
+  const mini = (url, ancho) => (typeof cloudinaryMiniatura === "function" ? cloudinaryMiniatura(url, ancho, false) : url);
+  const nombreFoto = (p) => `${p.equipo_local} - ${p.equipo_visitante}`;
+  // La portada elegida; si no viene, la primera foto de muestra.
+  const portadaDe = (p) => (p && (p.portada || (p.fotos && p.fotos[0]))) || null;
+
+  const escudo = (nombre, url) => {
+    const src = typeof getEscudoUrl === "function" ? getEscudoUrl(nombre, url) : "";
+    return `<img class="cg-escudo" data-equipo="${escapeHtml(nombre)}" src="${escapeHtml(src)}" alt="" width="28" height="28" loading="lazy" decoding="async" onerror="manejarErrorEscudo(this);">`;
+  };
+  const marcador = (p) => {
+    if (p.estado === "programado" || p.estado === "anulado") return "vs";
+    return `${p.goles_local == null ? "-" : p.goles_local} - ${p.goles_visitante == null ? "-" : p.goles_visitante}`;
+  };
+  const fechaCorta = (fecha) => {
+    const m = String(fecha || "").match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!m) return "";
+    const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+    const dias = Math.round((hoy - d) / 86400000);
+    if (dias === 0) return "Hoy";
+    if (dias === 1) return "Ayer";
+    return d.toLocaleDateString("es-ES", { weekday: "short", day: "numeric", month: "short" }).replace(".", "");
+  };
+  const fotosTxt = (n) => `${Number(n || 0).toLocaleString("es-ES")} ${Number(n) === 1 ? "foto" : "fotos"}`;
+  const iconoCamara = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6.5" width="19" height="14" rx="2.5"/><circle cx="12" cy="13.5" r="3.6"/><path d="M8.5 6.5l1.3-2.3a1 1 0 0 1 .87-.5h2.66a1 1 0 0 1 .87.5l1.3 2.3"/></svg>`;
+
+  async function pedir(comp, pagina) {
+    const params = new URLSearchParams({ pagina: String(pagina || 1) });
+    if (comp) params.set("competicion", comp);
+    return conReintento(async () => {
+      const res = await apiFetch("/api/galerias/partidos?" + params.toString());
+      if (!res.ok) throw new Error("galerias " + res.status);
+      return res.json();
+    });
+  }
+  const conPortada = (lista) => (lista || []).filter((p) => p && p.slug && portadaDe(p) && portadaDe(p).url).slice(0, MAX_TARJETAS);
+
+  function chipsHTML() {
+    if (estado.competiciones.length < 2) return "";
+    const lista = estado.competiciones.slice().sort((a, b) => {
+      const ia = ORDEN.indexOf(a.clave), ib = ORDEN.indexOf(b.clave);
+      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+    });
+    const chip = (clave, texto, logo) =>
+      `<button type="button" class="gp-chip" data-comp="${escapeHtml(clave)}" aria-pressed="${estado.comp === clave}">${logo ? `<img src="${escapeHtml(logo)}" alt="" width="16" height="16">` : ""}${escapeHtml(texto)}</button>`;
+    return `<div class="gp-chips" role="group" aria-label="Filtrar por competición">${chip("", "Recientes", "")}${lista.map((c) => chip(c.clave, etiquetaComp(c.clave), logoComp(c.clave))).join("")}</div>`;
+  }
+
+  // Qué tarjetas van "grandes" (con la foto a todo el tamaño y el texto encima),
+  // según cuántas galerías haya: 1 → la única; 2 → las dos; 3 y 5 → la primera;
+  // 4 → ninguna (fila de 4 iguales).
+  const esGrande = (i, n) => n === 1 || n === 2 || ((n === 3 || n >= 5) && i === 0);
+
+  function tarjetaHTML(p, grande) {
+    const f = portadaDe(p);
+    const etiqueta = [etiquetaComp(p.competicion), p.jornada ? "J" + p.jornada : ""].filter(Boolean).join(" · ");
+    const fecha = fechaCorta(p.fecha_partido);
+    return `
+      <a class="card card-galeria${grande ? " card-hero" : ""}" href="/galeria/${encodeURIComponent(p.slug)}" aria-label="Galería de ${escapeHtml(nombreFoto(p))}, ${fotosTxt(p.total)}">
+        <div class="cg-foto">
+          ${EOF_FOCO.img({ src: mini(f.url, 500), alt: f.titulo || "Foto del partido " + nombreFoto(p), foco: f.foco })}
+          <span class="cg-fotos">${iconoCamara}${escapeHtml(fotosTxt(p.total))}</span>
+        </div>
+        <div class="cbody">
+          ${etiqueta ? `<span class="cat">${escapeHtml(etiqueta)}</span>` : ""}
+          <h3>${escapeHtml(p.equipo_local)} – ${escapeHtml(p.equipo_visitante)}</h3>
+          <span class="cg-marcador">${escudo(p.equipo_local, p.escudo_local_url)}<b>${escapeHtml(marcador(p))}</b>${escudo(p.equipo_visitante, p.escudo_visitante_url)}</span>
+          <span class="meta">${escapeHtml(fecha)}${fecha ? " · " : ""}${escapeHtml(fotosTxt(p.total))}</span>
+        </div>
+      </a>`;
+  }
+
+  function pintarGrid() {
+    const cont = seccion.querySelector(".gp-grid");
+    if (!cont) return;
+    // Con 5 tarjetas, la primera va destacada (grande) en escritorio y tablet.
+    const n = estado.partidos.length;
+    cont.dataset.n = String(n);
+    cont.innerHTML = estado.partidos.length
+      ? estado.partidos.map((p, i) => tarjetaHTML(p, esGrande(i, n))).join("")
+      : `<p class="gp-vacio">Todavía no hay galerías en esta competición.</p>`;
+  }
+
+  function pintarTodo() {
+    const enlaceTodo = `/galerias${estado.comp ? "?competicion=" + encodeURIComponent(estado.comp) : ""}`;
+    seccion.hidden = false;
+    seccion.innerHTML = `
+      <div class="gp-cabecera">
+        <h2 class="section-title gp-titulo"><span class="gp-icono">${iconoCamara}</span><span class="gp-titulo-txt">Galerías de partidos</span></h2>
+        <a href="${enlaceTodo}" class="gp-ver-todo">Ver todas<span class="gp-ver-todo-extra"> las galerías</span> <span aria-hidden="true">→</span></a>
+      </div>
+      ${chipsHTML()}
+      <div class="grid-noticias gp-grid" aria-live="polite"></div>`;
+    pintarGrid();
+  }
+
+  async function elegirCompeticion(comp) {
+    if (comp === estado.comp) return;
+    const mia = ++estado.peticion;
+    estado.comp = comp;
+    seccion.querySelectorAll(".gp-chip").forEach((b) => b.setAttribute("aria-pressed", String((b.dataset.comp || "") === comp)));
+    seccion.querySelectorAll(".gp-ver-todo").forEach((a) => { a.href = `/galerias${comp ? "?competicion=" + encodeURIComponent(comp) : ""}`; });
+    seccion.classList.add("gp-cargando");
+    try {
+      if (!estado.cache[comp]) estado.cache[comp] = conPortada((await pedir(comp, 1)).partidos);
+      if (mia !== estado.peticion) return;
+      estado.partidos = estado.cache[comp];
+      pintarGrid();
+    } catch (err) {
+      if (mia !== estado.peticion) return;
+      estado.partidos = [];
+      pintarGrid();
+    } finally {
+      if (mia === estado.peticion) seccion.classList.remove("gp-cargando");
+    }
+  }
+
+  try {
+    const datos = await pedir("", 1);
+    const partidos = conPortada(datos.partidos);
+    if (!partidos.length) { seccion.hidden = true; return; }
+    estado.cache[""] = partidos;
+    estado.partidos = partidos;
+    // Solo salen las competiciones que de verdad tienen galerías que enseñar:
+    // el resumen del servidor también cuenta partidos cuya galería no tiene
+    // ninguna foto con portada (p. ej. solo vídeos), y esos dejarían un chip
+    // que al pulsarlo no muestra nada. Se comprueba cada una y se guarda en
+    // la caché, así al pulsar el chip la respuesta es inmediata.
+    const candidatas = (datos.competiciones || []).filter((c) => c && c.clave && c.partidos > 0);
+    const comprobadas = await Promise.all(candidatas.map(async (c) => {
+      try {
+        const lista = conPortada((await pedir(c.clave, 1)).partidos);
+        if (!lista.length) return null;
+        estado.cache[c.clave] = lista;
+        return c;
+      } catch (err) {
+        return null; // si no se puede comprobar, mejor no enseñar un chip vacío
+      }
+    }));
+    estado.competiciones = comprobadas.filter(Boolean);
+    pintarTodo();
+    seccion.addEventListener("click", (e) => {
+      const chip = e.target.closest(".gp-chip");
+      if (chip) elegirCompeticion(chip.dataset.comp || "");
+    });
+  } catch (err) {
+    seccion.hidden = true; // módulo opcional: si falla, no se enseña
+  }
+}
+
 // ---------- Más leídas y Tendencias (portada) ----------
 // "Más leídas": las más vistas de los últimos 7 días. "Tendencias": las que
 // más suben hoy (sin repetir las más leídas). Ver GET /api/articles/ranking.
@@ -337,6 +655,78 @@ async function cargaRanking() {
   }
 }
 
+// ---------- Reconocimiento del mes (portada) ----------
+// "Redactor/a del mes" y "Foto del mes" del último mes cerrado, confirmados por la dirección desde el
+// panel (ver GET /api/reconocimientos). Si no hay nada confirmado, el módulo no sale. De la persona
+// solo se enseña lo que ya es público: nombre, foto de perfil y nº de publicaciones del mes.
+// Hoja de estilos del módulo: se pide solo si hay algo que pintar (y en paralelo a los datos),
+// así no pesa en el primer pintado de la portada. Resuelve siempre (aunque falle) para no bloquear.
+function cargaEstiloReconocimiento() {
+  const href = "/css/reconocimiento-mes.css?v=2";
+  if (document.querySelector(`link[href="${href}"]`)) return Promise.resolve();
+  return new Promise((resolve) => {
+    const l = document.createElement("link");
+    l.rel = "stylesheet";
+    l.href = href;
+    l.onload = l.onerror = () => resolve();
+    document.head.appendChild(l);
+  });
+}
+
+async function cargaReconocimiento() {
+  const seccion = document.getElementById("seccion-reconocimiento");
+  if (!seccion) return;
+  try {
+    const d = await conReintento(async () => {
+      const res = await apiFetch("/api/reconocimientos");
+      return res.json();
+    });
+    if (!d || !d.mes || (!d.redactor && !d.foto)) { seccion.hidden = true; return; }
+    await cargaEstiloReconocimiento();
+    const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+    const mesTexto = `${MESES[Number(d.mes.slice(5, 7)) - 1]} de ${d.mes.slice(0, 4)}`;
+    const iconoTrofeo = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 17v4"/><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg>`;
+    const iconoCamara = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>`;
+    const enlaceAutor = (id, nombre) => id ? `<a href="/autor?id=${encodeURIComponent(id)}">${escapeHtml(nombre)}</a>` : escapeHtml(nombre);
+    let html = "";
+    if (d.redactor) {
+      const r = d.redactor;
+      const inicial = escapeHtml(String(r.nombre || "?").trim().charAt(0).toUpperCase() || "?");
+      const n = Number(r.publicaciones) || 0;
+      html += `<article class="reco-tarjeta reco-redactor">
+        <div class="reco-avatar-caja">
+          <div class="reco-avatar">${r.avatar_url ? `<img src="${escapeHtml(r.avatar_url)}" alt="" width="88" height="88" loading="lazy" decoding="async">` : inicial}</div>
+          <span class="reco-medalla" aria-hidden="true">${iconoTrofeo}</span>
+        </div>
+        <div class="reco-cuerpo">
+          <p class="reco-etiqueta">${iconoTrofeo} Redactor/a del mes</p>
+          <h3 class="reco-nombre">${enlaceAutor(r.id, r.nombre)}</h3>
+          ${n ? `<p class="reco-dato">${n} ${n === 1 ? "publicación" : "publicaciones"} en ${escapeHtml(mesTexto)}</p>` : ""}
+        </div>
+      </article>`;
+    }
+    if (d.foto) {
+      const f = d.foto;
+      html += `<article class="reco-tarjeta reco-foto">
+        <span class="reco-imagen"><img src="${escapeHtml(f.url)}" alt="${escapeHtml(f.titulo || `Foto del mes de ${mesTexto}`)}" width="640" height="400" loading="lazy" decoding="async"></span>
+        <div class="reco-cuerpo">
+          <p class="reco-etiqueta">${iconoCamara} Foto del mes</p>
+          ${f.titulo ? `<h3 class="reco-nombre">${escapeHtml(f.titulo)}</h3>` : ""}
+          ${f.autor_nombre ? `<p class="reco-dato">Foto de ${enlaceAutor(f.autor_id, f.autor_nombre)}</p>` : ""}
+        </div>
+      </article>`;
+    }
+    seccion.hidden = false;
+    seccion.innerHTML = `
+      <div class="section-title-row"><h2 class="section-title">Reconocimiento del mes</h2></div>
+      <p class="reconocimiento-sub">Lo mejor de ${escapeHtml(mesTexto)} en El Otro Fútbol</p>
+      <div class="reconocimiento-grid${d.redactor && d.foto ? "" : " reconocimiento-una"}">${html}</div>`;
+  } catch (err) {
+    console.error("Error cargando el reconocimiento del mes:", err);
+    seccion.hidden = true;
+  }
+}
+
 // ---------- Bloques por competición (portada) ----------
 // Un bloque por competición con sus últimas noticias (una destacada + tres
 // en lista) y enlace a la página de la competición. Se saltan las noticias
@@ -345,6 +735,7 @@ const BLOQUES_COMPETICION = [
   "hypermotion",
   "primera_federacion",
   "segunda_federacion",
+  "tercera_federacion",
   "copa_del_rey",
   "copa_federacion",
 ];
@@ -357,14 +748,25 @@ async function cargaBloquesCompeticion() {
   const respuestas = await Promise.allSettled(BLOQUES_COMPETICION.map((cat) =>
     conReintento(async () => {
       const res = await apiFetch(`/api/articles?categoria=${encodeURIComponent(cat)}&limit=${BLOQUE_COMPETICION_NOTICIAS + 2}${excluir}`);
-      return res.json();
+      const datos = await res.json();
+      // Si todas las noticias de la competición ya salen en el hero o en
+      // "Noticias recientes", el bloque desaparecía aunque hubiera noticias.
+      // En ese caso se piden sin excluir para que la competición siempre
+      // tenga su bloque.
+      if (excluir && !(datos.articles || []).length) {
+        const res2 = await apiFetch(`/api/articles?categoria=${encodeURIComponent(cat)}&limit=${BLOQUE_COMPETICION_NOTICIAS}`);
+        const d2 = await res2.json();
+        d2._sinExcluir = true;
+        return d2;
+      }
+      return datos;
     })
   ));
   const bloques = [];
   respuestas.forEach((r, i) => {
     if (r.status !== "fulfilled") return;
     // Se evita repetir una noticia entre dos bloques seguidos.
-    const lista = (r.value.articles || []).filter((a) => !PORTADA_VISTOS.has(a.id)).slice(0, BLOQUE_COMPETICION_NOTICIAS);
+    const lista = (r.value.articles || []).filter((a) => r.value._sinExcluir || !PORTADA_VISTOS.has(a.id)).slice(0, BLOQUE_COMPETICION_NOTICIAS);
     if (!lista.length) return;
     portadaRegistrar(lista);
     bloques.push({ cat: BLOQUES_COMPETICION[i], lista });
@@ -377,7 +779,7 @@ async function cargaBloquesCompeticion() {
       <section class="bloque-comp" aria-labelledby="bloque-${cat}">
         <div class="bloque-comp-cab">
           <h2 class="section-title" id="bloque-${cat}">
-            ${logo ? `<img class="bloque-comp-logo" src="${logo}" alt="" loading="lazy" onerror="this.style.display='none'">` : ""}${escapeHtml(categoriaLabel(cat))}
+            ${logo ? `<span class="bloque-comp-logo-caja"><img class="bloque-comp-logo" src="${logo}" alt="" loading="lazy" onerror="this.parentNode.style.display='none'"></span>` : ""}${escapeHtml(categoriaLabel(cat))}
           </h2>
           <a class="bloque-comp-ver" href="categoria?cat=${encodeURIComponent(cat)}">Ver todo →</a>
         </div>
@@ -586,9 +988,12 @@ async function cargaEncuestasPortada() {
     if (!encuestas.length) { seccion.hidden = true; return; }
 
     seccion.hidden = false;
+    // data-n deja que el CSS adapte la rejilla a cuántas encuestas hay
+    // (1 = tarjeta ancha, 2 = dos columnas, 3 = tres...). Ver css/encuestas.css.
+    seccion.dataset.n = encuestas.length;
     seccion.innerHTML = `
-      <h2 class="section-title">Encuestas</h2>
-      <div class="encuestas-portada-grid">
+      <h2 class="section-title">${encuestas.length === 1 ? "Encuesta" : "Encuestas"}</h2>
+      <div class="encuestas-portada-grid" data-n="${encuestas.length}">
         ${encuestas.map(e => `<div id="encuestaPortada_${e.id}"></div>`).join("")}
       </div>`;
 
@@ -613,12 +1018,64 @@ function cardHTML(a) {
     <a class="card" data-art-id="${Number(a.id) || ''}" href="${urlNoticia(a.categoria, a.slug)}">
       ${EOF_FOCO.img({ src: img, alt: a.titulo, foco: portada.foco })}
       <div class="cbody">
-        <span class="cat">${categoriaLabel(a.categoria)}</span>
+        ${contextoNoticiaHTML(a)}
         <h3>${escapeHtml(a.titulo)}</h3>
         <p>${escapeHtml(resumText(a.subtitulo || a.contenido, 110))}</p>
         <span class="meta">${formatFecha(a.fecha_publicacion)}${a.autor_nombre ? " · " + escapeHtml(a.autor_nombre) + (a.coautor_nombre ? " y " + escapeHtml(a.coautor_nombre) : "") : ""}</span>
       </div>
     </a>`;
+}
+
+// Pinta el hero (1 principal + 4 secundarias). Se usa en la carga inicial y en
+// las actualizaciones en directo (ver refrescarPortadaEnVivo).
+function pintarHero(destacados, ultimas) {
+  const hero = document.getElementById("hero");
+  // Las que van a salir en el hero se marcan como ya vistas (ver
+  // PORTADA_VISTOS) para que "Noticias recientes" y el resto de módulos
+  // no las repitan. Se calcula más abajo, junto a "secundarias".
+  let idsHero = [];
+  PORTADA_HERO.clear();
+  if (destacados.length > 0) {
+    const principal = destacados[0];
+    const portadaPrincipal = EOF_FOCO.portadaDeArticulo(principal);
+    // Si no hay suficientes destacadas, se completa con las últimas
+    // noticias, pero evitando repetir la que ya es la principal.
+    const candidatasExtra = ultimas.filter(a => a.id !== principal.id);
+    const secundariasDestacadas = destacados.slice(1, 5);
+    const secundarias = secundariasDestacadas.length >= 4
+      ? secundariasDestacadas
+      : [...secundariasDestacadas, ...candidatasExtra.filter(a => !secundariasDestacadas.some(s => s.id === a.id))].slice(0, 4);
+    idsHero = [principal, ...secundarias];
+    hero.innerHTML = `
+      <a class="hero-principal" href="${urlNoticia(principal.categoria, principal.slug)}">
+        ${EOF_FOCO.img({ src: portadaPrincipal.url ? cloudinaryOptimizada(portadaPrincipal.url, 900) : "img/default.jpg", alt: principal.titulo, foco: portadaPrincipal.foco, eager: true, fallback: "oculto" })}
+        <div class="overlay">
+          <div>
+            ${contextoNoticiaHTML(principal, { variante: "hero" })}
+            <h1>${escapeHtml(principal.titulo)}</h1>
+            <p>${escapeHtml(resumText(principal.subtitulo || principal.contenido, 160))}</p>
+          </div>
+        </div>
+      </a>
+      <div class="hero-secundarias">
+        ${secundarias.map(s => `
+          <a class="mini-card" href="${urlNoticia(s.categoria, s.slug)}">
+            ${(() => { const p = EOF_FOCO.portadaDeArticulo(s); return EOF_FOCO.img({ src: p.url ? cloudinaryOptimizada(p.url, 300) : "img/default.jpg", alt: s.titulo, foco: p.foco }); })()}
+            <div>
+              ${contextoNoticiaHTML(s, { variante: "compacta" })}
+              <h3>${escapeHtml(s.titulo)}</h3>
+            </div>
+          </a>`).join("")}
+      </div>`;
+  } else {
+    hero.innerHTML = estadoHTML({
+      titulo: "Todavía no hay noticias destacadas",
+      texto: "En cuanto publiquemos las primeras crónicas y noticias, las verás destacadas justo aquí.",
+    });
+  }
+  portadaRegistrar(idsHero);
+  idsHero.forEach((a) => { if (a && a.id != null) PORTADA_HERO.add(a.id); });
+  return idsHero;
 }
 
 async function cargaPortada() {
@@ -651,51 +1108,11 @@ async function cargaPortada() {
       };
     });
 
-    const hero = document.getElementById("hero");
-    // Las que van a salir en el hero se marcan como ya vistas (ver
-    // PORTADA_VISTOS) para que "Noticias recientes" y el resto de módulos
-    // no las repitan. Se calcula más abajo, junto a "secundarias".
-    let idsHero = [];
-    if (destacados.length > 0) {
-      const principal = destacados[0];
-      const portadaPrincipal = EOF_FOCO.portadaDeArticulo(principal);
-      // Si no hay suficientes destacadas, se completa con las últimas
-      // noticias, pero evitando repetir la que ya es la principal.
-      const candidatasExtra = ultimas.filter(a => a.id !== principal.id);
-      const secundariasDestacadas = destacados.slice(1, 5);
-      const secundarias = secundariasDestacadas.length >= 4
-        ? secundariasDestacadas
-        : [...secundariasDestacadas, ...candidatasExtra.filter(a => !secundariasDestacadas.some(s => s.id === a.id))].slice(0, 4);
-      idsHero = [principal, ...secundarias];
-      hero.innerHTML = `
-        <a class="hero-principal" href="${urlNoticia(principal.categoria, principal.slug)}">
-          ${EOF_FOCO.img({ src: portadaPrincipal.url ? cloudinaryOptimizada(portadaPrincipal.url, 900) : "img/default.jpg", alt: principal.titulo, foco: portadaPrincipal.foco, eager: true, fallback: "oculto" })}
-          <div class="overlay">
-            <div>
-              <span class="badge">${categoriaLabel(principal.categoria)}</span>
-              <h1>${escapeHtml(principal.titulo)}</h1>
-              <p>${escapeHtml(resumText(principal.subtitulo || principal.contenido, 160))}</p>
-            </div>
-          </div>
-        </a>
-        <div class="hero-secundarias">
-          ${secundarias.map(s => `
-            <a class="mini-card" href="${urlNoticia(s.categoria, s.slug)}">
-              ${(() => { const p = EOF_FOCO.portadaDeArticulo(s); return EOF_FOCO.img({ src: p.url ? cloudinaryOptimizada(p.url, 300) : "img/default.jpg", alt: s.titulo, foco: p.foco }); })()}
-              <div>
-                <span class="cat">${categoriaLabel(s.categoria)}</span>
-                <h3>${escapeHtml(s.titulo)}</h3>
-              </div>
-            </a>`).join("")}
-        </div>`;
-    } else {
-      hero.innerHTML = estadoHTML({
-        titulo: "Todavía no hay noticias destacadas",
-        texto: "En cuanto publiquemos las primeras crónicas y noticias, las verás destacadas justo aquí.",
-      });
+    pintarHero(destacados, ultimas);
+    if (window.EOF_VIVO) {
+      VIVO_PORTADA.firmaHero = firmaHeroPortada(destacados, ultimas);
+      VIVO_PORTADA.firmaUltimas = firmaArticulos(ultimas);
     }
-    portadaRegistrar(idsHero);
-    idsHero.forEach((a) => { if (a && a.id != null) PORTADA_HERO.add(a.id); });
     return { ultimas };
   } catch (err) {
     console.error("Error cargando portada:", err);

@@ -65,3 +65,42 @@
 
   if (botones.length) marcar(botones[0]);
 })();
+
+
+/* =====================================================================
+   Ayuda SEO (solo orientativa, nunca bloquea)
+   ---------------------------------------------------------------------
+   El SEO de la noticia es AUTOMÁTICO (título, description, canonical,
+   JSON-LD...). Lo único que decide la persona que escribe es el titular y
+   el subtítulo, así que estos contadores avisan de lo que Google hará:
+   - Título: hacia los 60 caracteres lo recorta en los resultados.
+   - Subtítulo: se usa como descripción bajo el titular si tiene entre 50 y
+     160 caracteres; si es más corto se ignora y se usa el arranque del texto.
+   ===================================================================== */
+(function () {
+  "use strict";
+  var titulo = document.getElementById("titulo");
+  var subtitulo = document.getElementById("subtitulo");
+  var cTitulo = document.getElementById("nnContTitulo");
+  var cSub = document.getElementById("nnContSubtitulo");
+  if (!titulo || !subtitulo || !cTitulo || !cSub) return;
+
+  function pintar(el, texto, aviso) {
+    el.textContent = texto;
+    el.classList.toggle("cerca", !!aviso);
+  }
+  function actualizar() {
+    var t = titulo.value.trim().length;
+    pintar(cTitulo, t ? t + "/60" : "", t > 60);
+    var s = subtitulo.value.trim().length;
+    if (!s) pintar(cSub, "Google: 50-160", true);
+    else pintar(cSub, s + (s < 50 ? " · corto" : s > 160 ? " · se recorta" : ""), s < 50 || s > 160);
+  }
+  titulo.addEventListener("input", actualizar);
+  subtitulo.addEventListener("input", actualizar);
+  // Al abrir una noticia existente el formulario se rellena por código (sin
+  // evento "input"): se revisa también tras cargar y al volver a la pestaña.
+  window.addEventListener("load", function () { setTimeout(actualizar, 400); });
+  document.addEventListener("click", function () { setTimeout(actualizar, 250); });
+  actualizar();
+})();

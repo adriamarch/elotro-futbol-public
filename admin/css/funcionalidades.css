@@ -72,6 +72,43 @@
 #subtabsFuncionalidades.func-nav .tab-badge-pendientes{margin-left:2px;}
 
 /* ---------------------------------------------------------------
+   1b. NAVEGACIÓN: 6 secciones de uso diario a la vista y las
+   menos tocadas (Información, Responsabilidades, Redes sociales,
+   Historial) agrupadas en el desplegable "Más".
+   --------------------------------------------------------------- */
+#subtabsFuncionalidades.func-nav{overflow:visible;position:relative;z-index:30;align-items:center;}
+.func-mas{position:relative;display:inline-flex;margin-left:auto;}
+.func-mas-btn{
+  display:inline-flex;align-items:center;gap:8px;padding:11px 14px 11px 16px;border:1.5px solid var(--borde);
+  border-radius:14px;background:var(--tarjeta);font-size:.8rem;font-weight:700;color:var(--texto-suave);
+  cursor:pointer;user-select:none;-webkit-user-select:none;
+  transition:background .18s,color .18s,border-color .18s,box-shadow .18s;
+}
+.func-mas-btn::after{
+  content:"";width:6px;height:6px;margin:-3px 0 0 2px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;
+  transform:rotate(45deg);transition:transform .18s;
+}
+.func-mas-btn:hover{color:var(--marino-texto);border-color:var(--celeste);}
+.func-mas-btn:focus-visible{outline:2px solid var(--celeste);outline-offset:2px;}
+.func-mas.abierto .func-mas-btn{color:var(--marino-texto);border-color:var(--celeste);}
+.func-mas.abierto .func-mas-btn::after{transform:rotate(-135deg);margin-top:3px;}
+.func-mas:has(.func-mas-menu button.activo) .func-mas-btn{
+  background:linear-gradient(135deg,var(--marino),var(--marino2));color:#fff;border-color:var(--marino);
+  box-shadow:0 6px 18px rgba(12,27,46,.28);
+}
+.func-mas-menu{
+  display:none;position:absolute;right:0;top:calc(100% + 8px);z-index:40;min-width:240px;padding:6px;
+  flex-direction:column;gap:2px;background:var(--tarjeta);border:1px solid var(--borde);border-radius:16px;
+  box-shadow:0 18px 40px -12px rgba(12,27,46,.35);
+}
+.func-mas.abierto .func-mas-menu{display:flex;}
+#subtabsFuncionalidades.func-nav .func-mas-menu button{width:100%;justify-content:flex-start;}
+@media (max-width:640px){
+  .func-mas{margin-left:0;}
+  .func-mas-menu{left:0;right:auto;}
+}
+
+/* ---------------------------------------------------------------
    2. CABECERA DE SUBSECCIÓN
    --------------------------------------------------------------- */
 .func-head{

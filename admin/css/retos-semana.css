@@ -1,0 +1,33 @@
+/* Retos de la semana (js/retos-semana.js). Variables del panel: sigue el tema claro/oscuro. */
+.rs-card{margin:0 0 14px;border:1px solid var(--borde,#dfe5ee);border-left:4px solid var(--rojo,#d1132e);
+  border-radius:12px;background:var(--tarjeta,#fff);color:var(--texto,#10243b);font-size:.92rem}
+.rs-card[hidden]{display:none}
+.rs-card>summary{display:flex;align-items:center;gap:8px;padding:12px 14px;min-height:48px;cursor:pointer;
+  font-weight:700;list-style:none}
+.rs-card>summary::-webkit-details-marker{display:none}
+.rs-card>summary::after{content:"▾";margin-left:auto;color:var(--texto-suave,#5b6676);transition:transform .2s}
+.rs-card[open]>summary::after{transform:rotate(180deg)}
+.rs-card>summary:focus-visible,.rs-btn:focus-visible,.rs-enlace:focus-visible{outline:3px solid var(--celeste,#4a90d9);outline-offset:2px}
+.rs-cuenta{font-size:.75rem;font-weight:700;padding:2px 9px;border-radius:99px;background:var(--rojo,#d1132e);color:#fff}
+.rs-intro,.rs-vacio{margin:0;padding:0 14px 10px;color:var(--texto-suave,#5b6676)}
+.rs-lista,.rs-cumplidos{list-style:none;margin:0;padding:0 14px 6px;display:grid;gap:10px;
+  grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
+.rs-cumplidos{grid-template-columns:1fr;margin-bottom:6px}
+.rs-cumplidos li{padding:8px 12px;border-radius:10px;background:rgba(22,163,74,.12);color:#15803d;font-weight:600}
+.rs-item{border:1px solid var(--borde,#dfe5ee);border-radius:10px;padding:10px 12px;background:var(--fondo-alt,#f7f9fc)}
+.rs-mio{border-color:var(--rojo,#d1132e);box-shadow:0 0 0 1px var(--rojo,#d1132e) inset}
+.rs-ajeno{opacity:.7}
+.rs-fila{display:flex;gap:6px;align-items:center;margin-bottom:4px}
+.rs-tipo{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.3px}
+.rs-club{font-size:.7rem;font-weight:700;padding:1px 7px;border-radius:99px;background:var(--celeste,#4a90d9);color:#fff}
+.rs-partido{font-weight:700;line-height:1.25}
+.rs-meta{font-size:.78rem;color:var(--texto-suave,#5b6676);margin:2px 0 6px}
+.rs-ayuda{font-size:.82rem;margin-bottom:8px}
+.rs-botones{display:flex;gap:6px;flex-wrap:wrap}
+.rs-btn{min-height:40px;padding:6px 12px;border-radius:9px;border:1px solid var(--borde,#c5cdd9);
+  background:transparent;color:inherit;font:inherit;font-weight:600;font-size:.85rem;cursor:pointer}
+.rs-btn-pri{background:var(--rojo,#d1132e);border-color:var(--rojo,#d1132e);color:#fff}
+.rs-btn-suave{border-style:dashed;color:var(--texto-suave,#5b6676)}
+.rs-enlace{display:block;margin:4px 14px 12px;border:0;background:transparent;color:var(--texto-suave,#5b6676);
+  font:inherit;font-size:.8rem;text-decoration:underline;cursor:pointer}
+@media (prefers-reduced-motion:reduce){.rs-card>summary::after{transition:none}}

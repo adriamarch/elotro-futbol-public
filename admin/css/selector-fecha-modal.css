@@ -47,7 +47,7 @@
 /* ---------- Overlay + caja ---------- */
 .sfm-overlay{
   position:fixed;inset:0;z-index:1400;display:flex;align-items:center;justify-content:center;padding:20px;
-  background:rgba(8,16,28,.55);-webkit-backdrop-filter:blur(6px) saturate(130%);backdrop-filter:blur(6px) saturate(130%);
+  background:rgba(8,16,28,.55);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
   opacity:0;visibility:hidden;transition:opacity .22s ease,visibility .22s;overscroll-behavior:contain;
 }
 .sfm-overlay.sfm-abierto{opacity:1;visibility:visible;}

@@ -146,6 +146,14 @@ html,body,#contenidoArticulo,#contenidoArticulo *{touch-action:manipulation;}
 #contenidoArticulo .article-galeria .credito-foto-galeria{border-top:0;background:transparent;}
 #contenidoArticulo .article-galeria{border-radius:var(--radio-lg);overflow:hidden;box-shadow:var(--sombra-lg);}
 #contenidoArticulo .article-tweet{margin:32px auto;}
+/* Embeds de X/Instagram: hueco reservado + esqueleto mientras carga (sin saltos de scroll) */
+.article-tweet.tw-pendiente{min-height:220px;position:relative;border-radius:14px;overflow:hidden;
+  background:linear-gradient(100deg,var(--fondo-alt,#eef1f5) 30%,rgba(127,127,127,.14) 50%,var(--fondo-alt,#eef1f5) 70%);
+  background-size:200% 100%;animation:tw-esqueleto 1.3s linear infinite;}
+.article-tweet.tw-pendiente blockquote{opacity:.0;}
+.article-tweet blockquote.tw-diferido,.article-tweet blockquote.ig-diferido{max-width:100% !important;margin:0;}
+@keyframes tw-esqueleto{to{background-position:-200% 0;}}
+@media (prefers-reduced-motion:reduce){.article-tweet.tw-pendiente{animation:none;}}
 
 /* =========================================================================
    CUERPO DEL TEXTO

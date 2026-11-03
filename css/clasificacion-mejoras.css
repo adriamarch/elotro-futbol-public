@@ -32,6 +32,7 @@
 }
 .clasificacion-tabla tbody tr[data-zona="ascenso"] .clas-pos{background:var(--ui-verde);color:#fff;box-shadow:0 6px 12px -6px var(--ui-verde);}
 .clasificacion-tabla tbody tr[data-zona="playoff"] .clas-pos{background:var(--celeste);color:#0c1b2e;box-shadow:0 6px 12px -6px var(--celeste);}
+.clasificacion-tabla tbody tr[data-zona="playout"] .clas-pos{background:#8e5bd9;color:#fff;box-shadow:0 6px 12px -6px #8e5bd9;}
 .clasificacion-tabla tbody tr[data-zona="descenso"] .clas-pos{background:var(--rojo);color:#fff;box-shadow:0 6px 12px -6px var(--rojo);}
 
 /* ---------- Equipo ---------- */

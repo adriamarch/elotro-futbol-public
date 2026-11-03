@@ -48,6 +48,10 @@
     "La foto se recorta según dónde se muestre (portada, tarjetas, perfil). " +
     "Haz clic o arrastra para marcar lo que no se debe cortar nunca: una cara, el balón, el escudo.";
 
+  var TEXTO_TACTIL =
+    "La foto se recorta según dónde se muestre (portada, tarjetas, perfil). " +
+    "Toca o arrastra para marcar lo que no se debe cortar nunca: una cara, el balón, el escudo.";
+
   var contadorIds = 0;
   var ui = null;
   var cola = Promise.resolve();
@@ -88,6 +92,10 @@
     modal.setAttribute("aria-modal", "true");
     modal.setAttribute("aria-labelledby", idTitulo);
 
+    // Asa de la hoja (solo móvil): se arrastra hacia abajo para cerrar
+    var grab = crear("span", "fsel-grab");
+    grab.setAttribute("aria-hidden", "true");
+
     // Cabecera
     var kicker = crear("span", "fsel-kicker");
     var titulo = crear("h2", "fsel-titulo");
@@ -104,7 +112,10 @@
     img.draggable = false;
     var marcador = crear("span", "fsel-marcador");
     marcador.setAttribute("aria-hidden", "true");
-    var marco = anadir(crear("div", "fsel-marco"), img, marcador);
+    // Lupa: en pantallas táctiles el dedo tapa el punto, así que se ve ampliado encima
+    var lupa = crear("span", "fsel-lupa");
+    lupa.setAttribute("aria-hidden", "true");
+    var marco = anadir(crear("div", "fsel-marco"), img, marcador, lupa);
     marco.tabIndex = 0;
     marco.setAttribute("role", "group");
     marco.setAttribute("aria-label", "Foto. Haz clic o arrastra para marcar el punto importante; con el teclado, usa las flechas (Mayús para ir más rápido) o Inicio para centrar.");
@@ -133,12 +144,12 @@
     btnGuardar.type = "button";
     var pie = anadir(crear("footer", "fsel-pie"), btnQuitar, crear("span", "fsel-relleno"), btnCancelar, btnCentrar, btnGuardar);
 
-    anadir(modal, cab, anadir(crear("div", "fsel-cuerpo"), escenario, lado), pie);
+    anadir(modal, grab, cab, anadir(crear("div", "fsel-cuerpo"), escenario, lado), pie);
     ov.appendChild(modal);
     document.body.appendChild(ov);
 
     return {
-      ov: ov, modal: modal, kicker: kicker, titulo: titulo, texto: texto, btnCerrar: btnCerrar,
+      ov: ov, modal: modal, grab: grab, cab: cab, lupa: lupa, kicker: kicker, titulo: titulo, texto: texto, btnCerrar: btnCerrar,
       img: img, marcador: marcador, marco: marco, aviso: aviso, pista: pista, escenario: escenario,
       tabs: tabs, previa: previa, imgPrevia: imgPrevia, valor: valor,
       btnQuitar: btnQuitar, btnCancelar: btnCancelar, btnCentrar: btnCentrar, btnGuardar: btnGuardar
@@ -162,18 +173,24 @@
       var elegido = !forzado; // en modo forzado hay que tocar algo antes de guardar
       var fallo = false;      // la foto no se puede mostrar aquí (p. ej. HEIC)
       var arrastrando = false;
+      var usandoLupa = false;
 
       // Textos
       u.kicker.textContent = o.contador && o.contador.total > 1 ? "Foto " + o.contador.n + " de " + o.contador.total : "";
       u.kicker.hidden = !u.kicker.textContent;
       u.titulo.textContent = o.titulo || (forzado ? "Elige el punto importante de la foto" : "Ajustar el encuadre");
-      u.texto.textContent = o.texto || TEXTO_POR_DEFECTO;
+      var tactil = !!(global.matchMedia && global.matchMedia("(pointer: coarse)").matches);
+      u.texto.textContent = o.texto || (tactil ? TEXTO_TACTIL : TEXTO_POR_DEFECTO);
+      u.pista.textContent = tactil ? "Toca o arrastra sobre la foto" : "Haz clic o arrastra sobre la foto";
 
       // Botones según el modo
       u.btnCerrar.hidden = forzado;
       u.btnCancelar.hidden = forzado;
       u.btnQuitar.hidden = !o.permitirQuitar;
       u.ov.classList.toggle("fsel-forzado", forzado);
+      u.marco.classList.remove("fsel-lupa-on");
+      u.modal.style.transform = "";
+      u.modal.style.transition = "";
 
       function pintar() {
         u.marcador.style.left = pos.x + "%";
@@ -183,6 +200,30 @@
         u.btnGuardar.disabled = !(elegido || fallo);
         u.escenario.classList.toggle("fsel-sin-elegir", !elegido && !fallo);
         u.pista.hidden = elegido || fallo;
+        if (usandoLupa) posicionarLupa();
+      }
+
+      // Lupa táctil (solo mientras se arrastra con el dedo o el lápiz)
+      function posicionarLupa() {
+        var w = u.img.clientWidth, h = u.img.clientHeight;
+        if (!w || !h) return;
+        var L = u.lupa.offsetWidth || 96, Z = 2.6;
+        var px = pos.x / 100 * w, py = pos.y / 100 * h;
+        var cx = px, cy = py - (L / 2 + 36);
+        if (cy - L / 2 < -6) { // sin sitio arriba: al lado contrario del borde más cercano
+          cx = px < w / 2 ? px + L / 2 + 40 : px - L / 2 - 40;
+          cy = py;
+        }
+        cx = Math.min(Math.max(cx, L / 2), Math.max(L / 2, w - L / 2));
+        u.lupa.style.left = (cx - L / 2) + "px";
+        u.lupa.style.top = (cy - L / 2) + "px";
+        u.lupa.style.backgroundSize = (w * Z) + "px " + (h * Z) + "px";
+        u.lupa.style.backgroundPosition = (L / 2 - px * Z) + "px " + (L / 2 - py * Z) + "px";
+      }
+      function lupa(on) {
+        usandoLupa = !!on;
+        u.marco.classList.toggle("fsel-lupa-on", usandoLupa);
+        if (usandoLupa) posicionarLupa();
       }
 
       function fijar(p) {
@@ -195,7 +236,7 @@
         formato = clave;
         var f = FORMATOS[clave];
         u.previa.style.aspectRatio = f.ratio;
-        u.previa.style.width = f.ancho + "px";
+        u.previa.style.setProperty("--fsel-w", f.ancho + "px");
         u.previa.classList.toggle("fsel-redonda", !!f.redondo);
         Array.prototype.forEach.call(u.tabs.children, function (b) {
           var activo = b.getAttribute("data-fmt") === clave;
@@ -236,7 +277,9 @@
       if (url) {
         u.img.setAttribute("src", url);
         u.imgPrevia.setAttribute("src", url);
+        u.lupa.style.backgroundImage = 'url("' + url.replace(/["\\\n\r]/g, encodeURIComponent) + '")';
       } else {
+        u.lupa.style.backgroundImage = "none";
         marcarFallo("Sin foto");
       }
       pintar();
@@ -251,6 +294,12 @@
         u.btnGuardar.onclick = u.btnCentrar.onclick = u.btnQuitar.onclick = null;
         u.btnCancelar.onclick = u.btnCerrar.onclick = null;
         u.img.onload = u.img.onerror = null;
+        [u.cab, u.grab].forEach(function (el) {
+          el.onpointerdown = el.onpointermove = el.onpointerup = el.onpointercancel = null;
+        });
+        u.marco.classList.remove("fsel-lupa-on");
+        u.modal.style.transform = "";
+        u.modal.style.transition = "";
         sesion = null;
         try { if (previo && previo.focus) previo.focus({ preventScroll: true }); } catch (e) { /* nada */ }
         resolver(resultado);
@@ -284,10 +333,45 @@
         arrastrando = true;
         try { u.marco.setPointerCapture(ev.pointerId); } catch (e) { /* nada */ }
         if (ev.preventDefault) ev.preventDefault();
+        usandoLupa = ev.pointerType === "touch" || ev.pointerType === "pen";
+        u.marco.classList.toggle("fsel-lupa-on", usandoLupa);
         desdeEvento(ev);
       };
       u.marco.onpointermove = function (ev) { if (arrastrando) desdeEvento(ev); };
-      u.marco.onpointerup = u.marco.onpointercancel = u.marco.onlostpointercapture = function () { arrastrando = false; };
+      u.marco.onpointerup = u.marco.onpointercancel = u.marco.onlostpointercapture = function () {
+        arrastrando = false;
+        lupa(false);
+      };
+
+      /* ---- Móvil: deslizar la hoja hacia abajo para cerrarla ---- */
+      var gesto = null;
+      function esMovil() { return !!(global.matchMedia && global.matchMedia("(max-width: 760px)").matches); }
+      function gestoInicio(ev) {
+        if (forzado || !esMovil() || ev.pointerType === "mouse" || (ev.target.closest && ev.target.closest("button"))) return;
+        gesto = { y: ev.clientY, t: Date.now(), dy: 0, el: ev.currentTarget };
+        try { gesto.el.setPointerCapture(ev.pointerId); } catch (e) { /* nada */ }
+        u.modal.style.transition = "none";
+      }
+      function gestoMueve(ev) {
+        if (!gesto) return;
+        gesto.dy = Math.max(0, ev.clientY - gesto.y);
+        u.modal.style.transform = "translateY(" + gesto.dy + "px)";
+        u.ov.style.background = "rgba(10,18,32," + (0.66 * Math.max(0.25, 1 - gesto.dy / 420)).toFixed(2) + ")";
+      }
+      function gestoFin() {
+        if (!gesto) return;
+        var dy = gesto.dy, v = dy / Math.max(1, Date.now() - gesto.t);
+        gesto = null;
+        u.ov.style.background = "";
+        if (dy > 110 || (v > 0.6 && dy > 40)) { cancelar(); return; }
+        u.modal.style.transition = "transform .2s ease";
+        u.modal.style.transform = "";
+      }
+      [u.cab, u.grab].forEach(function (el) {
+        el.onpointerdown = gestoInicio;
+        el.onpointermove = gestoMueve;
+        el.onpointerup = el.onpointercancel = gestoFin;
+      });
 
       u.marco.onkeydown = function (ev) {
         if (fallo) return;

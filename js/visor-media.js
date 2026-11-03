@@ -36,7 +36,21 @@
   function conAncho(url, w) {
     var b = urlBase(url), m = "/upload/", k = b.indexOf(m);
     if (k < 0) return b;
-    return b.slice(0, k + m.length) + "f_auto,q_auto,c_limit,dpr_auto,w_" + w + "/" + b.slice(k + m.length);
+    var t = (realce && w >= 480)
+      ? "c_limit,dpr_auto,w_" + w + "/" + REALCE_FX + "/f_auto,q_auto"
+      : "f_auto,q_auto,c_limit,dpr_auto,w_" + w;
+    return b.slice(0, k + m.length) + t + "/" + b.slice(k + m.length);
+  }
+  // Ancho de la foto del visor: en móvil/tablet táctil basta con 1280 px (se ve
+  // nítida y carga mucho más rápido con datos); al hacer zoom se pide la grande.
+  function anchoVisor() {
+    var t = window.matchMedia && window.matchMedia("(pointer:coarse)").matches;
+    return t ? 1280 : 2000;
+  }
+  // Ancho de la versión que se pide al hacer zoom: 3600 px en ordenador, 2400 en móvil
+  // (se ve nítida igualmente y no gasta tantos datos ni memoria del navegador).
+  function anchoZoom() {
+    return (window.matchMedia && window.matchMedia("(pointer:coarse)").matches) ? 2400 : 3600;
   }
   function urlDescarga(url) {
     var b = urlBase(url), m = "/upload/", k = b.indexOf(m);
@@ -61,6 +75,7 @@
     next: ico('<path d="m9 18 6-6-6-6"/>'),
     zoomMas: ico('<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3M11 8v6M8 11h6"/>'),
     zoomMenos: ico('<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3M8 11h6"/>'),
+    realce: ico('<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>'),
     pantalla: ico('<path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/>'),
     pantallaSalir: ico('<path d="M8 3v3a2 2 0 0 1-2 2H3M21 8h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3M16 21v-3a2 2 0 0 1 2-2h3"/>'),
     pase: ico('<path d="M7 4.5v15l12-7.5z"/>'),
@@ -96,6 +111,31 @@
   var ptrs = new Map(), g = null, ultimoTap = null;
   var tIdle = null, tPase = null, tToast = null;
   var listenersGlobales = false;
+
+  /* ---------- Realce fotográfico (OPCIONAL, solo en pantalla) ----------
+     Más contraste, color y nitidez aplicados por Cloudinary en la URL: el archivo
+     original no se toca y la descarga sigue siendo la foto tal cual se subió.
+     La preferencia se recuerda en el dispositivo (localStorage "eof_realce").
+     Para activarlo por defecto a quien no haya elegido, poner REALCE_POR_DEFECTO = true.
+     Mantener REALCE_FX igual que EOF_REALCE_FX de js/config.js. */
+  var REALCE_POR_DEFECTO = false;
+  var REALCE_FX = "e_improve:outdoor:40,e_vibrance:20,e_unsharp_mask:60";
+  var realce = leerRealce();
+  function leerRealce() {
+    try {
+      var v = localStorage.getItem("eof_realce");
+      if (v === "1") return true;
+      if (v === "0") return false;
+    } catch (e) { /* modo privado: se usa el valor por defecto */ }
+    return REALCE_POR_DEFECTO;
+  }
+  function fijarRealce(on) {
+    on = !!on;
+    if (on === realce) return;
+    realce = on;
+    try { localStorage.setItem("eof_realce", on ? "1" : "0"); } catch (e) { /* nada */ }
+    try { window.dispatchEvent(new CustomEvent("eof-realce", { detail: { on: on } })); } catch (e) { /* nada */ }
+  }
 
   function cur() { return S && S.items[S.i]; }
   function esFoto() { var it = cur(); return !!it && it.tipo !== "video"; }
@@ -156,6 +196,7 @@
             '<button type="button" class="vm-btn vm-pildora vm-solo-video" data-vm="velocidad" title="Velocidad (&lt; &gt;)">' + I.velocidad + '<span class="vm-txt">1×</span></button>' +
             '<button type="button" class="vm-btn vm-pildora vm-solo-video" data-vm="bucle" title="Repetir vídeo (L)">' + I.bucle + '<span class="vm-txt">Bucle</span></button>' +
             '<button type="button" class="vm-btn vm-pildora vm-solo-video" data-vm="pip" title="Imagen en imagen">' + I.pip + '<span class="vm-txt">Flotante</span></button>' +
+            '<button type="button" class="vm-btn vm-pildora vm-solo-foto" data-vm="realce" title="Realce fotográfico: más contraste, color y nitidez (E)" aria-pressed="false">' + I.realce + '<span class="vm-txt">Realce</span></button>' +
             '<button type="button" class="vm-btn vm-pildora" data-vm="descargar" title="Descargar (D)">' + I.descargar + '<span class="vm-txt">Descargar</span></button>' +
             '<button type="button" class="vm-btn vm-pildora" data-vm="compartir" title="Compartir (S)" aria-haspopup="true" aria-expanded="false">' + I.compartir + '<span class="vm-txt">Compartir</span></button>' +
             '<button type="button" class="vm-btn vm-pildora" data-vm="copiar" title="Copiar enlace (C)">' + I.enlace + '<span class="vm-txt">Copiar enlace</span></button>' +
@@ -173,6 +214,7 @@
           '<dt><kbd>P</kbd></dt><dd>Pase de diapositivas</dd>' +
           '<dt><kbd>F</kbd></dt><dd>Pantalla completa</dd>' +
           '<dt><kbd>I</kbd></dt><dd>Mostrar / ocultar información</dd>' +
+          '<dt><kbd>E</kbd></dt><dd>Realce fotográfico (solo fotos)</dd>' +
           '<dt><kbd>D</kbd><kbd>S</kbd><kbd>C</kbd></dt><dd>Descargar, compartir, copiar enlace</dd>' +
           '<dt><kbd>Espacio</kbd><kbd>M</kbd></dt><dd>Vídeo: reproducir/pausar, silenciar</dd>' +
           '<dt><kbd>⇧</kbd>+<kbd>←</kbd><kbd>→</kbd></dt><dd>Vídeo: retroceder / avanzar 5 s</dd>' +
@@ -215,6 +257,7 @@
         case "copiar": copiarEnlace(); break;
         case "velocidad": ciclarVelocidad(); break;
         case "bucle": alternarBucle(); break;
+        case "realce": alternarRealce(); break;
         case "pip": alternarPip(); break;
         case "reintentar": pintar(0); break;
         case "tira-mini": break;
@@ -233,7 +276,7 @@
     esc.addEventListener("pointerdown", alBajar);
     esc.addEventListener("pointermove", alMover);
     esc.addEventListener("pointerup", alSoltar);
-    esc.addEventListener("pointercancel", alSoltar);
+    esc.addEventListener("pointercancel", alCancelar);
     esc.addEventListener("wheel", function (e) {
       if (!S || !esFoto()) return;
       e.preventDefault();
@@ -253,6 +296,18 @@
       listenersGlobales = true;
       document.addEventListener("keydown", alTeclear, true);
       window.addEventListener("popstate", function () { if (S) { S.empujado = false; limpiar(); } });
+      // Girar el móvil / redimensionar: se vuelve a limitar el desplazamiento del zoom
+      var tResize = null;
+      function alRedimensionar() {
+        clearTimeout(tResize);
+        tResize = setTimeout(function () {
+          if (!S || !esFoto()) return;
+          limitarDesplazamiento();
+          aplicarTransformacion();
+        }, 120);
+      }
+      window.addEventListener("resize", alRedimensionar);
+      window.addEventListener("orientationchange", alRedimensionar);
       document.addEventListener("fullscreenchange", actualizarPantalla);
       document.addEventListener("webkitfullscreenchange", actualizarPantalla);
     }
@@ -320,6 +375,7 @@
     }
     var foco = S.foco, onCerrar = S.opts.onCerrar;
     S = null; g = null; ptrs.clear();
+    restablecerArrastre();
     el.pista.innerHTML = "";
     root.hidden = true;
     root.classList.remove("vm-quieto", "vm-es-video");
@@ -350,6 +406,7 @@
     S.hires = false;
     el.pista.className = "vm-pista " + (dir > 0 ? "vm-entra-der" : dir < 0 ? "vm-entra-izq" : "vm-entra-fade");
     el.pista.style.transform = ""; el.pista.style.opacity = "";
+    restablecerArrastre();
     el.pista.innerHTML = "";
     el.error.hidden = true;
     el.spinner.hidden = false;
@@ -386,7 +443,7 @@
       nodo.alt = it.titulo || "";
       nodo.decoding = "async";
       nodo.draggable = false;
-      var grande = conAncho(it.url, 2000);
+      var grande = conAncho(it.url, anchoVisor());
       if (it.thumb && it.thumb !== grande) {
         nodo.src = it.thumb;
         nodo.classList.add("vm-borroso");
@@ -415,20 +472,39 @@
     if (S.pase) programarPase();
   }
 
+  function sincronizarBotonRealce() {
+    if (!el.realce) return;
+    el.realce.classList.toggle("vm-activo", realce);
+    el.realce.setAttribute("aria-pressed", realce ? "true" : "false");
+  }
+
+  // Centra la miniatura activa moviendo SOLO la tira. scrollIntoView() desplazaba también
+  // a los ancestros (el propio visor y la página), y en móvil eso corría el visor unos píxeles
+  // hacia arriba y dejaba ver, bajo la tira, la siguiente foto de la cuadrícula de detrás.
+  function centrarMini(m) {
+    var t = el.tira;
+    if (!t || !m) return;
+    var r = m.getBoundingClientRect(), tr = t.getBoundingClientRect();
+    var izq = t.scrollLeft + (r.left - tr.left) - (t.clientWidth - r.width) / 2;
+    izq = Math.max(0, Math.min(t.scrollWidth - t.clientWidth, izq));
+    try { t.scrollTo({ left: izq, behavior: "smooth" }); } catch (e) { t.scrollLeft = izq; }
+  }
+
   function actualizarCromo() {
+    sincronizarBotonRealce();
     var it = cur(), n = S.items.length;
     el.pos.textContent = n > 1 ? (S.i + 1) + " / " + n : "";
     el.tipo.textContent = it.tipo === "video" ? "Vídeo" : "Foto";
     var partes = "";
     if (it.titulo) partes += '<p class="vm-titulo">' + esc(it.titulo) + "</p>";
-    if (it.credito) partes += '<p class="vm-credito">' + esc(it.credito) + "</p>";
+    if (it.credito) partes += '<p class="vm-credito">' + esc(String(it.credito).replace(/^\s*©\s*/, "")) + "</p>";
     if (it.enlace && it.enlace.href) partes += '<a class="vm-enlace" href="' + esc(it.enlace.href) + '">' + esc(it.enlace.texto || "Ver más") + "</a>";
     el.infoTexto.innerHTML = partes;
     el.tira.querySelectorAll(".vm-mini").forEach(function (m) {
       var act = Number(m.dataset.i) === S.i;
       m.classList.toggle("vm-actual", act);
       m.setAttribute("aria-selected", act ? "true" : "false");
-      if (act) m.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
+      if (act) centrarMini(m);
     });
     el.info.classList.toggle("vm-activo", !S.sinInfo);
     el.compartir.hidden = false;
@@ -440,7 +516,7 @@
     if (n < 2) return;
     [1, -1, 2].forEach(function (d) {
       var v = S.items[(S.i + d + n) % n];
-      if (v && v.tipo !== "video") { var im = new Image(); im.src = conAncho(v.url, 2000); }
+      if (v && v.tipo !== "video") { var im = new Image(); im.src = conAncho(v.url, anchoVisor()); }
     });
   }
 
@@ -528,7 +604,7 @@
     var it = cur(), m = mediaEl();
     if (!it || !m || m.tagName !== "IMG") return;
     S.hires = true;
-    var alta = conAncho(it.url, 3600);
+    var alta = conAncho(it.url, anchoZoom());
     if (alta === m.src) return;
     var pre = new Image();
     pre.onload = function () { if (S && mediaEl() === m) m.src = alta; };
@@ -543,6 +619,14 @@
     return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
   }
 
+  // Durante el gesto de deslizar hacia abajo para cerrar, el fondo y los
+  // controles se van desvaneciendo (variables CSS --vm-fondo-op / --vm-ui-op).
+  function restablecerArrastre() {
+    if (!root) return;
+    root.style.removeProperty("--vm-fondo-op");
+    root.style.removeProperty("--vm-ui-op");
+  }
+
   function alBajar(e) {
     if (!S || e.button > 0) return;
     if (e.target.closest("button,a")) return;
@@ -554,7 +638,11 @@
     var lista = Array.from(ptrs.values());
     if (lista.length === 1) {
       g = { modo: S.zoom > 1.01 ? "pan" : "swipe", sx: e.clientX, sy: e.clientY, ox: S.x, oy: S.y,
-            moved: false, dx: 0, dy: 0, eje: "", enMedia: enMedia, tipo: e.pointerType };
+            moved: false, dx: 0, dy: 0, eje: "", enMedia: enMedia, tipo: e.pointerType, t0: Date.now(),
+            // Estado de los controles ANTES de este toque: despertar() (que corre justo después, en
+            // el pointerdown de la raíz) los muestra siempre, y sin recordar esto el toque de
+            // "mostrar" volvía a ocultarlos 300 ms después y no había forma de recuperarlos.
+            eraQuieto: root.classList.contains("vm-quieto") };
     } else if (lista.length === 2 && !esVideo) {
       var m = medio(lista), c = centroEscena();
       g = { modo: "pinch", d0: dist(lista), s0: S.zoom, x0: S.x, y0: S.y, cx: m.x - c.x, cy: m.y - c.y, moved: true };
@@ -595,7 +683,25 @@
       } else if (g.eje === "y") {
         el.pista.style.transform = "translate3d(0," + Math.max(0, dy) * 0.8 + "px,0) scale(" + (1 - Math.min(Math.max(0, dy) / 1200, 0.15)) + ")";
         el.pista.style.opacity = String(1 - Math.min(Math.max(0, dy) / 420, 0.6));
+        root.style.setProperty("--vm-fondo-op", String(1 - Math.min(Math.max(0, dy) / 520, 0.75)));
+        root.style.setProperty("--vm-ui-op", String(1 - Math.min(Math.max(0, dy) / 220, 1)));
       }
+    }
+  }
+
+  // El navegador ha cancelado el gesto (p. ej. el deslizamiento desde el borde de iOS
+  // para volver atrás, o una llamada): no es un "soltar", así que no debe cambiar de
+  // foto, cerrar ni hacer zoom; solo se deja todo como estaba.
+  function alCancelar(e) {
+    if (!S) return;
+    ptrs.delete(e.pointerId);
+    if (ptrs.size > 0) return;
+    var gg = g; g = null;
+    el.pista.classList.remove("vm-arrastrando");
+    el.escena.classList.remove("vm-arrastrando");
+    if (gg && gg.modo === "swipe") {
+      el.pista.style.transform = ""; el.pista.style.opacity = "";
+      restablecerArrastre();
     }
   }
 
@@ -616,9 +722,13 @@
 
     if (gg.modo === "swipe") {
       el.pista.style.transform = ""; el.pista.style.opacity = "";
+      restablecerArrastre();
       if (gg.moved) {
-        if (gg.eje === "x" && Math.abs(gg.dx) > 60 && S.items.length > 1) ir(gg.dx < 0 ? 1 : -1);
-        else if (gg.eje === "y" && gg.dy > 100) cerrar();
+        // Además de la distancia, un gesto rápido (flick) también cuenta.
+        var dt = Math.max(1, Date.now() - (gg.t0 || Date.now()));
+        var velX = Math.abs(gg.dx) / dt, velY = Math.max(0, gg.dy) / dt;
+        if (gg.eje === "x" && S.items.length > 1 && (Math.abs(gg.dx) > 60 || (Math.abs(gg.dx) > 24 && velX > 0.45))) ir(gg.dx < 0 ? 1 : -1);
+        else if (gg.eje === "y" && (gg.dy > 100 || (gg.dy > 40 && velY > 0.6))) cerrar();
         return;
       }
     }
@@ -637,7 +747,7 @@
       setTimeout(function () {
         if (ultimoTap && Date.now() - ultimoTap.t >= 290) {
           ultimoTap = null;
-          if (S) root.classList.toggle("vm-quieto");
+          if (S) root.classList.toggle("vm-quieto", !gg.eraQuieto);
         }
       }, 310);
     }
@@ -679,6 +789,7 @@
       case "s": case "S": compartir(); break;
       case "c": case "C": copiarEnlace(); break;
       case "l": case "L": if (video) alternarBucle(); break;
+      case "e": case "E": if (!video) alternarRealce(); break;
       case "m": case "M": if (video) video.muted = !video.muted; break;
       case "<": if (video) ciclarVelocidad(-1); break;
       case ">": if (video) ciclarVelocidad(1); break;
@@ -879,7 +990,30 @@
     } catch (e) { /* nada */ }
   }
 
+  function alternarRealce() {
+    if (!esFoto()) return;
+    fijarRealce(!realce); // dispara "eof-realce": aplicarRealceVisor() actualiza esta foto
+    aviso(realce ? "Realce activado" : "Realce desactivado");
+  }
+  // Cambia la foto abierta a su versión con/sin realce, sin perder zoom ni posición:
+  // se precarga la nueva y solo entonces se sustituye.
+  function aplicarRealceVisor() {
+    if (!S) return;
+    sincronizarBotonRealce();
+    var it = cur(), m = mediaEl();
+    if (!it || it.tipo === "video" || !m || m.tagName !== "IMG") return;
+    var nueva = conAncho(it.url, S.hires ? anchoZoom() : anchoVisor());
+    if (nueva === m.src) return;
+    var pre = new Image();
+    pre.onload = function () { if (S && mediaEl() === m) m.src = nueva; };
+    pre.src = nueva;
+  }
+  window.addEventListener("eof-realce", aplicarRealceVisor);
+
   window.VisorMedia = {
+    getRealce: function () { return realce; },
+    setRealce: fijarRealce,
+    REALCE_FX: REALCE_FX,
     abrir: abrir,
     cerrar: cerrar,
     estaAbierto: function () { return !!S; },

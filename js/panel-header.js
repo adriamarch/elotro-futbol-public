@@ -185,7 +185,7 @@ async function cargarNotificaciones() {
       apiFetch(`/api/results?limit=200`),
     ]);
 
-    const TIPO_LABEL = { noticia: "Noticia", previa: "Previa", cronica: "Crónica", analisis: "Análisis", opinion: "Opinión", entrevista: "Entrevista", uno_por_uno: "1x1 de jugadores" };
+    const TIPO_LABEL = { noticia: "Noticia", previa: "Previa", cronica: "Crónica", analisis: "Análisis", opinion: "Opinión", entrevista: "Entrevista", uno_por_uno: "1x1 de jugadores", rdp_previa: "Rueda de prensa previa", rdp_post: "Rueda de prensa posterior" };
 
     const hoyStr = new Date().toISOString().slice(0, 10);
     const partidosSinActualizar = resultadosPendientes

@@ -220,7 +220,8 @@ const NOMBRES_QUE_NO_SON_CLUB = new Set([
 // oficial. Clave = nombre oficial (el de CLUB_CUENTA_X).
 // ALIAS_CLUB_X: alias seguros, valen aunque el club no sea de la noticia.
 const ALIAS_CLUB_X = {
-  "RC Deportivo": ["Dépor", "Deportivo de La Coruña", "Deportivo de A Coruña"],
+  "RC Deportivo": ["Deportivo de La Coruña", "Deportivo de A Coruña"],
+  "CD Guadalajara": ["Deportivo Guadalajara", "Deportivo de Guadalajara"],
   "Gimnàstic de Tarragona": ["Nàstic", "Gimnàstic", "Gimnástic de Tarragona"],
   "Albacete Balompié": ["Albacete"],
   "Unionistas de Salamanca CF": ["Unionistas"],
@@ -230,9 +231,13 @@ const ALIAS_CLUB_X = {
 };
 // ALIAS_CLUB_X_SOLO_CONTEXTO: alias demasiado genéricos ("Deportivo", "Racing"):
 // solo se sustituyen si ese club es uno de los de la noticia.
+// "Depor"/"Dépor" (sin acento es lo mismo al comparar) lo usan varios clubes (Deportivo de La Coruña,
+// su Fabril, el Deportivo Guadalajara...), así que SOLO se sustituye por el club de la noticia; si dos
+// clubes de la noticia lo comparten, la palabra se deja tal cual (no se adivina).
 const ALIAS_CLUB_X_SOLO_CONTEXTO = {
-  "RC Deportivo": ["Deportivo"],
-  "RC Deportivo Fabril": ["Fabril"],
+  "RC Deportivo": ["Deportivo", "Depor", "Dépor"],
+  "RC Deportivo Fabril": ["Fabril", "Depor", "Dépor"],
+  "CD Guadalajara": ["Deportivo", "Depor", "Dépor"],
   "Racing de Santander": ["Racing", "Racing Santander"],
   "Racing Club Ferrol": ["Racing de Ferrol", "Racing Ferrol"],
   "Cultural Leonesa": ["Leonesa"],

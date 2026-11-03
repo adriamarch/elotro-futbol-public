@@ -357,10 +357,14 @@ body[data-page="inicio"] .bloque-comp-cab .section-title{
 }
 body[data-page="inicio"] .bloque-comp-cab .section-title::after{display:none;}
 body[data-page="inicio"] .bloque-comp-logo{width:34px;height:34px;object-fit:contain;flex:0 0 auto;}
-/* Modo oscuro: logos de Copa del Rey y LaLiga 2 (Hypermotion) en blanco
-   plano, conservando la transparencia del PNG. */
+/* Modo oscuro: los logos de Copa del Rey y LaLiga Hypermotion son oscuros y
+   se perdían. Se invierte su luminosidad conservando el tono (el rojo de
+   "COPA DEL REY" sigue rojo) y la baldosa mantiene el fondo oscuro de los
+   demás logos de bloque. */
 [data-theme="dark"] body[data-page="inicio"] .bloque-comp-logo[src*="copa-del-rey"],
-[data-theme="dark"] body[data-page="inicio"] .bloque-comp-logo[src*="hypermotion"]{filter:brightness(0) invert(1);}
+[data-theme="dark"] body[data-page="inicio"] .bloque-comp-logo[src*="hypermotion"]{
+  filter:invert(1) hue-rotate(180deg);
+}
 body[data-page="inicio"] .bloque-comp-ver{
   flex:0 0 auto;font-family:var(--font-tit);font-size:.76rem;letter-spacing:.8px;text-transform:uppercase;
   color:var(--rojo);text-decoration:none;white-space:nowrap;padding-bottom:2px;
@@ -466,6 +470,7 @@ body[data-page="inicio"] .redes-section,
 body[data-page="inicio"] #site-footer{
   content-visibility:auto;contain-intrinsic-size:auto 560px;
 }
+body[data-page="inicio"] .encuestas-portada[data-n="1"]{contain-intrinsic-size:auto 300px;}
 body[data-page="inicio"] .redes-section{contain-intrinsic-size:auto 160px;}
 body[data-page="inicio"] #site-footer{contain-intrinsic-size:auto 420px;}
 
@@ -475,4 +480,488 @@ body[data-page="inicio"] .entrevista-foto img{background:var(--gris-claro);}
 
 @media (prefers-reduced-motion:reduce){
   body[data-page="inicio"] .hero-esqueleto::after{animation:none;display:none;}
+}
+
+/* =====================================================================
+   PORTADA — refinamiento visual (v5)
+   Solo CSS sobre las clases existentes. Si algo no gusta, basta con borrar
+   este bloque entero y la portada vuelve a como estaba.
+   ===================================================================== */
+body[data-page="inicio"]{
+  --pt-sombra-reposo:0 1px 2px rgba(12,27,46,.05),0 6px 18px -8px rgba(12,27,46,.18);
+  --pt-espacio:clamp(36px,5vw,56px);
+  scroll-behavior:smooth;
+}
+
+/* Ritmo vertical más coherente entre secciones */
+body[data-page="inicio"] .section-title,
+body[data-page="inicio"] .section-title-row{margin-top:var(--pt-espacio);}
+body[data-page="inicio"] .section-title-row .section-title{margin-top:0;}
+body[data-page="inicio"] .hero{margin-bottom:0;}
+
+/* Títulos de sección: raya fina gris con tramo rojo corto (menos pesado) */
+body[data-page="inicio"] .section-title{
+  font-size:clamp(1.2rem,2.2vw,1.5rem);letter-spacing:.7px;text-wrap:balance;
+}
+body[data-page="inicio"] .section-title::after{
+  height:3px;border-radius:3px;
+  background:linear-gradient(90deg,var(--rojo) 0,var(--rojo) 64px,var(--borde) 64px,var(--borde) 100%);
+}
+body[data-page="inicio"] .section-title-en-vivo::after{
+  background:linear-gradient(90deg,var(--rojo) 0,var(--rojo) 64px,rgba(209,19,46,.18) 64px,rgba(209,19,46,.18) 100%);
+}
+body[data-page="inicio"] .bloque-comp-cab{border-bottom:0;position:relative;}
+body[data-page="inicio"] .bloque-comp-cab::after{
+  content:"";position:absolute;left:0;right:0;bottom:0;height:3px;border-radius:3px;
+  background:linear-gradient(90deg,var(--rojo) 0,var(--rojo) 64px,var(--borde) 64px,var(--borde) 100%);
+}
+
+/* Hero: más legible el titular y el cuerpo, sin tapar la foto */
+body[data-page="inicio"] .hero-principal .overlay{
+  background:
+    linear-gradient(to top,rgba(8,17,31,.94) 0%,rgba(8,17,31,.6) 38%,rgba(8,17,31,0) 72%);
+  align-items:flex-end;
+}
+body[data-page="inicio"] .hero-principal .overlay > *{max-width:min(100%,68ch);}
+body[data-page="inicio"] .hero-principal .badge{border-radius:999px;font-size:.72rem;}
+body[data-page="inicio"] .hero-principal:focus-visible{box-shadow:0 0 0 3px var(--celeste),0 18px 44px -12px rgba(12,27,46,.45);}
+
+/* Tarjetas: sombra de reposo suave, y la foto sin salirse del radio */
+body[data-page="inicio"] .card{box-shadow:var(--pt-sombra-reposo);}
+/* Antes: :focus-within pintaba un recuadro azul también al tocar/cargar más en móvil; ahora solo con teclado */
+body[data-page="inicio"] .card:focus:not(:focus-visible){outline:none;box-shadow:var(--pt-sombra-reposo);}
+body[data-page="inicio"] .card:focus-visible{outline-width:2px;outline-offset:3px;border-radius:16px;}
+body[data-page="inicio"] .card h3{text-wrap:balance;}
+body[data-page="inicio"] .card p{
+  line-height:1.5;color:var(--texto-suave);
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;
+}
+body[data-page="inicio"] .card .meta{font-size:.76rem;letter-spacing:.2px;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;}
+body[data-page="inicio"] .grid-noticias{grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr));}
+
+/* Miniaturas de las secundarias: misma proporción siempre */
+body[data-page="inicio"] .mini-card img{aspect-ratio:4/3;height:auto;object-fit:cover;}
+body[data-page="inicio"] .mini-card h3{text-wrap:balance;}
+
+/* Marcadores y horas: cifras de ancho fijo para que no "bailen" */
+body[data-page="inicio"] .resultados-home .partido .marcador,
+body[data-page="inicio"] .uh-hora,
+body[data-page="inicio"] .fila-num{font-variant-numeric:tabular-nums;}
+body[data-page="inicio"] .resultados-home .tabla-jornada h3{text-transform:uppercase;}
+
+/* Filas de ranking / competición: misma sombra de reposo que las tarjetas */
+body[data-page="inicio"] .fila-noticia{box-shadow:var(--pt-sombra-reposo);}
+body[data-page="inicio"] .fila-noticia:hover{box-shadow:0 10px 26px -8px rgba(12,27,46,.28);}
+
+/* Última hora: cabecera con degradado sutil */
+body[data-page="inicio"] .uh-cabecera{background:linear-gradient(90deg,var(--rojo),var(--rojo-oscuro));}
+
+/* Botones: "Cargar más" y "Ver todo" con foco y estado activo claros */
+body[data-page="inicio"] .btn-cargar-mas:active:not(:disabled),
+body[data-page="inicio"] .ver-resultados-link:active{transform:translateY(0);box-shadow:none;}
+
+/* Síguenos: iconos centrados y envueltos en pantallas estrechas */
+body[data-page="inicio"] .redes-section{text-align:center;}
+body[data-page="inicio"] .redes-icons{display:flex;flex-wrap:wrap;justify-content:center;}
+body[data-page="inicio"] .redes-section h3{text-transform:uppercase;}
+
+/* Modo oscuro: tarjetas con borde más visible y sombras sin "halo" claro */
+[data-theme="dark"] body[data-page="inicio"]{
+  --pt-sombra-reposo:0 1px 2px rgba(0,0,0,.35),0 8px 20px -10px rgba(0,0,0,.6);
+}
+[data-theme="dark"] body[data-page="inicio"] .section-title::after,
+[data-theme="dark"] body[data-page="inicio"] .bloque-comp-cab::after{
+  background:linear-gradient(90deg,var(--rojo) 0,var(--rojo) 64px,rgba(255,255,255,.12) 64px,rgba(255,255,255,.12) 100%);
+}
+[data-theme="dark"] body[data-page="inicio"] .card,
+[data-theme="dark"] body[data-page="inicio"] .fila-noticia,
+[data-theme="dark"] body[data-page="inicio"] .mini-card{border-color:rgba(255,255,255,.08);}
+
+/* Móvil */
+@media(max-width:600px){
+  body[data-page="inicio"] .card .cbody{padding:16px 16px 14px;}
+  body[data-page="inicio"] .hero-principal .overlay > *{max-width:100%;}
+  body[data-page="inicio"] .redes-icons a{width:46px;height:46px;}
+}
+
+/* Impresión: sin efectos y sin módulos decorativos */
+@media print{
+  body[data-page="inicio"] .redes-section,
+  body[data-page="inicio"] .cargar-mas,
+  body[data-page="inicio"] #ad-cabecera-home,
+  body[data-page="inicio"] #ad-pie-home{display:none !important;}
+  body[data-page="inicio"] .card,
+  body[data-page="inicio"] .fila-noticia{box-shadow:none;}
+}
+
+@media(prefers-reduced-motion:reduce){
+  body[data-page="inicio"]{scroll-behavior:auto;}
+}
+
+/* =====================================================================
+   PORTADA — hero y noticias recientes (v6)
+   Solo CSS. Si algo no gusta, basta con borrar este bloque entero.
+   ===================================================================== */
+
+/* 1. Alturas del hero por tamaño de pantalla.
+   Antes, el min-height de escritorio (480px) pisaba los de style.css para
+   tablet y móvil (por especificidad) y la foto salía altísima en el móvil.
+   El esqueleto de carga usa las mismas clases, así que queda igual de alto
+   que el hero real y no hay salto al llegar las noticias. */
+@media(max-width:1100px){
+  body[data-page="inicio"] .hero-principal{min-height:420px;}
+}
+@media(max-width:900px){
+  body[data-page="inicio"] .hero{gap:16px;}
+  body[data-page="inicio"] .hero-principal{min-height:360px;}
+}
+@media(max-width:600px){
+  body[data-page="inicio"] .hero-principal{min-height:300px;}
+  body[data-page="inicio"] .mini-card.hero-esqueleto{min-height:86px;}
+}
+
+/* 2. Hero: titular y texto bien encajados en pantallas pequeñas */
+@media(max-width:600px){
+  body[data-page="inicio"] .hero-principal .overlay{padding:20px 18px;}
+  body[data-page="inicio"] .hero-principal h1,
+  body[data-page="inicio"] .hero-principal h2{font-size:clamp(1.3rem,6.2vw,1.55rem);margin-bottom:8px;}
+  body[data-page="inicio"] .hero-principal p{font-size:.92rem;-webkit-line-clamp:2;}
+  body[data-page="inicio"] .hero-principal .badge{margin-bottom:10px;}
+}
+
+/* 3. Secundarias del hero: más compactas y con la foto siempre del mismo tamaño */
+body[data-page="inicio"] .mini-card h3{line-height:1.28;}
+@media(max-width:900px){
+  body[data-page="inicio"] .hero-secundarias{gap:10px;}
+  body[data-page="inicio"] .mini-card{flex:none;}
+}
+@media(max-width:600px){
+  body[data-page="inicio"] .mini-card{padding:10px;gap:12px;}
+  body[data-page="inicio"] .mini-card img{width:92px;}
+  body[data-page="inicio"] .mini-card h3{font-size:.93rem;-webkit-line-clamp:2;}
+}
+
+/* 4. Noticias recientes: columnas fijas (4 / 2 / 1).
+   Se cargan de 4 en 4, así que con 4 o 2 columnas nunca queda una tarjeta
+   suelta en la última fila (con el auto-fill de antes, entre ~1100 y 1240 px
+   salían 3 columnas y sobraba 1 de cada 4). */
+body[data-page="inicio"] #grid-recientes{
+  grid-template-columns:repeat(4,minmax(0,1fr));gap:24px;
+}
+@media(max-width:1100px){
+  body[data-page="inicio"] #grid-recientes{grid-template-columns:repeat(2,minmax(0,1fr));gap:22px;}
+}
+@media(max-width:560px){
+  body[data-page="inicio"] #grid-recientes{grid-template-columns:minmax(0,1fr);gap:18px;}
+}
+/* Tarjeta: titular y entradilla con alturas parejas entre tarjetas de una fila */
+body[data-page="inicio"] #grid-recientes .card h3{font-size:1.06rem;-webkit-line-clamp:3;}
+body[data-page="inicio"] #grid-recientes .card p{font-size:.86rem;-webkit-line-clamp:3;}
+body[data-page="inicio"] #grid-recientes .card .cat{
+  align-self:flex-start;padding:3px 9px;border-radius:999px;
+  background:rgba(209,19,46,.09);font-size:.66rem;
+}
+[data-theme="dark"] body[data-page="inicio"] #grid-recientes .card .cat{background:rgba(255,255,255,.1);}
+/* Foto algo más apaisada en la tarjeta para que el texto respire más */
+body[data-page="inicio"] #grid-recientes .card img{aspect-ratio:16/9;object-fit:cover;}
+
+/* 5. Pantallas táctiles: sin saltitos "hover" que se quedan pegados al tocar;
+   en su lugar, un pequeño hundimiento mientras se pulsa */
+@media(hover:none){
+  body[data-page="inicio"] .hero-principal:hover,
+  body[data-page="inicio"] .card:hover,
+  body[data-page="inicio"] .mini-card:hover{transform:none;}
+  body[data-page="inicio"] .hero-principal:hover img,
+  body[data-page="inicio"] .card:hover img{transform:none;}
+  body[data-page="inicio"] .card:hover h3{color:inherit;}
+  body[data-page="inicio"] .card:active,
+  body[data-page="inicio"] .mini-card:active,
+  body[data-page="inicio"] .hero-principal:active{transform:scale(.985);transition-duration:.08s;}
+}
+
+@media(prefers-reduced-motion:reduce){
+  body[data-page="inicio"] .card:active,
+  body[data-page="inicio"] .mini-card:active,
+  body[data-page="inicio"] .hero-principal:active{transform:none;}
+}
+
+/* 6. Etiqueta de las tarjetas: ahora es una sola línea discreta "CATEGORÍA — TIPO"
+   en un solo color (ver "ETIQUETA DISCRETA v3" al final de style.css). */
+
+/* 7. Bloques por competición (v2): cabecera con logo en "baldosa" y botón
+   "Ver todo", filas laterales con más aire y foto mayor, y bloque con una sola
+   noticia en horizontal (antes dejaba medio ancho vacío). */
+body[data-page="inicio"] .bloque-comp-cab{align-items:center;margin:58px 0 24px;padding-bottom:14px;}
+body[data-page="inicio"] .bloque-comp-cab .section-title{
+  gap:14px;font-size:clamp(1.25rem,2.4vw,1.65rem);letter-spacing:.8px;
+}
+/* La baldosa (fondo, borde, sombra) va en la caja y el logo dentro: así el
+   filtro de modo oscuro solo toca al logo y no al fondo. */
+body[data-page="inicio"] .bloque-comp-logo-caja{
+  box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;
+  width:46px;height:46px;padding:7px;border-radius:13px;
+  background:var(--tarjeta);border:1px solid var(--borde);box-shadow:var(--pt-sombra-reposo);
+}
+body[data-page="inicio"] .bloque-comp-logo-caja .bloque-comp-logo{width:100%;height:100%;object-fit:contain;display:block;}
+body[data-page="inicio"] .bloque-comp-ver{
+  display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:999px;
+  border:1.5px solid var(--rojo);font-weight:600;line-height:1;
+  transition:background .2s,color .2s,gap .2s,box-shadow .2s;
+}
+body[data-page="inicio"] .bloque-comp-ver:hover{
+  background:var(--rojo);color:#fff;text-decoration:none;gap:10px;box-shadow:0 6px 16px rgba(209,19,46,.3);
+}
+body[data-page="inicio"] .bloque-comp-grid{gap:26px;}
+body[data-page="inicio"] .bloque-comp-principal .card h3{font-size:1.28rem;-webkit-line-clamp:3;}
+body[data-page="inicio"] .bloque-comp-lista{gap:14px;}
+body[data-page="inicio"] .bloque-comp-lista .fila-noticia{
+  gap:16px;padding:12px 16px 12px 12px;border-left:4px solid transparent;
+}
+body[data-page="inicio"] .bloque-comp-lista .fila-noticia:hover{border-left-color:var(--rojo);transform:translateX(3px);}
+body[data-page="inicio"] .bloque-comp-lista .fila-noticia img{width:132px;height:92px;border-radius:12px;}
+body[data-page="inicio"] .bloque-comp-lista .fila-noticia h3{font-size:1.02rem;}
+body[data-page="inicio"] .bloque-comp-lista .fila-texto{gap:6px;}
+/* Un bloque con una sola noticia: tarjeta horizontal a todo el ancho */
+body[data-page="inicio"] .bloque-comp-solo{grid-template-columns:minmax(0,1fr);}
+body[data-page="inicio"] .bloque-comp-solo .card{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);}
+body[data-page="inicio"] .bloque-comp-solo .card>img{height:100%;min-height:280px;aspect-ratio:auto;}
+body[data-page="inicio"] .bloque-comp-solo .card .cbody{justify-content:center;padding:26px 28px;}
+body[data-page="inicio"] .bloque-comp-solo .card h3{font-size:1.45rem;}
+@media(max-width:900px){
+  body[data-page="inicio"] .bloque-comp-solo .card{display:flex;}
+  body[data-page="inicio"] .bloque-comp-solo .card>img{height:auto;min-height:0;aspect-ratio:16/10;}
+  body[data-page="inicio"] .bloque-comp-solo .card .cbody{padding:18px;}
+}
+@media(max-width:600px){
+  body[data-page="inicio"] .bloque-comp-cab{margin-top:42px;gap:10px;}
+  body[data-page="inicio"] .bloque-comp-logo-caja{width:38px;height:38px;padding:6px;border-radius:11px;}
+  body[data-page="inicio"] .bloque-comp-ver{padding:7px 12px;font-size:.7rem;}
+  body[data-page="inicio"] .bloque-comp-lista .fila-noticia{gap:12px;padding:10px 12px 10px 10px;}
+  body[data-page="inicio"] .bloque-comp-lista .fila-noticia img{width:96px;height:72px;}
+}
+
+
+/* ---------- Galerías de partidos en portada (tarjetas como noticias) ---------- */
+.galerias-portada{margin:52px 0 10px;}
+.galerias-portada[hidden]{display:none;}
+.galerias-portada.gp-cargando .gp-grid{opacity:.5;transition:opacity .2s ease;pointer-events:none;}
+.gp-cabecera{display:flex;align-items:center;gap:16px;margin:0 0 16px;padding-bottom:10px;border-bottom:3px solid var(--rojo);}
+body[data-page="inicio"] .galerias-portada .gp-titulo,.galerias-portada .gp-titulo{display:flex;align-items:center;gap:12px;flex:1;min-width:0;margin:0;padding:0;border:0;}
+.galerias-portada .gp-titulo::after{display:none;}
+.gp-icono{flex:0 0 auto;width:34px;height:34px;border-radius:50%;background:var(--rojo);display:inline-flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(209,19,46,.35);}
+.gp-icono svg{width:19px;height:19px;stroke:#fff;}
+.gp-ver-todo{
+  flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;font-family:var(--font-tit);font-size:.76rem;letter-spacing:.8px;
+  text-transform:uppercase;color:var(--rojo);text-decoration:none;white-space:nowrap;padding-bottom:2px;
+}
+.gp-ver-todo span{transition:transform .18s ease;}
+.gp-ver-todo:hover{text-decoration:underline;}
+.gp-ver-todo:hover span{transform:translateX(3px);}
+
+/* Chips de competición (con degradado en el borde cuando hay scroll) */
+.gp-chips{
+  display:flex;gap:8px;margin-bottom:18px;overflow-x:auto;padding:2px 2px 8px;scrollbar-width:none;
+  -webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;
+  -webkit-mask-image:linear-gradient(to right,#000 0,#000 calc(100% - 28px),transparent 100%);
+  mask-image:linear-gradient(to right,#000 0,#000 calc(100% - 28px),transparent 100%);
+}
+.gp-chips::-webkit-scrollbar{display:none;}
+.gp-chip{
+  flex:0 0 auto;display:inline-flex;align-items:center;gap:7px;cursor:pointer;scroll-snap-align:start;min-height:38px;
+  font-family:var(--font-tit);font-weight:600;font-size:.78rem;letter-spacing:.3px;text-transform:uppercase;
+  color:var(--marino-texto);background:var(--tarjeta);border:1px solid var(--borde);border-radius:999px;padding:7px 15px;
+  transition:background .15s ease,border-color .15s ease,color .15s ease,transform .12s ease;
+}
+.gp-chip img{width:16px;height:16px;object-fit:contain;}
+/* El logo de Hypermotion es negro: sobre el botón activo (rojo) y en modo oscuro se invierte para que se vea. */
+.gp-chip[data-comp="hypermotion"][aria-pressed="true"] img,[data-theme="dark"] .gp-chip[data-comp="hypermotion"] img{filter:invert(1);}
+.gp-chip:hover{border-color:var(--rojo);}
+.gp-chip:active{transform:scale(.97);}
+.gp-chip[aria-pressed="true"]{background:var(--rojo);color:#fff;border-color:var(--rojo);box-shadow:0 4px 12px rgba(209,19,46,.3);}
+.gp-chip:focus-visible,.card-galeria:focus-visible,.gp-ver-todo:focus-visible{outline:3px solid var(--celeste);outline-offset:3px;}
+
+/* Rejilla: 3 columnas en escritorio, 2 en tablet (móvil: carrusel, abajo) */
+body[data-page="inicio"] .grid-noticias.gp-grid,.grid-noticias.gp-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:26px;transition:opacity .2s ease;}
+@media(max-width:1000px){body[data-page="inicio"] .grid-noticias.gp-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;}}
+
+/* Tarjeta de galería: misma estructura que .card de noticias */
+.card-galeria{text-decoration:none;color:inherit;}
+.card-galeria .cg-foto{position:relative;overflow:hidden;flex:0 0 auto;background:var(--gris-claro);}
+.card-galeria .cg-foto::after{
+  content:"";position:absolute;inset:auto 0 0 0;height:45%;pointer-events:none;
+  background:linear-gradient(to top,rgba(6,16,28,.55),transparent);
+}
+body[data-page="inicio"] .card-galeria .cg-foto img{display:block;width:100%;height:auto;aspect-ratio:16/10;object-fit:cover;}
+.cg-fotos{
+  position:absolute;right:10px;bottom:10px;z-index:1;display:inline-flex;align-items:center;gap:6px;
+  font-family:var(--font-tit);font-weight:600;font-size:.72rem;letter-spacing:.4px;text-transform:uppercase;color:#fff;
+  background:rgba(12,27,46,.72);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);padding:5px 10px;border-radius:999px;
+}
+.cg-fotos svg{width:14px;height:14px;flex:0 0 auto;}
+.card-galeria .cbody{min-width:0;}
+.card-galeria h3{overflow-wrap:anywhere;}
+.cg-marcador{
+  display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;
+  padding:8px 10px;border-radius:12px;background:var(--fondo-alt);
+}
+.cg-marcador .cg-escudo:first-child{justify-self:end;}
+.cg-marcador .cg-escudo:last-child{justify-self:start;}
+.cg-marcador b{font-family:var(--font-tit);font-size:1.1rem;letter-spacing:.6px;color:var(--marino-texto);white-space:nowrap;text-align:center;}
+body[data-page="inicio"] .card.card-galeria img.cg-escudo,.card.card-galeria img.cg-escudo{width:28px;height:28px;aspect-ratio:auto;object-fit:contain;border-radius:0;transform:none;background:transparent;}
+.gp-vacio{grid-column:1/-1;margin:0;padding:40px 16px;text-align:center;color:var(--texto-suave);border:1px dashed var(--borde);border-radius:16px;}
+
+[data-theme="dark"] .cg-marcador{background:rgba(255,255,255,.06);}
+[data-theme="dark"] .gp-chip{background:rgba(255,255,255,.05);}
+[data-theme="dark"] .gp-chip[aria-pressed="true"]{background:var(--rojo);}
+
+/* ---------- Escritorio / tablet: diseño editorial ---------- */
+/* Tarjetas pequeñas: elevación, aro y zoom suaves. */
+body[data-page="inicio"] .card.card-galeria{
+  border-color:var(--borde);box-shadow:0 2px 6px rgba(12,27,46,.05);
+  transition:transform .28s var(--pt-ease,ease),box-shadow .28s,border-color .28s;
+}
+body[data-page="inicio"] .card.card-galeria:hover{
+  transform:translateY(-6px);border-color:transparent;
+  box-shadow:0 22px 44px -16px rgba(12,27,46,.38),0 0 0 2px var(--rojo);
+}
+.card-galeria .cg-foto::before{
+  content:"";position:absolute;inset:0;z-index:1;pointer-events:none;opacity:0;transition:opacity .28s;
+  background:linear-gradient(135deg,rgba(209,19,46,.28),transparent 55%);
+}
+.card-galeria:hover .cg-foto::before{opacity:1;}
+.card-galeria .cg-fotos{z-index:2;transition:background .2s,transform .2s;}
+.card-galeria:hover .cg-fotos{background:var(--rojo);transform:translateY(-2px);}
+body[data-page="inicio"] .card-galeria .cbody{gap:9px;}
+.card-galeria .cat{display:inline-block;align-self:flex-start;}
+.card-galeria h3{min-height:2.64em;}
+
+/* ---------- El tamaño de las tarjetas depende de cuántas galerías hay ---------- */
+/* Tarjeta "grande" (card-hero): foto a todo el tamaño y texto encima. */
+@media(min-width:901px){
+  body[data-page="inicio"] .card.card-galeria.card-hero{position:relative;min-height:400px;color:#fff;border:0;background:#0d1f34;}
+  body[data-page="inicio"] .card.card-galeria.card-hero .cg-foto{position:absolute;inset:0;height:100%;}
+  body[data-page="inicio"] .card.card-galeria.card-hero .cg-foto img{position:absolute;inset:0;width:100%;height:100%;aspect-ratio:auto;object-fit:cover;}
+  body[data-page="inicio"] .card.card-galeria.card-hero .cg-foto::after{height:78%;background:linear-gradient(to top,rgba(6,16,28,.94) 8%,rgba(6,16,28,.55) 52%,transparent);}
+  body[data-page="inicio"] .card.card-galeria.card-hero .cg-fotos{top:16px;right:16px;bottom:auto;}
+  body[data-page="inicio"] .card.card-galeria.card-hero .cbody{position:absolute;left:0;right:0;bottom:0;z-index:2;padding:26px 28px 24px;gap:12px;background:transparent;}
+  body[data-page="inicio"] .card.card-galeria.card-hero .cat{background:var(--rojo);color:#fff;padding:5px 12px;border-radius:999px;letter-spacing:.8px;}
+  body[data-page="inicio"] .card.card-galeria.card-hero h3,body[data-page="inicio"] .card.card-galeria.card-hero:hover h3{color:#fff;font-size:1.7rem;line-height:1.15;min-height:0;-webkit-line-clamp:3;text-shadow:0 2px 10px rgba(0,0,0,.5);}
+  body[data-page="inicio"] .card.card-galeria.card-hero .cg-marcador{align-self:flex-start;grid-template-columns:auto auto auto;gap:14px;padding:9px 16px;border-radius:999px;
+    background:rgba(255,255,255,.16);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.22);}
+  body[data-page="inicio"] .card.card-galeria.card-hero .cg-marcador b{color:#fff;font-size:1.45rem;}
+  body[data-page="inicio"] .card.card-galeria.card-hero img.cg-escudo{width:38px;height:38px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.45));}
+  body[data-page="inicio"] .card.card-galeria.card-hero .meta{color:rgba(255,255,255,.85);border:0;padding:0;margin:0;font-size:.82rem;}
+  body[data-page="inicio"] .card.card-galeria.card-hero:hover{box-shadow:0 26px 50px -16px rgba(12,27,46,.55),0 0 0 2px var(--rojo);}
+  /* Pequeñas junto a una grande: texto compacto. */
+  body[data-page="inicio"] .grid-noticias.gp-grid .card.card-galeria:not(.card-hero) .cbody{padding:14px 16px;gap:7px;}
+  body[data-page="inicio"] .grid-noticias.gp-grid .card.card-galeria:not(.card-hero) h3{font-size:1rem;-webkit-line-clamp:2;}
+  body[data-page="inicio"] .grid-noticias.gp-grid .card.card-galeria:not(.card-hero) .cg-marcador{padding:6px 8px;}
+}
+
+/* 1 galería: una sola tarjeta a todo el ancho, panorámica. */
+@media(min-width:901px){
+  body[data-page="inicio"] .grid-noticias.gp-grid[data-n="1"]{grid-template-columns:minmax(0,1fr);}
+  body[data-page="inicio"] .grid-noticias.gp-grid[data-n="1"] .card-hero{min-height:460px;}
+  body[data-page="inicio"] .grid-noticias.gp-grid[data-n="1"] .card-hero h3{font-size:2.3rem;}
+  body[data-page="inicio"] .grid-noticias.gp-grid[data-n="1"] .card-hero .cbody{padding:34px 40px 32px;max-width:760px;}
+  body[data-page="inicio"] .grid-noticias.gp-grid[data-n="1"] .card-hero img.cg-escudo{width:46px;height:46px;}
+  body[data-page="inicio"] .grid-noticias.gp-grid[data-n="1"] .card-hero .cg-marcador b{font-size:1.8rem;}
+}
+/* 2 galerías: dos grandes, mitad y mitad. */
+@media(min-width:901px){
+  body[data-page="inicio"] .grid-noticias.gp-grid[data-n="2"]{grid-template-columns:repeat(2,minmax(0,1fr));}
+  body[data-page="inicio"] .grid-noticias.gp-grid[data-n="2"] .card-hero{min-height:420px;}
+}
+/* 3 galerías: una grande (2 columnas × 2 filas) y dos pequeñas apiladas. */
+@media(min-width:1001px){
+  body[data-page="inicio"] .grid-noticias.gp-grid[data-n="3"]{grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:minmax(0,1fr);gap:22px;}
+  body[data-page="inicio"] .grid-noticias.gp-grid[data-n="3"] .card-hero{grid-column:span 2;grid-row:span 2;min-height:480px;}
+  body[data-page="inicio"] .grid-noticias.gp-grid[data-n="3"] .card-hero h3{font-size:1.9rem;}
+}
+/* 4 galerías: una fila de 4 iguales. */
+@media(min-width:1001px){
+  body[data-page="inicio"] .grid-noticias.gp-grid[data-n="4"]{grid-template-columns:repeat(4,minmax(0,1fr));gap:22px;}
+}
+/* 5 galerías: una grande (2×2) y cuatro pequeñas. */
+@media(min-width:1001px){
+  body[data-page="inicio"] .grid-noticias.gp-grid[data-n="5"]{grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-rows:minmax(0,1fr);gap:22px;}
+  body[data-page="inicio"] .grid-noticias.gp-grid[data-n="5"] .card-hero{grid-column:span 2;grid-row:span 2;min-height:470px;}
+  body[data-page="inicio"] .grid-noticias.gp-grid[data-n="5"] .card-hero h3{font-size:1.9rem;}
+}
+@media(min-width:1001px) and (max-width:1180px){
+  body[data-page="inicio"] .grid-noticias.gp-grid[data-n="3"] .card-hero h3,body[data-page="inicio"] .grid-noticias.gp-grid[data-n="5"] .card-hero h3{font-size:1.5rem;}
+  body[data-page="inicio"] .grid-noticias.gp-grid[data-n="3"] .card-hero,body[data-page="inicio"] .grid-noticias.gp-grid[data-n="5"] .card-hero{min-height:440px;}
+}
+/* Tablet ancha (901–1000 px, 2 columnas): la grande ocupa las dos y las demás debajo. */
+@media(min-width:901px) and (max-width:1000px){
+  body[data-page="inicio"] .grid-noticias.gp-grid[data-n="1"] .card-hero,body[data-page="inicio"] .grid-noticias.gp-grid[data-n="3"] .card-hero,body[data-page="inicio"] .grid-noticias.gp-grid[data-n="5"] .card-hero{grid-column:1/-1;}
+  body[data-page="inicio"] .grid-noticias.gp-grid[data-n="3"] .card-hero,body[data-page="inicio"] .grid-noticias.gp-grid[data-n="5"] .card-hero{min-height:380px;}
+  body[data-page="inicio"] .grid-noticias.gp-grid[data-n="2"] .card-hero h3{font-size:1.35rem;}
+}
+[data-theme="dark"] body[data-page="inicio"] .card.card-galeria{border-color:rgba(255,255,255,.08);box-shadow:none;}
+
+/* Móvil: carrusel horizontal con imán. Se anulan las reglas de app-movil.css
+   que convierten cada .card de .grid-noticias en una fila con foto cuadrada. */
+@media(max-width:600px){
+  .galerias-portada{margin-top:40px;}
+  .gp-cabecera{gap:10px;}
+  .galerias-portada .gp-titulo{font-size:1.05rem;gap:10px;}
+  .gp-titulo-txt{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .gp-ver-todo-extra{display:none;}
+  .gp-icono{width:30px;height:30px;}
+  .gp-icono svg{width:17px;height:17px;}
+  .gp-ver-todo{font-size:.7rem;min-height:44px;align-items:center;padding-bottom:0;}
+  .gp-chip{min-height:44px;padding:8px 16px;}
+
+}
+/* Carrusel también en tablet (≤900px): es donde app-movil.css activa su feed denso. */
+@media(max-width:900px){
+  html body[data-page="inicio"] .grid-noticias.gp-grid{
+    display:flex;grid-template-columns:none;gap:14px;overflow-x:auto;overflow-y:hidden;padding:2px 2px 12px;margin:0 -2px;
+    scroll-snap-type:x mandatory;scroll-padding:0 2px;-webkit-overflow-scrolling:touch;scrollbar-width:none;
+  }
+  html body .grid-noticias.gp-grid::-webkit-scrollbar{display:none;}
+  html body .grid-noticias.gp-grid .card.card-galeria,
+  html body .grid-noticias.gp-grid .card.card-galeria:first-child{
+    flex:0 0 min(82%,320px);flex-direction:column;align-items:stretch;gap:0;height:auto;padding:0;margin:0;overflow:hidden;
+    border:1px solid var(--borde);border-radius:18px;background:var(--tarjeta);scroll-snap-align:start;
+    box-shadow:0 6px 18px -10px rgba(12,27,46,.35);
+  }
+  html body .grid-noticias.gp-grid .card.card-galeria:active{background:var(--fondo-alt);}
+  html body .grid-noticias.gp-grid .card.card-galeria .cg-foto{width:100%;}
+  html body .grid-noticias.gp-grid .card.card-galeria .cg-foto img{
+    width:100% !important;height:auto !important;aspect-ratio:16/10 !important;border-radius:0 !important;order:0;object-fit:cover;
+  }
+  html body .grid-noticias.gp-grid .card.card-galeria img.cg-escudo{
+    width:28px !important;height:28px !important;aspect-ratio:auto !important;border-radius:0 !important;order:0;object-fit:contain;
+  }
+  html body .grid-noticias.gp-grid .card.card-galeria .cbody{padding:14px 16px 16px !important;gap:8px;flex:1 1 auto;}
+  html body .grid-noticias.gp-grid .card.card-galeria .cat{background:none !important;padding:0 !important;}
+  html body .grid-noticias.gp-grid .card.card-galeria h3{font-size:1.02rem;-webkit-line-clamp:2;}
+  html body .grid-noticias.gp-grid .card.card-galeria .meta{border-top:1px solid var(--borde);padding-top:10px;margin-top:auto;}
+  html body .grid-noticias.gp-grid .gp-vacio{flex:1 1 100%;}
+}
+@media(min-width:601px) and (max-width:900px){
+  html body .grid-noticias.gp-grid .card.card-galeria,
+  html body .grid-noticias.gp-grid .card.card-galeria:first-child{flex-basis:min(46%,340px);}
+}
+@media(max-width:900px){
+  html body .grid-noticias.gp-grid[data-n="1"] .card.card-galeria{flex-basis:100%;}
+}
+@media(max-width:430px){
+  .gp-icono{display:none;}
+  .galerias-portada .gp-titulo{font-size:1rem;letter-spacing:.2px;}
+}
+@media(max-width:360px){
+  html body .grid-noticias.gp-grid .card.card-galeria{flex-basis:88%;}
+  .cg-marcador b{font-size:1rem;}
+  .galerias-portada .gp-titulo{font-size:.9rem;letter-spacing:0;}
+}
+@media(hover:none){
+  body[data-page="inicio"] .card-galeria:hover{transform:none;box-shadow:none;}
+  body[data-page="inicio"] .card-galeria:hover img{transform:none;}
+}
+@media(prefers-reduced-motion:reduce){
+  .gp-chip,.gp-ver-todo span,.galerias-portada .gp-grid{transition:none;}
+  html body .grid-noticias.gp-grid{scroll-behavior:auto;}
 }

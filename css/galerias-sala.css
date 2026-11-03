@@ -1,0 +1,152 @@
+/* ==========================================================================
+   SALA OSCURA — galería de un partido (/galeria/:slug) y galería general
+   --------------------------------------------------------------------------
+   Las fotos se ven mejor sobre fondo oscuro, así que estas dos páginas son
+   siempre oscuras (en modo claro y oscuro del sitio). Se carga DESPUÉS del
+   <style> de cada página y la sobrescribe. Solo se activa con body.sala.
+   Cabecera con la foto de portada difuminada y el marcador en cristal;
+   muro de fotos con una foto doble cada nueve; barra de filtros de cristal.
+   ========================================================================== */
+
+body.sala{
+  --sala:#08111e;--sala2:#0d1a2b;--sala-linea:rgba(255,255,255,.1);--sala-texto:#e7eef6;--sala-suave:#9fb2c6;
+  background:var(--sala);color:var(--sala-texto);
+}
+body.sala main{margin:0 auto;}
+
+/* ---------- Cabecera de la galería de un partido ---------- */
+.sala .gal-cabecera{
+  padding:22px 0 76px;background:linear-gradient(160deg, var(--marino) 0%, var(--sala) 100%);box-shadow:none;
+}
+.sala .gal-cabecera::before{display:none;}
+.sala .gal-cabecera::after{
+  background:linear-gradient(180deg, rgba(8,17,30,.3) 0%, rgba(8,17,30,.55) 55%, var(--sala) 100%);
+}
+.sala .gal-fondo{filter:blur(12px) saturate(1.25);}
+.sala .gal-fondo.lista{opacity:.62;}
+.sala .gal-cabecera-inner{max-width:1100px;padding:0 24px;}
+.sala .gal-breadcrumb{text-transform:none;letter-spacing:0;font-size:.86rem;}
+.sala .gal-enlace-general{background:rgba(255,255,255,.1);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);}
+.sala .gal-competicion{
+  width:fit-content;margin:6px auto 22px;padding:7px 16px;border-radius:999px;font-size:.92rem;
+  background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+}
+.sala .gal-marcador-fila{gap:clamp(12px,4vw,44px);}
+.sala .gal-escudo{width:clamp(64px,11vw,116px);height:clamp(64px,11vw,116px);filter:drop-shadow(0 8px 22px rgba(0,0,0,.55));}
+.sala .gal-nombre{font-size:clamp(1rem,2.4vw,1.6rem);max-width:260px;line-height:1.15;text-shadow:0 2px 14px rgba(0,0,0,.5);}
+.sala .gal-marcador{
+  font-size:clamp(2.6rem,7.5vw,5.2rem);letter-spacing:.04em;padding:6px clamp(16px,3vw,34px) 8px;border-radius:20px;
+  background:rgba(8,17,30,.5);border:1px solid rgba(255,255,255,.2);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  box-shadow:0 14px 40px rgba(0,0,0,.35);text-shadow:0 2px 16px rgba(0,0,0,.4);
+}
+.sala .gal-marcador small{display:block;font-size:.8rem;letter-spacing:0;text-align:center;margin-top:2px;}
+.sala .gal-meta{text-transform:none;letter-spacing:0;font-size:.9rem;font-weight:500;color:#dbe8f3;}
+.sala .gal-titulo-pagina{margin-top:20px;font-size:.95rem;font-weight:500;color:var(--sala-suave);}
+
+/* ---------- Barra pegajosa de pestañas / filtros (cristal oscuro) ---------- */
+.sala .gal-barra,.sala .gals-barra{
+  background:rgba(8,17,30,.82);backdrop-filter:blur(14px) saturate(1.2);-webkit-backdrop-filter:blur(14px) saturate(1.2);
+  border-bottom:1px solid var(--sala-linea);box-shadow:0 8px 24px rgba(0,0,0,.28);
+}
+.sala .gal-pestanas,.sala .gals-filtros,.sala .gals-tamano{background:rgba(255,255,255,.06);border:1px solid var(--sala-linea);}
+.sala .gal-pestana,.sala .gals-filtro,.sala .gals-tamano-btn{color:var(--sala-suave);}
+.sala .gal-pestana:hover,.sala .gals-filtro:hover,.sala .gals-tamano-btn:hover{color:#fff;background:rgba(255,255,255,.09);}
+.sala .gal-pestana.activa,.sala .gals-filtro.activo,.sala .gals-tamano-btn.activo{
+  color:#fff;background:var(--rojo);box-shadow:0 4px 14px rgba(209,19,46,.4);
+}
+.sala .gal-pestana .gal-contador{background:rgba(255,255,255,.12);color:#dbe8f3;}
+.sala .gal-pestana.activa .gal-contador{background:rgba(255,255,255,.25);color:#fff;}
+.sala .gals-tamano-btn svg{stroke:currentColor;}
+
+/* ---------- Lienzo ---------- */
+.sala .gal-wrap,.sala .gals-wrap{max-width:1900px;padding:26px 20px 90px;}
+.sala .gal-grid,.sala .gals-grid,.sala .gal-grid-skeleton,.sala .gals-grid-skeleton{gap:10px;}
+.sala .gal-item,.sala .gals-item{
+  border-radius:10px;background:var(--sala2);box-shadow:none;outline:1px solid rgba(255,255,255,.06);outline-offset:-1px;
+}
+.sala .gal-item:hover,.sala .gals-item:hover{box-shadow:0 18px 44px rgba(0,0,0,.6);transform:translateY(-3px);outline-color:rgba(255,255,255,.28);}
+.sala .gal-item img,.sala .gals-item img,.sala .gal-item video,.sala .gals-item video{background:var(--sala2);}
+/* Una foto doble cada nueve, para dar ritmo (desde 4 columnas) */
+@media (min-width:901px){
+  /* dense: las fotos normales rellenan los huecos que dejaría la foto doble al saltar de fila */
+  .sala .gal-grid:not(.tam-compacto),
+  .sala .gals-grid:not(.tam-compacto){grid-auto-flow:row dense;}
+  .sala .gal-grid:not(.tam-compacto) .gal-item:nth-child(9n+1),
+  .sala .gals-grid:not(.tam-compacto) .gals-item:nth-child(9n+1){grid-column:span 2;grid-row:span 2;aspect-ratio:auto;}
+}
+.sala .gal-skel,.sala .gals-skel{background:rgba(255,255,255,.06);}
+.sala .gal-grid-skeleton .gal-skel::after,.sala .gals-skel::after{background:linear-gradient(90deg, transparent, rgba(255,255,255,.07), transparent);}
+.sala .gal-vacio,.sala .gals-vacio{background:rgba(255,255,255,.04);border:1px dashed var(--sala-linea);color:var(--sala-suave);}
+.sala .gal-vacio strong,.sala .gals-vacio strong{color:#fff !important;}
+.sala .gal-vacio svg,.sala .gals-vacio svg{color:var(--sala-suave);}
+
+/* ---------- Compartir: una barra fina en vez de un bloque grande ---------- */
+.sala .gal-compartir{margin:0 0 18px;}
+.sala .gal-compartir .estado-info{
+  display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:10px 22px;flex-wrap:wrap;text-align:left;
+  padding:12px 16px 12px 20px;background:rgba(255,255,255,.04);border:1px solid var(--sala-linea);border-radius:16px;
+}
+.sala .gal-compartir .estado-info > svg,.sala .gal-compartir .estado-info > p{display:none;}
+.sala .gal-compartir .estado-info h3{margin:0;flex:0 0 auto;width:auto;font-size:1rem;font-weight:600;color:#fff;text-transform:none;letter-spacing:0;}
+.sala .gal-compartir .compartir-botones{margin:0;display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;}
+.sala .gal-compartir .btn-compartir{
+  background:rgba(255,255,255,.07);border:1px solid var(--sala-linea);color:#fff;box-shadow:none;padding:5px 12px 5px 6px;font-size:.8rem;
+}
+.sala .gal-compartir .btn-compartir:hover{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.3);}
+.sala .gal-compartir .btn-compartir span{color:inherit;}
+@media (max-width:640px){
+  .sala .gal-compartir .estado-info{padding:12px;}
+  .sala .gal-compartir .compartir-botones{justify-content:flex-start;}
+}
+
+/* Filtro Todo / Fotos / Vídeos */
+.sala .vm-filtros{justify-content:center;margin:0 0 20px;}
+.sala .vm-filtro{background:transparent;border:1px solid rgba(255,255,255,.2);color:var(--sala-suave);}
+.sala .vm-filtro:hover{color:#fff;border-color:rgba(255,255,255,.45);background:rgba(255,255,255,.06);}
+.sala .vm-filtro.activo{background:#fff;border-color:#fff;color:var(--sala);}
+.sala .vm-filtro small{opacity:.7;}
+
+/* ---------- Más galerías (final de la galería de un partido) ---------- */
+.sala .gal-mas-galerias{max-width:1100px;padding:0 20px 90px;gap:16px;}
+.sala .gal-mas-galerias a{
+  background:linear-gradient(150deg, rgba(255,255,255,.07), rgba(255,255,255,.02));border:1px solid var(--sala-linea);color:#fff;
+  padding:22px 24px;border-radius:18px;
+}
+.sala .gal-mas-galerias a:hover{border-color:var(--rojo);box-shadow:0 14px 34px rgba(0,0,0,.5);}
+.sala .gal-mas-galerias strong{font-size:1.25rem;}
+.sala .gal-mas-galerias span{color:var(--sala-suave);}
+
+/* ---------- Galería general: cabecera ---------- */
+.sala .gals-cabecera{padding:40px 0 70px;isolation:isolate;background:linear-gradient(160deg, var(--marino) 0%, var(--sala) 100%);}
+.sala .gals-cabecera::before{display:none;}
+.sala .gals-cabecera::after{
+  content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
+  background:linear-gradient(90deg, rgba(8,17,30,.88) 5%, rgba(8,17,30,.35) 100%),linear-gradient(180deg, rgba(8,17,30,0) 40%, var(--sala) 100%);
+}
+.sala .gals-fondo{
+  position:absolute;inset:-30px;z-index:-2;background-size:cover;background-position:center;
+  filter:blur(10px) saturate(1.2);opacity:0;transform:scale(1.08);transition:opacity .9s ease;pointer-events:none;
+}
+.sala .gals-fondo.lista{opacity:.55;}
+.sala .gals-cabecera-inner{max-width:1180px;align-items:flex-end;}
+.sala .gals-titulo{font-size:clamp(2.6rem,6.4vw,4.8rem);line-height:.96;margin:0 0 12px;text-shadow:0 4px 30px rgba(0,0,0,.4);}
+.sala .gals-titulo svg{display:none;}
+.sala .gals-subtitulo{font-size:1.04rem;color:#dbe8f3;max-width:44ch;line-height:1.5;}
+.sala .gals-volver{font-size:.88rem;}
+.sala .gals-contador{
+  text-transform:none;letter-spacing:0;font-family:var(--font-text);font-size:.88rem;background:rgba(255,255,255,.12);
+}
+.sala .gals-enlace-partidos{background:rgba(255,255,255,.1);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);}
+.sala .gals-cargar-mas{
+  background:transparent;border:1px solid rgba(255,255,255,.3);color:#fff;font-family:var(--font-text);text-transform:none;
+  font-size:.92rem;font-weight:700;letter-spacing:0;padding:12px 30px;
+}
+.sala .gals-cargar-mas:hover{background:#fff;color:var(--sala);border-color:#fff;}
+.sala .gals-spin{border-color:rgba(255,255,255,.25);border-top-color:#fff;}
+
+@media (max-width:640px){
+  .sala .gal-wrap,.sala .gals-wrap{padding:18px 10px 80px;}
+  .sala .gal-grid,.sala .gals-grid{gap:6px;}
+  .sala .gal-cabecera{padding-bottom:60px;}
+}
+@media (prefers-reduced-motion:reduce){.sala .gals-fondo{transition:none;}}

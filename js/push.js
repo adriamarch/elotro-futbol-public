@@ -123,7 +123,7 @@
   function cargarClubes() {
     if (listaClubes) return Promise.resolve(listaClubes);
     if (promesaClubes) return promesaClubes;
-    var previa = typeof CLUBS_BY_CATEGORY !== "undefined" ? Promise.resolve() : cargarScript("/js/clubs.js?v=6");
+    var previa = typeof CLUBS_BY_CATEGORY !== "undefined" ? Promise.resolve() : cargarScript("/js/clubs.js?v=7");
     promesaClubes = previa.then(function () {
       var crudos = []; // { n, comp, esc }
       if (typeof CLUBS_BY_CATEGORY !== "undefined") {

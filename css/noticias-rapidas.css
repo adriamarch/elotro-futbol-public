@@ -611,7 +611,7 @@ html.nr-modal-abierto{overflow:hidden;}
 .nr-modal-fondo{
   position:absolute;inset:0;opacity:0;transition:opacity .28s ease;
   background:radial-gradient(120% 90% at 50% 0%,rgba(209,19,46,.18),transparent 55%),rgba(6,12,22,.72);
-  backdrop-filter:blur(7px) saturate(1.1);-webkit-backdrop-filter:blur(7px) saturate(1.1);
+  backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);
 }
 .nr-modal--visible .nr-modal-fondo{opacity:1;}
 
@@ -749,3 +749,67 @@ html.nr-modal-abierto{overflow:hidden;}
   .nr-modal-foto img,.nr-modal-sale-der,.nr-modal-sale-izq{animation:none;}
 }
 @media print{.nr-modal{display:none !important;}.nr-leer-mas{display:none !important;}}
+
+/* =====================================================================
+   V4.5 — BOTÓN COMPARTIR EN TÁCTIL / MÓVIL
+   El cristal translúcido (rgba oscuro + blur) se veía grisáceo y sucio sobre
+   fotos claras y se perdía junto al chip. En táctil/móvil pasa a ser un botón
+   sólido (blanco, icono marino, sombra suave): legible sobre cualquier foto,
+   siempre visible y sin depender del hover. La zona de toque llega a ~44px
+   con un ::before invisible, aunque el círculo sea más pequeño.
+   ===================================================================== */
+@media (hover:none), (max-width:719px){
+  .nr-card .nr-compartir{
+    opacity:1;transform:none;
+    color:var(--marino);background:rgba(255,255,255,.96);border:0;
+    box-shadow:0 1px 2px rgba(12,27,46,.2),0 4px 14px rgba(12,27,46,.25);
+    -webkit-backdrop-filter:none;backdrop-filter:none;
+    -webkit-tap-highlight-color:transparent;
+    transition:transform .15s ease,background-color .15s ease;
+  }
+  .nr-card .nr-compartir svg{stroke-width:2;}
+  .nr-card .nr-compartir::before{content:"";position:absolute;inset:-6px;border-radius:50%;}
+  .nr-card .nr-compartir:hover{background:#fff;color:var(--rojo);}
+  .nr-card .nr-compartir:active{transform:scale(.9);background:#fff;color:var(--rojo);}
+}
+@media (max-width:639px){
+  .nr-card .nr-compartir{width:36px;height:36px;right:10px;top:10px;}
+  .nr-card .nr-compartir svg{width:16px;height:16px;}
+}
+/* Portada: tarjetas de 2 columnas, más pequeñas */
+@media (max-width:719px){
+  .nr-portada .nr-card .nr-compartir{width:30px;height:30px;right:6px;top:6px;}
+  .nr-portada .nr-card .nr-compartir::before{inset:-7px;}
+  .nr-portada .nr-card .nr-compartir svg{width:14px;height:14px;}
+}
+
+/* ---------- v2: autor y fecha legibles, titulares equilibrados ----------
+   Antes la fecha larga se comía el ancho y el nombre del autor se cortaba
+   ("Ma…"). Ahora el avatar queda a la izquierda y autor y fecha se apilan. */
+.nr-card:not(.nr-card--destacada) .nr-meta{
+  display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:10px;row-gap:1px;align-items:center;
+}
+.nr-card:not(.nr-card--destacada) .nr-avatar{grid-row:1 / 3;}
+.nr-card:not(.nr-card--destacada) .nr-meta-autor{grid-column:2;grid-row:1;}
+.nr-card:not(.nr-card--destacada) .nr-meta-fecha{grid-column:2;grid-row:2;margin-left:0;font-size:.72rem;white-space:normal;}
+.nr-card:not(.nr-card--destacada) .nr-meta-fecha:only-child{grid-column:1 / -1;grid-row:1;}
+.nr-portada .nr-avatar{grid-row:auto;}
+.nr-card h3{text-wrap:balance;}
+.nr-card:not(.nr-card--destacada) h3{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;}
+.nr-card:not(.nr-card--destacada) p{text-wrap:pretty;}
+/* Chip y botón de compartir: algo más nítidos sobre cualquier foto */
+.nr-chip{box-shadow:0 2px 10px rgba(0,0,0,.28),inset 0 0 0 1px rgba(255,255,255,.06);}
+/* Hover/teclado: elevación suave y foto que respira */
+@media(hover:hover){
+  .nr-card:hover{transform:translateY(-4px);box-shadow:0 18px 38px -16px rgba(12,27,46,.45);border-color:transparent;}
+  .nr-card:hover .nr-card-media img{transform:scale(1.05);}
+}
+/* Cabecera de la página: aire propio y contador a la altura del título */
+.nr-hero{padding:46px 0 38px;}
+.nr-hero-contador{align-self:center;}
+@media(max-width:560px){
+  .nr-hero{padding:30px 0 26px;}
+  .nr-hero-inner{align-items:flex-start;}
+  .nr-hero-contador{padding:6px 14px;font-size:.7rem;}
+}
+main.wrap > .nr-grid{margin-bottom:24px;}

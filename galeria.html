@@ -14,8 +14,9 @@
      siempre contra la raíz, se sirva la página desde donde se sirva. -->
 <base href="/">
 <script src="js/tema.js?v=2"></script>
-<script src="js/preferencias.js?v=3"></script>
+<script src="js/preferencias.js?v=20"></script>
 <meta charset="UTF-8">
+<script src="/js/splash.js?v=2"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -33,11 +34,13 @@
 <link rel="preconnect" href="https://res.cloudinary.com" crossorigin>
 <link rel="dns-prefetch" href="https://res.cloudinary.com">
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'"><noscript><link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>
-<link rel="stylesheet" href="css/style.css?v=25">
-<link rel="stylesheet" href="css/accesibilidad.css?v=1">
+<link rel="stylesheet" href="css/style.css?v=35">
+<link rel="stylesheet" href="css/modales-mejoras.css?v=1">
+<link rel="stylesheet" href="css/accesibilidad.css?v=2">
 <script src="js/accesibilidad.js?v=1" defer></script>
 <link rel="stylesheet" href="css/foco.css?v=1">
-<link rel="stylesheet" href="css/visor-media.css?v=2">
+<link rel="stylesheet" href="css/visor-media.css?v=10">
+<link rel="stylesheet" href="css/credito-copyright.css?v=1">
 <style>
   /* ---------- GALERÍA DE CONTENIDO (PARTIDO) ----------
      Cabecera tipo marcador de retransmisión (fondo marino de marca,
@@ -120,6 +123,7 @@
   .gal-pestana:hover{color:var(--marino-texto);background:var(--tarjeta);}
   .gal-pestana.activa{color:#fff;background:linear-gradient(135deg, var(--marino), var(--marino2));box-shadow:0 3px 10px rgba(12,27,46,.28);}
   .gal-pestana .gal-pestana-escudo{width:17px;height:17px;object-fit:contain;flex-shrink:0;}
+  .gal-pestana-todos{font-weight:700;letter-spacing:.01em;}
   .gal-pestana .gal-contador{
     background:var(--gris-claro);color:var(--texto-suave);font-size:.7rem;font-weight:700;
     border-radius:999px;padding:2px 8px;min-width:20px;text-align:center;
@@ -239,18 +243,77 @@
     .gal-escudo{width:44px;height:44px;}
     .gal-nombre{font-size:.76rem;max-width:100px;}
   }
+  /* ---------- Cabecera con foto de portada ---------- */
+  .gal-migas{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:18px;}
+  .gal-migas .gal-breadcrumb{margin-bottom:0;}
+  .gal-enlace-general{color:#fff;text-decoration:none;font-weight:600;font-size:.78rem;padding:6px 13px;border-radius:999px;border:1px solid rgba(255,255,255,.35);transition:background .15s ease,color .15s ease;}
+  .gal-enlace-general:hover{background:#fff;color:var(--marino);}
+  .gal-cabecera{padding-bottom:34px;}
+  .gal-fondo{
+    position:absolute;inset:-30px;background-size:cover;background-position:center;
+    filter:blur(24px) saturate(1.15);opacity:0;transform:scale(1.08);transition:opacity .8s ease;pointer-events:none;
+  }
+  .gal-fondo.lista{opacity:.42;}
+  .gal-cabecera::after{
+    content:"";position:absolute;inset:0;pointer-events:none;
+    background:linear-gradient(180deg, rgba(12,27,46,.35) 0%, rgba(12,27,46,.88) 100%);
+  }
+  .gal-cabecera-inner{z-index:1;}
+  .gal-cabecera::before{z-index:1;}
+  .gal-escudo{width:76px;height:76px;}
+  .gal-nombre{font-size:1rem;max-width:170px;}
+  .gal-marcador{font-size:3rem;}
+  .gal-competicion{
+    display:flex;align-items:center;justify-content:center;gap:8px;margin:0 0 14px;
+    font-family:var(--font-tit);font-weight:600;font-size:.95rem;color:#fff;
+  }
+  .gal-competicion img{width:22px;height:22px;object-fit:contain;}
+  .gal-resumen-fotos{display:flex;justify-content:center;margin:16px 0 0;}
+  .gal-resumen-fotos span{
+    font-size:.8rem;font-weight:600;color:#fff;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);
+    border-radius:999px;padding:6px 15px;backdrop-filter:blur(4px);
+  }
+  @media (max-width:560px){
+    .gal-escudo{width:56px;height:56px;}
+    .gal-marcador{font-size:2.3rem;}
+    .gal-nombre{font-size:.86rem;max-width:120px;}
+  }
+
+  /* ---------- Más galerías (al final) ---------- */
+  .gal-mas-galerias{
+    max-width:900px;margin:10px auto 0;padding:0 18px 70px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;
+  }
+  .gal-mas-galerias a{
+    display:flex;flex-direction:column;gap:4px;text-decoration:none;color:var(--marino-texto);
+    background:var(--tarjeta);border:1px solid var(--borde);border-radius:14px;padding:16px 18px;
+    transition:border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+  }
+  .gal-mas-galerias a:hover{border-color:var(--rojo);box-shadow:0 10px 24px rgba(12,27,46,.14);transform:translateY(-2px);}
+  .gal-mas-galerias strong{font-family:var(--font-tit);font-size:1.05rem;}
+  .gal-mas-galerias span{font-size:.84rem;color:var(--texto-suave);}
+  @media (max-width:560px){.gal-mas-galerias{grid-template-columns:1fr;}}
+  @media (prefers-reduced-motion:reduce){.gal-fondo{transition:none;}.gal-mas-galerias a{transition:none;}.gal-mas-galerias a:hover{transform:none;}}
 </style>
+<link rel="stylesheet" href="css/galerias-sala.css?v=2">
+<link rel="stylesheet" href="css/app-movil.css?v=8">
+<script src="js/app-movil.js?v=5" defer></script>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="stylesheet" href="css/proteccion-copia.css?v=2">
 </head>
-<body data-page="galeria">
+<body class="sala" data-page="galeria">
+<h1 id="seoH1" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap">Galería de fotos del partido</h1>
 
 <div id="site-header"></div>
 
 <header class="gal-cabecera">
   <div class="gal-cabecera-inner">
-    <a href="/galerias" class="gal-breadcrumb">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
-      Ver toda la Galería de contenido
-    </a>
+    <div class="gal-migas">
+      <a href="/galerias" class="gal-breadcrumb">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+        Todas las galerías
+      </a>
+      <a href="/galeria-general" class="gal-enlace-general">Galería general</a>
+    </div>
     <div id="galCabeceraDatos">
       <div class="gal-skeleton-cabecera">
         <div class="gal-skel" style="width:70%;height:54px;border-radius:12px;"></div>
@@ -274,24 +337,31 @@
   </div>
 </main>
 
+<nav class="gal-mas-galerias" aria-label="Más galerías">
+  <a href="/galerias#partidos"><strong>Otras galerías de partidos</strong><span>Busca por competición o por equipo.</span></a>
+  <a href="/galeria-general"><strong>Galería general</strong><span>Todas las fotos y vídeos en un solo muro.</span></a>
+</nav>
+
 <div id="site-footer"></div>
 
 <script src="js/ui-alertas.js?v=5"></script>
 <script src="js/foco.js?v=1"></script>
-<script src="js/config.js?v=25"></script>
+<script src="js/config.js?v=36"></script>
 <script src="js/seo.js?v=5"></script>
-<script src="js/clubs.js?v=6"></script>
-<script src="js/layout.js?v=22"></script>
+<script src="js/clubs.js?v=8"></script>
+<script src="js/lector-auth.js?v=13"></script>
+<script src="js/lecturas.js?v=8"></script>
+<script src="js/layout.js?v=30"></script>
 <script src="js/cookies.js?v=2"></script>
 <script src="js/ads.js?v=3"></script>
-<script src="js/visor-media.js?v=2"></script>
+<script src="js/visor-media.js?v=7"></script>
 <script>
 function escapeHtml(str) {
   return String(str ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
 const slugGaleria = new URLSearchParams(location.search).get("slug") || location.pathname.split("/galeria/")[1];
-const GAL_ANCHO_THUMB = 420;
+const GAL_ANCHO_THUMB = 800; // póster de vídeo y plan B; las fotos usan srcset
 
 let GRUPOS_GALERIA = {};
 let ORDEN_PESTANAS = [];
@@ -369,16 +439,39 @@ async function cargaGaleria() {
   }
 }
 
+// Foto de portada difuminada detrás del marcador: la primera foto (no vídeo) de la galería.
+function pintarFondoCabecera() {
+  const cab = document.querySelector(".gal-cabecera");
+  if (!cab || cab.querySelector(".gal-fondo")) return;
+  let portada = null;
+  for (const k of ["local", "visitante", "general"]) {
+    portada = (GRUPOS_GALERIA[k]?.fotos || []).find((f) => f.tipo !== "video" && f.cloudinary_url);
+    if (portada) break;
+  }
+  if (!portada) return;
+  const fondo = document.createElement("div");
+  fondo.className = "gal-fondo";
+  fondo.setAttribute("aria-hidden", "true");
+  const url = cloudinaryMiniatura(portada.cloudinary_url, 900, false);
+  const img = new Image();
+  img.onload = () => { fondo.style.backgroundImage = `url("${url}")`; requestAnimationFrame(() => fondo.classList.add("lista")); };
+  img.src = url;
+  cab.prepend(fondo);
+}
+
 function pintarCabecera(p) {
   const cont = document.getElementById("galCabeceraDatos");
   const urlLocal = getEscudoUrl(p.equipo_local, p.escudo_local_url);
   const urlVisitante = getEscudoUrl(p.equipo_visitante, p.escudo_visitante_url);
+  const nombreComp = (typeof CATEGORIES !== "undefined" && CATEGORIES[p.competicion]) || "";
+  const logoComp = (typeof CATEGORY_LOGOS !== "undefined" && CATEGORY_LOGOS[p.competicion]) || "";
   const meta = [
     p.jornada ? "Jornada " + p.jornada : null,
     p.fecha_partido ? new Date(p.fecha_partido).toLocaleDateString("es-ES", { day: "2-digit", month: "long", year: "numeric" }) : null,
   ].filter(Boolean);
 
   cont.innerHTML = `
+    ${nombreComp ? `<p class="gal-competicion">${logoComp ? `<img src="${escapeHtml(logoComp)}" alt="" width="22" height="22">` : ""}${escapeHtml(nombreComp)}</p>` : ""}
     <div class="gal-marcador-fila">
       <div class="gal-equipo">
         <img class="gal-escudo" data-equipo="${escapeHtml(p.equipo_local || "")}" src="${urlLocal}" alt="" loading="lazy" onerror="manejarErrorEscudo(this);">
@@ -398,8 +491,10 @@ function pintarCabecera(p) {
       Galería de contenido
     </p>`;
 
+  pintarFondoCabecera();
   const titulo = `Galería de contenido: ${p.equipo_local} ${p.goles_local ?? ""}-${p.goles_visitante ?? ""} ${p.equipo_visitante} — ELOTROFÚTBOLTV`;
   document.getElementById("pageTitle").textContent = titulo;
+  { const seoH1 = document.getElementById("seoH1"); if (seoH1) seoH1.textContent = `Fotos del partido ${p.equipo_local} - ${p.equipo_visitante}`; }
   document.getElementById("canonicalGaleria").href = `https://elotrofutbol.media/galeria/${p.slug}`;
   if (typeof fijarSeoBasico === "function") {
     fijarSeoBasico({
@@ -422,23 +517,51 @@ function pintarCabecera(p) {
   }
 }
 
+// Pestaña "Todos": las fotos de ambos equipos (y las generales) juntas.
+// Se intercalan local / visitante / general en rotación, respetando el
+// orden de cada grupo, para que desde el primer vistazo se vean fotos de
+// los dos equipos y no solo las del primero.
+function construirGrupoTodos() {
+  const colas = ["local", "visitante", "general"]
+    .filter((k) => GRUPOS_GALERIA[k] && GRUPOS_GALERIA[k].fotos.length)
+    .map((k) => GRUPOS_GALERIA[k].fotos.slice());
+  const mezcladas = [];
+  const vistos = new Set();
+  while (colas.some((c) => c.length)) {
+    for (const cola of colas) {
+      const f = cola.shift();
+      if (!f) continue;
+      const clave = f.media_id != null ? "m" + f.media_id : f.cloudinary_url;
+      if (vistos.has(clave)) continue;
+      vistos.add(clave);
+      mezcladas.push(f);
+    }
+  }
+  return { nombre: "Todos", fotos: mezcladas };
+}
+
 function pintarPestanas() {
   const cont = document.getElementById("galContenido");
   const barra = document.getElementById("galBarra");
-  ORDEN_PESTANAS = ["local", "visitante", "general"].filter((k) => GRUPOS_GALERIA[k]);
+  const clavesEquipo = ["local", "visitante", "general"].filter((k) => GRUPOS_GALERIA[k]);
 
-  if (!ORDEN_PESTANAS.length) {
+  if (!clavesEquipo.length) {
     barra.hidden = true;
     cont.innerHTML = estadoVacioHTML("Todavía no hay fotos", "Vuelve más tarde: puede que la galería se publique después del partido.");
     return;
   }
+
+  // "Todos" va siempre primero y es la pestaña que se abre por defecto
+  // cuando hay más de un grupo.
+  const necesitaPestanas = clavesEquipo.length > 1;
+  if (necesitaPestanas) GRUPOS_GALERIA.todos = construirGrupoTodos();
+  ORDEN_PESTANAS = necesitaPestanas ? ["todos", ...clavesEquipo] : clavesEquipo;
 
   PESTANA_ACTIVA = ORDEN_PESTANAS[0];
 
   // Si solo hay un grupo, se muestran las fotos directamente, sin
   // pestañas (sin sub-agrupación real no tiene sentido mostrar una
   // única pestaña).
-  const necesitaPestanas = ORDEN_PESTANAS.length > 1;
   barra.hidden = !necesitaPestanas;
 
   cont.innerHTML = `<div class="gal-grid" id="galGrid"></div>`;
@@ -452,9 +575,9 @@ function pintarBarraPestanas() {
   if (!barra) return;
   barra.innerHTML = ORDEN_PESTANAS.map((clave) => {
     const grupo = GRUPOS_GALERIA[clave];
-    const escudo = clave !== "general" ? getEscudoUrl(grupo.nombre) : null;
+    const escudo = (clave === "local" || clave === "visitante") ? getEscudoUrl(grupo.nombre) : null;
     return `
-      <button type="button" class="gal-pestana${clave === PESTANA_ACTIVA ? " activa" : ""}" data-clave="${clave}">
+      <button type="button" class="gal-pestana${clave === 'todos' ? " gal-pestana-todos" : ""}${clave === PESTANA_ACTIVA ? " activa" : ""}" data-clave="${clave}">
         ${escudo ? `<img class="gal-pestana-escudo" src="${escudo}" alt="" onerror="this.remove();">` : ""}
         ${escapeHtml(grupo.nombre)}
         <span class="gal-contador">${grupo.fotos.length}</span>
@@ -492,18 +615,21 @@ function pintarGrid() {
 
   grid.innerHTML = fotos.map((f, i) => {
     const esFoto = f.tipo === "foto";
-    const poster = esFoto ? "" : VisorMedia.posterVideo(f.cloudinary_url, GAL_ANCHO_THUMB);
-    const thumb = esFoto ? cloudinaryOptimizada(f.cloudinary_url, GAL_ANCHO_THUMB) : poster;
+    const poster = esFoto ? "" : VisorMedia.posterVideo(f.cloudinary_url, 900);
+    const recortar = !tieneFocoManual(f);
+    const thumb = esFoto ? cloudinaryMiniatura(f.cloudinary_url, 640, recortar) : poster;
+    const srcset = esFoto ? cloudinarySrcset(f.cloudinary_url, recortar) : "";
+    const sizes = miniaturaSizes("normal", recortar ? 1 : 1.5);
     const etiqueta = (esFoto ? "Abrir foto " : "Reproducir vídeo ") + (i + 1) + (f.titulo ? ": " + f.titulo : "");
     return `
       <div class="gal-item" data-indice="${i}" role="button" tabindex="0" aria-label="${escapeHtml(etiqueta)}">
         <span class="gal-badge-tipo">${esFoto ? iconoFoto : iconoVideo}</span>
         ${thumb
-          ? `<img data-src="${thumb}" alt="${escapeHtml(f.titulo || "")}" class="cargando foco-img" decoding="async"${f.portada_foco ? ` style="${EOF_FOCO.estilo(f.portada_foco)}"` : ""}>`
+          ? `<img data-src="${thumb}"${srcset ? ` data-srcset="${srcset}" data-sizes="${sizes}"` : ""}${esFoto ? ` data-raw="${escapeHtml(f.cloudinary_url || "")}"` : ""} alt="${escapeHtml(f.titulo || "")}" class="cargando foco-img" decoding="async"${f.portada_foco ? ` style="${EOF_FOCO.estilo(f.portada_foco)}"` : ""}>`
           : `<video src="${f.cloudinary_url}#t=0.1" preload="metadata" muted playsinline></video>`}
         ${esFoto ? "" : `<div class="gal-play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div><span class="gal-tipo-video">Vídeo</span>`}
         <div class="gal-item-overlay">
-          <span class="gal-item-credito">${f.autor_nombre ? "© " + escapeHtml(f.autor_nombre) : (f.titulo ? escapeHtml(f.titulo) : "")}</span>
+          <span class="gal-item-credito${f.autor_nombre ? "" : " sin-copy"}">${f.autor_nombre ? escapeHtml(f.autor_nombre) : (f.titulo ? escapeHtml(f.titulo) : "")}</span>
           <span class="gal-item-acciones">
             <button type="button" class="gal-item-accion" title="Descargar" data-accion="descargar" data-indice="${i}">${iconoDescargar}</button>
             <button type="button" class="gal-item-accion" title="Compartir" data-accion="compartir" data-indice="${i}">${iconoCompartir}</button>
@@ -543,10 +669,26 @@ function activarCargaPerezosaGal() {
       const img = entrada.target;
       const src = img.dataset.src;
       if (!src) return;
+      if (img.dataset.srcset) { img.sizes = img.dataset.sizes || ""; img.srcset = img.dataset.srcset; }
       img.src = src;
       img.loading = "lazy";
       img.addEventListener("load", () => img.classList.remove("cargando"), { once: true });
-      img.addEventListener("error", () => { img.classList.remove("cargando"); img.classList.add("error"); }, { once: true });
+      // Si la miniatura optimizada no carga (corte pasajero, formato que Cloudinary
+      // no sabe transformar...), se prueban dos planes B antes de dejarla en error:
+      // una versión JPG pequeña y, por último, la foto original tal cual.
+      img.addEventListener("error", function reintentarMiniatura() {
+        const paso = Number(img.dataset.paso || 0);
+        const raw = img.dataset.raw || "";
+        if (paso < 2 && raw) {
+          img.dataset.paso = String(paso + 1);
+          img.removeAttribute("srcset"); img.removeAttribute("sizes");
+          img.addEventListener("error", reintentarMiniatura, { once: true });
+          img.src = paso === 0 ? raw.replace("/upload/", `/upload/c_limit,w_${GAL_ANCHO_THUMB},f_jpg,q_auto:good/`) : raw;
+          return;
+        }
+        img.classList.remove("cargando");
+        img.classList.add("error");
+      }, { once: true });
       img.removeAttribute("data-src");
       GAL_IO.unobserve(img);
     });
@@ -602,7 +744,7 @@ function abrirLightbox(indice) {
   const items = mediaVisible().map((f) => ({
     tipo: f.tipo === "video" ? "video" : "foto",
     url: f.cloudinary_url,
-    thumb: f.tipo === "video" ? "" : cloudinaryOptimizada(f.cloudinary_url, GAL_ANCHO_THUMB),
+    thumb: f.tipo === "video" ? "" : cloudinaryMiniatura(f.cloudinary_url, 480, !tieneFocoManual(f)),
     titulo: f.titulo || "",
     credito: f.autor_nombre ? "© " + f.autor_nombre : "",
   }));
@@ -622,5 +764,6 @@ let LIGHTBOX_ULTIMO = 0;
 
 document.addEventListener("DOMContentLoaded", cargaGaleria);
 </script>
+<script src="js/proteccion-copia.js?v=2" defer></script>
 </body>
 </html>

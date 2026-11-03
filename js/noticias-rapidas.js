@@ -186,7 +186,8 @@ function nrPintarPagina(grid, noticias) {
   };
   paso();
   // Enlace compartido (#nr-123): se carga hasta esa tarjeta y se resalta.
-  const m = location.hash.match(/^#nr-(\d+)$/);
+  // Algunas apps recortan el "#": se acepta también ?nr=ID.
+  const m = location.hash.match(/^#nr-(\d+)$/) || (new URLSearchParams(location.search).get("nr") || "").match(/^(\d+)$/) && [null, new URLSearchParams(location.search).get("nr")];
   if (m) {
     while (mostradas < noticias.length && !grid.querySelector("#nr-" + m[1])) paso();
     const objetivo = grid.querySelector("#nr-" + m[1]);
@@ -364,11 +365,19 @@ function nrCerrarModal() {
   if (reducido) fin(); else setTimeout(fin, 260);
 }
 
+// Enlace para compartir una tarjeta: el "?nr=ID" es lo que leen los bots de
+// X/WhatsApp/Facebook (el "#" no les llega) para sacar el titular y la foto de
+// ESA noticia; el "#nr-ID" sigue sirviendo para resaltarla al abrir la página.
+function nrUrlCompartir(card) {
+  const m = card && card.id ? card.id.match(/^nr-(\d+)$/) : null;
+  return location.origin + "/noticias-rapidas" + (m ? "?nr=" + m[1] + "#" + card.id : "");
+}
+
 async function nrCompartirModal() {
   if (!nrModal) return;
   const card = nrModal.tarjetas[nrModal.indice];
   const n = NR_CACHE.get(card.dataset.nrClave) || {};
-  const url = location.origin + "/noticias-rapidas" + (card.id ? "#" + card.id : "");
+  const url = nrUrlCompartir(card);
   try {
     if (navigator.share) { await navigator.share({ title: n.titulo || "Noticia rápida", url }); return; }
     await navigator.clipboard.writeText(url);
@@ -412,7 +421,7 @@ function nrToast(texto) {
 async function nrCompartir(btn) {
   const card = btn.closest(".nr-card");
   if (!card) return;
-  const url = location.origin + "/noticias-rapidas" + (card.id ? "#" + card.id : "");
+  const url = nrUrlCompartir(card);
   const titulo = card.dataset.titulo || "Noticia rápida";
   try {
     if (navigator.share) { await navigator.share({ title: titulo, url }); return; }
@@ -453,4 +462,99 @@ document.addEventListener("DOMContentLoaded", () => {
   setInterval(() => { if (!document.hidden) nrActualizarTiempos(); }, 60000);
   cargaNoticiasRapidasPortada();
   cargaNoticiasRapidasPagina();
+});
+
+// ---------------------------------------------------------------------
+// En directo: las noticias rápidas nuevas (o editadas/retiradas) aparecen
+// solas, sin recargar. Se compara por firma y solo se toca el DOM si algo
+// cambió. Si el lector tiene abierto el modal de una noticia, no se
+// repinta nada hasta que lo cierre (en ese momento se pone al día).
+// ---------------------------------------------------------------------
+let nrFirmaPortada = null;
+let nrFirmaPagina = null;
+let nrPendienteTrasModal = false;
+
+function nrFirmaLista(lista) {
+  return EOF_VIVO.firma((lista || []).map((n) => ({
+    id: n.id, t: n.titulo, s: n.subtitulo, f: n.created_at,
+    i: n.imagen_url, if: n.imagen_foco, a: n.autor_nombre,
+  })));
+}
+
+async function nrRefrescarEnVivo() {
+  const seccion = document.getElementById("seccion-noticias-rapidas");
+  const grid = document.getElementById("grid-noticias-rapidas");
+  if (!seccion && !grid) return;
+  if (nrModal) { nrPendienteTrasModal = true; return; }
+
+  if (seccion) {
+    const noticias = await pedirNoticiasRapidas(NR_PORTADA_CANTIDAD);
+    const f = nrFirmaLista(noticias);
+    if (nrFirmaPortada === null) nrFirmaPortada = f;
+    else if (f !== nrFirmaPortada) {
+      nrFirmaPortada = f;
+      if (!noticias.length) { seccion.hidden = true; seccion.innerHTML = ""; }
+      else {
+        const idsAntes = new Set([...seccion.querySelectorAll(".nr-card[id^='nr-']")].map((c) => c.id));
+        await cargaNoticiasRapidasPortada();
+        seccion.querySelectorAll(".nr-card[id^='nr-']").forEach((c) => { if (!idsAntes.has(c.id)) { c.classList.add("nr-visto"); EOF_VIVO.resaltar(c); } });
+      }
+    }
+  }
+
+  if (grid) {
+    const noticias = await pedirNoticiasRapidas(50);
+    const f = nrFirmaLista(noticias);
+    if (nrFirmaPagina === null) nrFirmaPagina = f;
+    else if (f !== nrFirmaPagina) {
+      nrFirmaPagina = f;
+      // Conserva cuántas tarjetas había desplegado el lector con "Ver más".
+      const desplegadas = grid.querySelectorAll(".nr-card").length;
+      const idsAntes = new Set([...grid.querySelectorAll(".nr-card[id^='nr-']")].map((c) => c.id));
+      const pie = grid.nextElementSibling && grid.nextElementSibling.classList.contains("nr-mas") ? grid.nextElementSibling : null;
+      if (pie) pie.remove();
+      grid.innerHTML = "";
+      grid.style.display = "";
+      grid.dataset.total = noticias.length;
+      const contador = document.getElementById("nrContadorPagina");
+      if (contador) {
+        contador.textContent = noticias.length ? `${noticias.length} ${noticias.length === 1 ? "noticia" : "noticias"}` : "";
+        contador.hidden = !noticias.length;
+      }
+      if (!noticias.length) {
+        grid.style.display = "block";
+        grid.innerHTML = estadoHTML({
+          titulo: "Todavía no hay noticias rápidas",
+          texto: "Cuando se publique alguna, la verás aquí.",
+          cta: `<a href="/" class="btn-volver">Ir a portada</a>`,
+        });
+      } else {
+        nrPintarPagina(grid, noticias);
+        // Si el lector había desplegado más tarjetas, se vuelven a desplegar.
+        let guardia = 0;
+        while (guardia++ < 20 && grid.querySelectorAll(".nr-card").length < Math.min(desplegadas, noticias.length)) {
+          const b = grid.nextElementSibling && grid.nextElementSibling.querySelector("button");
+          if (!b) break;
+          b.click();
+        }
+        grid.querySelectorAll(".nr-card[id^='nr-']").forEach((c) => { if (!idsAntes.has(c.id)) { c.classList.add("nr-visto"); EOF_VIVO.resaltar(c); } });
+      }
+    }
+  }
+}
+
+// Al cerrar el modal se aplica lo que llegó mientras estaba abierto.
+document.addEventListener("click", () => {
+  if (nrPendienteTrasModal && !nrModal && window.EOF_VIVO) {
+    nrPendienteTrasModal = false;
+    setTimeout(() => EOF_VIVO.ahora("noticias-rapidas"), 50);
+  }
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+  if (!window.EOF_VIVO) return;
+  if (!document.getElementById("seccion-noticias-rapidas") && !document.getElementById("grid-noticias-rapidas")) return;
+  EOF_VIVO.cada("noticias-rapidas", nrRefrescarEnVivo, 20000);
+  // Primera pasada tras la carga inicial: fija la firma de partida.
+  setTimeout(() => { nrRefrescarEnVivo().catch(() => {}); }, 4000);
 });

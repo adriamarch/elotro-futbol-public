@@ -3,8 +3,9 @@
 <head>
 <meta name="google-adsense-account" content="ca-pub-7347856722927942">
 <script src="js/tema.js?v=2"></script>
-<script src="js/preferencias.js?v=3"></script>
+<script src="js/preferencias.js?v=20"></script>
 <meta charset="UTF-8">
+<script src="/js/splash.js?v=2"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -18,11 +19,16 @@
 <link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=3">
 <link rel="apple-touch-icon" href="/img/apple-touch-icon.png?v=2">
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&family=Playfair+Display:wght@700;800&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" onload="this.onload=null;this.rel='stylesheet'"><noscript><link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&family=Playfair+Display:wght@700;800&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet"></noscript>
-<link rel="stylesheet" href="css/style.css?v=25">
-<link rel="stylesheet" href="css/accesibilidad.css?v=1">
+<link rel="stylesheet" href="css/style.css?v=35">
+<link rel="stylesheet" href="css/modales-mejoras.css?v=1">
+<link rel="stylesheet" href="css/accesibilidad.css?v=2">
 <script src="js/accesibilidad.js?v=1" defer></script>
 <link rel="stylesheet" href="css/foco.css?v=1">
-<link rel="stylesheet" href="css/perfil-autor-mejoras.css?v=2">
+<link rel="stylesheet" href="css/perfil-autor-mejoras.css?v=3">
+<link rel="stylesheet" href="css/app-movil.css?v=8">
+<script src="js/app-movil.js?v=5" defer></script>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="stylesheet" href="css/proteccion-copia.css?v=2">
 </head>
 <body>
 
@@ -32,6 +38,7 @@
   <div id="perfilAutor">
     <div class="estado-info"><div class="spinner"></div><p>Cargando...</p></div>
   </div>
+  <div id="galeriasAutorWrap" class="pa-galerias" style="display:none"></div>
   <div id="noticiasAutorWrap" style="display:none">
     <h2 class="section-title">Sus últimas noticias <span class="pa-contador" id="contadorAutor"></span></h2>
     <div class="grid-noticias" id="gridAutor"></div>
@@ -42,15 +49,15 @@
 
 <script src="js/ui-alertas.js?v=5"></script>
 <script src="js/foco.js?v=1"></script>
-<script src="js/config.js?v=25"></script>
+<script src="js/config.js?v=36"></script>
 <script src="js/seo.js?v=5"></script>
-<script src="js/clubs.js?v=6"></script>
+<script src="js/clubs.js?v=8"></script>
 <script src="js/lector-auth.js?v=13"></script>
-<script src="js/lecturas.js?v=7"></script>
-<script src="js/layout.js?v=22"></script>
+<script src="js/lecturas.js?v=8"></script>
+<script src="js/layout.js?v=30"></script>
 <script src="js/cookies.js?v=2"></script>
 <script src="js/ads.js?v=3"></script>
-<script src="js/main.js?v=14"></script>
+<script src="js/main.js?v=33"></script>
 <script>
 async function cargaPerfilAutor() {
   const id = new URLSearchParams(location.search).get("id");
@@ -66,7 +73,7 @@ async function cargaPerfilAutor() {
     return;
   }
   try {
-    const { autor, articulos } = await conReintento(async () => {
+    const { autor, articulos, galerias, fotos_sin_partido, fotos_total } = await conReintento(async () => {
       const res = await apiFetch(`/api/autores/${encodeURIComponent(id)}`);
       if (!res.ok) throw new Error("No encontrado");
       return res.json();
@@ -82,6 +89,9 @@ async function cargaPerfilAutor() {
     const nombre = autor.nombre || "";
     const primerNombre = nombre.trim().split(/\s+/)[0] || nombre;
     const lista = Array.isArray(articulos) ? articulos : [];
+    const esFotografo = autor.rol === "fotografo";
+    const listaGalerias = Array.isArray(galerias) ? galerias : [];
+    const listaOtrasFotos = Array.isArray(fotos_sin_partido) ? fotos_sin_partido : [];
 
     const redesHTML = Object.entries(autor.redes || {})
       .filter(([, url]) => urlExternaSegura(url))
@@ -127,7 +137,15 @@ async function cargaPerfilAutor() {
     const cuentaCat = {};
     lista.forEach((a) => { if (a.categoria) cuentaCat[a.categoria] = (cuentaCat[a.categoria] || 0) + 1; });
     const secciones = Object.entries(cuentaCat).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([cat]) => cat);
-    const lateralHTML = lista.length
+    const lateralHTML = (esFotografo && !lista.length && fotos_total)
+      ? `<aside class="pa-lateral" aria-label="Actividad de ${escapeHtml(nombre)}">
+          <h2 class="pa-h2">Actividad</h2>
+          <ul class="pa-datos">
+            <li><strong class="pa-cifra">${fotos_total}</strong><span>Fotos publicadas</span></li>
+            <li><strong class="pa-cifra">${listaGalerias.length}</strong><span>Partidos fotografiados</span></li>
+          </ul>
+        </aside>`
+      : lista.length
       ? `<aside class="pa-lateral" aria-label="Actividad de ${escapeHtml(nombre)}">
           <h2 class="pa-h2">Actividad</h2>
           <ul class="pa-datos">
@@ -148,7 +166,7 @@ async function cargaPerfilAutor() {
         <div class="pa-identidad">
           ${avatarHTML}
           <div class="pa-id-texto">
-            <span class="pa-rol">Autor</span>
+            <span class="pa-rol">${esFotografo ? "Fotógrafo" : "Autor"}</span>
             <h1 class="pa-nombre" id="paNombre">${escapeHtml(nombre)}</h1>
             ${equipos.length ? `<ul class="pa-clubes" aria-label="Clubes que sigue">${equipos.map(clubHTML).join("")}</ul>` : ""}
           </div>
@@ -171,6 +189,45 @@ async function cargaPerfilAutor() {
         </div>
       </section>`;
 
+    // Galerías fotográficas del autor (una tarjeta por partido) + fotos sueltas.
+    const galeriasWrap = document.getElementById("galeriasAutorWrap");
+    if (galeriasWrap && (listaGalerias.length || listaOtrasFotos.length)) {
+      const imgFoto = (f, clase, ancho) => {
+        const src = urlExternaSegura(cloudinaryOptimizada(f.url, ancho));
+        return src ? `<img${EOF_FOCO.attrs(f.foco, clase)} src="${src}" alt="${escapeHtml(f.titulo || ("Foto de " + nombre))}" loading="lazy" decoding="async">` : "";
+      };
+      const escudoMini = (equipo, url) => {
+        let u = "";
+        try { u = typeof getEscudoUrl === "function" ? getEscudoUrl(equipo, url) : ""; } catch (_) {}
+        if (!u) return "";
+        if (!/^(https?:)?\/\//.test(u) && !u.startsWith("/")) u = "/" + u;
+        return `<img src="${escapeHtml(u)}" alt="" width="22" height="22" loading="lazy" data-equipo="${escapeHtml(equipo)}" onerror="manejarErrorEscudo(this)">`;
+      };
+      const tarjetaGaleria = (g) => {
+        const [principal, ...resto] = g.fotos;
+        const miniaturas = resto.slice(0, 3).map((f) => `<span class="pa-gal-mini">${imgFoto(f, "pa-gal-img", 240)}</span>`).join("");
+        const extra = g.total > g.fotos.length ? `<span class="pa-gal-mas">+${g.total - g.fotos.length}</span>` : "";
+        const meta = [g.fecha_partido ? formatFecha(g.fecha_partido) : "", g.jornada ? `Jornada ${g.jornada}` : ""].filter(Boolean).join(" · ");
+        return `<a class="pa-gal-card" href="/galeria/${encodeURIComponent(g.slug)}">
+          <div class="pa-gal-collage pa-gal-collage-${Math.min(g.fotos.length, 4)}">
+            <span class="pa-gal-principal">${principal ? imgFoto(principal, "pa-gal-img", 640) : ""}</span>
+            ${miniaturas ? `<span class="pa-gal-minis">${miniaturas}${extra}</span>` : ""}
+          </div>
+          <div class="pa-gal-info">
+            <span class="pa-gal-equipos">${escudoMini(g.equipo_local, g.escudo_local_url)}<strong>${escapeHtml(g.equipo_local)} - ${escapeHtml(g.equipo_visitante)}</strong>${escudoMini(g.equipo_visitante, g.escudo_visitante_url)}</span>
+            <span class="pa-gal-meta">${escapeHtml(meta)}</span>
+            <span class="pa-gal-total">${g.total} ${g.total === 1 ? "foto" : "fotos"} · Ver galería →</span>
+          </div>
+        </a>`;
+      };
+      galeriasWrap.innerHTML = `
+        ${listaGalerias.length ? `<h2 class="section-title">Galerías fotográficas <span class="pa-contador">${listaGalerias.length}</span></h2>
+        <div class="pa-gal-grid">${listaGalerias.map(tarjetaGaleria).join("")}</div>` : ""}
+        ${listaOtrasFotos.length ? `<h3 class="pa-gal-subtitulo">${listaGalerias.length ? "Más fotos" : "Fotos"} de ${escapeHtml(primerNombre)}</h3>
+        <div class="pa-gal-sueltas">${listaOtrasFotos.map((f) => `<span class="pa-gal-suelta">${imgFoto(f, "pa-gal-img", 420)}</span>`).join("")}</div>` : ""}`;
+      galeriasWrap.style.display = "block";
+    }
+
     const gridWrap = document.getElementById("noticiasAutorWrap");
     const grid = document.getElementById("gridAutor");
     if (articulos && articulos.length) {
@@ -191,5 +248,6 @@ async function cargaPerfilAutor() {
 }
 document.addEventListener("DOMContentLoaded", cargaPerfilAutor);
 </script>
+<script src="js/proteccion-copia.js?v=2" defer></script>
 </body>
 </html>

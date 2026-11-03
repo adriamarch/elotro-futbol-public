@@ -1,0 +1,224 @@
+/* =======================================================================
+   FICHA DE EQUIPO — "Últimos resultados" y "Próximos partidos"
+   (categoria.html?club=…, bloque #partidosClub)
+   -----------------------------------------------------------------------
+   Todo va acotado a #partidosClub, así que NO cambia las tarjetas .partido
+   de resultados, calendario ni portada. Solo se añade/afina; el markup de
+   partidoHTML() (js/partidos.js) y su clic para abrir el detalle siguen igual.
+
+   Qué aporta:
+   · Cada columna es una tarjeta con cabecera oscura (misma "hero" que el
+     modal de partido y el calendario) y filete rojo→celeste.
+   · Filas más limpias: separadores finos, hover suave, escudos mayores.
+   · Marcador en píldora; "vs" suave en los partidos por jugar.
+   · El propio equipo va destacado y cada partido jugado muestra su
+     resultado (Victoria / Empate / Derrota) con barra de color y chip.
+   · Racha de los últimos 5 en la cabecera de resultados (V E D).
+   · Estados existentes (en vivo, partidazo, anulado, sin cubrir) respetados.
+   · Modo oscuro, móvil y movimiento reducido.
+
+   Los atributos data-estado / data-res y las clases equipo-propio, club-res
+   y club-forma los pone marcarPartidosClub() en categoria.html.
+   ======================================================================= */
+
+#partidosClub{
+  --pcl-v:#1c8a4b;
+  --pcl-e:#64748b;
+  --pcl-d:var(--rojo,#d1132e);
+  --pcl-radio:18px;
+  --pcl-sombra:0 1px 2px rgba(12,27,46,.05), 0 14px 34px -16px rgba(12,27,46,.22);
+  gap:24px;
+  margin-bottom:34px;
+  /* Las dos tarjetas miden SIEMPRE lo mismo: mismo ancho (minmax(0,1fr) evita que un
+     nombre largo ensanche una) y misma altura (stretch), tengan los partidos que tengan */
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  align-items:stretch;
+}
+[data-theme="dark"] #partidosClub{
+  --pcl-v:#4ade80;
+  --pcl-e:#9aa4b8;
+  --pcl-d:#ff6b7f;
+  --pcl-sombra:0 1px 2px rgba(0,0,0,.35), 0 16px 38px -16px rgba(0,0,0,.65);
+}
+
+/* ---------- Columna = tarjeta ---------- */
+#partidosClub .partidos-club-col{
+  position:relative;
+  min-width:0;
+  background:var(--tarjeta);
+  border:1px solid var(--borde);
+  border-radius:var(--pcl-radio);
+  box-shadow:var(--pcl-sombra);
+  overflow:hidden;
+  display:flex;flex-direction:column;
+}
+/* La lista ocupa todo el alto restante de la tarjeta */
+#partidosClub #ultimosResultadosClub,
+#partidosClub #proximosPartidosClub{
+  flex:1 1 auto;
+  display:flex;flex-direction:column;
+}
+
+/* ---------- Cabecera "hero" ---------- */
+#partidosClub .partidos-club-titulo{
+  position:relative;isolation:isolate;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  margin:0;
+  padding:16px 20px 15px;
+  font-family:var(--font-tit);font-weight:700;font-size:.9rem;letter-spacing:.9px;text-transform:uppercase;
+  color:#fff;
+  background:var(--cal-hero-bg, linear-gradient(145deg,#0c1b2e,#152b46 55%,#1b3a5f));
+  overflow:hidden;
+}
+#partidosClub .partidos-club-titulo::before{
+  content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(91,184,232,.30), transparent 48%),
+    radial-gradient(circle at 100% 100%, rgba(209,19,46,.24), transparent 52%);
+}
+#partidosClub .partidos-club-titulo::after{
+  content:"";position:absolute;left:0;right:0;bottom:0;height:3px;
+  background:linear-gradient(90deg,var(--rojo),var(--celeste) 70%,transparent);
+}
+
+/* ---------- Racha reciente (V E D) ---------- */
+#partidosClub .club-forma{
+  display:inline-flex;align-items:center;gap:5px;
+  margin-left:auto;
+}
+#partidosClub .club-forma-chip{
+  width:24px;height:24px;border-radius:7px;
+  display:inline-flex;align-items:center;justify-content:center;
+  font-family:var(--font-tit);font-size:.72rem;font-weight:700;letter-spacing:0;line-height:1;
+  color:#fff;
+  box-shadow:0 0 0 1px rgba(255,255,255,.22), 0 2px 6px rgba(0,0,0,.25);
+  cursor:default;
+}
+#partidosClub .club-forma-chip.club-res-v{background:#1c8a4b;}
+#partidosClub .club-forma-chip.club-res-e{background:#64748b;}
+#partidosClub .club-forma-chip.club-res-d{background:var(--rojo,#d1132e);}
+
+/* ---------- Filas ---------- */
+#partidosClub .partido{
+  gap:10px 12px;
+  padding:13px 16px;
+  border-bottom:1px solid var(--borde);
+  font-size:.94rem;
+  transition:background .16s ease, box-shadow .16s ease;
+}
+#partidosClub .partido:last-child{border-bottom:0;}
+#partidosClub .partido:hover{background:var(--fondo-alt);}
+#partidosClub .partido:focus-visible{outline:2px solid var(--celeste);outline-offset:-2px;}
+
+/* Las cintas (anulado / sin cubrir / partidazo) usan márgenes negativos
+   pensados para 13px de relleno: se ajustan al relleno lateral de 16px */
+#partidosClub .partido-aplazado-cinta,
+#partidosClub .partido-sin-cubrir-cinta,
+#partidosClub .partidazo-cinta{margin-left:-16px;margin-right:-16px;}
+#partidosClub .partido-en-vivo{padding-left:13px;} /* 16px − 3px del borde rojo */
+
+#partidosClub .partido .escudo{
+  width:34px;height:34px;
+  filter:drop-shadow(0 2px 4px rgba(12,27,46,.16));
+}
+[data-theme="dark"] #partidosClub .partido .escudo{filter:drop-shadow(0 2px 5px rgba(0,0,0,.5));}
+#partidosClub .partido .nombre-equipo{font-weight:500;color:var(--texto);}
+
+/* El propio equipo, destacado */
+#partidosClub .equipo-propio .nombre-equipo{font-weight:700;color:var(--marino-texto);}
+
+/* ---------- Marcador en píldora ---------- */
+#partidosClub .partido .marcador{
+  min-width:78px;
+  padding:8px 14px;
+  border-radius:12px;
+  background:linear-gradient(160deg,var(--marino2),var(--marino));
+  font-size:1.08rem;letter-spacing:.06em;font-variant-numeric:tabular-nums;
+  box-shadow:0 6px 14px -6px rgba(12,27,46,.5), inset 0 0 0 1px rgba(255,255,255,.08);
+}
+#partidosClub .partido .marcador .penaltis-marcador{font-size:.62rem;letter-spacing:.2px;font-weight:500;}
+/* En vivo: se conserva el degradado rojo y su pulso (style.css, con !important) */
+#partidosClub .partido .marcador.marcador-en-vivo{letter-spacing:.06em;}
+
+/* Por jugar / pendiente de reprogramar: "vs" suave, sin peso visual */
+#partidosClub .partido[data-estado="programado"] .marcador,
+#partidosClub .partido[data-estado="anulado"] .marcador{
+  background:var(--fondo-alt);
+  color:var(--texto-suave);
+  font-size:.82rem;letter-spacing:.14em;text-transform:uppercase;
+  box-shadow:inset 0 0 0 1.5px var(--borde);
+}
+
+/* Fila sin cubrir: el marcador ya va atenuado en style.css */
+
+/* ---------- Línea de estado / fecha ---------- */
+#partidosClub .partido .estado-badge{
+  margin-top:6px;
+  font-size:.74rem;line-height:1.4;letter-spacing:.01em;
+  color:var(--texto-suave);
+  text-wrap:balance;
+}
+#partidosClub .partido .estado-badge-en-vivo{color:var(--rojo);}
+
+/* ---------- Resultado del equipo (Victoria / Empate / Derrota) ---------- */
+#partidosClub .partido[data-res="v"]:not(.partido-partidazo):not(.partido-en-vivo){box-shadow:inset 4px 0 0 var(--pcl-v);}
+#partidosClub .partido[data-res="e"]:not(.partido-partidazo):not(.partido-en-vivo){box-shadow:inset 4px 0 0 var(--pcl-e);}
+#partidosClub .partido[data-res="d"]:not(.partido-partidazo):not(.partido-en-vivo){box-shadow:inset 4px 0 0 var(--pcl-d);}
+#partidosClub .partido[data-res]:not(.partido-partidazo):not(.partido-en-vivo){padding-left:19px;}
+
+#partidosClub .club-res{
+  display:inline-flex;align-items:center;gap:5px;margin-right:8px;vertical-align:middle;
+  padding:2px 9px;border-radius:999px;
+  font-family:var(--font-tit);font-size:.66rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  line-height:1.5;white-space:nowrap;
+  border:1px solid currentColor;
+}
+#partidosClub .club-res::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;}
+#partidosClub .club-res-v{color:var(--pcl-v);background:color-mix(in srgb,var(--pcl-v) 12%,transparent);}
+#partidosClub .club-res-e{color:var(--pcl-e);background:color-mix(in srgb,var(--pcl-e) 13%,transparent);}
+#partidosClub .club-res-d{color:var(--pcl-d);background:color-mix(in srgb,var(--pcl-d) 11%,transparent);}
+
+/* ---------- Estado vacío ---------- */
+#partidosClub .partidos-club-vacio{
+  flex:1 1 auto;
+  display:flex;flex-direction:column;align-items:center;justify-content:center; /* centrado en el alto de la tarjeta */
+  margin:0;
+  padding:34px 22px;
+  border:0;border-radius:0;
+  background:transparent;
+  text-align:center;
+  font-size:.9rem;line-height:1.5;
+  color:var(--texto-suave);
+}
+#partidosClub .partidos-club-vacio::before{
+  content:"";display:block;width:44px;height:44px;margin:0 auto 12px;border-radius:50%;
+  background:var(--fondo-alt) center/22px no-repeat
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239aa0ab' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='17' rx='3'/%3E%3Cpath d='M3 10h18M8 2v4M16 2v4'/%3E%3C/svg%3E");
+  box-shadow:inset 0 0 0 1px var(--borde);
+}
+
+/* ---------- Tablet / móvil ---------- */
+@media (max-width:700px){
+  #partidosClub{grid-template-columns:minmax(0,1fr);gap:18px;margin-bottom:26px;}
+}
+@media (max-width:560px){
+  #partidosClub .partidos-club-titulo{padding:14px 14px 13px;font-size:.84rem;}
+  #partidosClub .partido{padding:12px 12px;gap:8px 8px;font-size:.88rem;}
+  #partidosClub .partido[data-res]:not(.partido-partidazo):not(.partido-en-vivo){padding-left:15px;}
+  #partidosClub .partido-en-vivo{padding-left:9px;}
+  #partidosClub .partido-aplazado-cinta,
+  #partidosClub .partido-sin-cubrir-cinta,
+  #partidosClub .partidazo-cinta{margin-left:-12px;margin-right:-12px;}
+  #partidosClub .partido .escudo{width:30px;height:30px;}
+  #partidosClub .partido .marcador{min-width:66px;padding:7px 10px;font-size:1rem;border-radius:10px;}
+  #partidosClub .club-forma-chip{width:22px;height:22px;font-size:.68rem;}
+  #partidosClub .partido .estado-badge{font-size:.7rem;}
+}
+@media (max-width:380px){
+  #partidosClub .partido .nombre-equipo{font-size:.82rem;}
+}
+
+/* ---------- Movimiento reducido ---------- */
+@media (prefers-reduced-motion:reduce){
+  #partidosClub .partido{transition:none;}
+}

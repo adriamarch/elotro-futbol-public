@@ -52,6 +52,7 @@ const NAV_MENU = [
       { key: "hypermotion", label: "LaLiga Hypermotion", href: "categoria?cat=hypermotion", clubes: true },
       { key: "primera_federacion", label: "Primera Federación", href: "categoria?cat=primera_federacion", clubes: true },
       { key: "segunda_federacion", label: "Segunda Federación", href: "categoria?cat=segunda_federacion", clubes: true },
+      { key: "tercera_federacion", label: "Tercera Federación", href: "categoria?cat=tercera_federacion", clubes: true },
     ],
   },
   {
@@ -69,6 +70,8 @@ const NAV_MENU = [
     ],
   },
   { tipo: "enlace", key: "calendario", label: "Calendario", href: "calendario" },
+  { tipo: "enlace", key: "galerias", label: "Galerías", href: "galerias" },
+  { tipo: "enlace", key: "podcast", label: "Podcast", href: "podcast" },
   { tipo: "enlace", key: "clasificacion", label: "Clasificación", href: "clasificacion" },
   { tipo: "enlace", key: "estadisticas", label: "Estadísticas", href: "estadisticas" },
   { tipo: "enlace", key: "predicciones", label: "Porras", href: "predicciones" },
@@ -215,6 +218,20 @@ function avatarHTML(user, clase = "user-avatar") {
   return `<span class="${clase}">${escapeHtml(iniciales(user && user.nombre)) || "?"}</span>`;
 }
 
+// Iconos del desplegable de cuenta (mismo set que el panel). Se pintan dentro
+// de <span class="ud-ico"> para que web pública y panel se vean idénticos.
+const ICONOS_CUENTA = {
+  usuario: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+  ajustes: '<line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>',
+  panel: '<rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>',
+  guardadas: '<path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>',
+  historial: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+  salir: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>'
+};
+function iconoCuentaHTML(nombre) {
+  return `<span class="ud-ico" aria-hidden="true"><svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONOS_CUENTA[nombre] || ""}</svg></span>`;
+}
+
 function accesoHeaderHTML() {
   const user = sesionActual();
   if (!user) {
@@ -225,7 +242,7 @@ function accesoHeaderHTML() {
   }
   return `
     <div class="user-menu" id="userMenu">
-      <button type="button" class="btn-usuario" id="userMenuToggle" aria-label="Cuenta">
+      <button type="button" class="btn-usuario" id="userMenuToggle" aria-label="Cuenta" aria-haspopup="true" aria-expanded="false">
         ${avatarHTML(user)}
         <span class="user-nombre">${escapeHtml(user.nombre || user.username)}</span>
       </button>
@@ -237,14 +254,11 @@ function accesoHeaderHTML() {
             <span>${user.rol === "admin" ? "Administrador" : (user.rol === "fotografo" ? "Fotógrafo" : "Colaborador")}</span>
           </div>
         </div>
-        <a href="${baseHref()}admin/panel.html?ajustes=perfil">Editar perfil</a>
-        <a href="${baseHref()}admin/panel.html?ajustes=seguridad">Seguridad</a>
-        <a href="${baseHref()}admin/panel.html?ajustes=progreso">Mi progreso</a>
-        <a href="${baseHref()}admin/panel.html?ajustes=sesiones">Dispositivos</a>
-        <a href="${baseHref()}admin/panel.html?ajustes=preferencias">Preferencias</a>
-        <a href="${baseHref()}admin/panel.html">Ir al panel</a>
-        ${user.rol === "admin" ? `<a href="${baseHref()}panel-analiticas.html">Analíticas</a>` : ""}
-        <button type="button" id="btnCerrarSesion">Cerrar sesión</button>
+        <a href="${baseHref()}admin/panel.html?ajustes=perfil">${iconoCuentaHTML("usuario")}Ajustes de cuenta</a>
+        <a href="${baseHref()}admin/panel.html?ajustes=preferencias">${iconoCuentaHTML("ajustes")}Preferencias</a>
+        <a href="${baseHref()}admin/panel.html">${iconoCuentaHTML("panel")}Ir al panel</a>
+        <div class="ud-sep" role="separator"></div>
+        <button type="button" id="btnCerrarSesion">${iconoCuentaHTML("salir")}Cerrar sesión</button>
       </div>
     </div>`;
 }
@@ -277,7 +291,7 @@ function accesoLectorHeaderHTML() {
   }
   return `
     <div class="user-menu" id="lectorMenu">
-      <button type="button" class="btn-usuario" id="lectorMenuToggle" aria-label="Mi cuenta">
+      <button type="button" class="btn-usuario" id="lectorMenuToggle" aria-label="Mi cuenta" aria-haspopup="true" aria-expanded="false">
         ${avatarHTML(reader)}
         <span class="user-nombre">${escapeHtml(reader.nombre)}</span>
       </button>
@@ -289,13 +303,12 @@ function accesoLectorHeaderHTML() {
             <span>Lector</span>
           </div>
         </div>
-        <a href="${baseHref()}cuenta">Editar perfil</a>
-        <a href="${baseHref()}cuenta?tab=guardadas">Guardadas</a>
-        <a href="${baseHref()}cuenta?tab=historial">Historial</a>
-        <a href="${baseHref()}cuenta?tab=password">Seguridad</a>
-        <a href="${baseHref()}cuenta?tab=preferencias">Preferencias</a>
-        <a href="${baseHref()}cuenta?tab=sesiones">Dispositivos</a>
-        <button type="button" id="btnCerrarSesionLectorHeader">Cerrar sesión</button>
+        <a href="${baseHref()}cuenta">${iconoCuentaHTML("usuario")}Ajustes de cuenta</a>
+        <a href="${baseHref()}cuenta?tab=guardadas">${iconoCuentaHTML("guardadas")}Guardadas</a>
+        <a href="${baseHref()}cuenta?tab=historial">${iconoCuentaHTML("historial")}Historial</a>
+        <a href="${baseHref()}cuenta?tab=preferencias">${iconoCuentaHTML("ajustes")}Preferencias</a>
+        <div class="ud-sep" role="separator"></div>
+        <button type="button" id="btnCerrarSesionLectorHeader">${iconoCuentaHTML("salir")}Cerrar sesión</button>
       </div>
     </div>`;
 }
@@ -564,6 +577,7 @@ function renderFooter() {
               <li><a href="${baseHref()}predicciones">Porras</a></li>
               <li><a href="${baseHref()}noticias-rapidas">Noticias rápidas</a></li>
               <li><a href="${baseHref()}galerias">Galería de contenido</a></li>
+              <li><a href="${baseHref()}podcast">Podcast</a></li>
               <li><a href="${baseHref()}buscar">Buscar noticias</a></li>
               <li><a href="${baseHref()}guardadas">Mis guardadas</a></li>
             </ul>
@@ -688,7 +702,13 @@ function pintarBannerUrgente(datos) {
 
   const banner = document.createElement("div");
   banner.id = "banner-ultima-hora";
-  banner.dataset.uhUrl = datos.url;
+  // La URL llega de la API (la fija el panel): solo rutas del propio sitio o
+  // http(s); cualquier otro esquema (javascript:, data:...) se descarta.
+  const urlBanner = (() => {
+    const u = String(datos.url == null ? "" : datos.url).trim();
+    return /^(\/(?!\/)|https?:\/\/)/i.test(u) ? u : "#";
+  })();
+  banner.dataset.uhUrl = urlBanner;
   banner.innerHTML = `
     <div class="uh-franja">
       <span class="uh-live">
@@ -696,9 +716,9 @@ function pintarBannerUrgente(datos) {
         ÚLTIMA HORA
       </span>
       <div class="uh-texto-wrap">
-        <a class="uh-texto" href="${datos.url}">${escaparHtmlBasico(datos.titulo)}</a>
+        <a class="uh-texto" href="${escaparHtmlBasico(urlBanner)}">${escaparHtmlBasico(datos.titulo)}</a>
       </div>
-      <a class="uh-ver" href="${datos.url}">Leer <span aria-hidden="true">→</span></a>
+      <a class="uh-ver" href="${escaparHtmlBasico(urlBanner)}">Leer <span aria-hidden="true">→</span></a>
       <button type="button" class="uh-cerrar" aria-label="Cerrar aviso de última hora">✕</button>
     </div>
   `;
@@ -732,7 +752,33 @@ function escaparHtmlBasico(texto) {
   return div.innerHTML;
 }
 
+// Accesibilidad: enlace "Saltar al contenido" (WCAG 2.4.1). Solo se ve al
+// enfocarlo con el teclado; lleva al <main> de la página (se le da un id si
+// no lo tiene). Los estilos van aquí para no depender de la versión del CSS.
+function montarEnlaceSaltarContenido() {
+  if (document.getElementById("eof-saltar-contenido")) return;
+  const main = document.querySelector("main");
+  if (!main) return;
+  if (!main.id) main.id = "contenido-principal";
+  if (!main.hasAttribute("tabindex")) main.setAttribute("tabindex", "-1");
+  const estilo = document.createElement("style");
+  estilo.textContent =
+    "#eof-saltar-contenido{position:fixed;top:8px;left:8px;z-index:100000;padding:10px 16px;" +
+    "background:#111;color:#fff;font:600 14px/1.2 system-ui,sans-serif;border-radius:8px;" +
+    "text-decoration:none;transform:translateY(-200%);transition:transform .15s}" +
+    "#eof-saltar-contenido:focus{transform:translateY(0);outline:3px solid #ffbf47;outline-offset:2px}" +
+    "main:focus{outline:none}";
+  document.head.appendChild(estilo);
+  const enlace = document.createElement("a");
+  enlace.id = "eof-saltar-contenido";
+  enlace.href = "#" + main.id;
+  enlace.textContent = "Saltar al contenido";
+  enlace.addEventListener("click", () => { setTimeout(() => main.focus({ preventScroll: false }), 0); });
+  document.body.insertBefore(enlace, document.body.firstChild);
+}
+
 document.addEventListener("DOMContentLoaded", () => {
+  montarEnlaceSaltarContenido();
   const headerEl = document.getElementById("site-header");
   const footerEl = document.getElementById("site-footer");
   if (headerEl) headerEl.innerHTML = renderHeader();
@@ -1151,6 +1197,7 @@ function inicializarMenuUsuario() {
     if (toggle) {
       e.stopPropagation();
       dropdown.classList.toggle("abierto");
+      toggle.setAttribute("aria-expanded", String(dropdown.classList.contains("abierto")));
       return;
     }
     if (e.target.closest("#btnCerrarSesion")) {
@@ -1158,7 +1205,19 @@ function inicializarMenuUsuario() {
       return;
     }
     const menu = document.getElementById("userMenu");
-    if (menu && !menu.contains(e.target)) dropdown.classList.remove("abierto");
+    if (menu && !menu.contains(e.target)) {
+      dropdown.classList.remove("abierto");
+      const t = document.getElementById("userMenuToggle");
+      if (t) t.setAttribute("aria-expanded", "false");
+    }
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    const d = document.getElementById("userDropdown");
+    if (!d || !d.classList.contains("abierto")) return;
+    d.classList.remove("abierto");
+    const t = document.getElementById("userMenuToggle");
+    if (t) { t.setAttribute("aria-expanded", "false"); t.focus(); }
   });
 }
 
@@ -1178,6 +1237,7 @@ function inicializarMenuLector() {
     if (toggle) {
       e.stopPropagation();
       dropdown.classList.toggle("abierto");
+      toggle.setAttribute("aria-expanded", String(dropdown.classList.contains("abierto")));
       return;
     }
     if (e.target.closest("#btnCerrarSesionLectorHeader")) {
@@ -1186,7 +1246,19 @@ function inicializarMenuLector() {
       return;
     }
     const menu = document.getElementById("lectorMenu");
-    if (menu && !menu.contains(e.target)) dropdown.classList.remove("abierto");
+    if (menu && !menu.contains(e.target)) {
+      dropdown.classList.remove("abierto");
+      const t = document.getElementById("lectorMenuToggle");
+      if (t) t.setAttribute("aria-expanded", "false");
+    }
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    const d = document.getElementById("lectorDropdown");
+    if (!d || !d.classList.contains("abierto")) return;
+    d.classList.remove("abierto");
+    const t = document.getElementById("lectorMenuToggle");
+    if (t) { t.setAttribute("aria-expanded", "false"); t.focus(); }
   });
 }
 

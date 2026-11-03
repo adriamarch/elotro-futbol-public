@@ -3,8 +3,9 @@
 <head>
 <meta name="google-adsense-account" content="ca-pub-7347856722927942">
 <script src="js/tema.js?v=2"></script>
-<script src="js/preferencias.js?v=3"></script>
+<script src="js/preferencias.js?v=20"></script>
 <meta charset="UTF-8">
+<script src="/js/splash.js?v=2"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -36,12 +37,17 @@
 <link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=3">
 <link rel="apple-touch-icon" href="/img/apple-touch-icon.png?v=2">
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'"><noscript><link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>
-<link rel="stylesheet" href="css/style.css?v=25">
-<link rel="stylesheet" href="css/accesibilidad.css?v=1">
+<link rel="stylesheet" href="css/style.css?v=35">
+<link rel="stylesheet" href="css/modales-mejoras.css?v=1">
+<link rel="stylesheet" href="css/accesibilidad.css?v=2">
 <script src="js/accesibilidad.js?v=1" defer></script>
 <link rel="stylesheet" href="css/minuto-a-minuto.css?v=7">
+<link rel="stylesheet" href="css/app-movil.css?v=8">
+<script src="js/app-movil.js?v=5" defer></script>
+<link rel="manifest" href="/manifest.webmanifest">
 </head>
 <body data-page="minuto-a-minuto">
+<h1 id="seoH1" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap">Minuto a minuto del partido</h1>
 
 <div id="mamCabeceraHueco" class="mam-cabecera-hueco">
 <div id="mamCabecera" class="mam-cabecera" hidden>
@@ -97,12 +103,12 @@
 </button>
 
 <script src="js/ui-alertas.js?v=5"></script>
-<script src="js/config.js?v=25"></script>
+<script src="js/config.js?v=36"></script>
 <script src="js/seo.js?v=5"></script>
-<script src="js/clubs.js?v=6"></script>
+<script src="js/clubs.js?v=8"></script>
 <script src="js/lector-auth.js?v=13"></script>
-<script src="js/lecturas.js?v=7"></script>
-<script src="js/partidos.js?v=14"></script>
+<script src="js/lecturas.js?v=8"></script>
+<script src="js/partidos.js?v=21"></script>
 <script>
 // Página pública para seguir un partido al minuto desde un enlace propio:
 // minuto-a-minuto.html?id=<id del resultado>. El pintado es propio de esta
@@ -356,7 +362,7 @@ function mamGoleadoresHTML(eventos, lado) {
     if (beneficiado !== lado) continue;
     const nombre = (ev.jugador || "Gol") + (ev.tipo === "gol_pp" ? " (p.p.)" : "");
     const minutos = mapa.get(nombre) || [];
-    minutos.push(formatMinutoEventoPublico(ev));
+    minutos.push(formatMinutoEventoPublico(ev) + (ev.tipo === "gol" && ev.es_penalti ? " (pen.)" : ""));
     mapa.set(nombre, minutos);
   }
   return [...mapa].map(([n, m]) => `<span class="mam-gol-linea">${escapeHtml(n)}<em>${escapeHtml(m.join(" "))}</em></span>`).join("");
@@ -570,13 +576,15 @@ async function mamCargarEventos() {
 // Cuerpo de la tarjeta según el tipo de evento (el jugador es el protagonista).
 function mamCuerpoEvento(ev) {
   const e = escapeHtml;
-  const titulo = `<strong class="mam-ev-titulo">${e(ETIQUETAS_EVENTO_PUBLICO[ev.tipo] || ev.tipo)}</strong>`;
+  const titulo = `<strong class="mam-ev-titulo">${e(etiquetaEventoPublico(ev))}</strong>`;
   const jugador = ev.jugador ? `<span class="mam-ev-protagonista">${e(ev.jugador)}</span>` : "";
   let resto = "";
   switch (ev.tipo) {
     case "gol":
     case "gol_var":
-      resto = jugador + (ev.jugador_asistencia ? `<span class="mam-ev-detalle">Asistencia: ${e(ev.jugador_asistencia)}</span>` : "");
+      resto = jugador + (ev.tipo === "gol" && ev.es_penalti
+        ? `<span class="mam-ev-detalle">De penalti</span>`
+        : (ev.jugador_asistencia ? `<span class="mam-ev-detalle">Asistencia: ${e(ev.jugador_asistencia)}</span>` : ""));
       break;
     case "gol_pp":
       resto = ev.jugador ? `<span class="mam-ev-protagonista">${e(ev.jugador)} <small>(p.p.)</small></span>` : "";
@@ -586,6 +594,8 @@ function mamCuerpoEvento(ev) {
               (ev.jugador_sale ? `<span class="mam-ev-sale">${e(ev.jugador_sale)}</span>` : "");
       break;
     case "amarilla": case "doble_amarilla": case "roja":
+      resto = jugador + (ev.motivo_tarjeta ? `<span class="mam-ev-detalle">Motivo: ${e(ev.motivo_tarjeta)}</span>` : "");
+      break;
     case "penalti_fallado": case "penalti_marcado": case "penalti_fallado_tanda":
       resto = jugador;
       break;
@@ -636,7 +646,7 @@ function mamFilaEvento(ev, nuevos, idx = 0) {
       <div class="mam-evento mam-evento-hito${nuevo}" role="listitem"${estiloI} data-k="${e(mamClave(ev))}" data-tipo="${e(ev.tipo)}" data-lado="centro">
         <span class="mam-hito${fuerte}">
           ${iconoEventoPublico(ev.tipo)}
-          <span>${e(ETIQUETAS_EVENTO_PUBLICO[ev.tipo] || ev.tipo)}${detalle ? ": " + detalle : ""}</span>
+          <span>${e(etiquetaEventoPublico(ev))}${detalle ? ": " + detalle : ""}</span>
           ${mostrarMin ? `<span class="mam-hito-min">${min}</span>` : ""}
         </span>
       </div>`;
@@ -685,12 +695,12 @@ function mamRenderTimeline(eventos, animar) {
   mamClavesVistas = claves;
   mamAnimarEntrada = !animar; // primer pintado y cambios de filtro/orden animan todo; los refrescos, solo lo nuevo
 
-  if (mamPartido && partidoNoCubierto(mamPartido.estado, mamEventos)) {
+  if (mamPartido && partidoNoCubierto(mamPartido.estado, mamEventos, mamPartido)) {
     mamLimpiarExtras();
     cont.innerHTML = `
       <div class="mam-estado-inicial">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/></svg>
-        <p>Este partido no ha sido cubierto minuto a minuto.</p>
+        <p>${mamPartido.estado === "en_juego" ? "Este partido se está jugando, pero la redacción no lo está cubriendo minuto a minuto. Si empezamos a cubrirlo, los eventos aparecerán aquí." : "Este partido no ha sido cubierto minuto a minuto."}</p>
       </div>`;
     return;
   }
@@ -784,7 +794,8 @@ async function mamRefrescarPartido() {
     const cambioMarcador = resultado.goles_local !== mamPartido.goles_local || resultado.goles_visitante !== mamPartido.goles_visitante;
     const cambioPausa = (resultado.cronometro_pausado_en ?? null) !== (mamPartido.cronometro_pausado_en ?? null)
       || (resultado.anadido_minutos ?? null) !== (mamPartido.anadido_minutos ?? null)
-      || (resultado.anadido_parte ?? null) !== (mamPartido.anadido_parte ?? null);
+      || (resultado.anadido_parte ?? null) !== (mamPartido.anadido_parte ?? null)
+      || (resultado.anadido_seguir ?? null) !== (mamPartido.anadido_seguir ?? null);
     mamPartido = resultado;
     PARTIDOS_CACHE[resultado.id] = resultado;
     if (cambioEstado || cambioMarcador || cambioPausa) mamPintarCabecera();
@@ -918,6 +929,8 @@ function mamTituloBase() {
   return (p.estado === "en_juego" ? "EN DIRECTO: " : "") + mamMarcadorTexto() + sufijo;
 }
 function mamAplicarTituloBase() {
+  const h1Seo = document.getElementById("seoH1");
+  if (h1Seo && mamPartido) h1Seo.textContent = `Minuto a minuto: ${mamPartido.equipo_local} - ${mamPartido.equipo_visitante}`;
   if (mamAlertaTitulo) return;
   const t = mamTituloBase();
   if (t && document.title !== t) document.title = t;
@@ -1035,10 +1048,10 @@ function mamToast(ev) {
     : (lado === "visitante" ? getEscudoUrl(p.equipo_visitante, p.escudo_visitante_url) : "");
   const min = formatMinutoEventoPublico(ev);
   const marcador = `${p.equipo_local} ${p.goles_local ?? 0}-${p.goles_visitante ?? 0} ${p.equipo_visitante}`;
-  let clase = "", icono = "\u26BD", titulo = ETIQUETAS_EVENTO_PUBLICO[ev.tipo] || ev.tipo, sub = marcador;
+  let clase = "", icono = "\u26BD", titulo = etiquetaEventoPublico(ev), sub = marcador;
   if (ev.tipo === "gol" || ev.tipo === "gol_pp") {
     clase = " mam-toast-gol";
-    titulo = ev.tipo === "gol_pp" ? "¡Gol en propia puerta!" : "¡Gol!";
+    titulo = ev.tipo === "gol_pp" ? "¡Gol en propia puerta!" : (ev.es_penalti ? "¡Gol de penalti!" : "¡Gol!");
     sub = `${ev.jugador ? ev.jugador + " · " : ""}${min}${equipo && ev.tipo === "gol" ? " · " + equipo : ""}<br>${marcador}`;
     sub = e(sub).replace(/&lt;br&gt;/g, "<br>");
   } else if (ev.tipo === "roja" || ev.tipo === "doble_amarilla") {

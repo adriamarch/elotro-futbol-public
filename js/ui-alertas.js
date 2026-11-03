@@ -32,7 +32,7 @@
 .eof-toast-texto{flex:1;line-height:1.42;padding-top:1px;}
 .eof-toast-cerrar{background:none;border:none;font-size:1.15rem;line-height:.8;color:#9aa0ab;cursor:pointer;padding:0 0 0 4px;}
 .eof-toast-cerrar:hover{color:var(--marino,#0c1b2e);}
-.eof-modal-overlay{position:fixed;inset:0;background:rgba(8,16,28,.55);-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;z-index:100000;padding:20px;opacity:0;transition:opacity .18s ease;overscroll-behavior:contain;}
+.eof-modal-overlay{position:fixed;inset:0;background:rgba(8,16,28,.55);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;z-index:100000;padding:20px;opacity:0;transition:opacity .18s ease;overscroll-behavior:contain;}
 .eof-modal-overlay.eof-modal-visible{opacity:1;}
 .eof-modal-caja{position:relative;background:var(--tarjeta,#fff);color:var(--texto,#0c1b2e);border-radius:18px;box-shadow:0 28px 70px rgba(8,16,28,.4),0 0 0 1px rgba(127,127,127,.14);max-width:420px;width:100%;max-height:90vh;max-height:90dvh;overflow-y:auto;overscroll-behavior:contain;padding:30px 26px 24px;text-align:center;transform:translateY(8px) scale(.96);transition:transform .2s cubic-bezier(.2,.8,.2,1);font-family:var(--font-text,Arial,sans-serif);}
 .eof-modal-caja::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--rojo,#d1132e),var(--celeste,#5bb8e8));border-radius:18px 18px 0 0;pointer-events:none;}
@@ -90,7 +90,41 @@
   }
 
   // Notificación breve, no bloqueante. tipo: "exito" | "error" | "info".
+  // ---------- Cola de avisos mientras la celebración de racha está en pantalla ----------
+  // La celebración de la racha semanal (panel) no debe interrumpirse: mientras está abierta (o se está
+  // comprobando si hay que enseñarla al entrar), los avisos automáticos esperan y salen DESPUÉS, de uno en
+  // uno. Cualquiera puede pedir turno con `await EOF.esperarRacha()`; los toasts lo hacen solos.
+  const RACHA_BLOQUEOS = new Set();
+  const RACHA_COLA = [];
+  let rachaVaciando = false;
+  function rachaVaciar() {
+    if (rachaVaciando) return;
+    rachaVaciando = true;
+    const siguiente = () => {
+      if (RACHA_BLOQUEOS.size) { rachaVaciando = false; return; } // volvió a abrirse: el resto sigue esperando
+      const fn = RACHA_COLA.shift();
+      if (!fn) { rachaVaciando = false; return; }
+      try { fn(); } catch (e) { /* un aviso que falla no frena al resto */ }
+      setTimeout(siguiente, 450);
+    };
+    setTimeout(siguiente, 350); // margen para que termine la animación de cierre
+  }
+  function rachaBloquear(motivo) { RACHA_BLOQUEOS.add(motivo); }
+  function rachaLiberar(motivo) {
+    if (!RACHA_BLOQUEOS.delete(motivo)) return;
+    if (!RACHA_BLOQUEOS.size && RACHA_COLA.length) rachaVaciar();
+  }
+  function esperarRacha() {
+    if (!RACHA_BLOQUEOS.size && !RACHA_COLA.length) return Promise.resolve();
+    return new Promise((resolver) => { RACHA_COLA.push(resolver); if (!RACHA_BLOQUEOS.size) rachaVaciar(); });
+  }
+
   function toast(mensaje, tipo = "info", duracion = 4500) {
+    // Con la celebración de racha abierta el toast espera a que se cierre (se mostraría ENCIMA de ella).
+    if (RACHA_BLOQUEOS.has("celebracion")) {
+      RACHA_COLA.push(() => toast(mensaje, tipo, duracion));
+      return () => {};
+    }
     inyectarEstilos();
     const cont = contenedorToasts();
     const el = document.createElement("div");
@@ -367,5 +401,5 @@
   }
 
   window.EOF = window.EOF || {};
-  Object.assign(window.EOF, { toast, confirmar, preguntar, preguntarEnlace, preguntarHTML, preguntarEmail, alertaModal, _alertasCargadas: true });
+  Object.assign(window.EOF, { toast, rachaBloquear, rachaLiberar, esperarRacha, confirmar, preguntar, preguntarEnlace, preguntarHTML, preguntarEmail, alertaModal, _alertasCargadas: true });
 })();

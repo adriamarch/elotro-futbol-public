@@ -511,6 +511,13 @@ function fijarSeoBasico({ titulo, descripcion = "", urlPath, tipo = "website", i
  * disponibles: array de códigos de idioma con contenido real (sin fallback)
  * textos: { titulo, subtitulo, contenido } ya resueltos para idiomaActual
  */
+// Misma limpieza de cabecera de agencia que quitarDatelineSeo() del servidor.
+function _seoQuitarDateline(texto) {
+  return String(texto ?? "").replace(
+    /^\s*[A-ZÁÉÍÓÚÑÜ][A-ZÁÉÍÓÚÑÜ .'\-]{2,28}(?:\s*\([^)]{1,30}\))?,\s*\d{1,2}(?:\s+de)?\s+[a-zA-Záéíóúñ]{3,10}\.?(?:\s*\([^)]{1,20}\))?\s*[-–—.:]\s+/, ""
+  );
+}
+
 function fijarSeoNoticia({ article, idiomaActual, disponibles, textos, migas }) {
   const infoIdioma = SEO_IDIOMAS[idiomaActual] || SEO_IDIOMAS[SEO_IDIOMA_POR_DEFECTO];
   document.documentElement.setAttribute("lang", infoIdioma.html);
@@ -528,7 +535,7 @@ function fijarSeoNoticia({ article, idiomaActual, disponibles, textos, migas }) 
   // arranque del texto (a veces una cabecera tipo "MADRID, 4 oct.").
   const subtituloLimpio = resumText(textos.subtitulo || "", 160);
   let descripcion = (subtituloLimpio.length >= 50 ? subtituloLimpio : "")
-    || resumText(textos.contenido || "", 160) || subtituloLimpio || "";
+    || resumText(_seoQuitarDateline(resumText(textos.contenido || "", 400)), 160) || subtituloLimpio || "";
 
   // Previa/crónica de un partido: título y descripción con los dos equipos.
   const partidoSeo = idiomaActual === SEO_IDIOMA_POR_DEFECTO
@@ -544,11 +551,12 @@ function fijarSeoNoticia({ article, idiomaActual, disponibles, textos, migas }) 
   if (tEl) tEl.textContent = tituloPagina;
   if (descripcion) _seoMeta("name", "description", descripcion);
 
-  // El canonical apunta siempre a la versión por defecto (castellano) del
-  // artículo: es la práctica recomendada cuando el resto de idiomas se
-  // sirven bajo la misma URL base con un parámetro, para no repartir la
-  // señal de "página principal" entre varias URLs equivalentes.
-  _seoLink("canonical", urlCanonica);
+  // Cada versión de idioma es canónica de sí misma (castellano -> URL limpia,
+  // resto -> ?lang=xx), igual que el servidor. Con el canonical apuntando
+  // siempre al castellano Google descartaba las traducciones e ignoraba los
+  // hreflang: según su documentación, cada variante debe autorreferenciarse.
+  // El x-default sigue siendo la versión en castellano.
+  _seoLink("canonical", urlActual);
 
   // hreflang: una etiqueta por cada idioma realmente disponible (más
   // castellano, que siempre lo está de facto) apuntando a

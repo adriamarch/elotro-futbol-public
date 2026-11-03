@@ -1,0 +1,49 @@
+/* «Tu primera tarea» (js/primera-tarea.js). Tarjeta flotante por debajo del
+   tutorial (z-index 10100) y por encima del panel. Usa las variables del
+   panel, así que sigue el tema claro/oscuro. */
+.pt-tarjeta{
+  position:fixed;right:18px;bottom:18px;z-index:900;
+  width:min(360px,calc(100vw - 24px));
+  background:var(--tarjeta,#fff);color:var(--texto,#10243b);
+  border:1px solid var(--borde,#dfe5ee);border-top:4px solid var(--rojo,#d1132e);
+  border-radius:14px;padding:14px 16px 12px;
+  box-shadow:0 10px 32px rgba(12,27,46,.18);
+  font-size:.92rem;line-height:1.4;
+}
+.pt-tarjeta[hidden]{display:none}
+.pt-hecha{border-top-color:#16a34a}
+.pt-cab{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.pt-etq{font-weight:700;font-size:.78rem;letter-spacing:.4px;text-transform:uppercase;color:var(--rojo,#d1132e)}
+.pt-hecha .pt-etq{color:#16a34a}
+.pt-x{border:0;background:transparent;color:var(--texto-suave,#5b6676);font-size:1.3rem;line-height:1;
+  width:32px;height:32px;border-radius:8px;cursor:pointer}
+.pt-x:hover{background:var(--fondo-alt,#f1f4f8)}
+.pt-de{margin:2px 0 0;font-size:.78rem;color:var(--texto-suave,#5b6676)}
+.pt-titulo{margin:4px 0 2px;font-size:1.05rem;line-height:1.25}
+.pt-sub{margin:0 0 10px;color:var(--texto-suave,#5b6676)}
+.pt-prog{height:8px;border-radius:99px;background:var(--fondo-alt,#eceff3);overflow:hidden}
+.pt-prog span{display:block;height:100%;background:var(--rojo,#d1132e);border-radius:99px;transition:width .4s}
+.pt-prog-txt{margin:4px 0 8px;font-size:.8rem;color:var(--texto-suave,#5b6676)}
+.pt-pasos{list-style:none;margin:8px 0 12px;padding:0;display:grid;gap:8px}
+.pt-pasos li{display:flex;gap:10px;align-items:flex-start}
+.pt-pasos small{display:block;color:var(--texto-suave,#5b6676);font-size:.78rem}
+.pt-marca{flex:none;width:20px;height:20px;border-radius:50%;border:2px solid var(--borde,#c5cdd9);
+  display:grid;place-items:center;font-size:.7rem;font-weight:700;color:#fff;margin-top:1px}
+.pt-ok .pt-marca{background:#16a34a;border-color:#16a34a}
+.pt-ok{color:var(--texto-suave,#5b6676)}
+.pt-botones{display:flex;gap:8px;flex-wrap:wrap}
+.pt-btn{min-height:40px;padding:8px 14px;border-radius:10px;border:1px solid var(--borde,#c5cdd9);
+  background:transparent;color:inherit;font:inherit;font-weight:600;cursor:pointer}
+.pt-btn-pri{background:var(--rojo,#d1132e);border-color:var(--rojo,#d1132e);color:#fff;flex:1 1 auto}
+.pt-btn:focus-visible,.pt-x:focus-visible,.pt-enlace:focus-visible,.pt-chip-btn:focus-visible{
+  outline:3px solid var(--celeste,#4a90d9);outline-offset:2px}
+.pt-enlace{display:block;margin:8px auto 0;border:0;background:transparent;color:var(--texto-suave,#5b6676);
+  font:inherit;font-size:.78rem;text-decoration:underline;cursor:pointer}
+.pt-chip{width:auto;padding:0;border-radius:99px;border-top-width:1px}
+.pt-chip-btn{border:0;background:transparent;color:inherit;font:inherit;font-weight:600;
+  padding:10px 16px;min-height:44px;cursor:pointer;border-radius:99px}
+@media (max-width:640px){
+  .pt-tarjeta{right:12px;left:12px;bottom:12px;width:auto}
+  .pt-chip{left:auto}
+}
+@media (prefers-reduced-motion:reduce){.pt-prog span{transition:none}}

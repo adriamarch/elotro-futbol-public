@@ -3,20 +3,29 @@
 <head>
 <meta name="color-scheme" content="light dark">
 <script src="/js/tema.js?v=2"></script>
-<script src="/js/preferencias.js?v=3"></script>
+<script src="/js/preferencias.js?v=20"></script>
 <script src="/admin/js/rol-inicial.js?v=4"></script>
 <meta charset="UTF-8">
+<script src="/js/splash.js?v=2"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Redacción — ELOTROFÚTBOLTV</title>
 <meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0c1b2e">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Redacción">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="/admin/manifest-panel.webmanifest">
 <meta property="og:image" content="https://elotrofutbol.media/img/og-default.png">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://elotrofutbol.media/img/og-default.png">
 <link rel="icon" href="/favicon.ico?v=3" sizes="any">
 <link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=3">
 <link rel="apple-touch-icon" href="/img/apple-touch-icon.png?v=2">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&family=Playfair+Display:wght@700;800&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/style.css?v=21">
+<link rel="stylesheet" href="/css/style.css?v=35">
 <!-- Sistema de foco de imagen (mismo CSS que la web pública, ver js/foco.js). -->
 <link rel="stylesheet" href="/css/foco.css?v=1">
 <!-- CSS específico del panel de administración: tablas, formularios,
@@ -25,28 +34,56 @@
      "mam-abierto" sí se añadía) pero sin ningún estilo aplicado: sin
      position:fixed, sin z-index, sin fondo... por eso el clic parecía
      "no hacer nada" (solo el salto del overflow:hidden del body). -->
-<link rel="stylesheet" href="/admin/css/admin.css?v=78">
-<link rel="stylesheet" href="/admin/css/modales.css?v=8">
+<link rel="stylesheet" href="/admin/css/admin.css?v=90">
+<link rel="stylesheet" href="/admin/css/modales.css?v=10">
+<link rel="stylesheet" href="/css/modales-mejoras.css?v=1">
+<link rel="stylesheet" href="/admin/css/aviso-inactividad.css?v=2">
+<link rel="stylesheet" href="/css/visor-media.css?v=10">
+<link rel="stylesheet" href="/admin/css/apellidos-obligatorios.css?v=2">
 <!-- Selector de foco único del panel (ver js/foco-selector.js). -->
 <link rel="stylesheet" href="/admin/css/foco-selector.css?v=4">
 <!-- Tutorial guiado interactivo para nuevos redactores (overlay con
      flechas/spotlight sobre el propio panel, ver js/tutorial.js). -->
 <link rel="stylesheet" href="/admin/css/tutorial.css?v=3">
+<link rel="stylesheet" href="/admin/css/primera-tarea.css?v=1">
 <!-- Votaciones internas del equipo (pestaña "Votaciones", ver js/votaciones.js). -->
 <link rel="stylesheet" href="/admin/css/votaciones.css?v=5">
-<link rel="stylesheet" href="/admin/css/funcionalidades.css?v=3">
+<link rel="stylesheet" href="/admin/css/podcast-admin.css?v=1">
+<link rel="stylesheet" href="/admin/css/feedback-revision.css?v=2">
+<link rel="stylesheet" href="/admin/css/funcionalidades.css?v=4">
 <link rel="stylesheet" href="/admin/css/tienda-mejoras.css?v=1">
 <link rel="stylesheet" href="/admin/css/calendario-contenido.css?v=6">
 <link rel="stylesheet" href="/admin/css/calendario-jornadas.css?v=2">
 <link rel="stylesheet" href="/admin/css/relleno-mejoras.css?v=1">
-<link rel="stylesheet" href="/admin/css/organigrama.css?v=5">
-<link rel="stylesheet" href="/admin/css/jugadores-admin.css?v=2">
+<link rel="stylesheet" href="/admin/css/organigrama.css?v=6">
+<link rel="stylesheet" href="/admin/css/responsabilidades.css?v=9">
+<link rel="stylesheet" href="/admin/css/jugadores-admin.css?v=3">
+<link rel="stylesheet" href="/admin/css/formularios-resumen.css?v=2">
+<link rel="stylesheet" href="/admin/css/modales-partido.css?v=6">
 <link rel="stylesheet" href="/admin/css/selector-fecha-modal.css?v=1">
-<link rel="stylesheet" href="/css/accesibilidad.css?v=1">
+<link rel="stylesheet" href="/admin/css/ajustes-cuenta-mejoras.css?v=1">
+<link rel="stylesheet" href="/admin/css/usuarios-etiquetas-mejoras.css?v=1">
+<link rel="stylesheet" href="/admin/css/niveles-fotografia.css?v=1">
+<link rel="stylesheet" href="/admin/css/rachas-semanales.css?v=2">
+<link rel="stylesheet" href="/admin/css/ruta-bienvenida.css?v=1">
+<link rel="stylesheet" href="/admin/css/insignias-hitos.css?v=1">
+<link rel="stylesheet" href="/admin/css/racha-celebracion.css?v=1">
+<link rel="stylesheet" href="/admin/css/analiticas-panel.css?v=1">
+<link rel="stylesheet" href="/admin/css/menu-lateral.css?v=6">
+<link rel="stylesheet" href="/admin/css/resultados-mejoras.css?v=4">
+<link rel="stylesheet" href="/admin/css/resumen-mensual.css?v=8">
+<link rel="stylesheet" href="/admin/css/mam-avisos-push.css?v=1">
+<link rel="stylesheet" href="/admin/css/avisos-entrada.css?v=3">
+<link rel="stylesheet" href="/admin/css/movil-responsive.css?v=2">
+<link rel="stylesheet" href="/admin/css/movil-app.css?v=1">
+<link rel="stylesheet" href="/admin/css/movil-app-pro.css?v=3">
+<link rel="stylesheet" href="/css/accesibilidad.css?v=2">
 <script src="/js/accesibilidad.js?v=1" defer></script>
 </head>
 <body>
 
+<!-- Reserva el hueco del menú lateral desde el primer pintado (la retira menu-lateral.js). -->
+<div id="menuLateralReserva" aria-hidden="true"></div>
 <div class="admin-header">
   <div class="wrap">
     <div class="brand-admin">
@@ -98,7 +135,7 @@
       </div>
       <div class="sheet-overlay" id="notifOverlay"></div>
       <div class="user-menu" id="cuentaWrap">
-        <button type="button" class="btn-usuario" id="cuentaBtn" aria-label="Cuenta">
+        <button type="button" class="btn-usuario" id="cuentaBtn" aria-label="Cuenta" aria-haspopup="true" aria-expanded="false">
           <span class="user-avatar" id="cuentaAvatar"></span>
           <span class="user-nombre" id="userNombre"></span>
         </button>
@@ -110,14 +147,12 @@
               <span id="cuentaRolEtiqueta"></span>
             </div>
           </div>
-          <a href="javascript:void(0)" onclick="irAAjustesCuenta('perfil')">Editar perfil</a>
-          <a href="javascript:void(0)" onclick="irAAjustesCuenta('seguridad')">Seguridad</a>
-          <a href="javascript:void(0)" onclick="irAAjustesCuenta('progreso')">Mi progreso</a>
-          <a href="javascript:void(0)" onclick="irAAjustesCuenta('sesiones')">Dispositivos</a>
-          <a href="javascript:void(0)" onclick="irAAjustesCuenta('preferencias')">Preferencias</a>
-          <a href="/index.html" rel="noopener">Ver la web</a>
-          <a href="/panel-analiticas.html" id="enlaceAnaliticas" rel="noopener">Analíticas</a>
-          <button type="button" onclick="logout()">Cerrar sesión</button>
+          <a href="javascript:void(0)" onclick="irAAjustesCuenta('perfil')"><span class="ud-ico" aria-hidden="true"><svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>Ajustes de cuenta</a>
+          <a href="javascript:void(0)" class="rm-enlace" onclick="irAAjustesCuenta('resumenMes')"><span class="ud-ico" aria-hidden="true"><svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15v3"/><path d="M12 9v9"/><path d="M17 5v13"/></svg></span>Resumen del mes<span class="rm-punto" hidden role="img" aria-label="Resumen nuevo disponible"></span></a>
+          <a href="javascript:void(0)" onclick="irAAjustesCuenta('preferencias')"><span class="ud-ico" aria-hidden="true"><svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg></span>Preferencias</a>
+          <a href="/index.html" rel="noopener"><span class="ud-ico" aria-hidden="true"><svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span>Ver la web</a>
+          <div class="ud-sep" role="separator"></div>
+          <button type="button" onclick="logout()"><span class="ud-ico" aria-hidden="true"><svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></span>Cerrar sesión</button>
         </div>
       </div>
     </div>
@@ -126,15 +161,18 @@
 
 <div class="wrap">
   <div class="tabs">
-    <button class="activo" data-tab="noticias"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z" opacity="0"/><path d="M19 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1Z"/><path d="M8 9h8M8 13h8M8 17h4"/></svg>Noticias</button>
-    <button data-tab="resultados"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.2l3.6 2.6-1.4 4.2h-4.4l-1.4-4.2z"/></svg>Resultados<span class="tab-badge-pendientes" id="badgeResultadosAnulados" style="display:none;">0</span></button>
-    <button data-tab="ajustes" id="tabAjustesOculto" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>Ajustes de cuenta</button>
-    <button data-tab="contenido" id="tabContenido"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>Contenido</button>
-    <button data-tab="solicitudes" id="tabSolicitudes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Solicitudes<span class="tab-badge-pendientes" id="badgeSolicitudesPendientes" style="display:none;">0</span></button>
-    <button data-tab="tienda" id="tabTienda"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>Tienda<span class="tab-badge-pendientes" id="badgeTiendaPendientes" style="display:none;">0</span></button>
-    <button data-tab="votaciones" id="tabVotaciones"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V8l3-5 4 4v4"/><path d="m9 16 2 2 4-4"/></svg>Votaciones<span class="tab-badge-pendientes" id="badgeVotPendientes" style="display:none;">0</span></button>
-    <button data-tab="usuarios" id="tabUsuarios"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>Usuarios</button>
-    <button data-tab="funcionalidades" id="tabFuncionalidades"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3 6.5 7 1-5 5 1.5 7-6.5-3.5L5 21.5l1.5-7-5-5 7-1z"/></svg>Funcionalidades<span class="tab-badge-pendientes" id="badgeFuncionalidadesPendientes" style="display:none;">0</span></button>
+    <button data-grupo="editorial" class="activo" data-tab="noticias"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z" opacity="0"/><path d="M19 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1Z"/><path d="M8 9h8M8 13h8M8 17h4"/></svg>Noticias</button>
+    <button data-grupo="editorial" data-tab="resultados"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.2l3.6 2.6-1.4 4.2h-4.4l-1.4-4.2z"/></svg>Resultados<span class="tab-badge-pendientes" id="badgeResultadosAnulados" style="display:none;">0</span></button>
+    <button data-grupo="editorial" data-tab="contenido" id="tabContenido"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>Contenido</button>
+    <button data-grupo="editorial" data-tab="podcast" id="tabPodcast"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>Podcast</button>
+    <button data-grupo="editorial" data-tab="solicitudes" id="tabSolicitudes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Solicitudes<span class="tab-badge-pendientes" id="badgeSolicitudesPendientes" style="display:none;">0</span></button>
+    <button data-grupo="comunidad" data-tab="tienda" id="tabTienda"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>Tienda<span class="tab-badge-pendientes" id="badgeTiendaPendientes" style="display:none;">0</span></button>
+    <button data-grupo="comunidad" data-tab="votaciones" id="tabVotaciones"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V8l3-5 4 4v4"/><path d="m9 16 2 2 4-4"/></svg>Votaciones<span class="tab-badge-pendientes" id="badgeVotPendientes" style="display:none;">0</span></button>
+    <button data-grupo="comunidad" data-tab="feedback" id="tabFeedback"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="m9 10 2 2 4-4"/></svg>Feedback<span class="tab-badge-pendientes" id="badgeFeedbackNoLeidos" style="display:none;">0</span></button>
+    <button data-grupo="admin" data-tab="usuarios" id="tabUsuarios"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>Usuarios</button>
+    <button data-grupo="admin" data-tab="funcionalidades" id="tabFuncionalidades"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3 6.5 7 1-5 5 1.5 7-6.5-3.5L5 21.5l1.5-7-5-5 7-1z"/></svg>Funcionalidades<span class="tab-badge-pendientes" id="badgeFuncionalidadesPendientes" style="display:none;">0</span></button>
+    <button data-grupo="admin" data-tab="ajustes" id="tabAjustesOculto" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>Ajustes de cuenta</button>
+    <button data-grupo="admin" data-tab="analiticas" id="tabAnaliticas" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>Analíticas</button>
   </div>
 
   <!-- NOTICIAS: nueva noticia + listado -->
@@ -158,9 +196,9 @@
           <nav class="nn-nav" id="nnNav" aria-label="Secciones de la noticia"><button type="button" data-nn-ir="nn-sec-datos">Datos</button><button type="button" data-nn-ir="nn-sec-imagenes">Imágenes</button><button type="button" data-nn-ir="nn-sec-redes">Redes</button><button type="button" data-nn-ir="nn-sec-partido">Partido y encuesta</button><button type="button" data-nn-ir="nn-sec-contenido">Contenido</button><button type="button" data-nn-ir="nn-sec-traducciones">Traducciones</button><button type="button" data-nn-ir="nn-sec-publicacion">Publicación</button></nav>
 
           <section class="nn-titular" id="nn-sec-titular">
-            <label for="titulo">Título <span class="nn-req" title="Obligatorio">*</span></label>
+            <label for="titulo">Título <span class="nn-req" title="Obligatorio">*</span> <span class="nr-contador" id="nnContTitulo" title="Google suele mostrar unos 60 caracteres del título"></span></label>
             <input type="text" id="titulo" required placeholder="Escribe el titular" autocomplete="off">
-            <label for="subtitulo">Subtítulo</label>
+            <label for="subtitulo">Subtítulo <span class="nr-contador" id="nnContSubtitulo" title="Si tiene entre 50 y 160 caracteres, es la frase que Google muestra bajo el titular"></span></label>
             <input type="text" id="subtitulo" placeholder="Una frase que amplíe el titular (opcional)" autocomplete="off">
           </section>
 
@@ -178,6 +216,8 @@
                 <option value="opinion">Opinión</option>
                 <option value="entrevista">Entrevista</option>
                 <option value="uno_por_uno">1x1 de jugadores</option>
+                <option value="rdp_previa">Rueda de prensa previa</option>
+                <option value="rdp_post">Rueda de prensa posterior</option>
               </select>
             </div>
             <div id="categoriaWrapNormal">
@@ -186,6 +226,7 @@
                 <option value="hypermotion">LaLiga Hypermotion</option>
                 <option value="primera_federacion">Primera Federación</option>
                 <option value="segunda_federacion">Segunda Federación</option>
+                <option value="tercera_federacion">Tercera Federación</option>
                 <option value="copa_del_rey">Copa del Rey</option>
                 <option value="copa_federacion">Copa Federación</option>
                 <option value="amistoso">Amistoso</option>
@@ -436,7 +477,7 @@
               </span>
             </label>
 
-            <label class="opcion-toggle" for="publicado">
+            <label class="opcion-toggle" for="publicado" id="opcionPublicada">
               <input type="checkbox" id="publicado">
               <span class="opcion-toggle-caja"></span>
               <span class="opcion-toggle-texto">
@@ -444,6 +485,22 @@
                 <span class="opcion-toggle-sub">Desmarca para guardar como borrador</span>
               </span>
             </label>
+
+            <!-- Solo redactores de Nivel 1: el interruptor "Publicada" está oculto y
+                 aparece (marcado) únicamente cuando introducen un PIN de "Última hora"
+                 correcto. Lo gestiona aplicarVisibilidadPublicada() en admin.js. -->
+            <div id="bloqueDesbloqueoPublicar" style="display:none;">
+              <label class="opcion-toggle opcion-toggle-urgente" for="ultimaHoraPin" id="opcionUltimaHoraPin">
+                <input type="checkbox" id="ultimaHoraPin" aria-haspopup="dialog">
+                <span class="opcion-toggle-caja"></span>
+                <span class="opcion-toggle-texto">
+                  <span class="opcion-toggle-titulo">Marcar como última hora</span>
+                  <span class="opcion-toggle-sub" id="ultimaHoraPinSub">Publica, activa el banner y la destaca con tu PIN</span>
+                </span>
+                <svg class="opcion-toggle-candado" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+              </label>
+              <p class="ayuda-editor" id="ayudaUltimaHoraPin" style="margin:6px 0 0;">Requiere el PIN de 4 dígitos. Sin PIN, la noticia se guarda como borrador para revisión.</p>
+            </div>
 
             <div id="bloqueBannerUrgente">
               <label class="opcion-toggle opcion-toggle-urgente">
@@ -525,6 +582,7 @@
       <div class="buscador-lista">
         <input type="search" id="buscadorArticulos" class="buscador-lista-input" placeholder="Buscar por título, categoría o autor...">
         <span class="buscador-lista-contador" id="contadorArticulos"></span>
+        <span class="lista-envivo" id="envivoArticulos" role="status" hidden><span class="lista-envivo-punto" aria-hidden="true"></span><span class="lista-envivo-txt">En vivo</span></span>
       </div>
       <div class="filtros-noticias" id="filtrosNoticias" style="display:none;" role="group" aria-label="Filtrar noticias por estado">
         <button type="button" class="chip-noticia chip-noticia-revision" data-filtro-noticias="revision" aria-pressed="false" title="Noticias terminadas que esperan a que alguien las revise y las publique">
@@ -536,6 +594,11 @@
           <span class="chip-noticia-ico" aria-hidden="true">✏️</span>
           <span class="chip-noticia-txt"><strong>Borradores en proceso</strong><small>Aún se están escribiendo</small></span>
           <span class="chip-noticia-n" id="contadorEnProceso">0</span>
+        </button>
+        <button type="button" class="chip-noticia chip-noticia-redes" data-filtro-noticias="redes" aria-pressed="false" title="Noticias publicadas sin revisión (autores de Nivel 2) que aún no se han marcado ni subido a redes. Si no las sube alguien de Nivel 4, nadie lo hará">
+          <span class="chip-noticia-ico" aria-hidden="true">📣</span>
+          <span class="chip-noticia-txt"><strong>Por subir a redes</strong><small>Publicadas sin revisión</small></span>
+          <span class="chip-noticia-n" id="contadorPorSubirRedes">0</span>
         </button>
       </div>
       <!-- Organización para redes: etiquetas de carrusel (solo admin y Nivel 4+). Lógica en admin.js (pintarOrganizacionRedes). -->
@@ -781,6 +844,7 @@
                 <option value="hypermotion">LaLiga Hypermotion</option>
                 <option value="primera_federacion">Primera Federación</option>
                 <option value="segunda_federacion">Segunda Federación</option>
+                <option value="tercera_federacion">Tercera Federación</option>
                 <option value="amistoso">Amistoso</option>
               </select>
             </div>
@@ -942,6 +1006,10 @@
             <div id="ev_bajar_gol_wrap" class="checkbox-line" style="display:none">
               <input type="checkbox" id="ev_bajar_gol">
               <label for="ev_bajar_gol" style="margin:0;">El gol ya se había sumado al marcador (bajar 1 gol al equipo elegido arriba)</label>
+            </div>
+            <div id="ev_es_penalti_wrap" class="checkbox-line" style="display:none">
+              <input type="checkbox" id="ev_es_penalti">
+              <label for="ev_es_penalti" style="margin:0;">Gol de penalti</label>
             </div>
             <div id="ev_anadido_wrap" style="display:none">
               <label for="ev_anadido">Minutos de tiempo añadido (opcional)</label>
@@ -1131,21 +1199,22 @@
           <option value="">Todos los equipos</option>
         </select>
         <input type="search" id="buscadorResultados" class="buscador-lista-input" placeholder="Buscar por competición, jornada o equipo...">
-        <button type="button" id="filtroSoloSinCubrirResultados" class="btn-secundari btn-filtro-sin-cubrir" aria-pressed="false" title="Mostrar solo los partidos en juego sin cubrir y los finalizados sin cubrir, del más reciente al menos reciente">🔴 Solo sin cubrir</button>
-        <button type="button" id="filtroSoloPartidazosResultados" class="btn-secundari btn-filtro-sin-cubrir btn-filtro-partidazo" aria-pressed="false" title="Mostrar solo los partidazos de la jornada (uno por liga y jornada)">🔥 Solo partidazos</button>
+        <button type="button" id="filtroSoloSinCubrirResultados" class="btn-secundari btn-filtro-sin-cubrir" aria-pressed="false" title="Mostrar solo los partidos en juego sin cubrir y los finalizados sin cubrir, del más reciente al menos reciente"><i class="ico-res ico-res-sincubrir" aria-hidden="true"></i>Solo sin cubrir</button>
+        <button type="button" id="filtroSoloPartidazosResultados" class="btn-secundari btn-filtro-sin-cubrir btn-filtro-partidazo" aria-pressed="false" title="Mostrar solo los partidazos de la jornada (uno por liga y jornada)"><i class="ico-res ico-res-llama" aria-hidden="true"></i>Solo partidazos</button>
         <span class="buscador-lista-contador" id="contadorResultados"></span>
+        <span class="lista-envivo" id="envivoResultados" role="status" hidden><span class="lista-envivo-punto" aria-hidden="true"></span><span class="lista-envivo-txt">En vivo</span></span>
       </div>
       <div class="aviso-anulados" id="avisoAnuladosResultados" role="status" hidden>
-        <span class="aviso-anulados-ico" aria-hidden="true">⛔</span>
+        <span class="aviso-anulados-ico" aria-hidden="true"><i class="ico-res ico-res-anular" aria-hidden="true"></i></span>
         <span class="aviso-anulados-texto" id="avisoAnuladosTexto"></span>
         <button type="button" class="btn-secundari aviso-anulados-btn" id="btnVerAnulados">Ver anulados</button>
       </div>
       <div class="filtros-estado-resultados" id="filtrosEstadoResultados" role="group" aria-label="Filtrar por estado del partido">
         <button type="button" class="chip-estado" data-filtro-estado="" aria-pressed="true">Todos <span class="chip-estado-n">0</span></button>
-        <button type="button" class="chip-estado chip-estado-en-juego" data-filtro-estado="en_juego" aria-pressed="false">🟢 En juego <span class="chip-estado-n">0</span></button>
-        <button type="button" class="chip-estado chip-estado-anulados" data-filtro-estado="anulados" aria-pressed="false" title="Partidos anulados: acaban jugándose, hay que reprogramarlos">⛔ Anulados <span class="chip-estado-n">0</span></button>
-        <button type="button" class="chip-estado" data-filtro-estado="por_jugar" aria-pressed="false">🕒 Por jugar <span class="chip-estado-n">0</span></button>
-        <button type="button" class="chip-estado" data-filtro-estado="terminados" aria-pressed="false">🏁 Terminados <span class="chip-estado-n">0</span></button>
+        <button type="button" class="chip-estado chip-estado-en-juego" data-filtro-estado="en_juego" aria-pressed="false"><i class="ico-res ico-res-enjuego" aria-hidden="true"></i>En juego <span class="chip-estado-n">0</span></button>
+        <button type="button" class="chip-estado chip-estado-anulados" data-filtro-estado="anulados" aria-pressed="false" title="Partidos anulados: acaban jugándose, hay que reprogramarlos"><i class="ico-res ico-res-anular" aria-hidden="true"></i>Anulados <span class="chip-estado-n">0</span></button>
+        <button type="button" class="chip-estado" data-filtro-estado="por_jugar" aria-pressed="false"><i class="ico-res ico-res-porjugar" aria-hidden="true"></i>Por jugar <span class="chip-estado-n">0</span></button>
+        <button type="button" class="chip-estado" data-filtro-estado="terminados" aria-pressed="false"><i class="ico-res ico-res-terminado" aria-hidden="true"></i>Terminados <span class="chip-estado-n">0</span></button>
       </div>
       <table class="lista">
         <thead><tr><th>Competición</th><th>Jornada</th><th>Partido</th><th>Resultado</th><th>Estado</th><th>Acciones</th></tr></thead>
@@ -1348,6 +1417,7 @@
       <button class="activo" data-subtab="perfil">Editar perfil</button>
       <button data-subtab="seguridad" id="subtabSeguridad_btn">Seguridad</button>
       <button data-subtab="progreso">Mi progreso</button>
+      <button data-subtab="resumenMes">Resumen del mes<span class="rm-punto" hidden role="img" aria-label="Resumen nuevo disponible"></span></button>
       <button data-subtab="sesiones">Dispositivos</button>
       <button data-subtab="preferencias">Preferencias</button>
     </div>
@@ -1438,21 +1508,18 @@
       </div>
     </div>
 
+    <div class="subpanel" id="subpanel-resumenMes">
+      <div class="form-card" id="resumenMesCont">
+        <p class="sesiones-vacio">Cargando…</p>
+      </div>
+    </div>
+
     <div class="subpanel" id="subpanel-preferencias">
       <div class="form-card">
         <h3 class="titulo-subseccion" style="margin-top:0;">Preferencias de visualización</h3>
         <p class="ayuda-editor" style="margin:0 0 4px;">Adapta el panel y la web a cómo te resulta más cómoda. Se guardan en este dispositivo y se aplican también a la web pública.</p>
         <div id="contenedorPreferenciasRedactor"></div>
         <script>window.EOFPrefs && window.EOFPrefs.montarPanel(document.getElementById("contenedorPreferenciasRedactor"));</script>
-      </div>
-      <div class="form-card" id="cardInterruptorSecundaria">
-        <h3 class="titulo-subseccion" style="margin-top:0;">API secundaria (Railway)</h3>
-        <p class="ayuda-editor" style="margin:0 0 10px;">Desactivada por defecto. Si la activas, <strong>este navegador</strong> usará la API secundaria como respaldo cuando la principal no responda (solo lecturas e inicio de sesión). Se guarda en este dispositivo y recarga la página.</p>
-        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
-          <input type="checkbox" id="chkSecundariaActiva">
-          <span>Usar la API secundaria como respaldo</span>
-        </label>
-        <p id="estadoSecundaria" class="ayuda-editor" style="margin:10px 0 0;"></p>
       </div>
     </div>
 
@@ -1500,11 +1567,17 @@
       <button data-subtab="encuestas" id="subtabFuncEncuestas_btn"><span class="func-nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 20V10M12 20V4M6 20v-6"/></svg></span><span class="func-nav-txt">Encuestas</span></button>
       <button data-subtab="newsletter" id="subtabFuncNewsletter_btn"><span class="func-nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg></span><span class="func-nav-txt">Newsletter</span></button>
       <button data-subtab="anuncios" id="subtabFuncAnuncios_btn"><span class="func-nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11v2a1 1 0 001 1h2l5 4V6L6 10H4a1 1 0 00-1 1z"/><path d="M15.5 8.5a5 5 0 010 7M18.5 5.5a9 9 0 010 13"/></svg></span><span class="func-nav-txt">Anuncios</span></button>
-      <button data-subtab="historial" id="subtabFuncHistorial_btn"><span class="func-nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><span class="func-nav-txt">Historial</span></button>
       <button data-subtab="equipos"><span class="func-nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg></span><span class="func-nav-txt">Equipos</span></button>
       <button data-subtab="jugadores" id="subtabFuncJugadores_btn"><span class="func-nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg></span><span class="func-nav-txt">Jugadores</span></button>
-      <button data-subtab="informacion" id="subtabFuncInformacion_btn"><span class="func-nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.5v.01"/></svg></span><span class="func-nav-txt">Información</span></button>
-      <button data-subtab="redesSociales" id="subtabRedesSociales_btn"><span class="func-nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg></span><span class="func-nav-txt">Redes sociales</span></button>
+      <div class="func-mas" id="funcMas">
+        <span class="func-mas-btn" id="funcMasBtn" role="button" tabindex="0" aria-haspopup="true" aria-expanded="false">Más</span>
+        <div class="func-mas-menu" id="funcMasMenu">
+        <button data-subtab="informacion" id="subtabFuncInformacion_btn"><span class="func-nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.5v.01"/></svg></span><span class="func-nav-txt">Información</span></button>
+        <button data-subtab="responsabilidades" id="subtabFuncResponsabilidades_btn"><span class="func-nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span><span class="func-nav-txt">Responsabilidades</span></button>
+        <button data-subtab="redesSociales" id="subtabRedesSociales_btn"><span class="func-nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg></span><span class="func-nav-txt">Redes sociales</span></button>
+        <button data-subtab="historial" id="subtabFuncHistorial_btn"><span class="func-nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><span class="func-nav-txt">Historial</span></button>
+        </div>
+      </div>
     </div>
 
     <div class="subpanel activo" id="subpanel-comentarios">
@@ -1725,6 +1798,96 @@
         </header>
         <div id="organigrama"></div>
       </section>
+    </div>
+
+    <div class="subpanel resp" id="subpanel-responsabilidades">
+      <header class="func-head"><span class="func-head-ico violeta"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span><div class="func-head-txt"><h3>Responsabilidades específicas</h3><p>Las áreas de las que te ocupas directamente: la relación con los clubes y los fichajes de personas para el medio. Todo se guarda solo.</p></div><div class="resp-estado" id="respEstado" role="status" aria-live="polite"></div></header>
+
+      <div class="subtabs" id="subtabsResponsabilidades">
+        <button class="activo" data-subtab="respRelaciones">Relaciones institucionales</button>
+        <button data-subtab="respRrhh">Recursos humanos</button>
+      </div>
+
+      <div class="subpanel activo" id="subpanel-respRelaciones">
+      <section class="info-seccion" id="respSecRelClubes" aria-labelledby="respSecRelClubesTitulo">
+        <header class="info-cab">
+          <span class="info-cab-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg></span>
+          <div class="info-cab-txt">
+            <span class="info-eyebrow">Relaciones institucionales</span>
+            <h4 class="info-titulo" id="respSecRelClubesTitulo">Checklist de clubes</h4>
+            <p class="info-sub">Todos los clubes de la web, por competición. Marca aquellos con los que ya has establecido relación institucional.</p>
+          </div>
+        </header>
+        <div id="respRelClubes"></div>
+      </section>
+
+      <section class="info-seccion" id="respSecRelCorreos" aria-labelledby="respSecRelCorreosTitulo">
+        <header class="info-cab">
+          <span class="info-cab-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg></span>
+          <div class="info-cab-txt">
+            <span class="info-eyebrow">Relaciones institucionales</span>
+            <h4 class="info-titulo" id="respSecRelCorreosTitulo">Base de datos de contactos</h4>
+            <p class="info-sub">Clubes, federaciones, departamentos de prensa y responsables de comunicación: a quién escribir y cómo localizarlos, en un solo sitio.</p>
+          </div>
+        </header>
+        <div id="respRelContactos"></div>
+      </section>
+
+      <section class="info-seccion" id="respSecRelPlantillas" aria-labelledby="respSecRelPlantillasTitulo">
+        <header class="info-cab">
+          <span class="info-cab-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg></span>
+          <div class="info-cab-txt">
+            <span class="info-eyebrow">Relaciones institucionales</span>
+            <h4 class="info-titulo" id="respSecRelPlantillasTitulo">Plantillas de comunicaciones institucionales</h4>
+            <p class="info-sub">Modelos de correo para cada situación con los clubes: rellena los datos, revisa el texto y cópialo.</p>
+          </div>
+        </header>
+        <div id="respRelPlantillas"></div>
+      </section>
+      </div>
+
+      <div class="subpanel" id="subpanel-respRrhh">
+      <section class="info-seccion" id="respSecRrhhContacto" aria-labelledby="respSecRrhhContactoTitulo">
+        <header class="info-cab">
+          <span class="info-cab-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18M9 16l2 2 4-4"/></svg></span>
+          <div class="info-cab-txt">
+            <span class="info-eyebrow">Recursos humanos</span>
+            <h4 class="info-titulo" id="respSecRrhhContactoTitulo">Contacto con los colaboradores (cada dos meses)</h4>
+            <p class="info-sub">Habitualmente cada dos meses, escribe a los colaboradores activos para saber cómo están. Aquí te lo recuerda, ves la ficha de cada persona y queda anotado.</p>
+          </div>
+        </header>
+        <div id="respRrhhContacto"></div>
+      </section>
+
+      <section class="info-seccion" id="respSecRrhhClubes" aria-labelledby="respSecRrhhClubesTitulo">
+        <header class="info-cab">
+          <span class="info-cab-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 13h18"/></svg></span>
+          <div class="info-cab-txt">
+            <span class="info-eyebrow">Recursos humanos</span>
+            <h4 class="info-titulo" id="respSecRrhhClubesTitulo">Checklist de clubes</h4>
+            <p class="info-sub">Todos los clubes de la web, por competición. Marca en cada lista los que ya tienen redactor y los que ya tienen fotógrafo asignado.</p>
+          </div>
+        </header>
+        <div class="resp-seg resp-roles" id="respRrhhRoles" role="group" aria-label="Elegir checklist">
+          <button type="button" class="resp-btn" data-resp="rrhh-rol" data-valor="redactores" aria-pressed="true">Redactores <small data-zona="n"></small></button>
+          <button type="button" class="resp-btn" data-resp="rrhh-rol" data-valor="fotografos" aria-pressed="false">Fotógrafos <small data-zona="n"></small></button>
+        </div>
+        <div id="respRrhhRedactores"></div>
+        <div id="respRrhhFotografos" hidden></div>
+      </section>
+
+      <section class="info-seccion" id="respSecRrhhFichajes" aria-labelledby="respSecRrhhFichajesTitulo">
+        <header class="info-cab">
+          <span class="info-cab-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+          <div class="info-cab-txt">
+            <span class="info-eyebrow">Recursos humanos</span>
+            <h4 class="info-titulo" id="respSecRrhhFichajesTitulo">Personas que me gustaría fichar</h4>
+            <p class="info-sub">Tu lista de objetivos para el medio: a quién quieres, para qué puesto, cómo contactarle y en qué punto está.</p>
+          </div>
+        </header>
+        <div id="respRrhhFichajes"></div>
+      </section>
+      </div>
     </div>
 
     <div class="subpanel" id="subpanel-jugadores">
@@ -1989,8 +2152,8 @@
         <button type="button" class="usuarios-stat stat-redactor" data-rol="redactor"><span class="usuarios-stat-num" id="statUsuRedactores">0</span><span class="usuarios-stat-etq">Redactores</span></button>
         <button type="button" class="usuarios-stat stat-fotografo" data-rol="fotografo"><span class="usuarios-stat-num" id="statUsuFotografos">0</span><span class="usuarios-stat-etq">Fotógrafos</span></button>
         <button type="button" class="usuarios-stat stat-admin" data-rol="admin"><span class="usuarios-stat-num" id="statUsuAdmins">0</span><span class="usuarios-stat-etq">Administradores</span></button>
-        <button type="button" class="usuarios-stat stat-aviso" data-estado="sin_acceso"><span class="usuarios-stat-num" id="statUsuSinAcceso">0</span><span class="usuarios-stat-etq">Sin primer acceso</span></button>
-        <button type="button" class="usuarios-stat stat-inactivo" data-estado="inactivos"><span class="usuarios-stat-num" id="statUsuInactivos">0</span><span class="usuarios-stat-etq">Inactivos</span></button>
+        <button type="button" class="usuarios-stat stat-aviso" data-estado="sin_acceso"><span class="usuarios-stat-num" id="statUsuSinAcceso">0</span><span class="usuarios-stat-etq">Aún sin entrar</span></button>
+        <button type="button" class="usuarios-stat stat-inactivo" data-estado="inactivos" title="Cuentas desactivadas y redactores que llevan 30 días o más sin publicar"><span class="usuarios-stat-num" id="statUsuInactivos">0</span><span class="usuarios-stat-etq">Inactivos</span></button>
       </div>
 
       <div class="usuarios-pin">
@@ -2008,17 +2171,17 @@
         <form id="formNuevoUsuario">
           <div class="row2">
             <div>
-              <label>Usuario *</label>
+              <label for="nu_username">Nombre de usuario *</label>
               <input type="text" id="nu_username" placeholder="p. ej. maria_gomez" required>
             </div>
             <div>
-              <label>Nombre *</label>
+              <label for="nu_nombre">Nombre completo *</label>
               <input type="text" id="nu_nombre" required>
             </div>
           </div>
           <div class="row2">
             <div>
-              <label>Rol</label>
+              <label for="nu_rol">Rol</label>
               <select id="nu_rol">
                 <option value="redactor">Redactor</option>
                 <option value="fotografo">Fotógrafo</option>
@@ -2026,11 +2189,11 @@
               </select>
             </div>
             <div>
-              <label>Correo electrónico</label>
+              <label for="nu_email">Correo electrónico</label>
               <input type="email" id="nu_email">
             </div>
           </div>
-          <label>Categoría complementaria</label>
+          <label for="nu_categoria_fija_buscador">Categoría complementaria</label>
           <p class="ayuda-editor" style="margin:0 0 8px;">Opcional. Añade una categoría (p. ej. "Arbitraje" o "Jurisdicción deportiva") como complemento de sus equipos. No limita lo que puede publicar.</p>
           <div class="equipos-picker" id="nu_categoria_fija_picker">
             <div class="equipos-picker-cabecera">
@@ -2041,7 +2204,7 @@
             <p class="equipos-picker-ayuda" id="nu_categoria_fija_ayuda">Puedes dejarlo sin especificar.</p>
           </div>
           <div id="nu_equipo_bloque">
-            <label>Equipo</label>
+            <label for="nu_equipo_buscador">Equipos</label>
             <p class="ayuda-editor" style="margin:0 0 8px;">Opcional. Puedes dejarlo sin especificar o elegir hasta 3 equipos.</p>
             <div class="equipos-picker" id="nu_equipo_picker">
               <div class="equipos-picker-cabecera">
@@ -2052,7 +2215,8 @@
               <p class="equipos-picker-ayuda" id="nu_equipo_ayuda">Puedes elegir hasta 3 equipos (o ninguno).</p>
             </div>
           </div>
-          <label>Contraseña inicial (déjalo en blanco para generar una automáticamente)</label>
+          <label for="nu_password">Contraseña inicial</label>
+          <p class="ayuda-editor" style="margin:0 0 8px;">Opcional. Si la dejas en blanco se genera una automáticamente.</p>
           <input type="text" id="nu_password" placeholder="Mínimo 8 caracteres">
           <button type="submit" class="btn-primari">Crear usuario</button>
           <p id="msgOkUsuario"></p>
@@ -2064,12 +2228,12 @@
       <h3 class="titulo-subseccion">Usuarios registrados</h3>
       <div class="contador-usuarios" id="contadorUsuarios" style="display:none;">
         <span class="contador-usuarios-numero" id="contadorUsuariosNumero">0 / 0</span>
-        <span class="contador-usuarios-etiqueta">han iniciado sesión de los registrados</span>
+        <span class="contador-usuarios-etiqueta">usuarios han iniciado sesión alguna vez</span>
         <span class="contador-barra" aria-hidden="true"><i></i></span>
       </div>
       <div class="usuarios-toolbar" id="usuariosToolbar">
         <div class="usuarios-toolbar-fila">
-          <input type="search" id="usuariosBuscar" class="usuarios-buscar" placeholder="Buscar por usuario, nombre, correo o equipo…" autocomplete="off" aria-label="Buscar usuarios">
+          <input type="search" id="usuariosBuscar" class="usuarios-buscar" placeholder="Buscar por usuario, nombre, correo, equipo o #id…" autocomplete="off" aria-label="Buscar usuarios">
           <select id="usuariosOrden" class="usuarios-orden" aria-label="Ordenar usuarios">
             <option value="nombre">Orden: nombre (A-Z)</option>
             <option value="recientes">Orden: más recientes</option>
@@ -2085,10 +2249,10 @@
             <button type="button" data-rol="admin">Administradores <b>0</b></button>
           </div>
           <div class="usuarios-chips" id="usuariosChipsEstado" role="group" aria-label="Filtrar por estado">
-            <button type="button" class="activo" data-estado="todos">Cualquier estado</button>
+            <button type="button" class="activo" data-estado="todos">Todos los estados</button>
             <button type="button" data-estado="activos">Activos <b>0</b></button>
-            <button type="button" data-estado="inactivos">Inactivos <b>0</b></button>
-            <button type="button" data-estado="sin_acceso">Sin primer acceso <b>0</b></button>
+            <button type="button" data-estado="inactivos" title="Cuentas desactivadas y redactores que llevan 30 días o más sin publicar (los que más llevan, primero)">Inactivos <b>0</b></button>
+            <button type="button" data-estado="sin_acceso">Aún sin entrar <b>0</b></button>
           </div>
         </div>
         <div class="usuarios-toolbar-pie">
@@ -2097,7 +2261,7 @@
         </div>
       </div>
       <table class="lista tabla-usuarios">
-        <thead><tr><th>Usuario</th><th>Nombre</th><th>Rol</th><th>Correo</th><th>Equipo / Categoría</th><th>Situación</th><th>Estado</th><th>Acciones</th></tr></thead>
+        <thead><tr><th>Usuario</th><th>Nombre</th><th>Rol</th><th>Correo</th><th>Equipo y categoría</th><th>Nivel y avisos</th><th>Estado</th><th>Acciones</th></tr></thead>
         <tbody id="tablaUsuarios"></tbody>
       </table>
     </div>
@@ -2110,10 +2274,10 @@
       </p>
       <div class="contador-usuarios" id="contadorLectores" style="display:none;">
         <span class="contador-usuarios-numero" id="contadorLectoresNumero">0 / 0</span>
-        <span class="contador-usuarios-etiqueta">con correo verificado de los registrados</span>
+        <span class="contador-usuarios-etiqueta">lectores con el correo verificado</span>
       </div>
       <table class="lista">
-        <thead><tr><th>Nombre</th><th>Correo</th><th>Estado</th><th>Registrado</th></tr></thead>
+        <thead><tr><th>Nombre</th><th>Correo</th><th>Estado</th><th>Fecha de registro</th></tr></thead>
         <tbody id="tablaLectores"></tbody>
       </table>
     </div>
@@ -2141,18 +2305,24 @@
 
     <!-- Propuestas de fichas de equipo (antes dentro de Funcionalidades > Equipos) -->
     <div class="subpanel" id="subpanel-propuestasEquipos">
-      <p class="ayuda-editor" style="margin:0 0 14px;">Fichas de equipo propuestas por redactores de Nivel 1: no se aplican hasta que un administrador (o un redactor de Nivel 4) las aprueba. Las fichas ya guardadas se gestionan en Funcionalidades &rsaquo; Equipos.</p>
+      <div class="prop-hero">
+        <span class="prop-hero-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.2 8.2-8 9-4.8-.8-8-4.5-8-9V6l8-3z"/><path d="M9 12l2.2 2.2L15.5 10"/></svg></span>
+        <div class="prop-hero-txt">
+          <h3>Propuestas de fichas de equipo</h3>
+          <p>Las envían los redactores de Nivel 1 y no se aplican hasta que un administrador (o un redactor de Nivel 4) las aprueba. Las fichas ya guardadas se gestionan en Funcionalidades &rsaquo; Equipos.</p>
+        </div>
+      </div>
+
       <div id="bloqueEquiposInfoMisPendientes" style="display:none;">
-        <h3 class="func-subtitulo">Tus propuestas pendientes de aprobación</h3>
-        <div id="listaEquiposInfoMisPendientes"></div>
+        <h3 class="prop-subtitulo">Tus propuestas pendientes de aprobación</h3>
+        <div class="prop-lista" id="listaEquiposInfoMisPendientes"></div>
       </div>
 
       <div id="bloqueEquiposInfoPendientes" style="display:none;">
-        <h3 class="func-subtitulo">Propuestas pendientes de aprobación</h3>
-        <p class="ayuda-editor" style="margin:0 0 8px;">Fichas enviadas por redactores de Nivel 1: no se aplican hasta que las apruebes.</p>
-        <div id="listaEquiposInfoPendientes"><p class="solicitudes-vacio">Cargando...</p></div>
+        <h3 class="prop-subtitulo">Pendientes de aprobación <span class="prop-contador" id="propContador">0</span></h3>
+        <div class="prop-lista" id="listaEquiposInfoPendientes"><p class="prop-vacio prop-cargando">Cargando…</p></div>
       </div>
-      <p class="solicitudes-vacio" id="equiposInfoSolVacio" style="display:none;">No tienes propuestas de fichas de equipo pendientes.</p>
+      <p class="prop-vacio" id="equiposInfoSolVacio" style="display:none;">No tienes propuestas de fichas de equipo pendientes.</p>
     </div>
 
     <!-- FORMULARIOS (solo admins): lista de formularios. "Acreditaciones" es un formulario ya creado
@@ -2177,7 +2347,7 @@
         <div class="acred-hero-texto">
           <h3 class="titulo-subseccion" style="margin-top:0;">Acreditaciones</h3>
           <p class="ayuda-editor" style="margin:0;">
-            Solicitudes recibidas desde el formulario público. Elige abajo cómo se accede al formulario (con PIN, con login de colaborador o libre para solicitar) y comparte el enlace: la solicitud aparece aquí. Aprobar o rechazar es solo un control interno: la concesión real la decide siempre el club organizador.
+            Solicitudes recibidas desde el formulario público. Elige abajo cómo se accede al formulario (con PIN, con login de colaborador o libre para solicitar) y comparte el enlace: la solicitud aparece aquí. El flujo es Pendiente → Solicitada (pedida al club) → Aprobada o Rechazada, y puedes marcar una como Cancelada. Todo es solo un control interno: la concesión real la decide siempre el club organizador.
           </p>
         </div>
         <div class="acred-hero-acciones">
@@ -2196,9 +2366,13 @@
       <div class="acred-stats" id="acredStats" role="group" aria-label="Filtrar por estado">
         <button type="button" class="acred-stat est-todas activo" data-filtro="" onclick="filtrarAcreditaciones('')"><span class="acred-stat-num" id="acredNumTodas">0</span><span class="acred-stat-et">Total</span></button>
         <button type="button" class="acred-stat est-pendiente" data-filtro="pendiente" onclick="filtrarAcreditaciones('pendiente')"><span class="acred-stat-num" id="acredNumPendiente">0</span><span class="acred-stat-et">Pendientes</span></button>
+        <button type="button" class="acred-stat est-solicitada" data-filtro="solicitada" onclick="filtrarAcreditaciones('solicitada')"><span class="acred-stat-num" id="acredNumSolicitada">0</span><span class="acred-stat-et">Solicitadas</span></button>
         <button type="button" class="acred-stat est-aprobada" data-filtro="aprobada" onclick="filtrarAcreditaciones('aprobada')"><span class="acred-stat-num" id="acredNumAprobada">0</span><span class="acred-stat-et">Aprobadas</span></button>
         <button type="button" class="acred-stat est-rechazada" data-filtro="rechazada" onclick="filtrarAcreditaciones('rechazada')"><span class="acred-stat-num" id="acredNumRechazada">0</span><span class="acred-stat-et">Rechazadas</span></button>
+        <button type="button" class="acred-stat est-cancelada" data-filtro="cancelada" onclick="filtrarAcreditaciones('cancelada')"><span class="acred-stat-num" id="acredNumCancelada">0</span><span class="acred-stat-et">Canceladas</span></button>
       </div>
+      <p class="acred-aviso" id="acredAviso" hidden>Falta aplicar la migración <code>migracion_acreditaciones_v2.sql</code>: hasta entonces no se guarda la hora de «solicitada».</p>
+      <div class="acred-envivo" id="acredEnVivo" role="status" aria-live="polite" hidden></div>
 
       <div class="acred-modo" id="acredModo" role="radiogroup" aria-label="Cómo se accede al formulario">
         <div class="acred-modo-tit">Acceso al formulario</div>
@@ -2237,22 +2411,66 @@
           <button type="button" class="acred-buscador-x" id="acredBuscadorX" aria-label="Borrar búsqueda" onclick="limpiarBusquedaAcreditaciones()">×</button>
         </div>
         <select id="acredOrden" onchange="pintarAcreditaciones()" aria-label="Ordenar">
+          <option value="prioridad">Prioridad (abiertas y urgentes primero)</option>
           <option value="recientes">Más recientes primero</option>
           <option value="antiguas">Más antiguas primero</option>
           <option value="nombre">Nombre (A-Z)</option>
           <option value="equipo">Equipo (A-Z)</option>
         </select>
       </div>
-      <p class="acred-resumen" id="acredResumen" aria-live="polite"></p>
+      <div class="acred-vistas" id="acredVistas" role="group" aria-label="Vistas rápidas"></div>
+      <div class="acred-resumen-fila">
+        <label class="acred-selvis"><input type="checkbox" id="acredSelTodos" onchange="acredSeleccionarVisibles(this.checked)"><span>Seleccionar visibles</span></label>
+        <p class="acred-resumen" id="acredResumen" aria-live="polite"></p>
+      </div>
 
       <div class="acred-lista" id="tablaAcreditaciones"></div>
+      <div class="acred-barra" id="acredBarra" role="region" aria-label="Acciones sobre las solicitudes seleccionadas" hidden></div>
       </div>
 
       <div id="formCustomVista" hidden></div>
     </div>
   </div>
 
+  <!-- FEEDBACK DE REVISORES (ver js/feedback-revision.js) -->
+  <div class="panel" id="panel-feedback">
+    <div class="fbk-cabecera">
+      <div>
+        <h3 class="fbk-titulo">Feedback</h3>
+        <p class="fbk-sub" id="fbkSub">Notas y observaciones que te dejan quienes revisan tu trabajo.</p>
+      </div>
+      <div class="fbk-cabecera-acc">
+        <div class="fbk-modo" role="group" aria-label="Ver feedback recibido o enviado">
+          <button type="button" class="fbk-modo-btn activo" data-modo="recibidos" aria-pressed="true">Recibidos</button>
+          <button type="button" class="fbk-modo-btn" data-modo="enviados" aria-pressed="false">Enviados</button>
+        </div>
+        <button type="button" class="fbk-btn sec" id="fbkMarcarTodo" disabled>Marcar todo como leído</button>
+      </div>
+    </div>
+    <div class="fbk-barra">
+      <input type="search" class="fbk-buscar" id="fbkBuscar" placeholder="Buscar por pieza, persona o nota" autocomplete="off" aria-label="Buscar en el feedback">
+      <div class="fbk-filtros" id="fbkFiltros" role="group" aria-label="Filtrar feedback">
+        <button type="button" class="fbk-chip activo" data-filtro="todos" aria-pressed="true">Todo<span class="fbk-chip-n"></span></button>
+        <button type="button" class="fbk-chip" data-filtro="sin_leer" aria-pressed="false">Sin leer<span class="fbk-chip-n"></span></button>
+        <button type="button" class="fbk-chip" data-filtro="aprobada" aria-pressed="false">Aprobadas<span class="fbk-chip-n"></span></button>
+        <button type="button" class="fbk-chip" data-filtro="programada" aria-pressed="false">Programadas<span class="fbk-chip-n"></span></button>
+      </div>
+    </div>
+    <p class="fbk-estado" id="fbkEstado" aria-live="polite"></p>
+    <div class="fbk-lista" id="fbkLista"></div>
+    <div class="fbk-mas"><button type="button" class="fbk-btn sec" id="fbkMas" hidden>Ver más antiguas</button></div>
+  </div>
+
   <!-- VOTACIONES INTERNAS DEL EQUIPO -->
+  <div class="panel" id="panel-podcast">
+    <div class="pca-cab">
+      <div><h2>Podcast</h2><p>Episodios, entrevistas y clips que salen en /podcast.</p></div>
+      <button type="button" class="pca-btn pca-primario" data-act="nuevo">+ Nuevo</button>
+    </div>
+    <div id="pcAdminForm" hidden></div>
+    <div id="pcAdminLista"><p class="pca-vacio">Cargando…</p></div>
+  </div>
+
   <div class="panel" id="panel-votaciones">
     <div class="subtabs" id="subtabsVotaciones">
       <button class="activo" data-subtab="votActivas">Activas</button>
@@ -2431,7 +2649,678 @@
     </div>
   </div>
 
+  <!-- ANALÍTICAS (solo administradores).
+       Antes era una página aparte (panel-analiticas.html) que se recargaba entera
+       cada vez que se entraba. Ahora es una pestaña más: el marcado vive aquí, el
+       JS (admin/js/analiticas-panel.js) se carga UNA vez al abrirla por primera vez
+       y los datos/gráficos se conservan al cambiar de pestaña. -->
+  <div class="panel" id="panel-analiticas">
+    <!-- Barra de rango + acciones propias de Analíticas (antes colgaba del header de la página suelta) -->
+    <div class="barra-analiticas">
+      <div class="barra-analiticas-in">
 
+        <div class="rango-selector">
+          <button type="button" data-r="1">24h</button>
+          <button type="button" data-r="7">7 días</button>
+          <button type="button" data-r="28" class="activo">28 días</button>
+          <button type="button" data-r="90">90 días</button>
+        </div>
+
+        <div class="barra-acciones-analiticas">
+          <button type="button" class="btn-actualizar-datos" id="btnActualizarAnaliticas" title="Volver a pedir los datos del periodo elegido">
+            ↻ Actualizar
+          </button>
+          <button type="button" class="btn-borrar-datos" id="btnBorrarDatos">
+            🗑️ Borrar datos guardados
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- =========================================================
+         CABECERA DEL PANEL
+         ========================================================= -->
+
+    <div class="fuentes-tabs">
+
+      <div class="panel-titulo">
+        Panel de analíticas <span>— todos los datos, en un único sitio</span>
+      </div>
+
+      <div
+        class="estado-conexion"
+        id="estadoConexion"
+      >
+        <span
+          class="punto"
+          style="background:#1a9c6b"
+        ></span>
+
+        Datos reales — article_views / article_reading
+      </div>
+
+    </div>
+
+
+    <!-- =========================================================
+         BUSCADOR DE NOTICIA POR TITULAR
+         ========================================================= -->
+
+    <div class="card" style="margin-bottom:16px" id="cardBuscadorNoticia">
+
+      <h3>Buscar una noticia por su titular</h3>
+      <p class="sub">Escribe (parte de) un titular y verás sus métricas dentro del periodo elegido arriba</p>
+
+      <div class="buscador-noticia-form">
+        <input type="text" id="buscadorNoticiaInput" placeholder="Ej: Real Oviedo, ascenso, derbi..." autocomplete="off">
+        <button type="button" id="buscadorNoticiaBtn">Buscar</button>
+      </div>
+
+      <div id="buscadorNoticiaResultados"></div>
+
+    </div>
+
+
+    <!-- =========================================================
+         KPIs
+         ========================================================= -->
+
+    <div class="kpis">
+
+      <div class="kpi">
+
+        <div class="lbl">
+          👁️ Páginas vistas
+        </div>
+
+        <div
+          class="val"
+          id="kpiVistas"
+        >
+          —
+        </div>
+
+        <div
+          class="delta"
+          id="kpiVistasDelta"
+        >
+          —
+        </div>
+
+      </div>
+
+
+      <div class="kpi">
+
+        <div class="lbl">
+          👤 Visitantes
+        </div>
+
+        <div
+          class="val"
+          id="kpiVisitantes"
+        >
+          —
+        </div>
+
+        <div
+          class="delta"
+          id="kpiVisitantesDelta"
+        >
+          —
+        </div>
+
+      </div>
+
+
+      <div class="kpi">
+
+        <div class="lbl">
+          ⏱️ Tiempo medio
+        </div>
+
+        <div
+          class="val"
+          id="kpiTiempo"
+        >
+          —
+        </div>
+
+        <div
+          class="delta"
+          id="kpiTiempoDelta"
+        >
+          —
+        </div>
+
+      </div>
+
+
+      <div class="kpi">
+
+        <div class="lbl">
+          📖 Lectura completa
+        </div>
+
+        <div
+          class="val"
+          id="kpiCompletitud"
+        >
+          —
+        </div>
+
+        <div
+          class="delta"
+          id="kpiCompletitudDelta"
+        >
+          —
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <!-- =========================================================
+         EVOLUCIÓN + DISPOSITIVOS
+         ========================================================= -->
+
+    <div class="grid2">
+
+      <div class="card">
+
+        <div class="card-head">
+
+          <div>
+
+            <h3>
+              Evolución
+            </h3>
+
+            <p class="sub">
+              Visitas y páginas vistas — últimos 28 días
+            </p>
+
+          </div>
+
+        </div>
+
+        <div class="chart-box">
+          <canvas id="chartEvolucion"></canvas>
+        </div>
+
+      </div>
+
+
+      <div class="card">
+
+        <h3>
+          Dispositivos
+        </h3>
+
+        <p class="sub">
+          Distribución de visitas
+        </p>
+
+        <div
+          id="dispositivos"
+          class="dispositivos"
+        >
+          —
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <!-- =========================================================
+         NOTICIAS + FUENTES
+         ========================================================= -->
+
+    <div class="grid2">
+
+      <div class="card">
+
+        <h3>
+          Noticias más leídas
+        </h3>
+
+        <p class="sub">
+          Contenido con más visitas en el periodo
+        </p>
+
+        <div style="overflow-x:auto">
+
+          <table class="top-noticias" id="tablaTop">
+
+            <thead>
+              <tr>
+                <th></th>
+                <th>Noticia</th>
+                <th>Vistas</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              <tr>
+                <td
+                  colspan="3"
+                  style="text-align:center;padding:20px"
+                >
+                  Cargando...
+                </td>
+              </tr>
+            </tbody>
+
+          </table>
+
+        </div>
+
+      </div>
+
+
+      <div class="card">
+
+        <h3>
+          Fuentes de tráfico
+        </h3>
+
+        <p class="sub">
+          De dónde llegan los lectores
+        </p>
+
+        <div id="fuentesLista">
+          Cargando...
+        </div>
+
+        <div id="fuentesDominiosLista" class="fuentes-dominios">
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <!-- =========================================================
+         MÁS ANÁLISIS: franja horaria, categorías, recurrencia
+         ========================================================= -->
+
+    <div class="grid2">
+
+      <div class="card">
+
+        <h3>
+          Franja horaria con más tráfico
+        </h3>
+
+        <p class="sub">
+          Vistas por hora del día (hora de Madrid) — te dice cuándo conviene publicar
+        </p>
+
+        <div class="chart-box chart-box-bajo">
+          <canvas id="chartHoras"></canvas>
+        </div>
+
+      </div>
+
+      <div class="card">
+
+        <h3>
+          Rendimiento por categoría
+        </h3>
+
+        <p class="sub">
+          Vistas y visitantes únicos por sección
+        </p>
+
+        <div id="categoriasLista">
+          Cargando...
+        </div>
+
+      </div>
+
+    </div>
+
+    <div class="card" style="margin-top:16px">
+
+      <h3>
+        Lectores nuevos vs. recurrentes
+      </h3>
+
+      <p class="sub">
+        Quiénes vuelven a leer más de una vez dentro del periodo elegido
+      </p>
+
+      <div id="recurrenciaBloque" class="recurrencia-bloque">
+        Cargando...
+      </div>
+
+    </div>
+
+
+    <!-- =========================================================
+         AUTORES + TIEMPO DE LECTURA
+         ========================================================= -->
+
+    <div class="grid2">
+
+      <div class="card">
+
+        <h3>
+          Rendimiento por autor
+        </h3>
+
+        <p class="sub">
+          Porcentaje de autores a los que supera en vistas por artículo en el periodo. Solo se puntúa con 3 artículos o más
+        </p>
+
+        <details class="rend-info">
+          <summary>ℹ️ ¿Cómo se calcula el rendimiento?</summary>
+          <div class="rend-info-cuerpo">
+            <p>Compara cuántas vistas consigue cada autor <strong>por artículo</strong> (así es justo tanto para quien publica mucho como para quien publica poco) y lo coloca en una posición respecto al resto de autores.</p>
+            <div class="rend-info-formula">% de autores con menos vistas por artículo que él</div>
+            <ul>
+              <li><strong>90 %</strong> significa que rinde más que el 90 % de los autores; <strong>50 %</strong>, que está en la mitad; <strong>10 %</strong>, que casi todos rinden más. Un 100 % es muy difícil de ver: hace falta superar a todos.</li>
+              <li>El resto va en proporción: <strong>50 %</strong> significa la mitad de vistas por artículo que el mejor.</li>
+              <li>Quien tiene menos de 3 artículos en el periodo no se puntúa (aparece "—" y <em>pocos datos</em>), porque con tan pocos artículos el resultado no es fiable. Se compara solo entre autores con al menos 3 artículos (si nadie llega a 3, entre todos).</li>
+              <li>Cuentan los artículos publicados en el periodo y los antiguos que hayan recibido vistas en él.</li>
+            </ul>
+            <table class="rend-info-ejemplo">
+              <thead><tr><th>Ejemplo</th><th>Artículos</th><th>Vistas</th><th>Por artículo</th><th>Rendimiento</th></tr></thead>
+              <tbody>
+                <tr><td>Autor A</td><td>10</td><td>1.000</td><td>100</td><td>83 %</td></tr>
+                <tr><td>Autor B</td><td>5</td><td>250</td><td>50</td><td>50 %</td></tr>
+                <tr><td>Autor C</td><td>4</td><td>100</td><td>25</td><td>17 %</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </details>
+
+        <div id="autoresLista">
+          Cargando...
+        </div>
+
+      </div>
+
+
+      <div class="card">
+
+        <h3>
+          Tiempo de lectura
+        </h3>
+
+        <p class="sub">
+          Tiempo medio por categoría
+        </p>
+
+        <div
+          id="tlLista"
+          class="tl-lista"
+        >
+          Cargando...
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <!-- =========================================================
+         NUEVO: IDIOMAS + PARTIDOS MÁS SEGUIDOS
+         ========================================================= -->
+
+    <div class="grid2">
+
+      <div class="card">
+
+        <h3>
+          Idiomas más leídos
+        </h3>
+
+        <p class="sub">
+          Idioma seleccionado al leer una noticia
+        </p>
+
+        <div
+          id="idiomasLista"
+          class="tl-lista"
+        >
+          Cargando...
+        </div>
+
+      </div>
+
+
+      <div class="card">
+
+        <h3>
+          Partidos más seguidos
+        </h3>
+
+        <p class="sub">
+          Más vistas en el minuto a minuto
+        </p>
+
+        <div id="partidosSeguidosLista">
+          Cargando...
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <!-- =========================================================
+         NUEVO: TIPO DE ARTÍCULO + ENGAGEMENT POR SCROLL
+         ========================================================= -->
+
+    <div class="grid2">
+
+      <div class="card">
+
+        <h3>Rendimiento por tipo de artículo</h3>
+        <p class="sub">Noticia, crónica, opinión y entrevista — qué formato funciona mejor</p>
+
+        <div id="tiposLista">
+          Cargando...
+        </div>
+
+      </div>
+
+      <div class="card">
+
+        <h3>Engagement por scroll</h3>
+        <p class="sub">Cuánto de la noticia llegan a ver los lectores</p>
+
+        <div id="scrollLista">
+          Cargando...
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <!-- =========================================================
+         NOTICIAS RÁPIDAS (producción editorial)
+         ========================================================= -->
+
+    <div class="card" style="margin-bottom:16px" id="cardNoticiasRapidas">
+
+      <h3>⚡ Noticias rápidas</h3>
+      <p class="sub">
+        Ritmo de publicación en el periodo elegido (las noticias rápidas no tienen
+        contador de lecturas: aquí se mide cuántas se publican, quién y cuándo)
+      </p>
+
+      <div id="nrResumen" class="recurrencia-bloque">
+        Cargando...
+      </div>
+
+      <div class="chart-box chart-box-bajo" style="margin-top:14px">
+        <canvas id="chartNr"></canvas>
+      </div>
+
+      <div class="grid2" style="margin-top:14px">
+        <div>
+          <h3 style="font-size:.95rem">Quién las publica</h3>
+          <div id="nrAutores">Cargando...</div>
+        </div>
+        <div>
+          <h3 style="font-size:.95rem">Horas con más publicaciones</h3>
+          <div id="nrHoras">Cargando...</div>
+        </div>
+      </div>
+
+    </div>
+
+
+    <!-- =========================================================
+         NUEVO: ÚLTIMAS 24 HORAS
+         ========================================================= -->
+
+    <div class="card" style="margin-bottom:16px">
+
+      <h3>Vistas en las últimas 24 horas</h3>
+      <p class="sub">Tráfico reciente hora a hora (hora de Madrid), al margen del periodo elegido arriba</p>
+
+      <div class="chart-box chart-box-bajo">
+        <canvas id="chart24h"></canvas>
+      </div>
+
+    </div>
+
+
+    <!-- =========================================================
+         COMPARATIVA MENSUAL
+         ========================================================= -->
+
+    <div class="card">
+
+      <h3>
+        Páginas vistas vs visitantes
+      </h3>
+
+      <p class="sub">
+        Evolución mensual de los últimos meses
+      </p>
+
+      <div class="chart-box">
+        <canvas id="chartPvVisitas"></canvas>
+      </div>
+
+    </div>
+
+
+    <!-- =========================================================
+         SEARCH CONSOLE
+         ========================================================= -->
+
+    <div class="card" style="margin-top:16px" id="cardGsc">
+
+      <div class="card-head">
+
+        <div>
+
+          <h3>
+            Search Console
+          </h3>
+
+          <p class="sub">
+            Rendimiento orgánico — datos reales de Google
+          </p>
+
+        </div>
+
+        <div
+          class="estado-conexion"
+          id="estadoGscConexion"
+        >
+          <span
+            class="punto"
+            style="background:#e08a1f"
+          ></span>
+          Sin conectar
+        </div>
+
+      </div>
+
+      <div
+        class="kpis"
+        id="gscKpis"
+        style="margin-bottom:16px"
+      >
+
+        <div class="kpi">
+          <div class="lbl">🖱️ Clics</div>
+          <div class="val" id="gscKpiClics">—</div>
+        </div>
+
+        <div class="kpi">
+          <div class="lbl">👁️ Impresiones</div>
+          <div class="val" id="gscKpiImpresiones">—</div>
+        </div>
+
+        <div class="kpi">
+          <div class="lbl">📈 CTR medio</div>
+          <div class="val" id="gscKpiCtr">—</div>
+        </div>
+
+        <div class="kpi">
+          <div class="lbl">🎯 Posición media</div>
+          <div class="val" id="gscKpiPosicion">—</div>
+        </div>
+
+      </div>
+
+      <div
+        class="chart-box sm"
+        id="gscChartBox"
+      >
+
+        <canvas id="chartGsc"></canvas>
+
+      </div>
+
+      <div
+        id="gscLista"
+        style="margin-top:16px"
+      >
+        —
+      </div>
+
+      <div
+        id="gscPaginas"
+        style="margin-top:16px"
+      ></div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- Analíticas: confirmar borrado de datos. Cuelga del body (no del panel) para que
+     position:fixed no dependa de ningún contenedor; clases an-modal-* propias. -->
+<div class="an-modal-overlay" id="modalBorrarDatos">
+  <div class="an-modal-caja" role="alertdialog" aria-modal="true" aria-labelledby="modalBorrarDatosTitulo" aria-describedby="modalBorrarDatosTexto">
+    <button type="button" class="an-modal-cerrar" onclick="document.getElementById('modalBorrarDatos').classList.remove('abierto')" aria-label="Cerrar">&times;</button>
+    <h3 id="modalBorrarDatosTitulo">Borrar datos de analíticas</h3>
+    <p id="modalBorrarDatosTexto">
+      Esto borrará permanentemente las páginas vistas y los tiempos de
+      lectura del tracking propio del rango seleccionado. No se puede
+      deshacer.
+    </p>
+    <label>
+      <input type="checkbox" id="checkBorrarTodo">
+      Borrar TODO el histórico guardado, no solo el rango actual
+    </label>
+    <div class="an-modal-botones">
+      <button type="button" class="an-modal-btn-cancelar" id="btnCancelarBorrado">Cancelar</button>
+      <button type="button" class="an-modal-btn-confirmar" id="btnConfirmarBorrado">Sí, borrar</button>
+    </div>
+  </div>
 </div>
 
 <!-- Modal de crear/editar producto de la tienda -->
@@ -2658,7 +3547,7 @@
     <button type="button" class="modal-cerrar" onclick="cerrarModalEquiposUsuario()" aria-label="Cerrar">&times;</button>
     <h3 class="titulo-subseccion" id="modalEquiposUsuarioTitulo">Equipo y categoría de <span id="equiposUsuarioNombre"></span></h3>
     <input type="hidden" id="equiposUsuarioId">
-    <label>Categoría complementaria</label>
+    <label for="equiposUsuarioCategoriaFijaBuscador">Categoría complementaria</label>
     <p class="ayuda-editor" style="margin:0 0 8px;">Opcional. Añade una categoría (p. ej. "Arbitraje" o "Jurisdicción deportiva") como complemento de sus equipos. No limita lo que puede publicar.</p>
     <div class="equipos-picker" id="equiposUsuario_categoria_fija_picker">
       <div class="equipos-picker-cabecera">
@@ -2669,7 +3558,7 @@
       <p class="equipos-picker-ayuda" id="equiposUsuarioCategoriaFijaAyuda">Puedes dejarlo sin especificar.</p>
     </div>
     <div id="equiposUsuario_equipo_bloque" style="margin-top:14px;">
-      <label>Equipo</label>
+      <label for="equiposUsuarioBuscador">Equipos</label>
       <p class="ayuda-editor" style="margin:0 0 10px;">Opcional. Puedes dejarlo sin especificar o elegir hasta 3 equipos.</p>
       <div class="equipos-picker" id="equiposUsuarioPicker">
         <div class="equipos-picker-cabecera">
@@ -2707,7 +3596,7 @@
       <option value="3">🟣 Nivel 3 — Maestro</option>
       <option value="4">🟠 Nivel 4 — Experto</option>
     </select>
-    <p class="ayuda-editor" style="margin:6px 0 0;">Cumplir las cifras mínimas no sube el nivel solo: valora también la calidad del trabajo, la puntualidad y el cumplimiento de las normas antes de decidir el ascenso.</p>
+    <p class="ayuda-editor" id="nuAyudaNivel" style="margin:6px 0 0;">Cumplir las cifras mínimas no sube el nivel solo: valora también la calidad del trabajo, la puntualidad y el cumplimiento de las normas antes de decidir el ascenso.</p>
 
     <label for="nu_nivel_nota">Nota (opcional)</label>
     <textarea id="nu_nivel_nota" rows="3" maxlength="500" placeholder="Motivo del cambio, algo a mejorar, por qué todavía no sube aunque cumpla las cifras, etc."></textarea>
@@ -2943,10 +3832,10 @@
 <div class="modal-overlay" id="modalPinUltimaHora">
   <div class="modal-caja modal-caja-pin" role="dialog" aria-modal="true" aria-labelledby="modalPinUltimaHoraTitulo">
     <button type="button" class="modal-cerrar" onclick="cerrarModalPinUltimaHora()" aria-label="Cerrar">&times;</button>
-    <div class="pin-modal-icono">⚡</div>
+    <div class="pin-modal-icono" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></div>
     <h3 class="titulo-subseccion" id="modalPinUltimaHoraTitulo">Última hora</h3>
     <p class="ayuda-editor" style="margin:0;">
-      Como redactor, tus noticias se guardan como borrador hasta que las revise un administrador. Si es urgente, introduce tu PIN de 4 dígitos de "Última hora" para publicarla directamente.
+      Como redactor, tus noticias se guardan como borrador hasta que las revise un administrador. Si es urgente, introduce tu PIN de 4 dígitos de "Última hora" para publicarla directamente y activar el banner de última hora.
     </p>
     <!-- Antes esto estaba envuelto en un <form> para que Chrome dejara de
          avisar "Password field is not contained in a form". Se revirtió:
@@ -3342,24 +4231,43 @@
 <div id="panelMinutoAMinuto"></div>
 
 <script src="/js/foco.js?v=1"></script>
-<script src="/js/ui-alertas.js?v=5"></script>
-<script src="/js/config.js?v=25"></script>
-<script src="/js/clubs.js?v=3"></script>
-<script src="/js/clubs-redes.js?v=2"></script>
+<script src="/js/ui-alertas.js?v=6"></script>
+<script src="/js/visor-media.js?v=7"></script>
+<script src="/js/vendor/purify.min.js?v=1"></script>
+<script src="/js/config.js?v=36"></script>
+<script src="/js/clubs.js?v=8"></script>
+<script src="/js/clubs-redes.js?v=3"></script>
 <script src="/js/corrector-formato.js?v=1"></script>
 <script src="/admin/js/foco-selector.js?v=2"></script>
 <script src="/js/vendor/qrcode.js"></script>
-<script src="/admin/js/admin.js?v=144"></script>
+<script src="/admin/js/admin.js?v=193"></script>
+<script src="/admin/js/formularios-resumen.js?v=2"></script>
+<script src="/admin/js/modales-partido.js?v=7"></script>
+<script src="/admin/js/menu-lateral.js?v=9"></script>
+<script src="/admin/js/func-nav.js?v=1"></script>
+<script src="/admin/js/movil-app.js?v=2" defer></script>
+<script src="/admin/js/movil-app-pro.js?v=1" defer></script>
 <script src="/admin/js/selector-fecha-modal.js?v=1"></script>
 <script src="/admin/js/dropzone-global.js?v=1"></script>
-<script src="/admin/js/minuto-a-minuto.js?v=13"></script>
+<script src="/admin/js/minuto-a-minuto.js?v=18"></script>
 <script src="/admin/js/importacion-rapida.js?v=3"></script>
 <script src="/admin/js/importacion-rapida-eventos.js?v=2"></script>
-<script src="/admin/js/tutorial.js?v=3"></script>
-<script src="/admin/js/nueva-noticia-ui.js?v=1"></script>
+<script src="/admin/js/apellidos-obligatorios.js?v=4"></script>
+<script src="/admin/js/tutorial.js?v=7"></script>
+<script src="/admin/js/primera-tarea.js?v=1"></script>
+<script src="/admin/js/nueva-noticia-ui.js?v=2"></script>
 <script src="/admin/js/votaciones.js?v=4"></script>
+<script src="/admin/js/podcast-admin.js?v=1"></script>
+<script src="/admin/js/feedback-revision.js?v=3"></script>
 <script src="/admin/js/calendario-contenido.js?v=4"></script>
-<script src="/admin/js/organigrama.js?v=8"></script>
-<script src="/admin/js/jugadores-admin.js?v=2"></script>
+<script src="/admin/js/organigrama.js?v=9"></script>
+<script src="/admin/js/responsabilidades-plantillas.js?v=2"></script>
+<script src="/admin/js/responsabilidades.js?v=10"></script>
+<script src="/admin/js/jugadores-admin.js?v=3"></script>
+<script src="/admin/js/resumen-mensual.js?v=6"></script>
+<script src="/admin/js/avisos-entrada.js?v=6"></script>
+<script src="/admin/js/racha-celebracion.js?v=3"></script>
+<script src="/admin/js/ruta-bienvenida.js?v=1"></script>
+<script src="/admin/js/ubicacion-panel.js?v=1"></script>
 </body>
 </html>

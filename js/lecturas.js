@@ -577,7 +577,7 @@
         <a class="card" href="${urlNoticia(a.categoria, a.slug)}">
           ${imagen}
           <div class="cbody">
-            <span class="cat">${categoriaLabel(a.categoria)}</span>
+            ${contextoNoticiaHTML(a)}
             <h3>${escapeHtml(a.titulo)}</h3>
             <p>${escapeHtml(resumText(a.subtitulo || a.contenido, 110))}</p>
             <span class="meta">${formatFecha(a.fecha_publicacion)}${autor}</span>

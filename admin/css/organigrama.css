@@ -200,3 +200,14 @@
   .org-lienzo{max-height:66vh;padding:10px 6px 14px;}
 }
 @media (prefers-reduced-motion:reduce){.org-nodo,.org-btn,.org-sw{transition:none;}.org-nodo:hover{transform:none;}}
+
+/* ---- contacto opcional (teléfono, Twitter/X, Instagram) ---- */
+.org-contacto{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 0;}
+.org-contacto-a{display:inline-flex;align-items:center;gap:7px;padding:6px 12px 6px 10px;border:1.5px solid var(--org-borde);border-radius:999px;background:var(--org-card);color:var(--org-texto);font:700 .8rem var(--font-text);text-decoration:none;transition:background .15s,border-color .15s,color .15s,transform .1s;}
+.org-contacto-a svg{width:15px;height:15px;flex:0 0 auto;fill:none;stroke:var(--c,var(--org-azul));stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+.org-contacto-a:hover{background:var(--org-hover);border-color:var(--c,var(--org-azul));text-decoration:none;}
+.org-contacto-a:active{transform:translateY(1px);}
+.org-contacto-a:focus-visible{outline:3px solid var(--org-azul);outline-offset:2px;}
+.org-contacto-a span{overflow-wrap:anywhere;}
+.org-form input[type="tel"]{display:block;width:100%;box-sizing:border-box;margin:4px 0 0;padding:9px 11px;border:1.5px solid var(--org-borde);border-radius:10px;background:var(--org-input);font:600 .88rem var(--font-text);color:var(--org-texto);}
+.org-form input[type="tel"]:focus{outline:none;border-color:var(--org-azul);box-shadow:0 0 0 3px rgba(45,108,223,.18);}

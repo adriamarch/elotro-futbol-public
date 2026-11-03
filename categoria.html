@@ -3,8 +3,9 @@
 <head>
 <meta name="google-adsense-account" content="ca-pub-7347856722927942">
 <script src="js/tema.js?v=2"></script>
-<script src="js/preferencias.js?v=3"></script>
+<script src="js/preferencias.js?v=20"></script>
 <meta charset="UTF-8">
+<script src="/js/splash.js?v=2"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,11 +20,19 @@
 <link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=3">
 <link rel="apple-touch-icon" href="/img/apple-touch-icon.png?v=2">
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&family=Playfair+Display:wght@700;800&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" onload="this.onload=null;this.rel='stylesheet'"><noscript><link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&family=Playfair+Display:wght@700;800&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet"></noscript>
-<link rel="stylesheet" href="css/style.css?v=25">
-<link rel="stylesheet" href="css/accesibilidad.css?v=1">
+<link rel="stylesheet" href="css/style.css?v=35">
+<link rel="stylesheet" href="css/modales-mejoras.css?v=1">
+<link rel="stylesheet" href="css/accesibilidad.css?v=2">
 <script src="js/accesibilidad.js?v=1" defer></script>
+<script src="js/equipo-ficha.js?v=2"></script>
 <link rel="stylesheet" href="css/foco.css?v=1">
-<link rel="stylesheet" href="css/plantilla-club.css?v=1">
+<link rel="stylesheet" href="css/plantilla-club.css?v=4">
+<link rel="stylesheet" href="css/equipo-partidos-mejoras.css?v=2">
+<link rel="stylesheet" href="css/equipo-ficha.css?v=2">
+<link rel="stylesheet" href="css/app-movil.css?v=8">
+<script src="js/app-movil.js?v=5" defer></script>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="stylesheet" href="css/proteccion-copia.css?v=2">
 </head>
 <body>
 <script>document.body.dataset.page = new URLSearchParams(location.search).get("cat") || "general";</script>
@@ -189,16 +198,17 @@
 
 <script src="js/ui-alertas.js?v=5"></script>
 <script src="js/foco.js?v=1"></script>
-<script src="js/config.js?v=25"></script>
+<script src="js/config.js?v=36"></script>
+<script src="js/en-vivo.js?v=1"></script>
 <script src="js/seo.js?v=5"></script>
-<script src="js/clubs.js?v=6"></script>
+<script src="js/clubs.js?v=8"></script>
 <script src="js/lector-auth.js?v=13"></script>
-<script src="js/lecturas.js?v=7"></script>
-<script src="js/layout.js?v=22"></script>
-<script src="js/partidos.js?v=14"></script>
-<script src="js/plantilla-lp.js?v=1"></script>
-<script src="js/plantilla-club.js?v=1"></script>
-<script src="js/main.js?v=14"></script>
+<script src="js/lecturas.js?v=8"></script>
+<script src="js/layout.js?v=30"></script>
+<script src="js/partidos.js?v=21"></script>
+<script src="js/plantilla-lp.js?v=4"></script>
+<script src="js/plantilla-club.js?v=3"></script>
+<script src="js/main.js?v=33"></script>
 <script src="js/cookies.js?v=2"></script>
 <script src="js/ads.js?v=3"></script>
 <script>
@@ -207,13 +217,17 @@ async function cargaCategoria() {
   const params = new URLSearchParams(location.search);
   const cat = params.get("cat") || "general";
   const club = params.get("club");
+  // ?tipo=cronica|previa|opinion|...: solo ese tipo de noticia (enlaces de los
+  // hashtags de la cabecera de una noticia). Se ignora si no es un tipo conocido.
+  const tipoParam = params.get("tipo");
+  const tipo = tipoParam && typeof TIPO_NOTICIA_PLURAL !== "undefined" && TIPO_NOTICIA_PLURAL[tipoParam] ? tipoParam : "";
 
   // Clubes "personalizados" (añadidos desde "Otro equipo"), para que si
   // el club de esta página es uno de ellos, se le pueda resolver bien el
   // escudo (getEscudoUrl los consulta una vez cargados).
   if (club) await cargarCustomClubs();
 
-  const titulo = club || categoriaLabel(cat);
+  const titulo = club || (tipo ? `${TIPO_NOTICIA_PLURAL[tipo]} · ${categoriaLabel(cat)}` : categoriaLabel(cat));
   document.getElementById("tituloCategoria").textContent = titulo;
 
   const subtitulo = document.getElementById("subtituloCategoria");
@@ -241,6 +255,7 @@ async function cargaCategoria() {
       }
     };
     cabecera.hidden = false;
+    if (typeof montarFichaEquipo === "function") montarFichaEquipo(club);
     cargaInfoClub(club);
     cargaPartidosClub(club);
     if (typeof cargarPlantillaEquipo === "function") cargarPlantillaEquipo(club, cat);
@@ -262,7 +277,7 @@ async function cargaCategoria() {
       // Copa del Rey y Copa Federación (trofeo casi negro / azul marino con
       // "RFEF" en negro) se pierden sobre fondo oscuro: en modo oscuro se
       // invierte la luminosidad conservando el tono (ver CSS más abajo).
-      escudoImg.classList.toggle("logo-competicion-invertir", cat === "copa_del_rey" || cat === "copa_federacion");
+      escudoImg.classList.toggle("logo-competicion-invertir", cat === "copa_del_rey" || cat === "copa_federacion" || cat === "tercera_federacion");
       escudoImg.src = logoCat;
       escudoImg.alt = `Logo de ${titulo}`;
       escudoImg.onerror = () => { cabecera.hidden = true; };
@@ -282,7 +297,9 @@ async function cargaCategoria() {
     titulo: `${titulo} — ELOTROFÚTBOLTV`,
     descripcion: club
       ? `Noticias, crónicas y resultados del ${club} en ELOTROFÚTBOLTV.`
-      : `Noticias y crónicas de ${categoriaLabel(cat)} en ELOTROFÚTBOLTV.`,
+      : tipo
+        ? `${TIPO_NOTICIA_PLURAL[tipo]} de ${categoriaLabel(cat)} en ELOTROFÚTBOLTV.`
+        : `Noticias y crónicas de ${categoriaLabel(cat)} en ELOTROFÚTBOLTV.`,
     urlPath: location.pathname + location.search,
     migas,
   });
@@ -301,7 +318,7 @@ async function cargaCategoria() {
     // categoría como siempre.
     let path = club
       ? `/api/articles?club=${encodeURIComponent(club)}&limit=40`
-      : `/api/articles?categoria=${encodeURIComponent(cat)}&limit=40`;
+      : `/api/articles?categoria=${encodeURIComponent(cat)}${tipo ? `&tipo=${encodeURIComponent(tipo)}` : ""}&limit=40`;
     const { articles } = await conReintento(async () => {
       const res = await apiFetch(path);
       return res.json();
@@ -317,6 +334,7 @@ async function cargaCategoria() {
           cta: `<a href="/" class="btn-volver">Ir a portada</a>`,
         });
     if (articles.length) insertarAdsEnGrid(grid);
+    iniciarCategoriaEnVivo(path, articles);
   } catch (err) {
     grid.innerHTML = estadoHTML({
       titulo: "No se ha podido conectar",
@@ -326,6 +344,99 @@ async function cargaCategoria() {
     });
   }
 }
+// ---------- Listado en directo ----------
+// Cada ~25 s se vuelve a pedir el mismo listado. Si hay cambios, se
+// aplican SOBRE EL DOM EXISTENTE (se añade lo nuevo arriba, se cambia lo
+// editado, se quita lo retirado) en vez de repintar todo el grid: así no
+// se reinician los anuncios intercalados, no se pierde la posición de
+// scroll y no parpadean las tarjetas que no han cambiado.
+let categoriaFirmas = new Map(); // id -> firma de la tarjeta pintada
+
+function categoriaTarjetaEl(a) {
+  const t = document.createElement("template");
+  t.innerHTML = cardHTML(a).trim();
+  return t.content.firstElementChild;
+}
+
+function aplicarCambiosCategoria(grid, articles) {
+  const ids = new Set(articles.map((a) => String(a.id)));
+  const esTarjeta = (n) => n.classList.contains("card") && n.dataset.artId;
+  // Primera tarjeta que sigue a `el` (o la primera del grid si el = null).
+  const siguienteTarjeta = (el) => {
+    let n = el ? el.nextElementSibling : grid.firstElementChild;
+    while (n && !esTarjeta(n)) n = n.nextElementSibling;
+    return n;
+  };
+  // 1) fuera las retiradas
+  grid.querySelectorAll(".card[data-art-id]").forEach((el) => {
+    if (!ids.has(el.dataset.artId)) { categoriaFirmas.delete(el.dataset.artId); el.remove(); }
+  });
+  // 2) recorrer en el orden del servidor, colocando cada tarjeta justo detrás de la anterior
+  const destacar = [];
+  let previo = null;
+  articles.forEach((a) => {
+    const id = String(a.id);
+    const f = firmaArticulos([a]);
+    let el = grid.querySelector(`.card[data-art-id="${id}"]`);
+    if (el && categoriaFirmas.get(id) !== f) {
+      const nuevo = categoriaTarjetaEl(a);
+      el.replaceWith(nuevo);
+      el = nuevo;
+      destacar.push(el);
+    } else if (!el) {
+      el = categoriaTarjetaEl(a);
+      grid.insertBefore(el, siguienteTarjeta(previo));
+      destacar.push(el);
+    }
+    const esperado = siguienteTarjeta(previo);
+    if (el !== esperado) grid.insertBefore(el, esperado);
+    categoriaFirmas.set(id, f);
+    previo = el;
+  });
+  destacar.forEach((el) => EOF_VIVO.resaltar(el));
+  reubicarAnunciosGrid(grid);
+  // Los anuncios solo se insertan si aún no había ninguno y ya hay tarjetas suficientes.
+  if (!grid.querySelector(".eof-ad-grid-item") && typeof insertarAdsEnGrid === "function") insertarAdsEnGrid(grid);
+}
+
+// Tras añadir/quitar tarjetas, los huecos de anuncio que ya estaban en la
+// página se COLOCAN de nuevo cada N tarjetas (sin recrearlos, para no
+// recargar el anuncio). Los que sobran por haber menos tarjetas se quitan.
+function reubicarAnunciosGrid(grid) {
+  if (typeof EOF_ADS_CADA_N_TARJETAS === "undefined") return;
+  const n = EOF_ADS_CADA_N_TARJETAS;
+  const anuncios = [...grid.querySelectorAll(":scope > .eof-ad-grid-item")];
+  if (!anuncios.length) return;
+  const tarjetas = [...grid.querySelectorAll(":scope > .card[data-art-id]")];
+  anuncios.forEach((ad, k) => {
+    const ref = tarjetas[(k + 1) * n];
+    if (!ref) { ad.remove(); return; }
+    if (ref.previousElementSibling !== ad) grid.insertBefore(ad, ref);
+  });
+}
+
+function iniciarCategoriaEnVivo(path, articulosIniciales) {
+  if (!window.EOF_VIVO) return;
+  categoriaFirmas = new Map();
+  articulosIniciales.forEach((a) => categoriaFirmas.set(String(a.id), firmaArticulos([a])));
+  let firmaLista = firmaArticulos(articulosIniciales);
+  EOF_VIVO.cada("categoria", async () => {
+    const res = await apiFetch(path);
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const { articles } = await res.json();
+    if (!Array.isArray(articles)) throw new Error("respuesta inesperada");
+    const f = firmaArticulos(articles);
+    if (f === firmaLista) return;
+    firmaLista = f;
+    const grid = document.getElementById("grid");
+    if (!grid) return;
+    if (!articles.length) return; // no se vacía una lista que el lector ya está leyendo
+    // Si el grid mostraba un aviso de "sin noticias", se parte de cero.
+    if (!grid.querySelector(".card[data-art-id]")) grid.innerHTML = "";
+    aplicarCambiosCategoria(grid, articles);
+  }, 25000);
+}
+
 // Recuadro de info del equipo (entrenador, estadio, año de fundación,
 // ciudad). Solo se muestra si un admin ha rellenado esa ficha desde el
 // panel ("Ajustes del medio" -> "Equipos"); si el club no tiene fila en
@@ -429,7 +540,7 @@ async function cargaInfoClub(club) {
         if (!url) return; // no se encontró artículo: se deja como texto
         const span = document.getElementById(`infoClubValor${i}`);
         if (!span) return; // el usuario ya navegó a otra ficha
-        span.innerHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer" class="info-club-enlace">${escapeHtml(String(valor))}</a>`;
+        span.innerHTML = `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="info-club-enlace">${escapeHtml(String(valor))}</a>`;
       });
     });
   } catch (err) {
@@ -443,6 +554,65 @@ async function cargaInfoClub(club) {
 // de cualquier competición o amistoso, igual que las noticias de más
 // abajo) y luego se separan en dos listas usando el mismo criterio de
 // prioridad/orden que ya usa resultados.html (ordenarPartidosCronologicamente).
+// Presentación de los partidos de la ficha del equipo (ver css/equipo-partidos-mejoras.css).
+// Solo añade atributos, clases y chips: no cambia el markup de partidoHTML() ni el clic.
+//  · data-estado en cada tarjeta (para el "vs" suave de los partidos por jugar).
+//  · equipo-propio en el lado del club de esta ficha.
+//  · data-res="v|e|d" + chip "Victoria/Empate/Derrota" en los partidos jugados y cubiertos.
+//  · racha de los últimos 5 (V E D) en la cabecera de "Últimos resultados".
+function resultadoDelClub(p, esLocal) {
+  const gl = Number(p.goles_local ?? 0), gv = Number(p.goles_visitante ?? 0);
+  if (isNaN(gl) || isNaN(gv)) return null;
+  const propio = esLocal ? gl : gv, rival = esLocal ? gv : gl;
+  if (propio !== rival) return propio > rival ? "v" : "d";
+  const pl = p.penaltis_local, pv = p.penaltis_visitante;
+  if (pl !== null && pl !== undefined && pv !== null && pv !== undefined) {
+    const pp = Number(esLocal ? pl : pv), pr = Number(esLocal ? pv : pl);
+    if (!isNaN(pp) && !isNaN(pr) && pp !== pr) return pp > pr ? "v" : "d";
+  }
+  return "e";
+}
+const ETIQUETA_RESULTADO_CLUB = { v: "Victoria", e: "Empate", d: "Derrota" };
+
+function marcarPartidosClub(club, jugados) {
+  const cont = document.getElementById("partidosClub");
+  if (!cont) return;
+  const nombre = (s) => String(s || "").trim();
+  const resDe = (p) => {
+    if (!p || p.estado !== "finalizado") return null;
+    if (typeof esFinalizadoSinCubrir === "function" && esFinalizadoSinCubrir(p)) return null;
+    const esLocal = nombre(p.equipo_local) === nombre(club);
+    const esVisit = nombre(p.equipo_visitante) === nombre(club);
+    if (!esLocal && !esVisit) return null;
+    return resultadoDelClub(p, esLocal);
+  };
+  cont.querySelectorAll(".partido[data-id]").forEach((el) => {
+    const p = PARTIDOS_CACHE[el.dataset.id];
+    if (!p) return;
+    el.dataset.estado = p.estado || "";
+    const esLocal = nombre(p.equipo_local) === nombre(club);
+    const esVisit = nombre(p.equipo_visitante) === nombre(club);
+    if (esLocal || esVisit) {
+      const lado = el.querySelector(esLocal ? ".equipo-local" : ".equipo-visitante");
+      if (lado) lado.classList.add("equipo-propio");
+    }
+    const r = resDe(p);
+    if (!r) return;
+    el.dataset.res = r;
+    const badge = el.querySelector(".estado-badge");
+    if (badge) badge.insertAdjacentHTML("afterbegin", `<span class="club-res club-res-${r}">${ETIQUETA_RESULTADO_CLUB[r]}</span>`);
+  });
+  // Racha: los últimos 5 jugados, del más antiguo al más reciente (izquierda → derecha).
+  const racha = (jugados || []).map(resDe).filter(Boolean).slice(0, 5).reverse();
+  const titulo = cont.querySelector(".partidos-club-titulo");
+  if (titulo && racha.length && !titulo.querySelector(".club-forma")) {
+    titulo.insertAdjacentHTML("beforeend",
+      `<span class="club-forma" role="img" aria-label="Racha reciente: ${racha.map((r) => ETIQUETA_RESULTADO_CLUB[r]).join(", ")}">` +
+      racha.map((r) => `<span class="club-forma-chip club-res-${r}" title="${ETIQUETA_RESULTADO_CLUB[r]}" aria-hidden="true">${r.toUpperCase()}</span>`).join("") +
+      `</span>`);
+  }
+}
+
 const MAX_PARTIDOS_CLUB = 5;
 
 async function cargaPartidosClub(club) {
@@ -473,6 +643,7 @@ async function cargaPartidosClub(club) {
     PARTIDOS_CACHE = {};
     results.forEach(r => { PARTIDOS_CACHE[r.id] = r; });
     inicializarClicsPartidos("partidosClub");
+    marcarPartidosClub(club, jugados);
 
     cont.style.display = "grid";
   } catch (err) {
@@ -948,7 +1119,7 @@ document.addEventListener("DOMContentLoaded", cargaCategoria);
      conservando la transparencia original. Solo se aplica a este logo
      (no a Primera/Segunda Federación ni al escudo de un club), ver
      cargaCategoria en el script de arriba. */
-  [data-theme="dark"] .logo-competicion-cabecera{filter:brightness(0) invert(1);}
+  [data-theme="dark"] .logo-competicion-cabecera{filter:invert(1) hue-rotate(180deg);}
   /* Copa del Rey / Copa Federación: invierte el brillo pero no los colores
      (invert + hue-rotate 180º): trofeo oscuro -> claro, rojo/azul se
      mantienen reconocibles, a diferencia del blanco plano de Hypermotion. */
@@ -1242,5 +1413,6 @@ document.addEventListener("DOMContentLoaded", cargaCategoria);
   .comp-detalle-marcador{font-family:var(--font-tit); font-weight:800; font-size:.92rem;}
   .comp-detalle-meta{color:var(--texto-suave); font-size:.7rem;}
 </style>
+<script src="js/proteccion-copia.js?v=2" defer></script>
 </body>
 </html>

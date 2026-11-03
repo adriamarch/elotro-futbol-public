@@ -1,0 +1,322 @@
+/* =======================================================================
+   MODALES — mejoras de CSS (web pública y avisos compartidos con el panel)
+   -----------------------------------------------------------------------
+   Solo CSS: no cambia ninguna clase, id ni JS. Se carga DESPUÉS de
+   style.css y, para ganar a los estilos que inyecta js/ui-alertas.js en
+   tiempo de ejecución, todos los selectores llevan el prefijo `html`.
+
+   Qué unifica (mismo lenguaje que el sistema del panel, admin/css/modales.css):
+   · Fondo con desenfoque y bloqueo del scroll de la página.
+   · Cajas con radio 22px, sombra profunda y filete rojo→celeste fijo.
+   · Botón ✕ redondo con rotación y hover rojo; área táctil de 44px en móvil.
+   (El detalle de partido conserva su diseño "hero" de style.css.)
+   · Entrada con muelle suave (y sin movimiento si el usuario lo reduce).
+   · Modo oscuro y foco de teclado visible.
+
+   Cubre: avisos/confirmaciones/preguntas (.eof-modal-*), preferencias de
+   cookies (.eof-cookies-modal-*, solo categorías/interruptor/botones),
+   detalle de estadística del comparador (.modal-comp-detalle-*) y retoques
+   de la newsletter (.modal-newsletter-*). El detalle de partido y la caja de
+   cookies ya tienen su diseño en style.css y no se pisan.
+   En móvil las hojas inferiores siguen mandándolas css/app-movil.css.
+   ======================================================================= */
+
+:root{
+  --mod-radio:22px;
+  --mod-velo:rgba(8,16,28,.58);
+  --mod-sombra:0 30px 80px rgba(8,16,28,.42), 0 0 0 1px rgba(127,127,127,.14);
+  --mod-acento:linear-gradient(90deg,var(--rojo),var(--celeste));
+  --mod-curva:cubic-bezier(.2,.85,.25,1.08);
+}
+
+/* ---------- Bloqueo de scroll de la página con un modal abierto ---------- */
+body:has(.modal-partido.abierto),
+body:has(.modal-newsletter.abierto),
+body:has(.eof-cookies-modal.abierto){
+  overflow:hidden;
+}
+
+@keyframes modMejFondo{from{opacity:0}to{opacity:1}}
+@keyframes modMejSube{
+  from{opacity:0;transform:translateY(18px) scale(.96)}
+  to{opacity:1;transform:none}
+}
+@keyframes modMejIcono{
+  0%{transform:scale(.4);opacity:0}
+  60%{transform:scale(1.12);opacity:1}
+  100%{transform:scale(1)}
+}
+
+/* =======================================================================
+   1) AVISOS, CONFIRMACIONES Y PREGUNTAS  (.eof-modal-*)
+   ======================================================================= */
+html .eof-modal-overlay{
+  background:var(--mod-velo);
+  -webkit-backdrop-filter:blur(8px) saturate(120%);
+  backdrop-filter:blur(8px) saturate(120%);
+  padding:max(20px, env(safe-area-inset-top, 0px)) max(20px, env(safe-area-inset-right, 0px))
+          max(20px, env(safe-area-inset-bottom, 0px)) max(20px, env(safe-area-inset-left, 0px));
+  transition:opacity .22s ease;
+}
+html .eof-modal-caja{
+  max-width:440px;
+  padding:36px 28px 26px;
+  border-radius:var(--mod-radio);
+  box-shadow:var(--mod-sombra);
+  /* El filete de arriba se queda fijo aunque la caja haga scroll */
+  background-image:var(--mod-acento);
+  background-size:100% 4px;
+  background-repeat:no-repeat;
+  background-position:top left;
+  transform:translateY(16px) scale(.95);
+  transition:transform .34s var(--mod-curva);
+  scrollbar-width:thin;
+  scrollbar-color:var(--borde,#e2e6eb) transparent;
+}
+html .eof-modal-caja::before{display:none;} /* lo sustituye el degradado fijo */
+
+/* Icono: más grande, con halo y entrada con rebote */
+html .eof-modal-icono{
+  width:64px;height:64px;margin:0 auto 20px;
+}
+html .eof-modal-icono svg{width:30px;height:30px;}
+html .eof-modal-overlay.eof-modal-visible .eof-modal-icono{
+  animation:modMejIcono .5s var(--mod-curva) .08s both;
+}
+html .eof-modal-icono-info,
+html .eof-modal-icono-pregunta{
+  background:linear-gradient(145deg,#eaf6fd,#d6eefb);
+  box-shadow:0 0 0 7px rgba(91,184,232,.12), 0 8px 20px rgba(91,184,232,.22);
+}
+html .eof-modal-icono-error{
+  background:linear-gradient(145deg,#fdeef0,#fad9de);
+  box-shadow:0 0 0 7px rgba(209,19,46,.09), 0 8px 20px rgba(209,19,46,.2);
+}
+html .eof-modal-icono-exito{
+  background:linear-gradient(145deg,#e9f8ef,#d3f0df);
+  box-shadow:0 0 0 7px rgba(28,138,75,.11), 0 8px 20px rgba(28,138,75,.2);
+}
+
+html .eof-modal-mensaje{
+  font-size:.97rem;line-height:1.6;margin-bottom:26px;
+  text-wrap:pretty;
+}
+
+/* Campos de las preguntas */
+html .eof-modal-input{
+  min-height:48px;padding:12px 15px;border-radius:12px;
+  border-width:1.5px;
+  transition:border-color .16s ease, box-shadow .16s ease, background .16s ease;
+}
+html .eof-modal-input:hover{border-color:var(--gris-texto,#5a6270);}
+html .eof-modal-input:focus{
+  border-color:var(--celeste,#5bb8e8);
+  box-shadow:0 0 0 4px rgba(91,184,232,.22);
+}
+html .eof-modal-input::placeholder{color:var(--texto-suave,#8a93a1);opacity:.85;}
+html .eof-modal-input-error{border-color:var(--rojo,#d1132e) !important;box-shadow:0 0 0 4px rgba(209,19,46,.14) !important;}
+
+/* Botones */
+html .eof-modal-botones{gap:12px;}
+html .eof-btn{
+  min-height:48px;padding:12px 16px;border-radius:12px;
+  font-weight:700;letter-spacing:.01em;
+  transition:background .16s ease, box-shadow .16s ease, transform .14s ease, color .16s ease;
+}
+html .eof-btn:hover{transform:translateY(-1px);}
+html .eof-btn:active{transform:translateY(1px);}
+html .eof-btn-secundario{
+  background:transparent;
+  box-shadow:inset 0 0 0 1.5px var(--borde,#e2e6eb);
+}
+html .eof-btn-secundario:hover{background:var(--gris-claro,#eef1f5);}
+html .eof-btn-primario{box-shadow:0 8px 18px rgba(12,27,46,.24);}
+html .eof-btn-primario:hover{box-shadow:0 10px 22px rgba(12,27,46,.3);}
+html .eof-btn-peligro{box-shadow:0 8px 18px rgba(209,19,46,.28);}
+html .eof-btn-peligro:hover{box-shadow:0 10px 22px rgba(209,19,46,.36);}
+html .eof-btn:focus-visible,
+html .eof-modal-input:focus-visible{outline:2px solid var(--celeste,#5bb8e8);outline-offset:2px;}
+
+@media (max-width:480px){
+  html .eof-modal-caja{padding:30px 20px 20px;border-radius:20px;}
+}
+
+/* =======================================================================
+   2) DETALLE DE PARTIDO  (.modal-partido-*)
+   -----------------------------------------------------------------------
+   El diseño (cabecera "hero" oscura, ✕ translúcido, aro rojo en directo)
+   ya vive en style.css. Aquí NO se toca: solo se añade el foco visible.
+   ======================================================================= */
+html .modal-partido-cerrar:focus-visible{outline:2px solid var(--celeste-claro);outline-offset:2px;}
+html .modal-partido-nombre{text-wrap:balance;}
+
+/* =======================================================================
+   3) PREFERENCIAS DE COOKIES  (.eof-cookies-modal-*)
+   -----------------------------------------------------------------------
+   La caja, el ✕, el filete y el pie fijo ya están resueltos en style.css
+   (incluida la hoja inferior en móvil). Aquí solo se mejoran las categorías,
+   el interruptor y los botones, sin tocar padding ni márgenes de la caja.
+   ======================================================================= */
+
+/* Cada categoría como tarjeta */
+html .eof-cookie-categoria,
+html .eof-cookie-categoria:last-of-type{
+  padding:15px 16px;margin-bottom:10px;
+  border:1px solid var(--borde);border-radius:14px;
+  background:var(--fondo-alt);
+  align-items:center;
+  transition:border-color .16s ease, box-shadow .16s ease;
+}
+html .eof-cookie-categoria:hover{border-color:var(--celeste);box-shadow:0 4px 14px rgba(12,27,46,.07);}
+html .eof-cookie-categoria-info h4{font-size:.94rem;}
+
+/* Interruptor más cómodo */
+html .eof-cookie-switch{width:48px;height:28px;margin-top:0;}
+html .eof-cookie-switch .track{border-radius:28px;transition:background .18s ease, box-shadow .18s ease;}
+html .eof-cookie-switch .track::before{
+  left:4px;top:4px;width:20px;height:20px;
+  transition:transform .22s var(--mod-curva);
+}
+html .eof-cookie-switch input:checked + .track{background:var(--rojo);box-shadow:0 0 0 4px rgba(209,19,46,.14);}
+html .eof-cookie-switch input:checked + .track::before{transform:translateX(20px);}
+
+/* Botones del pie */
+html .eof-cookies-modal-acciones{gap:12px;}
+html .eof-cookies-modal-acciones button{min-height:46px;}
+html .eof-cookies-modal-acciones button:hover{transform:translateY(-1px);}
+html .eof-cookies-modal-acciones .eof-cookie-guardar{box-shadow:0 8px 18px rgba(209,19,46,.28);}
+
+/* =======================================================================
+   4) NEWSLETTER  (.modal-newsletter-*) — solo retoques; el diseño ya es propio
+   ======================================================================= */
+html .modal-newsletter-caja{
+  overscroll-behavior:contain;
+  scrollbar-width:thin;
+  scrollbar-color:rgba(127,127,127,.4) transparent;
+}
+html .modal-newsletter-cerrar:focus-visible{outline:2px solid var(--celeste-claro);outline-offset:2px;}
+
+/* =======================================================================
+   5) COMPARADOR DE EQUIPOS — detalle de estadística  (.modal-comp-detalle-*)
+   -----------------------------------------------------------------------
+   Es una tarjeta CLARA, pero su ✕ reutiliza .modal-partido-cerrar, que en
+   style.css es blanco translúcido (pensado para la cabecera oscura del
+   partido) y aquí casi no se veía. Se le da el aspecto de ✕ sobre claro.
+   Los radios y la hoja inferior de móvil siguen en style.css (≤560px).
+   ======================================================================= */
+html .modal-comp-detalle-fondo{
+  background:var(--mod-velo);
+  -webkit-backdrop-filter:blur(6px);
+  backdrop-filter:blur(6px);
+  animation:modMejFondo .2s ease;
+}
+html .modal-comp-detalle-caja{
+  padding-top:36px;
+  box-shadow:var(--mod-sombra);
+  background-image:var(--mod-acento);
+  background-size:100% 4px;
+  background-repeat:no-repeat;
+  background-position:top left;
+  overscroll-behavior:contain;
+}
+@media (min-width:561px){
+  html .modal-comp-detalle-caja{border-radius:var(--mod-radio);max-height:86vh;max-height:86dvh;}
+}
+html .modal-comp-detalle-titulo,
+html .modal-comp-detalle-subtitulo{padding-left:36px;padding-right:36px;text-wrap:balance;}
+html .modal-comp-detalle-caja .modal-partido-cerrar{
+  top:14px;right:14px;z-index:3;
+  background:var(--gris-claro);color:var(--marino-texto);
+  box-shadow:inset 0 0 0 1px var(--borde);
+  -webkit-backdrop-filter:none;backdrop-filter:none;
+}
+html .modal-comp-detalle-caja .modal-partido-cerrar:hover{background:var(--rojo);color:#fff;}
+html .modal-comp-detalle-caja .modal-partido-cerrar:focus-visible{outline:2px solid var(--celeste);outline-offset:2px;}
+html .comp-detalle-item{transition:transform .15s ease, box-shadow .15s ease;}
+html .comp-detalle-item:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(12,27,46,.1);}
+
+/* ✕ del comparador: foco visible sobre la cabecera oscura */
+html .modal-comparador-caja .comp-cerrar:focus-visible{outline:2px solid var(--celeste-claro);outline-offset:2px;}
+
+/* =======================================================================
+   6) ✕ DE MODALES DEL PANEL que no seguían el sistema (panel.html)
+   -----------------------------------------------------------------------
+   · Avisos de partido (Reprogramar / Retrasar / Anular): .mp-x
+   · Acreditaciones (editor, importación, confirmaciones): .acred-cerrar
+   Mismo gesto que el resto: círculo claro, hover rojo con giro, foco visible
+   y zona táctil ampliada sin cambiar su tamaño visual.
+   ======================================================================= */
+html .mp-x{
+  background:var(--gris-claro,#eef1f5);
+  box-shadow:inset 0 0 0 1px var(--borde,#dde3ea);
+  transition:background .16s ease, color .16s ease, transform .2s ease;
+}
+html .mp-x:hover{background:var(--rojo,#d1132e);color:#fff;transform:rotate(90deg);}
+html .acred-cerrar{
+  position:relative;
+  transition:background .16s ease, color .16s ease, transform .2s ease;
+}
+html .acred-cerrar:hover{transform:rotate(90deg);}
+html .acred-cerrar:focus-visible{outline:2px solid var(--celeste,#5bb8e8);outline-offset:2px;}
+html .mp-x::after,
+html .acred-cerrar::after{content:"";position:absolute;inset:-5px;}
+
+/* =======================================================================
+   Táctil: áreas de 44px para los ✕
+   ======================================================================= */
+@media (hover:none) and (pointer:coarse){
+  html .eof-cookies-cerrar,
+  html .modal-comp-detalle-caja .modal-partido-cerrar{width:44px;height:44px;}
+  html .eof-btn:hover,
+  html .eof-cookies-modal-acciones button:hover,
+  html .comp-detalle-item:hover,
+  html .mp-x:hover,
+  html .acred-cerrar:hover{transform:none;}
+  html .modal-comp-detalle-fondo{animation:none;}
+}
+
+/* =======================================================================
+   Modo oscuro
+   ======================================================================= */
+[data-theme="dark"]{
+  --mod-velo:rgba(0,0,0,.68);
+  --mod-sombra:0 30px 80px rgba(0,0,0,.62), 0 0 0 1px rgba(255,255,255,.08);
+}
+[data-theme="dark"] .eof-modal-icono-info,
+[data-theme="dark"] .eof-modal-icono-pregunta{
+  background:linear-gradient(145deg,rgba(91,184,232,.22),rgba(91,184,232,.12));
+  box-shadow:0 0 0 7px rgba(91,184,232,.1), 0 8px 20px rgba(0,0,0,.35);
+}
+[data-theme="dark"] .eof-modal-icono-error{
+  background:linear-gradient(145deg,rgba(209,19,46,.28),rgba(209,19,46,.14));
+  box-shadow:0 0 0 7px rgba(209,19,46,.1), 0 8px 20px rgba(0,0,0,.35);
+}
+[data-theme="dark"] .eof-modal-icono-exito{
+  background:linear-gradient(145deg,rgba(28,138,75,.28),rgba(28,138,75,.14));
+  box-shadow:0 0 0 7px rgba(28,138,75,.1), 0 8px 20px rgba(0,0,0,.35);
+}
+[data-theme="dark"] .eof-btn-primario{box-shadow:0 8px 18px rgba(91,184,232,.22);}
+[data-theme="dark"] .eof-btn-secundario{box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.16);}
+[data-theme="dark"] .eof-btn-secundario:hover{background:rgba(255,255,255,.07);}
+[data-theme="dark"] .modal-comp-detalle-caja .modal-partido-cerrar{background:rgba(255,255,255,.08);box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);}
+[data-theme="dark"] .modal-comp-detalle-caja .modal-partido-cerrar:hover{background:var(--rojo);}
+[data-theme="dark"] .mp-x{background:rgba(255,255,255,.09);color:#c3cbda;box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);}
+[data-theme="dark"] .mp-x:hover{background:var(--rojo,#d1132e);color:#fff;}
+[data-theme="dark"] .comp-detalle-item:hover{box-shadow:0 4px 12px rgba(0,0,0,.35);}
+[data-theme="dark"] .eof-cookie-categoria:hover{box-shadow:0 4px 14px rgba(0,0,0,.35);}
+
+/* =======================================================================
+   Movimiento reducido
+   ======================================================================= */
+@media (prefers-reduced-motion:reduce){
+  html .eof-modal-overlay,
+  html .eof-modal-caja,
+  html .eof-cookie-switch .track::before{animation:none !important;transition:none !important;}
+  html .eof-modal-overlay.eof-modal-visible .eof-modal-icono{animation:none;}
+  html .eof-btn:hover,
+  html .eof-cookies-modal-acciones button:hover,
+  html .comp-detalle-item:hover,
+  html .mp-x:hover,
+  html .acred-cerrar:hover{transform:none;}
+  html .modal-comp-detalle-fondo{animation:none;}
+}

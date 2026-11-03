@@ -238,7 +238,7 @@
   function anadir(padreId) {
     if (estado.nodos.length >= MAX_NODOS) { toast(`Máximo ${MAX_NODOS} casillas.`, "error"); return; }
     const padre = padreId ? porId(padreId) : null;
-    const nodo = { id: nuevoId(), nombre: "Nueva casilla", cargo: "", nota: "", color: padre ? padre.color : "azul", padre: padre ? padre.id : null, padres: padre ? [padre.id] : [], colapsado: false };
+    const nodo = { id: nuevoId(), nombre: "Nueva casilla", cargo: "", nota: "", telefono: "", twitter: "", instagram: "", color: padre ? padre.color : "azul", padre: padre ? padre.id : null, padres: padre ? [padre.id] : [], colapsado: false };
     estado.nodos.push(nodo);
     if (padre) estado.plegados.delete(padre.id);
     estado.sel = nodo.id;
@@ -374,7 +374,7 @@
     if (!q) return null;
     const set = new Set();
     estado.nodos.forEach((n) => {
-      if (sinTildes((esVacante(n) ? VACANTE + " vacante " : n.nombre) + " " + n.cargo + " " + n.nota).includes(q)) set.add(n.id);
+      if (sinTildes((esVacante(n) ? VACANTE + " vacante " : n.nombre) + " " + n.cargo + " " + n.nota + " " + (n.telefono || "") + " " + (n.twitter || "") + " " + (n.instagram || "")).includes(q)) set.add(n.id);
     });
     return set;
   }
@@ -567,6 +567,29 @@
       }).join("");
   }
 
+  // Contacto opcional (teléfono, Twitter/X, Instagram). El usuario se guarda sin @.
+  function usuarioRed(v) {
+    let t = String(v || "").trim().replace(/^https?:\/\/(www\.|mobile\.)?(twitter\.com|x\.com|instagram\.com)\//i, "");
+    t = t.replace(/^@+/, "").split(/[/?#\s]/)[0];
+    return /^[A-Za-z0-9_.]{1,30}$/.test(t) ? t : "";
+  }
+  function contactoHTML(n) {
+    const tel = String(n.telefono || "").trim();
+    const tw = usuarioRed(n.twitter);
+    const ig = usuarioRed(n.instagram);
+    if (!tel && !tw && !ig) return "";
+    const ico = (d) => `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">${d}</svg>`;
+    const telIco = ico('<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.2a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/>');
+    const twIco = ico('<path d="M4 4l16 16M20 4L4 20"/>');
+    const igIco = ico('<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r=".6"/>');
+    const telLimpio = tel.replace(/[^0-9+]/g, "");
+    return `<div class="org-contacto">
+      ${tel ? `<a class="org-contacto-a" href="tel:${esc(telLimpio)}">${telIco}<span>${esc(tel)}</span></a>` : ""}
+      ${tw ? `<a class="org-contacto-a" href="https://x.com/${esc(tw)}" target="_blank" rel="noopener noreferrer">${twIco}<span>@${esc(tw)}</span></a>` : ""}
+      ${ig ? `<a class="org-contacto-a" href="https://instagram.com/${esc(ig)}" target="_blank" rel="noopener noreferrer">${igIco}<span>@${esc(ig)}</span></a>` : ""}
+    </div>`;
+  }
+
   function pintarDetalle() {
     const d = $("orgDetalle");
     if (!d) return;
@@ -589,6 +612,7 @@
             <div><h4>${esc(nombreDe(n))}</h4>${n.cargo ? `<p class="org-det-cargo">${esc(n.cargo)}</p>` : ""}</div>
             <button type="button" class="org-x" data-act="cerrar" aria-label="Cerrar detalle">✕</button></div>
           ${n.nota ? `<p class="org-det-nota">${esc(n.nota).replace(/\n/g, "<br>")}</p>` : ""}
+          ${contactoHTML(n)}
           <dl class="org-det-datos">
             <div><dt>${jefes.length > 1 ? "Cadenas de mando" : "Cadena de mando"}</dt><dd>${cadenas}</dd></div>
             <div><dt>Reporta a</dt><dd>${jefes.length ? jefes.map((j) => `<button type="button" class="org-chip" data-sel="${esc(j.id)}">${esc(nombreDe(j))}</button>`).join(" ") : "— (casilla raíz)"}</dd></div>
@@ -616,6 +640,9 @@
         <div class="org-form">
           <label>Nombre<input type="text" id="orgFNombre" maxlength="80" value="${esc(n.nombre)}" placeholder="Persona o área (vacío = «${VACANTE}»)"></label>
           <label>Cargo / puesto<input type="text" id="orgFCargo" maxlength="80" value="${esc(n.cargo)}" placeholder="Ej: Responsable de redes"></label>
+          <label>Teléfono (opcional)<input type="tel" id="orgFTelefono" maxlength="25" inputmode="tel" autocomplete="off" value="${esc(n.telefono || "")}" placeholder="Ej: +34 600 123 456"></label>
+          <label>Twitter / X (opcional)<input type="text" id="orgFTwitter" maxlength="60" autocomplete="off" autocapitalize="off" spellcheck="false" value="${esc(n.twitter || "")}" placeholder="@usuario"></label>
+          <label>Instagram (opcional)<input type="text" id="orgFInstagram" maxlength="60" autocomplete="off" autocapitalize="off" spellcheck="false" value="${esc(n.instagram || "")}" placeholder="@usuario"></label>
           <label class="org-form-ancho">Notas<textarea id="orgFNota" maxlength="400" rows="3" placeholder="Funciones, contacto, horarios…">${esc(n.nota)}</textarea></label>
           <div class="org-form-ancho"><span class="org-lbl">Depende de${jefesN.length > 1 ? ` (${jefesN.length} jefes)` : ""}</span>
             <div class="org-jefes">${chipsJefes}</div>
@@ -738,6 +765,13 @@
     if (id === "orgFNombre") n.nombre = e.target.value;
     else if (id === "orgFCargo") n.cargo = e.target.value;
     else if (id === "orgFNota") n.nota = e.target.value;
+    else if (id === "orgFTelefono") n.telefono = e.target.value;
+    else if (id === "orgFTwitter" || id === "orgFInstagram") {
+      const campo = id === "orgFTwitter" ? "twitter" : "instagram";
+      // Al salir del campo se deja solo el usuario (sin @ ni enlace); si no es válido, se vacía.
+      if (e.type === "change") { n[campo] = usuarioRed(e.target.value); e.target.value = n[campo]; }
+      else n[campo] = e.target.value;
+    }
     else if (id === "orgFHijoNuevo") { if (e.target.value) mover(e.target.value, n.id, { anadir: true }); return; }
     else if (id === "orgFPadreNuevo") { if (e.target.value) mover(n.id, e.target.value, { anadir: true }); return; }
     else if (id === "orgFPlegada") {

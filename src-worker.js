@@ -1,7 +1,7 @@
 // src-worker.js — Worker de Cloudflare para el sitio (Pages con "main"
 // apuntando aquí, ver wrangler.jsonc: "main": "src-worker.js"). Es EL
 // ARCHIVO QUE REALMENTE SE DESPLIEGA con "wrangler deploy" desde la raíz
-// del proyecto — importante: existe también public/_worker.js con el
+// del proyecto — importante: existe también public/_worker.js (copia idéntica, ambos EXCLUIDOS de los assets públicos vía .assetsignore y bloqueados en esRutaPrivada) con el
 // mismo contenido; mantener ambos sincronizados si se vuelve a tocar
 // esta lógica (o, mejor, mover uno a ser el único real más adelante).
 //
@@ -222,7 +222,7 @@ const SEO_TWITTER_SITE = "@elotrofutbol";
 // recorte JPG del tamaño pedido (WhatsApp/Facebook/X piden ~1,91:1 y pesos
 // bajos; algunos no soportan webp/avif, por eso f_jpg y no f_auto). Si la URL no
 // es de Cloudinary se devuelve igual y sin dimensiones conocidas.
-function seoImagenSocialWorker(url, ancho, alto, foco) {
+function seoImagenSocialWorker(url, ancho, alto, foco, dims) {
   if (!url || typeof url !== "string") return { url: url || "", ancho: 0, alto: 0 };
   const marca = "/upload/";
   const i = url.indexOf(marca);
@@ -230,7 +230,7 @@ function seoImagenSocialWorker(url, ancho, alto, foco) {
   // Recorte alrededor del FOCO que el redactor eligió para la portada (el mismo
   // que respeta la web: "62% 30%"). Sin foco elegido (vacío o el centro por
   // defecto "50% 50%") se mantiene g_auto, como siempre.
-  const pf = seoFocoCloudinary(foco);
+  const pf = seoFocoCentroCloudinary(foco, dims, ancho, alto) || seoFocoCloudinary(foco);
   const gravedad = pf ? `g_xy_center,x_${pf.x},y_${pf.y}` : "g_auto";
   const t = `f_jpg,q_auto:good,c_fill,${gravedad},w_${ancho},h_${alto}`;
   return { url: url.slice(0, i + marca.length) + t + "/" + url.slice(i + marca.length), ancho, alto };
@@ -247,6 +247,47 @@ function seoFocoCloudinary(foco) {
   // 0 y 1 se escriben "0.0" y "1.0".
   const f = (n) => { const v = Math.round(n * 10) / 1000; return Number.isInteger(v) ? v.toFixed(1) : String(v); };
   return { x: f(x), y: f(y) };
+}
+
+// El foco de la web se pinta con object-position (X% Y%): el punto al X% de la
+// foto queda al X% del marco, NO centrado. Cloudinary g_xy_center centra el
+// recorte en el punto, que da otro encuadre (el sujeto sale más arriba/abajo
+// que en la web). Con las medidas de la foto se calcula el centro de recorte
+// que reproduce exactamente el de object-position. Devuelve {x, y} (fracciones
+// Cloudinary) o null si no hay foco/medidas válidas.
+function seoFocoCentroCloudinary(foco, dims, ancho, alto) {
+  const m = /^\s*(\d{1,3}(?:\.\d+)?)%\s+(\d{1,3}(?:\.\d+)?)%\s*$/.exec(typeof foco === "string" ? foco : "");
+  if (!m || !dims || !(dims.w > 0) || !(dims.h > 0) || !(ancho > 0) || !(alto > 0)) return null;
+  const fx = Math.min(100, parseFloat(m[1])) / 100, fy = Math.min(100, parseFloat(m[2])) / 100;
+  if (fx === 0.5 && fy === 0.5) return null;
+  const T = ancho / alto, A = dims.w / dims.h;
+  let cx = 0.5, cy = 0.5;
+  if (A > T) { const cw = dims.h * T; cx = (cw / 2 + (dims.w - cw) * fx) / dims.w; }
+  else if (A < T) { const ch = dims.w / T; cy = (ch / 2 + (dims.h - ch) * fy) / dims.h; }
+  const f = (n) => { const v = Math.round(Math.min(1, Math.max(0, n)) * 10000) / 10000; return Number.isInteger(v) ? v.toFixed(1) : String(v); };
+  return { x: f(cx), y: f(cy) };
+}
+
+// Medidas (ancho x alto) de una foto de Cloudinary con fl_getinfo. null si no se puede.
+const OG_DIMS_MEM = new Map();
+async function medidasFotoCloudinary(origenAbs) {
+  const marca = "/upload/";
+  const i = origenAbs.indexOf(marca);
+  if (i === -1 || !/res\.cloudinary\.com/.test(origenAbs)) return null;
+  if (OG_DIMS_MEM.has(origenAbs)) return OG_DIMS_MEM.get(origenAbs);
+  const controlador = new AbortController();
+  const temporizador = setTimeout(() => controlador.abort(), 1500);
+  try {
+    const r = await fetch(origenAbs.slice(0, i + marca.length) + "fl_getinfo/" + origenAbs.slice(i + marca.length), { signal: controlador.signal });
+    if (!r.ok) return null;
+    const j = await r.json();
+    const w = Number(j && j.input && j.input.width), h = Number(j && j.input && j.input.height);
+    if (!(w > 0) || !(h > 0)) return null;
+    if (OG_DIMS_MEM.size >= 500) OG_DIMS_MEM.delete(OG_DIMS_MEM.keys().next().value);
+    const dims = { w, h };
+    OG_DIMS_MEM.set(origenAbs, dims);
+    return dims;
+  } catch { return null; } finally { clearTimeout(temporizador); }
 }
 
 // SEGURIDAD: JSON-LD dentro de <script>: un "</script>" (o "<!--") en un titulo/
@@ -310,6 +351,73 @@ function resumirTextoSeo(texto, maxLen) {
   const cortado = limpio.slice(0, maxLen);
   const ultimoEspacio = cortado.lastIndexOf(" ");
   return (ultimoEspacio > 0 ? cortado.slice(0, ultimoEspacio) : cortado).trim() + "…";
+}
+
+// HTML del cuerpo -> texto plano para la description y el wordCount. Antes solo
+// se quitaban las etiquetas: "&nbsp;", "&amp;" o "&quot;" llegaban tal cual a la
+// description, escapeHtmlSeo() los volvía a escapar y Google mostraba el texto
+// literal "&nbsp;" en el snippet; además cada "&nbsp;" contaba como una palabra.
+// Mismo criterio que resumText() de public/js/config.js (cliente): los cierres
+// de bloque separan palabras, las etiquetas en línea no, y &amp; se decodifica
+// el último para no decodificar dos veces.
+function textoPlanoDesdeHtmlSeo(html) {
+  return String(html ?? "")
+    .replace(/<(script|style)\b[\s\S]*?<\/\1\s*>/gi, " ")
+    .replace(/<\/?(?:p|div|br|li|ul|ol|h[1-6]|blockquote|tr|td|th|figure|figcaption|section|article|hr)\b[^>]*>/gi, " ")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&#x([0-9a-f]+);/gi, (m, h) => seoCodigoACaracter(parseInt(h, 16), m))
+    .replace(/&#(\d+);/g, (m, d) => seoCodigoACaracter(parseInt(d, 10), m))
+    .replace(/&([a-z][a-z0-9]*);/gi, (m, n) => (n.toLowerCase() === "amp" ? m : (SEO_ENTIDADES[n] ?? m)))
+    .replace(/&amp;/g, "&")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// Entidades que pueden venir en un cuerpo pegado desde Word/webs antiguas.
+// Distingue mayúsculas (&Oacute; != &oacute;), por eso se busca con el nombre tal cual.
+const SEO_ENTIDADES = {
+  nbsp: " ", lt: "<", gt: ">", quot: '"', apos: "'", ensp: " ", emsp: " ", thinsp: " ",
+  aacute: "á", eacute: "é", iacute: "í", oacute: "ó", uacute: "ú", uuml: "ü", ntilde: "ñ", ccedil: "ç",
+  agrave: "à", egrave: "è", igrave: "ì", ograve: "ò", ugrave: "ù", iuml: "ï", euml: "ë", auml: "ä", ouml: "ö",
+  acirc: "â", ecirc: "ê", icirc: "î", ocirc: "ô", ucirc: "û", atilde: "ã", otilde: "õ",
+  Aacute: "Á", Eacute: "É", Iacute: "Í", Oacute: "Ó", Uacute: "Ú", Uuml: "Ü", Ntilde: "Ñ", Ccedil: "Ç",
+  Agrave: "À", Egrave: "È", Igrave: "Ì", Ograve: "Ò", Ugrave: "Ù", Iuml: "Ï",
+  iexcl: "¡", iquest: "¿", laquo: "«", raquo: "»", ldquo: "“", rdquo: "”", lsquo: "‘", rsquo: "’",
+  ndash: "–", mdash: "—", hellip: "…", middot: "·", euro: "€", ordm: "º", ordf: "ª", deg: "°", bull: "•",
+};
+function seoCodigoACaracter(codigo, original) {
+  if (!Number.isFinite(codigo) || codigo <= 0 || codigo >= 0x110000) return original;
+  const c = String.fromCodePoint(codigo);
+  return codigo === 0xa0 ? " " : c;
+}
+
+// Quita la cabecera de agencia del arranque de un texto ("MADRID, 4 oct. -",
+// "LUGO (Galicia), 24 oct.:") para que la description generada desde el cuerpo
+// empiece por la información y no por el lugar y la fecha.
+function quitarDatelineSeo(texto) {
+  return String(texto ?? "").replace(
+    /^\s*[A-ZÁÉÍÓÚÑÜ][A-ZÁÉÍÓÚÑÜ .'\-]{2,28}(?:\s*\([^)]{1,30}\))?,\s*\d{1,2}(?:\s+de)?\s+[a-zA-Záéíóúñ]{3,10}\.?(?:\s*\([^)]{1,20}\))?\s*[-–—.:]\s+/, ""
+  );
+}
+
+// Crédito (autor de la foto) de la imagen que se anuncia como principal, si lo hay.
+function creditoImagenPrincipalSeo(article) {
+  const fotos = Array.isArray(article && article.imagenes) ? article.imagenes.filter((x) => x && typeof x === "object" && x.url && x.tipo !== "tweet") : [];
+  const principal = fotos.find((x) => x.url === article.imagen_url) || fotos[0];
+  const c = principal && typeof principal.credito === "string" ? principal.credito.trim() : "";
+  return c || "";
+}
+
+// Idioma realmente servido: ?lang= solo cuenta si la noticia TIENE esa
+// traducción. Antes, ?lang=eu sin traducción servía el texto en castellano
+// etiquetado como euskera (og:locale, inLanguage, hreflang) y generaba una URL
+// duplicada indexable.
+function idiomaServidoSeo(article, idiomaQuery) {
+  if (!idiomaQuery || !SEO_IDIOMAS_WORKER[idiomaQuery]) return SEO_IDIOMA_DEFECTO_WORKER;
+  if (idiomaQuery === SEO_IDIOMA_DEFECTO_WORKER) return idiomaQuery;
+  const disponibles = Array.isArray(article && article.idiomas_disponibles) ? article.idiomas_disponibles : [];
+  const hayTraduccion = !!(article && article.traducciones && article.traducciones[idiomaQuery]);
+  return (disponibles.includes(idiomaQuery) || hayTraduccion) ? idiomaQuery : SEO_IDIOMA_DEFECTO_WORKER;
 }
 
 // Misma normalización que categoriaUrlSlug() en js/config.js y en
@@ -552,7 +660,7 @@ function conVarianteSocial(url, v) {
 
 function construirMetaNoticia(article, idiomaQuery, imagenSocial = null, varianteSocial = null) {
   const disponibles = Array.isArray(article.idiomas_disponibles) ? article.idiomas_disponibles : [];
-  const idiomaActual = (idiomaQuery && SEO_IDIOMAS_WORKER[idiomaQuery]) ? idiomaQuery : SEO_IDIOMA_DEFECTO_WORKER;
+  const idiomaActual = idiomaServidoSeo(article, idiomaQuery);
   const infoIdioma = SEO_IDIOMAS_WORKER[idiomaActual];
 
   // Textos: si el artículo trae traducciones (article.traducciones[idioma])
@@ -561,7 +669,7 @@ function construirMetaNoticia(article, idiomaQuery, imagenSocial = null, variant
   const trad = (article.traducciones && article.traducciones[idiomaActual]) || null;
   const titulo = (trad && trad.titulo) || article.titulo || "";
   const subtitulo = (trad && trad.subtitulo) || article.subtitulo || "";
-  const contenidoPlano = String(((trad && trad.contenido) || article.contenido || "")).replace(/<[^>]+>/g, " ");
+  const contenidoPlano = textoPlanoDesdeHtmlSeo((trad && trad.contenido) || article.contenido || "");
 
   // Google recorta el <title> hacia los 60 caracteres: si con la marca se
   // pasa de 65, se deja el titular solo (la marca ya sale como site name).
@@ -572,7 +680,7 @@ function construirMetaNoticia(article, idiomaQuery, imagenSocial = null, variant
   // de Google empiece por una cabecera tipo "MADRID, 4 oct.".
   const subtituloLimpio = resumirTextoSeo(subtitulo, 160);
   let descripcion = (subtituloLimpio.length >= 50 ? subtituloLimpio : "")
-    || resumirTextoSeo(contenidoPlano, 160) || subtituloLimpio || "";
+    || resumirTextoSeo(quitarDatelineSeo(contenidoPlano), 160) || subtituloLimpio || "";
 
   // Previa/crónica vinculada a un partido: título y descripción con los dos
   // equipos (búsquedas "equipo1-equipo2"). Solo en castellano: en otros
@@ -589,13 +697,14 @@ function construirMetaNoticia(article, idiomaQuery, imagenSocial = null, variant
   const urlCanonica = seoUrlAbsolutaWorker(urlBase);
   const urlActual = seoUrlAbsolutaWorker(idiomaActual === SEO_IDIOMA_DEFECTO_WORKER ? urlBase : `${urlBase}?lang=${idiomaActual}`);
 
-  const imagenUrl = article.imagen_url || primeraFotoArticuloSeo(article.imagenes) || "";
+  const portadaSocial = portadaSocialArticulo(article);
+  const imagenUrl = portadaSocial.url || "";
   const imagenAbs = imagenUrl ? seoUrlAbsolutaWorker(imagenUrl) : "";
   // Recortes 16:9, 4:3 y 1:1 (lo que recomienda Google para NewsArticle) y el
   // 1200x630 de Open Graph.
-  const imgOg = imagenAbs ? seoImagenSocialWorker(imagenAbs, 1200, 630, article.imagen_foco) : { url: "", ancho: 0, alto: 0 };
+  const imgOg = imagenAbs ? seoImagenSocialWorker(imagenAbs, 1200, 630, portadaSocial.foco) : { url: "", ancho: 0, alto: 0 };
   const imagenesLd = imagenAbs
-    ? [seoImagenSocialWorker(imagenAbs, 1200, 675, article.imagen_foco), seoImagenSocialWorker(imagenAbs, 1200, 900, article.imagen_foco), seoImagenSocialWorker(imagenAbs, 1200, 1200, article.imagen_foco)].map((x) => x.url)
+    ? [seoImagenSocialWorker(imagenAbs, 1200, 675, portadaSocial.foco), seoImagenSocialWorker(imagenAbs, 1200, 900, portadaSocial.foco), seoImagenSocialWorker(imagenAbs, 1200, 1200, portadaSocial.foco)].map((x) => x.url)
     : [];
 
   const idiomasHreflang = Array.from(new Set([SEO_IDIOMA_DEFECTO_WORKER, ...disponibles]));
@@ -633,6 +742,13 @@ function construirMetaNoticia(article, idiomaQuery, imagenSocial = null, variant
   const etiquetaCatSeo = article.categoria ? etiquetaCategoriaWorker(article.categoria) : "";
   const palabrasClave = Array.from(new Set([...clubsNoticia, etiquetaCatSeo].filter(Boolean)));
 
+  // Con crédito de foto, las imágenes del JSON-LD pasan a ImageObject con
+  // creditText (Google lo muestra en imágenes y Discover).
+  const creditoFoto = creditoImagenPrincipalSeo(article);
+  const imagenesJsonLd = creditoFoto && imagenesLd.length
+    ? imagenesLd.map((u) => ({ "@type": "ImageObject", "url": u, "creditText": creditoFoto }))
+    : imagenesLd;
+
   const jsonLdArticulo = {
     "@context": "https://schema.org",
     "@type": "NewsArticle",
@@ -645,7 +761,7 @@ function construirMetaNoticia(article, idiomaQuery, imagenSocial = null, variant
     "mainEntityOfPage": { "@type": "WebPage", "@id": urlCanonica },
     "datePublished": aFechaIsoSeo(article.fecha_publicacion),
     "dateModified": aFechaIsoSeo(article.fecha_actualizacion || article.updated_at || article.fecha_publicacion),
-    "image": imagenesLd.length ? imagenesLd : (imagenAbs ? [imagenAbs] : undefined),
+    "image": imagenesJsonLd.length ? imagenesJsonLd : (imagenAbs ? [imagenAbs] : undefined),
     "thumbnailUrl": imgOg.url || imagenAbs || undefined,
     "isPartOf": { "@type": "WebSite", "@id": SEO_DOMINIO_WORKER + "/#sitio" },
     "author": article.autor_nombre
@@ -699,7 +815,7 @@ function construirMetaNoticia(article, idiomaQuery, imagenSocial = null, variant
 
   return `<title id="pageTitle">${escapeHtmlSeo(tituloPagina)}</title>
 <meta name="description" content="${escapeHtmlSeo(descripcion)}">
-<link rel="canonical" href="${escapeHtmlSeo(conVarianteSocial(urlCanonica, varianteSocial))}">
+<link rel="canonical" href="${escapeHtmlSeo(conVarianteSocial(urlActual, varianteSocial))}">
 ${hreflangTags}
 ${hreflangXDefault}
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
@@ -755,7 +871,7 @@ function construirMetaNoticiaProgramada(prog, esBuscador, paraBot = false, image
   const titulo = String(prog.titulo || "");
   const tituloConMarca = titulo ? `${titulo} — ${SEO_NOMBRE_SITIO}` : `Noticia — ${SEO_NOMBRE_SITIO}`;
   const tituloCompleto = (titulo && tituloConMarca.length > 65) ? titulo : tituloConMarca;
-  const etiquetasTipo = { noticia: "Noticia", previa: "Previa", cronica: "Crónica", analisis: "Análisis", opinion: "Opinión", entrevista: "Entrevista", uno_por_uno: "1x1 de jugadores" };
+  const etiquetasTipo = { noticia: "Noticia", previa: "Previa", cronica: "Crónica", analisis: "Análisis", opinion: "Opinión", entrevista: "Entrevista", uno_por_uno: "1x1 de jugadores", rdp_previa: "Rueda de prensa previa", rdp_post: "Rueda de prensa posterior" };
   const etiquetaTipo = etiquetasTipo[prog.tipo] || "Noticia";
   const descripcion = resumirTextoSeo(prog.subtitulo || "", 160) || `${etiquetaTipo} de ${SEO_NOMBRE_SITIO}`;
 
@@ -1014,19 +1130,19 @@ const OG_IMG_MAX_BYTES = 4 * 1024 * 1024;
 const OG_IMG_MIN_BYTES = 200;
 const OG_IMG_OK_TTL_MS = 6 * 3600 * 1000;
 const OG_IMG_KO_TTL_MS = 60 * 1000;
-const OG_IMG_PRESUPUESTO_MS = 7000; // tope total por noticia (los rastreadores esperan ~10 s)
+const OG_IMG_PRESUPUESTO_MS = 5000; // tope total por noticia (X y WhatsApp esperan pocos segundos; antes 7000)
 const OG_IMG_MEM = new Map(); // clave -> { res, t, ttl }
 const OG_IMG_EN_CURSO = new Map(); // clave -> Promise (varios rastreadores a la vez comparten la comprobación)
 
 function claveImagenSocial(origenAbs, foco) {
-  return `${origenAbs}|${foco || ""}`;
+  return `${origenAbs}|${foco || ""}|v2`;
 }
 function claveCacheImagenSocial(clave) {
   return new Request(`https://cache.elotrofutbol.media/__ogimg/${encodeURIComponent(clave)}`);
 }
 
 // Lista ordenada de candidatas (sin repetir). Solo Cloudinary admite recortes.
-function candidatosImagenSocial(origenAbs, foco) {
+function candidatosImagenSocial(origenAbs, foco, dims) {
   const lista = [];
   const ver = new Set();
   const anadir = (url, ancho, alto, via) => {
@@ -1039,10 +1155,10 @@ function candidatosImagenSocial(origenAbs, foco) {
   if (i !== -1 && /res\.cloudinary\.com/.test(origenAbs)) {
     const prefijo = origenAbs.slice(0, i + marca.length);
     const resto = origenAbs.slice(i + marca.length);
-    anadir(seoImagenSocialWorker(origenAbs, 1200, 630, foco).url, 1200, 630, "recorte");
+    anadir(seoImagenSocialWorker(origenAbs, 1200, 630, foco, dims).url, 1200, 630, "recorte");
     // El respaldo sigue recortando alrededor del foco elegido (si lo hay); lo
     // único que pierde respecto al primero es g_auto/q_auto, que es lo que falla.
-    const pfSimple = seoFocoCloudinary(foco);
+    const pfSimple = seoFocoCentroCloudinary(foco, dims, 1200, 630) || seoFocoCloudinary(foco);
     const gravedadSimple = pfSimple ? `g_xy_center,x_${pfSimple.x},y_${pfSimple.y},` : "";
     anadir(`${prefijo}f_jpg,q_80,c_fill,${gravedadSimple}w_1200,h_630/${resto}`, 1200, 630, "recorte-simple");
     anadir(`${prefijo}f_jpg,q_75,c_limit,w_1600,h_1600/${resto}`, 0, 0, "reducida");
@@ -1064,7 +1180,16 @@ async function comprobarImagenSocial(url, maxMs) {
     if (!r.ok) return (r.status >= 500 || r.status === 429 || r.status === 408) ? "transitorio" : "permanente";
     const tipo = (r.headers.get("Content-Type") || "").toLowerCase();
     if (!tipo.startsWith("image/")) return "permanente";
-    const bytes = (await r.arrayBuffer()).byteLength;
+    // Si la respuesta ya dice cuánto pesa no hace falta bajarla entera (ahorra
+    // varios cientos de ms con fotos grandes): se cancela el cuerpo.
+    const declarado = Number(r.headers.get("Content-Length"));
+    let bytes;
+    if (declarado > 0) {
+      bytes = declarado;
+      try { await r.body.cancel(); } catch { /* nada */ }
+    } else {
+      bytes = (await r.arrayBuffer()).byteLength;
+    }
     if (bytes < OG_IMG_MIN_BYTES || bytes > OG_IMG_MAX_BYTES) return "permanente";
     return "ok";
   } catch {
@@ -1078,16 +1203,57 @@ function imagenSocialPorDefecto(via = "default") {
   return { url: seoUrlAbsolutaWorker("img/og-default.png"), ancho: 1200, alto: 630, via };
 }
 
-async function resolverImagenSocialSinCache(origenAbs, foco) {
-  const candidatas = candidatosImagenSocial(origenAbs, foco);
+// Guarda un resultado BUENO en memoria y en la caché compartida (6 h).
+function guardarImagenSocialBuena(clave, res, ctx) {
+  if (OG_IMG_MEM.size >= 500 && !OG_IMG_MEM.has(clave)) OG_IMG_MEM.delete(OG_IMG_MEM.keys().next().value);
+  OG_IMG_MEM.set(clave, { res, t: Date.now(), ttl: OG_IMG_OK_TTL_MS });
+  if (ctx && typeof ctx.waitUntil === "function") {
+    ctx.waitUntil((async () => {
+      try {
+        await caches.default.put(claveCacheImagenSocial(clave), new Response(JSON.stringify(res), {
+          headers: { "Content-Type": "application/json", "Cache-Control": `public, max-age=${OG_IMG_OK_TTL_MS / 1000}` },
+        }));
+      } catch { /* solo es una optimización */ }
+    })());
+  }
+}
+
+async function resolverImagenSocialSinCache(origenAbs, foco, ctx, clave) {
+  const dims = foco ? await medidasFotoCloudinary(origenAbs) : null;
+  const candidatas = candidatosImagenSocial(origenAbs, foco, dims);
   const limite = Date.now() + OG_IMG_PRESUPUESTO_MS;
   let hubo503 = false;
-  for (let n = 0; n < candidatas.length; n++) {
+  let inicio = 0;
+  const buena = (c) => ({ res: { url: c.url, ancho: c.ancho, alto: c.alto, via: c.via }, ttl: OG_IMG_OK_TTL_MS });
+
+  // Las dos primeras candidatas de Cloudinary (recorte con foco y recorte
+  // simple) se piden A LA VEZ. El recorte con foco (g_auto) es el lento la
+  // primera vez: si no responde en 2,2 s se anuncia el simple (que casi
+  // siempre responde al momento) y el otro sigue comprobándose en segundo
+  // plano, calentando Cloudinary y mejorando la caché para la próxima vez.
+  if (candidatas.length >= 3 && candidatas[0].via === "recorte" && candidatas[1].via === "recorte-simple") {
+    const c0 = candidatas[0], c1 = candidatas[1];
+    const p0 = comprobarImagenSocial(c0.url, 8000);
+    const p1 = comprobarImagenSocial(c1.url, Math.min(3500, limite - Date.now()));
+    const v0 = await Promise.race([p0, new Promise((r) => setTimeout(() => r("lento"), 2200))]);
+    if (v0 === "ok") return buena(c0);
+    const v1 = await p1;
+    if (v1 === "ok") {
+      if (v0 === "lento" && ctx && typeof ctx.waitUntil === "function") {
+        ctx.waitUntil(p0.then((v) => { if (v === "ok" && clave) guardarImagenSocialBuena(clave, buena(c0).res, ctx); }).catch(() => {}));
+      }
+      return buena(c1);
+    }
+    if (v0 === "lento" || v0 === "transitorio" || v1 === "transitorio") hubo503 = true;
+    inicio = 2;
+  }
+
+  for (let n = inicio; n < candidatas.length; n++) {
     const restante = limite - Date.now();
     if (restante < 500) { hubo503 = true; break; }
     const c = candidatas[n];
-    const veredicto = await comprobarImagenSocial(c.url, Math.min(n === 0 ? 3500 : 2500, restante));
-    if (veredicto === "ok") return { res: { url: c.url, ancho: c.ancho, alto: c.alto, via: c.via }, ttl: OG_IMG_OK_TTL_MS };
+    const veredicto = await comprobarImagenSocial(c.url, Math.min(n === 0 ? 3000 : 2200, restante));
+    if (veredicto === "ok") return buena(c);
     if (veredicto === "transitorio") hubo503 = true;
   }
   // Nada verificable. Si fue por timeouts/5xx (Cloudinary lento o caído) lo más
@@ -1120,7 +1286,7 @@ async function resolverImagenSocial(origen, foco, ctx) {
     } catch { /* sin caché compartida: se comprueba */ }
     let enCurso = OG_IMG_EN_CURSO.get(clave);
     if (!enCurso) {
-      enCurso = resolverImagenSocialSinCache(origenAbs, foco).finally(() => OG_IMG_EN_CURSO.delete(clave));
+      enCurso = resolverImagenSocialSinCache(origenAbs, foco, ctx, clave).finally(() => OG_IMG_EN_CURSO.delete(clave));
       OG_IMG_EN_CURSO.set(clave, enCurso);
     }
     const { res, ttl } = await enCurso;
@@ -1143,6 +1309,29 @@ async function resolverImagenSocial(origen, foco, ctx) {
 
 // Primera foto real de una noticia (ignora los tuits/posts incrustados, que
 // viven en "imagenes" pero no son imagen).
+// Portada REAL de una noticia para la tarjeta social: misma regla que la web
+// (EOF_FOCO.portadaDeArticulo). Si hay imagen_url, su foco es article.imagen_foco;
+// si no (portada de collage / galería), la foto sale de "imagenes" y el foco es
+// el de ESA foto -- antes se usaba article.imagen_foco, que describe otra foto
+// (o está vacío), y la tarjeta ignoraba la posición elegida.
+function leerImagenesArticuloSeo(imagenes) {
+  if (Array.isArray(imagenes)) return imagenes;
+  if (typeof imagenes === "string" && imagenes.trim()) {
+    try { const a = JSON.parse(imagenes); return Array.isArray(a) ? a : []; } catch { return []; }
+  }
+  return [];
+}
+function portadaSocialArticulo(article) {
+  if (!article) return { url: "", foco: "" };
+  if (article.imagen_url) return { url: article.imagen_url, foco: article.imagen_foco || "" };
+  const fotos = leerImagenesArticuloSeo(article.imagenes).filter((x) => x && (typeof x === "string" || (typeof x === "object" && x.url && x.tipo !== "tweet")));
+  const objeto = (x) => (x && typeof x === "object" ? x : null);
+  const elegida = fotos.find((x) => objeto(x) && x.grupo) || fotos[0];
+  if (!elegida) return { url: "", foco: "" };
+  if (typeof elegida === "string") return { url: elegida, foco: "" };
+  return { url: elegida.url, foco: elegida.foco || elegida.portada_foco || "" };
+}
+
 function primeraFotoArticuloSeo(imagenes) {
   if (!Array.isArray(imagenes)) return "";
   for (const x of imagenes) {
@@ -1156,7 +1345,7 @@ function primeraFotoArticuloSeo(imagenes) {
 
 // Foto de la que sale la imagen social de una noticia publicada ("" si no hay).
 function origenImagenArticulo(article) {
-  return (article && (article.imagen_url || primeraFotoArticuloSeo(article.imagenes))) || "";
+  return portadaSocialArticulo(article).url || "";
 }
 
 // Comprueba la imagen en segundo plano (y la deja cacheada) para que cuando el
@@ -1528,7 +1717,7 @@ function cuerpoBasicoParaBot(contenidoHtml) {
 // simplificada para un lector no interactivo (bot).
 function construirCuerpoArticuloParaBot(article, idiomaQuery, recientes = []) {
   const disponibles = Array.isArray(article.idiomas_disponibles) ? article.idiomas_disponibles : [];
-  const idiomaActual = (idiomaQuery && SEO_IDIOMAS_WORKER[idiomaQuery]) ? idiomaQuery : SEO_IDIOMA_DEFECTO_WORKER;
+  const idiomaActual = idiomaServidoSeo(article, idiomaQuery);
   const trad = (article.traducciones && article.traducciones[idiomaActual]) || null;
 
   const titulo = (trad && trad.titulo) || article.titulo || "";
@@ -1731,9 +1920,29 @@ async function servirNoticiaConSeo(noticiaRequest, env, slug, idiomaQuery, esBot
   const html = await respuestaAssets.text();
   // Rastreadores: la imagen anunciada se COMPRUEBA antes (ver "IMAGEN SOCIAL
   // VERIFICADA"); si la derivada de Cloudinary falla se cae a otra que cargue.
-  const imagenSocial = esBot ? await resolverImagenSocial(origenImagenArticulo(article), article.imagen_foco, ctx) : null;
+  // La comprobación de la imagen y la lista de noticias recientes (solo bots) se
+  // hacen EN PARALELO: antes iban una detrás de otra y sumaban sus esperas.
+  const [imagenSocial, recientesBot] = esBot
+    ? await Promise.all([
+        resolverImagenSocial(origenImagenArticulo(article), portadaSocialArticulo(article).foco, ctx),
+        obtenerUltimasNoticiasParaBot(),
+      ])
+    : [null, null];
+  // PRECALENTADO: cuando entra una persona (p. ej. quien acaba de publicar) se
+  // verifica ya la imagen social en segundo plano, así cuando X/WhatsApp pidan
+  // el enlace la tarjeta sale al instante desde la caché.
+  if (!esBot && ctx && typeof ctx.waitUntil === "function") {
+    const origenPre = origenImagenArticulo(article);
+    if (origenPre) ctx.waitUntil(resolverImagenSocial(origenPre, portadaSocialArticulo(article).foco, ctx).catch(() => {}));
+  }
   const bloqueSeo = construirMetaNoticia(article, idiomaQuery, imagenSocial, varianteSocialDeRequest(noticiaRequest, esBot));
   let htmlFinal = inyectarSeoEnHtml(html, bloqueSeo);
+  // <html lang> acorde al idioma servido (la plantilla trae "es" fijo): un
+  // ?lang=eu con traducción real se declara como euskera también en la raíz.
+  const idiomaHtml = idiomaServidoSeo(article, idiomaQuery);
+  if (idiomaHtml !== SEO_IDIOMA_DEFECTO_WORKER) {
+    htmlFinal = htmlFinal.replace('<html lang="es">', `<html lang="${SEO_IDIOMAS_WORKER[idiomaHtml].html}">`);
+  }
 
   // El contenido principal pre-pintado SOLO se sirve a bots conocidos:
   // a un lector real le seguimos mandando el placeholder + noticia.html
@@ -1741,8 +1950,7 @@ async function servirNoticiaConSeo(noticiaRequest, env, slug, idiomaQuery, esBot
   // encuestas, minuto a minuto en vivo...) intacta.
   if (esBot) {
     // Reutiliza la caché de 60 s de la portada: sin lecturas extra de D1.
-    const recientes = await obtenerUltimasNoticiasParaBot();
-    const cuerpoHtml = construirCuerpoArticuloParaBot(article, idiomaQuery, recientes);
+    const cuerpoHtml = construirCuerpoArticuloParaBot(article, idiomaQuery, recientesBot || []);
     htmlFinal = inyectarCuerpoEnHtml(htmlFinal, cuerpoHtml);
   }
 
@@ -1838,7 +2046,7 @@ async function obtenerUltimasNoticiasParaBot() {
     return _cachePortadaBot.articulos;
   }
   const controlador = new AbortController();
-  const timeoutId = setTimeout(() => controlador.abort(), 3000);
+  const timeoutId = setTimeout(() => controlador.abort(), 1500); // accesorio: no debe retrasar la tarjeta
   try {
     const resp = await fetch("https://api.elotrofutbol.media/api/articles?limit=15", {
       signal: controlador.signal,
@@ -2142,7 +2350,7 @@ function primeraFotoGaleria(grupos) {
   return primeraFotoGaleriaConFoco(grupos).url;
 }
 
-function inyectarGaleriaParaBot(html, slug, partido, grupos) {
+function inyectarGaleriaParaBot(html, slug, partido, grupos, portadaElegida) {
   const e = escapeHtmlSeo;
   const local = String(partido.equipo_local || "").trim();
   const visitante = String(partido.equipo_visitante || "").trim();
@@ -2157,7 +2365,13 @@ function inyectarGaleriaParaBot(html, slug, partido, grupos) {
     `Fotos del partido ${local} - ${visitante}${marcador ? ` (${marcador})` : ""}${competicion ? `, ${competicion}` : ""}${partido.jornada ? `, jornada ${partido.jornada}` : ""}${fechaTxt ? `, ${fechaTxt}` : ""}. Galería organizada por equipo.`,
     160);
   const canonica = seoUrlAbsolutaWorker(`/galeria/${encodeURIComponent(slug)}`);
-  const { url: foto, foco: focoFoto } = primeraFotoGaleriaConFoco(grupos);
+  // Imagen al compartir: la PORTADA que eligió quien hizo la galería; si no hay
+  // (o no es una URL válida), la primera foto, como antes.
+  const portadaOk = portadaElegida && typeof portadaElegida.url === "string" && /^https?:\/\//i.test(portadaElegida.url)
+    && !/\.(mp4|webm|mov)(\?|$)/i.test(portadaElegida.url);
+  const { url: foto, foco: focoFoto } = portadaOk
+    ? { url: portadaElegida.url, foco: portadaElegida.foco || "" }
+    : primeraFotoGaleriaConFoco(grupos);
   const img = foto ? seoImagenSocialWorker(foto, 1200, 630, focoFoto) : { url: "", ancho: 0, alto: 0 };
   const imagen = img.url || foto || seoUrlAbsolutaWorker("img/og-default.png");
   const ancho = img.ancho || (foto ? 0 : 1200);
@@ -2195,6 +2409,8 @@ function inyectarGaleriaParaBot(html, slug, partido, grupos) {
   salida = salida.replace(/<link rel="canonical"[^>]*>\r?\n?/, "");
   salida = salida.replace(/<title id="pageTitle">[\s\S]*?<\/title>/, () =>
     bloqueMetaPaginaBot({ titulo, descripcion, canonica, imagen, ancho, alto, extra }));
+  // El <h1> oculto de galeria.html (id=seoH1) lleva los dos equipos para quien no ejecuta JS.
+  salida = salida.replace(/(<h1 id="seoH1"[^>]*>)[\s\S]*?(<\/h1>)/, (m, ab, ce) => ab + escapeHtmlSeo(`Fotos del partido ${local} - ${visitante}`) + ce);
   return salida;
 }
 
@@ -2239,6 +2455,8 @@ function inyectarMinutoAMinutoParaBot(html, id, partido) {
   if (!/<title id="pageTitle">/.test(salida)) return html;
   salida = salida.replace(/<title id="pageTitle">[\s\S]*?<\/title>/, () =>
     bloqueMetaPaginaBot({ titulo, descripcion, canonica, imagen, ancho: 1200, alto: 630 }));
+  // El <h1> oculto de minuto-a-minuto.html (id=seoH1) lleva los dos equipos para quien no ejecuta JS.
+  salida = salida.replace(/(<h1 id="seoH1"[^>]*>)[\s\S]*?(<\/h1>)/, (m, ab, ce) => ab + escapeHtmlSeo(`Minuto a minuto: ${local} - ${visitante}`) + ce);
   return salida;
 }
 
@@ -2432,7 +2650,16 @@ async function pedirFeedAApi(path, cfg, timeoutMs) {
     });
     if (!resp.ok) return null;
     const cuerpo = await resp.text();
-    return (cuerpo && cuerpo.trimStart().startsWith("<")) ? cuerpo : null;
+    if (!(cuerpo && cuerpo.trimStart().startsWith("<"))) return null;
+    // Un XML truncado o sin cierre no es un feed válido.
+    if (!/<\/(urlset|sitemapindex|rss)>\s*$/.test(cuerpo)) return null;
+    // Sitemaps de URLs y RSS nunca deben quedar vacíos: si llegan sin ninguna entrada
+    // es casi seguro un fallo de la API/D1 (cuota agotada...). Se trata como error
+    // para NO pisar la última copia buena (que se sigue sirviendo como STALE) ni dar
+    // a Google un sitemap vacío con 200. El de Google News sí puede estar vacío de
+    // verdad (ninguna noticia en 48 h), así que se acepta.
+    if (path !== "/sitemap-news.xml" && !/<(url|item|sitemap)[\s>]/.test(cuerpo)) return null;
+    return cuerpo;
   } catch {
     return null;
   } finally {
@@ -2590,10 +2817,221 @@ async function servirFormularioConPreview(request, env, url) {
   }
 }
 
+// ============================================================
+// NOTICIAS RÁPIDAS: vista previa al compartir una tarjeta concreta.
+// El enlace antiguo era /noticias-rapidas#nr-123: el "#" no llega nunca al
+// servidor, así que X/WhatsApp/Facebook veían siempre la ficha genérica de la
+// página (titular y foto por defecto). Ahora el enlace es
+// /noticias-rapidas?nr=123#nr-123 y aquí se pone el titular, el subtitular y la
+// foto (con su foco) de esa noticia rápida en las etiquetas og:/twitter:.
+// ============================================================
+async function obtenerNoticiaRapidaParaPreview(id) {
+  const controlador = new AbortController();
+  const timeoutId = setTimeout(() => controlador.abort(), 2500);
+  try {
+    const resp = await fetch(`https://api.elotrofutbol.media/api/noticias-rapidas/${id}`, {
+      signal: controlador.signal,
+      headers: { "Accept": "application/json" },
+    });
+    if (!resp.ok) return null; // 404 (borrada) o API con problemas: se sirve la página tal cual
+    const datos = await resp.json().catch(() => null);
+    return datos && typeof datos.titulo === "string" ? datos : null;
+  } catch (e) {
+    return null;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function servirNoticiaRapidaConPreview(request, env, url, ctx) {
+  const respuesta = await env.ASSETS.fetch(request);
+  const id = (url.searchParams.get("nr") || "").trim();
+  if (!/^\d{1,9}$/.test(id)) return respuesta;
+  if (respuesta.status !== 200 || !(respuesta.headers.get("Content-Type") || "").includes("text/html")) return respuesta;
+  try {
+    const nr = await obtenerNoticiaRapidaParaPreview(id);
+    if (!nr) return respuesta;
+    const origen = "https://elotrofutbol.media";
+    const titulo = resumirTextoSeo(nr.titulo, 110) || "Noticia rápida";
+    const descripcion = resumirTextoSeo(nr.subtitulo, 200) || "Noticia rápida del fútbol no profesional en ELOTROFÚTBOLTV.";
+    const img = nr.imagen_url
+      ? await resolverImagenSocial(nr.imagen_url, nr.imagen_foco, ctx)
+      : imagenSocialPorDefecto("default");
+    const bloque = bloqueMetaFormulario({
+      titulo: `${titulo} — Noticias rápidas | ELOTROFÚTBOLTV`,
+      descripcion,
+      imagen: img.url,
+      imagenAlt: titulo,
+      ancho: img.ancho || 1200,
+      alto: img.alto || 630,
+      urlCanonica: `${origen}/noticias-rapidas?nr=${id}`,
+    });
+    let html = await respuesta.text();
+    // Fuera las etiquetas genéricas de la página (título, descripción, og:/twitter:, canonical y JSON-LD).
+    html = html
+      .replace(/<title>[\s\S]*?<\/title>\s*/i, "")
+      .replace(/<meta\s+name="description"[^>]*>\s*/i, "")
+      .replace(/<meta\s+(?:property|name)="(?:og|twitter):[^"]*"[^>]*>\s*/gi, "")
+      .replace(/<link\s+rel="canonical"[^>]*>\s*/i, "")
+      .replace(/<script type="application\/ld\+json" id="seo-jsonld-pagina">[\s\S]*?<\/script>\s*/i, "");
+    const finHead = html.search(/<\/head>/i);
+    if (finHead === -1) return respuesta;
+    const extra = [
+      bloque,
+      `<link rel="canonical" href="${escapeHtmlSeo(`${origen}/noticias-rapidas?nr=${id}`)}">`,
+      `<meta name="twitter:site" content="@elotrofutbol">`,
+      `<meta name="robots" content="noindex,follow">`,
+    ].join("\n");
+    html = html.slice(0, finHead) + extra + "\n" + html.slice(finHead);
+    const cabeceras = new Headers(respuesta.headers);
+    cabeceras.delete("Content-Length");
+    cabeceras.delete("ETag");
+    return new Response(html, { status: 200, headers: cabeceras });
+  } catch (e) {
+    return respuesta; // ante cualquier fallo, la página de siempre
+  }
+}
+
+// Rutas que NUNCA deben servirse como estáticos (ver uso en manejadorPrincipal).
+const RUTAS_PRIVADAS = [
+  /^\/(_worker|src-worker)\.js$/,
+  /^\/wrangler\.(jsonc?|toml)$/,
+  /^\/\.(assetsignore|gitignore|env[^/]*)$/,
+  /^\/\.(git|wrangler)(\/|$)/,
+  /^\/node_modules(\/|$)/,
+  /^\/credenciales\.txt$/,
+  /^\/_(headers|redirects)$/,
+  /\.(map|sql|md)$/,
+];
+
+function esRutaPrivada(rutaBruta) {
+  let ruta = String(rutaBruta || "");
+  try { ruta = decodeURIComponent(ruta); } catch { return true; } // %-secuencia rota: no se sirve
+  ruta = ruta.replace(/\\/g, "/").replace(/\/{2,}/g, "/").toLowerCase();
+  // Segmentos "." y ".." se normalizan igual que haría el navegador/CDN.
+  const trozos = [];
+  for (const t of ruta.split("/")) {
+    if (t === "." || t === "") continue;
+    if (t === "..") { trozos.pop(); continue; }
+    trozos.push(t);
+  }
+  const normal = "/" + trozos.join("/");
+  return RUTAS_PRIVADAS.some((re) => re.test(normal));
+}
+
+// ============================================================
+// CONTENT-SECURITY-POLICY: UN SOLO CONSTRUCTOR
+//
+// Antes había cuatro cadenas de ~2 KB copiadas a mano (portada, widgets,
+// panel de admin, páginas de cuenta) que se desincronizaban entre sí. Ahora
+// todas salen de aquí, y cada página recibe SOLO lo que necesita:
+//   - anuncios: true  -> orígenes de las redes de anuncios (Google, Ezoic,
+//                        Media.net, Taboola), CDN de terceros, Twitter y
+//                        Cloudinary para vídeo.
+//   - anuncios: false -> solo Turnstile + los accesos con Google/Microsoft
+//                        + la API. Es la política para páginas que NO cargan
+//                        js/ads.js (formularios, acreditación, minuto a
+//                        minuto, legales) y para las de contraseñas/tokens.
+//   - permitirEval: 'unsafe-eval' SOLO donde los scripts de anuncios lo piden;
+//                   por defecto va unido a "anuncios", y el panel de admin lo
+//                   desactiva aunque tenga los orígenes de anuncios.
+// 'unsafe-inline' se mantiene mientras existan <script> y onclick= inline.
+// ============================================================
+const CSP_SCRIPT_ANUNCIOS = [
+  "https://challenges.cloudflare.com", "https://cdnjs.cloudflare.com", "https://cdn.jsdelivr.net",
+  "https://accounts.google.com", "https://alcdn.msauth.net", "https://platform.twitter.com", "https://www.instagram.com",
+  "https://*.googlesyndication.com", "https://*.doubleclick.net", "https://www.googletagservices.com",
+  "https://*.googleadservices.com", "https://*.adtrafficquality.google", "https://fundingchoicesmessages.google.com",
+  "https://contextual.media.net", "https://*.media.net", "https://www.ezojs.com", "https://*.ezoic.net",
+  "https://*.ezodn.com", "https://*.gatekeeperconsent.com", "https://cdn.taboola.com", "https://*.taboola.com",
+];
+const CSP_SCRIPT_BASE = ["https://challenges.cloudflare.com", "https://accounts.google.com", "https://alcdn.msauth.net"];
+const CSP_CONNECT_BASE = [
+  "https://api.elotrofutbol.media", "https://elotro-futbol-api-production.up.railway.app",
+  "https://accounts.google.com", "https://login.microsoftonline.com",
+];
+const CSP_CONNECT_ANUNCIOS = [
+  "https://*.googlesyndication.com", "https://*.doubleclick.net", "https://*.adtrafficquality.google",
+  "https://fundingchoicesmessages.google.com", "https://*.media.net", "https://*.ezoic.net", "https://*.ezoic.com",
+  "https://*.ezodn.com", "https://*.gatekeeperconsent.com", "https://*.taboola.com", "https://*.taboolasyndication.com",
+];
+const CSP_FRAME_BASE = ["https://challenges.cloudflare.com", "https://accounts.google.com"];
+const CSP_FRAME_ANUNCIOS = [
+  "https://platform.twitter.com", "https://syndication.twitter.com", "https://www.instagram.com", "https://*.googlesyndication.com",
+  "https://*.doubleclick.net", "https://www.google.com", "https://*.adtrafficquality.google", "https://*.media.net",
+  "https://*.ezoic.net", "https://*.ezodn.com", "https://*.taboola.com",
+];
+
+function construirCSP({ anuncios = true, permitirEval = anuncios, wikipedia = false, frameAncestors = "'none'", frameSrcExtra = [] } = {}) {
+  const script = ["'self'", "'unsafe-inline'"];
+  if (permitirEval) script.push("'unsafe-eval'");
+  script.push(...CSP_SCRIPT_BASE.slice(0, 1), ...(anuncios ? CSP_SCRIPT_ANUNCIOS.slice(1) : CSP_SCRIPT_BASE.slice(1)));
+  const connect = ["'self'", ...CSP_CONNECT_BASE];
+  if (wikipedia) connect.push("https://es.wikipedia.org");
+  if (anuncios) connect.push(...CSP_CONNECT_ANUNCIOS);
+  const frame = [...CSP_FRAME_BASE, ...frameSrcExtra, ...(anuncios ? CSP_FRAME_ANUNCIOS : [])];
+  return [
+    "default-src 'self'",
+    `script-src ${script.join(" ")}`,
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com",
+    "font-src 'self' https://fonts.gstatic.com",
+    "img-src 'self' data: https:",
+    `media-src ${anuncios ? "'self' https://res.cloudinary.com" : "'self'"}`,
+    `connect-src ${connect.join(" ")}`,
+    `frame-src ${frame.join(" ")}`,
+    "object-src 'none'",
+    "base-uri 'self'",
+    `frame-ancestors ${frameAncestors}`,
+    "form-action 'self'",
+    "upgrade-insecure-requests",
+  ].join("; ");
+}
+
+// Páginas que NO cargan js/ads.js ni ninguna red de anuncios: política sin
+// 'unsafe-eval' ni orígenes de publicidad/CDN de terceros. (Las de cuenta —
+// acceso, cuenta, recuperar/verificar— ya tienen la suya más abajo.)
+const RUTAS_SIN_ANUNCIOS = /^\/(acreditacion|formulario|minuto-a-minuto|politica-cookies|politica-privacidad|newsletter_preview|panel-analiticas)(\.html)?\/?$/;
+
+function aplicarCSPSinAnuncios(respuesta, url, metodo) {
+  try {
+    if (metodo !== "GET" || !RUTAS_SIN_ANUNCIOS.test(url.pathname)) return respuesta;
+    if (!(respuesta.headers.get("Content-Type") || "").includes("text/html")) return respuesta;
+    const nueva = new Response(respuesta.body, respuesta);
+    nueva.headers.delete("Content-Security-Policy");
+    nueva.headers.set("Content-Security-Policy", construirCSP({ anuncios: false }));
+    nueva.headers.set("X-Frame-Options", "DENY");
+    return nueva;
+  } catch {
+    return respuesta;
+  }
+}
+
 const manejadorPrincipal = {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const path = url.pathname;
+
+    // ============================================================
+    // RUTAS PRIVADAS: el código del Worker y la configuración de despliegue
+    // viven dentro de la carpeta de assets (wrangler.jsonc usa directory ".").
+    // .assetsignore ya los excluye del despliegue; esto es la SEGUNDA barrera
+    // por si alguien lo toca o se despliega sin él: se responde 404 ANTES de
+    // llegar a env.ASSETS.fetch(), sea cual sea la mayúscula/minúscula o el
+    // truco de codificación (%2e, doble barra, etc.).
+    // ============================================================
+    if (esRutaPrivada(path)) {
+      return new Response("Not found", {
+        status: 404,
+        headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store", "X-Robots-Tag": "noindex" },
+      });
+    }
+
+    // www -> dominio sin www (301): una sola versión indexable. Lo ideal es además una
+    // Redirect Rule en Cloudflare; esto solo actúa si el tráfico de www llega al worker.
+    if (url.hostname === "www.elotrofutbol.media") {
+      url.hostname = "elotrofutbol.media";
+      return Response.redirect(url.toString(), 301);
+    }
 
     // ============================================================
     // MODO MANTENIMIENTO TEMPORAL (sitio / Pages)
@@ -2722,7 +3160,7 @@ const manejadorPrincipal = {
         const datosGaleria = await obtenerJsonApiParaBot(`/api/results/galeria/${encodeURIComponent(slug)}`);
         if (datosGaleria && datosGaleria.noExiste) return servir404Real(env, url.toString());
         if (datosGaleria && datosGaleria.partido) {
-          const htmlGaleria = inyectarGaleriaParaBot(await respuestaGaleria.text(), slug, datosGaleria.partido, datosGaleria.grupos);
+          const htmlGaleria = inyectarGaleriaParaBot(await respuestaGaleria.text(), slug, datosGaleria.partido, datosGaleria.grupos, datosGaleria.portada);
           const headersGaleria = new Headers(respuestaGaleria.headers);
           headersGaleria.delete("Content-Length");
           headersGaleria.set("Vary", "User-Agent");
@@ -2847,6 +3285,12 @@ const manejadorPrincipal = {
       return servirFormularioConPreview(request, env, url);
     }
 
+    // --- /noticias-rapidas?nr=<id>: la misma página, pero con titular, subtitular y foto de esa
+    // noticia rápida en las etiquetas Open Graph/Twitter para que el enlace salga bien en redes.
+    if ((path === "/noticias-rapidas" || path === "/noticias-rapidas.html") && request.method === "GET" && url.searchParams.get("nr")) {
+      return servirNoticiaRapidaConPreview(request, env, url, ctx);
+    }
+
     // --- /categoria?cat=...[&club=...]: para bots conocidos se sirve con
     // título, canonical y enlaces a las noticias ya pintados (ver
     // "CATEGORÍAS Y FICHAS DE CLUB PREPINTADAS PARA BOTS"). El resto de
@@ -2892,7 +3336,7 @@ const manejadorPrincipal = {
       nuevas.delete("X-Frame-Options");
       nuevas.set(
         "Content-Security-Policy",
-        "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://accounts.google.com https://alcdn.msauth.net https://platform.twitter.com https://*.googlesyndication.com https://*.doubleclick.net https://www.googletagservices.com https://*.googleadservices.com https://*.adtrafficquality.google https://fundingchoicesmessages.google.com https://contextual.media.net https://*.media.net https://www.ezojs.com https://*.ezoic.net https://*.ezodn.com https://*.gatekeeperconsent.com https://cdn.taboola.com https://*.taboola.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https://res.cloudinary.com; connect-src 'self' https://api.elotrofutbol.media https://elotro-futbol-api-production.up.railway.app https://accounts.google.com https://login.microsoftonline.com https://es.wikipedia.org https://*.googlesyndication.com https://*.doubleclick.net https://*.adtrafficquality.google https://fundingchoicesmessages.google.com https://*.media.net https://*.ezoic.net https://*.ezoic.com https://*.ezodn.com https://*.gatekeeperconsent.com https://*.taboola.com https://*.taboolasyndication.com; frame-src https://challenges.cloudflare.com https://accounts.google.com https://platform.twitter.com https://syndication.twitter.com https://*.googlesyndication.com https://*.doubleclick.net https://www.google.com https://*.adtrafficquality.google https://*.media.net https://*.ezoic.net https://*.ezodn.com https://*.taboola.com; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'; upgrade-insecure-requests"
+        construirCSP({ wikipedia: true, frameAncestors: "'self'" })
       );
       nuevas.set("X-Frame-Options", "SAMEORIGIN");
       // Solo para bots conocidos: se pintan en el HTML los enlaces a las
@@ -2951,7 +3395,22 @@ const manejadorPrincipal = {
       nuevas.delete("Content-Security-Policy");
       nuevas.set(
         "Content-Security-Policy",
-        "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://accounts.google.com https://alcdn.msauth.net https://platform.twitter.com https://*.googlesyndication.com https://*.doubleclick.net https://www.googletagservices.com https://*.googleadservices.com https://*.adtrafficquality.google https://fundingchoicesmessages.google.com https://contextual.media.net https://*.media.net https://www.ezojs.com https://*.ezoic.net https://*.ezodn.com https://*.gatekeeperconsent.com https://cdn.taboola.com https://*.taboola.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https://res.cloudinary.com; connect-src 'self' https://api.elotrofutbol.media https://elotro-futbol-api-production.up.railway.app https://accounts.google.com https://login.microsoftonline.com https://*.googlesyndication.com https://*.doubleclick.net https://*.adtrafficquality.google https://fundingchoicesmessages.google.com https://*.media.net https://*.ezoic.net https://*.ezoic.com https://*.ezodn.com https://*.gatekeeperconsent.com https://*.taboola.com https://*.taboolasyndication.com; frame-src https://challenges.cloudflare.com https://accounts.google.com https://elotrofutbol.media https://api.elotrofutbol.media https://platform.twitter.com https://syndication.twitter.com https://*.googlesyndication.com https://*.doubleclick.net https://www.google.com https://*.adtrafficquality.google https://*.media.net https://*.ezoic.net https://*.ezodn.com https://*.taboola.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests"
+        construirCSP({ frameSrcExtra: ["https://elotrofutbol.media", "https://api.elotrofutbol.media"] })
+      );
+      return new Response(respuesta.body, { status: respuesta.status, headers: nuevas });
+    }
+
+    // --- /podcast: reproductores incrustados (YouTube, Spotify, iVoox) y audio .mp3 https.
+    // Se fija aquí porque las rutas que pasan por este Worker no garantizan el _headers.
+    if ((path === "/podcast.html" || path === "/podcast") && request.method === "GET") {
+      const respuesta = await env.ASSETS.fetch(request);
+      if (respuesta.status !== 200) return respuesta;
+      const nuevas = new Headers(respuesta.headers);
+      nuevas.delete("Content-Security-Policy");
+      nuevas.set(
+        "Content-Security-Policy",
+        construirCSP({ frameSrcExtra: ["https://www.youtube-nocookie.com", "https://open.spotify.com", "https://www.ivoox.com"] })
+          .replace(/media-src ([^;]*)/, "media-src $1 https:")
       );
       return new Response(respuesta.body, { status: respuesta.status, headers: nuevas });
     }
@@ -2966,9 +3425,37 @@ const manejadorPrincipal = {
       nuevas.delete("X-Frame-Options");
       nuevas.set(
         "Content-Security-Policy",
-        "default-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://accounts.google.com https://alcdn.msauth.net https://platform.twitter.com https://*.googlesyndication.com https://*.doubleclick.net https://www.googletagservices.com https://*.googleadservices.com https://*.adtrafficquality.google https://fundingchoicesmessages.google.com https://contextual.media.net https://*.media.net https://www.ezojs.com https://*.ezoic.net https://*.ezodn.com https://*.gatekeeperconsent.com https://cdn.taboola.com https://*.taboola.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https://res.cloudinary.com; connect-src 'self' https://api.elotrofutbol.media https://elotro-futbol-api-production.up.railway.app https://accounts.google.com https://login.microsoftonline.com https://*.googlesyndication.com https://*.doubleclick.net https://*.adtrafficquality.google https://fundingchoicesmessages.google.com https://*.media.net https://*.ezoic.net https://*.ezoic.com https://*.ezodn.com https://*.gatekeeperconsent.com https://*.taboola.com https://*.taboolasyndication.com; frame-src https://challenges.cloudflare.com https://accounts.google.com https://platform.twitter.com https://syndication.twitter.com https://*.googlesyndication.com https://*.doubleclick.net https://www.google.com https://*.adtrafficquality.google https://*.media.net https://*.ezoic.net https://*.ezodn.com https://*.taboola.com; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'; upgrade-insecure-requests"
+        construirCSP({ permitirEval: false, frameAncestors: "'self'" })
       );
       nuevas.set("X-Frame-Options", "SAMEORIGIN");
+      return new Response(respuesta.body, { status: respuesta.status, headers: nuevas });
+    }
+
+    // --- Páginas con contraseñas o con tokens en la URL (acceso, cuenta,
+    // recuperar-cuenta, verificar-cuenta): CSP propia y MÁS ESTRICTA que la
+    // global. Aquí no se cargan redes de anuncios, Twitter, unpkg ni CDN de
+    // terceros: un script de terceros en una página donde se escribe una
+    // contraseña podría leerla. 'unsafe-inline' sigue siendo necesario (JS y
+    // onclick inline de estas páginas) pero se quita 'unsafe-eval'.
+    // Solo se permiten los orígenes de los accesos con Google / Microsoft,
+    // Turnstile, las fuentes y la API. Igual que arriba, se fija a mano porque
+    // Pages ignora _headers en las rutas que pasan por este Worker.
+    if (/^\/(acceso|cuenta|recuperar-cuenta|verificar-cuenta)(\.html)?$/.test(path) && request.method === "GET") {
+      const respuesta = await env.ASSETS.fetch(request);
+      const nuevas = new Headers(respuesta.headers);
+      nuevas.delete("Content-Security-Policy");
+      nuevas.delete("X-Frame-Options");
+      nuevas.set(
+        "Content-Security-Policy",
+        construirCSP({ anuncios: false })
+      );
+      nuevas.set("X-Frame-Options", "DENY");
+      // Los enlaces de recuperar/confirmar llevan el token en la URL: ni
+      // referrer hacia terceros ni copia en caché.
+      if (/^\/(recuperar-cuenta|verificar-cuenta)/.test(path)) {
+        nuevas.set("Referrer-Policy", "no-referrer");
+        nuevas.set("Cache-Control", "no-store");
+      }
       return new Response(respuesta.body, { status: respuesta.status, headers: nuevas });
     }
 
@@ -3059,7 +3546,8 @@ function esRutaNoIndexable(url) {
 
 export default {
   async fetch(request, env, ctx) {
-    const respuesta = await manejadorPrincipal.fetch(request, env, ctx);
+    let respuesta = await manejadorPrincipal.fetch(request, env, ctx);
+    respuesta = aplicarCSPSinAnuncios(respuesta, new URL(request.url), request.method);
     try {
       if (respuesta.status === 101 || respuesta.headers.has("X-Robots-Tag")) return respuesta;
       if (!esRutaNoIndexable(new URL(request.url))) return respuesta;

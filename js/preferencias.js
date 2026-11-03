@@ -21,7 +21,8 @@
 // Opciones disponibles (todas opcionales; sin tocar nada la web se ve
 // exactamente igual que siempre):
 //   Apariencia ........ tema (claro/oscuro/automático, vía tema.js),
-//                       color de acento, alto contraste
+//                       color de acento, efecto cristal líquido (móvil),
+//                       alto contraste
 //   Texto ............. tamaño, tipo de letra, interlineado, espaciado
 //                       de letras, ancho de las noticias, enlaces
 //   Movimiento ........ desactivar animaciones
@@ -33,6 +34,10 @@
 //   Perfiles rápidos .. combinaciones listas para usar
 (function () {
   "use strict";
+
+  // Ruta de este script: de ahí se carga liquid-glass.js (misma carpeta),
+  // tanto en la web (js/...) como en el panel (/js/...).
+  var RUTA_SCRIPT = (document.currentScript && document.currentScript.src) || "";
 
   var CLAVE = "eof_prefs";
 
@@ -52,7 +57,11 @@
     guia: "no",             // no | banda | foco
     barra: true,            // barra de progreso de las noticias (ya existe en noticia.html)
     foco: false,            // marco de teclado bien visible
-    tactil: false           // botones y campos más grandes
+    tactil: false,          // botones y campos más grandes
+    cristal: true,          // efecto "cristal líquido" en móvil (barras, hojas); false = aspecto plano de siempre
+    cristalInt: "normal",   // suave | normal | intenso: cuánta refracción y transparencia tiene el cristal
+    menu: "lateral",        // lateral | superior (menú del panel de redacción)
+    menuVisible: true       // menú lateral del panel desplegado (true) u oculto (false); solo ordenador
   };
 
   var VALORES_VALIDOS = {
@@ -64,10 +73,12 @@
     ancho: ["estrecho", "normal", "ancho"],
     acento: ["celeste", "verde", "naranja", "violeta", "rosa", "dorado"],
     contraste: ["normal", "alto"],
-    guia: ["no", "banda", "foco"]
+    guia: ["no", "banda", "foco"],
+    cristalInt: ["suave", "normal", "intenso"],
+    menu: ["lateral", "superior"]
   };
 
-  var BOOLEANOS = ["barra", "foco", "tactil"];
+  var BOOLEANOS = ["barra", "foco", "tactil", "cristal", "menuVisible"];
 
   // ---------- Lectura / escritura ----------
   // Devuelve SIEMPRE un objeto completo y válido: lo que falte o no sea
@@ -127,6 +138,13 @@
     poner("data-eof-barra", prefs.barra === false, "off");
     poner("data-eof-foco", prefs.foco === true, "on");
     poner("data-eof-tactil", prefs.tactil === true, "on");
+    poner("data-eof-cristal", prefs.cristal === false, "off");
+    poner("data-eof-cristal-int", prefs.cristalInt !== "normal", prefs.cristalInt);
+    var reduceTransp = false;
+    try { reduceTransp = !!(window.matchMedia && window.matchMedia("(prefers-reduced-transparency: reduce)").matches); } catch (e) {}
+    poner("data-eof-transp", reduceTransp, "reduce");
+    poner("data-eof-menu", prefs.menu === "superior", "superior");
+    poner("data-eof-menu-oculto", prefs.menuVisible === false, "on");
     aplicarAyudas(prefs);
   }
 
@@ -282,6 +300,189 @@
       '  min-height:46px;',
       '}',
       'html[data-eof-tactil="on"] button{min-width:46px;}'
+    );
+
+    // --- Cristal líquido (solo móvil, <=900px público / <=899px panel) ---
+    // Activo por defecto; data-eof-cristal="off" (interruptor de
+    // Preferencias) devuelve el aspecto plano de siempre. Tampoco se
+    // aplica con alto contraste ni si el sistema pide menos
+    // transparencias (se detecta por JS: poner data-eof-transp, porque Safari/iOS
+    // ignoraría todo el bloque si la condición fuera una media query desconocida), ni en navegadores sin backdrop-filter.
+    // Todos los selectores cuelgan de html:not([data-eof-cristal="off"])
+    // para ganar en especificidad a las hojas de la página, que se cargan
+    // después de este script.
+    var CR = 'html:not([data-eof-cristal="off"]):not([data-eof-contraste="alto"]):not([data-eof-transp="reduce"])';
+    // Cada capa lleva su propio desenfoque. Antes todas usaban blur(8px) sin saturacion: con tan
+    // poco desenfoque el texto de debajo se leia a traves del cristal y el resultado dependia de
+    // lo que hubiera detras (genial sobre un fondo liso, ilegible sobre fotos o titulares).
+    // RENDIMIENTO: solo la barra flotante (pequeña) lleva desenfoque. Cabecera, hoja "Mas" y barra
+    // de guardar son casi opacas (fondo "fuerte"): su desenfoque apenas se vería, pero cuesta mucho
+    // (la cabecera se recalcula en cada fotograma de scroll y la hoja ocupa el 88 % de la pantalla
+    // mientras se anima). Si el movil aun asi va justo, liquid-glass.js activa data-eof-lg-ahorro.
+    var VID_BARRA = 'blur(12px) saturate(1.3)';
+    c.push(
+      '@supports ((-webkit-backdrop-filter:none) or (backdrop-filter:none)){',
+      '@media (max-width:900px) and (min-width:0px){',
+      '  :root{',
+      '    --eof-vidrio-bg:linear-gradient(160deg,rgba(255,255,255,.74),rgba(255,255,255,.52));',
+      '    --eof-vidrio-fuerte:linear-gradient(160deg,rgba(255,255,255,.90),rgba(255,255,255,.80));',
+      '    --eof-vidrio-borde:rgba(255,255,255,.7);',
+      '    --eof-vidrio-linea:rgba(12,27,46,.12);',
+      '    --eof-vidrio-texto:#46546a;',
+      '    --eof-vidrio-brillo:inset 0 1px 0 rgba(255,255,255,.85),inset 0 -1px 0 rgba(255,255,255,.25),inset 0 0 18px rgba(255,255,255,.25);',
+      // El anillo de .5px define el borde sobre fondos blancos, donde un borde blanco no se ve
+      '    --eof-vidrio-sombra:0 0 0 .5px var(--eof-vidrio-linea),0 8px 24px rgba(12,27,46,.16),0 2px 6px rgba(12,27,46,.08);',
+      '  }',
+      '  html[data-theme="dark"]{',
+      '    --eof-vidrio-bg:linear-gradient(160deg,rgba(60,74,100,.70),rgba(23,29,41,.58));',
+      '    --eof-vidrio-fuerte:linear-gradient(160deg,rgba(40,50,70,.93),rgba(23,29,41,.89));',
+      '    --eof-vidrio-borde:rgba(255,255,255,.18);',
+      '    --eof-vidrio-linea:rgba(0,0,0,.55);',
+      '    --eof-vidrio-texto:#b7c3d6;',
+      '    --eof-vidrio-brillo:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -1px 0 rgba(255,255,255,.05),inset 0 0 18px rgba(255,255,255,.05);',
+      '    --eof-vidrio-sombra:0 0 0 .5px var(--eof-vidrio-linea),0 10px 28px rgba(0,0,0,.5),0 2px 6px rgba(0,0,0,.3);',
+      '  }',
+
+      // Intensidad del cristal (Preferencias): va aqui para que se vea desde el primer pintado.
+      // "fuerte" (cabecera, hoja, barra de acciones) siempre queda bastante opaca: llevan texto.
+      '  html[data-eof-cristal-int="suave"]{--eof-vidrio-bg:linear-gradient(160deg,rgba(255,255,255,.88),rgba(255,255,255,.72));--eof-vidrio-fuerte:linear-gradient(160deg,rgba(255,255,255,.96),rgba(255,255,255,.92));}',
+      '  html[data-eof-cristal-int="intenso"]{--eof-vidrio-bg:linear-gradient(160deg,rgba(255,255,255,.56),rgba(255,255,255,.34));--eof-vidrio-fuerte:linear-gradient(160deg,rgba(255,255,255,.88),rgba(255,255,255,.80));}',
+      '  html[data-theme="dark"][data-eof-cristal-int="suave"]{--eof-vidrio-bg:linear-gradient(160deg,rgba(60,74,100,.86),rgba(23,29,41,.76));--eof-vidrio-fuerte:linear-gradient(160deg,rgba(40,50,70,.97),rgba(23,29,41,.94));}',
+      '  html[data-theme="dark"][data-eof-cristal-int="intenso"]{--eof-vidrio-bg:linear-gradient(160deg,rgba(60,74,100,.52),rgba(23,29,41,.38));--eof-vidrio-fuerte:linear-gradient(160deg,rgba(40,50,70,.88),rgba(23,29,41,.82));}',
+
+      // Barra inferior de la web: píldora flotante de cristal
+      '  ' + CR + ' .eof-tabbar{',
+      '    left:12px;right:12px;bottom:calc(var(--eof-safe-b) + 8px);',
+      '    height:var(--eof-tab-h);padding-bottom:0;border-radius:30px;',
+      '    background:transparent;border:1px solid var(--eof-vidrio-borde);border-top-color:var(--eof-vidrio-borde);',
+      '    box-shadow:var(--eof-vidrio-sombra);',
+      '  }',
+      // RENDIMIENTO: el cristal (tinte + desenfoque) va en una capa propia DETRAS de las pestanas y de la lente.
+      // Asi la lente se anima (JS, cada fotograma) sin tocar la capa que desenfoca: antes, al ser hija del
+      // elemento con backdrop-filter, el navegador podia recalcular el desenfoque en cada paso de la animacion.
+      '  ' + CR + ' .eof-tabbar::before{',
+      '    content:"";position:absolute;top:0;right:0;bottom:0;left:0;z-index:-1;pointer-events:none;border-radius:inherit;',
+      '    background:var(--eof-vidrio-bg);box-shadow:var(--eof-vidrio-brillo);',
+      '    -webkit-backdrop-filter:' + VID_BARRA + ';backdrop-filter:' + VID_BARRA + ';',
+      '  }',
+      '  ' + CR + ' .eof-tab{border-radius:26px;}',
+      '  ' + CR + ' .eof-tab:not(.activo){color:var(--eof-vidrio-texto);}',
+      '  ' + CR + ' .eof-tab.activo{background:rgba(255,255,255,.38);box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 1px 4px rgba(12,27,46,.1);}',
+      '  html[data-theme="dark"]' + CR.replace('html','') + ' .eof-tab.activo{background:rgba(255,255,255,.12);box-shadow:inset 0 1px 0 rgba(255,255,255,.2);}',
+      '  ' + CR + ' .eof-tab.activo::before{display:none;}',
+      '  ' + CR + ' body:not(.eof-teclado){padding-bottom:calc(var(--eof-tab-h) + var(--eof-safe-b) + 22px);}',
+      '  ' + CR + ' footer{padding-bottom:calc(var(--eof-tab-h) + var(--eof-safe-b) + 40px);}',
+
+      // El banner de cookies sube lo que la barra flota sobre el borde
+      '  ' + CR + ' #eof-cookies-banner{bottom:calc(var(--eof-tab-h) + var(--eof-safe-b) + 18px);}',
+
+      '  ' + CR + ' body .eof-push-btn{bottom:calc(var(--eof-tab-h) + var(--eof-safe-b) + 24px) !important;}',
+
+      // Cabecera de la web
+      '  ' + CR + ' .main-header{',
+      '    background:var(--eof-vidrio-fuerte);',
+      '    -webkit-backdrop-filter:none;backdrop-filter:none;',
+      '    border-bottom:1px solid var(--eof-vidrio-borde);',
+      '    box-shadow:inset 0 -1px 0 rgba(255,255,255,.3),0 4px 18px rgba(12,27,46,.08);',
+      '  }',
+
+      // Hoja "Más" de la web
+      '  ' + CR + ' .eof-sheet{',
+      '    background:var(--eof-vidrio-fuerte);border:1px solid var(--eof-vidrio-borde);border-bottom:0;',
+      '    -webkit-backdrop-filter:none;backdrop-filter:none;',
+      '    box-shadow:var(--eof-vidrio-brillo),0 -12px 40px rgba(0,0,0,.28);',
+      '  }',
+      '  ' + CR + ' body.eof-teclado .eof-tabbar::before,',
+      '  ' + CR + ' body.eof-modal-abierto .eof-tabbar::before,',
+      '  ' + CR + ' body.eof-buscar-abierto .eof-tabbar::before{-webkit-backdrop-filter:none;backdrop-filter:none;}',
+      // Modo ahorro (lo activa liquid-glass.js si detecta tirones, o un movil limitado): cero desenfoque
+      '  ' + CR + '[data-eof-lg-ahorro="on"] .eof-tabbar::before{background:var(--eof-vidrio-fuerte);-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}',
+      // Pagina ocupada (cargando / repintando tablas o calendario): sin desenfoque hasta que se calme
+      '  ' + CR + '[data-eof-lg-ocupado="on"] .eof-tabbar::before{background:var(--eof-vidrio-fuerte);-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}',
+      '  ' + CR + ' .eof-sheet-fondo{',
+      '    background:rgba(6,10,18,.5);',
+      '    -webkit-backdrop-filter:none;backdrop-filter:none;',
+      '  }',
+      '}',
+
+      // Panel de redacción (<=899px): barra inferior flotante de cristal
+      '@media (max-width:899px) and (min-width:0px){',
+      '  ' + CR + ':not([data-eof-menu="superior"]) body.con-nav-app #navApp{',
+      '    left:10px;right:10px;bottom:calc(env(safe-area-inset-bottom,0px) + 8px);',
+      '    height:var(--bn-alto);padding-bottom:6px;border-radius:30px;',
+      '    background:transparent;border:1px solid var(--eof-vidrio-borde);',
+      '    box-shadow:var(--eof-vidrio-sombra);',
+      '  }',
+      '  ' + CR + ':not([data-eof-menu="superior"]) body.con-nav-app #navApp::before{',
+      '    content:"";position:absolute;top:0;right:0;bottom:0;left:0;z-index:-1;pointer-events:none;border-radius:inherit;',
+      '    background:var(--eof-vidrio-bg);box-shadow:var(--eof-vidrio-brillo);',
+      '    -webkit-backdrop-filter:' + VID_BARRA + ';backdrop-filter:' + VID_BARRA + ';',
+      '  }',
+      '  ' + CR + '[data-eof-lg-ahorro="on"] body.con-nav-app #navApp::before{background:var(--eof-vidrio-fuerte);-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}',
+      '  ' + CR + '[data-eof-lg-ocupado="on"] body.con-nav-app #navApp::before{background:var(--eof-vidrio-fuerte);-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}',
+      // Mientras la barra se esconde (teclado, menu, modales) no se desenfoca nada: sale de pantalla bajo un velo
+      '  ' + CR + ' body.bn-teclado #navApp::before,',
+      '  ' + CR + ' body.ml-abierto #navApp::before{-webkit-backdrop-filter:none;backdrop-filter:none;}',
+      '  ' + CR + ' body:has(.modal-overlay.abierto) #navApp::before,',
+      '  ' + CR + ' body:has(.mam-modal-overlay.mam-abierto) #navApp::before{-webkit-backdrop-filter:none;backdrop-filter:none;}',
+      // Estados en que la barra se esconde (teclado, menu, modales, tutorial). La barra flota
+      // a 8px + zona segura del borde, asi que "translateY(110%)" (pensado para una barra pegada
+      // abajo) la dejaba MEDIO VISIBLE. Aqui sale entera de pantalla y ademas se oculta.
+      '  ' + CR + ' body.bn-teclado #navApp,',
+      '  ' + CR + ' body.ml-abierto #navApp,',
+      '  ' + CR + ' body:has(.modal-overlay.abierto) #navApp,',
+      '  ' + CR + ' body:has(.mam-modal-overlay.mam-abierto) #navApp,',
+      '  ' + CR + ' body:has(#panelMinutoAMinuto.mam-abierto) #navApp,',
+      '  ' + CR + ' body:has(#tutOverlay) #navApp,',
+      '  ' + CR + ' body:has(.tut-overlay) #navApp{',
+      '    transform:translateY(calc(100% + env(safe-area-inset-bottom,0px) + 40px));',
+      '    visibility:hidden;pointer-events:none;',
+      '    transition:transform .2s ease,visibility 0s linear .2s;',
+      '  }',
+      '  ' + CR + ' body.con-nav-app{padding-bottom:calc(var(--bn-alto,60px) + env(safe-area-inset-bottom,0px) + 24px);}',
+      // La barra flota 8px por encima del borde: lo que iba pegado encima de ella (barra de
+      // guardar/publicar, avisos) sube lo mismo para no solaparse
+      '  ' + CR + ' body.con-nav-app .nr-form-card .barra-acciones-form{bottom:calc(var(--bn-alto,60px) + env(safe-area-inset-bottom,0px) + 16px);}',
+      '  ' + CR + ' html body.con-nav-app .eof-toast-contenedor,' + CR + ' body.con-nav-app .eof-toast-contenedor{bottom:calc(var(--bn-alto,60px) + env(safe-area-inset-bottom,0px) + 24px);}',
+      '  ' + CR + ' body.bn-teclado .eof-toast-contenedor{bottom:12px;}',
+      '  ' + CR + ' body.bn-teclado .nr-form-card .barra-acciones-form{bottom:0;}',
+      '  ' + CR + ' #navApp .bn-item:not(.activo){color:var(--eof-vidrio-texto);}',
+      '  ' + CR + ' .barra-acciones-form{',
+      '    -webkit-backdrop-filter:none;backdrop-filter:none;',
+      '    background:var(--eof-vidrio-fuerte);border:1px solid var(--eof-vidrio-borde);border-bottom:0;',
+      '  }',
+      '}',
+      '}' // cierra @supports
+    );
+
+    // --- Rendimiento en movil: sin backdrop-filter fuera de la barra inferior ---
+    // Inventario de todo el sitio: 22 capas fixed/sticky (overlays de modales de hasta blur(10px) a pantalla
+    // completa, cabeceras pegajosas que se recalculan en CADA fotograma de scroll) y decenas de badges repetidos
+    // en galerias y listados (cada uno es una capa de GPU). Todos tienen fondo oscuro o casi opaco, asi que sin
+    // desenfoque se ven igual; lo unico que cambia es que el movil deja de sufrir. Escritorio (>900px) no cambia.
+    var SIN_BLUR = [
+      '.overlay', '.theme-toggle-acceso', '.modo-tabs',
+      '.modal-overlay', '.mam-modal-overlay', '.acred-overlay', '.an-modal-overlay', '.apo-overlay', '.fsel-overlay',
+      '.mp-overlay', '.sfm-overlay', '.vot-bloq', '.nr-rev-fondo', '.modal-comparador-fondo', '.modal-partido-fondo',
+      '.modal-newsletter-fondo', '.eof-cookies-modal-fondo', '.nr-modal-fondo', '.vm-fondo',
+      '.sp-cabecera', '.nn-barra', '#menuLateralBarra', '.calendario-nav', '#navApp', '.eof-tabbar', '.barra-acciones-form',
+      '#panel-resultados .barra-acciones-form-principal', '#panel-resultados .resultado-cabecera-estado', '.notif-panel',
+      '.tarjeta-media .preview .icono-generico', '.tarjeta-media .preview .play-overlay', '.tarjeta-media .badge-tipo',
+      '.btn-cerrar-reproductor-media', '.nr-hero-stats > div', '.nr-hero-contador', '.nr-chip', '.nr-compartir',
+      '.nr-modal-cerrar', '.nr-modal-nav', '.tienda-etiqueta-fotos', '.tienda-ficha-lupa', '.tienda-ficha-contador',
+      '.avisos-caja .modal-cerrar', '.fmz-mod-chip', '.modal-partido-marcador span:first-child', '.modal-partido-cerrar',
+      '.redes-icons a', '.article-galeria-flecha', '.cartel-galeria-icono', '.vm-btn', '.vm-ayuda',
+      '.gal-item .gal-badge-tipo', '.gal-item .gal-play', '.gal-item-accion', '.gals-contador',
+      '.gals-item .gals-badge-tipo', '.gals-item .gals-play', '.gals-item-accion',
+      '.article-img::after', '.article-collage-foto::after', '.article-galeria-principal::after'
+    ];
+    c.push(
+      '@media (max-width:900px){',
+      '  ' + SIN_BLUR.join(',\n  ') + '{-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}',
+      // Estas dos dependian del desenfoque para leerse: ahora llevan fondo solido
+      '  .sp-cabecera{background-color:var(--tarjeta)!important;}',
+      '  .notif-panel{background:var(--tarjeta)!important;}',
+      '}'
     );
 
     // --- Barra de progreso de las noticias ---
@@ -546,6 +747,110 @@
   inyectarCSS();
   aplicar(leer());
 
+  // ---------- Motor del cristal líquido (refracción, lente, luz) ----------
+  // Va en un archivo aparte (js/liquid-glass.js) que se carga solo si el
+  // efecto puede verse: móvil, interruptor activo y sin alto contraste. Si
+  // el archivo no carga, queda el cristal de respaldo de arriba.
+  (function cargarMotorCristal() {
+    // Modo ahorro: recordado de otra visita (14 dias) o movil muy limitado. Se pone ya, antes del primer pintado.
+    try {
+      var t0 = parseInt(localStorage.getItem("eof-lg-ahorro"), 10), nv = navigator;
+      if ((t0 > 0 && Date.now() - t0 < 14 * 864e5) || (nv.deviceMemory && nv.deviceMemory <= 2) ||
+          (nv.hardwareConcurrency && nv.hardwareConcurrency <= 2) || (nv.connection && nv.connection.saveData)) {
+        document.documentElement.setAttribute("data-eof-lg-ahorro", "on");
+      }
+    } catch (e) {}
+    if (!RUTA_SCRIPT || !window.matchMedia) return;
+    var h = document.documentElement;
+    if (h.getAttribute("data-eof-cristal") === "off" || h.getAttribute("data-eof-contraste") === "alto") return;
+    var mq = window.matchMedia("(max-width:900px)");
+    var cargado = false;
+    function cargar() {
+      if (cargado || !mq.matches) return;
+      cargado = true;
+      var sc = document.createElement("script");
+      sc.src = RUTA_SCRIPT.replace(/preferencias\.js[^/]*$/, "liquid-glass.js?v=14");
+      sc.async = true;
+      (document.head || h).appendChild(sc);
+    }
+    function cuandoHayBody() {
+      if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", cargar);
+      else cargar();
+    }
+    // Se pide ya (no al acabar de cargar): el motor espera solo a que haya <body>.
+    // Así el cristal está listo casi a la vez que la barra y no "salta" después.
+    cargar();
+    if (mq.addEventListener) mq.addEventListener("change", cuandoHayBody);
+  })();
+
+  // ---------- Pagina ocupada: sin desenfoque mientras se pinta mucho ----------
+  // El desenfoque de la barra (backdrop-filter) se recalcula cada vez que cambia lo que hay detras.
+  // En paginas que construyen mucho (tablas, calendario, listados) eso ocurre en cada fotograma de la
+  // carga y todo va a tirones, sobre todo si se cambia de pagina rapido. Aqui se detecta ese momento
+  // (rafaga de nodos nuevos o fotogramas largos durante la carga) y se pone data-eof-lg-ocupado en <html>:
+  // el CSS apaga el desenfoque y liquid-glass.js no mide nada. Cuando la pagina lleva un rato quieta
+  // se quita y se avisa con el evento "eof-lg-libre". En paginas ligeras no llega a activarse nunca,
+  // asi que no hay ningun cambio de aspecto.
+  (function vigilarPaginaOcupada() {
+    if (!window.matchMedia || !window.MutationObserver) return;
+    var h = document.documentElement;
+    if (h.getAttribute("data-eof-cristal") === "off" || !window.matchMedia("(max-width:900px)").matches) return;
+    var AHORA = function () { return (window.performance && performance.now) ? performance.now() : Date.now(); };
+    var CALMA = 400, MAX = 5000, REARME = 1500;
+    var ocupada = false, inicio = 0, ultima = AHORA(), libreDesde = 0;
+    var cuenta = 0, ventana = 0, timer = 0, rafId = 0, prevFrame = 0, sondaHasta = AHORA() + 12000;
+
+    function ocupar() {
+      if (ocupada) return;
+      ocupada = true; inicio = AHORA(); ultima = inicio;
+      h.setAttribute("data-eof-lg-ocupado", "on");
+      programar();
+    }
+    function liberar() {
+      if (!ocupada) return;
+      ocupada = false; libreDesde = AHORA(); cuenta = 0;
+      clearTimeout(timer); timer = 0;
+      h.removeAttribute("data-eof-lg-ocupado");
+      try { document.dispatchEvent(new Event("eof-lg-libre")); } catch (e) {}
+    }
+    function programar() {
+      clearTimeout(timer);
+      timer = setTimeout(function () {
+        var t = AHORA();
+        var quieta = document.readyState === "complete" && t - ultima >= CALMA;
+        if (quieta || t - inicio >= MAX) liberar(); else programar();
+      }, 120);
+    }
+
+    // 1) Rafagas de nodos nuevos (la pagina esta construyendo tablas, calendario, listas...)
+    var mo = new MutationObserver(function (ms) {
+      var t = AHORA(), n = 0;
+      for (var i = 0; i < ms.length; i++) n += ms[i].addedNodes.length;
+      if (t - ventana > 300) { ventana = t; cuenta = 0; }
+      cuenta += n;
+      if (n >= 20) ultima = t;
+      // Tras la carga se exige una rafaga mayor y un tiempo desde la ultima vez (evita parpadeos en marcadores en vivo)
+      var umbral = document.readyState === "complete" ? 400 : 200;
+      if (!ocupada && cuenta >= umbral && (!libreDesde || t - libreDesde > REARME)) ocupar();
+    });
+    mo.observe(h, { childList: true, subtree: true });
+
+    // 2) Fotogramas largos mientras carga (solo hasta poco despues del load)
+    function sonda(t) {
+      rafId = 0;
+      if (prevFrame && t - prevFrame > 70 && t - prevFrame < 1500) { ultima = AHORA(); ocupar(); }
+      prevFrame = t;
+      if (AHORA() < sondaHasta && !document.hidden) rafId = requestAnimationFrame(sonda);
+    }
+    rafId = requestAnimationFrame(sonda);
+    window.addEventListener("load", function () { sondaHasta = Math.min(sondaHasta, AHORA() + 1500); }, { once: true });
+
+    // Volver con atras/adelante (cache de pagina): nada ocupado
+    window.addEventListener("pageshow", function (e) { if (e.persisted) { ocupada = true; liberar(); } });
+    // Pestana oculta: no hace falta seguir vigilando
+    document.addEventListener("visibilitychange", function () { if (document.hidden) liberar(); });
+  })();
+
   // Si se cambia la preferencia en otra pestaña, esta se actualiza sola.
   window.addEventListener("storage", function (e) {
     if (e.key === CLAVE || e.key === null) aplicar(leer());
@@ -563,6 +868,16 @@
       filas: [
         { tipo: "tema" },
         { tipo: "acento" },
+        {
+          tipo: "sw", clave: "cristal", bool: true,
+          titulo: "Efecto cristal líquido",
+          ayuda: "En móvil, barras y menús translúcidos con desenfoque, como el cristal de iOS. Desactívalo si va lento, gastas mucha batería o prefieres un aspecto plano y sólido."
+        },
+        {
+          tipo: "seg", clave: "cristalInt", titulo: "Intensidad del cristal",
+          ayuda: "Suave: más opaco y casi sin deformación, más legible y ligero. Intenso: más transparente, con más refracción en los bordes. Solo afecta si el efecto cristal líquido está activo.",
+          opciones: [["suave", "Suave"], ["normal", "Normal"], ["intenso", "Intenso"]]
+        },
         {
           tipo: "sw", clave: "contraste", si: "alto", no: "normal",
           titulo: "Alto contraste",
@@ -610,6 +925,22 @@
       ]
     },
     {
+      titulo: "Panel de redacción",
+      soloPanel: true,
+      filas: [
+        {
+          tipo: "seg", clave: "menu", titulo: "Posición del menú",
+          ayuda: "Lateral (recomendado): las secciones agrupadas a la izquierda; en móvil, un cajón que se abre con un botón. Superior: la barra de pestañas de siempre. Se guarda en este dispositivo.",
+          opciones: [["lateral", "Lateral"], ["superior", "Superior"]]
+        },
+        {
+          tipo: "sw", clave: "menuVisible", bool: true,
+          titulo: "Mostrar el menú lateral",
+          ayuda: "En ordenador, muestra u oculta el menú lateral para tener más espacio. También puedes hacerlo con la pestañita del borde del menú. Por defecto está visible."
+        }
+      ]
+    },
+    {
       titulo: "Movimiento",
       filas: [{ tipo: "anim" }]
     },
@@ -648,8 +979,8 @@
     },
     {
       id: "claridad", icono: "🔆", nombre: "Máxima claridad",
-      ayuda: "Alto contraste, texto muy grande y enlaces subrayados.",
-      prefs: { contraste: "alto", texto: "muygrande", enlaces: "subrayados", foco: true }
+      ayuda: "Alto contraste, texto muy grande, enlaces subrayados y sin transparencias.",
+      prefs: { contraste: "alto", texto: "muygrande", enlaces: "subrayados", foco: true, cristal: false }
     },
     {
       id: "concentracion", icono: "🎯", nombre: "Concentración",
@@ -810,6 +1141,7 @@
 
     var html = htmlPerfiles() + htmlVistaPrevia();
     GRUPOS.forEach(function (g) {
+      if (g.soloPanel && !document.querySelector(".admin-header")) return;
       var filas = g.filas.map(function (f) { return htmlFila(f, idBase, !!tema); }).join("");
       if (!filas) return;
       html += '<section class="eof-pref-grupo">' +
@@ -1027,7 +1359,7 @@
       });
       observador.observe(document.documentElement, {
         attributes: true,
-        attributeFilter: ["data-theme"]
+        attributeFilter: ["data-theme", "data-eof-menu-oculto"]
       });
     }
 
@@ -1037,6 +1369,14 @@
   window.EOFPrefs = {
     leer: leer,
     aplicar: aplicar,
+    // Cambia una sola preferencia desde fuera del panel (p. ej. el botón del menú lateral).
+    fijar: function (clave, valor) {
+      var p = leer();
+      p[clave] = valor;
+      p = normalizar(p);
+      guardar(p);
+      aplicar(p);
+    },
     montarPanel: montarPanel
   };
 })();

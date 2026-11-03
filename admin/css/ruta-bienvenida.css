@@ -1,0 +1,59 @@
+/* Ruta de bienvenida (14 días): checklist en la parte alta del panel (redactores y fotógrafos). */
+.rb{
+  --rb-1:#1c8a4b; --rb-2:#5bb8e8; --rb-fondo:#f1faf5;
+  position:relative; overflow:hidden; margin:0 0 18px; padding:16px 18px 14px;
+  border-radius:16px; border:1px solid rgba(28,138,75,.28);
+  background:linear-gradient(135deg,var(--rb-fondo),var(--tarjeta,#fff) 72%);
+  box-shadow:0 6px 20px rgba(12,27,46,.06);
+}
+.rb-completa{--rb-1:#b7791f; --rb-2:#f6b93b; --rb-fondo:#fff8e6; border-color:rgba(246,185,59,.5);}
+.rb-cab{display:flex; align-items:center; gap:12px;}
+.rb-ico{flex:none; width:40px; height:40px; border-radius:12px; display:grid; place-items:center; color:#fff; background:linear-gradient(135deg,var(--rb-1),var(--rb-2));}
+.rb-ico svg{width:21px; height:21px;}
+.rb-cab-txt{min-width:0; flex:1;}
+.rb-cab-txt h3{margin:0; font-size:1.02rem; line-height:1.25; color:var(--texto,#1a1c22);}
+.rb-cab-txt p{margin:2px 0 0; font-size:.82rem; color:var(--texto-suave,#5b6577);}
+.rb-cuenta{flex:none; font-size:.82rem; font-weight:700; color:var(--rb-1); background:rgba(28,138,75,.1); border-radius:999px; padding:4px 11px;}
+.rb-cuenta b{font-size:1rem;}
+.rb-btn{flex:none; width:34px; height:34px; border:0; border-radius:50%; cursor:pointer; display:grid; place-items:center; color:var(--texto-suave,#5b6577); background:transparent; transition:background .15s, transform .2s;}
+.rb-btn:hover{background:rgba(12,27,46,.07);}
+.rb-btn svg{width:18px; height:18px;}
+.rb-min .rb-btn-min svg{transform:rotate(-90deg);}
+.rb-barra{margin:12px 0 4px; height:8px; border-radius:999px; background:rgba(12,27,46,.09); overflow:hidden;}
+.rb-relleno{height:100%; border-radius:inherit; background:linear-gradient(90deg,var(--rb-1),var(--rb-2)); transition:width .7s cubic-bezier(.2,.8,.2,1);}
+.rb-lista{list-style:none; margin:12px 0 0; padding:0; display:grid; gap:8px;}
+.rb-item{display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:12px; border:1px solid var(--borde,#e2e6ee); background:var(--tarjeta,#fff);}
+.rb-item.actual{border-color:var(--rb-1); box-shadow:0 0 0 3px rgba(28,138,75,.12);}
+.rb-marca{flex:none; width:28px; height:28px; border-radius:50%; display:grid; place-items:center; font-size:.8rem; color:var(--texto-suave,#5b6577); background:rgba(12,27,46,.07);}
+.rb-marca svg{width:15px; height:15px;}
+.rb-item.hecho .rb-marca{color:#fff; background:var(--rb-1);}
+.rb-item.hecho .rb-txt strong{text-decoration:line-through; text-decoration-color:rgba(12,27,46,.3); color:var(--texto-suave,#5b6577);}
+.rb-txt{min-width:0; flex:1; display:flex; flex-direction:column; gap:1px;}
+.rb-txt strong{font-size:.92rem; color:var(--texto,#1a1c22);}
+.rb-txt small{font-size:.78rem; color:var(--texto-suave,#5b6577); line-height:1.35;}
+.rb-item.hecho .rb-txt small{display:none;}
+.rb-acc{flex:none; display:flex; align-items:center;}
+.rb-cta{display:inline-flex; align-items:center; gap:4px; border:0; cursor:pointer; font:inherit; font-size:.82rem; font-weight:700; color:#fff; background:var(--rb-1); border-radius:999px; padding:7px 13px 7px 15px;}
+.rb-cta svg{width:14px; height:14px;}
+.rb-cta:hover{filter:brightness(1.08);}
+.rb-link{border:0; background:transparent; cursor:pointer; font:inherit; font-size:.8rem; font-weight:600; color:var(--rb-1); padding:6px 8px; border-radius:8px;}
+.rb-link:hover{background:rgba(28,138,75,.1);}
+.rb-ok{font-size:.74rem; font-weight:700; color:var(--rb-1);}
+.rb-min{padding-bottom:12px;}
+.rb-min .rb-barra{margin-bottom:0;}
+.rb button:focus-visible{outline:2px solid var(--rb-2); outline-offset:2px;}
+
+/* Hito recién conseguido */
+.rb-nuevo .rb-marca{animation:rbPop .6s cubic-bezier(.2,1.6,.4,1);}
+.rb-nuevo{animation:rbDestello 1.4s ease-out;}
+@keyframes rbPop{0%{transform:scale(.4)}60%{transform:scale(1.25)}100%{transform:scale(1)}}
+@keyframes rbDestello{0%{box-shadow:0 0 0 0 rgba(28,138,75,.5)}100%{box-shadow:0 0 0 14px rgba(28,138,75,0)}}
+@media (prefers-reduced-motion:reduce){.rb-nuevo,.rb-nuevo .rb-marca{animation:none;} .rb-relleno{transition:none;}}
+
+@media (max-width:640px){
+  .rb{padding:14px 13px 12px; border-radius:14px; margin-bottom:14px;}
+  .rb-cuenta{display:none;}
+  .rb-item{flex-wrap:wrap;}
+  .rb-acc{width:100%; justify-content:flex-end;}
+  .rb-item.hecho .rb-acc{width:auto;}
+}

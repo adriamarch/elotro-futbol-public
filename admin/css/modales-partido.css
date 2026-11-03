@@ -1,0 +1,212 @@
+/* Modales de acciones sobre un partido: Reprogramar, Retrasar, Anular (modales-partido.js).
+   Usan las variables del panel (--tarjeta, --borde, --texto...), así que siguen el modo claro/oscuro. */
+body.mp-abierto{overflow:hidden}
+
+.mp-overlay{
+  position:fixed;inset:0;z-index:99990;display:flex;align-items:center;justify-content:center;padding:20px;
+  background:rgba(8,16,28,.58);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+  opacity:0;transition:opacity .18s ease;overscroll-behavior:contain;
+}
+.mp-overlay.mp-vis{opacity:1}
+
+.mp-caja{
+  --mp-acento:#1f78b4;--mp-sobre:#fff;
+  position:relative;width:100%;max-width:460px;max-height:calc(100dvh - 40px);overflow:auto;
+  background:var(--tarjeta,#fff);color:var(--texto,#16202e);border-radius:22px;padding:26px 26px 22px;
+  box-shadow:0 30px 80px rgba(8,16,28,.42),0 0 0 1px rgba(127,127,127,.14);
+  transform:translateY(14px) scale(.97);transition:transform .26s cubic-bezier(.22,1,.36,1);
+}
+.mp-caja.mp-ancho{max-width:700px}
+.mp-overlay.mp-vis .mp-caja{transform:none}
+.mp-caja::before{content:"";position:absolute;left:0;right:0;top:0;height:4px;border-radius:22px 22px 0 0;background:linear-gradient(90deg,var(--rojo,#d1132e),var(--celeste,#5bb8e8))}
+.mp-caja.mp-peligro{--mp-acento:var(--rojo,#d1132e);--mp-sobre:#fff}
+.mp-caja.mp-peligro::before{background:var(--rojo,#d1132e)}
+
+.mp-x{position:absolute;top:14px;right:14px;width:34px;height:34px;border:0;border-radius:50%;background:transparent;color:var(--texto-suave,#5b6676);font-size:1rem;cursor:pointer;transition:background .15s}
+.mp-x:hover{background:var(--gris-claro,#eef1f5)}
+
+.mp-cab{display:flex;align-items:center;gap:14px;margin:0 36px 18px 0}
+.mp-ico{flex:0 0 auto;width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;color:var(--mp-acento);background:color-mix(in srgb,var(--mp-acento) 14%,transparent)}
+.mp-ico svg{width:26px;height:26px}
+.mp-cab h3{margin:0;font-size:1.25rem;line-height:1.2;font-weight:800}
+.mp-cab p{margin:3px 0 0;font-size:.86rem;line-height:1.4;color:var(--texto-suave,#5b6676)}
+
+/* Tarjeta del partido */
+.mp-partido{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;padding:14px;margin-bottom:18px;border:1px solid var(--borde,#dde3ea);border-radius:16px;background:var(--fondo-alt,#f6f8fb)}
+.mp-eq{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0;text-align:center;font-weight:700;font-size:.88rem;line-height:1.25}
+.mp-eq span:last-child{overflow-wrap:anywhere}
+.mp-vs{font-size:.72rem;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:var(--texto-suave,#5b6676)}
+.mp-escudo{position:relative;width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--tarjeta,#fff);border:1px solid var(--borde,#dde3ea);overflow:hidden}
+.mp-escudo img{width:30px;height:30px;object-fit:contain}
+.mp-escudo b{display:none;font-size:1.1rem;color:var(--texto-suave,#5b6676)}
+.mp-escudo-vacio b{display:block}
+.mp-partido-meta{grid-column:1/-1;margin:2px 0 0;text-align:center;font-size:.78rem;color:var(--texto-suave,#5b6676)}
+
+.mp-etq{margin:0 0 8px;font-size:.74rem;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--texto-suave,#5b6676)}
+.mp-etq label{cursor:pointer}
+.mp-etq-sec{margin-top:16px}
+.mp-dos{display:grid;grid-template-columns:1.25fr 1fr;gap:22px}
+.mp-col{min-width:0}
+
+/* Atajos / chips */
+.mp-atajos{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px}
+.mp-atajos-horas{margin:10px 0 14px}
+.mp-chip{padding:7px 12px;border-radius:999px;border:1.5px solid var(--borde,#dde3ea);background:var(--tarjeta,#fff);color:var(--texto,#16202e);font:inherit;font-size:.8rem;font-weight:600;cursor:pointer;transition:border-color .15s,background .15s,color .15s,transform .1s}
+.mp-chip:hover{border-color:var(--mp-acento)}
+.mp-chip:active{transform:scale(.96)}
+.mp-chip:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.mp-chip:disabled:hover{border-color:var(--borde,#dde3ea)}
+.mp-chip-act{background:var(--mp-acento);border-color:var(--mp-acento);color:var(--mp-sobre)}
+
+/* Calendario */
+.mp-cal{border:1px solid var(--borde,#dde3ea);border-radius:16px;padding:12px;background:var(--tarjeta,#fff)}
+.mp-cal-cab{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.mp-cal-cab strong{font-size:.95rem}
+.mp-nav{width:34px;height:34px;border:0;border-radius:10px;background:var(--gris-claro,#eef1f5);color:var(--texto,#16202e);font-size:1.2rem;line-height:1;cursor:pointer}
+.mp-nav:hover{background:var(--borde,#dde3ea)}
+.mp-cal-sem,.mp-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.mp-cal-sem span{text-align:center;font-size:.7rem;font-weight:800;color:var(--texto-suave,#5b6676);padding:4px 0}
+.mp-dia{position:relative;aspect-ratio:1;border:0;border-radius:10px;background:transparent;color:var(--texto,#16202e);font:inherit;font-size:.86rem;font-weight:600;cursor:pointer;transition:background .12s,color .12s}
+.mp-dia-vacio{pointer-events:none}
+.mp-dia:hover{background:color-mix(in srgb,var(--mp-acento) 16%,transparent)}
+.mp-pasado{color:var(--texto-suave,#5b6676);opacity:.6}
+.mp-hoy{box-shadow:inset 0 0 0 1.5px var(--mp-acento)}
+.mp-orig::after{content:"";position:absolute;left:50%;bottom:4px;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;background:var(--rojo,#d1132e)}
+.mp-sel,.mp-sel:hover{background:var(--mp-acento);color:var(--mp-sobre);opacity:1;box-shadow:0 6px 14px -4px color-mix(in srgb,var(--mp-acento) 70%,transparent)}
+.mp-sel.mp-orig::after{background:#fff}
+.mp-leyenda{display:flex;align-items:center;gap:7px;margin:10px 0 0;font-size:.74rem;color:var(--texto-suave,#5b6676)}
+.mp-punto-orig{width:7px;height:7px;border-radius:50%;background:var(--rojo,#d1132e)}
+
+/* Hora */
+.mp-hora{width:100%;box-sizing:border-box;padding:11px 14px;border:1.5px solid var(--borde,#dde3ea);border-radius:12px;background:var(--fondo-alt,#f6f8fb);color:var(--texto,#16202e);font:inherit;font-size:1.1rem;font-weight:700;font-variant-numeric:tabular-nums}
+.mp-hora:focus{outline:none;border-color:var(--mp-acento);box-shadow:0 0 0 4px color-mix(in srgb,var(--mp-acento) 22%,transparent);background:var(--tarjeta,#fff)}
+.mp-hora-grande{font-size:1.5rem;text-align:center;padding:14px}
+
+/* Resumen en vivo */
+.mp-resumen{padding:12px 14px;border-radius:14px;border:1.5px dashed var(--borde,#dde3ea);font-size:.85rem;line-height:1.5;color:var(--texto-suave,#5b6676)}
+.mp-resumen-ok{border-style:solid;border-color:color-mix(in srgb,var(--mp-acento) 45%,transparent);background:color-mix(in srgb,var(--mp-acento) 9%,transparent);color:var(--texto,#16202e)}
+.mp-resumen strong{display:block;font-size:.98rem}
+.mp-resumen strong::first-letter{text-transform:uppercase}
+.mp-resumen em{display:block;margin-top:4px;font-style:normal;font-size:.78rem;font-weight:700;color:var(--rojo,#d1132e)}
+.mp-resumen-aviso{border-color:color-mix(in srgb,var(--rojo,#d1132e) 40%,transparent);background:color-mix(in srgb,var(--rojo,#d1132e) 7%,transparent)}
+
+/* Retrasar: comparación de horas */
+.mp-compara{display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:18px}
+.mp-compara>div{display:flex;flex-direction:column;align-items:center;min-width:104px;padding:12px 16px;border-radius:14px;border:1px solid var(--borde,#dde3ea);background:var(--fondo-alt,#f6f8fb)}
+.mp-compara small{font-size:.68rem;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--texto-suave,#5b6676)}
+.mp-compara b{font-size:1.6rem;line-height:1.2;font-variant-numeric:tabular-nums}
+.mp-compara-nueva{border-color:var(--mp-acento)!important;background:color-mix(in srgb,var(--mp-acento) 10%,transparent)!important}
+.mp-compara-nueva b{color:var(--mp-acento)}
+.mp-compara-nueva.mp-invalida b{color:var(--texto-suave,#5b6676)}
+.mp-compara-flecha{display:flex;color:var(--texto-suave,#5b6676)}
+.mp-compara-flecha svg{width:22px;height:22px}
+.mp-nota{margin:14px 0 0;font-size:.8rem;line-height:1.5;color:var(--texto-suave,#5b6676)}
+
+/* Anular: lista */
+.mp-lista{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px}
+.mp-lista li{position:relative;padding:11px 14px 11px 40px;border-radius:12px;background:var(--fondo-alt,#f6f8fb);border:1px solid var(--borde,#dde3ea);font-size:.86rem;line-height:1.45}
+.mp-lista li::before{content:"!";position:absolute;left:12px;top:50%;margin-top:-10px;width:20px;height:20px;border-radius:50%;background:color-mix(in srgb,var(--rojo,#d1132e) 14%,transparent);color:var(--rojo,#d1132e);font-size:.78rem;font-weight:800;display:flex;align-items:center;justify-content:center}
+
+/* Marcador (Confirmar resultado)
+   Una sola tarjeta con los dos equipos: escudo + nombre arriba y, debajo, el contador
+   (− número +). Ya no hay cabecera de partido encima (se duplicaban escudos y nombres):
+   solo la pastilla .mp-meta-solo con jornada y fecha. */
+.mp-meta-solo{
+  width:fit-content;max-width:100%;margin:0 auto 14px;padding:6px 14px;border-radius:999px;
+  border:1px solid var(--borde,#dde3ea);background:var(--fondo-alt,#f6f8fb);
+  font-size:.76rem;font-weight:700;line-height:1.3;text-align:center;letter-spacing:.2px;
+  color:var(--texto-suave,#5b6676);text-transform:capitalize;
+}
+.mp-marcador{
+  --mp-ctl:52px; /* alto común de contador y separador: así los ":" quedan centrados con los números */
+  display:grid;grid-template-columns:1fr auto 1fr;column-gap:8px;align-items:start;
+  margin-bottom:14px;padding:20px 14px 18px;
+  border:1px solid var(--borde,#dde3ea);border-radius:18px;background:var(--fondo-alt,#f6f8fb);
+}
+.mp-marcador-sep{
+  align-self:end;display:flex;align-items:center;height:var(--mp-ctl);
+  font-size:1.8rem;font-weight:800;line-height:1;color:var(--texto-suave,#5b6676);
+}
+.mp-gol{display:flex;flex-direction:column;align-items:center;gap:10px;min-width:0}
+.mp-marcador .mp-escudo{width:60px;height:60px;border-width:1.5px;box-shadow:0 6px 16px -8px rgba(12,27,46,.35)}
+.mp-marcador .mp-escudo img{width:42px;height:42px}
+.mp-marcador .mp-escudo b{font-size:1.4rem}
+.mp-gol-eq{
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+  min-height:2.5em;font-size:.84rem;font-weight:700;text-align:center;line-height:1.25;overflow-wrap:anywhere;
+}
+.mp-gol-ctl{display:flex;align-items:center;gap:6px;height:var(--mp-ctl)}
+.mp-gol-in{
+  width:68px;height:var(--mp-ctl);box-sizing:border-box;padding:0 4px;
+  font-size:1.7rem;font-weight:800;text-align:center;-moz-appearance:textfield;font-variant-numeric:tabular-nums;
+}
+.mp-gol-in::-webkit-outer-spin-button,.mp-gol-in::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.mp-gol-ctl .mp-nav{width:40px;height:40px;font-size:1.3rem;flex:0 0 auto;background:var(--tarjeta,#fff);border:1px solid var(--borde,#dde3ea)}
+.mp-gol-ctl .mp-nav:hover{background:var(--mp-acento);border-color:var(--mp-acento);color:var(--mp-sobre)}
+.mp-gol-ctl .mp-nav:active{transform:scale(.94)}
+
+/* Resumen del marcador: etiqueta a la izquierda, resultado a la derecha, en una línea
+   (antes repetía los nombres de los dos equipos por tercera vez). */
+.mp-marcador + .mp-resumen{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 16px}
+.mp-marcador + .mp-resumen strong{display:inline;font-size:1.25rem;font-variant-numeric:tabular-nums;letter-spacing:1px}
+.mp-marcador + .mp-resumen .mp-resumen-vacio{flex:1;text-align:center}
+
+/* Cabecera simple (noticias) y lista no peligrosa */
+.mp-cabecera-simple{display:block;text-align:left;padding:12px 16px}
+.mp-cabecera-simple small{display:block;font-size:.68rem;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--texto-suave,#5b6676);margin-bottom:3px}
+.mp-cabecera-simple strong{font-size:.95rem;line-height:1.35;overflow-wrap:anywhere}
+.mp-lista-suave li::before{content:"i";background:color-mix(in srgb,var(--mp-acento) 16%,transparent);color:var(--mp-acento)}
+.mp-min-ctl{justify-content:center;margin-bottom:4px}
+.mp-min-ctl .mp-nav{width:auto;min-width:40px;padding:0 10px;font-size:1rem;font-weight:700}
+
+/* Pie */
+.mp-pie{display:flex;justify-content:flex-end;gap:10px;margin-top:22px}
+.mp-btn{min-height:46px;padding:11px 20px;border-radius:12px;border:0;font:inherit;font-size:.9rem;font-weight:700;cursor:pointer;transition:transform .1s,filter .15s,background .15s}
+.mp-btn:active:not(:disabled){transform:translateY(1px)}
+.mp-btn-sec{background:var(--gris-claro,#eef1f5);color:var(--texto-suave,#5b6676)}
+.mp-btn-sec:hover{background:var(--borde,#dde3ea)}
+.mp-btn-pri{background:var(--mp-acento);color:var(--mp-sobre);box-shadow:0 8px 18px -8px var(--mp-acento)}
+.mp-btn-pri:hover:not(:disabled){filter:brightness(1.08)}
+.mp-btn-pri:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
+.mp-peligro .mp-btn-pri{background:var(--rojo,#d1132e)}
+.mp-x:focus-visible,.mp-chip:focus-visible,.mp-dia:focus-visible,.mp-nav:focus-visible,.mp-btn:focus-visible{outline:3px solid var(--celeste,#5bb8e8);outline-offset:2px}
+
+[data-theme="dark"] .mp-caja:not(.mp-peligro){--mp-acento:var(--celeste,#5bb8e8);--mp-sobre:#0c1b2e}
+[data-theme="dark"] .mp-overlay{background:rgba(2,6,12,.7)}
+[data-theme="dark"] .mp-caja{box-shadow:0 30px 80px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.08)}
+
+/* Móvil: la caja sube desde abajo como una hoja */
+@media (max-width:640px){
+  .mp-overlay{align-items:flex-end;padding:0}
+  .mp-caja,.mp-caja.mp-ancho{max-width:none;max-height:92dvh;border-radius:22px 22px 0 0;padding:22px 18px 0;transform:translateY(40px)}
+  .mp-caja::before{border-radius:22px 22px 0 0}
+  .mp-dos{grid-template-columns:1fr;gap:16px}
+  .mp-pie{position:sticky;bottom:0;flex-direction:column-reverse;background:var(--tarjeta,#fff);margin:18px -18px 0;padding:12px 18px calc(16px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--borde,#dde3ea)}
+  .mp-btn{width:100%}
+  .mp-marcador{padding:16px 8px 14px;column-gap:4px}
+  .mp-marcador .mp-escudo{width:52px;height:52px}
+  .mp-marcador .mp-escudo img{width:36px;height:36px}
+  .mp-gol-ctl{gap:4px}
+  .mp-gol-in{width:56px;font-size:1.5rem}
+  .mp-gol-ctl .mp-nav{width:36px;height:36px}
+}
+@media (prefers-reduced-motion:reduce){
+  .mp-overlay,.mp-caja,.mp-chip,.mp-btn,.mp-dia{transition:none}
+}
+
+/* ---- Confirmar resultado (partido cerrado por el sistema) ---- */
+.mp-sistema{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px;padding:8px 12px;border-radius:12px;border:1px solid color-mix(in srgb,#d97706 38%,transparent);background:color-mix(in srgb,#d97706 9%,transparent);font-size:.8rem;color:var(--texto,#16202e)}
+.mp-sistema-tag{display:inline-flex;align-items:center;gap:6px;font-weight:800;color:#b45309}
+.mp-sistema-tag svg{width:16px;height:16px}
+.mp-sistema-txt{color:var(--texto-suave,#5b6676)}
+.mp-sistema-txt b{color:var(--texto,#16202e);font-variant-numeric:tabular-nums}
+.mp-cambio{margin-top:10px;padding:9px 14px;border-radius:12px;font-size:.8rem;line-height:1.45;border:1px solid color-mix(in srgb,#d97706 38%,transparent);background:color-mix(in srgb,#d97706 8%,transparent);color:var(--texto,#16202e)}
+.mp-cambio[hidden],.mp-sugerido[hidden]{display:none}
+.mp-sugerido{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;padding:9px 14px;border-radius:12px;font-size:.8rem;line-height:1.45;border:1px dashed var(--borde,#dde3ea);color:var(--texto-suave,#5b6676)}
+.mp-sugerido b{color:var(--texto,#16202e);font-variant-numeric:tabular-nums}
+.mp-sugerido-ico{display:inline-flex;color:var(--mp-acento)}
+.mp-sugerido-ico svg{width:18px;height:18px}
+.mp-sugerido .mp-chip{margin-left:auto}
+.mp-sugerido-ok{border-style:solid;border-color:color-mix(in srgb,#16a34a 40%,transparent);background:color-mix(in srgb,#16a34a 8%,transparent)}
+.mp-sugerido-ok .mp-sugerido-ico{color:#16a34a}
+.mp-marcador + .mp-resumen span:first-child{font-weight:700;text-transform:none}

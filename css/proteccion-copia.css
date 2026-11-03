@@ -1,0 +1,108 @@
+/* =========================================================================
+   PROTECCIÓN ANTICOPIA de los textos de las noticias (ver js/proteccion-copia.js)
+   - No se puede seleccionar ni arrastrar el texto ni las fotos.
+   - Aviso elegante (toast de cristal) cuando alguien lo intenta.
+   - Línea de derechos al final de cada noticia.
+   - Al imprimir no sale el cuerpo de la noticia.
+   Los campos de formulario y los comentarios siguen siendo seleccionables.
+   ========================================================================= */
+.article-header,
+.article-body,
+.article-galeria,
+.article-galeria-collages,
+.nr-card,
+[data-proteger]{
+  -webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none;
+  -webkit-touch-callout:none;
+  -webkit-tap-highlight-color:transparent;
+}
+.article-header img,.article-body img,.article-galeria img,.nr-card img,[data-proteger] img{
+  -webkit-user-drag:none;user-drag:none;
+}
+/* Lo que el lector escribe o necesita copiar de verdad, siempre libre */
+.article-body input,.article-body textarea,.nr-card input,.nr-card textarea,
+[data-copiable],[data-copiable] *{
+  -webkit-user-select:text;user-select:text;-webkit-touch-callout:default;
+}
+
+/* Línea de derechos al final del texto */
+.article-body::after{
+  content:"🛡  Contenido protegido · © ELOTROFÚTBOLTV. Prohibida su reproducción sin autorización.";
+  display:block;margin-top:30px;padding-top:14px;
+  border-top:1px dashed color-mix(in srgb,var(--rojo) 40%,var(--borde));
+  font-family:var(--font-tit);font-size:.68rem;font-weight:600;letter-spacing:.6px;
+  text-transform:uppercase;color:var(--texto-suave);text-align:center;line-height:1.5;
+}
+
+/* ---------- Aviso (toast) ---------- */
+.eof-copia-aviso{
+  position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom,0px));z-index:100000;
+  display:flex;align-items:center;gap:14px;box-sizing:border-box;
+  width:min(440px,calc(100vw - 28px));padding:14px 18px 16px;border-radius:18px;overflow:hidden;
+  color:#fff;background:linear-gradient(135deg,rgba(8,18,34,.94),rgba(18,34,58,.90));
+  border:1px solid rgba(255,255,255,.16);
+  box-shadow:0 18px 44px rgba(0,0,0,.45),0 0 0 1px rgba(209,19,46,.28),inset 0 1px 0 rgba(255,255,255,.12);
+  -webkit-backdrop-filter:blur(14px) saturate(1.4);backdrop-filter:blur(14px) saturate(1.4);
+  opacity:0;transform:translate(-50%,24px) scale(.96);pointer-events:none;
+  transition:opacity .28s ease,transform .38s cubic-bezier(.2,.9,.3,1.2);
+}
+.eof-copia-aviso.visible{opacity:1;transform:translate(-50%,0) scale(1);pointer-events:auto;}
+.eof-copia-icono{
+  flex:0 0 auto;display:grid;place-items:center;width:42px;height:42px;border-radius:50%;
+  background:radial-gradient(circle at 30% 25%,#ff4a63,var(--rojo) 70%);
+  box-shadow:0 4px 14px rgba(209,19,46,.55);
+}
+.eof-copia-icono svg{width:22px;height:22px;display:block;}
+.eof-copia-texto{min-width:0;flex:1;}
+.eof-copia-titulo{
+  display:block;font-family:var(--font-tit);font-weight:700;font-size:.82rem;
+  letter-spacing:.7px;text-transform:uppercase;line-height:1.2;
+}
+.eof-copia-sub{display:block;margin-top:3px;font-size:.78rem;line-height:1.4;color:rgba(255,255,255,.78);}
+.eof-copia-barra{
+  position:absolute;left:0;bottom:0;height:3px;width:100%;transform-origin:left;
+  background:linear-gradient(90deg,var(--rojo),#ff8b9b);
+}
+.eof-copia-aviso.visible .eof-copia-barra{animation:eofCopiaBarra var(--eof-copia-ms,3400ms) linear forwards;}
+@keyframes eofCopiaBarra{from{transform:scaleX(1);}to{transform:scaleX(0);}}
+@media (prefers-reduced-motion:reduce){
+  .eof-copia-aviso{transition:opacity .2s ease;transform:translate(-50%,0);}
+  .eof-copia-aviso.visible .eof-copia-barra{animation:none;transform:scaleX(0);}
+}
+
+/* ---------- Impresión ---------- */
+@media print{
+  .article-body>*{display:none !important;}
+  .article-body::before{
+    content:"Contenido protegido. Lee la noticia completa en elotrofutbol.media";
+    display:block;padding:24px;border:2px solid #d1132e;border-radius:12px;text-align:center;
+    font:700 14pt/1.4 sans-serif;color:#0c1b2e;
+  }
+  .article-body::after{display:none;}
+}
+
+/* ---------- Refuerzo de fotos y vídeos (clase puesta por proteccion-copia.js) ---------- */
+html.eof-proteccion-img img,
+html.eof-proteccion-img picture,
+html.eof-proteccion-img video,
+html.eof-proteccion-img canvas,
+html.eof-proteccion-img [data-proteger-img]{
+  -webkit-touch-callout:none;
+  -webkit-user-select:none;-moz-user-select:none;user-select:none;
+  -webkit-user-drag:none;user-drag:none;
+}
+/* Sin menú "Guardar imagen" al mantener pulsado en iOS y sin arrastrar fondos */
+html.eof-proteccion-img [style*="background-image"]{
+  -webkit-touch-callout:none;-webkit-user-select:none;user-select:none;
+}
+/* Al imprimir o exportar a PDF no salen las fotos del contenido (sí el logo
+   de la cabecera y el pie) */
+@media print{
+  html.eof-proteccion-img main img,
+  html.eof-proteccion-img main picture,
+  html.eof-proteccion-img main video,
+  html.eof-proteccion-img main canvas,
+  html.eof-proteccion-img main [style*="background-image"]{
+    display:none !important;
+  }
+}

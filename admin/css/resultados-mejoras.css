@@ -1,0 +1,467 @@
+/* =====================================================================
+   Resultados — mejoras visuales (pestañas "+ Nuevo resultado" y
+   "Ver resultados"). Se carga DESPUÉS de admin.css y solo AÑADE / afina
+   reglas: no cambia ni ids ni markup ni JS.
+   Usa las variables de tema (--tarjeta, --borde, --texto-suave...), así
+   que el modo oscuro sale solo.
+   ===================================================================== */
+
+#panel-resultados{
+  --res-radio:14px;
+  --res-sombra:0 1px 2px rgba(12,27,46,.05),0 10px 28px -12px rgba(12,27,46,.18);
+  --res-curva:cubic-bezier(.22,1,.36,1);
+}
+[data-theme="dark"] #panel-resultados{
+  --res-sombra:0 1px 2px rgba(0,0,0,.3),0 12px 30px -12px rgba(0,0,0,.55);
+}
+
+/* =====================================================================
+   1) NUEVO RESULTADO (formulario)
+   ===================================================================== */
+
+/* ---------- Tarjeta contenedora ---------- */
+#panel-resultados .form-card-resultado{
+  max-width:880px;
+  margin-inline:0; /* alineada a la izquierda, como los botones de las pestañas y el resto de tarjetas */
+  border-radius:var(--res-radio);
+  box-shadow:var(--res-sombra);
+}
+#panel-resultados .form-card-resultado::before{display:none;}
+
+/* ---------- Cabecera: más aire, banda de acento y logo con halo ---------- */
+#panel-resultados .resultado-cabecera{
+  position:relative;
+  padding:20px 28px;
+  background:
+    radial-gradient(120% 140% at 100% 0%,rgba(91,184,232,.22),transparent 55%),
+    linear-gradient(135deg,var(--marino),var(--marino2));
+}
+#panel-resultados .resultado-cabecera::after{
+  content:"";position:absolute;left:0;right:0;bottom:0;height:3px;
+  background:linear-gradient(90deg,var(--rojo),var(--celeste) 70%,transparent);
+  opacity:.9;
+}
+#panel-resultados .resultado-cabecera-logo{
+  width:52px;height:52px;
+  box-shadow:0 0 0 3px rgba(255,255,255,.14),0 6px 16px rgba(0,0,0,.3);
+}
+#panel-resultados .resultado-cabecera-estado{
+  display:inline-flex;align-items:center;gap:7px;
+  backdrop-filter:blur(4px);
+}
+#panel-resultados .resultado-cabecera-estado::before{
+  content:"";width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.9;
+}
+#panel-resultados .resultado-cabecera-estado.estado-en_juego::before{animation:resPulso 1.4s ease-in-out infinite;}
+@keyframes resPulso{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.35;transform:scale(.7);}}
+
+/* ---------- Marcador en vivo: ahora respeta el modo oscuro ---------- */
+#panel-resultados .marcador-preview{
+  padding:28px 28px 24px;
+  background:
+    radial-gradient(60% 120% at 50% 0%,rgba(91,184,232,.10),transparent 70%),
+    var(--tarjeta);
+  border-bottom:1px solid var(--borde);
+}
+#panel-resultados .marcador-preview-escudo{
+  width:72px;height:72px;
+  background:var(--fondo-alt);
+  border:2px solid var(--borde);
+  box-shadow:0 6px 16px -6px rgba(12,27,46,.25);
+  transition:transform .25s var(--res-curva),border-color .2s;
+}
+#panel-resultados .marcador-preview-equipo:hover .marcador-preview-escudo{transform:translateY(-2px) scale(1.04);border-color:var(--celeste);}
+#panel-resultados .marcador-preview-escudo img{padding:9px;}
+#panel-resultados .marcador-preview-nombre{color:var(--marino-texto);font-size:.95rem;max-width:170px;}
+#panel-resultados .marcador-preview-goles{
+  font-size:2.5rem;line-height:1;padding:8px 22px;min-width:136px;
+  font-variant-numeric:tabular-nums;
+  background:linear-gradient(180deg,var(--fondo-alt),var(--tarjeta));
+  border:1.5px solid var(--borde);
+  box-shadow:inset 0 -2px 0 rgba(12,27,46,.05),0 6px 18px -10px rgba(12,27,46,.35);
+  color:var(--marino-texto);
+}
+#panel-resultados .marcador-preview-jornada{
+  padding:3px 12px;border-radius:999px;background:var(--gris-claro);
+  border:1px solid var(--borde);color:var(--texto-suave);
+}
+
+/* ---------- Secciones del formulario ---------- */
+#panel-resultados .seccion-form-resultado{
+  margin:30px 0 6px;padding-top:20px;font-size:1rem;color:var(--marino-texto);
+  text-transform:uppercase;letter-spacing:.7px;
+}
+#panel-resultados .seccion-form-resultado::after{
+  content:"";flex:1;height:1px;margin-left:6px;
+  background:linear-gradient(90deg,var(--borde),transparent);
+}
+#panel-resultados .form-card-resultado > form > .seccion-form-resultado:first-of-type{padding-top:26px;}
+
+/* ---------- Campos: etiquetas discretas, inputs más cómodos ---------- */
+#panel-resultados .form-card-resultado form label{
+  font-size:.74rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;
+  color:var(--texto-suave);margin:16px 0 6px;
+}
+#panel-resultados .form-card-resultado form input:not([type="checkbox"]):not([type="file"]),
+#panel-resultados .form-card-resultado form select,
+#panel-resultados .form-card-resultado .form-evento-partido input:not([type="checkbox"]),
+#panel-resultados .form-card-resultado .form-evento-partido select,
+#panel-resultados .form-card-resultado .form-evento-partido textarea{
+  min-height:44px;border-radius:10px;
+  transition:border-color .15s,box-shadow .15s,background-color .15s;
+}
+#panel-resultados .form-card-resultado form input:hover:not(:focus):not(:disabled),
+#panel-resultados .form-card-resultado form select:hover:not(:focus):not(:disabled){border-color:var(--celeste);}
+#panel-resultados .form-card-resultado input[type="number"]{font-variant-numeric:tabular-nums;}
+
+/* Goles: números grandes y centrados, son el dato principal */
+#panel-resultados #r_goles_local,
+#panel-resultados #r_goles_visitante{
+  text-align:center;font-family:var(--font-tit);font-size:1.5rem;font-weight:700;
+  letter-spacing:1px;color:var(--marino-texto);
+}
+#panel-resultados #r_goles_local:focus,
+#panel-resultados #r_goles_visitante:focus{box-shadow:0 0 0 4px rgba(91,184,232,.22);}
+
+/* Fila "equipo + goles": el campo de goles no se estira demasiado */
+#panel-resultados #formResultado .row3{grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr);}
+#panel-resultados #formResultado .row3:has(#r_goles_local),
+#panel-resultados #formResultado .row3:has(#r_goles_visitante){grid-template-columns:minmax(0,1fr) 150px;align-items:start;}
+
+/* Bloque "otro equipo" (nombre + escudo) como subtarjeta */
+#panel-resultados .equipo-otro-wrap{
+  margin-top:10px;padding:12px;border:1px dashed var(--borde);border-radius:12px;
+  background:var(--fondo-alt);display:flex;flex-direction:column;gap:8px;
+}
+#panel-resultados .preview-escudo-otro img{width:44px;height:44px;object-fit:contain;border-radius:8px;background:var(--tarjeta);border:1px solid var(--borde);padding:4px;}
+
+/* Mensaje de guardado */
+#panel-resultados #msgOkResultado{
+  margin:18px 0 0;padding:10px 14px;border-radius:10px;font-size:.85rem;font-weight:600;
+  background:rgba(22,163,74,.1);border:1px solid rgba(22,163,74,.3);color:#15803d;
+}
+#panel-resultados #msgOkResultado:empty{display:none;}
+[data-theme="dark"] #panel-resultados #msgOkResultado{color:#4ade80;}
+
+/* ---------- Bloques posteriores (goles, penaltis, alineaciones, MVP) ---------- */
+#panel-resultados .titulo-eventos-partido{
+  margin:32px 0 6px;padding-top:22px;border-top:1px solid var(--borde);
+  display:flex;align-items:center;gap:8px;
+}
+#panel-resultados .form-evento-partido{
+  padding:16px;border:1px solid var(--borde);border-radius:12px;background:var(--fondo-alt);
+}
+#panel-resultados .form-evento-partido label{margin-top:0;}
+#panel-resultados .form-evento-partido .btn-anadir-evento{margin-top:14px;margin-left:0;}
+#panel-resultados .lista-eventos-partido:empty{display:none;}
+#panel-resultados .lista-eventos-partido > *{
+  border-radius:10px;transition:background-color .15s,border-color .15s;
+}
+
+/* ---------- Barra final Guardar / Cancelar: pegada abajo ---------- */
+#panel-resultados .barra-acciones-form-principal{
+  position:sticky;bottom:0;z-index:6;
+  display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:10px;
+  margin-top:32px;padding:14px 28px;
+  background:color-mix(in srgb,var(--tarjeta) 92%,transparent);
+  backdrop-filter:blur(8px);
+  border-top:1px solid var(--borde);
+  box-shadow:0 -10px 24px -18px rgba(12,27,46,.45);
+}
+#panel-resultados .barra-acciones-form-principal .btn-primari{margin:0;min-width:200px;}
+#panel-resultados .barra-acciones-form-principal .btn-secundari{margin:0;}
+
+/* =====================================================================
+   2) VER RESULTADOS (listado)
+   ===================================================================== */
+
+/* ---------- Barra de filtros como tarjeta ---------- */
+#subpanel-listaResultados .buscador-lista{
+  gap:10px;padding:14px;margin-bottom:12px;
+  background:var(--tarjeta);border:1px solid var(--borde);border-radius:var(--res-radio);
+  box-shadow:var(--res-sombra);
+}
+#subpanel-listaResultados .buscador-lista-input{
+  flex:1 1 240px;min-width:0;min-height:42px;border-radius:10px;
+  padding-left:38px;
+  background:var(--fondo-alt) no-repeat 12px center / 16px
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a93a3' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M20 20l-3.5-3.5'/%3E%3C/svg%3E");
+}
+#subpanel-listaResultados .buscador-lista-input:focus{box-shadow:0 0 0 3px rgba(91,184,232,.18);}
+#subpanel-listaResultados .buscador-lista-select{min-height:42px;border-radius:10px;flex:0 1 210px;min-width:0;}
+#subpanel-listaResultados .btn-filtro-sin-cubrir{min-height:42px;padding:0 16px;border-radius:10px;font-size:.8rem;}
+#subpanel-listaResultados .btn-filtro-sin-cubrir:hover{transform:none;}
+#subpanel-listaResultados .buscador-lista-contador{
+  margin-left:auto;padding:4px 12px;border-radius:999px;
+  background:var(--gris-claro);border:1px solid var(--borde);
+}
+
+/* Indicador "En vivo" */
+#subpanel-listaResultados .lista-envivo{
+  display:inline-flex;align-items:center;gap:7px;padding:4px 12px;border-radius:999px;
+  background:rgba(22,163,74,.1);border:1px solid rgba(22,163,74,.3);
+  font-size:.74rem;font-weight:700;color:#15803d;
+}
+[data-theme="dark"] #subpanel-listaResultados .lista-envivo{color:#4ade80;}
+#subpanel-listaResultados .lista-envivo[hidden]{display:none;}
+#subpanel-listaResultados .lista-envivo-punto{
+  width:8px;height:8px;border-radius:50%;background:#16a34a;
+  animation:resPulso 1.4s ease-in-out infinite;
+}
+#subpanel-listaResultados .lista-envivo.espera{background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.4);color:#b45309;}
+#subpanel-listaResultados .lista-envivo.espera .lista-envivo-punto{background:#f59e0b;}
+
+/* Aviso de anulados */
+#subpanel-listaResultados .aviso-anulados{
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  padding:12px 16px;margin-bottom:12px;border-radius:12px;
+  border:1px solid rgba(209,19,46,.35);border-left-width:4px;
+  background:linear-gradient(90deg,rgba(209,19,46,.08),transparent 70%),var(--tarjeta);
+  font-size:.85rem;font-weight:600;
+}
+#subpanel-listaResultados .aviso-anulados[hidden]{display:none;}
+#subpanel-listaResultados .aviso-anulados-texto{flex:1 1 220px;}
+#subpanel-listaResultados .aviso-anulados-btn{margin:0;padding:7px 16px;font-size:.8rem;}
+
+/* ---------- Chips de estado ---------- */
+#subpanel-listaResultados .filtros-estado-resultados{
+  gap:6px;padding:5px;margin-bottom:16px;width:fit-content;max-width:100%;
+  background:var(--gris-claro);border:1px solid var(--borde);border-radius:999px;
+  overflow-x:auto;scrollbar-width:none;flex-wrap:nowrap;
+}
+#subpanel-listaResultados .filtros-estado-resultados::-webkit-scrollbar{display:none;}
+#subpanel-listaResultados .chip-estado{
+  flex:0 0 auto;padding:7px 14px;border:1.5px solid transparent;background:transparent;
+  color:var(--texto-suave);font-size:.8rem;white-space:nowrap;
+  transition:background-color .15s,color .15s,box-shadow .15s;
+}
+#subpanel-listaResultados .chip-estado:hover:not(.activo){background:var(--tarjeta);color:var(--marino-texto);border-color:transparent;}
+#subpanel-listaResultados .chip-estado.activo{
+  background:linear-gradient(135deg,var(--marino),var(--marino2));color:#fff;border-color:transparent;
+  box-shadow:0 4px 12px -4px rgba(12,27,46,.5);
+}
+#subpanel-listaResultados .chip-estado:focus-visible{outline:2px solid var(--celeste);outline-offset:2px;}
+#subpanel-listaResultados .chip-estado-n{font-variant-numeric:tabular-nums;}
+#subpanel-listaResultados .chip-estado-anulados.hay-pendientes:not(.activo){color:#b91c1c;}
+#subpanel-listaResultados .chip-estado-anulados.hay-pendientes:not(.activo) .chip-estado-n{background:rgba(209,19,46,.14);}
+
+/* ---------- Tabla ---------- */
+#subpanel-listaResultados table.lista{
+  border-collapse:separate;border-spacing:0;
+  border:1px solid var(--borde);border-radius:var(--res-radio);
+  box-shadow:var(--res-sombra);overflow:hidden;
+}
+#subpanel-listaResultados table.lista thead th{
+  position:sticky;top:0;z-index:2;padding:13px 16px;font-size:.72rem;letter-spacing:.8px;white-space:nowrap;
+}
+#subpanel-listaResultados table.lista td{padding:14px 16px;vertical-align:middle;}
+#subpanel-listaResultados table.lista tbody tr:nth-child(even){background:color-mix(in srgb,var(--fondo-alt) 55%,transparent);}
+#subpanel-listaResultados table.lista tbody tr:hover{background:rgba(91,184,232,.09);}
+#subpanel-listaResultados table.lista tbody tr:hover td:first-child{box-shadow:inset 3px 0 0 var(--celeste);}
+
+/* Celda Partido: equipos en negrita, fecha como subtexto */
+#subpanel-listaResultados .partido-equipos{font-weight:700;color:var(--marino-texto);}
+#subpanel-listaResultados .partido-vs{margin:0 3px;color:var(--rojo);font-weight:400;}
+#subpanel-listaResultados .resultado-fecha{display:inline-block;margin-top:4px;font-size:.74rem;font-weight:600;color:var(--texto-suave);}
+
+/* Celda Resultado: marcador tipo "pastilla" */
+#subpanel-listaResultados table.lista td[data-label="Resultado"]{
+  font-family:var(--font-tit);font-size:1.05rem;font-weight:700;letter-spacing:.5px;
+  font-variant-numeric:tabular-nums;color:var(--marino-texto);white-space:nowrap;
+}
+
+/* Jornada y competición */
+#subpanel-listaResultados table.lista td[data-label="Jornada"]{font-weight:700;font-variant-numeric:tabular-nums;color:var(--texto-suave);}
+#subpanel-listaResultados .competicion-celda{gap:8px;font-weight:600;}
+#subpanel-listaResultados .competicion-celda-logo{width:24px;height:24px;background:#fff;padding:2px;border:1px solid var(--borde);}
+
+/* Badges de estado: con punto de color */
+#subpanel-listaResultados .estado-resultado{
+  display:inline-flex;align-items:center;gap:6px;padding:4px 11px;font-size:.7rem;
+  letter-spacing:.3px;text-transform:uppercase;
+}
+#subpanel-listaResultados .estado-resultado::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;}
+#subpanel-listaResultados .estado-resultado-en_juego::before{animation:resPulso 1.4s ease-in-out infinite;}
+[data-theme="dark"] #subpanel-listaResultados .estado-resultado-en_juego{background:rgba(22,163,74,.2);color:#4ade80;}
+[data-theme="dark"] #subpanel-listaResultados .estado-resultado-programado{background:rgba(91,184,232,.16);color:var(--celeste-claro);}
+[data-theme="dark"] #subpanel-listaResultados .estado-resultado-retrasado{background:rgba(245,158,11,.16);color:#fbbf24;}
+[data-theme="dark"] #subpanel-listaResultados .estado-resultado-anulado{background:rgba(248,113,113,.16);color:#fca5a5;}
+
+/* Insignia partidazo */
+#subpanel-listaResultados .partidazo-bloque-admin{margin-bottom:6px;}
+
+/* Acciones: botones agrupados */
+#subpanel-listaResultados table.lista td.acciones{white-space:nowrap;}
+#subpanel-listaResultados table.lista .acciones button,
+#subpanel-listaResultados table.lista .acciones a{margin-bottom:4px;}
+
+/* Paginación */
+#subpanel-listaResultados .paginacion-lista{margin-top:20px;gap:6px;}
+#subpanel-listaResultados .paginacion-lista button{
+  min-width:38px;min-height:38px;border-radius:10px;font-variant-numeric:tabular-nums;
+}
+
+/* =====================================================================
+   3) RESPONSIVE
+   ===================================================================== */
+@media(max-width:900px){
+  #subpanel-listaResultados .buscador-lista-select{flex:1 1 170px;}
+  #subpanel-listaResultados .buscador-lista-contador{margin-left:0;}
+}
+@media(max-width:640px){
+  #panel-resultados .form-card-resultado{border-radius:12px;}
+  #panel-resultados .resultado-cabecera{padding:16px;}
+  #panel-resultados .resultado-cabecera-logo{width:42px;height:42px;}
+  #panel-resultados .marcador-preview{padding:20px 12px 18px;}
+  #panel-resultados .marcador-preview-escudo{width:54px;height:54px;}
+  #panel-resultados .marcador-preview-goles{font-size:1.7rem;min-width:92px;padding:6px 12px;}
+  #panel-resultados .marcador-preview-nombre{max-width:92px;font-size:.78rem;}
+  #panel-resultados #formResultado .row3,
+  #panel-resultados #formResultado .row3:has(#r_goles_local),
+  #panel-resultados #formResultado .row3:has(#r_goles_visitante){grid-template-columns:1fr;}
+  #panel-resultados .barra-acciones-form-principal{padding:12px 16px;justify-content:stretch;}
+  #panel-resultados .barra-acciones-form-principal .btn-primari,
+  #panel-resultados .barra-acciones-form-principal .btn-secundari{flex:1 1 100%;min-width:0;}
+  #subpanel-listaResultados .buscador-lista{padding:12px;}
+  #subpanel-listaResultados .buscador-lista-input,
+  #subpanel-listaResultados .buscador-lista-select{flex:1 1 100%;}
+  #subpanel-listaResultados .filtros-estado-resultados{width:100%;border-radius:14px;}
+  /* En móvil la tabla ya se convierte en tarjetas (admin.css): se les da relieve */
+  #subpanel-listaResultados table.lista{border:none;box-shadow:none;border-radius:0;overflow:visible;}
+  #subpanel-listaResultados table.lista tbody tr{
+    border-radius:var(--res-radio);box-shadow:var(--res-sombra);background:var(--tarjeta);
+  }
+  #subpanel-listaResultados table.lista tbody tr:nth-child(even){background:var(--tarjeta);}
+  #subpanel-listaResultados table.lista tbody tr:hover td:first-child{box-shadow:none;}
+}
+
+/* ---------- Accesibilidad: sin animaciones si el sistema lo pide ---------- */
+@media(prefers-reduced-motion:reduce){
+  #panel-resultados *,#subpanel-listaResultados *{animation:none !important;transition:none !important;}
+}
+
+/* =====================================================================
+   4) VER RESULTADOS — botones de la columna de acciones
+   ---------------------------------------------------------------------
+   Antes convivían 5 botones rellenos con degradado (Minuto a minuto,
+   Confirmar, Reprogramar, Retrasar, Anular) con otros 2 en contorno
+   (Editar, Eliminar), con tamaños y sombras distintos: todos gritaban
+   igual. Ahora hay jerarquía:
+     · PRIMARIA (rellena, verde/azul): lo que toca hacer ahora con el
+       partido -> Minuto a minuto, Confirmar resultado, Reprogramar.
+     · SECUNDARIA (contorno celeste): Editar / Solicitar edición.
+     · ESTADO (tono suave, ámbar / gris): Retrasar, Anular. Hacen
+       cambios de estado, pero no deben competir con la primaria.
+     · PELIGRO (contorno rojo, relleno al pasar el ratón): Eliminar.
+   Todos comparten alto, radio, tipografía y estados. Cada variante solo
+   define variables (--b-*: reposo, --h-*: hover), así que el modo
+   oscuro y los hover salen de un único sitio.
+   Los !important son a propósito: admin.css fija background/color con
+   !important en los botones de estado y hay reglas :hover más
+   específicas que quitaban el box-shadow.
+   ===================================================================== */
+#subpanel-listaResultados table.lista td.acciones{
+  white-space:normal;min-width:210px;max-width:360px;
+}
+#subpanel-listaResultados table.lista .acciones button{
+  /* reposo por defecto: secundaria neutra */
+  --b-bg:transparent;--b-fg:var(--marino-texto);--b-ring:var(--borde);--b-sombra:0 0 #0000;
+  --h-bg:var(--gris-claro);--h-fg:var(--marino-texto);--h-ring:var(--texto-suave);--h-sombra:0 0 #0000;
+
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  min-height:32px;margin:0 6px 6px 0;padding:0 14px;
+  border:0;border-radius:999px;
+  font-size:.76rem;font-weight:700;line-height:1;letter-spacing:.1px;
+  white-space:nowrap;cursor:pointer;
+  background:var(--b-bg)!important;color:var(--b-fg)!important;
+  box-shadow:inset 0 0 0 1.5px var(--b-ring),var(--b-sombra)!important;
+  transition:background-color .16s,color .16s,box-shadow .16s,transform .16s var(--res-curva,ease);
+}
+#subpanel-listaResultados table.lista .acciones button:hover:not(:disabled){
+  --b-bg:var(--h-bg);--b-fg:var(--h-fg);--b-ring:var(--h-ring);--b-sombra:var(--h-sombra);
+  transform:translateY(-1px);
+}
+#subpanel-listaResultados table.lista .acciones button:active:not(:disabled){transform:translateY(0) scale(.97);}
+#subpanel-listaResultados table.lista .acciones button:focus-visible{outline:2px solid var(--celeste);outline-offset:2px;}
+#subpanel-listaResultados table.lista .acciones button:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+
+/* PRIMARIA verde: Minuto a minuto / Confirmar resultado */
+#subpanel-listaResultados table.lista .acciones .btn-minuto-a-minuto,
+#subpanel-listaResultados table.lista .acciones .btn-confirmar-resultado{
+  --b-bg:linear-gradient(135deg,#1a9e57,#0f7a41);--b-fg:#fff;--b-ring:transparent;--b-sombra:0 3px 10px rgba(26,158,87,.28);
+  --h-bg:linear-gradient(135deg,#20b366,#128a4a);--h-fg:#fff;--h-ring:transparent;--h-sombra:0 6px 16px rgba(26,158,87,.4);
+}
+/* PRIMARIA azul: Reprogramar */
+#subpanel-listaResultados table.lista .acciones .btn-reprogramar-partido{
+  --b-bg:linear-gradient(135deg,#2f9fd8,#1f7fb3);--b-fg:#fff;--b-ring:transparent;--b-sombra:0 3px 10px rgba(47,159,216,.3);
+  --h-bg:linear-gradient(135deg,#43b0e6,#2689c0);--h-fg:#fff;--h-ring:transparent;--h-sombra:0 6px 16px rgba(47,159,216,.42);
+}
+/* SECUNDARIA: Editar */
+#subpanel-listaResultados table.lista .acciones .editar{
+  --b-bg:transparent;--b-fg:#1f7fb0;--b-ring:var(--celeste);
+  --h-bg:var(--celeste);--h-fg:#fff;--h-ring:var(--celeste);--h-sombra:0 4px 12px rgba(91,184,232,.35);
+}
+/* SECUNDARIA ámbar: Solicitar edición (no es tu partido) */
+#subpanel-listaResultados table.lista .acciones .solicitar{
+  --b-bg:#fef3da;--b-fg:#a3760f;--b-ring:#f0deac;
+  --h-bg:#f0c14b;--h-fg:#fff;--h-ring:#f0c14b;--h-sombra:0 4px 12px rgba(240,193,75,.4);
+}
+/* ESTADO ámbar suave: Retrasar */
+#subpanel-listaResultados table.lista .acciones .btn-retrasar-partido{
+  --b-bg:rgba(245,158,11,.12);--b-fg:#a15c07;--b-ring:rgba(245,158,11,.4);
+  --h-bg:#d98a0b;--h-fg:#fff;--h-ring:#d98a0b;--h-sombra:0 4px 12px rgba(217,138,11,.38);
+}
+/* ESTADO gris oscuro suave: Anular */
+#subpanel-listaResultados table.lista .acciones .btn-anular-partido{
+  --b-bg:rgba(20,22,27,.06);--b-fg:#2b2f38;--b-ring:rgba(20,22,27,.22);
+  --h-bg:#1b1e25;--h-fg:#fff;--h-ring:#1b1e25;--h-sombra:0 4px 12px rgba(0,0,0,.32);
+}
+/* PELIGRO: Eliminar */
+#subpanel-listaResultados table.lista .acciones .eliminar{
+  --b-bg:transparent;--b-fg:var(--rojo);--b-ring:rgba(209,19,46,.45);
+  --h-bg:var(--rojo);--h-fg:#fff;--h-ring:var(--rojo);--h-sombra:0 4px 12px rgba(209,19,46,.35);
+}
+
+/* ---------- Modo oscuro ---------- */
+[data-theme="dark"] #subpanel-listaResultados table.lista .acciones button{
+  --b-fg:#e5e9f0;--b-ring:#3a4658;--h-bg:rgba(255,255,255,.08);--h-fg:#fff;--h-ring:#6b7a90;
+}
+[data-theme="dark"] #subpanel-listaResultados table.lista .acciones .editar{
+  --b-bg:transparent;--b-fg:#7cc9ee;--b-ring:#3a8bb5;--h-bg:var(--celeste);--h-fg:#0c1b2e;--h-ring:var(--celeste);
+}
+[data-theme="dark"] #subpanel-listaResultados table.lista .acciones .solicitar{
+  --b-bg:#3a2f16;--b-fg:#e0b060;--b-ring:#5a4720;--h-bg:#e0b060;--h-fg:#2a1f08;--h-ring:#e0b060;
+}
+[data-theme="dark"] #subpanel-listaResultados table.lista .acciones .btn-retrasar-partido{
+  --b-bg:rgba(245,158,11,.16);--b-fg:#fbbf24;--b-ring:rgba(245,158,11,.4);--h-bg:#f59e0b;--h-fg:#2a1a02;--h-ring:#f59e0b;
+}
+[data-theme="dark"] #subpanel-listaResultados table.lista .acciones .btn-anular-partido{
+  --b-bg:rgba(255,255,255,.07);--b-fg:#d5dae3;--b-ring:rgba(255,255,255,.2);--h-bg:#e5e9f0;--h-fg:#14161b;--h-ring:#e5e9f0;
+}
+[data-theme="dark"] #subpanel-listaResultados table.lista .acciones .eliminar{
+  --b-bg:transparent;--b-fg:#ff6b7d;--b-ring:rgba(255,107,125,.5);--h-bg:#d1132e;--h-fg:#fff;--h-ring:#d1132e;
+}
+
+/* ---------- Móvil (la tabla se convierte en tarjetas, <=780px) ----------
+   Rejilla de 2 columnas: las primarias ocupan toda la fila; Editar +
+   Eliminar y Retrasar + Anular quedan en pareja; un botón suelto en la
+   última fila también se estira. Altura táctil de 44px. */
+@media(max-width:780px){
+  #subpanel-listaResultados table.lista td.acciones{
+    display:grid;grid-template-columns:1fr 1fr;gap:8px;
+    align-items:stretch;min-width:0;max-width:none;padding-top:14px;
+  }
+  #subpanel-listaResultados table.lista .acciones button{
+    margin:0;width:100%;min-height:44px;padding:0 12px;font-size:.84rem;
+  }
+  #subpanel-listaResultados table.lista .acciones .btn-minuto-a-minuto,
+  #subpanel-listaResultados table.lista .acciones .btn-confirmar-resultado,
+  #subpanel-listaResultados table.lista .acciones .btn-reprogramar-partido,
+  #subpanel-listaResultados table.lista .acciones button:last-child:nth-child(odd){grid-column:1/-1;}
+}
+
+@media (prefers-reduced-motion:reduce){
+  #subpanel-listaResultados table.lista .acciones button{transition:background-color .01s,color .01s,box-shadow .01s;}
+  #subpanel-listaResultados table.lista .acciones button:hover:not(:disabled),
+  #subpanel-listaResultados table.lista .acciones button:active:not(:disabled){transform:none;}
+}

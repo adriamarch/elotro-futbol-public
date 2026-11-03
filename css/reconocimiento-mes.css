@@ -1,0 +1,96 @@
+/* =====================================================================
+   RECONOCIMIENTO DEL MES — "Redactor/a del mes" y "Foto del mes"
+   Módulo de la portada (#seccion-reconocimiento, lo pinta cargaReconocimiento
+   en js/main.js, que también carga esta hoja justo antes de pintarlo: está
+   por debajo del pliegue, así que no pesa en el primer pintado).
+   Usa las variables del tema (claro/oscuro) de style.css.
+   ===================================================================== */
+.reconocimiento-portada{
+  --reco-oro:#f5b301;--reco-oro-claro:#ffd84d;--reco-oro-osc:#a87300;--reco-tinta:#3b2a00;
+  margin:48px 0 0;
+}
+.reconocimiento-portada[hidden]{display:none;}
+.reconocimiento-sub{margin:-2px 0 18px;font-size:.88rem;color:var(--texto-suave);}
+.reconocimiento-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;}
+.reconocimiento-grid.reconocimiento-una{grid-template-columns:minmax(0,560px);}
+
+/* ---------- Tarjeta base (Redactor/a del mes) ---------- */
+.reco-tarjeta{
+  position:relative;isolation:isolate;display:flex;gap:20px;align-items:center;min-width:0;overflow:hidden;
+  padding:24px 24px 24px 30px;border:1px solid color-mix(in srgb,var(--reco-oro) 38%,var(--borde));border-radius:18px;
+  background:radial-gradient(120% 150% at 100% 0%,color-mix(in srgb,var(--reco-oro) 15%,transparent),transparent 62%),var(--tarjeta);
+  box-shadow:var(--sombra-sm,0 1px 2px rgba(12,27,46,.08));
+}
+.reco-tarjeta::before{
+  content:"";position:absolute;inset:0 auto 0 0;width:5px;
+  background:linear-gradient(180deg,var(--reco-oro-claro),var(--reco-oro) 55%,var(--rojo));
+}
+.reco-cuerpo{min-width:0;flex:1 1 auto;}
+.reco-etiqueta{
+  display:inline-flex;align-items:center;gap:6px;margin:0 0 9px;padding:4px 11px 4px 9px;border-radius:999px;
+  background:color-mix(in srgb,var(--reco-oro) 22%,transparent);color:var(--reco-oro-osc);
+  font-family:var(--font-tit);font-size:.74rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;line-height:1.2;
+}
+.reco-etiqueta svg{width:14px;height:14px;flex:0 0 auto;}
+.reco-nombre{margin:0 0 4px;font-family:var(--font-tit);font-size:1.45rem;font-weight:600;line-height:1.15;color:var(--texto);overflow-wrap:anywhere;text-wrap:balance;}
+.reco-nombre a{color:inherit;text-decoration:none;background:linear-gradient(currentColor,currentColor) 0 100%/0 2px no-repeat;transition:background-size .25s ease;}
+.reco-nombre a:hover,.reco-nombre a:focus-visible{background-size:100% 2px;}
+.reco-nombre a:focus-visible{outline:2px solid var(--reco-oro);outline-offset:3px;border-radius:3px;}
+.reco-dato{margin:0;font-size:.9rem;color:var(--texto-suave);}
+.reco-dato a{color:inherit;font-weight:600;text-decoration:underline;text-decoration-color:color-mix(in srgb,currentColor 35%,transparent);text-underline-offset:3px;}
+.reco-dato a:hover{text-decoration-color:currentColor;}
+
+/* Avatar con aro dorado y medalla */
+.reco-avatar-caja{position:relative;flex:0 0 auto;}
+.reco-avatar{
+  width:88px;height:88px;border-radius:50%;overflow:hidden;display:grid;place-items:center;
+  background:var(--marino2);color:#fff;font-family:var(--font-tit);font-size:2rem;
+  box-shadow:0 0 0 3px var(--tarjeta),0 0 0 6px var(--reco-oro);
+}
+.reco-avatar img{width:100%;height:100%;object-fit:cover;display:block;}
+.reco-medalla{
+  position:absolute;right:-6px;bottom:-4px;display:grid;place-items:center;width:32px;height:32px;border-radius:50%;
+  background:linear-gradient(135deg,var(--reco-oro-claro),var(--reco-oro));color:var(--reco-tinta);
+  box-shadow:0 0 0 3px var(--tarjeta),0 4px 10px rgba(168,115,0,.45);
+}
+.reco-medalla svg{width:17px;height:17px;}
+
+/* ---------- Foto del mes: la imagen manda, el texto va encima ---------- */
+.reco-tarjeta.reco-foto{display:block;padding:0;border-color:transparent;background:#0c1b2e;color:#fff;}
+.reco-foto::before{display:none;}
+.reco-foto::after{
+  content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
+  background:linear-gradient(to top,rgba(8,17,31,.94) 0%,rgba(8,17,31,.6) 34%,rgba(8,17,31,0) 66%);
+}
+.reco-foto .reco-imagen{display:block;aspect-ratio:16/10;background:var(--gris-claro);overflow:hidden;}
+.reco-foto .reco-imagen img{width:100%;height:100%;object-fit:cover;display:block;}
+.reco-foto .reco-cuerpo{position:absolute;z-index:2;inset:auto 0 0 0;padding:22px 24px;}
+.reco-foto .reco-etiqueta{background:linear-gradient(135deg,var(--reco-oro-claro),var(--reco-oro));color:var(--reco-tinta);}
+.reco-foto .reco-nombre{color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.45);}
+.reco-foto .reco-dato{color:rgba(255,255,255,.86);}
+
+/* ---------- Modo oscuro ---------- */
+[data-theme="dark"] .reco-etiqueta{color:var(--reco-oro-claro);}
+[data-theme="dark"] .reco-tarjeta{border-color:color-mix(in srgb,var(--reco-oro) 30%,var(--borde));}
+[data-theme="dark"] .reco-tarjeta.reco-foto{border-color:transparent;}
+
+/* ---------- Móvil ---------- */
+@media (max-width:720px){
+  .reconocimiento-portada{margin-top:40px;}
+  .reconocimiento-grid{grid-template-columns:minmax(0,1fr);gap:16px;}
+  .reco-tarjeta{gap:16px;padding:20px 18px 20px 24px;}
+  .reco-avatar{width:70px;height:70px;font-size:1.6rem;}
+  .reco-medalla{width:28px;height:28px;}
+  .reco-nombre{font-size:1.28rem;}
+  .reco-foto .reco-cuerpo{padding:18px;}
+}
+
+/* ---------- Movimiento: solo transform/opacity (no repintan el layout) ---------- */
+@media (prefers-reduced-motion:no-preference){
+  .reco-tarjeta{transition:transform .22s ease,box-shadow .22s ease;}
+  .reco-foto .reco-imagen img{transition:transform .6s cubic-bezier(.22,.8,.3,1);}
+}
+@media (hover:hover) and (prefers-reduced-motion:no-preference){
+  .reco-tarjeta:hover{transform:translateY(-3px);box-shadow:var(--sombra-md,0 10px 28px rgba(12,27,46,.16));}
+  .reco-foto:hover .reco-imagen img{transform:scale(1.05);}
+}

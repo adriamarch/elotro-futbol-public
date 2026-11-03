@@ -1,0 +1,77 @@
+/* Rachas semanales: tarjeta de "Mi progreso" (redactores y fotógrafos). */
+.racha{
+  --racha-1:#ff9f1c; --racha-2:#ff5a1f; --racha-fondo:#fff6ea;
+  position:relative; overflow:hidden;
+  margin:0 0 22px; padding:20px;
+  border-radius:16px;
+  background:linear-gradient(135deg, var(--racha-fondo), var(--tarjeta,#fff) 70%);
+  border:1px solid rgba(255,138,31,.28);
+  box-shadow:0 6px 20px rgba(12,27,46,.06);
+}
+.racha-apagada{--racha-1:#9aa3b2; --racha-2:#7b8494; --racha-fondo:#f3f5f8; border-color:var(--borde,#e2e6ee);}
+.racha-riesgo{--racha-1:#ffb703; --racha-2:#f08c00; --racha-fondo:#fff9e6; border-color:rgba(240,140,0,.45);}
+
+.racha-cabecera{display:grid; grid-template-columns:auto auto 1fr; align-items:center; gap:14px 16px;}
+.racha-llama{width:58px; height:58px; display:flex; align-items:center; justify-content:center; transform-origin:50% 90%;}
+.racha-llama svg{width:100%; height:100%; filter:drop-shadow(0 4px 8px rgba(255,90,31,.35));}
+.racha-llama-ext{fill:var(--racha-2);}
+.racha-llama-int{fill:var(--racha-1);}
+.racha-viva .racha-llama{animation:racha-llama 1.8s ease-in-out infinite;}
+.racha-riesgo .racha-llama{animation:racha-latido 1.2s ease-in-out infinite;}
+.racha-apagada .racha-llama svg{filter:none; opacity:.75;}
+@keyframes racha-llama{0%,100%{transform:scale(1) rotate(-2deg)}50%{transform:scale(1.07) rotate(2deg)}}
+@keyframes racha-latido{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(.94);opacity:.7}}
+
+.racha-cifra{display:flex; flex-direction:column; align-items:flex-start; line-height:1;}
+.racha-num{font-family:var(--font-tit,inherit); font-size:2.9rem; font-weight:700; color:var(--racha-2); letter-spacing:-1px;}
+.racha-unidad{margin-top:4px; font-size:.74rem; text-transform:uppercase; letter-spacing:.6px; color:var(--gris-texto,#667085);}
+.racha-texto{min-width:0;}
+.racha-titular{margin:0 0 3px; font-size:1.02rem; color:var(--marino,#0c1b2e);}
+.racha-texto p{margin:0; font-size:.86rem; line-height:1.4; color:var(--gris-texto,#667085);}
+.racha-medalla{display:inline-block; margin-top:8px; padding:3px 10px; border-radius:999px; font-size:.76rem; font-weight:600; color:#9a4a00; background:rgba(255,159,28,.18);}
+
+.racha-celebrar{display:inline-block; margin:8px 0 0 8px; padding:3px 12px; border:0; border-radius:999px; font:inherit; font-size:.76rem; font-weight:600; cursor:pointer; color:#fff; background:linear-gradient(135deg,var(--racha-1),var(--racha-2)); box-shadow:0 2px 8px rgba(255,90,31,.3); transition:transform .15s ease;}
+.racha-celebrar:hover{transform:translateY(-1px) scale(1.04);}
+.racha-celebrar:focus-visible{outline:2px solid var(--racha-2); outline-offset:2px;}
+
+.racha-tira{display:grid; grid-template-columns:repeat(12,1fr); gap:6px; margin-top:18px;}
+.racha-celda{aspect-ratio:1; min-height:18px; border-radius:7px; background:rgba(12,27,46,.08); transition:transform .15s ease;}
+.racha-celda:hover{transform:translateY(-2px) scale(1.08);}
+.racha-celda.activa{background:linear-gradient(160deg,var(--racha-1),var(--racha-2)); box-shadow:0 2px 6px rgba(255,90,31,.3);}
+.racha-celda.actual{outline:2px solid var(--racha-2); outline-offset:2px;}
+.racha-celda.actual:not(.activa){background:transparent; border:2px dashed var(--racha-2); outline:none;}
+.racha-tira-leyenda{display:flex; justify-content:space-between; margin-top:6px; font-size:.68rem; color:var(--gris-texto,#667085);}
+
+.racha-stats{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:16px;}
+.racha-stats div{display:flex; flex-direction:column; align-items:center; text-align:center; gap:4px; padding:12px 8px; border-radius:12px; background:var(--tarjeta,#fff); border:1px solid var(--borde,#e2e6ee);}
+.racha-stats strong{font-family:var(--font-tit,inherit); font-size:1.35rem; line-height:1; color:var(--marino,#0c1b2e);}
+.racha-stats span{font-size:.7rem; line-height:1.25; color:var(--gris-texto,#667085);}
+
+.racha-hito{margin-top:16px;}
+.racha-hito-cab{display:flex; justify-content:space-between; gap:10px; font-size:.82rem; color:var(--marino,#0c1b2e);}
+.racha-hito-pista{height:9px; margin-top:6px; border-radius:999px; background:rgba(12,27,46,.09); overflow:hidden;}
+.racha-hito-relleno{height:100%; border-radius:999px; background:linear-gradient(90deg,var(--racha-1),var(--racha-2)); transition:width .6s ease;}
+.racha-hito-nota{margin:6px 0 0; font-size:.76rem; color:var(--gris-texto,#667085);}
+.racha-hito-max{padding:10px 12px; border-radius:12px; background:rgba(255,159,28,.15); text-align:center; font-size:.86rem;}
+.racha .nivel-ayuda{margin:14px 0 0;}
+
+@media (max-width:640px){
+  .racha{padding:16px;}
+  .racha-cabecera{grid-template-columns:auto 1fr;}
+  .racha-texto{grid-column:1 / -1;}
+  .racha-llama{width:50px; height:50px;}
+  .racha-num{font-size:2.5rem;}
+  .racha-tira{gap:4px;}
+  .racha-stats{grid-template-columns:repeat(2,1fr);}
+}
+@media (prefers-reduced-motion:reduce){
+  .racha-llama, .racha-celda, .racha-hito-relleno{animation:none !important; transition:none !important;}
+}
+[data-theme="dark"] .racha{background:linear-gradient(135deg,rgba(255,138,31,.14),rgba(255,255,255,.03) 70%); border-color:rgba(255,159,28,.35);}
+[data-theme="dark"] .racha-apagada{background:rgba(255,255,255,.04); border-color:rgba(255,255,255,.12);}
+[data-theme="dark"] .racha-riesgo{background:linear-gradient(135deg,rgba(255,183,3,.14),rgba(255,255,255,.03) 70%);}
+[data-theme="dark"] .racha-titular, [data-theme="dark"] .racha-stats strong, [data-theme="dark"] .racha-hito-cab{color:#f1f4f9;}
+[data-theme="dark"] .racha-celda{background:rgba(255,255,255,.1);}
+[data-theme="dark"] .racha-stats div{background:rgba(255,255,255,.05); border-color:rgba(255,255,255,.12);}
+[data-theme="dark"] .racha-hito-pista{background:rgba(255,255,255,.12);}
+[data-theme="dark"] .racha-medalla{color:#ffd9a0; background:rgba(255,159,28,.22);}

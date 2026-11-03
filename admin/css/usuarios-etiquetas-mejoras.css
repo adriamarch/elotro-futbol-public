@@ -1,0 +1,224 @@
+/* =====================================================================
+   Panel > Usuarios: mejora visual de las ETIQUETAS de la tabla
+   (rol, 2FA, nivel, estado, "Aún no ha entrado", #ID, equipo/categoría,
+   filtros con contador). Solo CSS: no toca JS ni ids.
+   Todo va acotado a #subpanel-redactores y se carga DESPUÉS de admin.css.
+   ===================================================================== */
+
+#subpanel-redactores{
+  --etq-alto:26px;
+  --etq-radio:999px;
+  --etq-fuente:.72rem;
+}
+
+/* ---------- Rol (desplegable en forma de píldora) ---------- */
+#subpanel-redactores .select-rol{
+  height:30px;min-width:140px;padding:0 30px 0 13px;
+  border:1px solid rgba(255,255,255,.22);border-radius:var(--etq-radio);
+  font-size:var(--etq-fuente);font-weight:800;letter-spacing:.5px;line-height:1;
+  background-repeat:no-repeat,no-repeat;
+  background-position:right 11px center,0 0;
+  background-size:11px,100% 100%;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"),
+    linear-gradient(180deg,rgba(255,255,255,.2),rgba(255,255,255,0) 60%);
+  box-shadow:0 1px 2px rgba(12,27,46,.2),0 6px 12px -8px rgba(12,27,46,.55),inset 0 1px 0 rgba(255,255,255,.25);
+  text-shadow:0 1px 1px rgba(0,0,0,.18);
+  transition:filter .15s,transform .15s,box-shadow .15s;
+}
+#subpanel-redactores .select-rol:hover:not(:disabled){filter:brightness(1.05);transform:translateY(-1px);}
+#subpanel-redactores .select-rol:focus-visible{outline:2px solid var(--celeste);outline-offset:2px;}
+#subpanel-redactores .select-rol:disabled{opacity:.55;box-shadow:none;transform:none;}
+#subpanel-redactores .select-rol option{
+  background:var(--tarjeta,#fff);color:var(--texto,#0c1b2e);
+  font-weight:600;text-transform:none;letter-spacing:0;text-shadow:none;
+}
+#subpanel-redactores .select-rol.rol-admin{background-color:#c8102e;}
+#subpanel-redactores .select-rol.rol-redactor{background-color:#2d9fd8;}
+#subpanel-redactores .select-rol.rol-fotografo{background-color:#14284a;}
+
+/* ---------- Insignia 2FA (activo / pendiente) ---------- */
+#subpanel-redactores .badge-2fa{
+  --b-bg:#dcfce7;--b-fg:#166534;--b-bd:#a7e8c0;--b-pt:#16a34a;
+  display:inline-flex;align-items:center;gap:6px;
+  height:22px;box-sizing:border-box;margin-top:7px;padding:0 10px 0 8px;
+  border-radius:var(--etq-radio);
+  background:var(--b-bg);color:var(--b-fg);border:1px solid var(--b-bd);
+  font-size:.68rem;font-weight:800;letter-spacing:.3px;line-height:1;white-space:nowrap;
+}
+#subpanel-redactores .badge-2fa::before{
+  content:"";width:7px;height:7px;border-radius:50%;flex-shrink:0;
+  background:var(--b-pt);box-shadow:0 0 0 3px color-mix(in srgb,var(--b-pt) 22%,transparent);
+}
+#subpanel-redactores .badge-2fa-ok{--b-bg:#dcfce7;--b-fg:#166534;--b-bd:#a7e8c0;--b-pt:#16a34a;}
+#subpanel-redactores .badge-2fa-pend{--b-bg:#fef3c7;--b-fg:#92400e;--b-bd:#f6d98a;--b-pt:#d97706;}
+#subpanel-redactores .badge-2fa-btn{box-shadow:none;transition:background .15s,color .15s,border-color .15s,box-shadow .15s;}
+#subpanel-redactores .badge-2fa-btn span{margin-left:2px;font-size:.8rem;opacity:.6;transition:opacity .15s,transform .15s;}
+/* En otras filas: pulsar desactiva/restablece el 2FA (acción delicada → tono rojo) */
+#subpanel-redactores .badge-2fa-btn:hover,
+#subpanel-redactores .badge-2fa-btn:focus-visible{
+  --b-bg:#fee2e2;--b-fg:#991b1b;--b-bd:#fca5a5;--b-pt:#dc2626;
+  box-shadow:0 0 0 3px rgba(153,27,27,.16);outline:none;
+}
+#subpanel-redactores .badge-2fa-btn:hover span,
+#subpanel-redactores .badge-2fa-btn:focus-visible span{opacity:1;transform:scale(1.1);}
+/* En tu propia fila: abre Ajustes > Seguridad (neutro, azul) */
+#subpanel-redactores .badge-2fa-btn.badge-2fa-btn-propio:hover,
+#subpanel-redactores .badge-2fa-btn.badge-2fa-btn-propio:focus-visible{
+  --b-bg:#dbeafe;--b-fg:#1e40af;--b-bd:#93c5fd;--b-pt:#2563eb;
+  box-shadow:0 0 0 3px rgba(30,64,175,.16);
+}
+#subpanel-redactores .badge-2fa-btn.badge-2fa-btn-propio:hover span,
+#subpanel-redactores .badge-2fa-btn.badge-2fa-btn-propio:focus-visible span{transform:translateX(2px);}
+
+/* ---------- Nivel (botón-etiqueta) ---------- */
+#subpanel-redactores .nivel-badge{
+  min-height:30px;box-sizing:border-box;padding:5px 13px;gap:6px;
+  font-size:.76rem;font-weight:700;letter-spacing:.1px;line-height:1.15;
+  box-shadow:0 1px 2px rgba(12,27,46,.06);
+}
+#subpanel-redactores .nivel-badge-1{background:linear-gradient(135deg,#ecfdf3,#d9f7e6);}
+#subpanel-redactores .nivel-badge-2{background:linear-gradient(135deg,#eff6ff,#dbeafe);}
+#subpanel-redactores .nivel-badge-3{background:linear-gradient(135deg,#f5f0ff,#eadcff);}
+#subpanel-redactores .nivel-badge-4{background:linear-gradient(135deg,#fff3ea,#ffe2cc);}
+#subpanel-redactores .nivel-badge:focus-visible{outline:2px solid var(--celeste);outline-offset:2px;}
+#subpanel-redactores .nivel-badge:disabled{box-shadow:none;}
+#subpanel-redactores .nivel-badge-na{
+  background:var(--gris-claro);border-style:dashed;box-shadow:none;font-weight:600;
+}
+
+/* ---------- Estado: Activo / Inactivo ---------- */
+#subpanel-redactores .usuario-estado{
+  --e-bg:#dcfce7;--e-fg:#14532d;--e-bd:#a7e8c0;--e-pt:#16a34a;
+  height:var(--etq-alto);padding:0 13px 0 10px;gap:8px;
+  border-radius:var(--etq-radio);
+  background:var(--e-bg);color:var(--e-fg);border:1px solid var(--e-bd);
+  font-size:var(--etq-fuente);font-weight:800;letter-spacing:.2px;
+  box-shadow:none;
+}
+#subpanel-redactores .usuario-estado::before{
+  content:"";width:8px;height:8px;border-radius:50%;flex-shrink:0;
+  background:var(--e-pt);color:inherit;
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--e-pt) 24%,transparent);
+}
+/* Inactivo: gris neutro (no es un error, así que no va en rojo) */
+#subpanel-redactores .usuario-estado.borrador{
+  --e-bg:#f1f5f9;--e-fg:#475569;--e-bd:#d5dde8;--e-pt:#94a3b8;
+}
+/* La fila inactiva se atenúa, pero la etiqueta de estado se sigue leyendo bien */
+#subpanel-redactores tr.fila-usuario-inactiva td[data-label="Estado"]{opacity:1;}
+
+/* ---------- Detalles de la fila: #ID, "Aún no ha entrado", "Sin correo" ---------- */
+#subpanel-redactores .id-usuario-panel{
+  display:inline-flex;align-items:center;height:18px;padding:0 7px;border-radius:6px;
+  background:var(--gris-claro);border:1px solid var(--borde);
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:.66rem;font-weight:700;letter-spacing:.2px;color:var(--gris-texto);
+}
+#subpanel-redactores .usuario-sin-acceso{
+  display:inline-flex;align-items:center;gap:6px;
+  height:20px;padding:0 9px 0 7px;border-radius:var(--etq-radio);
+  background:#fff3ea;color:#b45309;border:1px solid #fdc999;
+  font-size:.68rem;font-weight:800;letter-spacing:.2px;line-height:1;
+}
+#subpanel-redactores .usuario-sin-acceso::before{
+  content:"";width:6px;height:6px;border-radius:50%;background:#f59e0b;flex-shrink:0;
+  box-shadow:0 0 0 3px rgba(245,158,11,.22);
+}
+#subpanel-redactores td[data-label="Correo"] .usuario-sin-acceso{display:flex;width:max-content;margin-top:5px;}
+#subpanel-redactores .usuario-sin-correo{
+  display:inline-flex;align-items:center;height:20px;padding:0 9px;border-radius:var(--etq-radio);
+  border:1px dashed var(--borde);font-size:.7rem;font-style:normal;font-weight:600;color:var(--gris-texto);
+}
+
+/* ---------- Equipo y categoría (chip que abre el editor) ---------- */
+#subpanel-redactores .btn-equipos-usuario{
+  position:relative;padding:6px 26px 6px 12px;border-radius:12px;
+  border:1px solid var(--borde);border-left:3px solid var(--celeste);
+  background:var(--tarjeta);font-size:.76rem;font-weight:700;line-height:1.3;
+  box-shadow:0 1px 2px rgba(12,27,46,.05);
+  transition:border-color .15s,background .15s,box-shadow .15s,transform .15s;
+}
+#subpanel-redactores .btn-equipos-usuario::after{
+  content:"✎";position:absolute;right:9px;top:50%;transform:translateY(-50%);
+  font-size:.74rem;opacity:.35;transition:opacity .15s;
+}
+#subpanel-redactores .btn-equipos-usuario:hover{
+  border-color:var(--celeste);background:var(--gris-claro);
+  box-shadow:0 4px 10px -6px rgba(12,27,46,.3);transform:translateY(-1px);
+}
+#subpanel-redactores .btn-equipos-usuario:hover::after{opacity:.85;}
+#subpanel-redactores .btn-equipos-usuario:focus-visible{outline:2px solid var(--celeste);outline-offset:2px;}
+
+/* ---------- Filtros con contador (Todos / Redactores / Activos…) ---------- */
+#subpanel-redactores .usuarios-chips button{
+  padding:5px 7px 5px 13px;font-weight:700;letter-spacing:.1px;
+}
+#subpanel-redactores .usuarios-chips button:not(:has(b)){padding-right:13px;}
+#subpanel-redactores .usuarios-chips button b{
+  min-width:20px;padding:2px 7px;text-align:center;
+  font-size:.68rem;font-weight:800;font-variant-numeric:tabular-nums;
+}
+#subpanel-redactores .usuarios-chips button:hover:not(.activo){background:var(--gris-claro);}
+#subpanel-redactores .usuarios-chips button.activo{box-shadow:0 4px 10px -5px rgba(12,27,46,.55);}
+#subpanel-redactores .usuarios-chips button:focus-visible{outline:2px solid var(--celeste);outline-offset:2px;}
+
+/* ---------- Modo oscuro ---------- */
+[data-theme="dark"] #subpanel-redactores .select-rol{
+  border-color:rgba(255,255,255,.12);
+  box-shadow:0 1px 2px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.12);
+}
+[data-theme="dark"] #subpanel-redactores .select-rol.rol-admin{background-color:#b4152e;}
+[data-theme="dark"] #subpanel-redactores .select-rol.rol-redactor{background-color:#2680b3;}
+[data-theme="dark"] #subpanel-redactores .select-rol.rol-fotografo{background-color:#2b4a7d;}
+
+[data-theme="dark"] #subpanel-redactores .badge-2fa-ok{--b-bg:rgba(34,197,94,.14);--b-fg:#86efac;--b-bd:rgba(34,197,94,.38);--b-pt:#4ade80;}
+[data-theme="dark"] #subpanel-redactores .badge-2fa-pend{--b-bg:rgba(245,158,11,.14);--b-fg:#fcd34d;--b-bd:rgba(245,158,11,.4);--b-pt:#fbbf24;}
+[data-theme="dark"] #subpanel-redactores .badge-2fa-btn:hover,
+[data-theme="dark"] #subpanel-redactores .badge-2fa-btn:focus-visible{
+  --b-bg:rgba(244,63,94,.16);--b-fg:#fca5a5;--b-bd:rgba(244,63,94,.45);--b-pt:#f87171;
+  box-shadow:0 0 0 3px rgba(252,165,165,.18);
+}
+[data-theme="dark"] #subpanel-redactores .badge-2fa-btn.badge-2fa-btn-propio:hover,
+[data-theme="dark"] #subpanel-redactores .badge-2fa-btn.badge-2fa-btn-propio:focus-visible{
+  --b-bg:rgba(59,130,246,.18);--b-fg:#93c5fd;--b-bd:rgba(96,165,250,.45);--b-pt:#60a5fa;
+  box-shadow:0 0 0 3px rgba(147,197,253,.18);
+}
+
+[data-theme="dark"] #subpanel-redactores .nivel-badge-1{background:rgba(34,197,94,.14);color:#86efac;border-color:rgba(34,197,94,.35);}
+[data-theme="dark"] #subpanel-redactores .nivel-badge-2{background:rgba(59,130,246,.16);color:#93c5fd;border-color:rgba(96,165,250,.38);}
+[data-theme="dark"] #subpanel-redactores .nivel-badge-3{background:rgba(168,85,247,.16);color:#d8b4fe;border-color:rgba(192,132,252,.4);}
+[data-theme="dark"] #subpanel-redactores .nivel-badge-4{background:rgba(249,115,22,.16);color:#fdba74;border-color:rgba(251,146,60,.4);}
+[data-theme="dark"] #subpanel-redactores .nivel-badge-na{background:transparent;color:var(--texto-suave,#9aa3b2);}
+
+[data-theme="dark"] #subpanel-redactores .usuario-estado{--e-bg:rgba(34,197,94,.14);--e-fg:#86efac;--e-bd:rgba(34,197,94,.38);--e-pt:#4ade80;}
+[data-theme="dark"] #subpanel-redactores .usuario-estado.borrador{--e-bg:rgba(148,163,184,.12);--e-fg:#cbd5e1;--e-bd:rgba(148,163,184,.32);--e-pt:#94a3b8;}
+
+[data-theme="dark"] #subpanel-redactores .id-usuario-panel{background:rgba(148,163,184,.1);border-color:var(--borde);color:#aab4c3;}
+[data-theme="dark"] #subpanel-redactores .usuario-sin-acceso{background:rgba(249,115,22,.14);color:#fdba74;border-color:rgba(251,146,60,.4);}
+[data-theme="dark"] #subpanel-redactores .usuario-sin-correo{color:#9aa3b2;}
+[data-theme="dark"] #subpanel-redactores .btn-equipos-usuario{background:var(--tarjeta);border-color:var(--borde);border-left-color:var(--celeste);}
+[data-theme="dark"] #subpanel-redactores .btn-equipos-usuario:hover{background:var(--panel-hover,var(--gris-claro));}
+[data-theme="dark"] #subpanel-redactores .usuarios-chips button:hover:not(.activo){background:var(--panel-hover,var(--gris-claro));}
+
+/* ---------- Tarjetas (portátil pequeño, tablet y móvil) ---------- */
+@media (max-width:1280px){
+  #subpanel-redactores .badge-2fa{margin-top:0;}
+  #subpanel-redactores td[data-label="Rol"]{flex-wrap:wrap;row-gap:8px;}
+  #subpanel-redactores .btn-equipos-usuario{padding-left:12px;}
+  #subpanel-redactores td[data-label="Correo"] .usuario-sin-acceso{margin-left:auto;}
+}
+
+@media (prefers-reduced-motion:reduce){
+  #subpanel-redactores .select-rol,
+  #subpanel-redactores .badge-2fa-btn,
+  #subpanel-redactores .badge-2fa-btn span,
+  #subpanel-redactores .btn-equipos-usuario,
+  #subpanel-redactores .btn-equipos-usuario::after{transition:none;}
+  #subpanel-redactores .select-rol:hover:not(:disabled),
+  #subpanel-redactores .btn-equipos-usuario:hover{transform:none;}
+}
+
+/* Redactor activo que lleva tiempo sin publicar (cuenta como "inactivo" en el filtro) */
+#subpanel-redactores .usuario-sin-publicar{display:block;margin-top:6px;font-size:11.5px;font-weight:700;color:#92400e;}
+[data-theme="dark"] #subpanel-redactores .usuario-sin-publicar{color:#fbbf24;}

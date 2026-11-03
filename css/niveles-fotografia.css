@@ -1,0 +1,160 @@
+/* Niveles de fotografía (F1–F2): ajustes sobre el pase de niveles de redacción (admin.css),
+   que está pensado para 4 niveles. Aquí se adapta a 2 y se estilan funciones y criterios. */
+
+/* Pase de 2 niveles: la línea del stepper (móvil) va de un paso al otro */
+.pase-foto .pase-pasos::before,
+.pase-foto .pase-pasos::after{left:25%;}
+.pase-foto .pase-pasos::before{right:25%;}
+.pase-foto .pase-pasos::after{width:calc(50% * var(--p,0));}
+
+/* PC: 2 columnas en vez de 4 */
+@container (min-width:880px){
+  .pase-foto .pase-pista{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;}
+}
+
+/* Funciones de cada nivel dentro de la tarjeta del pase */
+.pase-funciones{list-style:none;margin:4px 0 8px;padding:0;display:flex;flex-direction:column;gap:6px;}
+.pase-funciones li{position:relative;padding-left:16px;font-size:.76rem;line-height:1.4;}
+.pase-funciones li::before{content:"";position:absolute;left:2px;top:.45em;width:7px;height:7px;border-radius:50%;background:var(--nc);}
+.pase-ventajas{margin:0 0 8px;padding:8px 10px;border-radius:12px;font-size:.74rem;line-height:1.4;
+  background:color-mix(in srgb,var(--nc) 9%,transparent);}
+
+/* Criterios de valoración */
+.foto-criterios{list-style:none;margin:8px 0 14px;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;}
+.foto-criterio{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:12px;border:1px solid var(--borde);background:var(--tarjeta);}
+.foto-criterio strong{font-size:.82rem;color:var(--marino-texto,var(--marino));}
+.foto-criterio span{font-size:.76rem;line-height:1.4;opacity:.75;}
+.foto-criterios-compacta{grid-template-columns:1fr 1fr;gap:6px;margin:6px 0 0;}
+.foto-criterios-compacta .foto-criterio{padding:7px 9px;}
+.foto-criterios-compacta .foto-criterio span{display:none;}
+@media (max-width:480px){.foto-criterios-compacta{grid-template-columns:1fr;}}
+
+[data-theme="dark"] .foto-criterio{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.12);}
+[data-theme="dark"] .pase-ventajas{background:color-mix(in srgb,var(--nc) 16%,transparent);}
+
+
+/* =====================================================================
+   Mejoras visuales · Mi progreso (fotógrafos)
+   ===================================================================== */
+
+/* --- Insignia del nivel actual: icono con halo y cuerpo más limpio --- */
+.nivel-insignia-foto{
+  align-items:center;
+  background:
+    radial-gradient(120% 140% at 0% 0%,color-mix(in srgb,var(--nivel-color) 16%,transparent),transparent 60%),
+    linear-gradient(135deg,var(--nivel-color-suave,#f4f5f7),var(--tarjeta,#fff));
+}
+.nivel-insignia-foto .nivel-insignia-icono{
+  width:58px;height:58px;
+  background:linear-gradient(135deg,var(--nivel-color),color-mix(in srgb,var(--nivel-color) 62%,#fff));
+  box-shadow:0 0 0 5px color-mix(in srgb,var(--nivel-color) 18%,transparent),0 8px 18px -6px var(--nivel-color);
+}
+.nivel-insignia-foto .nivel-insignia-icono svg{width:28px;height:28px;}
+.nivel-insignia-foto .nivel-insignia-eyebrow{
+  padding:2px 9px;border-radius:999px;margin-bottom:5px;
+  background:color-mix(in srgb,var(--nivel-color) 12%,transparent);
+}
+
+/* --- Pase: pestañas del stepper (móvil) más claras --- */
+.pase-foto .pase-paso-txt{font-size:.74rem;}
+.pase-foto .pase-paso.pase-bloqueado .pase-paso-nodo{border-style:dashed;}
+
+/* --- Tarjetas de nivel --- */
+.pase-foto .pase-nivel{gap:8px;}
+.pase-foto .pase-nombre{line-height:1.2;}
+.pase-foto .pase-desc{opacity:.8;}
+.pase-foto .pase-req-titulo{
+  display:flex;align-items:center;gap:8px;margin-top:6px;
+}
+.pase-foto .pase-req-titulo::after{
+  content:"";flex:1;height:1px;background:var(--borde);
+}
+.pase-foto .pase-pie{
+  margin-top:auto;padding:10px 12px;font-weight:600;line-height:1.35;
+}
+.pase-foto .pase-pie-ok{
+  border:1px solid color-mix(in srgb,#16a34a 30%,transparent);
+}
+.pase-foto .pase-actual .pase-etiqueta{box-shadow:0 4px 10px color-mix(in srgb,var(--nc) 35%,transparent);}
+
+/* --- Funciones: marcador tipo "check" en lugar de punto --- */
+.pase-funciones li{padding-left:22px;}
+.pase-funciones li::before{
+  left:0;top:.2em;width:15px;height:15px;border-radius:50%;
+  background:color-mix(in srgb,var(--nc) 16%,transparent);
+}
+.pase-funciones li::after{
+  content:"";position:absolute;left:5px;top:calc(.2em + 3px);width:4px;height:7px;
+  border:solid var(--nc);border-width:0 2px 2px 0;transform:rotate(45deg) scale(.9);
+}
+.pase-ventajas{
+  border-left:3px solid var(--nc);border-radius:4px 12px 12px 4px;padding:9px 12px;
+}
+
+/* --- Actividad (partidos / fotos): tarjetas más vistosas, 2 columnas fijas --- */
+.nivel-insignia-foto ~ .nivel-stats-grid,
+.nivel-stats-grid:has(+ .nivel-ayuda){grid-template-columns:repeat(2,minmax(0,1fr));max-width:520px;}
+.nivel-stats-grid .nivel-stat{
+  position:relative;overflow:hidden;
+  background:linear-gradient(160deg,color-mix(in srgb,var(--celeste) 9%,var(--tarjeta)),var(--tarjeta) 70%);
+}
+.nivel-stats-grid .nivel-stat-icono{
+  width:38px;height:38px;border-radius:12px;
+  background:color-mix(in srgb,var(--celeste) 16%,transparent);
+}
+.nivel-stats-grid .nivel-stat-num{font-size:1.7rem;font-variant-numeric:tabular-nums;}
+
+/* --- Criterios de valoración: numerados y con acento lateral --- */
+.foto-criterios{counter-reset:criterio;gap:12px;}
+.foto-criterio{
+  position:relative;counter-increment:criterio;
+  padding:12px 14px 12px 52px;border-radius:14px;
+  transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease;
+}
+.foto-criterio::before{
+  content:counter(criterio);
+  position:absolute;left:12px;top:12px;width:28px;height:28px;border-radius:9px;
+  display:grid;place-items:center;font-size:.8rem;font-weight:800;
+  color:var(--celeste);background:color-mix(in srgb,var(--celeste) 14%,transparent);
+}
+.foto-criterio:hover{
+  transform:translateY(-2px);border-color:var(--celeste-claro,var(--celeste));
+  box-shadow:0 10px 22px rgba(12,27,46,.08);
+}
+.foto-criterio strong{font-size:.86rem;line-height:1.25;}
+.foto-criterio span{opacity:.8;}
+/* La versión compacta no lleva número ni sube al pasar el ratón */
+.foto-criterios-compacta .foto-criterio{padding:7px 9px;}
+.foto-criterios-compacta .foto-criterio::before{display:none;}
+.foto-criterios-compacta .foto-criterio:hover{transform:none;box-shadow:none;}
+
+/* --- Aviso de nivel máximo --- */
+.pase-foto ~ .nivel-maximo-aviso,
+.foto-criterios ~ .nivel-maximo-aviso{margin-top:6px;}
+
+/* --- Móvil --- */
+@media (max-width:480px){
+  .nivel-insignia-foto{flex-direction:row;align-items:center;padding:16px;}
+  .nivel-insignia-foto .nivel-insignia-icono{width:46px;height:46px;}
+  .nivel-insignia-foto .nivel-insignia-icono svg{width:22px;height:22px;}
+  .nivel-stats-grid:has(+ .nivel-ayuda){max-width:none;}
+  .foto-criterios{grid-template-columns:1fr;}
+}
+
+/* --- Modo oscuro --- */
+[data-theme="dark"] .nivel-insignia-foto{
+  background:
+    radial-gradient(120% 140% at 0% 0%,color-mix(in srgb,var(--nivel-color) 22%,transparent),transparent 60%),
+    var(--tarjeta);
+}
+[data-theme="dark"] .nivel-stats-grid .nivel-stat{
+  background:linear-gradient(160deg,rgba(91,184,232,.1),var(--tarjeta) 70%);
+}
+[data-theme="dark"] .foto-criterio:hover{box-shadow:0 10px 22px rgba(0,0,0,.35);}
+[data-theme="dark"] .pase-funciones li::before{background:color-mix(in srgb,var(--nc) 26%,transparent);}
+[data-theme="dark"] .pase-foto .pase-pie-ok{border-color:rgba(74,222,128,.3);}
+
+/* --- Accesibilidad: sin animaciones si el usuario lo pide --- */
+@media (prefers-reduced-motion:reduce){
+  .foto-criterio,.foto-criterio:hover{transition:none;transform:none;}
+}

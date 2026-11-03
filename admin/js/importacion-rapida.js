@@ -900,6 +900,45 @@ const ALIAS_NOMBRES_EQUIPO = {
   "real sociedad gimnastica": "RS Gimnástica de Torrelavega",
   "real sociedad gimnastica de torrelavega": "RS Gimnástica de Torrelavega",
   "real sociedad gimnastica torrelavega": "RS Gimnástica de Torrelavega",
+  // Club Portugalete (Segunda RFEF, Grupo 1)
+  "portugalete": "Club Portugalete",
+  "cd portugalete": "Club Portugalete",
+  "club deportivo portugalete": "Club Portugalete",
+  // Club Marino de Luanco (Segunda RFEF, Grupo 1)
+  "marino de luanco": "Club Marino de Luanco",
+  "marino luanco": "Club Marino de Luanco",
+  "cd marino de luanco": "Club Marino de Luanco",
+  "cd marino luanco": "Club Marino de Luanco",
+  "club deportivo marino de luanco": "Club Marino de Luanco",
+  // Atlético Osasuna B (Segunda RFEF, Grupo 2)
+  "osasuna b": "Atlético Osasuna B",
+  "ca osasuna b": "Atlético Osasuna B",
+  "osasuna ii": "Atlético Osasuna B",
+  "ca osasuna ii": "Atlético Osasuna B",
+  "ca osasuna promesas": "Atlético Osasuna B",
+  "atletico osasuna": "Atlético Osasuna B",
+  "club atletico osasuna b": "Atlético Osasuna B",
+  // SCR Peña Deportiva (Segunda RFEF, Grupo 3)
+  "scr penya deportiva": "SCR Peña Deportiva",
+  "sociedad cultural recreativa pena deportiva": "SCR Peña Deportiva",
+  // CD Minera (Segunda RFEF, Grupo 3)
+  "deportiva minera": "CD Minera",
+  "cd deportiva minera": "CD Minera",
+  "minera": "CD Minera",
+  // CDA Navalcarnero (Segunda RFEF, Grupo 5)
+  "navalcarnero": "CDA Navalcarnero",
+  "cd navalcarnero": "CDA Navalcarnero",
+  "ad navalcarnero": "CDA Navalcarnero",
+  "club deportivo agrupacion navalcarnero": "CDA Navalcarnero",
+  // RSD Alcalá (Segunda RFEF, Grupo 5)
+  "alcala": "RSD Alcalá",
+  "real sociedad deportiva alcala": "RSD Alcalá",
+  "rs deportiva alcala": "RSD Alcalá",
+  // Atlético de Madrid C (Segunda RFEF, Grupo 5)
+  "atletico madrid c": "Atlético de Madrid C",
+  "atletico de madrid iii": "Atlético de Madrid C",
+  "atletico madrid iii": "Atlético de Madrid C",
+  "club atletico de madrid c": "Atlético de Madrid C",
 };
 
 // Devuelve el nombre exacto de CLUBS_BY_CATEGORY si el texto coincide

@@ -1,0 +1,33 @@
+/* Niveles de fotografía (F1–F2): ajustes sobre el pase de niveles de redacción (admin.css),
+   que está pensado para 4 niveles. Aquí se adapta a 2 y se estilan funciones y criterios. */
+
+/* Pase de 2 niveles: la línea del stepper (móvil) va de un paso al otro */
+.pase-foto .pase-pasos::before,
+.pase-foto .pase-pasos::after{left:25%;}
+.pase-foto .pase-pasos::before{right:25%;}
+.pase-foto .pase-pasos::after{width:calc(50% * var(--p,0));}
+
+/* PC: 2 columnas en vez de 4 */
+@container (min-width:880px){
+  .pase-foto .pase-pista{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;}
+}
+
+/* Funciones de cada nivel dentro de la tarjeta del pase */
+.pase-funciones{list-style:none;margin:4px 0 8px;padding:0;display:flex;flex-direction:column;gap:6px;}
+.pase-funciones li{position:relative;padding-left:16px;font-size:.76rem;line-height:1.4;}
+.pase-funciones li::before{content:"";position:absolute;left:2px;top:.45em;width:7px;height:7px;border-radius:50%;background:var(--nc);}
+.pase-ventajas{margin:0 0 8px;padding:8px 10px;border-radius:12px;font-size:.74rem;line-height:1.4;
+  background:color-mix(in srgb,var(--nc) 9%,transparent);}
+
+/* Criterios de valoración */
+.foto-criterios{list-style:none;margin:8px 0 14px;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;}
+.foto-criterio{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:12px;border:1px solid var(--borde);background:var(--tarjeta);}
+.foto-criterio strong{font-size:.82rem;color:var(--marino-texto,var(--marino));}
+.foto-criterio span{font-size:.76rem;line-height:1.4;opacity:.75;}
+.foto-criterios-compacta{grid-template-columns:1fr 1fr;gap:6px;margin:6px 0 0;}
+.foto-criterios-compacta .foto-criterio{padding:7px 9px;}
+.foto-criterios-compacta .foto-criterio span{display:none;}
+@media (max-width:480px){.foto-criterios-compacta{grid-template-columns:1fr;}}
+
+[data-theme="dark"] .foto-criterio{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.12);}
+[data-theme="dark"] .pase-ventajas{background:color-mix(in srgb,var(--nc) 16%,transparent);}

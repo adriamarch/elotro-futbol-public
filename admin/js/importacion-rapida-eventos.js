@@ -279,6 +279,17 @@ function tokenizarTextoFlashscore(texto) {
   // tokenizar por líneas de la misma forma que la variante con saltos.
   t = t.replace(/(\d{1,3}(?:\+\d{1,2})?['’])/g, "\n$1\n");
   t = t.replace(/(\d{1,2}\s*-\s*\d{1,2})/g, "\n$1\n");
+  // En el texto corrido, el motivo de la tarjeta "(Falta)" / "(Simulación)"
+  // y el asistente "(Nombre)" quedaban pegados al nombre del jugador
+  // ("Terrer L. (Falta)"), así que RE_MOTIVO_AMARILLA nunca coincidía y la
+  // amarilla se guardaba con el motivo dentro del nombre. Se separan en su
+  // propia línea, igual que en la variante con saltos de línea.
+  t = t.replace(/\s*(\([^()\n]*\))\s*/g, "\n$1\n");
+  // Lo mismo con "1er Tiempo" / "2º Tiempo": si venía pegado detrás del
+  // último jugador de la parte ("Eugeni (Falta) 2º Tiempo"), toda la línea
+  // se tomaba como marca de parte y ese último evento (p. ej. la amarilla
+  // justo antes del descanso) se perdía.
+  t = t.replace(/(1e?r?\.?\s*tiempo|2[ºo]\.?\s*tiempo|1ª?\s*parte|2ª?\s*parte)/gi, "\n$1\n");
   const lineasBrutas = t.split("\n").map((l) => l.trim()).filter((l) => l !== "");
   // Cuando el texto venía todo corrido en pocas líneas largas, un mismo
   // "renglón" puede contener dos nombres de jugador pegados sin ningún
@@ -458,7 +469,7 @@ function analizarEventosFlashscore(tokens) {
         // nombre (amarilla "muda", sin motivo detectado aún), se
         // reemplaza por este mismo evento en vez de duplicarlo.
         if (pendientes.length === 1) pendientes = [];
-        eventos.push({ tipo: "amarilla", jugador, minuto: minutoActual, minuto_extra: minutoExtra });
+        eventos.push({ tipo: "amarilla", jugador, minuto: minutoActual, minuto_extra: minutoExtra, motivo_tarjeta: tok.replace(/[()]/g, "").trim().replace(/^./, (c) => c.toUpperCase()) });
       }
       continue;
     }
@@ -890,8 +901,8 @@ async function confirmarImportacionRapidaEventosFlashscore() {
         await crearEventoPartido(resultadoId, { tipo: "gol", equipo: ev.equipo, jugador: ev.jugador, jugador_asistencia: ev.asistente || null, minuto: ev.minuto, minuto_extra: ev.minuto_extra || null });
         anotar("⚽", `Gol: ${ev.jugador} (${ev.minuto}')${ev.asistente ? ` — asist. ${ev.asistente}` : ""}`);
       } else if (ev.tipo === "amarilla") {
-        await crearEventoPartido(resultadoId, { tipo: "amarilla", equipo: ev.equipo, jugador: ev.jugador, minuto: ev.minuto, minuto_extra: ev.minuto_extra || null });
-        anotar("🟨", `Tarjeta: ${ev.jugador} (${ev.minuto}')`);
+        await crearEventoPartido(resultadoId, { tipo: "amarilla", equipo: ev.equipo, jugador: ev.jugador, minuto: ev.minuto, minuto_extra: ev.minuto_extra || null, motivo_tarjeta: ev.motivo_tarjeta || null });
+        anotar("🟨", `Tarjeta: ${ev.jugador} (${ev.minuto}')${ev.motivo_tarjeta ? ` — ${ev.motivo_tarjeta}` : ""}`);
       } else if (ev.tipo === "doble_amarilla") {
         await crearEventoPartido(resultadoId, { tipo: "doble_amarilla", equipo: ev.equipo, jugador: ev.jugador, minuto: ev.minuto, minuto_extra: ev.minuto_extra || null });
         anotar("🟨🟥", `Doble amarilla: ${ev.jugador} (${ev.minuto}')`);

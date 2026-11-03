@@ -376,6 +376,7 @@ const CATEGORIES = {
   hypermotion: "LaLiga Hypermotion",
   primera_federacion: "Primera Federación",
   segunda_federacion: "Segunda Federación",
+  tercera_federacion: "Tercera Federación",
   copa_del_rey: "Copa del Rey",
   copa_federacion: "Copa Federación",
   general: "General",
@@ -456,6 +457,84 @@ function cloudinaryOptimizada(url, anchoMax) {
   return url.slice(0, i + marca.length) + transformacion + "/" + url.slice(i + marca.length);
 }
 
+// ---------- Miniaturas nítidas y ligeras para galerías ----------
+// Problema que resuelve: las celdas de la galería son verticales (4:5) y
+// las fotos casi siempre horizontales. Con object-fit:cover el navegador
+// ampliaba una foto pequeña (c_limit,w_420) hasta ~1,6x, y dpr_auto no
+// funciona sin Client Hints, así que en pantallas retina salía borrosa.
+// Solución:
+//  1) El recorte 4:5 lo hace Cloudinary (c_lfill + g_auto: elige la zona
+//     interesante y NUNCA amplía una foto pequeña) -> la foto llega ya
+//     con la forma de la celda y todos sus píxeles son útiles.
+//  2) srcset + sizes: el navegador elige solo el ancho justo según el
+//     tamaño real de la celda y la densidad de pantalla (móvil 2 columnas
+//     descarga poco; un monitor retina descarga más, solo lo necesario).
+//  3) f_auto -> AVIF/WebP (muy ligero) y q_auto:good (buena calidad sin
+//     engordar el archivo). fl_progressive mejora el caso JPEG.
+// Si la foto tiene un punto de enfoque manual (portada_foco) NO se recorta
+// en servidor, para respetar el object-position que eligió el redactor:
+// se manda con c_limit y anchos mayores (ver miniaturaSizes).
+const MINIATURA_ANCHOS = [240, 360, 480, 640, 800, 1000, 1280];
+
+// Realce fotográfico OPCIONAL (más contraste, color y nitidez). Se pide a Cloudinary
+// en un componente aparte, DESPUÉS del redimensionado, para que la nitidez actúe sobre
+// los píxeles finales. No toca el original. Mantener igual que REALCE_FX de visor-media.js.
+// Ajustar a gusto: e_improve:<outdoor|indoor>:<0-100> (indoor va mejor con focos de noche),
+// e_vibrance:<-100..100>, e_unsharp_mask:<1-2000>.
+const EOF_REALCE_FX = "e_improve:outdoor:40,e_vibrance:20,e_unsharp_mask:60";
+
+// ¿Está activado el realce en este dispositivo? (lo gestiona VisorMedia/realce-fotos.js)
+function realceActivo() {
+  try { return typeof VisorMedia !== "undefined" && !!VisorMedia.getRealce && VisorMedia.getRealce(); }
+  catch (e) { return false; }
+}
+
+// "realce" es opcional: si no se indica, se usa la preferencia del dispositivo.
+function cloudinaryMiniatura(url, ancho, recortar, realce) {
+  if (!url || typeof url !== "string") return url;
+  const marca = "/upload/";
+  const i = url.indexOf(marca);
+  if (i === -1) return url;
+  const forma = recortar === false ? "c_limit" : "c_lfill,g_auto,ar_4:5";
+  const on = realce === undefined ? realceActivo() : !!realce;
+  const t = on
+    ? `${forma},w_${ancho}/${EOF_REALCE_FX}/f_auto,q_auto:good,fl_progressive`
+    : `${forma},w_${ancho},f_auto,q_auto:good,fl_progressive`;
+  return url.slice(0, i + marca.length) + t + "/" + url.slice(i + marca.length);
+}
+
+function cloudinarySrcset(url, recortar, realce) {
+  if (!url || typeof url !== "string" || url.indexOf("/upload/") === -1) return "";
+  return MINIATURA_ANCHOS
+    .map((w) => `${cloudinaryMiniatura(url, w, recortar, realce)} ${w}w`)
+    .join(", ");
+}
+
+// Ancho (en CSS px) que ocupa cada celda según el modo y los breakpoints
+// de la galería (mismos que el CSS). "factor" > 1 se usa en fotos con foco
+// manual, que no se recortan en servidor y necesitan más ancho para cubrir
+// la celda vertical.
+function miniaturaSizes(tam, factor) {
+  const f = factor || 1;
+  const vw = (n) => (Math.round(n * f * 10) / 10) + "vw";
+  const px = (n) => Math.round(n * f) + "px";
+  if (tam === "compacto") {
+    return `(max-width:640px) ${vw(50)}, (max-width:900px) ${vw(25)}, (max-width:1300px) ${vw(16.7)}, min(${vw(14.3)}, ${px(260)})`;
+  }
+  if (tam === "grande") {
+    return `(max-width:900px) ${vw(50)}, min(${vw(33.4)}, ${px(616)})`;
+  }
+  return `(max-width:640px) ${vw(50)}, (max-width:900px) ${vw(33.4)}, (max-width:1300px) ${vw(25)}, min(${vw(20)}, ${px(362)})`;
+}
+
+// ¿La foto tiene un foco manual distinto del centro?
+function tieneFocoManual(f) {
+  if (!f || !f.portada_foco) return false;
+  if (typeof EOF_FOCO === "undefined") return true;
+  const n = EOF_FOCO.normalizar(f.portada_foco);
+  return !(n.x === 50 && n.y === 50);
+}
+
 // Logo de cada competición. Los ficheros se guardan en img/competiciones/
 // con estos nombres; si una categoría no tiene logo propio (general,
 // amistoso...) no se muestra ninguno.
@@ -463,12 +542,157 @@ const CATEGORY_LOGOS = {
   hypermotion: "img/competiciones/hypermotion.png",
   primera_federacion: "img/competiciones/primera-federacion.png",
   segunda_federacion: "img/competiciones/segunda-federacion.png",
+  tercera_federacion: "img/competiciones/tercera-federacion.png",
   copa_del_rey: "img/competiciones/copa-del-rey.png",
   copa_federacion: "img/competiciones/copa-federacion.png",
 };
 
 function categoriaLogo(cat) {
   return CATEGORY_LOGOS[cat] || "";
+}
+
+// ---------- Contexto de una noticia (categoría + equipos/partido) ----------
+// Etiqueta que va ENCIMA del titular en todas las tarjetas (portada,
+// listados, relacionadas, guardadas...) y en la cabecera de la noticia,
+// para saber de un vistazo, antes de entrar, de qué competición y de qué
+// equipo o partido habla. Una sola función para que se vea igual en todas
+// partes:
+//   - Línea 1: competición (logo si lo hay + nombre) · tipo (Crónica,
+//     Previa, Opinión...; el tipo solo en variantes grandes).
+//   - Línea 2: equipos. 1 club -> escudo + nombre; 2 clubes (previa/crónica
+//     de un partido) -> "escudo A  vs  escudo B". Los nombres nunca se
+//     recortan: si no caben en una línea, el segundo equipo baja a la
+//     siguiente.
+// Variantes: "card" (por defecto), "hero" (sobre foto oscura),
+// "compacta" (filas y miniaturas) y "cabecera" (página de la noticia).
+// Solo usa <span>: las tarjetas son un <a> entero y no se pueden anidar
+// enlaces. Si clubs.js no está cargado, simplemente no se pinta escudo.
+const TIPO_NOTICIA_ETIQUETA = {
+  cronica: "Crónica",
+  previa: "Previa",
+  opinion: "Opinión",
+  entrevista: "Entrevista",
+  analisis: "Análisis",
+  reportaje: "Reportaje",
+};
+
+// Hashtag legible a partir de un texto: sin acentos ni signos, en CamelCase
+// ("Atlético Osasuna B" -> "#AtleticoOsasunaB").
+function hashtagDeTexto(texto) {
+  const limpio = String(texto == null ? "" : texto)
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Za-z0-9 ]+/g, " ")
+    .trim();
+  if (!limpio) return "";
+  return "#" + limpio.split(/\s+/).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join("");
+}
+
+const HASHTAG_CATEGORIA = {
+  hypermotion: "#LaLigaHypermotion",
+  primera_federacion: "#PrimeraFederacion",
+  segunda_federacion: "#SegundaFederacion",
+  tercera_federacion: "#TerceraFederacion",
+  copa_del_rey: "#CopaDelRey",
+  copa_federacion: "#CopaFederacion",
+  amistoso: "#Amistoso",
+  arbitraje: "#Arbitraje",
+  jurisdiccion: "#JurisdiccionDeportiva",
+};
+const HASHTAG_TIPO = {
+  cronica: "#Cronica",
+  previa: "#Previa",
+  opinion: "#Opinion",
+  entrevista: "#Entrevista",
+  analisis: "#Analisis",
+  reportaje: "#Reportaje",
+};
+
+// Plural de cada tipo de noticia (título de la página de listado por tipo).
+const TIPO_NOTICIA_PLURAL = {
+  cronica: "Crónicas",
+  previa: "Previas",
+  opinion: "Opiniones",
+  entrevista: "Entrevistas",
+  analisis: "Análisis",
+  reportaje: "Reportajes",
+};
+
+// Competición a la que enlazar la página de un club: su liga (la plantilla y
+// las estadísticas de la página del club dependen de ella); si no está en
+// ninguna, la categoría de la propia noticia.
+function categoriaParaEnlaceClub(club, categoriaNoticia) {
+  const candidatas = ["hypermotion", "primera_federacion", "segunda_federacion", "tercera_federacion", categoriaNoticia, "copa_del_rey"].filter(Boolean);
+  if (typeof getClubsForCategoria === "function") {
+    for (const c of candidatas) {
+      try { if (getClubsForCategoria(c).includes(club)) return c; } catch (e) { /* clubs.js sin cargar */ }
+    }
+  }
+  return categoriaNoticia || "general";
+}
+
+// Hashtags de una noticia para la cabecera (SEO + navegación). Cada uno es
+// { texto, href, titulo } y lleva a una página real del sitio:
+//   competición / categorías adicionales -> categoria?cat=...
+//   tipo (#Cronica...)                   -> categoria?cat=...&tipo=... (solo ese tipo en esa competición)
+//   clubes                               -> categoria?cat=...&club=... (página del club)
+//   #FutbolNoProfesional / #ElOtroFutbol -> portada / quiénes somos
+// Sin repetidos y con un máximo para que no se convierta en un muro.
+function hashtagsNoticia(a, max = 9) {
+  if (!a) return [];
+  const lista = [];
+  const poner = (texto, href, titulo) => {
+    if (!texto || texto.length < 3 || !href) return;
+    if (lista.some((x) => x.texto.toLowerCase() === texto.toLowerCase())) return;
+    lista.push({ texto, href, titulo });
+  };
+  const urlCat = (c) => `/categoria?cat=${encodeURIComponent(c)}`;
+  const textoCat = (c) => HASHTAG_CATEGORIA[c] || (c && c !== "general" ? hashtagDeTexto(categoriaLabel(c)) : "");
+
+  const cat = a.categoria;
+  if (cat) poner(textoCat(cat) || (cat === "general" ? "#General" : ""), urlCat(cat), `Noticias de ${categoriaLabel(cat)}`);
+  if (a.tipo && HASHTAG_TIPO[a.tipo]) {
+    poner(HASHTAG_TIPO[a.tipo], `${urlCat(cat || "general")}&tipo=${encodeURIComponent(a.tipo)}`,
+      `${TIPO_NOTICIA_PLURAL[a.tipo] || "Noticias"}${cat ? " · " + categoriaLabel(cat) : ""}`);
+  }
+  parsearClubArticulo(a.club).slice(0, 2).forEach((c) => {
+    poner(hashtagDeTexto(c), `${urlCat(categoriaParaEnlaceClub(c, cat))}&club=${encodeURIComponent(c)}`, `Todo sobre ${c}`);
+  });
+  (Array.isArray(a.categorias_adicionales) ? a.categorias_adicionales : []).forEach((c) => {
+    poner(textoCat(c), urlCat(c), `Noticias de ${categoriaLabel(c)}`);
+  });
+  poner("#FutbolNoProfesional", "/", "Portada de ELOTROFÚTBOLTV");
+  poner("#ElOtroFutbol", "/quienes-somos", "Quiénes somos");
+  return lista.slice(0, max);
+}
+
+// Fila de hashtags: cada uno enlaza a su página (categoría, tipo, club...).
+function hashtagsNoticiaHTML(a) {
+  const esc = typeof escapeHtml === "function" ? escapeHtml : (t) => String(t == null ? "" : t);
+  const tags = hashtagsNoticia(a);
+  if (!tags.length) return "";
+  return `<nav class="hashtags-noticia" aria-label="Etiquetas de la noticia">${tags.map((h) =>
+    `<a class="hashtag" href="${esc(h.href)}" title="${esc(h.titulo || "")}"><span class="hashtag-almohadilla" aria-hidden="true">#</span>${esc(h.texto.slice(1))}</a>`
+  ).join("")}</nav>`;
+}
+
+// En las tarjetas (card, hero, compacta) solo se ve competición y tipo de
+// noticia. En la cabecera de la propia noticia, en vez de eso, va la fila de
+// hashtags (competición, tipo, equipos...).
+function contextoNoticiaHTML(a, { variante = "card" } = {}) {
+  if (!a) return "";
+  if (variante === "cabecera") return hashtagsNoticiaHTML(a);
+  const esc = typeof escapeHtml === "function" ? escapeHtml : (t) => String(t == null ? "" : t);
+  const compacta = variante === "compacta";
+  const etiquetaCat = categoriaLabel(a.categoria);
+  const logo = compacta ? "" : categoriaLogo(a.categoria);
+  const tipo = TIPO_NOTICIA_ETIQUETA[a.tipo] || "";
+
+  const cat = etiquetaCat
+    ? `<span class="ctx-cat${logo ? " ctx-cat-con-logo" : ""}">${logo ? `<img class="ctx-logo" src="${esc(logo)}" alt="" loading="lazy" decoding="async" onerror="this.style.display='none'">` : ""}<span class="ctx-cat-texto">${esc(etiquetaCat)}</span></span>`
+    : "";
+  const tipoHTML = tipo ? `<span class="ctx-tipo">${esc(tipo)}</span>` : "";
+  if (!cat && !tipoHTML) return "";
+  return `<span class="ctx-noticia ctx-${variante}"><span class="ctx-fila ctx-fila-cat">${cat}${tipoHTML}</span></span>`;
 }
 
 function formatFecha(fechaStr) {
@@ -640,6 +864,13 @@ function iconoEventoPublico(tipo) {
   return `<svg class="mev-icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/></svg>`;
 }
 
+// Etiqueta de un evento: igual que ETIQUETAS_EVENTO_PUBLICO[tipo] salvo en
+// el gol de penalti (gol con es_penalti = 1), que se rotula aparte.
+function etiquetaEventoPublico(ev) {
+  if (ev.tipo === "gol" && ev.es_penalti) return "Gol de penalti";
+  return ETIQUETAS_EVENTO_PUBLICO[ev.tipo] || ev.tipo;
+}
+
 function formatMinutoEventoPublico(ev) {
   // Los lanzamientos de la tanda de penaltis no llevan un minuto de
   // partido real: "minuto" guarda el número de orden del lanzamiento
@@ -682,6 +913,10 @@ function detalleJugadorEventoPublico(ev) {
       VAR_DECISIONES_PUBLICO[ev.var_decision],
       ev.jugador ? escapeHtml(ev.jugador) : "",
     ].filter(Boolean);
+    return partes.length ? " · " + partes.join(" · ") : "";
+  }
+  if (ev.tipo === "amarilla" || ev.tipo === "doble_amarilla" || ev.tipo === "roja") {
+    const partes = [ev.jugador ? escapeHtml(ev.jugador) : "", ev.motivo_tarjeta ? "Motivo: " + escapeHtml(ev.motivo_tarjeta) : ""].filter(Boolean);
     return partes.length ? " · " + partes.join(" · ") : "";
   }
   return ev.jugador ? " · " + escapeHtml(ev.jugador) : "";
@@ -1052,7 +1287,7 @@ function eventosArticuloBotonYPanelHTML(r) {
         <div class="evento-articulo-item ea-${String(ev.tipo || "").replace(/[^a-z_]/gi, "")}${ev.equipo === "local" ? " ea-local" : ev.equipo === "visitante" ? " ea-visitante" : ""}">
           ${iconoEventoPublico(ev.tipo)}
           <span class="mev-minuto">${formatMinutoEventoPublico(ev)}</span>
-          <span>${ev.tipo === "nota" ? escapeHtml(ev.jugador || "") : escapeHtml(ETIQUETAS_EVENTO_PUBLICO[ev.tipo] || ev.tipo) + detalleJugadorEventoPublico(ev)}</span>
+          <span>${ev.tipo === "nota" ? escapeHtml(ev.jugador || "") : escapeHtml(etiquetaEventoPublico(ev)) + detalleJugadorEventoPublico(ev)}</span>
           ${TIPOS_EVENTO_SIN_EQUIPO_PUBLICO.includes(ev.tipo) ? "" : `<span class="ea-equipo-tag">${ev.equipo === "local" ? escapeHtml(r.equipo_local) : escapeHtml(r.equipo_visitante)}</span>`}
         </div>`).join("")}
     </div>`;
@@ -1222,8 +1457,27 @@ const SAN_ATTR_POR_ETIQUETA = {
 
 function sanearHtmlContenido(html) {
   if (html === null || html === undefined || html === "") return "";
+  let entrada = String(html);
+  // Primera barrera: DOMPurify (js/vendor/purify.min.js; lo cargan noticia.html y
+  // el panel). Resiste los bypass por mutación (mXSS) que un recorrido propio del
+  // DOM + reserialización con innerHTML no cubre. Se le da la MISMA lista blanca
+  // que usa el recorrido de abajo, que se mantiene como segunda barrera (y como
+  // única si DOMPurify no se ha cargado en la página).
+  if (typeof DOMPurify !== "undefined" && typeof DOMPurify.sanitize === "function") {
+    entrada = DOMPurify.sanitize(entrada, {
+      ALLOWED_TAGS: Array.from(SAN_ETIQUETAS_OK),
+      ALLOWED_ATTR: [
+        ...SAN_ATTR_GLOBALES,
+        ...new Set(Object.values(SAN_ATTR_POR_ETIQUETA).flat()),
+      ],
+      FORBID_TAGS: Array.from(SAN_ETIQUETAS_BORRAR),
+      ALLOW_DATA_ATTR: false,
+      ALLOW_ARIA_ATTR: false,
+      KEEP_CONTENT: true,
+    });
+  }
   const plantilla = document.createElement("template");
-  plantilla.innerHTML = String(html);
+  plantilla.innerHTML = entrada;
 
   const urlSegura = (valor, permitirDataImagen) => {
     const limpio = String(valor).replace(/[\u0000-\u0020\u007f-\u009f\u200b-\u200f\u2028\u2029\ufeff]+/g, "");
@@ -1275,6 +1529,8 @@ const TIPOS_CONTENIDO = {
   opinion: "opinión",
   entrevista: "entrevista",
   uno_por_uno: "1x1 de jugadores",
+  rdp_previa: "rueda de prensa previa",
+  rdp_post: "rueda de prensa posterior",
 };
 function tipoContenidoLabel(tipo) {
   return TIPOS_CONTENIDO[tipo] || "noticia";

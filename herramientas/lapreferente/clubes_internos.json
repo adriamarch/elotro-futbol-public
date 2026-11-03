@@ -1,0 +1,926 @@
+[
+  {
+    "nombre": "AD Ceuta FC",
+    "competicion": "hypermotion",
+    "grupo": null,
+    "slug": "ad-ceuta-fc"
+  },
+  {
+    "nombre": "Albacete Balompié",
+    "competicion": "hypermotion",
+    "grupo": null,
+    "slug": "albacete-balompie"
+  },
+  {
+    "nombre": "Burgos CF",
+    "competicion": "hypermotion",
+    "grupo": null,
+    "slug": "burgos-cf"
+  },
+  {
+    "nombre": "Cádiz CF",
+    "competicion": "hypermotion",
+    "grupo": null,
+    "slug": "cadiz-cf"
+  },
+  {
+    "nombre": "CD Castellón",
+    "competicion": "hypermotion",
+    "grupo": null,
+    "slug": "cd-castellon"
+  },
+  {
+    "nombre": "CD Eldense",
+    "competicion": "hypermotion",
+    "grupo": null,
+    "slug": "cd-eldense"
+  },
+  {
+    "nombre": "CD Leganés",
+    "competicion": "hypermotion",
+    "grupo": null,
+    "slug": "cd-leganes"
+  },
+  {
+    "nombre": "CD Tenerife",
+    "competicion": "hypermotion",
+    "grupo": null,
+    "slug": "cd-tenerife"
+  },
+  {
+    "nombre": "CE Sabadell",
+    "competicion": "hypermotion",
+    "grupo": null,
+    "slug": "ce-sabadell"
+  },
+  {
+    "nombre": "Celta Fortuna",
+    "competicion": "hypermotion",
+    "grupo": null,
+    "slug": "celta-fortuna"
+  },
+  {
+    "nombre": "Córdoba CF",
+    "competicion": "hypermotion",
+    "grupo": null,
+    "slug": "cordoba-cf"
+  },
+  {
+    "nombre": "FC Andorra",
+    "competicion": "hypermotion",
+    "grupo": null,
+    "slug": "fc-andorra"
+  },
+  {
+    "nombre": "Girona FC",
+    "competicion": "hypermotion",
+    "grupo": null,
+    "slug": "girona-fc"
+  },
+  {
+    "nombre": "Granada CF",
+    "competicion": "hypermotion",
+    "grupo": null,
+    "slug": "granada-cf"
+  },
+  {
+    "nombre": "Real Sociedad B",
+    "competicion": "hypermotion",
+    "grupo": null,
+    "slug": "real-sociedad-b"
+  },
+  {
+    "nombre": "RCD Mallorca",
+    "competicion": "hypermotion",
+    "grupo": null,
+    "slug": "rcd-mallorca"
+  },
+  {
+    "nombre": "Real Oviedo",
+    "competicion": "hypermotion",
+    "grupo": null,
+    "slug": "real-oviedo"
+  },
+  {
+    "nombre": "Real Sporting",
+    "competicion": "hypermotion",
+    "grupo": null,
+    "slug": "real-sporting"
+  },
+  {
+    "nombre": "Real Valladolid CF",
+    "competicion": "hypermotion",
+    "grupo": null,
+    "slug": "real-valladolid-cf"
+  },
+  {
+    "nombre": "SD Eibar",
+    "competicion": "hypermotion",
+    "grupo": null,
+    "slug": "sd-eibar"
+  },
+  {
+    "nombre": "UD Almería",
+    "competicion": "hypermotion",
+    "grupo": null,
+    "slug": "ud-almeria"
+  },
+  {
+    "nombre": "UD Las Palmas",
+    "competicion": "hypermotion",
+    "grupo": null,
+    "slug": "ud-las-palmas"
+  },
+  {
+    "nombre": "AD Mérida",
+    "competicion": "primera_federacion",
+    "grupo": "Grupo 1",
+    "slug": "ad-merida"
+  },
+  {
+    "nombre": "Arenas Club",
+    "competicion": "primera_federacion",
+    "grupo": "Grupo 1",
+    "slug": "arenas-club"
+  },
+  {
+    "nombre": "Bilbao Athletic",
+    "competicion": "primera_federacion",
+    "grupo": "Grupo 1",
+    "slug": "bilbao-athletic"
+  },
+  {
+    "nombre": "Barakaldo CF",
+    "competicion": "primera_federacion",
+    "grupo": "Grupo 1",
+    "slug": "barakaldo-cf"
+  },
+  {
+    "nombre": "CD Coria",
+    "competicion": "primera_federacion",
+    "grupo": "Grupo 1",
+    "slug": "cd-coria"
+  },
+  {
+    "nombre": "CD Extremadura",
+    "competicion": "primera_federacion",
+    "grupo": "Grupo 1",
+    "slug": "cd-extremadura"
+  },
+  {
+    "nombre": "CD Lugo",
+    "competicion": "primera_federacion",
+    "grupo": "Grupo 1",
+    "slug": "cd-lugo"
+  },
+  {
+    "nombre": "CD Mirandés",
+    "competicion": "primera_federacion",
+    "grupo": "Grupo 1",
+    "slug": "cd-mirandes"
+  },
+  {
+    "nombre": "CP Cacereño",
+    "competicion": "primera_federacion",
+    "grupo": "Grupo 1",
+    "slug": "cp-cacereno"
+  },
+  {
+    "nombre": "Cultural Leonesa",
+    "competicion": "primera_federacion",
+    "grupo": "Grupo 1",
+    "slug": "cultural-leonesa"
+  },
+  {
+    "nombre": "Pontevedra CF",
+    "competicion": "primera_federacion",
+    "grupo": "Grupo 1",
+    "slug": "pontevedra-cf"
+  },
+  {
+    "nombre": "Racing Club Ferrol",
+    "competicion": "primera_federacion",
+    "grupo": "Grupo 1",
+    "slug": "racing-club-ferrol"
+  },
+  {
+    "nombre": "RC Deportivo Fabril",
+    "competicion": "primera_federacion",
+    "grupo": "Grupo 1",
+    "slug": "rc-deportivo-fabril"
+  },
+  {
+    "nombre": "Real Avilés Industrial",
+    "competicion": "primera_federacion",
+    "grupo": "Grupo 1",
+    "slug": "real-aviles-industrial"
+  },
+  {
+    "nombre": "Real Unión Club",
+    "competicion": "primera_federacion",
+    "grupo": "Grupo 1",
+    "slug": "real-union-club"
+  },
+  {
+    "nombre": "SD Ponferradina",
+    "competicion": "primera_federacion",
+    "grupo": "Grupo 1",
+    "slug": "sd-ponferradina"
+  },
+  {
+    "nombre": "UD Logroñés",
+    "competicion": "primera_federacion",
+    "grupo": "Grupo 1",
+    "slug": "ud-logrones"
+  },
+  {
+    "nombre": "UD Ourense",
+    "competicion": "primera_federacion",
+    "grupo": "Grupo 1",
+    "slug": "ud-ourense"
+  },
+  {
+    "nombre": "Unionistas de Salamanca CF",
+    "competicion": "primera_federacion",
+    "grupo": "Grupo 1",
+    "slug": "unionistas-de-salamanca-cf"
+  },
+  {
+    "nombre": "Zamora CF",
+    "competicion": "primera_federacion",
+    "grupo": "Grupo 1",
+    "slug": "zamora-cf"
+  },
+  {
+    "nombre": "AD Alcorcón",
+    "competicion": "primera_federacion",
+    "grupo": "Grupo 2",
+    "slug": "ad-alcorcon"
+  },
+  {
+    "nombre": "Águilas FC",
+    "competicion": "primera_federacion",
+    "grupo": "Grupo 2",
+    "slug": "aguilas-fc"
+  },
+  {
+    "nombre": "Algeciras CF",
+    "competicion": "primera_federacion",
+    "grupo": "Grupo 2",
+    "slug": "algeciras-cf"
+  },
+  {
+    "nombre": "Antequera CF",
+    "competicion": "primera_federacion",
+    "grupo": "Grupo 2",
+    "slug": "antequera-cf"
+  },
+  {
+    "nombre": "Atlético Madrileño",
+    "competicion": "primera_federacion",
+    "grupo": "Grupo 2",
+    "slug": "atletico-madrileno"
+  },
+  {
+    "nombre": "CD Teruel",
+    "competicion": "primera_federacion",
+    "grupo": "Grupo 2",
+    "slug": "cd-teruel"
+  },
+  {
+    "nombre": "CE Europa",
+    "competicion": "primera_federacion",
+    "grupo": "Grupo 2",
+    "slug": "ce-europa"
+  },
+  {
+    "nombre": "CF Rayo Majadahonda",
+    "competicion": "primera_federacion",
+    "grupo": "Grupo 2",
+    "slug": "cf-rayo-majadahonda"
+  },
+  {
+    "nombre": "FC Cartagena",
+    "competicion": "primera_federacion",
+    "grupo": "Grupo 2",
+    "slug": "fc-cartagena"
+  },
+  {
+    "nombre": "Gimnàstic de Tarragona",
+    "competicion": "primera_federacion",
+    "grupo": "Grupo 2",
+    "slug": "gimnastic-de-tarragona"
+  },
+  {
+    "nombre": "Hércules CF",
+    "competicion": "primera_federacion",
+    "grupo": "Grupo 2",
+    "slug": "hercules-cf"
+  },
+  {
+    "nombre": "Juventud Torremolinos CF",
+    "competicion": "primera_federacion",
+    "grupo": "Grupo 2",
+    "slug": "juventud-torremolinos-cf"
+  },
+  {
+    "nombre": "Real Jaén CF",
+    "competicion": "primera_federacion",
+    "grupo": "Grupo 2",
+    "slug": "real-jaen-cf"
+  },
+  {
+    "nombre": "Real Madrid Castilla",
+    "competicion": "primera_federacion",
+    "grupo": "Grupo 2",
+    "slug": "real-madrid-castilla"
+  },
+  {
+    "nombre": "Real Murcia CF",
+    "competicion": "primera_federacion",
+    "grupo": "Grupo 2",
+    "slug": "real-murcia-cf"
+  },
+  {
+    "nombre": "Real Zaragoza",
+    "competicion": "primera_federacion",
+    "grupo": "Grupo 2",
+    "slug": "real-zaragoza"
+  },
+  {
+    "nombre": "SD Huesca",
+    "competicion": "primera_federacion",
+    "grupo": "Grupo 2",
+    "slug": "sd-huesca"
+  },
+  {
+    "nombre": "UD Ibiza",
+    "competicion": "primera_federacion",
+    "grupo": "Grupo 2",
+    "slug": "ud-ibiza"
+  },
+  {
+    "nombre": "UE Sant Andreu",
+    "competicion": "primera_federacion",
+    "grupo": "Grupo 2",
+    "slug": "ue-sant-andreu"
+  },
+  {
+    "nombre": "Villarreal CF B",
+    "competicion": "primera_federacion",
+    "grupo": "Grupo 2",
+    "slug": "villarreal-cf-b"
+  },
+  {
+    "nombre": "Arosa SC",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 1",
+    "slug": "arosa-sc"
+  },
+  {
+    "nombre": "Atlético Albacete",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 5",
+    "slug": "atletico-albacete"
+  },
+  {
+    "nombre": "Atlético Antoniano",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 4",
+    "slug": "atletico-antoniano"
+  },
+  {
+    "nombre": "Atlético Astorga",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 1",
+    "slug": "atletico-astorga"
+  },
+  {
+    "nombre": "Atlético Central",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 4",
+    "slug": "atletico-central"
+  },
+  {
+    "nombre": "Atlético de Madrid C",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 5",
+    "slug": "atletico-de-madrid-c"
+  },
+  {
+    "nombre": "Atlético Osasuna B",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 2",
+    "slug": "atletico-osasuna-b"
+  },
+  {
+    "nombre": "Atlético Sanluqueño",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 4",
+    "slug": "atletico-sanluqueno"
+  },
+  {
+    "nombre": "Atlético Tordesillas",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 5",
+    "slug": "atletico-tordesillas"
+  },
+  {
+    "nombre": "Bergantiños",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 1",
+    "slug": "bergantinos"
+  },
+  {
+    "nombre": "Betis Deportivo",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 4",
+    "slug": "betis-deportivo"
+  },
+  {
+    "nombre": "Calvo Sotelo Puertollano",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 5",
+    "slug": "calvo-sotelo-puertollano"
+  },
+  {
+    "nombre": "CD Alcoyano",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 3",
+    "slug": "cd-alcoyano"
+  },
+  {
+    "nombre": "CD Arnedo",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 2",
+    "slug": "cd-arnedo"
+  },
+  {
+    "nombre": "CD Atlético Baleares",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 3",
+    "slug": "cd-atletico-baleares"
+  },
+  {
+    "nombre": "CD Atlético Paso",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 5",
+    "slug": "cd-atletico-paso"
+  },
+  {
+    "nombre": "CD Badajoz",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 4",
+    "slug": "cd-badajoz"
+  },
+  {
+    "nombre": "CD Basconia",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 1",
+    "slug": "cd-basconia"
+  },
+  {
+    "nombre": "CD Castellón B",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 3",
+    "slug": "cd-castellon-b"
+  },
+  {
+    "nombre": "CD Cieza",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 3",
+    "slug": "cd-cieza"
+  },
+  {
+    "nombre": "CD Ciudad de Lucena",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 4",
+    "slug": "cd-ciudad-de-lucena"
+  },
+  {
+    "nombre": "CD Don Benito",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 4",
+    "slug": "cd-don-benito"
+  },
+  {
+    "nombre": "CD Ebro",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 2",
+    "slug": "cd-ebro"
+  },
+  {
+    "nombre": "CD Estepona",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 4",
+    "slug": "cd-estepona"
+  },
+  {
+    "nombre": "CD Guadalajara",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 5",
+    "slug": "cd-guadalajara"
+  },
+  {
+    "nombre": "CD Minera",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 3",
+    "slug": "cd-minera"
+  },
+  {
+    "nombre": "CD Numancia",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 5",
+    "slug": "cd-numancia"
+  },
+  {
+    "nombre": "CD Tenerife B",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 4",
+    "slug": "cd-tenerife-b"
+  },
+  {
+    "nombre": "CD Tudelano",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 2",
+    "slug": "cd-tudelano"
+  },
+  {
+    "nombre": "CDA Navalcarnero",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 5",
+    "slug": "cda-navalcarnero"
+  },
+  {
+    "nombre": "CE Manresa",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 2",
+    "slug": "ce-manresa"
+  },
+  {
+    "nombre": "CF Calamocha",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 2",
+    "slug": "cf-calamocha"
+  },
+  {
+    "nombre": "CF Intercity",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 3",
+    "slug": "cf-intercity"
+  },
+  {
+    "nombre": "CF La Nucía",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 3",
+    "slug": "cf-la-nucia"
+  },
+  {
+    "nombre": "CF Lorca Deportiva",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 3",
+    "slug": "cf-lorca-deportiva"
+  },
+  {
+    "nombre": "CF Talavera de la Reina",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 5",
+    "slug": "cf-talavera-de-la-reina"
+  },
+  {
+    "nombre": "Club Marino de Luanco",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 1",
+    "slug": "club-marino-de-luanco"
+  },
+  {
+    "nombre": "Club Portugalete",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 1",
+    "slug": "club-portugalete"
+  },
+  {
+    "nombre": "Coruxo",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 1",
+    "slug": "coruxo"
+  },
+  {
+    "nombre": "CP Mijas Las Lagunas",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 4",
+    "slug": "cp-mijas-las-lagunas"
+  },
+  {
+    "nombre": "Deportivo Alavés B",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 1",
+    "slug": "deportivo-alaves-b"
+  },
+  {
+    "nombre": "Elche Ilicitano",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 3",
+    "slug": "elche-ilicitano"
+  },
+  {
+    "nombre": "FC Barcelona Atlètic",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 2",
+    "slug": "fc-barcelona-atletic"
+  },
+  {
+    "nombre": "Getafe B",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 5",
+    "slug": "getafe-b"
+  },
+  {
+    "nombre": "Gimnástica Segoviana",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 5",
+    "slug": "gimnastica-segoviana"
+  },
+  {
+    "nombre": "Girona FC B",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 2",
+    "slug": "girona-fc-b"
+  },
+  {
+    "nombre": "Las Palmas Atlético",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 4",
+    "slug": "las-palmas-atletico"
+  },
+  {
+    "nombre": "Linares Deportivo",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 4",
+    "slug": "linares-deportivo"
+  },
+  {
+    "nombre": "Marbella FC",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 4",
+    "slug": "marbella-fc"
+  },
+  {
+    "nombre": "Náxara",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 2",
+    "slug": "naxara"
+  },
+  {
+    "nombre": "Orihuela CF",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 3",
+    "slug": "orihuela-cf"
+  },
+  {
+    "nombre": "Ourense CF",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 1",
+    "slug": "ourense-cf"
+  },
+  {
+    "nombre": "Peña Sport",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 2",
+    "slug": "pena-sport"
+  },
+  {
+    "nombre": "Rayo Cantabria",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 1",
+    "slug": "rayo-cantabria"
+  },
+  {
+    "nombre": "RCD Espanyol B",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 2",
+    "slug": "rcd-espanyol-b"
+  },
+  {
+    "nombre": "RCD Mallorca B",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 3",
+    "slug": "rcd-mallorca-b"
+  },
+  {
+    "nombre": "Real Ávila",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 5",
+    "slug": "real-avila"
+  },
+  {
+    "nombre": "Real Madrid C",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 5",
+    "slug": "real-madrid-c"
+  },
+  {
+    "nombre": "Real Murcia Imperial",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 3",
+    "slug": "real-murcia-imperial"
+  },
+  {
+    "nombre": "Real Oviedo Vetusta",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 1",
+    "slug": "real-oviedo-vetusta"
+  },
+  {
+    "nombre": "Real Valladolid Promesas",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 5",
+    "slug": "real-valladolid-promesas"
+  },
+  {
+    "nombre": "Recreativo de Huelva",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 4",
+    "slug": "recreativo-de-huelva"
+  },
+  {
+    "nombre": "Reus FC Reddis",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 2",
+    "slug": "reus-fc-reddis"
+  },
+  {
+    "nombre": "RS Gimnástica de Torrelavega",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 1",
+    "slug": "rs-gimnastica-de-torrelavega"
+  },
+  {
+    "nombre": "RSD Alcalá",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 5",
+    "slug": "rsd-alcala"
+  },
+  {
+    "nombre": "Salamanca UDS",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 5",
+    "slug": "salamanca-uds"
+  },
+  {
+    "nombre": "Salerm Cosmetics Puente Genil",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 4",
+    "slug": "salerm-cosmetics-puente-genil"
+  },
+  {
+    "nombre": "SCR Peña Deportiva",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 3",
+    "slug": "scr-pena-deportiva"
+  },
+  {
+    "nombre": "SD Amorebieta",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 1",
+    "slug": "sd-amorebieta"
+  },
+  {
+    "nombre": "SD Compostela",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 1",
+    "slug": "sd-compostela"
+  },
+  {
+    "nombre": "SD Eibar B",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 1",
+    "slug": "sd-eibar-b"
+  },
+  {
+    "nombre": "SD Gernika",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 1",
+    "slug": "sd-gernika"
+  },
+  {
+    "nombre": "SD Logroñés",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 2",
+    "slug": "sd-logrones"
+  },
+  {
+    "nombre": "Sestao River",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 1",
+    "slug": "sestao-river"
+  },
+  {
+    "nombre": "Sevilla Atlético",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 4",
+    "slug": "sevilla-atletico"
+  },
+  {
+    "nombre": "Terrassa",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 2",
+    "slug": "terrassa"
+  },
+  {
+    "nombre": "UB Conquense",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 5",
+    "slug": "ub-conquense"
+  },
+  {
+    "nombre": "UCAM Murcia",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 3",
+    "slug": "ucam-murcia"
+  },
+  {
+    "nombre": "UD Barbastro",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 2",
+    "slug": "ud-barbastro"
+  },
+  {
+    "nombre": "UD Castellonense",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 3",
+    "slug": "ud-castellonense"
+  },
+  {
+    "nombre": "UD Llanera",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 1",
+    "slug": "ud-llanera"
+  },
+  {
+    "nombre": "UD Logroñés B",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 2",
+    "slug": "ud-logrones-b"
+  },
+  {
+    "nombre": "UD Poblense",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 3",
+    "slug": "ud-poblense"
+  },
+  {
+    "nombre": "UD San Sebastián de los Reyes",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 5",
+    "slug": "ud-san-sebastian-de-los-reyes"
+  },
+  {
+    "nombre": "UD Tamaraceite",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 4",
+    "slug": "ud-tamaraceite"
+  },
+  {
+    "nombre": "UE Olot",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 2",
+    "slug": "ue-olot"
+  },
+  {
+    "nombre": "Utebo FC",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 2",
+    "slug": "utebo-fc"
+  },
+  {
+    "nombre": "Valencia Mestalla",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 3",
+    "slug": "valencia-mestalla"
+  },
+  {
+    "nombre": "Xerez CD",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 4",
+    "slug": "xerez-cd"
+  },
+  {
+    "nombre": "Yeclano Deportivo",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 3",
+    "slug": "yeclano-deportivo"
+  },
+  {
+    "nombre": "CF Fuenlabrada",
+    "competicion": "tercera_federacion",
+    "grupo": "Grupo 7",
+    "slug": "cf-fuenlabrada"
+  },
+  {
+    "nombre": "Sporting Atlético",
+    "competicion": "tercera_federacion",
+    "grupo": "Grupo 2",
+    "slug": "sporting-atletico"
+  }
+]

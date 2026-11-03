@@ -3,6 +3,7 @@
 <head>
 <meta name="google-adsense-account" content="ca-pub-7347856722927942">
 <meta charset="UTF-8">
+<script src="/js/splash.js?v=2"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
 <title>Formulario de acreditación | ElOtroFútbol</title>
@@ -228,8 +229,10 @@
     *,*::before,*::after{animation-duration:.01ms !important;animation-delay:0s !important;transition-duration:.01ms !important;scroll-behavior:auto !important;}
   }
 </style>
-<link rel="stylesheet" href="css/accesibilidad.css?v=1">
+<link rel="stylesheet" href="css/accesibilidad.css?v=2">
 <script src="js/accesibilidad.js?v=1" defer></script>
+<link rel="stylesheet" href="css/app-movil.css?v=8">
+<script src="js/app-movil.js?v=5" defer></script>
 </head>
 <body>
 <div id="vistaPin" class="pin-escena" role="dialog" aria-modal="true" aria-labelledby="pinTitulo">
@@ -287,9 +290,9 @@
       <div class="tarjeta seccion" id="secSolicitante"><h2>Datos del solicitante</h2></div>
 
       <div class="tarjeta campo" data-campo="nombre">
-        <label for="nombre"><span class="et-txt">Nombre y apellidos</span><span class="req">*</span></label>
-        <input type="text" id="nombre" maxlength="200" autocomplete="name" placeholder="Tu respuesta">
-        <p class="error-campo">Indica tu nombre y apellidos.</p>
+        <label for="nombre"><span class="et-txt">Nombre completo</span><span class="req">*</span></label>
+        <input type="text" id="nombre" maxlength="200" autocomplete="name" placeholder="Nombre y apellidos">
+        <p class="error-campo">Indica tu nombre completo (nombre y apellidos).</p>
       </div>
 
       <div class="tarjeta campo" data-campo="email">
@@ -370,9 +373,9 @@
 
 </main>
 
-<script src="js/config.js?v=25"></script>
+<script src="js/config.js?v=36"></script>
 <script src="js/turnstile.js?v=2"></script>
-<script src="js/clubs.js?v=6"></script>
+<script src="js/clubs.js?v=8"></script>
 <script>
 // Valores por defecto; el panel (Solicitudes > Formularios > Acreditaciones) puede cambiarlos
 // y se cargan de /api/acreditaciones/config. Si esa petición falla se usan estos.
@@ -381,7 +384,7 @@ let ACREDITACIONES = ["Prensa / Pupitre","Fotógrafo / Césped","Cabina de prens
 let EVENTO_OTRO = true;
 // Preguntas del formulario (textos, visibles y obligatorias); el panel las puede cambiar.
 const PREG_DEFECTO = {
-  nombre: { etiqueta: "Nombre y apellidos", ayuda: "Tu respuesta", error: "Indica tu nombre y apellidos.", activa: true, obligatoria: true },
+  nombre: { etiqueta: "Nombre completo", ayuda: "Nombre y apellidos", error: "Indica tu nombre completo (nombre y apellidos).", activa: true, obligatoria: true },
   email: { etiqueta: "Correo electrónico", ayuda: "Tu respuesta", error: "Introduce un correo electrónico válido.", activa: true, obligatoria: true },
   dni: { etiqueta: "DNI / NIE", ayuda: "Tu respuesta", error: "Introduce un DNI / NIE válido.", activa: true, obligatoria: true },
   equipo: { etiqueta: "Equipo que deseas cubrir", ayuda: "Elige un equipo…", error: "Elige o escribe el equipo que deseas cubrir.", activa: true, obligatoria: true },
@@ -808,6 +811,16 @@ function marcar(campo, malo) {
   return !malo;
 }
 
+// Nombre completo: al menos nombre y apellido (dos palabras).
+const NOMBRES_DE_PILA = new Set("jose juan luis miguel manuel jesus maria angel carlos antonio francisco javier alberto ramon pedro pablo ana carmen david daniel alejandro fernando rafael sergio adrian ruben ivan oscar victor raul diego jorge andres enrique ignacio mario joaquin eduardo jaime roberto laura lucia marta paula sara cristina elena isabel patricia rosa teresa pilar beatriz nuria irene silvia eva alba".split(" "));
+function nombreCompletoOk(n) {
+  const p = String(n || "").trim().split(/\s+/).filter(Boolean);
+  if (p.length < 2) return false;
+  // "Jose Luis" o "Miguel Ángel" son dos palabras pero solo nombre de pila: faltan apellidos.
+  const sin = (t) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  return !(p.length === 2 && p.every((w) => NOMBRES_DE_PILA.has(sin(w))));
+}
+
 function recoger() {
   let equipo = selEquipo.value;
   if (equipo === "__otro__") equipo = ($("equipoOtro").value || "").trim();
@@ -830,7 +843,7 @@ function recoger() {
 function estadoCampos(d) {
   const dni = d.dni.replace(/[\s.-]/g, "");
   return {
-    nombre: !!d.nombre,
+    nombre: nombreCompletoOk(d.nombre),
     email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email),
     dni: dni.length >= 5 && /^[A-Za-z0-9]+$/.test(dni),
     equipo: !!d.equipo,
@@ -862,7 +875,7 @@ function validar(d) {
   const dniLimpio = d.dni.replace(/[\s.-]/g, "");
   const dniMal = pActiva("dni") && (dniLimpio ? (dniLimpio.length < 5 || !/^[A-Za-z0-9]+$/.test(dniLimpio)) : pObligatoria("dni"));
   const resultados = [
-    marcar("nombre", !d.nombre),
+    marcar("nombre", !nombreCompletoOk(d.nombre)),
     marcar("email", !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email)),
     marcar("dni", dniMal),
     marcar("equipo", !d.equipo),

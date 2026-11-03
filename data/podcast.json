@@ -1,0 +1,63 @@
+{
+  "_ayuda": "Para publicar: añade un objeto a 'items'. tipo: episodio | entrevista | clip. fecha: AAAA-MM-DD. embed.plataforma: youtube (id del vídeo), spotify (id como 'episode/XXXX' o 'show/XXXX'), ivoox (id numérico) o audio (url https de un mp3). 'destacado': true lo pone en grande (solo el más reciente destacado). Borra los items con 'demo': true cuando metas los reales.",
+  "programa": {
+    "titulo": "El podcast de ELOTROFÚTBOLTV",
+    "descripcion": "Conversaciones, entrevistas y los mejores momentos del fútbol que nadie más te cuenta: Hypermotion, Primera y Segunda Federación.",
+    "plataformas": {
+      "spotify": "",
+      "apple": "",
+      "ivoox": "",
+      "youtube": ""
+    }
+  },
+  "items": [
+    {
+      "id": "ejemplo-episodio-1",
+      "tipo": "episodio",
+      "titulo": "Episodio de ejemplo: la jornada que nadie vio",
+      "descripcion": "Aquí irá el resumen del episodio: de qué se habla, quién participa y por qué merece tu tiempo. Sustituye este texto por el real.",
+      "fecha": "2026-11-02",
+      "duracion": "48:20",
+      "temporada": 1,
+      "numero": 1,
+      "portada": "",
+      "destacado": true,
+      "embed": { "plataforma": "", "id": "" },
+      "demo": true
+    },
+    {
+      "id": "ejemplo-entrevista-1",
+      "tipo": "entrevista",
+      "titulo": "Entrevista de ejemplo: charla con un protagonista",
+      "descripcion": "Espacio para las entrevistas con jugadores, entrenadores, presidentes y árbitros del fútbol no profesional.",
+      "fecha": "2026-10-28",
+      "duracion": "31:05",
+      "invitado": "Nombre del invitado",
+      "portada": "",
+      "embed": { "plataforma": "", "id": "" },
+      "demo": true
+    },
+    {
+      "id": "ejemplo-clip-1",
+      "tipo": "clip",
+      "titulo": "Clip de ejemplo: el momento de la semana",
+      "descripcion": "Fragmentos cortos pensados para compartir en redes.",
+      "fecha": "2026-10-30",
+      "duracion": "0:58",
+      "portada": "",
+      "embed": { "plataforma": "", "id": "" },
+      "demo": true
+    },
+    {
+      "id": "ejemplo-clip-2",
+      "tipo": "clip",
+      "titulo": "Clip de ejemplo: la frase que dio la vuelta a la grada",
+      "descripcion": "Otro clip de muestra para ver cómo queda la cuadrícula.",
+      "fecha": "2026-10-26",
+      "duracion": "1:12",
+      "portada": "",
+      "embed": { "plataforma": "", "id": "" },
+      "demo": true
+    }
+  ]
+}
