@@ -67,6 +67,15 @@ async function lpCargarPlantilla(club) {
   const slug = slugEquipo(club);
   if (LP_CACHE.slug === slug) return LP_CACHE.doc;
   let doc = null;
+  // Filiales emparejados por error con el PRIMER equipo en Flashscore
+  // (p. ej. Real Madrid Castilla -> plantilla de Courtois/Mbappé): su JSON es
+  // del primer equipo, así que no se enseña. Quitar el slug de LP_SIN_FICHA
+  // cuando se corrija su fs_id en equipos.json.
+  if (LP_SIN_FICHA.has(slug)) {
+    LP_CACHE.slug = slug;
+    LP_CACHE.doc = null;
+    return null;
+  }
   try {
     const res = await fetch(`${baseHref()}data/jugadores/${slug}.json`);
     if (res.ok && /json/i.test(res.headers.get("Content-Type") || "")) {
