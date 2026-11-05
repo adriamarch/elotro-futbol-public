@@ -1,5 +1,5 @@
 {
- "actualizado": "2026-11-03",
+ "actualizado": "2026-11-05",
  "fuente": "Flashscore.es",
  "clubes": [
   {
@@ -96,7 +96,7 @@
    "competicion": "segunda_federacion",
    "grupo": "Grupo 2",
    "temporada": "2026/2027",
-   "jugadores": 34
+   "jugadores": 28
   },
   {
    "club": "Barakaldo CF",
@@ -347,6 +347,14 @@
    "jugadores": 31
   },
   {
+   "club": "Elche Ilicitano",
+   "slug": "elche-ilicitano",
+   "competicion": "segunda_federacion",
+   "grupo": "Grupo 3",
+   "temporada": "2026/2027",
+   "jugadores": 37
+  },
+  {
    "club": "FC Andorra",
    "slug": "fc-andorra",
    "competicion": "hypermotion",
@@ -512,7 +520,7 @@
    "competicion": "primera_federacion",
    "grupo": "Grupo 2",
    "temporada": "2026/2027",
-   "jugadores": 37
+   "jugadores": 36
   },
   {
    "club": "Real Murcia CF",
@@ -552,7 +560,7 @@
    "competicion": "hypermotion",
    "grupo": null,
    "temporada": "2026/2027",
-   "jugadores": 28
+   "jugadores": 29
   },
   {
    "club": "Real Unión Club",
@@ -584,7 +592,7 @@
    "competicion": "segunda_federacion",
    "grupo": "Grupo 4",
    "temporada": "2026/2027",
-   "jugadores": 29
+   "jugadores": 28
   },
   {
    "club": "Reus FC Reddis",
@@ -672,7 +680,7 @@
    "competicion": "segunda_federacion",
    "grupo": "Grupo 1",
    "temporada": "2026/2027",
-   "jugadores": 23
+   "jugadores": 22
   },
   {
    "club": "Terrassa",

@@ -1714,5 +1714,27 @@
     "puntuacion": 0.85,
     "manual": false,
     "sin_plantilla": true
+  },
+  {
+    "fs_id": "ETdxjU8a",
+    "fs_slug": "ca-osasuna",
+    "fs_nombre": "Osasuna",
+    "club": "Atlético Osasuna B",
+    "slug": "atletico-osasuna-b",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 2",
+    "puntuacion": 0.85,
+    "manual": false
+  },
+  {
+    "fs_id": "4jl02tPF",
+    "fs_slug": "elche-cf",
+    "fs_nombre": "Elche",
+    "club": "Elche Ilicitano",
+    "slug": "elche-ilicitano",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 3",
+    "puntuacion": 0.85,
+    "manual": false
   }
 ]
