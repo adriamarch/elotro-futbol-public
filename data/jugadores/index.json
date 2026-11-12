@@ -1,5 +1,5 @@
 {
- "actualizado": "2026-11-03",
+ "actualizado": "2026-11-12",
  "fuente": "Flashscore.es",
  "clubes": [
   {
@@ -16,7 +16,7 @@
    "competicion": "hypermotion",
    "grupo": null,
    "temporada": "2026/2027",
-   "jugadores": 34
+   "jugadores": 35
   },
   {
    "club": "AD Mérida",
@@ -40,7 +40,7 @@
    "competicion": "hypermotion",
    "grupo": null,
    "temporada": "2026/2027",
-   "jugadores": 36
+   "jugadores": 35
   },
   {
    "club": "Algeciras CF",
@@ -88,7 +88,7 @@
    "competicion": "primera_federacion",
    "grupo": "Grupo 2",
    "temporada": "2026/2027",
-   "jugadores": 29
+   "jugadores": 31
   },
   {
    "club": "Atlético Osasuna B",
@@ -120,7 +120,7 @@
    "competicion": "primera_federacion",
    "grupo": "Grupo 1",
    "temporada": "2026/2027",
-   "jugadores": 32
+   "jugadores": 33
   },
   {
    "club": "Burgos CF",
@@ -160,7 +160,7 @@
    "competicion": "hypermotion",
    "grupo": null,
    "temporada": "2026/2027",
-   "jugadores": 33
+   "jugadores": 34
   },
   {
    "club": "CD Coria",
@@ -216,7 +216,7 @@
    "competicion": "primera_federacion",
    "grupo": "Grupo 1",
    "temporada": "2026/2027",
-   "jugadores": 28
+   "jugadores": 29
   },
   {
    "club": "CD Tenerife",
@@ -232,7 +232,7 @@
    "competicion": "primera_federacion",
    "grupo": "Grupo 2",
    "temporada": "2026/2027",
-   "jugadores": 22
+   "jugadores": 23
   },
   {
    "club": "CD Tudelano",
@@ -352,7 +352,7 @@
    "competicion": "hypermotion",
    "grupo": null,
    "temporada": "2026/2027",
-   "jugadores": 28
+   "jugadores": 27
   },
   {
    "club": "FC Barcelona Atlètic",
@@ -472,7 +472,7 @@
    "competicion": "primera_federacion",
    "grupo": "Grupo 1",
    "temporada": "2026/2027",
-   "jugadores": 30
+   "jugadores": 31
   },
   {
    "club": "RCD Espanyol B",
@@ -496,7 +496,7 @@
    "competicion": "primera_federacion",
    "grupo": "Grupo 1",
    "temporada": "2026/2027",
-   "jugadores": 27
+   "jugadores": 28
   },
   {
    "club": "Real Jaén CF",
@@ -504,7 +504,7 @@
    "competicion": "primera_federacion",
    "grupo": "Grupo 2",
    "temporada": "2026/2027",
-   "jugadores": 28
+   "jugadores": 29
   },
   {
    "club": "Real Madrid Castilla",
@@ -512,7 +512,7 @@
    "competicion": "primera_federacion",
    "grupo": "Grupo 2",
    "temporada": "2026/2027",
-   "jugadores": 37
+   "jugadores": 41
   },
   {
    "club": "Real Murcia CF",
@@ -528,7 +528,7 @@
    "competicion": "hypermotion",
    "grupo": null,
    "temporada": "2026/2027",
-   "jugadores": 32
+   "jugadores": 33
   },
   {
    "club": "Real Oviedo Vetusta",
@@ -544,7 +544,7 @@
    "competicion": "hypermotion",
    "grupo": null,
    "temporada": "2026/2027",
-   "jugadores": 35
+   "jugadores": 34
   },
   {
    "club": "Real Sporting",
@@ -552,7 +552,7 @@
    "competicion": "hypermotion",
    "grupo": null,
    "temporada": "2026/2027",
-   "jugadores": 28
+   "jugadores": 30
   },
   {
    "club": "Real Unión Club",
@@ -560,7 +560,7 @@
    "competicion": "primera_federacion",
    "grupo": "Grupo 1",
    "temporada": "2026/2027",
-   "jugadores": 28
+   "jugadores": 29
   },
   {
    "club": "Real Valladolid CF",
@@ -568,7 +568,7 @@
    "competicion": "hypermotion",
    "grupo": null,
    "temporada": "2026/2027",
-   "jugadores": 33
+   "jugadores": 38
   },
   {
    "club": "Real Zaragoza",
@@ -688,7 +688,7 @@
    "competicion": "hypermotion",
    "grupo": null,
    "temporada": "2026/2027",
-   "jugadores": 30
+   "jugadores": 31
   },
   {
    "club": "UD Barbastro",
@@ -712,7 +712,7 @@
    "competicion": "hypermotion",
    "grupo": null,
    "temporada": "2026/2027",
-   "jugadores": 38
+   "jugadores": 37
   },
   {
    "club": "UD Llanera",
@@ -728,7 +728,7 @@
    "competicion": "primera_federacion",
    "grupo": "Grupo 1",
    "temporada": "2026/2027",
-   "jugadores": 27
+   "jugadores": 28
   },
   {
    "club": "UD Logroñés B",
@@ -784,7 +784,7 @@
    "competicion": "segunda_federacion",
    "grupo": "Grupo 3",
    "temporada": "2026/2027",
-   "jugadores": 33
+   "jugadores": 34
   },
   {
    "club": "Villarreal CF B",

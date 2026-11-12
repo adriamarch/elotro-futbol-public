@@ -452,13 +452,13 @@
   },
   {
     "fs_id": "djPpJ4we",
-    "fs_slug": "arenas-getxo",
-    "fs_nombre": "Arenas Getxo",
+    "fs_slug": "arenas-club",
+    "fs_nombre": "Arenas Club de Getxo",
     "club": "Arenas Club",
     "slug": "arenas-club",
     "competicion": "primera_federacion",
     "grupo": "Grupo 1",
-    "puntuacion": 0.85,
+    "puntuacion": 1.0,
     "manual": false
   },
   {
@@ -1714,5 +1714,60 @@
     "puntuacion": 0.85,
     "manual": false,
     "sin_plantilla": true
+  },
+  {
+    "fs_id": "AN5aNyMg",
+    "fs_slug": "athletic-club",
+    "fs_nombre": "Athletic Club B",
+    "club": "Bilbao Athletic",
+    "slug": "bilbao-athletic",
+    "competicion": "primera_federacion",
+    "grupo": "Grupo 1",
+    "puntuacion": 0.85,
+    "manual": false
+  },
+  {
+    "fs_id": "fyNss8GQ",
+    "fs_slug": "real-madrid",
+    "fs_nombre": "Real Madrid B B",
+    "club": "Real Madrid Castilla",
+    "slug": "real-madrid-castilla",
+    "competicion": "primera_federacion",
+    "grupo": "Grupo 2",
+    "puntuacion": 0.85,
+    "manual": false
+  },
+  {
+    "fs_id": "beO74ziJ",
+    "fs_slug": "atletico-madrid",
+    "fs_nombre": "Atlético de Madrid B",
+    "club": "Atlético Madrileño",
+    "slug": "atletico-madrileno",
+    "competicion": "primera_federacion",
+    "grupo": "Grupo 2",
+    "puntuacion": 0.85,
+    "manual": false
+  },
+  {
+    "fs_id": "K4P35GyD",
+    "fs_slug": "barcelona",
+    "fs_nombre": "FC Barcelona B",
+    "club": "FC Barcelona Atlètic",
+    "slug": "fc-barcelona-atletic",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 2",
+    "puntuacion": 0.85,
+    "manual": false
+  },
+  {
+    "fs_id": "IPQKUJTJ",
+    "fs_slug": "valencia-cf",
+    "fs_nombre": "Valencia B",
+    "club": "Valencia Mestalla",
+    "slug": "valencia-mestalla",
+    "competicion": "segunda_federacion",
+    "grupo": "Grupo 3",
+    "puntuacion": 0.85,
+    "manual": false
   }
 ]
