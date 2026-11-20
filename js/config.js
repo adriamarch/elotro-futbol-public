@@ -752,7 +752,9 @@ function hashtagsNoticia(a, max = 9) {
     const slug = slugEtiquetaCliente(nombre);
     if (slug) poner(hashtagDeTexto(nombre), `/etiqueta/${slug}`, `Noticias sobre ${nombre}`);
   });
-  poner("#FutbolNoProfesional", "/", "Portada de ELOTROFÚTBOLTV");
+  // LaLiga Hypermotion (Segunda División) es fútbol profesional: ahí no va #FutbolNoProfesional.
+  const esSegundaDivision = cat === "hypermotion" || (Array.isArray(a.categorias_adicionales) && a.categorias_adicionales.includes("hypermotion"));
+  if (!esSegundaDivision) poner("#FutbolNoProfesional", "/", "Portada de ELOTROFÚTBOLTV");
   poner("#ElOtroFutbol", "/quienes-somos", "Quiénes somos");
   return lista.slice(0, max);
 }
