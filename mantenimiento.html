@@ -2,7 +2,12 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<script src="/js/splash.js?v=2"></script>
+<script>/* splash.js: bloquea el parseo solo si la web se abre como app (o ?splash=1); en navegador carga en async, sin frenar el pintado. */
+(function(){var a=false;try{a=matchMedia("(display-mode: standalone)").matches||matchMedia("(display-mode: fullscreen)").matches||matchMedia("(display-mode: minimal-ui)").matches||navigator.standalone===true;}catch(e){}
+if(a||/[?&]splash=1(&|$)/.test(location.search)){document.write('<script src="/js/splash.js?v=b5004788"><\/script>');}
+else{var s=document.createElement("script");s.src="/js/splash.js?v=b5004788";s.async=true;document.head.appendChild(s);}})();
+</script>
+<script src="/js/cargando.js?v=4a5cb1bc"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="robots" content="noindex">
 <title>ELOTROFÚTBOLTV — Volvemos enseguida</title>

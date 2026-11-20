@@ -2,10 +2,15 @@
 <html lang="es">
 <head>
 <meta name="google-adsense-account" content="ca-pub-7347856722927942">
-<script src="js/tema.js?v=2"></script>
-<script src="js/preferencias.js?v=20"></script>
+<script src="js/tema.js?v=65626bb2"></script>
+<script src="js/preferencias.js?v=6e49f5b3"></script>
 <meta charset="UTF-8">
-<script src="/js/splash.js?v=2"></script>
+<script>/* splash.js: bloquea el parseo solo si la web se abre como app (o ?splash=1); en navegador carga en async, sin frenar el pintado. */
+(function(){var a=false;try{a=matchMedia("(display-mode: standalone)").matches||matchMedia("(display-mode: fullscreen)").matches||matchMedia("(display-mode: minimal-ui)").matches||navigator.standalone===true;}catch(e){}
+if(a||/[?&]splash=1(&|$)/.test(location.search)){document.write('<script src="/js/splash.js?v=b5004788"><\/script>');}
+else{var s=document.createElement("script");s.src="/js/splash.js?v=b5004788";s.async=true;document.head.appendChild(s);}})();
+</script>
+<script src="/js/cargando.js?v=4a5cb1bc"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -18,16 +23,16 @@
 <meta name="twitter:image" content="https://elotrofutbol.media/img/og-default.png">
 <meta name="robots" content="noindex, follow">
 <link rel="canonical" href="https://elotrofutbol.media/guardadas">
-<link rel="icon" href="/favicon.ico?v=3" sizes="any">
-<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=3">
-<link rel="apple-touch-icon" href="/img/apple-touch-icon.png?v=2">
-<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
-<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&display=swap"></noscript>
-<link rel="stylesheet" href="css/style.css?v=35">
-<link rel="stylesheet" href="css/modales-mejoras.css?v=1">
-<link rel="stylesheet" href="css/accesibilidad.css?v=2">
-<script src="js/accesibilidad.js?v=1" defer></script>
-<link rel="stylesheet" href="css/foco.css?v=1">
+<link rel="icon" href="/favicon.ico?v=39af2432" sizes="any">
+<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=39af2432">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png?v=3f854c49">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;0,700;0,800;1,500;1,700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;0,700;0,800;1,500;1,700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&display=swap"></noscript>
+<link rel="stylesheet" href="css/style.css?v=6cd42e49">
+<link rel="stylesheet" href="css/modales-mejoras.css?v=982413bb">
+<link rel="stylesheet" href="css/accesibilidad.css?v=191b9263">
+<script src="js/accesibilidad.js?v=59fdae75" defer></script>
+<link rel="stylesheet" href="css/foco.css?v=c8652610">
 <style>
   .guardadas-pagina{padding:28px 20px 56px;}
   .guardadas-hero{position:relative;overflow:hidden;margin:0 0 28px;padding:34px 38px;border-radius:var(--radio-lg,18px);color:#fff;background:linear-gradient(135deg,var(--marino,#0c1b2e) 0%,var(--marino2,#152b46) 60%,#1d3c63 100%);box-shadow:var(--sombra-md,0 8px 26px rgba(12,27,46,.22));}
@@ -55,9 +60,24 @@
     .guardadas-hero p{display:none;}
     .guardadas-hero-icono{width:96px;height:96px;right:-14px;top:50%;}
   }
+  @media(max-width:380px){
+    .guardadas-pagina{padding-top:10px;}
+    .guardadas-hero{padding:14px 14px 14px 18px;margin-bottom:12px;}
+    .guardadas-hero h1{font-size:1.3rem;}
+    .guardadas-hero-icono{width:78px;height:78px;}
+  }
+  /* Blindaje: nada de scroll horizontal ni texto desbordado, con cualquier dato o tamaño de letra */
+  html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+  .guardadas-pagina{min-width:0;max-width:100%;box-sizing:border-box;overflow-x:hidden;}
+  @supports (overflow:clip){.guardadas-pagina{overflow-x:clip;}}
+  .guardadas-hero{max-width:100%;box-sizing:border-box;}
+  .guardadas-hero-texto{min-width:0;}
+  .guardadas-hero h1{overflow-wrap:anywhere;}
+  #contenedorGuardadas{min-width:0;max-width:100%;}
 </style>
-<link rel="stylesheet" href="css/app-movil.css?v=8">
-<script src="js/app-movil.js?v=5" defer></script>
+<link rel="stylesheet" href="css/app-movil.css?v=b6df23d4">
+<script src="js/app-movil.js?v=3b122790" defer></script>
+<link rel="stylesheet" href="css/animaciones-web.css?v=844fde5e">
 </head>
 <body data-page="guardadas">
 
@@ -77,18 +97,19 @@
 
 <div id="site-footer"></div>
 
-<script src="js/ui-alertas.js?v=5"></script>
-<script src="js/foco.js?v=1"></script>
-<script src="js/config.js?v=36"></script>
-<script src="js/seo.js?v=5"></script>
-<script src="js/lector-auth.js?v=13"></script>
-<script src="js/lecturas.js?v=8"></script>
-<script src="js/layout.js?v=30"></script>
-<script src="js/cookies.js?v=2"></script>
-<script src="js/ads.js?v=3"></script>
-<script src="js/main.js?v=33"></script>
+<script src="js/ui-alertas.js?v=4339c846"></script>
+<script src="js/foco.js?v=133ef790"></script>
+<script src="js/config.js?v=8002da47"></script>
+<script src="js/seo.js?v=51678a88"></script>
+<script src="js/lector-auth.js?v=9a1c7f1f"></script>
+<script src="js/lecturas.js?v=de5c36f5"></script>
+<script src="js/layout.js?v=7e7c9eae"></script>
+<script src="js/cookies.js?v=845d8f5c"></script>
+<script src="js/ads.js?v=a41f4506"></script>
+<script src="js/main.js?v=858efe67"></script>
 <script>
 EOFLecturas.montarLista(document.getElementById("contenedorGuardadas"), "guardadas");
 </script>
+<script src="js/animaciones-web.js?v=e24adf73" defer></script>
 </body>
 </html>

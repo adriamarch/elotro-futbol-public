@@ -24,10 +24,16 @@
 .foto-criterio{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:12px;border:1px solid var(--borde);background:var(--tarjeta);}
 .foto-criterio strong{font-size:.82rem;color:var(--marino-texto,var(--marino));}
 .foto-criterio span{font-size:.76rem;line-height:1.4;opacity:.75;}
-.foto-criterios-compacta{grid-template-columns:1fr 1fr;gap:6px;margin:6px 0 0;}
-.foto-criterios-compacta .foto-criterio{padding:7px 9px;}
+.foto-criterios-compacta{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:8px 0 12px;}
+.foto-criterios-compacta .foto-criterio{flex-direction:row;align-items:center;gap:8px;padding:9px 12px;border-radius:999px;cursor:default;}
+.foto-criterios-compacta .foto-criterio::before{content:"";width:8px;height:8px;border-radius:50%;flex:none;background:var(--nivel-2,#5bb8e8);}
 .foto-criterios-compacta .foto-criterio span{display:none;}
-@media (max-width:480px){.foto-criterios-compacta{grid-template-columns:1fr;}}
+
+/* Filas de funciones: mismo aspecto que las de requisitos del pase de redacción, sin cifra */
+.pase-req-foto .pase-req-tipo{font-size:.78rem;line-height:1.3;}
+.pase-foto .pase-reqs{gap:8px;}
+/* «Lo que consigues»: una sola línea corta */
+.pase-ventajas{font-size:.74rem;}
 
 [data-theme="dark"] .foto-criterio{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.12);}
 [data-theme="dark"] .pase-ventajas{background:color-mix(in srgb,var(--nc) 16%,transparent);}

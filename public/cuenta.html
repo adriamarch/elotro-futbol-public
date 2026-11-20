@@ -1,0 +1,1226 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta name="google-adsense-account" content="ca-pub-7347856722927942">
+<script src="js/tema.js?v=65626bb2"></script>
+<script src="js/preferencias.js?v=6e49f5b3"></script>
+<meta charset="UTF-8">
+<script>/* splash.js: bloquea el parseo solo si la web se abre como app (o ?splash=1); en navegador carga en async, sin frenar el pintado. */
+(function(){var a=false;try{a=matchMedia("(display-mode: standalone)").matches||matchMedia("(display-mode: fullscreen)").matches||matchMedia("(display-mode: minimal-ui)").matches||navigator.standalone===true;}catch(e){}
+if(a||/[?&]splash=1(&|$)/.test(location.search)){document.write('<script src="/js/splash.js?v=b5004788"><\/script>');}
+else{var s=document.createElement("script");s.src="/js/splash.js?v=b5004788";s.async=true;document.head.appendChild(s);}})();
+</script>
+<script src="/js/cargando.js?v=4a5cb1bc"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://api.elotrofutbol.media" crossorigin>
+<link rel="preconnect" href="https://res.cloudinary.com">
+<title id="pageTitle">Mi cuenta — ELOTROFÚTBOLTV</title>
+<meta property="og:image" content="https://elotrofutbol.media/img/og-default.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://elotrofutbol.media/img/og-default.png">
+<meta name="robots" content="noindex, follow">
+<link rel="canonical" href="https://elotrofutbol.media/cuenta">
+<link rel="icon" href="/favicon.ico?v=39af2432" sizes="any">
+<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=39af2432">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png?v=3f854c49">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;0,700;0,800;1,500;1,700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&display=swap" onload="this.onload=null;this.rel='stylesheet'"><noscript><link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;0,700;0,800;1,500;1,700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&display=swap" rel="stylesheet"></noscript>
+<link rel="stylesheet" href="css/style.css?v=6cd42e49">
+<link rel="stylesheet" href="css/modales-mejoras.css?v=982413bb">
+<link rel="stylesheet" href="css/accesibilidad.css?v=191b9263">
+<script src="js/accesibilidad.js?v=59fdae75" defer></script>
+<link rel="stylesheet" href="css/foco.css?v=c8652610">
+<style>
+  /* Estilos propios de "Mi cuenta", con las mismas variables de marca que
+     el resto del sitio público (ver css/style.css). Deliberadamente NO se
+     enlaza admin/css/admin.css aquí: esa hoja usa --marino como color de
+     texto en decenas de reglas y rompe la legibilidad en modo oscuro del
+     sitio público (ver bugs de admin.css en el panel). Todo lo que hace
+     falta para esta página está definido aquí, scoped a #paginaCuenta. */
+
+  #paginaCuenta{max-width:760px;}
+  .cuenta-cabecera{display:flex;align-items:center;gap:16px;margin-bottom:28px;}
+  .cuenta-avatar-grande{
+    width:64px;height:64px;border-radius:50%;flex-shrink:0;
+    background:var(--celeste);color:#fff;display:flex;align-items:center;justify-content:center;
+    font-family:var(--font-tit);font-size:1.4rem;font-weight:700;
+    background-size:cover;background-position:center;
+  }
+  .cuenta-cabecera-textos h2{margin:0 0 2px;}
+  .cuenta-cabecera-textos p{margin:0;color:var(--texto-suave);font-size:.9rem;}
+
+  .cuenta-tabs{display:flex;gap:6px;margin-bottom:22px;background:var(--fondo-alt);border-radius:10px;padding:4px;width:fit-content;}
+  .cuenta-tab{padding:9px 20px;border:none;background:none;border-radius:8px;font-family:var(--font-tit);font-size:.78rem;text-transform:uppercase;letter-spacing:.3px;color:var(--texto-suave);cursor:pointer;transition:background .15s,color .15s;}
+  .cuenta-tab.activa{background:var(--tarjeta);color:var(--marino-texto);box-shadow:0 1px 4px rgba(0,0,0,.08);}
+
+  .cuenta-panel{display:none;}
+  .cuenta-panel.activo{display:block;}
+
+  .cuenta-tarjeta{
+    background:var(--tarjeta);border:1px solid var(--borde);border-radius:12px;
+    padding:24px 26px;
+  }
+  .cuenta-tarjeta h3{margin:0 0 4px;font-size:1.05rem;color:var(--marino-texto);}
+  .cuenta-check{display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:.92rem;line-height:1.45;color:var(--texto);}
+  .cuenta-check input{width:18px;height:18px;margin-top:2px;flex-shrink:0;accent-color:var(--rojo);cursor:pointer;}
+  .cuenta-tarjeta .cuenta-ayuda{margin:0 0 18px;color:var(--texto-suave);font-size:.86rem;line-height:1.5;}
+
+  #formPerfilLector label,
+  #formPasswordLector label,
+  #formEmailPendienteX label{display:block;font-size:.82rem;font-weight:600;color:var(--marino-texto);margin:14px 0 6px;}
+  #formPerfilLector label:first-of-type,
+  #formPasswordLector label:first-of-type,
+  #formEmailPendienteX label:first-of-type{margin-top:0;}
+  #formPerfilLector input[type="text"],
+  #formPasswordLector input[type="password"],
+  #formEmailPendienteX input[type="email"]{
+    width:100%;padding:11px 12px;border:1.5px solid var(--borde);border-radius:8px;
+    font-size:.95rem;background:var(--fondo);color:var(--texto);
+  }
+  #formPerfilLector input:focus,
+  #formPasswordLector input:focus,
+  #formEmailPendienteX input:focus{outline:none;border-color:var(--celeste);box-shadow:0 0 0 3px rgba(91,184,232,.15);}
+
+  /* Verificación en dos pasos (Seguridad) */
+  .c2fa label{display:block;font-size:.82rem;font-weight:600;color:var(--marino-texto);margin:14px 0 6px;}
+  .c2fa input[type="password"],.c2fa input[type="text"]{
+    width:100%;padding:11px 12px;border:1.5px solid var(--borde);border-radius:8px;
+    font-size:.95rem;background:var(--fondo);color:var(--texto);
+  }
+  .c2fa input:focus{outline:none;border-color:var(--celeste);box-shadow:0 0 0 3px rgba(91,184,232,.15);}
+  .c2fa-estado{display:inline-flex;align-items:center;gap:8px;font-size:.9rem;font-weight:600;margin:0 0 6px;}
+  .c2fa-estado i{width:9px;height:9px;border-radius:50%;background:#9aa4b2;display:inline-block;}
+  .c2fa-estado.on i{background:#1b8a4a;}
+  .c2fa-botones{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;}
+  .c2fa-qr{width:200px;max-width:100%;background:#fff;padding:8px;border-radius:10px;margin:10px 0 4px;line-height:0;}
+  .c2fa-qr svg{width:100%;height:auto;display:block;}
+  .c2fa-clave{font-family:ui-monospace,Menlo,Consolas,monospace;letter-spacing:.08em;word-break:break-all;font-size:.9rem;margin:4px 0 0;}
+  .c2fa-codigos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:12px 0 0;padding:14px;border:1.5px dashed var(--borde);border-radius:10px;background:var(--fondo);}
+  .c2fa-codigos span{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.95rem;letter-spacing:.06em;text-align:center;}
+  .avatar-picker{display:flex;align-items:center;gap:16px;margin-top:2px;}
+  .avatar-picker-preview{
+    position:relative;width:72px;height:72px;border-radius:50%;flex-shrink:0;
+    background:var(--fondo-alt);background-size:cover;background-position:center;
+    display:flex;align-items:center;justify-content:center;color:var(--texto-suave);
+    border:1px solid var(--borde);cursor:pointer;
+    transition:transform .18s cubic-bezier(.34,1.56,.64,1), box-shadow .15s;
+  }
+  .avatar-picker-botones{display:flex;flex-direction:column;gap:8px;}
+  .avatar-picker-botones .btn-secundario-cuenta{width:fit-content;}
+
+  /* Arrastrar y soltar una foto directamente sobre el círculo del avatar:
+     crece bien, con un anillo en gradiente animado girando alrededor y
+     un overlay pulsante — el mismo espíritu que la dropzone grande de
+     "Subir contenido", en miniatura. */
+  .avatar-picker-preview{isolation:isolate;}
+  .avatar-picker-preview.dropzone-activa{
+    transform:scale(1.22) translateY(-2px);
+    box-shadow:0 16px 32px -6px rgba(30,150,220,.5);
+  }
+  /* Anillo giratorio en gradiente, como un "cargando" pero de fiesta */
+  .avatar-picker-preview.dropzone-activa::before{
+    content:"";position:absolute;inset:-6px;border-radius:50%;z-index:-1;
+    background:conic-gradient(from var(--angulo-borde-avatar,0deg), var(--celeste), #7ee8fa, #4fd1a5, var(--rojo), var(--celeste));
+    animation:dropzone-girar-borde-admin 1.6s linear infinite;
+  }
+  .avatar-picker-preview.dropzone-activa::after{
+    content:"";position:absolute;inset:0;border-radius:50%;
+    background:rgba(30,150,220,.55);
+    animation:avatar-dropzone-pulso 1s ease-in-out infinite;
+  }
+  @keyframes avatar-dropzone-pulso{
+    0%,100%{box-shadow:inset 0 0 0 0 rgba(255,255,255,.4);}
+    50%{box-shadow:inset 0 0 0 5px rgba(255,255,255,0);}
+  }
+  @keyframes dropzone-girar-borde-admin{
+    0%{--angulo-borde-avatar:0deg;}
+    100%{--angulo-borde-avatar:360deg;}
+  }
+  @property --angulo-borde-avatar{syntax:"<angle>";inherits:false;initial-value:0deg;}
+  @media (prefers-reduced-motion: reduce){
+    .avatar-picker-preview{transition:none;}
+    .avatar-picker-preview.dropzone-activa::after,
+    .avatar-picker-preview.dropzone-activa::before{animation:none;}
+  }
+
+  .btn-primario-cuenta{
+    padding:12px 22px;background:var(--rojo);color:#fff;border:none;border-radius:26px;
+    font-family:var(--font-tit);text-transform:uppercase;font-size:.88rem;letter-spacing:.4px;
+    cursor:pointer;transition:opacity .15s;
+  }
+  .btn-primario-cuenta:hover{opacity:.9;}
+  .btn-primario-cuenta:disabled{opacity:.6;cursor:default;}
+  .btn-secundario-cuenta{
+    padding:10px 18px;background:var(--fondo-alt);color:var(--marino-texto);border:1px solid var(--borde);
+    border-radius:20px;font-family:var(--font-tit);text-transform:uppercase;font-size:.78rem;letter-spacing:.3px;
+    cursor:pointer;transition:background .15s;
+  }
+  .btn-secundario-cuenta:hover{background:var(--borde);}
+  .cuenta-datos-lista{margin:8px 0 0;padding-left:20px;font-size:.88rem;line-height:1.6;}
+  .cuenta-zona-peligro{border:1px solid var(--rojo);}
+  .cuenta-zona-peligro h3{color:var(--rojo);}
+  .btn-peligro-cuenta{
+    padding:12px 22px;background:transparent;color:var(--rojo);border:1.5px solid var(--rojo);border-radius:26px;
+    font-family:var(--font-tit);text-transform:uppercase;font-size:.88rem;letter-spacing:.4px;
+    cursor:pointer;transition:background .15s,color .15s;
+  }
+  .btn-peligro-cuenta:hover:not(:disabled){background:var(--rojo);color:#fff;}
+  .btn-peligro-cuenta:disabled{opacity:.6;cursor:default;}
+
+  .cuenta-msg{font-size:.86rem;margin:14px 0 0;display:none;}
+  .cuenta-msg-ok{color:#1b8a4a;display:block;}
+  .cuenta-msg-error{color:var(--rojo);display:block;}
+
+  /* ---------- Dispositivos conectados ---------- */
+  .lista-sesiones-cuenta{display:flex;flex-direction:column;gap:10px;margin-top:4px;}
+  .fila-sesion-cuenta{
+    display:flex;align-items:center;gap:14px;padding:14px 16px;
+    border:1px solid var(--borde);border-radius:10px;background:var(--fondo);
+  }
+  .fila-sesion-cuenta.es-actual{border-color:var(--celeste);}
+  .icono-sesion-cuenta{width:26px;height:26px;flex-shrink:0;color:var(--texto-suave);}
+  .icono-sesion-cuenta svg{width:100%;height:100%;}
+  .datos-sesion-cuenta{flex:1;min-width:0;}
+  .dispositivo-nombre-cuenta{font-weight:600;font-size:.92rem;color:var(--marino-texto);display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .etiqueta-actual-cuenta{
+    font-size:.68rem;text-transform:uppercase;letter-spacing:.3px;font-weight:700;
+    background:var(--celeste);color:#fff;padding:2px 8px;border-radius:10px;
+  }
+  .detalle-sesion-cuenta{font-size:.8rem;color:var(--texto-suave);margin-top:2px;}
+  .btn-cerrar-sesion-cuenta{
+    flex-shrink:0;padding:8px 14px;background:none;border:1px solid var(--rojo);color:var(--rojo);
+    border-radius:18px;font-size:.78rem;cursor:pointer;transition:background .15s,color .15s;
+  }
+  .btn-cerrar-sesion-cuenta:hover{background:var(--rojo);color:#fff;}
+  .sesiones-vacio-cuenta{color:var(--texto-suave);font-size:.88rem;margin:0;}
+
+  @media(max-width:600px){
+    .fila-sesion-cuenta{flex-wrap:wrap;}
+    .btn-cerrar-sesion-cuenta{margin-left:auto;}
+  }
+  /* Con seis pestañas ya no caben en una línea en pantallas estrechas. */
+  @media(max-width:760px){
+    .cuenta-tabs{flex-wrap:wrap;width:100%;}
+    .cuenta-tab{flex:1 1 auto;padding:9px 12px;}
+  }
+</style>
+<link rel="stylesheet" href="css/app-movil.css?v=b6df23d4">
+<script src="js/app-movil.js?v=3b122790" defer></script>
+</head>
+<body data-page="cuenta">
+
+<div id="site-header"></div>
+
+<main class="wrap" id="paginaCuenta">
+  <div class="cuenta-cabecera">
+    <div class="cuenta-avatar-grande" id="cuentaAvatarGrandeLector">?</div>
+    <div class="cuenta-cabecera-textos">
+      <h2>Mi cuenta</h2>
+      <p id="cuentaSubtitulo">Gestiona tus datos y tus dispositivos conectados.</p>
+    </div>
+  </div>
+
+  <div class="cuenta-tabs" id="cuentaTabs">
+    <button type="button" class="cuenta-tab activa" data-tab="perfil">Mi perfil</button>
+    <button type="button" class="cuenta-tab" data-tab="guardadas">Guardadas</button>
+    <button type="button" class="cuenta-tab" data-tab="historial">Historial</button>
+    <button type="button" class="cuenta-tab" data-tab="preferencias">Preferencias</button>
+    <button type="button" class="cuenta-tab" data-tab="password">Seguridad</button>
+    <button type="button" class="cuenta-tab" data-tab="sesiones">Dispositivos</button>
+  </div>
+
+  <!-- ===================== PARTE 2A: MI PERFIL ===================== -->
+  <div class="cuenta-panel activo" id="cuentaPanel-perfil">
+
+    <!-- Solo visible para cuentas creadas con X: ese proveedor no da un
+         email real (ver comentario largo en /api/readers/x/callback,
+         src/index.js), así que se guarda uno sintético
+         (x-<id>@x.elotrofutbol.media) y se pide aquí el de verdad la
+         primera vez. Oculta por defecto; la muestra
+         comprobarEmailPendienteX() más abajo solo si detecta ese
+         dominio en el email del lector. -->
+    <div class="cuenta-tarjeta" id="tarjetaEmailPendienteX" style="display:none; border-color:var(--celeste,#5bb8e8);">
+      <h3>Añade tu correo electrónico</h3>
+      <p class="cuenta-ayuda">Has entrado con tu cuenta de X, que no comparte tu correo real. Añade uno para poder recuperar tu contraseña y recibir avisos por email.</p>
+      <form id="formEmailPendienteX" novalidate>
+        <label for="emailPendienteXInput">Correo electrónico *</label>
+        <input type="email" id="emailPendienteXInput" required autocomplete="email" placeholder="tu@correo.com">
+        <div style="margin-top:22px;">
+          <button type="submit" class="btn-primario-cuenta" id="btnGuardarEmailPendienteX">Guardar correo</button>
+        </div>
+        <p id="msgEmailPendienteX" class="cuenta-msg"></p>
+      </form>
+    </div>
+
+    <!-- Correo sin confirmar (registro normal o correo real ya añadido
+         tras entrar con X): oculta por defecto, la muestra
+         comprobarVerificacionEmailLector() más abajo. No se solapa con
+         la tarjeta de arriba: esa es solo para el correo SINTÉTICO de X
+         (@x.elotrofutbol.media); esta es para cualquier correo real que
+         todavía no se haya confirmado, sea cual sea su origen. -->
+    <div class="cuenta-tarjeta" id="tarjetaVerificarEmail" style="display:none; border-color:var(--celeste,#5bb8e8);">
+      <h3>Verifica tu correo electrónico</h3>
+      <p class="cuenta-ayuda" id="textoVerificarEmail">Todavía no has confirmado tu correo. Revisa el enlace que te enviamos, o pide uno nuevo si no te llegó (o caducó).</p>
+      <button type="button" class="btn-primario-cuenta" id="btnReenviarVerificacionCuenta" style="margin-top:4px;">Reenviar correo de verificación</button>
+      <p id="msgVerificarEmail" class="cuenta-msg"></p>
+    </div>
+
+    <div class="cuenta-tarjeta">
+      <h3>Mis datos</h3>
+      <p class="cuenta-ayuda">Este nombre y foto son los que verán el resto de lectores en tus comentarios.</p>
+
+      <form id="formPerfilLector" novalidate>
+        <label for="perfilLectorNombre">Nombre *</label>
+        <input type="text" id="perfilLectorNombre" required maxlength="80" autocomplete="name">
+
+        <label>Foto de perfil</label>
+        <div class="avatar-picker">
+          <div class="avatar-picker-preview" id="previewAvatarLector">?</div>
+          <div class="avatar-picker-botones">
+            <input type="file" id="inputAvatarLectorArchivo" accept="image/*" hidden>
+            <button type="button" class="btn-secundario-cuenta" id="btnSubirAvatarLector">Subir foto</button>
+            <button type="button" class="btn-secundario-cuenta" id="btnQuitarAvatarLector">Quitar foto</button>
+          </div>
+        </div>
+
+        <div style="margin-top:22px;">
+          <button type="submit" class="btn-primario-cuenta" id="btnGuardarPerfilLector">Guardar cambios</button>
+        </div>
+        <p id="msgPerfilLector" class="cuenta-msg"></p>
+      </form>
+    </div>
+
+    <div class="cuenta-tarjeta">
+      <h3>Avisos por correo</h3>
+      <p class="cuenta-ayuda">Te escribimos cuando la redacción publica un comentario tuyo y cuando alguien responde a uno de tus comentarios. Solo te avisamos de eso, nada más.</p>
+      <label class="cuenta-check" for="chkAvisosComentarios">
+        <input type="checkbox" id="chkAvisosComentarios" checked>
+        <span>Avisarme por correo de mis comentarios y de las respuestas que reciban</span>
+      </label>
+      <p id="msgAvisosComentarios" class="cuenta-msg"></p>
+    </div>
+  </div>
+
+  <!-- ===================== PREFERENCIAS (animaciones, texto, etc.) ===================== -->
+  <div class="cuenta-panel" id="cuentaPanel-preferencias">
+    <div class="cuenta-tarjeta">
+      <h3>Preferencias de visualización</h3>
+      <p class="cuenta-ayuda">Adapta la web a cómo te resulta más cómoda. Se guardan en este dispositivo.</p>
+      <div id="contenedorPreferenciasLector"></div>
+    </div>
+  </div>
+
+  <!-- ===================== CONTRASEÑA (bonus, ya construido en el backend) ===================== -->
+  <div class="cuenta-panel" id="cuentaPanel-password">
+    <div class="cuenta-tarjeta">
+      <h3>Cambiar contraseña</h3>
+      <p class="cuenta-ayuda">Cambia la contraseña de tu cuenta de lector.</p>
+      <form id="formPasswordLector" novalidate>
+        <label for="passLectorActual">Contraseña actual *</label>
+        <input type="password" id="passLectorActual" required autocomplete="current-password">
+        <label for="passLectorNueva">Nueva contraseña *</label>
+        <input type="password" id="passLectorNueva" required minlength="8" autocomplete="new-password">
+        <label for="passLectorNueva2">Repite la nueva contraseña *</label>
+        <input type="password" id="passLectorNueva2" required minlength="8" autocomplete="new-password">
+        <div style="margin-top:22px;">
+          <button type="submit" class="btn-primario-cuenta" id="btnCambiarPasswordLectorCuenta">Cambiar contraseña</button>
+        </div>
+        <p id="msgPasswordLector" class="cuenta-msg"></p>
+      </form>
+    </div>
+    <div class="cuenta-tarjeta c2fa" id="tarjeta2faLector">
+      <h3>Verificación en dos pasos</h3>
+      <p class="cuenta-ayuda">Añade una capa extra a tu cuenta: al entrar con tu correo y contraseña te pediremos también un código de una app de autenticación (Google Authenticator, Aegis, 1Password…).</p>
+      <div id="contenido2faLector"><div class="eof-cargador eof-cargador--mini" role="status"><span class="spinner" aria-hidden="true"></span><span class="eof-cargador-txt">Cargando…</span></div></div>
+    </div>
+    <div class="cuenta-tarjeta" id="tarjetaMisDatos">
+      <h3>Descargar mis datos</h3>
+      <p class="cuenta-ayuda">Te bajas un archivo JSON con lo que guardamos de tu cuenta: perfil, comentarios, porras, noticias guardadas, historial de lectura, votos en encuestas, dispositivos y suscripción al boletín. No incluye tu contraseña.</p>
+      <button type="button" class="btn-secundario-cuenta" id="btnExportarDatosLector">Descargar mis datos</button>
+      <p id="msgExportarLector" class="cuenta-msg"></p>
+    </div>
+    <div class="cuenta-tarjeta cuenta-zona-peligro" id="tarjetaBorrarCuenta">
+      <h3>Borrar mi cuenta</h3>
+      <p class="cuenta-ayuda">Se borra de forma definitiva y no se puede deshacer:</p>
+      <ul class="cuenta-datos-lista">
+        <li>Tu cuenta, tus porras, tus noticias guardadas, tu historial, tus votos en encuestas y tus dispositivos.</li>
+        <li>Tu suscripción al boletín con este correo, si la tenías.</li>
+        <li>Tus comentarios. Los que ya tienen respuestas de otras personas se quedan sin tu nombre, correo ni IP, con el texto sustituido por «Comentario eliminado por su autor», para no romper la conversación.</li>
+      </ul>
+      <form id="formBorrarCuentaLector" novalidate>
+        <div id="borrarCuentaCampoPassword">
+          <label for="borrarCuentaPassword">Tu contraseña *</label>
+          <input type="password" id="borrarCuentaPassword" autocomplete="current-password">
+        </div>
+        <div id="borrarCuentaCampoEmail" hidden>
+          <label for="borrarCuentaEmail">Escribe tu correo para confirmar *</label>
+          <input type="email" id="borrarCuentaEmail" autocomplete="off" placeholder="tu@correo.com">
+        </div>
+        <div style="margin-top:22px;">
+          <button type="submit" class="btn-peligro-cuenta" id="btnBorrarCuentaLector">Borrar mi cuenta para siempre</button>
+        </div>
+        <p id="msgBorrarCuentaLector" class="cuenta-msg"></p>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===================== GUARDADAS E HISTORIAL DE LECTURA (punto 5) ===================== -->
+  <div class="cuenta-panel" id="cuentaPanel-guardadas">
+    <div class="cuenta-tarjeta">
+      <h3>Noticias guardadas</h3>
+      <p class="cuenta-ayuda">Las noticias que has guardado para leer luego. Puedes tener hasta 200.</p>
+      <div id="contenedorGuardadasLector"></div>
+    </div>
+  </div>
+
+  <div class="cuenta-panel" id="cuentaPanel-historial">
+    <div class="cuenta-tarjeta">
+      <h3>Historial de lectura</h3>
+      <p class="cuenta-ayuda">Las últimas 100 noticias que has abierto con la sesión iniciada, de la más reciente a la más antigua.</p>
+      <div id="contenedorHistorialLector"></div>
+    </div>
+  </div>
+
+  <!-- ===================== PARTE 2B: DISPOSITIVOS CONECTADOS ===================== -->
+  <div class="cuenta-panel" id="cuentaPanel-sesiones">
+    <div class="cuenta-tarjeta">
+      <h3>Dispositivos conectados</h3>
+      <p class="cuenta-ayuda">Estos son los dispositivos y navegadores donde tu cuenta tiene la sesión iniciada actualmente. Si no reconoces alguno, ciérralo.</p>
+      <div id="listaSesionesLector" class="lista-sesiones-cuenta">
+        <div class="sesiones-vacio-cuenta"><div class="eof-cargador eof-cargador--mini" role="status"><span class="spinner" aria-hidden="true"></span><span class="eof-cargador-txt">Cargando dispositivos…</span></div></div>
+      </div>
+      <div style="margin-top:16px;">
+        <button type="button" class="btn-secundario-cuenta" id="btnCerrarOtrasSesionesLector">Cerrar todos los demás dispositivos</button>
+      </div>
+      <p id="msgSesionesLector" class="cuenta-msg"></p>
+    </div>
+  </div>
+
+  <a href="/" style="display:inline-block;margin-top:24px;color:var(--celeste);font-size:.88rem;">← Volver a la portada</a>
+</main>
+
+<div id="site-footer"></div>
+
+<script src="js/ui-alertas.js?v=4339c846"></script>
+<script src="js/foco.js?v=133ef790"></script>
+<script src="js/vendor/qrcode.js"></script>
+<script src="js/config.js?v=f440593b"></script>
+<script src="js/seo.js?v=51678a88"></script>
+<script src="js/lector-auth.js?v=9a1c7f1f"></script>
+<script src="js/lecturas.js?v=de5c36f5"></script>
+<script src="js/layout.js?v=e8597b26"></script>
+<script src="js/cookies.js?v=845d8f5c"></script>
+<script src="js/ads.js?v=a41f4506"></script>
+<script src="js/main.js?v=858efe67"></script>
+<script>
+fijarSeoBasico({
+  titulo: "Mi cuenta — ELOTROFÚTBOLTV",
+  descripcion: "Gestiona los datos de tu cuenta de lector en ELOTROFÚTBOLTV.",
+  urlPath: "/cuenta",
+});
+
+// ---------- Guard: hace falta sesión de lector para ver esta página ----------
+// Si se ha llegado aquí justo de vuelta de un login con X o Discord (URL
+// con ?sesionX=/?errorX=/?sesionDiscord=/?errorDiscord=, ver
+// procesarRetornoX/procesarRetornoDiscord en lector-auth.js), hay que
+// esperar a que ese proceso termine de guardar la sesión antes de mirar
+// sesionLectorActual(): si no, como ese proceso es asíncrono (hace un
+// fetch a /api/readers/me), este guard se ejecutaba antes de que el
+// token llegara a guardarse en localStorage y mandaba de vuelta a
+// acceso.html como si el login hubiera fallado, aunque no hubiera
+// ningún error real. Pasaba siempre al entrar a esta página sin sesión
+// previa y completar el login con X o Discord desde aquí mismo.
+(async function guardLector() {
+  await Promise.all([window.eofRetornoXListo, window.eofRetornoDiscordListo]);
+  if (!sesionLectorActual()) {
+    const volver = encodeURIComponent(location.pathname + location.search);
+    location.href = `acceso.html?volver=${volver}`;
+  }
+})();
+
+// apiFetchLector ya añade el Authorization; aquí solo se añade el parseo
+// JSON + manejo de errores que necesita esta página (apiFetch de
+// config.js, a diferencia del apiFetch del panel, devuelve un Response
+// crudo por el sistema de failover, así que cada llamador decide cómo
+// leerlo — ver panel-header.js para el mismo patrón en el panel).
+async function apiLector(path, options = {}) {
+  const res = await apiFetchLector(path, options);
+  if (res.status === 401) {
+    await cerrarSesionLector();
+    location.href = "acceso.html";
+    return new Promise(() => {}); // no continuar ejecutando el resto del handler
+  }
+  let data = {};
+  try {
+    data = await res.json();
+  } catch {
+    // Respuesta no-JSON (p. ej. 413 al subir una imagen demasiado grande).
+  }
+  if (!res.ok) {
+    const err = new Error(data.error || "Error");
+    err.data = data;
+    err.status = res.status;
+    throw err;
+  }
+  return data;
+}
+
+function inicialesLector(nombre) {
+  return ((nombre || "").trim().charAt(0) || "?").toUpperCase();
+}
+
+function pintarAvatarCabeceraLector(reader) {
+  const el = document.getElementById("cuentaAvatarGrandeLector");
+  if (!el) return;
+  if (reader && reader.avatar_url) {
+    el.textContent = "";
+    el.style.backgroundImage = `url('${reader.avatar_url}')`;
+  } else {
+    el.style.backgroundImage = "none";
+    el.textContent = inicialesLector(reader && reader.nombre);
+  }
+}
+
+// ---------- Preferencias de visualización ----------
+// El panel lo dibuja js/preferencias.js (el mismo que usan los
+// redactores en el panel de admin). Se monta una sola vez.
+let preferenciasLectorMontadas = false;
+function montarPreferenciasLector() {
+  if (preferenciasLectorMontadas || !window.EOFPrefs) return;
+  preferenciasLectorMontadas = true;
+  window.EOFPrefs.montarPanel(document.getElementById("contenedorPreferenciasLector"));
+}
+
+// ---------- Pestañas ----------
+function activarPestanaCuenta(tab) {
+  const btnDestino = document.querySelector(`.cuenta-tab[data-tab="${tab}"]`);
+  const panelDestino = document.getElementById(`cuentaPanel-${tab}`);
+  if (!btnDestino || !panelDestino) return;
+  document.querySelectorAll(".cuenta-tab").forEach((b) => b.classList.remove("activa"));
+  document.querySelectorAll(".cuenta-panel").forEach((p) => p.classList.remove("activo"));
+  btnDestino.classList.add("activa");
+  panelDestino.classList.add("activo");
+  if (tab === "sesiones") cargaSesionesLector();
+  if (tab === "password") cargar2faLector();
+  if (tab === "preferencias") montarPreferenciasLector();
+  if (tab === "guardadas") montarGuardadasCuenta();
+  if (tab === "historial") montarHistorialCuenta();
+}
+
+// Se vuelve a pintar cada vez que se abre la pestaña (js/lecturas.js).
+function montarGuardadasCuenta() {
+  if (window.EOFLecturas) EOFLecturas.montarLista(document.getElementById("contenedorGuardadasLector"), "guardadas");
+}
+function montarHistorialCuenta() {
+  if (window.EOFLecturas) EOFLecturas.montarLista(document.getElementById("contenedorHistorialLector"), "historial");
+}
+
+document.querySelectorAll(".cuenta-tab").forEach((btn) => {
+  btn.addEventListener("click", () => activarPestanaCuenta(btn.dataset.tab));
+});
+
+// =====================================================================
+// PARTE 2A: MI PERFIL
+// =====================================================================
+const inputAvatarLectorUrl = { value: "" }; // se guarda aparte del <input file>, que no lleva URL
+let avatarLectorUrlActual = "";
+
+function actualizarPreviewAvatarLector(url) {
+  const preview = document.getElementById("previewAvatarLector");
+  avatarLectorUrlActual = url || "";
+  if (url) {
+    preview.style.backgroundImage = `url('${url}')`;
+    preview.textContent = "";
+  } else {
+    preview.style.backgroundImage = "none";
+    const sesion = sesionLectorActual();
+    preview.textContent = inicialesLector(sesion && sesion.nombre);
+  }
+}
+
+// Comprueba si el email del lector es el sintético que genera el login
+// con X (x-<id>@x.elotrofutbol.media, ver /api/readers/x/callback) y, si
+// lo es, muestra la tarjeta para pedir uno real. Se llama tanto al
+// cargar la página (con lo que ya hay en localStorage) como tras traer
+// el perfil fresco del servidor, para no depender de cuál llegue antes.
+function comprobarEmailPendienteX(email) {
+  const tarjeta = document.getElementById("tarjetaEmailPendienteX");
+  if (!tarjeta) return;
+  const esSintetico = typeof email === "string" && email.toLowerCase().endsWith("@x.elotrofutbol.media");
+  tarjeta.style.display = esSintetico ? "" : "none";
+}
+
+// Muestra la tarjeta de "Verifica tu correo" si el lector tiene un
+// correo real (no el sintético de X, que ya tiene su propia tarjeta
+// arriba) pero todavía no lo ha confirmado. Antes esto no se mostraba
+// en ningún sitio de "Mi cuenta": el único aviso en todo el sitio era
+// una frase suelta al intentar votar en una encuesta (ver
+// comprobarAccesoEncuesta en encuestas.js), así que quien no votaba
+// nunca se enteraba de que le faltaba este paso.
+function comprobarVerificacionEmailLector(reader) {
+  const tarjeta = document.getElementById("tarjetaVerificarEmail");
+  if (!tarjeta || !reader) return;
+  const esSintetico = typeof reader.email === "string" && reader.email.toLowerCase().endsWith("@x.elotrofutbol.media");
+  const faltaVerificar = !reader.email_verificado && !esSintetico;
+  tarjeta.style.display = faltaVerificar ? "" : "none";
+  if (faltaVerificar) {
+    document.getElementById("textoVerificarEmail").innerHTML =
+      `Todavía no has confirmado <strong>${escapeHtmlLector(reader.email || "")}</strong>. Revisa el enlace que te enviamos, o pide uno nuevo si no te llegó (o caducó).`;
+  }
+}
+
+// Igual que escapeHtml de admin.js, que no se carga en esta página: solo
+// hace falta para el correo del lector dentro de innerHTML de arriba.
+function escapeHtmlLector(texto) {
+  const div = document.createElement("div");
+  div.textContent = texto || "";
+  return div.innerHTML;
+}
+
+async function cargarMiPerfilLector() {
+  const sesion = sesionLectorActual();
+  if (sesion) {
+    document.getElementById("perfilLectorNombre").value = sesion.nombre || "";
+    document.getElementById("cuentaSubtitulo").textContent = `Sesión iniciada como ${sesion.nombre}`;
+    pintarAvatarCabeceraLector(sesion);
+    actualizarPreviewAvatarLector(sesion.avatar_url || "");
+    comprobarEmailPendienteX(sesion.email);
+    comprobarVerificacionEmailLector(sesion);
+  }
+  try {
+    const { reader } = await apiLector("/api/readers/me/perfil");
+    if (!reader) return;
+    document.getElementById("perfilLectorNombre").value = reader.nombre || "";
+    actualizarPreviewAvatarLector(reader.avatar_url || "");
+    pintarAvatarCabeceraLector(reader);
+    comprobarEmailPendienteX(reader.email);
+    comprobarVerificacionEmailLector(reader);
+    if (typeof reader.avisos_comentarios === "boolean") {
+      document.getElementById("chkAvisosComentarios").checked = reader.avisos_comentarios;
+    }
+  } catch (err) {
+    // Si falla, el formulario se queda con lo que ya había en la sesión
+    // guardada localmente; la persona puede seguir editando igualmente.
+  }
+}
+// Mismo motivo que guardLector() y activarTabInicialLector() más arriba:
+// apiLector("/api/readers/me/perfil") necesita el token ya guardado en
+// localStorage, que puede no estar listo todavía si se llega aquí recién
+// vuelto de un login con X o Discord.
+(async function iniciarPerfilLector() {
+  await Promise.all([window.eofRetornoXListo, window.eofRetornoDiscordListo]);
+  cargarMiPerfilLector();
+})();
+
+// ---------- Avisos por correo de comentarios ----------
+document.getElementById("chkAvisosComentarios").addEventListener("change", async (e) => {
+  const chk = e.currentTarget;
+  const msg = document.getElementById("msgAvisosComentarios");
+  msg.className = "cuenta-msg";
+  chk.disabled = true;
+  try {
+    await apiLector("/api/readers/me/avisos-comentarios", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ activo: chk.checked }),
+    });
+    msg.textContent = chk.checked ? "Avisos activados." : "Avisos desactivados.";
+    msg.classList.add("cuenta-msg-ok");
+    setTimeout(() => { msg.className = "cuenta-msg"; }, 3000);
+  } catch (err) {
+    chk.checked = !chk.checked; // no se guardó: se deja como estaba
+    msg.textContent = err.message || "No se pudo guardar el cambio.";
+    msg.classList.add("cuenta-msg-error");
+  } finally {
+    chk.disabled = false;
+  }
+});
+
+// ---------- Reenviar correo de verificación ----------
+document.getElementById("btnReenviarVerificacionCuenta").addEventListener("click", async (e) => {
+  const btn = e.currentTarget;
+  const msg = document.getElementById("msgVerificarEmail");
+  const sesion = sesionLectorActual();
+  if (btn.disabled || !sesion || !sesion.email) return;
+  msg.className = "cuenta-msg";
+  btn.disabled = true;
+  const textoOriginal = btn.textContent;
+  btn.textContent = "Enviando…";
+  try {
+    // Mismo endpoint que usa el banner global (lector-auth.js) y el
+    // formulario de login: no exige sesión (solo el email) y responde
+    // "ok" siempre, exista o no la cuenta, para no filtrar qué correos
+    // están registrados -- por eso aquí no hay un "error real" del
+    // servidor que mostrar, solo confirmar que se ha mandado.
+    await apiFetch("/api/readers/reenviar-verificacion", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: sesion.email }),
+    });
+    msg.textContent = "Te hemos enviado un nuevo enlace. Revisa tu bandeja de entrada (y spam).";
+    msg.classList.add("cuenta-msg-ok");
+    btn.textContent = "Correo enviado";
+    setTimeout(() => { btn.textContent = textoOriginal; btn.disabled = false; }, 20000);
+  } catch (err) {
+    msg.textContent = "No se ha podido reenviar el correo. Comprueba tu conexión e inténtalo de nuevo.";
+    msg.classList.add("cuenta-msg-error");
+    btn.textContent = textoOriginal;
+    btn.disabled = false;
+  }
+});
+
+// ---------- Guardar correo real (solo cuentas de X) ----------
+document.getElementById("formEmailPendienteX").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const msg = document.getElementById("msgEmailPendienteX");
+  const btn = document.getElementById("btnGuardarEmailPendienteX");
+  msg.className = "cuenta-msg"; // ver comentario sobre style.display inline más abajo, en formPerfilLector
+
+  const email = document.getElementById("emailPendienteXInput").value.trim();
+  if (!email) {
+    msg.textContent = "Introduce un correo electrónico.";
+    msg.classList.add("cuenta-msg-error");
+    return;
+  }
+
+  btn.disabled = true;
+  try {
+    const data = await apiLector("/api/readers/me/email", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    if (data.token && data.reader) guardarSesionLector(data.token, data.reader);
+    comprobarEmailPendienteX(data.reader && data.reader.email);
+    comprobarVerificacionEmailLector(data.reader);
+    msg.textContent = "Correo guardado. Revisa tu bandeja de entrada para confirmarlo.";
+    msg.classList.add("cuenta-msg-ok");
+    document.getElementById("formEmailPendienteX").reset();
+  } catch (err) {
+    msg.textContent = err.message || "No se pudo guardar el correo.";
+    msg.classList.add("cuenta-msg-error");
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+const btnSubirAvatarLector = document.getElementById("btnSubirAvatarLector");
+const inputAvatarLectorArchivo = document.getElementById("inputAvatarLectorArchivo");
+const btnQuitarAvatarLector = document.getElementById("btnQuitarAvatarLector");
+
+btnSubirAvatarLector.addEventListener("click", () => inputAvatarLectorArchivo.click());
+
+// El propio círculo del avatar también es clicable y, sobre todo,
+// aceptar arrastrar una foto directamente encima suyo desde el
+// escritorio, el explorador de archivos, otra pestaña, etc.
+const previewAvatarLectorEl = document.getElementById("previewAvatarLector");
+previewAvatarLectorEl.addEventListener("click", () => inputAvatarLectorArchivo.click());
+
+let arrastresAvatarLector = 0;
+function esArchivoDeImagenLector(file) {
+  return file && file.type && file.type.startsWith("image/");
+}
+previewAvatarLectorEl.addEventListener("dragenter", (e) => {
+  if (!Array.from(e.dataTransfer?.types || []).includes("Files")) return;
+  e.preventDefault();
+  arrastresAvatarLector++;
+  previewAvatarLectorEl.classList.add("dropzone-activa");
+});
+previewAvatarLectorEl.addEventListener("dragover", (e) => {
+  if (!Array.from(e.dataTransfer?.types || []).includes("Files")) return;
+  e.preventDefault();
+  if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
+});
+previewAvatarLectorEl.addEventListener("dragleave", (e) => {
+  if (!Array.from(e.dataTransfer?.types || []).includes("Files")) return;
+  arrastresAvatarLector = Math.max(0, arrastresAvatarLector - 1);
+  if (arrastresAvatarLector === 0) previewAvatarLectorEl.classList.remove("dropzone-activa");
+});
+previewAvatarLectorEl.addEventListener("drop", (e) => {
+  e.preventDefault();
+  arrastresAvatarLector = 0;
+  previewAvatarLectorEl.classList.remove("dropzone-activa");
+  const archivos = Array.from(e.dataTransfer?.files || []);
+  const imagen = archivos.find(esArchivoDeImagenLector);
+  if (!imagen) {
+    if (archivos.length) EOF.toast("Solo se pueden soltar aquí archivos de imagen", "error");
+    return;
+  }
+  const dt = new DataTransfer();
+  dt.items.add(imagen);
+  inputAvatarLectorArchivo.files = dt.files;
+  inputAvatarLectorArchivo.dispatchEvent(new Event("change", { bubbles: true }));
+});
+
+inputAvatarLectorArchivo.addEventListener("change", async () => {
+  const file = inputAvatarLectorArchivo.files[0];
+  inputAvatarLectorArchivo.value = "";
+  if (!file) return;
+  btnSubirAvatarLector.disabled = true;
+  const textoOriginal = btnSubirAvatarLector.textContent;
+  btnSubirAvatarLector.textContent = "Subiendo…";
+  try {
+    const formData = new FormData();
+    formData.append("imagen", file, file.name);
+    const data = await apiLector("/api/readers/subir-imagen", { method: "POST", body: formData });
+    actualizarPreviewAvatarLector(data.url);
+  } catch (err) {
+    EOF.toast(err.message || "No se pudo subir la foto", "error");
+  } finally {
+    btnSubirAvatarLector.disabled = false;
+    btnSubirAvatarLector.textContent = textoOriginal;
+  }
+});
+
+btnQuitarAvatarLector.addEventListener("click", () => {
+  actualizarPreviewAvatarLector("");
+});
+
+document.getElementById("formPerfilLector").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const msg = document.getElementById("msgPerfilLector");
+  const btn = document.getElementById("btnGuardarPerfilLector");
+  // Se resetea solo la CLASE, no un "style.display" inline: un estilo en
+  // línea tiene más prioridad que cualquier regla de .cuenta-msg-ok/error
+  // del CSS, así que si aquí se dejaba "display:none" en línea, luego el
+  // mensaje de éxito o de error NUNCA llegaba a verse por mucho que se le
+  // añadiera la clase correspondiente (ver mismo bug corregido en el
+  // formulario de contraseña y en el de sesiones, más abajo).
+  msg.className = "cuenta-msg";
+
+  const nombre = document.getElementById("perfilLectorNombre").value.trim();
+  if (!nombre) {
+    msg.textContent = "El nombre no puede estar vacío.";
+    msg.classList.add("cuenta-msg-error");
+    return;
+  }
+
+  btn.disabled = true;
+  try {
+    const data = await apiLector("/api/readers/me/perfil", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nombre, avatar_url: avatarLectorUrlActual }),
+    });
+    // Se actualiza la sesión guardada en localStorage con el token y los
+    // datos nuevos, igual que hace el panel, para que el cambio se vea
+    // al momento en toda la web (cabecera incluida) sin volver a
+    // iniciar sesión.
+    if (data.token && data.reader) guardarSesionLector(data.token, data.reader);
+    pintarAvatarCabeceraLector(data.reader);
+    msg.textContent = "Datos actualizados correctamente.";
+    msg.classList.add("cuenta-msg-ok");
+    setTimeout(() => { msg.className = "cuenta-msg"; }, 3000);
+  } catch (err) {
+    msg.textContent = err.message || "No se pudieron guardar los cambios.";
+    msg.classList.add("cuenta-msg-error");
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ---------- Descargar mis datos / Borrar mi cuenta ----------
+(function () {
+  const btnExportar = document.getElementById("btnExportarDatosLector");
+  const msgExportar = document.getElementById("msgExportarLector");
+  btnExportar.addEventListener("click", async () => {
+    msgExportar.className = "cuenta-msg";
+    btnExportar.disabled = true;
+    try {
+      const res = await apiFetchLector("/api/readers/me/exportar");
+      if (res.status === 401) { await cerrarSesionLector(); location.href = "acceso.html"; return; }
+      if (!res.ok) {
+        let data = {};
+        try { data = await res.json(); } catch {}
+        throw new Error(data.error || "No se han podido descargar tus datos. Inténtalo de nuevo en unos minutos.");
+      }
+      const blob = new Blob([JSON.stringify(await res.json(), null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "mis-datos-elotrofutbol.json";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      msgExportar.textContent = "Listo: se ha descargado el archivo con tus datos.";
+      msgExportar.classList.add("cuenta-msg-ok");
+    } catch (err) {
+      msgExportar.textContent = err.message;
+      msgExportar.classList.add("cuenta-msg-error");
+    } finally {
+      btnExportar.disabled = false;
+    }
+  });
+
+  const formBorrar = document.getElementById("formBorrarCuentaLector");
+  const msgBorrar = document.getElementById("msgBorrarCuentaLector");
+  const btnBorrar = document.getElementById("btnBorrarCuentaLector");
+  let accesoExterno = false;
+  // Las cuentas creadas con Google/Microsoft/Discord/X no tienen una contraseña que conozcan:
+  // a esas se les pide el correo en lugar de la contraseña.
+  apiLector("/api/readers/me/perfil").then((d) => {
+    accesoExterno = !!(d.reader && d.reader.acceso_externo);
+    if (accesoExterno) {
+      document.getElementById("borrarCuentaCampoEmail").hidden = false;
+      document.getElementById("borrarCuentaPassword").placeholder = "Solo si has creado una";
+      document.querySelector("label[for=borrarCuentaPassword]").textContent = "Tu contraseña (si tienes una)";
+    }
+  }).catch(() => {});
+
+  formBorrar.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    msgBorrar.className = "cuenta-msg";
+    const password = document.getElementById("borrarCuentaPassword").value;
+    const confirmar_email = document.getElementById("borrarCuentaEmail").value.trim();
+    if (!password && !confirmar_email) {
+      msgBorrar.textContent = accesoExterno ? "Escribe tu correo para confirmar el borrado." : "Escribe tu contraseña para confirmar el borrado.";
+      msgBorrar.classList.add("cuenta-msg-error");
+      return;
+    }
+    if (!confirm("¿Borrar tu cuenta definitivamente? Esta acción no se puede deshacer.")) return;
+    btnBorrar.disabled = true;
+    try {
+      await apiLector("/api/readers/me", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password, confirmar_email }),
+      });
+      await cerrarSesionLector();
+      alert("Tu cuenta y tus datos se han borrado. Gracias por haber estado aquí.");
+      location.href = "/";
+    } catch (err) {
+      msgBorrar.textContent = err.message || "No se ha podido borrar la cuenta. Inténtalo de nuevo.";
+      msgBorrar.classList.add("cuenta-msg-error");
+      btnBorrar.disabled = false;
+    }
+  });
+})();
+
+
+// ---------- Verificación en dos pasos (2FA) ----------
+const c2fa = { estado: null, flujo: "inicio", secreto: "", otpauth: "", codigos: [] };
+
+async function cargar2faLector() {
+  try { c2fa.estado = await apiLector("/api/readers/me/2fa"); } catch { c2fa.estado = null; }
+  c2fa.flujo = "inicio";
+  pintar2faLector();
+}
+
+function msg2fa(texto, ok) {
+  const m = document.getElementById("c2faMsg");
+  if (!m) return;
+  m.className = "cuenta-msg" + (texto ? (ok ? " cuenta-msg-ok" : " cuenta-msg-error") : "");
+  m.textContent = texto || "";
+}
+
+function pintar2faLector() {
+  const cont = document.getElementById("contenido2faLector");
+  if (!cont) return;
+  const e = c2fa.estado;
+  let h = "";
+  if (!e) {
+    h = '<p class="cuenta-ayuda">No se ha podido cargar el estado de la verificación. Recarga la página.</p>';
+  } else if (!e.disponible) {
+    h = '<p class="cuenta-ayuda">Tu cuenta no tiene contraseña (entras con Google, Microsoft, Discord o X), así que ya está protegida por la verificación de ese proveedor.</p>';
+  } else if (c2fa.flujo === "password") {
+    h = `<form data-f="setup" novalidate>
+      <label for="c2faPassword">Escribe tu contraseña para empezar</label>
+      <input type="password" id="c2faPassword" autocomplete="current-password" required>
+      <div class="c2fa-botones"><button type="submit" class="btn-primario-cuenta">Continuar</button><button type="button" class="btn-secundario-cuenta" data-a="cancelar">Cancelar</button></div>
+    </form>`;
+  } else if (c2fa.flujo === "configurar") {
+    h = `<form data-f="activar" novalidate>
+      <p class="cuenta-ayuda" style="margin-bottom:6px;"><strong>1.</strong> Escanea este código con tu app de autenticación (o escribe la clave a mano).</p>
+      <div class="c2fa-qr" id="c2faQr"></div>
+      <p class="c2fa-clave" id="c2faClave"></p>
+      <p class="cuenta-ayuda" style="margin:16px 0 0;"><strong>2.</strong> Escribe el código de 6 cifras que muestra la app.</p>
+      <label for="c2faCodigo">Código</label>
+      <input type="text" id="c2faCodigo" inputmode="numeric" autocomplete="one-time-code" maxlength="8" required>
+      <div class="c2fa-botones"><button type="submit" class="btn-primario-cuenta">Activar</button><button type="button" class="btn-secundario-cuenta" data-a="cancelar">Cancelar</button></div>
+    </form>`;
+  } else if (c2fa.flujo === "codigos") {
+    h = `<p class="cuenta-ayuda" style="margin-bottom:0;"><strong>Verificación activada.</strong> Guarda estos códigos de recuperación en un lugar seguro: cada uno sirve una sola vez si pierdes el móvil. No volverán a mostrarse.</p>
+      <div class="c2fa-codigos" id="c2faCodigos"></div>
+      <div class="c2fa-botones"><button type="button" class="btn-secundario-cuenta" data-a="copiar">Copiar códigos</button><button type="button" class="btn-primario-cuenta" data-a="listo">Ya los he guardado</button></div>`;
+  } else if (c2fa.flujo === "desactivar") {
+    h = `<form data-f="desactivar" novalidate>
+      <label for="c2faQuitarPassword">Tu contraseña</label>
+      <input type="password" id="c2faQuitarPassword" autocomplete="current-password" required>
+      <label for="c2faQuitarCodigo">Código de tu app o de recuperación</label>
+      <input type="text" id="c2faQuitarCodigo" autocomplete="one-time-code" maxlength="20" required>
+      <div class="c2fa-botones"><button type="submit" class="btn-primario-cuenta">Desactivar</button><button type="button" class="btn-secundario-cuenta" data-a="cancelar">Cancelar</button></div>
+    </form>`;
+  } else if (e.activo) {
+    h = `<p class="c2fa-estado on"><i></i>Activada</p>
+      <p class="cuenta-ayuda" style="margin-bottom:0;">Te quedan <strong>${Number(e.codigos_restantes) || 0}</strong> códigos de recuperación sin usar.</p>
+      <div class="c2fa-botones"><button type="button" class="btn-secundario-cuenta" data-a="quitar">Desactivar</button></div>`;
+  } else {
+    h = `<p class="c2fa-estado"><i></i>Desactivada</p>
+      <div class="c2fa-botones" style="margin-top:8px;"><button type="button" class="btn-primario-cuenta" data-a="empezar">Activar verificación en dos pasos</button></div>`;
+  }
+  cont.innerHTML = h + '<p class="cuenta-msg" id="c2faMsg"></p>';
+
+  if (c2fa.flujo === "configurar") {
+    document.getElementById("c2faClave").textContent = (c2fa.secreto || "").replace(/(.{4})/g, "$1 ").trim();
+    try {
+      const qr = qrcode(0, "M");
+      qr.addData(c2fa.otpauth);
+      qr.make();
+      document.getElementById("c2faQr").innerHTML = qr.createSvgTag({ cellSize: 6, margin: 2, scalable: true });
+    } catch { /* sin QR queda la clave escrita */ }
+  }
+  if (c2fa.flujo === "codigos") {
+    const caja = document.getElementById("c2faCodigos");
+    c2fa.codigos.forEach((c) => { const sp = document.createElement("span"); sp.textContent = c; caja.appendChild(sp); });
+  }
+  const foco = { password: "c2faPassword", configurar: "c2faCodigo", desactivar: "c2faQuitarPassword" }[c2fa.flujo];
+  if (foco) document.getElementById(foco)?.focus();
+}
+
+document.getElementById("contenido2faLector").addEventListener("click", async (ev) => {
+  const b = ev.target.closest("[data-a]");
+  if (!b) return;
+  const a = b.dataset.a;
+  if (a === "empezar") { c2fa.flujo = "password"; pintar2faLector(); }
+  else if (a === "quitar") { c2fa.flujo = "desactivar"; pintar2faLector(); }
+  else if (a === "cancelar") { c2fa.flujo = "inicio"; c2fa.secreto = ""; c2fa.otpauth = ""; pintar2faLector(); }
+  else if (a === "listo") { c2fa.codigos = []; await cargar2faLector(); }
+  else if (a === "copiar") {
+    try { await navigator.clipboard.writeText(c2fa.codigos.join("\n")); msg2fa("Códigos copiados.", true); }
+    catch { msg2fa("No se han podido copiar: selecciónalos y cópialos a mano.", false); }
+  }
+});
+
+document.getElementById("contenido2faLector").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const f = ev.target.dataset.f;
+  const boton = ev.target.querySelector("button[type=submit]");
+  const post = (ruta, cuerpo) => apiLector(ruta, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cuerpo) });
+  boton.disabled = true;
+  try {
+    if (f === "setup") {
+      const password = document.getElementById("c2faPassword").value;
+      if (!password) { msg2fa("Escribe tu contraseña.", false); return; }
+      const r = await post("/api/readers/me/2fa/setup", { password });
+      c2fa.secreto = r.secreto || ""; c2fa.otpauth = r.otpauth || ""; c2fa.flujo = "configurar"; pintar2faLector();
+    } else if (f === "activar") {
+      const codigo = document.getElementById("c2faCodigo").value.trim();
+      if (!codigo) { msg2fa("Escribe el código de 6 cifras.", false); return; }
+      const r = await post("/api/readers/me/2fa/activar", { codigo });
+      c2fa.codigos = r.codigos_recuperacion || []; c2fa.secreto = ""; c2fa.otpauth = "";
+      c2fa.estado = { ...(c2fa.estado || {}), disponible: true, activo: true, codigos_restantes: c2fa.codigos.length };
+      c2fa.flujo = "codigos"; pintar2faLector();
+    } else if (f === "desactivar") {
+      const password = document.getElementById("c2faQuitarPassword").value;
+      const codigo = document.getElementById("c2faQuitarCodigo").value.trim();
+      if (!password || !codigo) { msg2fa("Rellena la contraseña y el código.", false); return; }
+      await post("/api/readers/me/2fa/desactivar", { password, codigo });
+      await cargar2faLector();
+      msg2fa("Verificación en dos pasos desactivada.", true);
+    }
+  } catch (err) {
+    msg2fa(err.message || "No se ha podido completar la operación.", false);
+  } finally {
+    boton.disabled = false;
+  }
+});
+
+// ---------- Cambiar contraseña ----------
+document.getElementById("formPasswordLector").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const msg = document.getElementById("msgPasswordLector");
+  const btn = document.getElementById("btnCambiarPasswordLectorCuenta");
+  // Igual que en el formulario de perfil: se resetea solo la CLASE, nunca
+  // un "style.display" inline (ganaba siempre sobre .cuenta-msg-error del
+  // CSS y por eso el mensaje de error no llegaba a verse nunca, aunque el
+  // texto y la clase se asignaran bien).
+  msg.className = "cuenta-msg";
+
+  function mostrarErrorPassword(texto) {
+    msg.textContent = texto;
+    msg.classList.add("cuenta-msg-error");
+  }
+
+  const actual = document.getElementById("passLectorActual").value;
+  const nueva = document.getElementById("passLectorNueva").value;
+  const nueva2 = document.getElementById("passLectorNueva2").value;
+
+  // Validaciones en el cliente ANTES de llamar al servidor: mismos
+  // requisitos que ya exige el backend (ver /api/readers/me/password),
+  // pero con un mensaje específico para cada caso en vez de depender
+  // solo del "required"/"minlength" nativo del navegador (que se ve
+  // distinto según el navegador y no siempre destaca lo suficiente).
+  if (!actual || !nueva || !nueva2) {
+    mostrarErrorPassword("Rellena los tres campos para cambiar la contraseña.");
+    return;
+  }
+  if (nueva.length < 8) {
+    mostrarErrorPassword("La nueva contraseña debe tener al menos 8 caracteres.");
+    return;
+  }
+  if (nueva !== nueva2) {
+    mostrarErrorPassword("Las contraseñas nuevas no coinciden.");
+    return;
+  }
+  if (nueva === actual) {
+    mostrarErrorPassword("La nueva contraseña tiene que ser distinta de la actual.");
+    return;
+  }
+
+  btn.disabled = true;
+  try {
+    await apiLector("/api/readers/me/password", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ actual, nueva }),
+    });
+    msg.textContent = "Contraseña actualizada correctamente.";
+    msg.classList.add("cuenta-msg-ok");
+    document.getElementById("formPasswordLector").reset();
+    setTimeout(() => { msg.className = "cuenta-msg"; }, 3000);
+  } catch (err) {
+    // El backend ya distingue estos casos con su propio mensaje (ver
+    // /api/readers/me/password en worker/src/index.js), pero se afina
+    // aquí por status para los casos más comunes, por si algún día
+    // cambiara el texto exacto del servidor o llegara sin "message"
+    // (p. ej. un 502/504 real de infraestructura, sin cuerpo JSON útil).
+    // El backend ya distingue estos casos con su propio mensaje (ver
+    // /api/readers/me/password en worker/src/index.js): 400 cubre tanto
+    // "faltan campos"/"muy corta" como "la contraseña actual no es
+    // correcta" (a propósito NO se usa 401 para este último, para que no
+    // dispare el guard global de apiLector que cierra sesión ante
+    // cualquier 401 y expulsaría a la persona a la pantalla de login solo
+    // por escribir mal su contraseña actual).
+    if (err.status === 400) {
+      mostrarErrorPassword(err.message || "Revisa los datos introducidos.");
+    } else if (err.status === 404) {
+      mostrarErrorPassword("No se ha podido encontrar tu cuenta. Vuelve a iniciar sesión e inténtalo de nuevo.");
+    } else {
+      mostrarErrorPassword(err.message || "No se pudo cambiar la contraseña. Inténtalo de nuevo en unos segundos.");
+    }
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// =====================================================================
+// PARTE 2B: DISPOSITIVOS CONECTADOS
+// =====================================================================
+function iconoDispositivoSesionLector() {
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>`;
+}
+
+// Mismo formato relativo/legible que el panel de redactor (ver admin.js
+// formatearFechaSesion): las fechas del servidor vienen en UTC sin
+// zona, así que se les añade "Z" antes de construir el Date.
+function formatearFechaSesionLector(iso) {
+  if (!iso) return "";
+  const fecha = new Date(iso.replace(" ", "T") + "Z");
+  if (isNaN(fecha.getTime())) return iso;
+  const ahora = new Date();
+  const diffMin = Math.round((ahora - fecha) / 60000);
+  if (diffMin < 1) return "Hace un momento";
+  if (diffMin < 60) return `Hace ${diffMin} min`;
+  const diffHoras = Math.round(diffMin / 60);
+  if (diffHoras < 24) return `Hace ${diffHoras} h`;
+  return fecha.toLocaleString("es-ES", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Madrid" });
+}
+
+let sesionesLectorCargando = false;
+async function cargaSesionesLector() {
+  const cont = document.getElementById("listaSesionesLector");
+  if (!cont || sesionesLectorCargando) return;
+  sesionesLectorCargando = true;
+  cont.innerHTML = `<div class="sesiones-vacio-cuenta"><div class="eof-cargador eof-cargador--mini" role="status"><span class="spinner" aria-hidden="true"></span><span class="eof-cargador-txt">Cargando dispositivos…</span></div></div>`;
+  try {
+    const { sesiones } = await apiLector("/api/readers/me/sesiones");
+    if (!sesiones || !sesiones.length) {
+      cont.innerHTML = `<p class="sesiones-vacio-cuenta">No hay dispositivos conectados.</p>`;
+      return;
+    }
+    cont.innerHTML = sesiones.map((s) => `
+      <div class="fila-sesion-cuenta ${s.actual ? "es-actual" : ""}" data-id="${s.id}">
+        <div class="icono-sesion-cuenta">${iconoDispositivoSesionLector()}</div>
+        <div class="datos-sesion-cuenta">
+          <div class="dispositivo-nombre-cuenta">
+            ${escapeHtml(s.dispositivo)}
+            ${s.actual ? `<span class="etiqueta-actual-cuenta">Este dispositivo</span>` : ""}
+          </div>
+          <div class="detalle-sesion-cuenta">
+            ${s.ip ? `IP ${escapeHtml(s.ip)} · ` : ""}Iniciada ${formatearFechaSesionLector(s.created_at)} · Última actividad: ${formatearFechaSesionLector(s.last_seen_at)}
+          </div>
+        </div>
+        <button type="button" class="btn-cerrar-sesion-cuenta" data-id="${s.id}" data-actual="${s.actual ? "1" : "0"}">
+          ${s.actual ? "Cerrar este dispositivo" : "Cerrar dispositivo"}
+        </button>
+      </div>
+    `).join("");
+
+    cont.querySelectorAll(".btn-cerrar-sesion-cuenta").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = btn.dataset.id;
+        const esActual = btn.dataset.actual === "1";
+        const mensaje = esActual
+          ? "Esto cerrará este dispositivo y volverás a la pantalla de inicio de sesión. ¿Continuar?"
+          : "¿Cerrar este dispositivo? Tendrá que volver a iniciar sesión en él.";
+        if (!(await EOF.confirmar(mensaje, { peligroso: true, textoConfirmar: "Cerrar dispositivo" }))) return;
+        try {
+          await apiLector(`/api/readers/me/sesiones/${id}`, { method: "DELETE" });
+          if (esActual) {
+            await cerrarSesionLector();
+            location.href = "acceso.html";
+            return;
+          }
+          EOF.toast("Dispositivo cerrado correctamente.", "exito");
+          cargaSesionesLector();
+        } catch (err) {
+          EOF.toast(err.message || "No se pudo cerrar el dispositivo", "error");
+        }
+      });
+    });
+  } catch (err) {
+    cont.innerHTML = `<p class="sesiones-vacio-cuenta">No se han podido cargar los dispositivos.</p>`;
+  } finally {
+    sesionesLectorCargando = false;
+  }
+}
+
+document.getElementById("btnCerrarOtrasSesionesLector").addEventListener("click", async () => {
+  const msg = document.getElementById("msgSesionesLector");
+  msg.style.display = "none";
+  if (!(await EOF.confirmar("¿Cerrar todos los demás dispositivos? Tendrán que volver a iniciar sesión en ellos.", { peligroso: true, textoConfirmar: "Cerrar dispositivos" }))) return;
+  try {
+    await apiLector("/api/readers/me/sesiones/otras", { method: "DELETE" });
+    EOF.toast("Se han cerrado los demás dispositivos.", "exito");
+    cargaSesionesLector();
+  } catch (err) {
+    EOF.toast(err.message || "No se pudieron cerrar los dispositivos", "error");
+  }
+});
+
+// Entrar directamente en la pestaña de dispositivos si se llega desde
+// el enlace "Dispositivos" del menú de la cabecera (?tab=sesiones). Se
+// hace al final del script (y no justo tras definir activarPestanaCuenta,
+// donde estaba antes) porque, si el tab inicial es "sesiones", dispara
+// cargaSesionesLector(), que usa "sesionesLectorCargando" -- declarada
+// con let más abajo en este mismo script. Llamarla antes de que esa
+// línea se hubiera ejecutado disparaba un ReferenceError (zona muerta
+// temporal de "let"): con "tab=sesiones" en la URL fallaba siempre.
+// Mismo motivo que guardLector() más arriba: si se llega aquí recién
+// vuelto de un login con X o Discord, activarPestanaCuenta("sesiones")
+// dispara cargaSesionesLector() de inmediato, que llama a la API con el
+// token de localStorage -- token que procesarRetornoX/Discord (async)
+// puede no haber guardado todavía. Sin esperar, esa llamada salía sin
+// sesión, recibía 401 y apiLector() mandaba a acceso.html sin "volver"
+// ni mensaje, igual que el guard de arriba.
+(async function activarTabInicialLector() {
+  await Promise.all([window.eofRetornoXListo, window.eofRetornoDiscordListo]);
+  const tabInicial = new URLSearchParams(location.search).get("tab");
+  if (tabInicial) activarPestanaCuenta(tabInicial);
+})();
+
+</script>
+</body>
+</html>

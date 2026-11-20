@@ -1,0 +1,220 @@
+/* Visor de previsualización de noticias con marcos de dispositivo (iPhone, iPad, portátil).
+   Página: /admin/previsualizar.html  ·  Lógica: /admin/js/previsualizar.js */
+:root{
+  --pv-acento:#5aa9ff;
+  --pv-acento-2:#8b6cff;
+  --pv-vidrio:rgba(14,22,38,.62);
+  --pv-linea:rgba(255,255,255,.09);
+  --pv-texto:#eaf0fb;
+  --pv-suave:rgba(234,240,251,.58);
+  color-scheme:dark;
+}
+*{box-sizing:border-box;}
+html,body{height:100%;margin:0;}
+body{
+  display:flex;flex-direction:column;height:100dvh;overflow:hidden;
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Inter,system-ui,sans-serif;
+  color:var(--pv-texto);
+  background:
+    radial-gradient(1100px 620px at 50% -12%,rgba(60,120,230,.38),transparent 62%),
+    radial-gradient(900px 600px at 105% 108%,rgba(139,108,255,.26),transparent 60%),
+    radial-gradient(700px 500px at -8% 100%,rgba(30,200,170,.14),transparent 60%),
+    #070c17;
+}
+button{font:inherit;color:inherit;}
+
+/* ---------- Barra superior ---------- */
+.pv-barra{
+  position:relative;z-index:20;flex:none;
+  display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:14px;
+  padding:12px 20px;padding-top:max(12px,env(safe-area-inset-top));
+  background:var(--pv-vidrio);
+  -webkit-backdrop-filter:blur(22px) saturate(1.5);backdrop-filter:blur(22px) saturate(1.5);
+  border-bottom:1px solid var(--pv-linea);
+}
+.pv-marca{display:flex;align-items:center;gap:12px;min-width:0;}
+.pv-logo{
+  width:34px;height:34px;border-radius:11px;flex:none;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--pv-acento),var(--pv-acento-2));
+  box-shadow:0 6px 18px rgba(90,169,255,.35),inset 0 1px 0 rgba(255,255,255,.35);
+}
+.pv-logo svg{width:18px;height:18px;}
+.pv-marca strong{font-size:.98rem;font-weight:700;letter-spacing:.01em;white-space:nowrap;}
+.pv-vivo{
+  display:inline-flex;align-items:center;gap:7px;padding:5px 11px;border-radius:99px;
+  font-size:.74rem;font-weight:700;letter-spacing:.03em;
+  background:rgba(40,210,130,.12);color:#6ff0b2;border:1px solid rgba(40,210,130,.28);
+  transition:background .25s,color .25s,border-color .25s,transform .25s;
+}
+.pv-vivo i{width:7px;height:7px;border-radius:50%;background:#34e29a;box-shadow:0 0 0 0 rgba(52,226,154,.6);animation:pvLatido 2s infinite;}
+.pv-vivo.es-actualizado{background:rgba(90,169,255,.18);color:#a9d2ff;border-color:rgba(90,169,255,.45);transform:scale(1.06);}
+.pv-vivo.es-actualizado i{background:var(--pv-acento);}
+@keyframes pvLatido{0%{box-shadow:0 0 0 0 rgba(52,226,154,.55);}70%{box-shadow:0 0 0 9px rgba(52,226,154,0);}100%{box-shadow:0 0 0 0 rgba(52,226,154,0);}}
+
+/* Selector de dispositivo (control segmentado) */
+.pv-selector{
+  display:flex;gap:4px;padding:4px;border-radius:16px;
+  background:rgba(255,255,255,.06);border:1px solid var(--pv-linea);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05);
+}
+.pv-op{
+  display:flex;align-items:center;gap:8px;padding:8px 15px;border:0;border-radius:12px;
+  background:transparent;color:var(--pv-suave);cursor:pointer;font-size:.86rem;font-weight:600;white-space:nowrap;
+  transition:background .2s,color .2s,box-shadow .2s,transform .15s;
+}
+.pv-op svg{width:20px;height:20px;flex:none;}
+.pv-op:hover{color:var(--pv-texto);background:rgba(255,255,255,.07);}
+.pv-op:active{transform:scale(.97);}
+.pv-op[aria-selected="true"]{
+  color:#fff;background:linear-gradient(135deg,rgba(90,169,255,.95),rgba(139,108,255,.92));
+  box-shadow:0 6px 20px rgba(90,169,255,.38),inset 0 1px 0 rgba(255,255,255,.35);
+}
+.pv-op:focus-visible,.pv-ico:focus-visible{outline:2px solid #fff;outline-offset:2px;}
+
+/* Acciones */
+.pv-acciones{display:flex;justify-content:flex-end;gap:8px;}
+.pv-ico{
+  display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 13px;border-radius:12px;cursor:pointer;
+  background:rgba(255,255,255,.06);border:1px solid var(--pv-linea);color:var(--pv-texto);font-size:.82rem;font-weight:600;
+  transition:background .2s,transform .15s,border-color .2s;
+}
+.pv-ico svg{width:18px;height:18px;flex:none;}
+.pv-ico:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.2);}
+.pv-ico:active{transform:scale(.96);}
+.pv-ico[hidden]{display:none;}
+
+/* ---------- Escenario ---------- */
+.pv-escenario{flex:1;min-height:0;overflow:auto;display:flex;padding:30px 28px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.25) transparent;}
+.pv-caja{margin:auto;flex:none;position:relative;animation:pvEntrada .5s cubic-bezier(.2,.8,.2,1);}
+@keyframes pvEntrada{from{opacity:0;transform:translateY(14px) scale(.985);}to{opacity:1;transform:none;}}
+.pv-suelo{
+  position:absolute;left:8%;right:8%;bottom:-26px;height:34px;border-radius:50%;
+  background:radial-gradient(closest-side,rgba(0,0,0,.55),transparent);filter:blur(8px);pointer-events:none;
+}
+.pv-dispositivo{position:relative;transform-origin:0 0;isolation:isolate;}
+
+/* ---------- Cuerpo común de los dispositivos ---------- */
+.pv-cuerpo{
+  position:absolute;top:0;background:#09090b;
+  box-shadow:0 60px 110px -30px rgba(0,0,0,.75),0 22px 44px rgba(0,0,0,.45);
+}
+.pv-cuerpo::before{ /* marco metálico exterior */
+  content:"";position:absolute;inset:-3.5px;border-radius:inherit;z-index:-1;
+  background:linear-gradient(135deg,#b4b6bd 0%,#55575d 22%,#2a2b2f 48%,#6e7178 74%,#c3c5cb 100%);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.25);
+}
+.pv-cuerpo::after{ /* brillo suave sobre el cristal */
+  content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:7;
+  background:linear-gradient(120deg,rgba(255,255,255,.10) 0%,rgba(255,255,255,0) 22%,rgba(255,255,255,0) 70%,rgba(255,255,255,.05) 100%);
+}
+.pv-pantalla{position:absolute;overflow:hidden;background:#fff;--pv-bg:#fff;--pv-fg:#111;}
+.pv-pantalla iframe{position:absolute;left:0;width:100%;border:0;display:block;background:#fff;}
+
+/* Barra de estado (iOS) */
+.pv-barra-sup{
+  position:absolute;top:0;left:0;right:0;z-index:4;display:flex;align-items:center;justify-content:space-between;
+  background:var(--pv-bg);color:var(--pv-fg);transition:background .3s,color .3s;
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif;font-weight:600;font-size:16.5px;letter-spacing:-.01em;
+}
+.pv-estado-hora{padding-left:44px;padding-top:4px;}
+.pv-estado-iconos{display:flex;align-items:center;gap:6px;padding-right:34px;padding-top:4px;}
+.pv-estado-iconos svg{height:13px;width:auto;fill:currentColor;}
+.pv-ipad .pv-barra-sup,.pv-se .pv-barra-sup{font-size:13px;}
+.pv-ipad .pv-estado-hora,.pv-se .pv-estado-hora{padding-left:22px;padding-top:0;}
+.pv-ipad .pv-estado-iconos,.pv-se .pv-estado-iconos{padding-right:20px;padding-top:0;}
+.pv-ipad .pv-estado-iconos svg,.pv-se .pv-estado-iconos svg{height:11px;}
+
+/* Carga (esqueleto) */
+.pv-carga{
+  position:absolute;left:0;right:0;bottom:0;z-index:3;background:#fff;display:flex;flex-direction:column;gap:14px;padding:26px 22px;
+  transition:opacity .4s,visibility .4s;
+}
+.pv-carga b{display:block;height:14px;border-radius:8px;background:linear-gradient(90deg,#eef1f6 25%,#f8f9fc 50%,#eef1f6 75%);background-size:200% 100%;animation:pvBrillo 1.3s linear infinite;}
+.pv-carga b:nth-child(1){height:170px;border-radius:14px;}
+.pv-carga b:nth-child(2){width:88%;height:22px;}
+.pv-carga b:nth-child(3){width:64%;}
+.pv-carga b:nth-child(4){width:92%;}
+.pv-carga b:nth-child(5){width:80%;}
+@keyframes pvBrillo{to{background-position:-200% 0;}}
+.es-listo .pv-carga{opacity:0;visibility:hidden;}
+
+/* Indicador de inicio */
+.pv-inicio-bar{position:absolute;left:50%;bottom:8px;width:136px;height:5px;margin-left:-68px;border-radius:3px;background:var(--pv-fg);opacity:.82;z-index:6;pointer-events:none;}
+
+/* Botones laterales */
+.pv-bt{position:absolute;width:4px;border-radius:2px;background:linear-gradient(90deg,#3b3d42,#979aa1);box-shadow:inset 0 0 0 .5px rgba(255,255,255,.3);}
+.pv-bt-i{left:-7.5px;} .pv-bt-d{right:-7.5px;transform:scaleX(-1);}
+
+/* ---------- iPhone 15 Pro ---------- */
+.pv-iphone .pv-cuerpo{border-radius:68px;}
+.pv-iphone .pv-pantalla{border-radius:54px;}
+.pv-isla{position:absolute;top:11px;left:50%;width:122px;height:36px;margin-left:-61px;border-radius:20px;background:#000;z-index:6;pointer-events:none;}
+.pv-isla::after{content:"";position:absolute;right:14px;top:11px;width:13px;height:13px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#2b3a63,#0a0f1d 60%,#000);box-shadow:inset 0 0 0 1.5px #12151f;}
+
+/* ---------- iPhone SE ---------- */
+.pv-se .pv-cuerpo{border-radius:58px;}
+.pv-se .pv-pantalla{border-radius:5px;}
+.pv-altavoz{position:absolute;top:36px;left:50%;width:58px;height:7px;margin-left:-29px;border-radius:4px;background:#1f2024;box-shadow:inset 0 1px 2px #000,0 1px 0 rgba(255,255,255,.12);}
+.pv-camara{position:absolute;width:10px;height:10px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#2b3a63,#0a0f1d 60%,#000);box-shadow:0 0 0 1.5px #1b1c20;}
+.pv-se .pv-camara{top:34px;left:50%;margin-left:-62px;}
+.pv-boton-inicio{position:absolute;bottom:17px;left:50%;width:52px;height:52px;margin-left:-26px;border-radius:50%;border:2px solid #3a3b40;background:#0a0a0c;box-shadow:inset 0 0 0 1px #000;}
+.pv-boton-inicio::after{content:"";position:absolute;inset:15px;border-radius:7px;border:1.5px solid #3a3b40;}
+
+/* ---------- iPad ---------- */
+.pv-ipad .pv-cuerpo{border-radius:38px;}
+.pv-ipad .pv-pantalla{border-radius:19px;}
+.pv-ipad .pv-camara{top:7px;left:50%;margin-left:-5px;width:8px;height:8px;}
+
+/* ---------- Portátil ---------- */
+.pv-pc .pv-cuerpo{border-radius:22px 22px 6px 6px;}
+.pv-pc .pv-cuerpo::before{border-radius:25px 25px 8px 8px;}
+.pv-pc .pv-pantalla{border-radius:7px;}
+.pv-pc .pv-camara{top:3px;left:50%;margin-left:-3px;width:6px;height:6px;}
+.pv-base{
+  position:absolute;left:0;right:0;bottom:0;height:20px;border-radius:2px 2px 26px 26px/2px 2px 20px 20px;
+  background:linear-gradient(#e4e6ea 0%,#b7bac1 45%,#8a8d95 100%);
+  box-shadow:inset 0 1px 0 #fff,0 40px 70px -10px rgba(0,0,0,.65);z-index:-1;
+}
+.pv-base::before{content:"";position:absolute;top:0;left:50%;width:190px;height:8px;margin-left:-95px;border-radius:0 0 12px 12px;background:linear-gradient(#9a9da5,#c9ccd2);box-shadow:inset 0 -1px 0 rgba(0,0,0,.18);}
+.pv-barra-nav{position:absolute;top:0;left:0;right:0;z-index:4;display:flex;align-items:center;gap:16px;padding:0 16px;background:#f3f4f7;border-bottom:1px solid #dcdfe6;}
+.pv-semaforo{display:flex;gap:8px;}
+.pv-semaforo i{width:12px;height:12px;border-radius:50%;box-shadow:inset 0 0 0 .5px rgba(0,0,0,.2);}
+.pv-semaforo i:nth-child(1){background:#ff5f57;} .pv-semaforo i:nth-child(2){background:#febc2e;} .pv-semaforo i:nth-child(3){background:#28c840;}
+.pv-url{
+  display:flex;align-items:center;justify-content:center;gap:7px;height:26px;width:min(520px,46%);margin:0 auto;padding:0 12px;border-radius:9px;
+  background:#fff;color:#5b6573;font-size:13px;font-weight:500;box-shadow:inset 0 0 0 1px #e3e6ec;transform:translateX(-30px);
+}
+.pv-url svg{width:12px;height:12px;fill:#8a93a3;flex:none;}
+
+/* ---------- Pie ---------- */
+.pv-pie{flex:none;margin:0;padding:9px 18px calc(9px + env(safe-area-inset-bottom));text-align:center;font-size:.8rem;color:var(--pv-suave);min-height:36px;}
+.pv-pie strong{color:var(--pv-texto);font-weight:600;}
+.pv-pie span{opacity:.55;margin:0 8px;}
+
+/* ---------- Mensaje sin previsualización ---------- */
+.pv-vacio{margin:auto;max-width:420px;text-align:center;padding:30px;}
+.pv-vacio h1{font-size:1.25rem;margin:0 0 8px;}
+.pv-vacio p{margin:0;color:var(--pv-suave);line-height:1.55;}
+
+/* ---------- Modo directo (ventana estrecha, p. ej. abierto desde un móvil real) ---------- */
+body.pv-es-directo .pv-selector,body.pv-es-directo .pv-pie,body.pv-es-directo .pv-acciones .pv-solo-marco{display:none;}
+body.pv-es-directo .pv-barra{grid-template-columns:1fr auto;padding:8px 12px;}
+body.pv-es-directo .pv-escenario{padding:0;}
+body.pv-es-directo .pv-caja{margin:0;width:100%;height:100%;animation:none;}
+.pv-directo{position:relative;width:100%;height:100%;background:#fff;}
+.pv-directo iframe{position:absolute;inset:0;width:100%;height:100%;border:0;}
+.pv-directo .pv-carga{top:0;}
+
+@media (max-width:1000px){
+  .pv-barra{grid-template-columns:auto 1fr auto;}
+  .pv-marca strong{display:none;}
+  .pv-selector{justify-self:center;}
+  .pv-et{display:none;}
+  .pv-op{padding:9px 13px;}
+  .pv-ico .pv-et{display:none;}
+  .pv-ico{padding:0 11px;}
+}
+@media (prefers-reduced-motion:reduce){
+  .pv-caja,.pv-vivo i,.pv-carga b{animation:none;}
+  *{transition:none !important;}
+}

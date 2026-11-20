@@ -2,10 +2,15 @@
 <html lang="es">
 <head>
 <meta name="google-adsense-account" content="ca-pub-7347856722927942">
-<script src="js/tema.js?v=2"></script>
-<script src="js/preferencias.js?v=20"></script>
+<script src="js/tema.js?v=65626bb2"></script>
+<script src="js/preferencias.js?v=6e49f5b3"></script>
 <meta charset="UTF-8">
-<script src="/js/splash.js?v=2"></script>
+<script>/* splash.js: bloquea el parseo solo si la web se abre como app (o ?splash=1); en navegador carga en async, sin frenar el pintado. */
+(function(){var a=false;try{a=matchMedia("(display-mode: standalone)").matches||matchMedia("(display-mode: fullscreen)").matches||matchMedia("(display-mode: minimal-ui)").matches||navigator.standalone===true;}catch(e){}
+if(a||/[?&]splash=1(&|$)/.test(location.search)){document.write('<script src="/js/splash.js?v=b5004788"><\/script>');}
+else{var s=document.createElement("script");s.src="/js/splash.js?v=b5004788";s.async=true;document.head.appendChild(s);}})();
+</script>
+<script src="/js/cargando.js?v=4a5cb1bc"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -33,21 +38,23 @@
 <link rel="alternate" type="application/rss+xml" title="ELOTROFÚTBOLTV" href="https://elotrofutbol.media/rss.xml">
 <script type="application/ld+json" id="seo-jsonld-pagina">{"@context":"https://schema.org","@type":"WebPage","@id":"https://elotrofutbol.media/clasificacion#pagina","url":"https://elotrofutbol.media/clasificacion","name":"Clasificación de LaLiga Hypermotion y Federaciones — ELOTROFÚTBOLTV","description":"Tabla de clasificación de LaLiga Hypermotion, Primera Federación y Segunda Federación, actualizada con cada resultado: puntos, goles y posición de cada equipo.","inLanguage":"es","isPartOf":{"@id":"https://elotrofutbol.media/#sitio"},"publisher":{"@id":"https://elotrofutbol.media/#organizacion"}}</script>
 <link rel="canonical" href="https://elotrofutbol.media/clasificacion">
-<link rel="icon" href="/favicon.ico?v=3" sizes="any">
-<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=3">
-<link rel="apple-touch-icon" href="/img/apple-touch-icon.png?v=2">
-<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&display=swap" onload="this.onload=null;this.rel='stylesheet'"><noscript><link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet"></noscript>
-<link rel="stylesheet" href="css/style.css?v=35">
-<link rel="stylesheet" href="css/modales-mejoras.css?v=1">
-<link rel="stylesheet" href="css/accesibilidad.css?v=2">
-<script src="js/accesibilidad.js?v=1" defer></script>
-<link rel="stylesheet" href="css/foco.css?v=1">
-<link rel="stylesheet" href="css/listados-ui.css?v=1">
-<link rel="stylesheet" href="css/clasificacion-mejoras.css?v=5">
-<link rel="stylesheet" href="css/app-movil.css?v=8">
-<script src="js/app-movil.js?v=5" defer></script>
+<link rel="icon" href="/favicon.ico?v=39af2432" sizes="any">
+<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=39af2432">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png?v=3f854c49">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;0,700;0,800;1,500;1,700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&display=swap" onload="this.onload=null;this.rel='stylesheet'"><noscript><link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;0,700;0,800;1,500;1,700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&display=swap" rel="stylesheet"></noscript>
+<link rel="stylesheet" href="css/style.css?v=6cd42e49">
+<link rel="stylesheet" href="css/modales-mejoras.css?v=982413bb">
+<link rel="stylesheet" href="css/accesibilidad.css?v=191b9263">
+<script src="js/accesibilidad.js?v=59fdae75" defer></script>
+<link rel="stylesheet" href="css/foco.css?v=c8652610">
+<link rel="stylesheet" href="css/listados-ui.css?v=74932295">
+<link rel="stylesheet" href="css/clasificacion-mejoras.css?v=b0d04510">
+<link rel="stylesheet" href="css/eliminatorias.css?v=f31cdfe0">
+<link rel="stylesheet" href="css/app-movil.css?v=b6df23d4">
+<script src="js/app-movil.js?v=3b122790" defer></script>
 <script type="application/ld+json" id="seo-jsonld-breadcrumb">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Inicio","item":"https://elotrofutbol.media/"},{"@type":"ListItem","position":2,"name":"Clasificación"}]}</script>
 <link rel="manifest" href="/manifest.webmanifest">
+<link rel="stylesheet" href="css/animaciones-web.css?v=844fde5e">
 </head>
 <body data-page="clasificacion">
 
@@ -65,6 +72,7 @@
   </div>
 
   <div id="clasificacionCont"></div>
+  <section id="eliminatoriasCont" class="elim-seccion" aria-label="Eliminatorias y playoffs"></section>
 </main>
 
 <!-- Modal de detalle del partido: mismo componente que usa resultados.html -->
@@ -98,17 +106,18 @@
 
 <div id="site-footer"></div>
 
-<script src="js/ui-alertas.js?v=5"></script>
-<script src="js/foco.js?v=1"></script>
-<script src="js/config.js?v=36"></script>
-<script src="js/seo.js?v=5"></script>
-<script src="js/clubs.js?v=8"></script>
-<script src="js/lector-auth.js?v=13"></script>
-<script src="js/lecturas.js?v=8"></script>
-<script src="js/layout.js?v=30"></script>
-<script src="js/cookies.js?v=2"></script>
-<script src="js/ads.js?v=3"></script>
-<script src="js/partidos.js?v=21"></script>
+<script src="js/ui-alertas.js?v=4339c846"></script>
+<script src="js/foco.js?v=133ef790"></script>
+<script src="js/config.js?v=8002da47"></script>
+<script src="js/seo.js?v=51678a88"></script>
+<script src="js/clubs.js?v=cdbd504a"></script>
+<script src="js/lector-auth.js?v=9a1c7f1f"></script>
+<script src="js/lecturas.js?v=de5c36f5"></script>
+<script src="js/layout.js?v=7e7c9eae"></script>
+<script src="js/cookies.js?v=845d8f5c"></script>
+<script src="js/ads.js?v=a41f4506"></script>
+<script src="js/eliminatorias.js?v=20df4900"></script>
+<script src="js/partidos.js?v=e6388483"></script>
 <script>
 fijarSeoBasico({
   titulo: "Clasificación de LaLiga Hypermotion y Federaciones — ELOTROFÚTBOLTV",
@@ -117,8 +126,22 @@ fijarSeoBasico({
   migas: [{ nombre: "Clasificación" }],
 });
 
+// Competiciones que no tienen tabla de clasificación aquí pero sí pueden tener
+// cuadros de eliminatorias (Tercera y las copas): su botón solo aparece cuando
+// hay algún cuadro visible y solo enseñan los cuadros.
+const COMPS_SOLO_CUADROS = [["tercera_federacion", "Tercera Federación"], ["copa_del_rey", "Copa del Rey"], ["copa_federacion", "Copa Federación"]];
+const esSoloCuadros = (c) => COMPS_SOLO_CUADROS.some(([id]) => id === c);
+
 let competicionActual = "hypermotion";
 let grupoActual = "";
+{
+  // ?cat=... (por ejemplo desde enlaces antiguos de /eliminatorias)
+  const catUrl = new URLSearchParams(location.search).get("cat");
+  if (catUrl && (["hypermotion", "primera_federacion", "segunda_federacion"].includes(catUrl) || esSoloCuadros(catUrl))) {
+    competicionActual = catUrl;
+    document.querySelectorAll(".filtros button[data-cat]").forEach(b => b.classList.toggle("activo", b.dataset.cat === catUrl));
+  }
+}
 
 // Todos los resultados de la competición/grupo elegidos, cargados una
 // vez y reutilizados para calcular la clasificación.
@@ -136,7 +159,7 @@ let RESULTADOS_COMPETICION = [];
 // dependan de qué grupo tengas abierto en la tabla.
 let HAY_PARTIDO_EN_VIVO_COMPETICION = false;
 
-document.querySelectorAll(".filtros button[data-cat]").forEach(btn => {
+function enlazarBotonCat(btn) {
   btn.addEventListener("click", () => {
     document.querySelectorAll(".filtros button[data-cat]").forEach(b => b.classList.remove("activo"));
     btn.classList.add("activo");
@@ -144,7 +167,45 @@ document.querySelectorAll(".filtros button[data-cat]").forEach(btn => {
     grupoActual = "";
     cargarTodo();
   });
-});
+}
+document.querySelectorAll(".filtros button[data-cat]").forEach(enlazarBotonCat);
+
+// ---------- Eliminatorias y playoffs (junto a la clasificación) ----------
+// Los cuadros de la competición elegida salen debajo de la tabla (js/eliminatorias.js).
+function anadirBotonesSoloCuadros() {
+  const barra = document.querySelector(".filtros");
+  if (!barra || !window.EOFElim) return;
+  COMPS_SOLO_CUADROS.forEach(([id, nombre]) => {
+    if (!EOFElim.tiene(id) || barra.querySelector(`[data-cat="${id}"]`)) return;
+    const b = document.createElement("button");
+    b.dataset.cat = id;
+    b.textContent = nombre;
+    if (id === competicionActual) b.classList.add("activo");
+    barra.appendChild(b);
+    enlazarBotonCat(b);
+  });
+}
+function pintarEliminatorias() {
+  const cont = document.getElementById("eliminatoriasCont");
+  if (!cont) return;
+  const h = window.EOFElim ? EOFElim.html(competicionActual) : "";
+  if (h) { cont.innerHTML = `<h2 class="section-title">Eliminatorias y playoffs</h2>${h}`; return; }
+  // Sin cuadro todavía: en las ligas con playoff se explica cuándo saldrá, en vez de dejar el hueco en blanco.
+  const aviso = AVISO_SIN_CUADRO[competicionActual];
+  cont.innerHTML = aviso ? `<h2 class="section-title">Eliminatorias y playoffs</h2><p class="elim-vacio">${aviso}</p>` : "";
+}
+const AVISO_SIN_CUADRO = {
+  hypermotion: "El cuadro del playoff de ascenso saldrá aquí en cuanto haya clasificación.",
+  primera_federacion: "El cuadro del playoff de ascenso de cada grupo saldrá aquí en cuanto haya clasificación.",
+  segunda_federacion: "Los cruces del playoff de ascenso salen del sorteo: aparecerán aquí cuando haya partidos programados entre los clasificados.",
+};
+// Pide los cuadros y repinta si han cambiado. Nunca lanza: sin cuadros, la clasificación sigue igual.
+async function refrescarEliminatorias() {
+  if (!window.EOFElim) return;
+  const cambio = await EOFElim.cargar();
+  anadirBotonesSoloCuadros();
+  if (cambio) pintarEliminatorias();
+}
 
 const selectGrupo = document.getElementById("filtroGrupo");
 selectGrupo.addEventListener("change", () => {
@@ -224,6 +285,21 @@ async function obtenerFiltros(competicion, desdeFecha) {
 // ---------- Carga de datos ----------
 async function cargarTodo() {
   const contClas = document.getElementById("clasificacionCont");
+  if (esSoloCuadros(competicionActual)) {
+    // Sin tabla: solo los cuadros de esa competición.
+    RESULTADOS_COMPETICION = [];
+    HAY_PARTIDO_EN_VIVO_COMPETICION = false;
+    poblarFiltroGrupo([]);
+    contClas.innerHTML = spinnerHTML();
+    await refrescarEliminatorias();
+    pintarEliminatorias();
+    contClas.innerHTML = window.EOFElim && EOFElim.tiene(competicionActual) ? "" : estadoHTML({
+      titulo: "Todavía no hay cuadros",
+      texto: "Cuando haya eliminatorias de esta competición, aparecerán aquí.",
+    });
+    iniciarAutoActualizacion();
+    return;
+  }
   contClas.innerHTML = spinnerHTML();
   try {
     const desdeFecha = inicioTemporadaActual();
@@ -269,6 +345,7 @@ async function cargarTodo() {
     RESULTADOS_COMPETICION.forEach(r => { PARTIDOS_CACHE[r.id] = r; });
 
     pintarClasificacion();
+    pintarEliminatorias();
     // Se (re)programa el intervalo aquí también, no solo al final del
     // DOMContentLoaded: al cambiar de competición/grupo cambian los
     // datos, y puede que la nueva competición sí tenga partidos en
@@ -452,6 +529,8 @@ function iniciarAutoActualizacion() {
   msIntervaloActualClasificacion = ms;
   INTERVALO_REFRESCO_CLASIFICACION = setInterval(async () => {
     if (document.visibilityState !== "visible") return;
+    if (esSoloCuadros(competicionActual)) { await refrescarEliminatorias(); return; }
+    refrescarEliminatorias();
     try {
       // Mismo criterio que en cargarTodo(): si hay grupo elegido, se
       // filtra ya en la propia petición (no en el cliente sobre una
@@ -513,9 +592,13 @@ document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") cargarTodo();
 });
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+  const cuadros = refrescarEliminatorias();
+  // Si se entra directamente en una competición sin tabla, hay que esperar a saber qué cuadros hay.
+  if (esSoloCuadros(competicionActual)) await cuadros;
   cargarTodo(); // ya se encarga de arrancar iniciarAutoActualizacion() al terminar
 });
 </script>
+<script src="js/animaciones-web.js?v=e24adf73" defer></script>
 </body>
 </html>

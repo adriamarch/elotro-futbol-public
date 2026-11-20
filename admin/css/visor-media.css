@@ -353,7 +353,7 @@ video.vm-media{width:min(100%,1400px);height:auto;max-height:100%;background:#00
    ===================================================================== */
 .vm > .vm-top, .vm > .vm-pie{margin:0;border:0;font-size:1rem;width:auto;max-width:none;}
 .vm > .vm-pie{color:var(--vm-texto);}
-html.vm-abierto .eof-tabbar, html.vm-abierto #navApp, html.vm-abierto #eof-cookies-banner{visibility:hidden !important;pointer-events:none !important;}
+html.vm-abierto .eof-tabbar, html.vm-abierto #navApp, html.vm-abierto #eof-cookies-banner, html.vm-abierto #eof-cookies-aviso{visibility:hidden !important;pointer-events:none !important;}
 .vm{overflow:hidden;touch-action:none;}
 .vm-ayuda-caja, .vm-tira, .vm-menu{touch-action:pan-x pan-y;}
 .vm-menu{max-width:calc(100vw - 24px);}

@@ -1,118 +1,62 @@
-/* =========================================================================
-   Mejoras de estilo y responsive — 404.html
-   Hoja adicional cargada tras style.css, limitada a body[data-page="404"]
-   (la clase .pagina-404 ya es exclusiva de esta página, pero se mantiene
-   el mismo criterio de scoping que en el resto de mejoras del sitio).
-   ========================================================================= */
+/* 404 · "Fuera de juego": campo con líneas de cal, balón flotante y línea de fuera de juego.
+   Todo cuelga de body[data-page="404"] y de las variables del sitio, así que sigue el modo claro/oscuro. */
+body[data-page="404"] .pagina-404{position:relative;isolation:isolate;min-height:calc(100vh - 320px);justify-content:center;gap:16px;padding:64px 20px 84px;overflow:hidden}
+/* césped a franjas muy suave + círculo central: se desvanecen hacia los bordes */
+body[data-page="404"] .pagina-404:before{content:"";position:absolute;inset:0;z-index:-2;background:repeating-linear-gradient(90deg,transparent 0 72px,rgba(91,184,232,.06) 72px 144px);-webkit-mask-image:radial-gradient(ellipse at 50% 38%,#000 20%,transparent 72%);mask-image:radial-gradient(ellipse at 50% 38%,#000 20%,transparent 72%)}
+body[data-page="404"] .pagina-404:after{content:"";position:absolute;left:50%;top:-6%;z-index:-1;width:min(640px,120vw);aspect-ratio:1;transform:translateX(-50%);border-radius:50%;border:2px solid rgba(91,184,232,.28);background:linear-gradient(rgba(91,184,232,.22),rgba(91,184,232,.22)) center/100% 2px no-repeat;-webkit-mask-image:radial-gradient(circle,#000 35%,transparent 72%);mask-image:radial-gradient(circle,#000 35%,transparent 72%);pointer-events:none}
+body[data-page="404"] .balon-404{width:92px;height:92px;margin-bottom:-4px;filter:drop-shadow(0 14px 12px rgba(12,27,46,.22));animation:balon404-flotar 3.4s ease-in-out infinite}
+body[data-page="404"] .codigo-404{font-size:clamp(6rem,19vw,10.5rem);line-height:.95;letter-spacing:4px;background:linear-gradient(135deg,var(--marino-texto) 10%,var(--celeste) 62%,var(--rojo) 100%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 12px 24px rgba(91,184,232,.28))}
+body[data-page="404"] .pagina-404 h1{margin:-2px 0 0;font-size:clamp(1.5rem,4vw,2.1rem);letter-spacing:1.2px}
+/* la línea de fuera de juego */
+body[data-page="404"] .pagina-404 h1:after{content:"";display:block;width:min(240px,60%);margin:14px auto 0;border-top:3px dashed var(--rojo);opacity:.9}
+body[data-page="404"] .pagina-404 p{max-width:520px;line-height:1.65;font-size:1.04rem}
+body[data-page="404"] .acciones-404{margin-top:14px;gap:12px}
+body[data-page="404"] .pagina-404 .btn-primario,body[data-page="404"] .pagina-404 .btn-secundario{padding:14px 30px;font-size:.9rem;letter-spacing:.6px}
+body[data-page="404"] .pagina-404 .btn-secundario{background:var(--tarjeta);border:1.5px solid var(--borde);box-shadow:var(--sombra-sm,none)}
+body[data-page="404"] .pagina-404 .btn-secundario:hover{border-color:var(--celeste);box-shadow:var(--sombra-md,none)}
+body[data-page="404"] .btn-primario:focus-visible,body[data-page="404"] .btn-secundario:focus-visible{outline:3px solid var(--celeste);outline-offset:3px}
 
-body[data-page="404"] .pagina-404{
-  min-height: calc(100vh - 320px);
-  justify-content: center;
-  padding: 60px 20px 80px;
-}
+/* sugerencias dinámicas: tres tarjetas */
+body[data-page="404"] .sugerencias-dinamicas[hidden],body[data-page="404"] .sug-bloque[hidden]{display:none!important}
+body[data-page="404"] .sugerencias-dinamicas{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;width:100%;max-width:1000px;margin-top:34px;text-align:left}
+body[data-page="404"] .sug-bloque{padding:18px 20px 16px;background:var(--tarjeta);border:1px solid var(--borde);border-top:4px solid var(--rojo);border-radius:14px;box-shadow:var(--sombra-md,none)}
+body[data-page="404"] .sug-bloque:nth-child(2){border-top-color:var(--celeste)}
+body[data-page="404"] .sug-bloque:nth-child(3){border-top-color:var(--marino-texto);grid-column:1/-1}
+body[data-page="404"] .sug-bloque h2{margin:0 0 10px;font-family:var(--font-tit);font-size:1rem;letter-spacing:.5px;text-transform:uppercase;color:var(--marino-texto)}
+body[data-page="404"] .sug-bloque ul{list-style:none;margin:0;padding:0;display:grid;gap:0}
+@media(min-width:720px){body[data-page="404"] .sugerencias-dinamicas{grid-template-columns:repeat(2,minmax(0,1fr))}}
+body[data-page="404"] .sug-bloque li{padding:9px 0;border-bottom:1px solid var(--borde)}
+body[data-page="404"] .sug-bloque li:last-child{border-bottom:0}
+body[data-page="404"] .sug-bloque a{padding:0;color:var(--texto);font-weight:500;font-size:.93rem;line-height:1.4;text-decoration:none;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;transition:color .15s}
+body[data-page="404"] .sug-bloque a:hover,body[data-page="404"] .sug-bloque a:focus-visible{color:var(--rojo);text-decoration:none}
+body[data-page="404"] .sug-bloque a:focus-visible{outline:2px solid var(--celeste);outline-offset:2px;border-radius:4px}
+body[data-page="404"] .sug-clubes{grid-template-columns:repeat(auto-fill,minmax(168px,1fr))!important;gap:8px!important}
+body[data-page="404"] .sug-clubes li{padding:0;border:0}
+body[data-page="404"] .sug-clubes a{padding:8px 12px;background:var(--fondo-alt);border:1px solid var(--borde);border-radius:10px;font-size:.84rem;display:block;white-space:nowrap;text-overflow:ellipsis;-webkit-line-clamp:unset}
+body[data-page="404"] .sug-clubes a:hover{background:var(--marino);border-color:var(--marino);color:#fff}
 
-/* Balón con una animación sutil de flotación, para que la página se sienta
-   menos estática sin resultar molesta. */
-body[data-page="404"] .balon-404{
-  animation: balon404-flotar 3.2s ease-in-out infinite;
-}
-@keyframes balon404-flotar{
-  0%, 100%{ transform: translateY(0) rotate(0deg); }
-  50%{ transform: translateY(-8px) rotate(6deg); }
-}
+/* enlaces fijos */
+body[data-page="404"] .sugerencias{width:100%;max-width:640px;margin-top:30px;padding-top:0;border-top:0}
+body[data-page="404"] .sugerencias .t-h4{display:flex;align-items:center;gap:14px;margin-bottom:16px;color:var(--texto-suave);font-size:.82rem;letter-spacing:.8px}
+body[data-page="404"] .sugerencias .t-h4:before,body[data-page="404"] .sugerencias .t-h4:after{content:"";flex:1;height:1px;background:var(--borde)}
+body[data-page="404"] .sugerencias a{background:var(--tarjeta);color:var(--marino-texto);border:1px solid var(--borde);font-weight:600;padding:8px 16px}
+body[data-page="404"] .sugerencias a:hover{background:var(--marino);color:#fff;border-color:var(--marino)}
+body[data-page="404"] .sugerencias a:focus-visible{outline:2px solid var(--celeste);outline-offset:2px}
 
-body[data-page="404"] .codigo-404{
-  font-size: 7.5rem;
-}
+[data-theme=dark] body[data-page="404"] .balon-404{filter:drop-shadow(0 14px 12px rgba(0,0,0,.5))}
+[data-theme=dark] body[data-page="404"] .pagina-404 .btn-secundario{background:var(--tarjeta)}
+[data-theme=dark] body[data-page="404"] .sug-bloque:nth-child(3){border-top-color:var(--celeste)}
 
-body[data-page="404"] h1{
-  margin-top: -4px;
-}
-
-body[data-page="404"] .pagina-404 p{
-  line-height: 1.6;
-}
-
-/* ---------- Botones: estados de foco visibles ---------- */
-body[data-page="404"] .btn-primario:focus-visible,
-body[data-page="404"] .btn-secundario:focus-visible{
-  outline: 2px solid var(--celeste);
-  outline-offset: 3px;
-}
-
-/* ---------- Sugerencias ---------- */
-body[data-page="404"] .sugerencias{
-  border-top-color: var(--borde);
-}
-body[data-page="404"] .sugerencias h4{
-  color: var(--texto-suave);
-}
-body[data-page="404"] .sugerencias a{
-  background: var(--fondo-alt);
-  color: var(--marino-texto);
-  border: 1px solid var(--borde);
-  font-weight: 500;
-}
-body[data-page="404"] .sugerencias a:hover{
-  background: var(--marino);
-  color: #fff;
-  border-color: var(--marino);
-}
-body[data-page="404"] .sugerencias a:focus-visible{
-  outline: 2px solid var(--celeste);
-  outline-offset: 2px;
-}
-
-/* =========================================================================
-   RESPONSIVE
-   ========================================================================= */
-
-@media (max-width: 640px){
-  body[data-page="404"] .pagina-404{
-    padding: 44px 16px 60px;
-    gap: 14px;
-    min-height: calc(100vh - 260px);
-  }
-  body[data-page="404"] .codigo-404{
-    font-size: 3.6rem;
-  }
-  body[data-page="404"] .balon-404{
-    width: 60px;
-    height: 60px;
-  }
-  body[data-page="404"] h1{
-    font-size: 1.25rem;
-  }
-  body[data-page="404"] .pagina-404 p{
-    font-size: .92rem;
-  }
-  body[data-page="404"] .acciones-404{
-    flex-direction: column;
-    width: 100%;
-    max-width: 280px;
-  }
-  body[data-page="404"] .btn-primario,
-  body[data-page="404"] .btn-secundario{
-    width: 100%;
-    text-align: center;
-  }
-  body[data-page="404"] .sugerencias ul{
-    gap: 8px;
-  }
-  body[data-page="404"] .sugerencias a{
-    font-size: .8rem;
-    padding: 6px 12px;
-  }
-}
-
-@media (max-width: 360px){
-  body[data-page="404"] .codigo-404{
-    font-size: 2.9rem;
-  }
-}
-
-@media (prefers-reduced-motion: reduce){
-  body[data-page="404"] .balon-404{
-    animation: none;
-  }
-}
+@keyframes balon404-flotar{0%,to{transform:translateY(0) rotate(0)}50%{transform:translateY(-9px) rotate(7deg)}}
+@media(max-width:640px){
+body[data-page="404"] .pagina-404{padding:44px 16px 60px;gap:12px;min-height:calc(100vh - 260px)}
+body[data-page="404"] .balon-404{width:64px;height:64px}
+body[data-page="404"] .pagina-404 p{font-size:.94rem}
+body[data-page="404"] .acciones-404{flex-direction:column;width:100%;max-width:300px}
+body[data-page="404"] .pagina-404 .btn-primario,body[data-page="404"] .pagina-404 .btn-secundario{width:100%;text-align:center}
+body[data-page="404"] .sugerencias-dinamicas{margin-top:26px}
+body[data-page="404"] .sug-bloque{padding:16px}
+body[data-page="404"] .sug-clubes{grid-template-columns:repeat(2,1fr)!important}
+body[data-page="404"] .sugerencias ul{gap:8px}
+body[data-page="404"] .sugerencias a{font-size:.8rem;padding:6px 12px}}
+@media(prefers-reduced-motion:reduce){body[data-page="404"] .balon-404{animation:none}body[data-page="404"] .sug-bloque a,body[data-page="404"] .btn-primario,body[data-page="404"] .btn-secundario{transition:none}}

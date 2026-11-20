@@ -2,10 +2,15 @@
 <html lang="es">
 <head>
 <meta name="google-adsense-account" content="ca-pub-7347856722927942">
-<script src="js/tema.js?v=2"></script>
-<script src="js/preferencias.js?v=20"></script>
+<script src="js/tema.js?v=65626bb2"></script>
+<script src="js/preferencias.js?v=6e49f5b3"></script>
 <meta charset="UTF-8">
-<script src="/js/splash.js?v=2"></script>
+<script>/* splash.js: bloquea el parseo solo si la web se abre como app (o ?splash=1); en navegador carga en async, sin frenar el pintado. */
+(function(){var a=false;try{a=matchMedia("(display-mode: standalone)").matches||matchMedia("(display-mode: fullscreen)").matches||matchMedia("(display-mode: minimal-ui)").matches||navigator.standalone===true;}catch(e){}
+if(a||/[?&]splash=1(&|$)/.test(location.search)){document.write('<script src="/js/splash.js?v=b5004788"><\/script>');}
+else{var s=document.createElement("script");s.src="/js/splash.js?v=b5004788";s.async=true;document.head.appendChild(s);}})();
+</script>
+<script src="/js/cargando.js?v=4a5cb1bc"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,23 +21,24 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://elotrofutbol.media/img/og-default.png">
 <link rel="alternate" type="application/rss+xml" title="ELOTROFÚTBOLTV" href="https://elotrofutbol.media/rss.xml">
-<link rel="icon" href="/favicon.ico?v=3" sizes="any">
-<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=3">
-<link rel="apple-touch-icon" href="/img/apple-touch-icon.png?v=2">
-<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&family=Playfair+Display:wght@700;800&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" onload="this.onload=null;this.rel='stylesheet'"><noscript><link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&family=Playfair+Display:wght@700;800&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet"></noscript>
-<link rel="stylesheet" href="css/style.css?v=35">
-<link rel="stylesheet" href="css/modales-mejoras.css?v=1">
-<link rel="stylesheet" href="css/accesibilidad.css?v=2">
-<script src="js/accesibilidad.js?v=1" defer></script>
-<script src="js/equipo-ficha.js?v=2"></script>
-<link rel="stylesheet" href="css/foco.css?v=1">
-<link rel="stylesheet" href="css/plantilla-club.css?v=4">
-<link rel="stylesheet" href="css/equipo-partidos-mejoras.css?v=2">
-<link rel="stylesheet" href="css/equipo-ficha.css?v=2">
-<link rel="stylesheet" href="css/app-movil.css?v=8">
-<script src="js/app-movil.js?v=5" defer></script>
+<link rel="icon" href="/favicon.ico?v=39af2432" sizes="any">
+<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=39af2432">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png?v=3f854c49">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;0,700;0,800;1,500;1,700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&display=swap" onload="this.onload=null;this.rel='stylesheet'"><noscript><link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;0,700;0,800;1,500;1,700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&display=swap" rel="stylesheet"></noscript>
+<link rel="stylesheet" href="css/style.css?v=6cd42e49">
+<link rel="stylesheet" href="css/modales-mejoras.css?v=982413bb">
+<link rel="stylesheet" href="css/accesibilidad.css?v=191b9263">
+<script src="js/accesibilidad.js?v=59fdae75" defer></script>
+<script src="js/equipo-ficha.js?v=1b027322"></script>
+<link rel="stylesheet" href="css/foco.css?v=c8652610">
+<link rel="stylesheet" href="css/plantilla-club.css?v=7bfbbca2">
+<link rel="stylesheet" href="css/equipo-partidos-mejoras.css?v=00bbb1de">
+<link rel="stylesheet" href="css/equipo-ficha.css?v=f791dc73">
+<link rel="stylesheet" href="css/app-movil.css?v=b6df23d4">
+<script src="js/app-movil.js?v=3b122790" defer></script>
 <link rel="manifest" href="/manifest.webmanifest">
-<link rel="stylesheet" href="css/proteccion-copia.css?v=2">
+<link rel="stylesheet" href="css/proteccion-copia.css?v=5d439156">
+<link rel="stylesheet" href="css/animaciones-web.css?v=844fde5e">
 </head>
 <body>
 <script>document.body.dataset.page = new URLSearchParams(location.search).get("cat") || "general";</script>
@@ -65,6 +71,7 @@
   </div>
   <section class="pc" id="plantillaEquipo" aria-label="Plantilla del equipo" hidden></section>
   <div class="grid-noticias" id="grid"></div>
+  <div data-eof-ad="pie"></div>
 </main>
 
 <!-- Modal de detalle del partido, reutilizado igual que en resultados.html
@@ -120,7 +127,7 @@
 
       <div class="comp-vs-col">
         <span class="comp-vs-grande">VS</span>
-        <span id="compEstadoCarga" class="comp-estado-carga" hidden>Cargando…</span>
+        <span id="compEstadoCarga" class="comp-estado-carga" role="status" hidden><span class="spinner" aria-hidden="true"></span><span class="eof-cargador-txt">Cargando…</span></span>
       </div>
 
       <div class="comp-equipo-tarjeta" id="compTarjetaRival">
@@ -174,7 +181,7 @@
         </table>
       </div>
 
-      <h4 class="comp-h2h-titulo">Últimos enfrentamientos directos</h4>
+      <div class="comp-h2h-titulo t-h4">Últimos enfrentamientos directos</div>
       <div id="compH2hLista" class="comp-h2h-lista"></div>
     </div>
   </div>
@@ -188,7 +195,7 @@
   <div class="modal-comp-detalle-fondo" onclick="cerrarModalCompDetalle()"></div>
   <div class="modal-comp-detalle-caja" role="dialog" aria-modal="true" aria-labelledby="compDetalleTitulo">
     <button type="button" class="modal-partido-cerrar" onclick="cerrarModalCompDetalle()" aria-label="Cerrar">✕</button>
-    <h4 id="compDetalleTitulo" class="modal-comp-detalle-titulo"></h4>
+    <div id="compDetalleTitulo" class="modal-comp-detalle-titulo t-h4"></div>
     <p id="compDetalleSubtitulo" class="modal-comp-detalle-subtitulo"></p>
     <div id="compDetalleLista" class="modal-comp-detalle-lista"></div>
   </div>
@@ -196,21 +203,23 @@
 
 <div id="site-footer"></div>
 
-<script src="js/ui-alertas.js?v=5"></script>
-<script src="js/foco.js?v=1"></script>
-<script src="js/config.js?v=36"></script>
-<script src="js/en-vivo.js?v=1"></script>
-<script src="js/seo.js?v=5"></script>
-<script src="js/clubs.js?v=8"></script>
-<script src="js/lector-auth.js?v=13"></script>
-<script src="js/lecturas.js?v=8"></script>
-<script src="js/layout.js?v=30"></script>
-<script src="js/partidos.js?v=21"></script>
-<script src="js/plantilla-lp.js?v=4"></script>
-<script src="js/plantilla-club.js?v=3"></script>
-<script src="js/main.js?v=33"></script>
-<script src="js/cookies.js?v=2"></script>
-<script src="js/ads.js?v=3"></script>
+<script src="js/ui-alertas.js?v=4339c846"></script>
+<script src="js/foco.js?v=133ef790"></script>
+<script src="js/config.js?v=8002da47"></script>
+<script src="js/en-vivo.js?v=3e8f8994"></script>
+<script src="js/seo.js?v=51678a88"></script>
+<script src="js/clubs.js?v=cdbd504a"></script>
+<script src="js/info-club-estatica.js?v=f35b93bb"></script>
+<script src="js/clubs-redes.js?v=9dc630c0"></script>
+<script src="js/lector-auth.js?v=9a1c7f1f"></script>
+<script src="js/lecturas.js?v=de5c36f5"></script>
+<script src="js/layout.js?v=7e7c9eae"></script>
+<script src="js/partidos.js?v=e6388483"></script>
+<script src="js/plantilla-lp.js?v=d20a1e8a"></script>
+<script src="js/plantilla-club.js?v=905a66e5"></script>
+<script src="js/main.js?v=858efe67"></script>
+<script src="js/cookies.js?v=845d8f5c"></script>
+<script src="js/ads.js?v=a41f4506"></script>
 <script>
 document.getElementById("ad-cabecera-categoria").innerHTML = adSlot("cabecera");
 async function cargaCategoria() {
@@ -303,6 +312,9 @@ async function cargaCategoria() {
     urlPath: location.pathname + location.search,
     migas,
   });
+  // RSS propio: el del club si se está viendo un club; si no, el de la categoría.
+  if (club) fijarRssAlternativo(`/rss/club/${slugEtiquetaCliente(club)}.xml`, `${club} — ELOTROFÚTBOLTV`);
+  else if (cat) fijarRssAlternativo(`/rss/categoria/${String(cat).replace(/_/g, "-")}.xml`, `${categoriaLabel(cat)} — ELOTROFÚTBOLTV`);
 
   const grid = document.getElementById("grid");
   grid.innerHTML = spinnerHTML();
@@ -446,6 +458,12 @@ const ICONOS_INFO_CLUB = {
   Estadio: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="12" rx="9" ry="6"/><ellipse cx="12" cy="12" rx="4" ry="6"/></svg>`,
   Fundación: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>`,
   Ciudad: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c-4.5-4.2-7-7.8-7-11a7 7 0 0 1 14 0c0 3.2-2.5 6.8-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>`,
+  Competición: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3"/></svg>`,
+  "Cuenta de X": `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l16 16M20 4L4 20"/></svg>`,
+  Balance: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>`,
+  Goles: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8l3.5 2.5-1.3 4h-4.4l-1.3-4z"/></svg>`,
+  "Próximo partido": `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/></svg>`,
+  Grupo: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>`,
 };
 
 // Etiquetas para las que el valor enlaza a su artículo de Wikipedia en
@@ -498,18 +516,95 @@ async function buscaArticuloWikipedia(valor, contexto, contextoAlternativo) {
   return promesa;
 }
 
+// Datos de la ficha calculados con los partidos del club (balance, goles,
+// próximo partido). Llegan por otra petición, así que se guardan y se
+// añaden a la cuadrícula de la ficha cuando esta existe, llegue antes o después.
+let EXTRAS_INFO_CLUB = [];
+function pintarExtrasInfoClub() {
+  const cont = document.getElementById("infoClub");
+  if (!cont || !EXTRAS_INFO_CLUB.length) return;
+  let rejilla = cont.querySelector(".info-club-datos");
+  if (!rejilla) {
+    cont.innerHTML = `<p class="info-club-titulo">Ficha del equipo</p><div class="info-club-datos"></div>`;
+    rejilla = cont.querySelector(".info-club-datos");
+  }
+  EXTRAS_INFO_CLUB.forEach(([etiqueta, valor]) => {
+    if (rejilla.querySelector(`[data-extra="${etiqueta}"]`)) return;
+    rejilla.insertAdjacentHTML("beforeend", `
+      <div class="info-club-dato" data-extra="${escapeHtml(etiqueta)}">
+        <span class="info-club-icono">${ICONOS_INFO_CLUB[etiqueta] || ""}</span>
+        <span class="info-club-texto">
+          <span class="info-club-etiqueta">${escapeHtml(etiqueta)}</span>
+          <span class="info-club-valor">${escapeHtml(String(valor))}</span>
+        </span>
+      </div>`);
+  });
+  cont.style.display = "block";
+}
+
+function calcularExtrasInfoClub(club, results) {
+  const nombre = (x) => String(x || "").trim();
+  let v = 0, e = 0, d = 0, gf = 0, gc = 0, pj = 0;
+  results.forEach((p) => {
+    if (p.estado !== "finalizado") return;
+    if (typeof esFinalizadoSinCubrir === "function" && esFinalizadoSinCubrir(p)) return;
+    const local = nombre(p.equipo_local) === nombre(club);
+    const visit = nombre(p.equipo_visitante) === nombre(club);
+    if (!local && !visit) return;
+    const a = Number(p.goles_local), b = Number(p.goles_visitante);
+    if (isNaN(a) || isNaN(b) || p.goles_local == null || p.goles_visitante == null) return;
+    const r = resultadoDelClub(p, local);
+    if (!r) return;
+    pj++; gf += local ? a : b; gc += local ? b : a;
+    if (r === "v") v++; else if (r === "e") e++; else d++;
+  });
+  const extras = [];
+  if (pj) {
+    extras.push(["Balance", `${pj} PJ · ${v}V ${e}E ${d}D`]);
+    extras.push(["Goles", `${gf} a favor · ${gc} en contra`]);
+  }
+  const prox = ordenarPartidosCronologicamente(results).find((p) => p.estado === "programado");
+  if (prox) {
+    const rival = nombre(prox.equipo_local) === nombre(club) ? prox.equipo_visitante : prox.equipo_local;
+    const cuando = prox.fecha_partido && typeof formatFecha === "function" ? ` · ${formatFecha(prox.fecha_partido)}` : "";
+    extras.push(["Próximo partido", `${rival}${cuando}`]);
+  }
+  return extras;
+}
+
 async function cargaInfoClub(club) {
   const cont = document.getElementById("infoClub");
   try {
     const res = await apiFetch(`/api/club-info?club=${encodeURIComponent(club)}`);
-    const { info } = await res.json();
-    if (!info) return;
+    const { info: infoApi } = await res.json();
+    const info = infoApi || {};
+
+    // Datos que ya conoce la web aunque el club no tenga ficha rellenada en
+    // el panel: competición, grupo y estadio. El estadio del panel manda; el
+    // de la lista interna solo se usa si el panel no tiene ninguno.
+    const LIGAS_CLUB = ["hypermotion", "primera_federacion", "segunda_federacion", "tercera_federacion"];
+    let ligaClub = null;
+    try {
+      ligaClub = LIGAS_CLUB.find(l => getClubsForCategoria(l).includes(club)) || null;
+    } catch (e) { /* sin clubs.js: se omite */ }
+    let grupoClub = "";
+    try { grupoClub = (typeof getGrupoClub === "function" && getGrupoClub(club)) || ""; } catch (e) {}
+    let estadioClub = "";
+    try { estadioClub = (typeof getEstadioClub === "function" && getEstadioClub(club)) || ""; } catch (e) {}
+
+    let estatica = {};
+    try { estatica = (typeof getInfoClubEstatica === "function" && getInfoClubEstatica(club)) || {}; } catch (e) {}
+    let cuentaX = "";
+    try { cuentaX = (typeof cuentaXDeClub === "function" && cuentaXDeClub(club)) || ""; } catch (e) {}
 
     const datos = [
+      ["Competición", ligaClub && typeof CATEGORIES !== "undefined" ? CATEGORIES[ligaClub] : ""],
+      ["Grupo", grupoClub],
       ["Entrenador", info.entrenador],
-      ["Estadio", info.estadio],
-      ["Fundación", info.fundacion],
-      ["Ciudad", info.ciudad],
+      ["Estadio", info.estadio || estadioClub],
+      ["Fundación", info.fundacion || estatica.fundacion],
+      ["Ciudad", info.ciudad || estatica.ciudad],
+      ["Cuenta de X", cuentaX],
     ].filter(([, valor]) => valor);
     if (!datos.length) return;
 
@@ -531,7 +626,14 @@ async function cargaInfoClub(club) {
       </div>`;
     cont.style.display = "block";
 
+    pintarExtrasInfoClub();
+
     datos.forEach(([etiqueta, valor], i) => {
+      if (etiqueta === "Cuenta de X") {
+        const span = document.getElementById(`infoClubValor${i}`);
+        if (span) span.innerHTML = `<a href="https://x.com/${encodeURIComponent(String(valor).replace(/^@/, ""))}" target="_blank" rel="noopener noreferrer" class="info-club-enlace">${escapeHtml(String(valor))}</a>`;
+        return;
+      }
       if (!ETIQUETAS_CON_WIKIPEDIA.has(etiqueta)) return;
       const CONTEXTOS = { Entrenador: "entrenador de fútbol", Estadio: "estadio de fútbol", Ciudad: "ciudad" };
       const contexto = CONTEXTOS[etiqueta];
@@ -626,6 +728,11 @@ async function cargaPartidosClub(club) {
     });
     if (!results.length) return; // Sin partidos: el bloque se queda oculto, no es un error.
 
+    try {
+      EXTRAS_INFO_CLUB = calcularExtrasInfoClub(club, results);
+      pintarExtrasInfoClub();
+    } catch (e) { /* dato accesorio */ }
+
     const ordenados = ordenarPartidosCronologicamente(results);
     // Un partido anulado sigue "por jugar" (pendiente de reprogramar).
     const proximos = ordenados.filter(p => p.estado === "programado" || p.estado === "anulado").slice(0, MAX_PARTIDOS_CLUB);
@@ -635,7 +742,7 @@ async function cargaPartidosClub(club) {
       ? jugados.map(p => partidoHTML(p, { mostrarCompeticion: true })).join("")
       : `<p class="partidos-club-vacio">Todavía no hay resultados.</p>`;
     contProximos.innerHTML = proximos.length
-      ? proximos.map(p => partidoHTML(p, { mostrarCompeticion: true })).join("")
+      ? partidosListaAgrupadaHTML(proximos, { mostrarCompeticion: true })
       : `<p class="partidos-club-vacio">No hay próximos partidos programados.</p>`;
 
     // Se guardan en la misma caché global que usa partidos.js para poder
@@ -1413,6 +1520,7 @@ document.addEventListener("DOMContentLoaded", cargaCategoria);
   .comp-detalle-marcador{font-family:var(--font-tit); font-weight:800; font-size:.92rem;}
   .comp-detalle-meta{color:var(--texto-suave); font-size:.7rem;}
 </style>
-<script src="js/proteccion-copia.js?v=2" defer></script>
+<script src="js/proteccion-copia.js?v=3a8bf3dd" defer></script>
+<script src="js/animaciones-web.js?v=e24adf73" defer></script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-// ---------- Funcionalidades > Responsabilidades (solo administradores) ----------
+// ---------- Funcionalidades > Responsabilidades (solo Responsables) ----------
 // Dos bloques:
 //   · RELACIONES INSTITUCIONALES: checklist de todos los clubes + base de datos
 //     de contactos (clubes, federaciones, departamentos de prensa y responsables
@@ -142,7 +142,7 @@
     rrhhFotografos: { busqueda: "", filtro: "todos", plegados: new Set(), montada: false },
     rolRrhh: "redactores", // checklist de RRHH visible: redactores | fotografos
     fichajes: { busqueda: "", estado: "todos", montada: false, editando: undefined }, // editando: undefined = form cerrado, null = nueva, string = id
-    contactos: { busqueda: "", tipo: "todos", area: "todas", montada: false, editando: undefined, imp: null }, // editando: igual que fichajes
+    contactos: { busqueda: "", tipo: "todos", area: "todas", correo: "todos", montada: false, editando: undefined, imp: null }, // editando: igual que fichajes
     contactoNota: "",
     cm: { busqueda: "", filtro: "todos", rol: "todos", orden: "nombre", abiertos: new Set() }, // contacto con colaboradores: filtros y fichas abiertas
   };
@@ -291,6 +291,7 @@
       estado.guardado = "ok";
     }
     pintarEstado();
+    try { window.dispatchEvent(new CustomEvent("eof-resp-pintado")); } catch { /* sin eventos */ }
   }
 
   function pintarEstado() {
@@ -324,6 +325,7 @@
     pintarRolRrhh();
     montarFichajes();
     montarContactos();
+    try { window.dispatchEvent(new CustomEvent("eof-resp-pintado")); } catch { /* sin eventos */ }
   }
 
   // Selector Redactores / Fotógrafos de la checklist de RRHH: enseña una sola
@@ -782,7 +784,7 @@
     if (sub) sub.classList.toggle("resp-punto-aviso", pendiente);
   }
 
-  // Al abrir el panel un administrador: si toca contactar y no está hecho, punto
+  // Al abrir el panel un Responsable: si toca contactar y no está hecho, punto
   // rojo y, una vez al día, un aviso con acceso directo. No toca nada si falla.
   async function recordatorioMensual() {
     let u = null;
@@ -1206,6 +1208,7 @@
         </div>
         <div class="resp-chips resp-cont-chips" data-zona="cont-chips-tipo" role="group" aria-label="Filtrar por tipo de entidad"></div>
         <div class="resp-chips" data-zona="cont-chips-area" role="group" aria-label="Filtrar por departamento"></div>
+        <div class="resp-chips" data-zona="cont-chips-correo" role="group" aria-label="Filtrar por correo"></div>
         <div class="resp-form resp-import" data-zona="cont-import" hidden role="region" aria-label="Importar contactos desde CSV"></div>
         <form class="resp-form" data-zona="cont-form" hidden novalidate>
           <h5 data-zona="cont-form-titulo">Nuevo contacto</h5>
@@ -1243,12 +1246,18 @@
       .some((t) => sinTildes(t).includes(q));
   }
 
+  // El «pendiente» ya no vive en el texto de las notas: se calcula en vivo según haya o no correo.
+  // Se quitan de las notas las frases fijas de «pendiente» que dejó el script de carga inicial.
+  const RE_NOTA_PENDIENTE = /\s*(?:Pendiente: añadir correo de prensa\/comunicación \(verificado en la web oficial del club\)\.?|Su web no muestra el correo en texto: pendiente de añadirlo\.?)/g;
+  const notasLimpias = (t) => String(t || "").replace(RE_NOTA_PENDIENTE, "").trim();
+
   function contactosFiltrados() {
     const v = vista.contactos;
     const q = sinTildes(v.busqueda).trim();
     const ordenArea = Object.keys(AREAS_CONTACTO);
     return estado.contactos
-      .filter((c) => (v.tipo === "todos" || c.tipo === v.tipo) && (v.area === "todas" || c.area === v.area) && coincideContacto(c, q))
+      .filter((c) => (v.tipo === "todos" || c.tipo === v.tipo) && (v.area === "todas" || c.area === v.area)
+        && (v.correo === "todos" || (v.correo === "sin" ? !c.email : !!c.email)) && coincideContacto(c, q))
       .sort((a, b) => sinTildes(a.entidad).localeCompare(sinTildes(b.entidad), "es")
         || ordenArea.indexOf(a.area) - ordenArea.indexOf(b.area)
         || sinTildes(a.nombre).localeCompare(sinTildes(b.nombre), "es"));
@@ -1266,6 +1275,12 @@
     for (const k in AREAS_CONTACTO) cuentaA[k] = estado.contactos.filter((c) => c.area === k).length;
     const mkA = (k, n) => `<button type="button" class="resp-chip" data-resp="cont-area" data-valor="${k}" aria-pressed="${v.area === k}">${esc(n)} <b>${cuentaA[k]}</b></button>`;
     za.innerHTML = mkA("todas", "Cualquier departamento") + Object.entries(AREAS_CONTACTO).map(([k, n]) => mkA(k, n)).join("");
+    const zc = zonaContactos("cont-chips-correo");
+    if (zc) {
+      const sin = estado.contactos.filter((c) => !c.email).length;
+      const mkC = (k, n, num) => `<button type="button" class="resp-chip" data-resp="cont-correo" data-valor="${k}" aria-pressed="${v.correo === k}">${esc(n)} <b>${num}</b></button>`;
+      zc.innerHTML = mkC("todos", "Con o sin correo", estado.contactos.length) + mkC("con", "Con correo", estado.contactos.length - sin) + mkC("sin", "Pendientes de correo", sin);
+    }
   }
 
   // Solo se enlazan direcciones web completas; el resto se muestra como texto.
@@ -1297,7 +1312,8 @@
         <span class="resp-cont-tipo">${esc(tipo.nombre)}</span>
       </div>
       ${lineas ? `<div class="resp-persona-datos">${lineas}</div>` : ""}
-      ${c.notas ? `<p class="resp-persona-notas">${esc(c.notas)}</p>` : ""}
+      ${c.email ? "" : '<p class="resp-cont-pendiente" role="status">Pendiente: añadir correo</p>'}
+      ${notasLimpias(c.notas) ? `<p class="resp-persona-notas">${esc(notasLimpias(c.notas))}</p>` : ""}
       <div class="resp-persona-pie">
         ${escudo ? `<span class="resp-cont-escudo">${escudo}</span>` : ""}
         ${c.email ? `<button type="button" class="resp-icono" data-resp="cont-copiar-uno" title="Copiar correo" aria-label="Copiar el correo de ${esc(c.entidad)}">${ICO.copiar}</button>` : ""}
@@ -1340,7 +1356,7 @@
     form.elements.email.value = c ? c.email : "";
     form.elements.telefono.value = c ? c.telefono : "";
     form.elements.web.value = c ? c.web : "";
-    form.elements.notas.value = c ? c.notas : "";
+    form.elements.notas.value = c ? notasLimpias(c.notas) : "";
     form.querySelector('[data-zona="cont-form-err"]').textContent = "";
   }
 
@@ -1373,7 +1389,7 @@
       email: email.slice(0, 120),
       telefono: form.elements.telefono.value.trim().slice(0, 40),
       web: normalizarWeb(form.elements.web.value).slice(0, 200),
-      notas: form.elements.notas.value.trim().slice(0, 600),
+      notas: notasLimpias(form.elements.notas.value).slice(0, 600),
     };
     const ed = vista.contactos.editando;
     if (ed) {
@@ -1770,6 +1786,7 @@
     if (acc === "cont-cancelar") { cerrarFormContacto(); return; }
     if (acc === "cont-tipo") { vista.contactos.tipo = b.dataset.valor; pintarChipsContactos(); pintarListaContactos(); return; }
     if (acc === "cont-area") { vista.contactos.area = b.dataset.valor; pintarChipsContactos(); pintarListaContactos(); return; }
+    if (acc === "cont-correo") { vista.contactos.correo = b.dataset.valor; pintarChipsContactos(); pintarListaContactos(); return; }
     if (acc === "cont-copiar") { copiarCorreos(contactosFiltrados()); return; }
     if (acc === "cont-exportar") { exportarContactosCsv(); return; }
     if (acc === "cont-plantilla") { descargarPlantillaContactos(); return; }
@@ -1882,9 +1899,29 @@
     });
   }
 
-  // Para el módulo de plantillas (responsabilidades-plantillas.js).
-  window.EOFResponsabilidades = { cargar, listaClubes, recordatorioMensual };
-  // Aviso mensual al abrir el panel (solo administradores; espera a que admin.js haya arrancado).
+  // Cifras para la pestaña «Resumen» (responsabilidades-organizacion.js). null = aún sin cargar.
+  function resumen() {
+    if (!estado.cargado) return null;
+    const clubes = listaClubes();
+    const cubiertos = (clave) => { const m = marcadosEf(clave); return clubes.filter((c) => m.has(c.slug)).length; };
+    const sit = situacionContacto();
+    return {
+      clubesTotal: clubes.length,
+      relaciones: cubiertos("relaciones"),
+      redactores: cubiertos("rrhhRedactores"),
+      fotografos: cubiertos("rrhhFotografos"),
+      contactos: estado.contactos.length,
+      fichajesPorContactar: estado.fichajes.filter((f) => f.estado === "pendiente").length,
+      fichajesAbiertos: estado.fichajes.filter((f) => f.estado !== "fichado" && f.estado !== "descartado").length,
+      contactoDebido: !!sit.debido,
+      contactoHecho: !!sit.hecho,
+      contactoProximo: sit.hecho ? nombreMes(sit.proximo) : "",
+    };
+  }
+
+  // Para el módulo de plantillas (responsabilidades-plantillas.js) y el de organización/resumen.
+  window.EOFResponsabilidades = { cargar, listaClubes, recordatorioMensual, resumen };
+  // Aviso mensual al abrir el panel (solo Responsables; espera a que admin.js haya arrancado).
   function arrancarRecordatorio() { setTimeout(() => { recordatorioMensual().catch(() => {}); }, 3500); }
   if (document.readyState === "complete") arrancarRecordatorio(); else window.addEventListener("load", arrancarRecordatorio);
 })();

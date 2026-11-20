@@ -1653,7 +1653,7 @@ function mamDatosPrevia(r) {
   const retrasado = r.estado === "retrasado";
   const horaOriginal = mamHoraDe(r.fecha_partido);
   const horaNueva = retrasado ? mamHoraDe(r.fecha_partido_retrasado) : "";
-  const competicion = [r.competicion, mamEtiquetaNumerada("Grupo", r.grupo), mamEtiquetaNumerada("Jornada", r.jornada)].filter(Boolean).join(" · ");
+  const competicion = [(typeof categoriaLabel === "function" ? categoriaLabel(r.competicion) : r.competicion), mamEtiquetaNumerada("Grupo", r.grupo), mamEtiquetaNumerada("Jornada", r.jornada)].filter(Boolean).join(" · ");
   const fila = (icono, etiqueta, valor, extra = "") => valor
     ? `<li class="mam-previa-dato"><span class="mam-previa-dato-icono" aria-hidden="true">${icono}</span><span class="mam-previa-dato-texto"><small>${etiqueta}</small><b>${escapeHtml(valor)}</b>${extra}</span></li>`
     : "";

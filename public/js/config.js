@@ -1,0 +1,1869 @@
+// Dominio propio del Worker, en vez del workers.dev subdomain de la
+// cuenta (elotrofutbol-api.adriamarch2010.workers.dev): ese subdominio se
+// ha desactivado solo más de una vez sin que nadie lo tocara, dejando la
+// API entera inalcanzable hasta reactivarlo a mano en el dashboard de
+// Cloudflare. api.elotrofutbol.media es una ruta ([[routes]] en
+// worker/wrangler.toml) sobre un dominio que gestionamos nosotros, así
+// que no depende de esa configuración de cuenta.
+const API_URL = "https://api.elotrofutbol.media";
+
+// URL de la API secundaria (Railway), usada como respaldo por apiFetch()
+// cuando la primaria no responde. Se puede sobrescribir definiendo
+// window.EOF_SECONDARY_API_URL en un <script> ANTES de cargar este
+// archivo (por ejemplo, para apuntar a un entorno de pruebas distinto),
+// pero por defecto ya viene puesta aquí para que el failover funcione
+// nada más desplegar, sin tener que tocar cada HTML uno a uno.
+const API_URL_SECUNDARIA_POR_DEFECTO = "https://elotro-futbol-api-production.up.railway.app";
+
+// API SECUNDARIA DESACTIVADA (oct-2026): el servicio de Railway ya no se
+// usa. Con SECUNDARIA_ACTIVA = false, SECONDARY_API queda vacía y todo el
+// sitio habla SOLO con la primaria: no hay failover en el navegador y el
+// circuit breaker nunca se abre (ver eofRegistrarFalloPrimaria y apiFetch
+// más abajo). Para volver a activarla: poner SECUNDARIA_ACTIVA = true (y
+// revisar NOTAS-CAMBIOS.md, apartado "Desactivar API secundaria", que
+// lista el resto de interruptores: Worker, src-worker.js, CSP, wrangler).
+// window.EOF_SECONDARY_API_URL sigue funcionando como sobrescritura
+// explícita (lo usan los tests de worker-secondary/test/api-failover).
+const SECUNDARIA_ACTIVA = false;
+
+// INTERRUPTOR EN EL NAVEGADOR: permite activar/desactivar la secundaria sin
+// redesplegar. Se guarda en localStorage ("eof_secundaria": "1" = activada,
+// "0" = desactivada; ausente = vale SECUNDARIA_ACTIVA). Solo afecta a ESTE
+// navegador y se aplica al recargar la página. Desde el panel:
+// Ajustes de cuenta -> Preferencias. Desde la consola: EOF_SECUNDARIA(true|false).
+// Nota: el Worker principal tiene su propio interruptor (SECONDARY_ENABLED).
+function eofLeerInterruptorSecundaria() {
+  try {
+    const v = typeof localStorage !== "undefined" ? localStorage.getItem("eof_secundaria") : null;
+    if (v === "1") return true;
+    if (v === "0") return false;
+  } catch (e) { /* almacenamiento bloqueado: se usa el valor por defecto */ }
+  return SECUNDARIA_ACTIVA;
+}
+const PRIMARY_API = API_URL;
+const SECONDARY_API = (typeof window !== "undefined" && window.EOF_SECONDARY_API_URL)
+  || (eofLeerInterruptorSecundaria() ? API_URL_SECUNDARIA_POR_DEFECTO : "");
+// Guarda el interruptor (true/false) y, salvo recargar=false, recarga la página.
+function eofSetSecundaria(activa, recargar = true) {
+  try { localStorage.setItem("eof_secundaria", activa ? "1" : "0"); } catch (e) { return false; }
+  if (recargar && typeof location !== "undefined") location.reload();
+  return true;
+}
+if (typeof window !== "undefined") {
+  window.EOF_SECUNDARIA = function (activa) {
+    if (activa === undefined) return !!SECONDARY_API;
+    return eofSetSecundaria(!!activa);
+  };
+}
+
+// ---------- apiFetch(): failover PRIMARY -> SECONDARY para el sitio público ----------
+// Mismo diseño certificado para el panel de administración (ver FASE5-resultado.md):
+//   - Timeout de 8s por intento.
+//   - Failover en GET/HEAD ante error de red, timeout o 502/503/504.
+//   - 400/401/403/404 (y otros 4xx) NO provocan failover: son respuestas
+//     válidas del servidor, no una caída.
+//   - Las escrituras (POST/PUT/DELETE/PATCH) NO se reintentan automáticamente
+//     en la secundaria: un timeout no permite saber si la escritura ya se
+//     aplicó en la primaria, así que reintentar podría duplicar datos.
+//   - Circuit breaker: 3 fallos consecutivos de primaria abren el circuito
+//     (todas las lecturas van directas a secundaria durante 30s, sin ni
+//     siquiera intentar primaria); tras esos 30s se vuelve a probar, y se
+//     necesitan 2 respuestas OK seguidas de primaria para cerrar el circuito
+//     y confiar de nuevo en ella. Esto evita el parpadeo PRIMARY/SECONDARY/
+//     PRIMARY/SECONDARY si la primaria está inestable en vez de caída.
+const EOF_API_TIMEOUT_MS = 8000;
+const EOF_CIRCUIT_FAILS_TO_OPEN = 3;
+const EOF_CIRCUIT_OPEN_MS = 30000;
+const EOF_CIRCUIT_OKS_TO_CLOSE = 2;
+
+const eofApiState = {
+  activa: "PRIMARY", // solo informativo/diagnóstico, no gobierna el circuito
+  fallosConsecutivos: 0,
+  circuitoAbierto: false,
+  circuitoAbiertoDesde: 0,
+  oksConsecutivosPrimaria: 0,
+  ultimoFallo: null,
+  ultimaRecuperacion: null,
+};
+
+function eofEsErrorDeTransporteOServidorCaido(status, res) {
+  // 500, 520-530 y 404 SIN cuerpo JSON no los genera la app (sus errores
+  // siempre son JSON) sino la infraestructura: worker caído o sin ruta
+  // (Cloudflare 1101/52x/404). Es una caída, no un "no existe".
+  const ct = (res && res.headers && res.headers.get("Content-Type")) || "";
+  if ((status === 500 || status === 404 || (status >= 520 && status <= 530)) && !/application\/json/i.test(ct)) return true;
+  // Errores de transporte (fetch rechaza la promesa: red caída, DNS, CORS,
+  // timeout vía AbortController) se tratan aparte, en el catch. Aquí solo
+  // clasificamos respuestas HTTP recibidas: 502/503/504 = servidor/gateway
+  // caído o saturado -> failover. El resto de códigos (incluidos 4xx) son
+  // respuestas legítimas del servidor -> no failover.
+  return status === 502 || status === 503 || status === 504;
+}
+
+function eofRegistrarFalloPrimaria(esFalloDeTransporte) {
+  eofApiState.fallosConsecutivos += 1;
+  eofApiState.oksConsecutivosPrimaria = 0;
+  eofApiState.ultimoFallo = new Date().toISOString();
+  // Un fallo de TRANSPORTE (red caída, DNS, IP inalcanzable, timeout) abre
+  // el circuito de inmediato, sin esperar a acumular 3. Varias peticiones
+  // en paralelo (portada, header, resultados...) se disparan juntas al
+  // cargar la página; si esperamos a 3 fallos consecutivos, todas esas
+  // peticiones paralelas llegan a intentar la primaria caída antes de que
+  // el circuito se abra, generando una fila de errores de red en la
+  // consola. Un 502/503/504 (servidor SÍ responde, pero con error) sigue
+  // exigiendo 3 fallos, porque ahí es más probable que sea un problema
+  // puntual/transitorio y no una caída total.
+  const debeAbrir = esFalloDeTransporte || eofApiState.fallosConsecutivos >= EOF_CIRCUIT_FAILS_TO_OPEN;
+  // Sin secundaria no hay a dónde desviar las lecturas: abrir el circuito
+  // solo haría que durante 30 s ni siquiera se intentara la primaria (y
+  // activaría el modo "solo lectura por failover" del panel). Se sigue
+  // contando fallos para diagnóstico, pero el circuito se queda cerrado.
+  if (SECONDARY_API && !eofApiState.circuitoAbierto && debeAbrir) {
+    eofApiState.circuitoAbierto = true;
+    eofApiState.circuitoAbiertoDesde = Date.now();
+    console.warn("[FAILOVER] PRIMARY unavailable - SECONDARY activated (circuit breaker OPEN)");
+  }
+}
+
+function eofRegistrarExitoPrimaria() {
+  if (eofApiState.circuitoAbierto) {
+    eofApiState.oksConsecutivosPrimaria += 1;
+    if (eofApiState.oksConsecutivosPrimaria >= EOF_CIRCUIT_OKS_TO_CLOSE) {
+      eofApiState.circuitoAbierto = false;
+      eofApiState.fallosConsecutivos = 0;
+      eofApiState.oksConsecutivosPrimaria = 0;
+      eofApiState.ultimaRecuperacion = new Date().toISOString();
+      console.info("[RECOVERY] PRIMARY healthy - PRIMARY reactivated");
+    }
+  } else {
+    eofApiState.fallosConsecutivos = 0;
+  }
+}
+
+function eofCircuitoDebeProbarPrimariaOtraVez() {
+  return Date.now() - eofApiState.circuitoAbiertoDesde >= EOF_CIRCUIT_OPEN_MS;
+}
+
+async function eofFetchConTimeout(url, options, timeoutMs) {
+  const controlador = new AbortController();
+  const combinado = { ...options, signal: controlador.signal };
+  // Si el llamante ya pasó su propia señal (p.ej. búsqueda cancelable en
+  // layout.js), se respeta también: cualquiera de las dos aborta la petición.
+  if (options.signal) {
+    options.signal.addEventListener("abort", () => controlador.abort());
+  }
+  const temporizador = setTimeout(() => controlador.abort(), timeoutMs);
+  try {
+    return await fetch(url, combinado);
+  } finally {
+    clearTimeout(temporizador);
+  }
+}
+
+// Endpoints de autenticación: son técnicamente POST, pero no crean ni
+// modifican ningún dato de negocio (artículo, comentario, resultado...),
+// solo verifican credenciales o disparan un correo de recuperación. Repetir
+// la petición en la secundaria si la primaria cae no puede duplicar nada,
+// así que para estos SÍ se hace failover como si fueran lecturas. Sin esto,
+// una caída de la primaria dejaría a todo el mundo fuera del panel.
+const EOF_ESCRITURAS_SEGURAS_PARA_FAILOVER = new Set([
+  "/api/login",
+  // Verificación en dos pasos de los admins: solo comprueba un código (o
+  // genera el secreto la primera vez), no toca datos de negocio.
+  "/api/login/2fa",
+  "/api/login/2fa/setup",
+  "/api/login/2fa/activar",
+  // Solo comprueba el PIN del formulario de acreditaciones (no guarda nada).
+  "/api/acreditaciones/pin",
+  // Igual para el PIN de los formularios personalizados.
+  "/api/formularios-publicos/pin",
+  "/api/forgot-password",
+  "/api/forgot-password/confirmar",
+  // Login/recuperación de lectores: mismo motivo que las de arriba (solo
+  // verifican credenciales o disparan un correo, repetirlas en la
+  // secundaria no puede duplicar ningún dato de negocio).
+  "/api/readers/login",
+  "/api/readers/login/2fa",
+  "/api/readers/forgot-password",
+  "/api/readers/forgot-password/confirmar",
+]);
+
+function eofEscrituraSeguraParaFailover(path) {
+  // path puede traer querystring; se compara solo la ruta.
+  const ruta = path.split("?")[0];
+  return EOF_ESCRITURAS_SEGURAS_PARA_FAILOVER.has(ruta);
+}
+
+// apiFetch(path, options): igual que fetch(path, options) pero con la URL
+// base ya resuelta y failover automático. Devuelve un Response (igual que
+// fetch nativo), así que las llamadas existentes que hacían
+// `await fetch(...).then(r => r.json())` solo necesitan cambiar `fetch` por
+// `apiFetch` sin tocar el resto.
+async function apiFetch(path, options = {}) {
+  // options.timeoutMs (opcional): tiempo máximo de ESTA petición en vez de los 8 s por defecto.
+  // Solo para operaciones que tardan de verdad (p. ej. cada tanda del envío de anuncios por
+  // correo): con 8 s el navegador cortaba la petición a mitad del envío, el circuito de
+  // failover se abría y las lecturas siguientes se desviaban a la secundaria.
+  const timeoutPeticion = Number(options.timeoutMs) > 0 ? Number(options.timeoutMs) : EOF_API_TIMEOUT_MS;
+  if ("timeoutMs" in options) { options = { ...options }; delete options.timeoutMs; }
+  const metodo = (options.method || "GET").toUpperCase();
+  const esEscritura = metodo !== "GET" && metodo !== "HEAD" && !eofEscrituraSeguraParaFailover(path);
+
+  // Lecturas (GET/HEAD) sin "cache" explícito: se fuerza "no-store" para
+  // que, si se va recargando la página (portada, categoría, buscador...),
+  // se vean siempre los últimos cambios publicados desde el panel. El
+  // servidor ya manda "Cache-Control: no-store" (ver json() en el
+  // Worker), pero eso no evita que el propio navegador sirva la petición
+  // desde su caché en memoria (bfcache / disk cache) si el fetch no lo
+  // pide explícitamente; esto lo cubre también en el cliente.
+  if (!esEscritura && !options.cache) {
+    options = { ...options, cache: "no-store" };
+  }
+
+  const debeIntentarPrimariaPrimero = !SECONDARY_API || !eofApiState.circuitoAbierto || eofCircuitoDebeProbarPrimariaOtraVez();
+
+  // Sin secundaria: si la primaria falla se devuelve su respuesta tal cual
+  // (p. ej. un 503 JSON con el motivo) o se relanza el error de red
+  // original, en vez de inventar un error genérico.
+  let respuestaPrimariaFallida = null;
+  let errorPrimario = null;
+
+  if (debeIntentarPrimariaPrimero) {
+    try {
+      const res = await eofFetchConTimeout(`${PRIMARY_API}${path}`, options, timeoutPeticion);
+      if (eofEsErrorDeTransporteOServidorCaido(res.status, res)) {
+        eofRegistrarFalloPrimaria(false);
+        // Las escrituras no se repiten automáticamente en la secundaria:
+        // se devuelve la respuesta (probablemente un error 502/503/504) tal
+        // cual para que quien llame decida, en vez de arriesgarse a duplicar.
+        if (esEscritura) {
+          eofApiState.activa = "PRIMARY";
+          return res;
+        }
+        // Lectura: sí se reintenta en la secundaria si existe.
+        respuestaPrimariaFallida = res;
+      } else {
+        eofRegistrarExitoPrimaria();
+        // El propio Worker primario tiene SU PROPIO mecanismo de
+        // failover server-side (ver fetchRailway en worker/src/index.js):
+        // ante FAILOVER_TEST=1, o cuando D1 fallara, puede reenviar la
+        // petición a Railway internamente y devolver esa respuesta con
+        // status 200 -- indistinguible, a nivel de código HTTP, de una
+        // respuesta normal de la propia primaria. Sin leer la cabecera
+        // X-Failover-Backend que ese mecanismo añade, este apiFetch (el
+        // failover del lado del navegador) se quedaría creyendo que todo
+        // vino de PRIMARY aunque el servidor ya hubiera hecho el cambio
+        // por debajo. Se refleja aquí para que EOF_API_DEBUG() y los
+        // logs sean honestos sobre qué backend respondió de verdad.
+        const backendReal = res.headers.get("X-Failover-Backend");
+        eofApiState.activa = backendReal === "RAILWAY" ? "SECONDARY" : "PRIMARY";
+        return res;
+      }
+    } catch (err) {
+      // Error de transporte (red caída, DNS, timeout por AbortController).
+      eofRegistrarFalloPrimaria(true);
+      errorPrimario = err;
+      if (esEscritura) {
+        // No hay respuesta que devolver: se propaga el error tal cual.
+        // Quien llame debe tratarlo como "no se sabe si se guardó".
+        eofApiState.activa = "PRIMARY";
+        throw err;
+      }
+    }
+  }
+
+  if (!SECONDARY_API) {
+    // Sin secundaria configurada: no hay a dónde hacer failover. Se
+    // propaga el fallo de la primaria tal cual: su respuesta de error si
+    // llegó una, o el error de red original.
+    eofApiState.activa = "PRIMARY";
+    if (respuestaPrimariaFallida) return respuestaPrimariaFallida;
+    throw errorPrimario || new Error("PRIMARY unavailable and no SECONDARY_API configured");
+  }
+
+  eofApiState.activa = "SECONDARY";
+  return eofFetchConTimeout(`${SECONDARY_API}${path}`, options, timeoutPeticion);
+}
+
+// Se expone también como window.eofApiFetch (además de la función global
+// apiFetch de arriba) para que otros scripts que definan su PROPIA función
+// llamada "apiFetch" en su mismo ámbito (p. ej. admin.js, que le añade
+// cabeceras de autenticación) puedan seguir llamando al motor de failover
+// por un nombre que no quede sombreado por su propia declaración.
+if (typeof window !== "undefined") {
+  window.eofApiFetch = apiFetch;
+}
+
+// ---------- conReintento(): reintento automático para cargas de página ----------
+// apiFetch ya tiene su propio timeout (8s) y su propio failover a la
+// secundaria, así que cuando AÚN ASÍ una carga falla, casi siempre es un
+// fallo puntual de milisegundos (una petición que coincide justo con el
+// circuito abriéndose, un timeout aislado en una red inestable...).
+// conReintento(fn) ejecuta `fn` (una función async sin argumentos) y, si
+// lanza, espera un momento y la reintenta UNA vez antes de propagar el
+// error al llamante -- así la persona no tiene que recargar a mano la
+// página por un fallo que se habría resuelto solo un segundo después.
+// Pensado para las cargas iniciales de cada página (portada, categoría,
+// noticia, resultados...), no para acciones puntuales del usuario como
+// enviar un comentario o una búsqueda en vivo, donde reintentar solo
+// añadiría demora o podría duplicar la acción.
+const EOF_REINTENTO_AUTOMATICO_MS = 1200;
+function eofEsperar(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+async function conReintento(fn) {
+  try {
+    return await fn();
+  } catch (err) {
+    console.warn("Primer intento fallido, reintentando en " + EOF_REINTENTO_AUTOMATICO_MS + "ms:", err);
+    await eofEsperar(EOF_REINTENTO_AUTOMATICO_MS);
+    return await fn();
+  }
+}
+
+// Diagnóstico manual desde la consola del navegador: window.EOF_API_DEBUG()
+if (typeof window !== "undefined") {
+  window.EOF_API_DEBUG = function () {
+    return {
+      apiActiva: eofApiState.activa,
+      primaria: PRIMARY_API,
+      secundaria: SECONDARY_API,
+      circuitoAbierto: eofApiState.circuitoAbierto,
+      fallosConsecutivos: eofApiState.fallosConsecutivos,
+      ultimoFallo: eofApiState.ultimoFallo,
+      ultimaRecuperacion: eofApiState.ultimaRecuperacion,
+    };
+  };
+}
+
+const SITE = {
+  nombre: "ELOTROFÚTBOLTV",
+  logo: "img/logo.png",
+  // Estos valores son solo el "de reserva" por si falla la conexión con
+  // la API. Las redes sociales reales se editan desde un único sitio:
+  // el panel de administración → pestaña "Redes sociales" (guardadas en
+  // el servidor y cargadas automáticamente por js/layout.js).
+  redes: {
+    twitter: "https://twitter.com/elotrofutbol",
+    instagram: "https://instagram.com/elotrofutbol",
+    tiktok: "https://tiktok.com/@elotrofutbol",
+    youtube: "https://youtube.com/@elotrofutbol",
+  },
+};
+
+// ---------- Patrocinadores ----------
+// Lista manual (de momento) de patrocinadores/colaboradores del medio.
+// Se pintan tanto en la sección grande de la portada como en la franja
+// compacta del pie de página en TODAS las páginas (ver renderPatrocinadoresHomeHTML
+// y renderPatrocinadoresFooterHTML en layout.js).
+//
+// Cada entrada admite:
+//   nombre     -> texto alternativo del logo y tooltip al pasar el ratón
+//   logo       -> ruta al logo (preferible SVG o PNG con fondo transparente)
+//   url        -> web del patrocinador (se abre en pestaña nueva)
+//   destacado  -> true para el/los patrocinador(es) principal(es) (se pintan
+//                 más grandes en la portada, en su propia fila superior)
+const PATROCINADORES = [
+  // Patrocinadores reales (los mismos que cita el Portal de transparencia).
+  // Para añadir otro, copia una línea con el mismo formato y deja el logo en
+  // img/patrocinadores/. Cuantos más patrocinadores normales (sin destacado)
+  // haya, más lleno se ve el carrusel — no hay límite.
+  { nombre: "TarrakoStore", logo: "img/patrocinadores/TarrakoStore.webp", url: "https://tarrako.store", destacado: true },
+  { nombre: "NàsticExpress", logo: "img/patrocinadores/NasticExpress.webp", url: "https://www.instagram.com/nastic.express/" },
+];
+
+const CATEGORIES = {
+  hypermotion: "LaLiga Hypermotion",
+  primera_federacion: "Primera Federación",
+  segunda_federacion: "Segunda Federación",
+  tercera_federacion: "Tercera Federación",
+  copa_del_rey: "Copa del Rey",
+  copa_federacion: "Copa Federación",
+  general: "General",
+  amistoso: "Amistoso",
+  arbitraje: "Arbitraje",
+  jurisdiccion: "Jurisdicción deportiva",
+};
+
+function categoriaLabel(cat) {
+  if (CATEGORIES[cat]) return CATEGORIES[cat];
+  // Categoría desconocida: nunca se enseña el identificador interno
+  // (p. ej. "tercera_federacion"); se convierte en texto legible.
+  const t = String(cat ?? "").replace(/[_-]+/g, " ").trim();
+  return t ? t.charAt(0).toUpperCase() + t.slice(1) : "";
+}
+
+// "club" de un artículo (columna "club" en articles) puede ser un único
+// nombre de club en texto plano (caso normal: noticia/análisis/opinión/
+// entrevista), o un array JSON de 2 clubes en texto (previa/crónica
+// vinculada a un resultado, p. ej. '["Real Madrid","FC Barcelona"]"),
+// ver resolverClubArticulo() en worker/src/index.js. Estas dos funciones
+// son el equivalente en el frontend público de parsearClubArticulo() /
+// clubArticuloLegible() del backend, para pintar y enlazar bien ese
+// campo en las páginas públicas (noticia.html, seo.js...).
+function parsearClubArticulo(valorClub) {
+  if (!valorClub) return [];
+  try {
+    const parsed = JSON.parse(valorClub);
+    if (Array.isArray(parsed)) return parsed.filter((c) => typeof c === "string" && c.trim()).map((c) => c.trim());
+  } catch {
+    // No es JSON: es el caso normal de club único en texto plano.
+  }
+  return typeof valorClub === "string" && valorClub.trim() ? [valorClub.trim()] : [];
+}
+function clubArticuloLegible(valorClub) {
+  return parsearClubArticulo(valorClub).join(" - ");
+}
+
+// Convierte el valor interno de "categoria" (algunos con guion bajo, como
+// "primera_federacion") en el segmento de URL bonita (con guion normal,
+// "primera-federacion"). Debe coincidir exactamente con categoriaUrlSlug()
+// de worker/src/index.js y worker-secondary/src/index.js, y con
+// public/_worker.js: los cuatro sitios donde se genera o resuelve una URL
+// de noticia tienen que normalizar igual, o un mismo artículo acabaría
+// con URLs "bonitas" distintas según dónde se enlace.
+function categoriaUrlSlug(cat) {
+  const normalizada = (cat || "").toString().trim().toLowerCase().replace(/_/g, "-");
+  return normalizada || "general";
+}
+
+// Construye la URL "bonita" (/futbol/categoria/slug) de una noticia, en
+// ruta absoluta desde la raíz del sitio (funciona igual se enlace desde
+// una página de la raíz o desde admin/). Único punto donde se arma este
+// formato en el frontend: si el formato de URL cambia otra vez en el
+// futuro, solo hay que tocar esta función.
+function urlNoticia(categoria, slug) {
+  return `/futbol/${categoriaUrlSlug(categoria)}/${encodeURIComponent(slug)}`;
+}
+
+// ---------- Marca de agua automática (arriba a la derecha, dentro de la propia foto) ----------
+// Se pide a Cloudinary como capa (overlay) en la URL de ENTREGA: el archivo original
+// guardado NO se modifica y no hay que hacer nada al subir una foto, todas las fotos públicas
+// salen marcadas solas. Es un componente aparte, DESPUÉS del redimensionado, y con tamaño
+// relativo (fl_relative): ocupa siempre la misma proporción del ancho, sea cual sea la foto.
+// - Por defecto es TEXTO (no depende de ningún fichero en Cloudinary, no puede romper fotos).
+// - Para usar el LOGO: sube img/logo-blanco.png a Cloudinary con el public ID "eof/marca-agua"
+//   y pon aquí logoId: "eof:marca-agua" (las "/" del public ID se escriben ":").
+// - Se omite en imágenes pequeñas (anchoMin): avatares y miniaturas donde no se leería.
+// Apagar todo: activa:false.
+const EOF_MARCA_AGUA = {
+  activa: true,
+  texto: "ELOTROFÚTBOLTV",
+  logoId: "",
+  anchoMin: 400,   // px: por debajo de este ancho no se marca
+  tamano: 0.19,    // ancho de la marca = 19 % del ancho de la foto
+  // Estilo de la marca del sitio: etiqueta azul marino translúcida (color de la marca, el
+  // mismo --marino de la web) con letras blancas, en mayúsculas separadas. Se lee bien sobre
+  // césped, cielo o camisetas. "fondo" admite rgb:RRGGBBAA (AA = transparencia); "" = sin etiqueta.
+  fondo: "rgb:12325aCC",
+  espaciado: 7,    // separación entre letras (letter_spacing)
+  margen: 0.02,    // separación al borde = 2 % del ancho
+  opacidad: 92,    // 0-100
+  // Marca del AUTOR de la foto (fotógrafo / crédito), abajo a la izquierda, en la posición
+  // contraria a la del sitio. Solo se pinta si la foto tiene autor. autor.activa:false la apaga.
+  autor: {
+    activa: true,
+    tamano: 0.26,    // tope del ancho de la marca = 26 % del ancho de la foto
+    opacidad: 92,
+    maxCaracteres: 40,
+  },
+};
+
+// Texto de una capa de Cloudinary: URL-encode y doble codificación de "," y "/" (que en la
+// URL de transformación separan componentes).
+function marcaTextoCloudinary(t) {
+  return encodeURIComponent(t).replace(/%2C/g, "%252C").replace(/%2F/g, "%252F");
+}
+
+// Componente de la marca del autor (abajo a la izquierda) o "" si no hay autor / está apagada.
+function marcaAutorComponente(credito) {
+  const a = EOF_MARCA_AGUA.autor;
+  if (!a || !a.activa) return "";
+  let t = String(credito || "").replace(/^\s*©\s*/, "").replace(/\s+/g, " ").trim();
+  if (!t) return "";
+  if (t.length > a.maxCaracteres) t = t.slice(0, a.maxCaracteres - 1).trim() + "…";
+  const m = EOF_MARCA_AGUA;
+  // Ancho relativo proporcional al nº de caracteres (así la letra mide lo mismo en todas las
+  // fotos y los nombres cortos no salen enormes), con tope en autor.tamano.
+  const ancho = Math.min(a.tamano, Math.round((t.length + 2) * 12.5) / 1000);
+  return `l_text:Arial_60_bold_italic:${marcaTextoCloudinary("© " + t)},co_white`
+    + `/c_scale,w_${ancho},fl_relative/o_${a.opacidad}/e_shadow:55,x_2,y_3`
+    + `/fl_layer_apply,g_south_west,x_${m.margen},y_${m.margen}`;
+}
+
+// Devuelve el componente de transformación (sin "/" inicial ni final) o "" si no toca marcar.
+function marcaAguaComponente(ancho, credito) {
+  const m = EOF_MARCA_AGUA;
+  if (!m.activa) return "";
+  if (ancho && ancho < m.anchoMin) return "";
+  const autor = marcaAutorComponente(credito);
+  const capa = m.logoId
+    ? `l_${m.logoId}/c_scale,w_${m.tamano},fl_relative/o_${m.opacidad}`
+    : `l_text:Arial_90_bold_letter_spacing_${m.espaciado}:${marcaTextoCloudinary(m.texto)},co_white`
+      + (m.fondo ? `,b_${m.fondo},bo_14px_solid_${m.fondo}` : "")
+      + `/c_scale,w_${m.tamano},fl_relative/o_${m.opacidad}/e_shadow:35,x_2,y_3`;
+  return `${capa}/fl_layer_apply,g_north_east,x_${m.margen},y_${m.margen}` + (autor ? "/" + autor : "");
+}
+
+// ---------- Optimización de imágenes de Cloudinary ----------
+// Las fotos de noticias/collages/avatares se suben a Cloudinary tal
+// cual llegan del redactor (sin recomprimir ni recodificar, ver
+// subirACloudinary en el Worker: así no se pierde calidad si luego se
+// necesita el archivo original). Eso significa que, servidas "en
+// crudo", pueden pesar varios MB y tardar mucho en cargar en el sitio
+// público. Cloudinary permite pedir una versión ya optimizada de esa
+// misma imagen simplemente insertando parámetros de transformación en
+// la URL (sin tocar el archivo guardado): f_auto elige el formato más
+// ligero que soporte el navegador (WebP/AVIF en vez de JPEG/PNG),
+// q_auto ajusta la calidad de compresión automáticamente, y c_limit +
+// w_/dpr_auto evita mandar una imagen a una resolución mucho mayor de
+// la que realmente se va a mostrar en pantalla.
+// Se aplica solo si la URL es realmente de Cloudinary (contiene
+// "/upload/"): los escudos locales (img/escudos/...) y el logo del
+// sitio no pasan por aquí, así que se devuelven tal cual.
+function cloudinaryOptimizada(url, anchoMax, credito) {
+  if (!url || typeof url !== "string") return url;
+  const marca = "/upload/";
+  const i = url.indexOf(marca);
+  if (i === -1) return url;
+  let transformacion = `f_auto,q_auto,c_limit,dpr_auto${anchoMax ? `,w_${anchoMax}` : ""}`;
+  const marcaAgua = marcaAguaComponente(anchoMax, credito);
+  if (marcaAgua) transformacion += "/" + marcaAgua;
+  return url.slice(0, i + marca.length) + transformacion + "/" + url.slice(i + marca.length);
+}
+
+// ---------- Miniaturas nítidas y ligeras para galerías ----------
+// Problema que resuelve: las celdas de la galería son verticales (4:5) y
+// las fotos casi siempre horizontales. Con object-fit:cover el navegador
+// ampliaba una foto pequeña (c_limit,w_420) hasta ~1,6x, y dpr_auto no
+// funciona sin Client Hints, así que en pantallas retina salía borrosa.
+// Solución:
+//  1) El recorte 4:5 lo hace Cloudinary (c_lfill + g_auto: elige la zona
+//     interesante y NUNCA amplía una foto pequeña) -> la foto llega ya
+//     con la forma de la celda y todos sus píxeles son útiles.
+//  2) srcset + sizes: el navegador elige solo el ancho justo según el
+//     tamaño real de la celda y la densidad de pantalla (móvil 2 columnas
+//     descarga poco; un monitor retina descarga más, solo lo necesario).
+//  3) f_auto -> AVIF/WebP (muy ligero) y q_auto:good (buena calidad sin
+//     engordar el archivo). fl_progressive mejora el caso JPEG.
+// Si la foto tiene un punto de enfoque manual (portada_foco) NO se recorta
+// en servidor, para respetar el object-position que eligió el redactor:
+// se manda con c_limit y anchos mayores (ver miniaturaSizes).
+const MINIATURA_ANCHOS = [240, 360, 480, 640, 800, 1000, 1280];
+
+// Realce fotográfico OPCIONAL (más contraste, color y nitidez). Se pide a Cloudinary
+// en un componente aparte, DESPUÉS del redimensionado, para que la nitidez actúe sobre
+// los píxeles finales. No toca el original. Mantener igual que REALCE_FX de visor-media.js.
+// Ajustar a gusto: e_improve:<outdoor|indoor>:<0-100> (indoor va mejor con focos de noche),
+// e_vibrance:<-100..100>, e_unsharp_mask:<1-2000>.
+const EOF_REALCE_FX = "e_improve:outdoor:40,e_vibrance:20,e_unsharp_mask:60";
+
+// ¿Está activado el realce en este dispositivo? (lo gestiona VisorMedia/realce-fotos.js)
+function realceActivo() {
+  try { return typeof VisorMedia !== "undefined" && !!VisorMedia.getRealce && VisorMedia.getRealce(); }
+  catch (e) { return false; }
+}
+
+// "realce" es opcional: si no se indica, se usa la preferencia del dispositivo.
+function cloudinaryMiniatura(url, ancho, recortar, realce, credito) {
+  if (!url || typeof url !== "string") return url;
+  const marca = "/upload/";
+  const i = url.indexOf(marca);
+  if (i === -1) return url;
+  const forma = recortar === false ? "c_limit" : "c_lfill,g_auto,ar_4:5";
+  const on = realce === undefined ? realceActivo() : !!realce;
+  let t = on
+    ? `${forma},w_${ancho}/${EOF_REALCE_FX}/f_auto,q_auto:good,fl_progressive`
+    : `${forma},w_${ancho},f_auto,q_auto:good,fl_progressive`;
+  const marcaAgua = marcaAguaComponente(ancho, credito);
+  if (marcaAgua) t += "/" + marcaAgua;
+  return url.slice(0, i + marca.length) + t + "/" + url.slice(i + marca.length);
+}
+
+function cloudinarySrcset(url, recortar, realce, credito) {
+  if (!url || typeof url !== "string" || url.indexOf("/upload/") === -1) return "";
+  return MINIATURA_ANCHOS
+    .map((w) => `${cloudinaryMiniatura(url, w, recortar, realce, credito)} ${w}w`)
+    .join(", ");
+}
+
+// Ancho (en CSS px) que ocupa cada celda según el modo y los breakpoints
+// de la galería (mismos que el CSS). "factor" > 1 se usa en fotos con foco
+// manual, que no se recortan en servidor y necesitan más ancho para cubrir
+// la celda vertical.
+function miniaturaSizes(tam, factor) {
+  const f = factor || 1;
+  const vw = (n) => (Math.round(n * f * 10) / 10) + "vw";
+  const px = (n) => Math.round(n * f) + "px";
+  if (tam === "compacto") {
+    return `(max-width:640px) ${vw(50)}, (max-width:900px) ${vw(25)}, (max-width:1300px) ${vw(16.7)}, min(${vw(14.3)}, ${px(260)})`;
+  }
+  if (tam === "grande") {
+    return `(max-width:900px) ${vw(50)}, min(${vw(33.4)}, ${px(616)})`;
+  }
+  return `(max-width:640px) ${vw(50)}, (max-width:900px) ${vw(33.4)}, (max-width:1300px) ${vw(25)}, min(${vw(20)}, ${px(362)})`;
+}
+
+// ¿La foto tiene un foco manual distinto del centro?
+function tieneFocoManual(f) {
+  if (!f || !f.portada_foco) return false;
+  if (typeof EOF_FOCO === "undefined") return true;
+  const n = EOF_FOCO.normalizar(f.portada_foco);
+  return !(n.x === 50 && n.y === 50);
+}
+
+// Logo de cada competición. Los ficheros se guardan en img/competiciones/
+// con estos nombres; si una categoría no tiene logo propio (general,
+// amistoso...) no se muestra ninguno.
+const CATEGORY_LOGOS = {
+  hypermotion: "img/competiciones/hypermotion.png",
+  primera_federacion: "img/competiciones/primera-federacion.png",
+  segunda_federacion: "img/competiciones/segunda-federacion.png",
+  tercera_federacion: "img/competiciones/tercera-federacion.png",
+  copa_del_rey: "img/competiciones/copa-del-rey.png",
+  copa_federacion: "img/competiciones/copa-federacion.png",
+};
+
+function categoriaLogo(cat) {
+  return CATEGORY_LOGOS[cat] || "";
+}
+
+// ---------- Contexto de una noticia (categoría + equipos/partido) ----------
+// Etiqueta que va ENCIMA del titular en todas las tarjetas (portada,
+// listados, relacionadas, guardadas...) y en la cabecera de la noticia,
+// para saber de un vistazo, antes de entrar, de qué competición y de qué
+// equipo o partido habla. Una sola función para que se vea igual en todas
+// partes:
+//   - Línea 1: competición (logo si lo hay + nombre) · tipo (Crónica,
+//     Previa, Opinión...; el tipo solo en variantes grandes).
+//   - Línea 2: equipos. 1 club -> escudo + nombre; 2 clubes (previa/crónica
+//     de un partido) -> "escudo A  vs  escudo B". Los nombres nunca se
+//     recortan: si no caben en una línea, el segundo equipo baja a la
+//     siguiente.
+// Variantes: "card" (por defecto), "hero" (sobre foto oscura),
+// "compacta" (filas y miniaturas) y "cabecera" (página de la noticia).
+// Solo usa <span>: las tarjetas son un <a> entero y no se pueden anidar
+// enlaces. Si clubs.js no está cargado, simplemente no se pinta escudo.
+const TIPO_NOTICIA_ETIQUETA = {
+  cronica: "Crónica",
+  previa: "Previa",
+  opinion: "Opinión",
+  entrevista: "Entrevista",
+  analisis: "Análisis",
+  reportaje: "Reportaje",
+};
+
+// Hashtag legible a partir de un texto: sin acentos ni signos, en CamelCase
+// ("Atlético Osasuna B" -> "#AtleticoOsasunaB").
+function hashtagDeTexto(texto) {
+  const limpio = String(texto == null ? "" : texto)
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Za-z0-9 ]+/g, " ")
+    .trim();
+  if (!limpio) return "";
+  return "#" + limpio.split(/\s+/).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join("");
+}
+
+const HASHTAG_CATEGORIA = {
+  hypermotion: "#LaLigaHypermotion",
+  primera_federacion: "#PrimeraFederacion",
+  segunda_federacion: "#SegundaFederacion",
+  tercera_federacion: "#TerceraFederacion",
+  copa_del_rey: "#CopaDelRey",
+  copa_federacion: "#CopaFederacion",
+  amistoso: "#Amistoso",
+  arbitraje: "#Arbitraje",
+  jurisdiccion: "#JurisdiccionDeportiva",
+};
+const HASHTAG_TIPO = {
+  cronica: "#Cronica",
+  previa: "#Previa",
+  opinion: "#Opinion",
+  entrevista: "#Entrevista",
+  analisis: "#Analisis",
+  reportaje: "#Reportaje",
+};
+
+// Plural de cada tipo de noticia (título de la página de listado por tipo).
+const TIPO_NOTICIA_PLURAL = {
+  cronica: "Crónicas",
+  previa: "Previas",
+  opinion: "Opiniones",
+  entrevista: "Entrevistas",
+  analisis: "Análisis",
+  reportaje: "Reportajes",
+};
+
+// Competición a la que enlazar la página de un club: su liga (la plantilla y
+// las estadísticas de la página del club dependen de ella); si no está en
+// ninguna, la categoría de la propia noticia.
+function categoriaParaEnlaceClub(club, categoriaNoticia) {
+  const candidatas = ["hypermotion", "primera_federacion", "segunda_federacion", "tercera_federacion", categoriaNoticia, "copa_del_rey"].filter(Boolean);
+  if (typeof getClubsForCategoria === "function") {
+    for (const c of candidatas) {
+      try { if (getClubsForCategoria(c).includes(club)) return c; } catch (e) { /* clubs.js sin cargar */ }
+    }
+  }
+  return categoriaNoticia || "general";
+}
+
+// Mismo criterio que slugEtiqueta() de worker/src/etiquetas.js: sin acentos, minúsculas,
+// guiones; "Ascenso 2026" -> "ascenso-2026". Si cambia allí, cambia aquí.
+function slugEtiquetaCliente(texto) {
+  return String(texto == null ? "" : texto)
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")
+    .slice(0, 60).replace(/-+$/, "");
+}
+
+// Hashtags de una noticia para la cabecera (SEO + navegación). Cada uno es
+// { texto, href, titulo } y lleva a una página real del sitio:
+//   competición / categorías adicionales -> categoria?cat=...
+//   tipo (#Cronica...)                   -> categoria?cat=...&tipo=... (solo ese tipo en esa competición)
+//   clubes                               -> categoria?cat=...&club=... (página del club)
+//   #FutbolNoProfesional / #ElOtroFutbol -> portada / quiénes somos
+// Sin repetidos y con un máximo para que no se convierta en un muro.
+function hashtagsNoticia(a, max = 9) {
+  if (!a) return [];
+  const lista = [];
+  const poner = (texto, href, titulo) => {
+    if (!texto || texto.length < 3 || !href) return;
+    if (lista.some((x) => x.texto.toLowerCase() === texto.toLowerCase())) return;
+    lista.push({ texto, href, titulo });
+  };
+  const urlCat = (c) => `/categoria?cat=${encodeURIComponent(c)}`;
+  const textoCat = (c) => HASHTAG_CATEGORIA[c] || (c && c !== "general" ? hashtagDeTexto(categoriaLabel(c)) : "");
+
+  const cat = a.categoria;
+  if (cat) poner(textoCat(cat) || (cat === "general" ? "#General" : ""), urlCat(cat), `Noticias de ${categoriaLabel(cat)}`);
+  if (a.tipo && HASHTAG_TIPO[a.tipo]) {
+    poner(HASHTAG_TIPO[a.tipo], `${urlCat(cat || "general")}&tipo=${encodeURIComponent(a.tipo)}`,
+      `${TIPO_NOTICIA_PLURAL[a.tipo] || "Noticias"}${cat ? " · " + categoriaLabel(cat) : ""}`);
+  }
+  parsearClubArticulo(a.club).slice(0, 2).forEach((c) => {
+    poner(hashtagDeTexto(c), `${urlCat(categoriaParaEnlaceClub(c, cat))}&club=${encodeURIComponent(c)}`, `Todo sobre ${c}`);
+  });
+  (Array.isArray(a.categorias_adicionales) ? a.categorias_adicionales : []).forEach((c) => {
+    poner(textoCat(c), urlCat(c), `Noticias de ${categoriaLabel(c)}`);
+  });
+  // Etiquetas reales escritas por el redactor (columna articles.etiquetas): cada una
+  // enlaza a su página /etiqueta/<slug>. Van antes de los hashtags genéricos del sitio.
+  (Array.isArray(a.etiquetas) ? a.etiquetas : []).forEach((nombre) => {
+    const slug = slugEtiquetaCliente(nombre);
+    if (slug) poner(hashtagDeTexto(nombre), `/etiqueta/${slug}`, `Noticias sobre ${nombre}`);
+  });
+  poner("#FutbolNoProfesional", "/", "Portada de ELOTROFÚTBOLTV");
+  poner("#ElOtroFutbol", "/quienes-somos", "Quiénes somos");
+  return lista.slice(0, max);
+}
+
+// Fila de hashtags: cada uno enlaza a su página (categoría, tipo, club...).
+function hashtagsNoticiaHTML(a) {
+  const esc = typeof escapeHtml === "function" ? escapeHtml : (t) => String(t == null ? "" : t);
+  const tags = hashtagsNoticia(a);
+  if (!tags.length) return "";
+  return `<nav class="hashtags-noticia" aria-label="Etiquetas de la noticia">${tags.map((h) =>
+    `<a class="hashtag" href="${esc(h.href)}" title="${esc(h.titulo || "")}"><span class="hashtag-almohadilla" aria-hidden="true">#</span>${esc(h.texto.slice(1))}</a>`
+  ).join("")}</nav>`;
+}
+
+// En las tarjetas (card, hero, compacta) solo se ve competición y tipo de
+// noticia. En la cabecera de la propia noticia, en vez de eso, va la fila de
+// hashtags (competición, tipo, equipos...).
+function contextoNoticiaHTML(a, { variante = "card" } = {}) {
+  if (!a) return "";
+  if (variante === "cabecera") return hashtagsNoticiaHTML(a);
+  const esc = typeof escapeHtml === "function" ? escapeHtml : (t) => String(t == null ? "" : t);
+  const compacta = variante === "compacta";
+  const etiquetaCat = categoriaLabel(a.categoria);
+  // Copa Federación no lleva logo en la etiqueta (se veía negro en modo oscuro);
+  // solo se muestra el texto. Las demás competiciones conservan su logo.
+  const logo = compacta || a.categoria === "copa_federacion" ? "" : categoriaLogo(a.categoria);
+  const tipo = TIPO_NOTICIA_ETIQUETA[a.tipo] || "";
+
+  const cat = etiquetaCat
+    ? `<span class="ctx-cat${logo ? " ctx-cat-con-logo" : ""}">${logo ? `<img class="ctx-logo" src="${esc(logo)}" alt="" loading="lazy" decoding="async" onerror="this.style.display='none'">` : ""}<span class="ctx-cat-texto">${esc(etiquetaCat)}</span></span>`
+    : "";
+  const tipoHTML = tipo ? `<span class="ctx-tipo">${esc(tipo)}</span>` : "";
+  if (!cat && !tipoHTML) return "";
+  return `<span class="ctx-noticia ctx-${variante}"><span class="ctx-fila ctx-fila-cat">${cat}${tipoHTML}</span></span>`;
+}
+
+function formatFecha(fechaStr) {
+  if (!fechaStr) return "";
+  fechaStr = String(fechaStr).trim();
+
+  // Los resultados guardan solo el día ("YYYY-MM-DD", partidos antiguos
+  // guardados antes de poder elegir hora, o el <input type="date"> viejo
+  // del panel), sin hora. Ese formato hay que tratarlo aparte: si se le
+  // añade una "Z" queda "YYYY-MM-DDZ", que algunos navegadores (Safari)
+  // no consiguen parsear y devuelven "Invalid Date". Como no lleva hora,
+  // no hace falta pasarlo por ninguna zona horaria: se construye la fecha
+  // directamente a partir de los números.
+  const soloFecha = fechaStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (soloFecha) {
+    const [, anyo, mes, dia] = soloFecha;
+    const d = new Date(Number(anyo), Number(mes) - 1, Number(dia));
+    if (isNaN(d)) return "";
+    return d.toLocaleDateString("es-ES", { day: "2-digit", month: "long", year: "numeric" });
+  }
+
+  // Partidos guardados con el <input type="datetime-local"> del panel
+  // ("YYYY-MM-DDTHH:MM"): esa hora ya es la hora de España tal y como la
+  // escribió quien gestiona el partido, así que se muestra tal cual, sin
+  // pasarla por ninguna zona horaria (evita que se desplace si quien lee
+  // está en otro huso horario del navegador).
+  const fechaConHora = fechaStr.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  if (fechaConHora) {
+    const [, anyo, mes, dia, hora, minuto] = fechaConHora;
+    const d = new Date(Number(anyo), Number(mes) - 1, Number(dia));
+    if (isNaN(d)) return "";
+    const fechaTexto = d.toLocaleDateString("es-ES", { day: "2-digit", month: "long", year: "numeric" });
+    return `${fechaTexto}, ${hora}:${minuto}h`;
+  }
+
+  // El resto de fechas (noticias, etc.) llegan en UTC desde la BD sin
+  // indicar zona ("YYYY-MM-DD HH:MM:SS" o ISO con "Z"); se marca como UTC
+  // ("Z") y se pide la hora de España al mostrarla, para que no se
+  // desplace de día cerca de medianoche.
+  const conT = fechaStr.replace(" ", "T");
+  const d = new Date(/Z$|[+-]\d\d:\d\d$/.test(conT) ? conT : conT + "Z");
+  if (isNaN(d)) return "";
+  return d.toLocaleDateString("es-ES", { day: "2-digit", month: "long", year: "numeric", timeZone: "Europe/Madrid" });
+}
+
+// Igual que formatFecha, pero además incluye la hora. Se usa para la
+// fecha/hora de una noticia programada (necesitas saber a qué hora
+// exacta se va a publicar sola, no solo el día).
+function formatFechaConHora(fechaStr) {
+  if (!fechaStr) return "";
+  fechaStr = String(fechaStr).trim();
+  const conT = fechaStr.replace(" ", "T");
+  const d = new Date(/Z$|[+-]\d\d:\d\d$/.test(conT) ? conT : conT + "Z");
+  if (isNaN(d)) return "";
+  const fechaTexto = d.toLocaleDateString("es-ES", { day: "2-digit", month: "long", year: "numeric", timeZone: "Europe/Madrid" });
+  const horaTexto = d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Madrid" });
+  return `${fechaTexto}, ${horaTexto}h`;
+}
+
+// ---------- Goles y tarjetas de un partido (compartido entre el modal de
+// resultados.html/index.html y el marcador dentro de una noticia) ----------
+const ETIQUETAS_EVENTO_PUBLICO = {
+  gol: "Gol",
+  gol_var: "Gol anulado (VAR)",
+  gol_pp: "Gol en propia puerta",
+  amarilla: "Tarjeta amarilla",
+  doble_amarilla: "Doble amarilla",
+  roja: "Tarjeta roja",
+  cambio: "Cambio",
+  penalti_fallado: "Penalti fallado",
+  var: "Revisión VAR",
+  inicio_partido: "Comienza el partido",
+  descanso: "Descanso",
+  fin_descanso: "Comienza la segunda parte",
+  pausa_hidratacion: "Pausa de hidratación",
+  fin_pausa_hidratacion: "Se reanuda el partido",
+  partido_retrasado: "Partido retrasado",
+  partido_anulado: "Partido anulado",
+  penalti_marcado: "Penalti (tanda)",
+  penalti_fallado_tanda: "Penalti fallado (tanda)",
+  fin_partido: "Final del partido",
+  anadido: "Tiempo añadido",
+  otro: "Incidencia",
+  nota: "Nota",
+};
+
+// Revisión VAR (tipo "var"): jugada revisada y estado de la revisión.
+// Mismas claves que MAM_VAR_MOTIVOS / MAM_VAR_DECISIONES del panel de
+// Minuto a Minuto y que VAR_MOTIVOS_VALIDOS / VAR_DECISIONES_VALIDAS
+// del Worker.
+const VAR_MOTIVOS_PUBLICO = {
+  gol: "Posible gol",
+  penalti: "Posible penalti",
+  roja: "Posible tarjeta roja",
+  amarilla: "Posible tarjeta amarilla",
+  falta: "Posible falta",
+  fuera_juego: "Posible fuera de juego",
+  mano: "Posible mano",
+  otra: "Otra jugada",
+};
+const VAR_DECISIONES_PUBLICO = {
+  revisando: "En revisión",
+  mantiene: "Se mantiene la decisión",
+  cambia: "Se cambia la decisión",
+};
+
+// Eventos que son un hito del propio partido (no de un equipo/jugador
+// concreto): se pintan sin escudo/etiqueta de equipo.
+const TIPOS_EVENTO_SIN_EQUIPO_PUBLICO = [
+  "inicio_partido", "descanso", "fin_descanso",
+  "pausa_hidratacion", "fin_pausa_hidratacion",
+  "partido_retrasado", "partido_anulado",
+  "fin_partido", "otro", "nota", "anadido",
+];
+
+// Eventos de la tanda de penaltis: se pintan aparte, en su propio bloque
+// del timeline (ver renderEventosModal en partidos.js), porque su
+// "minuto" en realidad es el número de orden del lanzamiento (1º, 2º...)
+// y no tiene sentido intercalarlos con el resto de eventos por minuto.
+const TIPOS_EVENTO_TANDA_PENALTIS = ["penalti_marcado", "penalti_fallado_tanda"];
+
+function iconoEventoPublico(tipo) {
+  if (tipo === "gol" || tipo === "gol_var" || tipo === "gol_pp") {
+    const tachado = tipo === "gol_var" ? `<line x1="4" y1="20" x2="20" y2="4" stroke="#d1132e" stroke-width="2"/>` : "";
+    return `<svg class="mev-icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 6.5l4 3-1.5 4.5h-5L8 9.5z"/>${tachado}</svg>`;
+  }
+  if (tipo === "penalti_marcado" || tipo === "penalti_fallado_tanda") {
+    const fallado = tipo === "penalti_fallado_tanda";
+    const marca = fallado
+      ? `<path d="M8 8l8 8M16 8l-8 8" stroke="#d1132e"/>`
+      : `<path d="M9 12.5l2 2 4-4.5" stroke="#1a9e4f"/>`;
+    return `<svg class="mev-icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/>${marca}</svg>`;
+  }
+  if (tipo === "amarilla" || tipo === "doble_amarilla" || tipo === "roja") {
+    const color = tipo === "roja" ? "#d1132e" : "#e8b923";
+    const doble = tipo === "doble_amarilla";
+    return `<svg class="mev-icono" viewBox="0 0 24 24">
+      ${doble ? `<rect x="3" y="4" width="8" height="12" rx="1.5" fill="#e8b923" transform="rotate(-8 7 10)"/>` : ""}
+      <rect x="${doble ? 11 : 7}" y="4" width="8" height="12" rx="1.5" fill="${color}" transform="rotate(8 ${doble ? 15 : 11} 10)"/>
+    </svg>`;
+  }
+  if (tipo === "cambio") {
+    return `<svg class="mev-icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 7h11l-3-3M17 17H6l3 3"/></svg>`;
+  }
+  if (tipo === "var") {
+    return `<svg class="mev-icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M8 10v4M12 10v4M16 10l0 4"/></svg>`;
+  }
+  if (tipo === "penalti_fallado") {
+    return `<svg class="mev-icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M8 8l8 8M16 8l-8 8"/></svg>`;
+  }
+  if (tipo === "pausa_hidratacion" || tipo === "fin_pausa_hidratacion") {
+    return `<svg class="mev-icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3c3 4 5 6.5 5 9.5a5 5 0 0 1-10 0C7 9.5 9 7 12 3z"/></svg>`;
+  }
+  if (tipo === "partido_retrasado") {
+    return `<svg class="mev-icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>`;
+  }
+  if (tipo === "partido_anulado") {
+    return `<svg class="mev-icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M8 8l8 8M16 8l-8 8"/></svg>`;
+  }
+  if (tipo === "descanso" || tipo === "fin_partido") {
+    return `<svg class="mev-icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>`;
+  }
+  if (tipo === "anadido") {
+    return `<svg class="mev-icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>`;
+  }
+  if (tipo === "nota") {
+    return `<svg class="mev-icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h9l3 3v13H6z"/><path d="M9 9h7M9 13h7M9 17h4"/></svg>`;
+  }
+  return `<svg class="mev-icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/></svg>`;
+}
+
+// Etiqueta de un evento: igual que ETIQUETAS_EVENTO_PUBLICO[tipo] salvo en
+// el gol de penalti (gol con es_penalti = 1), que se rotula aparte.
+function etiquetaEventoPublico(ev) {
+  if (ev.tipo === "gol" && ev.es_penalti) return "Gol de penalti";
+  return ETIQUETAS_EVENTO_PUBLICO[ev.tipo] || ev.tipo;
+}
+
+function formatMinutoEventoPublico(ev) {
+  // Los lanzamientos de la tanda de penaltis no llevan un minuto de
+  // partido real: "minuto" guarda el número de orden del lanzamiento
+  // (1º, 2º...), así que se muestra como "1º", "2º"... en vez de "1'".
+  if (TIPOS_EVENTO_TANDA_PENALTIS.includes(ev.tipo)) return `${ev.minuto}º`;
+  return ev.minuto_extra ? `${ev.minuto}+${ev.minuto_extra}'` : `${ev.minuto}'`;
+}
+
+// Texto adicional tras la etiqueta del evento: para un cambio muestra
+// "sale X, entra Y"; para un gol (o gol anulado por VAR, o en propia
+// puerta), el jugador y, si la hay, la asistencia; para el resto, el
+// jugador si lo hay.
+function detalleJugadorEventoPublico(ev) {
+  if (ev.tipo === "nota") return "";
+  // "Tiempo añadido": los minutos van en "jugador" (ver acción "anadido" del worker).
+  if (ev.tipo === "anadido") {
+    const n = parseInt(ev.jugador, 10);
+    return n > 0 ? ` · +${n}'` : "";
+  }
+  if (ev.tipo === "cambio") {
+    const entra = ev.jugador ? escapeHtml(ev.jugador) : "";
+    const sale = ev.jugador_sale ? escapeHtml(ev.jugador_sale) : "";
+    if (entra && sale) return ` · Entra ${entra}, sale ${sale}`;
+    if (entra) return ` · Entra ${entra}`;
+    if (sale) return ` · Sale ${sale}`;
+    return "";
+  }
+  if (ev.tipo === "gol" || ev.tipo === "gol_var") {
+    const marcador = ev.jugador ? escapeHtml(ev.jugador) : "";
+    const asistencia = ev.jugador_asistencia ? ` (asist. ${escapeHtml(ev.jugador_asistencia)})` : "";
+    return marcador ? ` · ${marcador}${asistencia}` : "";
+  }
+  if (ev.tipo === "gol_pp") {
+    const marcador = ev.jugador ? escapeHtml(ev.jugador) : "";
+    return marcador ? ` · ${marcador} (p.p.)` : "";
+  }
+  if (ev.tipo === "var") {
+    const partes = [
+      VAR_MOTIVOS_PUBLICO[ev.var_motivo],
+      VAR_DECISIONES_PUBLICO[ev.var_decision],
+      ev.jugador ? escapeHtml(ev.jugador) : "",
+    ].filter(Boolean);
+    return partes.length ? " · " + partes.join(" · ") : "";
+  }
+  if (ev.tipo === "amarilla" || ev.tipo === "doble_amarilla" || ev.tipo === "roja") {
+    const partes = [ev.jugador ? escapeHtml(ev.jugador) : "", ev.motivo_tarjeta ? "Motivo: " + escapeHtml(ev.motivo_tarjeta) : ""].filter(Boolean);
+    return partes.length ? " · " + partes.join(" · ") : "";
+  }
+  return ev.jugador ? " · " + escapeHtml(ev.jugador) : "";
+}
+
+// ---------- Marcador con tanda de penaltis ----------
+// Genera el HTML del marcador de un partido: el resultado del tiempo
+// reglamentario en grande y, si el partido se decidió en la tanda de
+// penaltis (penaltis_local/penaltis_visitante no son NULL), el
+// resultado de la tanda más pequeño y entre paréntesis justo debajo.
+// claseGrande/claseChica permiten reutilizar este bloque tanto en las
+// tarjetas de partido (marcador compacto) como en el modal de detalle
+// (marcador más grande).
+function marcadorConPenaltisHTML(r, { claseGrande = "", claseChica = "penaltis-marcador" } = {}) {
+  // Un partido anulado se ve como "por jugar" (aún sin nueva fecha): sin marcador.
+  const golesTexto = (r.estado === "programado" || r.estado === "anulado") ? "vs" : `${r.goles_local ?? 0} : ${r.goles_visitante ?? 0}`;
+  const hayPenaltis = r.penaltis_local !== null && r.penaltis_local !== undefined && r.penaltis_visitante !== null && r.penaltis_visitante !== undefined;
+  const penaltisTexto = hayPenaltis ? `<span class="${claseChica}">(${r.penaltis_local} - ${r.penaltis_visitante} p.)</span>` : "";
+  return `<span class="${claseGrande}">${golesTexto}</span>${penaltisTexto}`;
+}
+
+// Pinta el marcador de un partido dentro de una noticia/crónica, cuando
+// esa noticia se ha vinculado a un resultado de "Resultados". Incluye,
+// además del marcador, los escudos de los equipos, el estadio (si se
+// indicó) y el detalle de goles y tarjetas del partido (si ya se han
+// cargado en r.eventos).
+function marcadorArticuloHTML(r) {
+  const estados = { programado: "Por jugar", anulado: "Por jugar", en_juego: "En juego", finalizado: "Finalizado" };
+  const anuladoPendiente = r.estado === "anulado";
+  const hayMarcador = !anuladoPendiente && r.goles_local !== null && r.goles_local !== undefined && r.goles_visitante !== null && r.goles_visitante !== undefined;
+  const ubicacionExtra = ((r.estado === "programado" || r.estado === "finalizado") && r.ubicacion) ? " · " + escapeHtml(r.ubicacion) : "";
+  // Clases solo de presentación (ver css/partido-articulo-mejoras.css): el
+  // estado del partido (para el punto de color y el marcador en vivo) y, en
+  // un partido terminado sin empate, quién ha ganado (la tanda de penaltis
+  // decide si el tiempo reglamentario acabó igualado).
+  const claseEstado = String(r.estado || "").replace(/[^a-z_]/gi, "");
+  let ganador = null;
+  let empate = false;
+  if (r.estado === "finalizado" && hayMarcador) {
+    const hayTanda = r.penaltis_local !== null && r.penaltis_local !== undefined && r.penaltis_visitante !== null && r.penaltis_visitante !== undefined;
+    const dif = r.goles_local !== r.goles_visitante ? r.goles_local - r.goles_visitante : (hayTanda ? r.penaltis_local - r.penaltis_visitante : 0);
+    ganador = dif > 0 ? "local" : dif < 0 ? "visitante" : null;
+    // Terminado, sin ganador (ni siquiera por tanda): empate => los dos
+    // escudos llevan la sombra amarilla.
+    empate = ganador === null;
+  }
+  const claseLado = (lado) => (ganador ? (ganador === lado ? " equipo-ganador" : " equipo-perdedor") : (empate ? " equipo-empate" : ""));
+  return `
+    <div class="marcador-articulo${claseEstado ? " marcador-" + claseEstado : ""}">
+      <div class="comp">${categoriaLabel(r.competicion)}${r.grupo ? " · " + escapeHtml(r.grupo) : ""}${r.jornada ? " · Jornada " + r.jornada : ""}</div>
+      <div class="equipos">
+        <span class="equipo equipo-local${claseLado("local")}">
+          <img class="escudo-articulo" src="${getEscudoUrl(r.equipo_local, r.escudo_local_url)}" alt="" loading="lazy" data-equipo="${escapeHtml(r.equipo_local)}" onerror="manejarErrorEscudo(this);">
+          <span class="nombre-equipo-articulo">${escapeHtml(r.equipo_local)}</span>
+        </span>
+        <span class="goles">${hayMarcador ? marcadorConPenaltisHTML(r, { claseChica: "penaltis-marcador penaltis-marcador-articulo" }) : "vs"}</span>
+        <span class="equipo equipo-visitante${claseLado("visitante")}">
+          <img class="escudo-articulo" src="${getEscudoUrl(r.equipo_visitante, r.escudo_visitante_url)}" alt="" loading="lazy" data-equipo="${escapeHtml(r.equipo_visitante)}" onerror="manejarErrorEscudo(this);">
+          <span class="nombre-equipo-articulo">${escapeHtml(r.equipo_visitante)}</span>
+        </span>
+      </div>
+      <div class="estado-badge${claseEstado ? " estado-" + claseEstado : ""}">${estados[r.estado] || r.estado}${anuladoPendiente ? " · Pendiente de reprogramar" : (r.fecha_partido ? " · " + formatFecha(r.fecha_partido) : "")}${ubicacionExtra}</div>
+      ${togglesArticuloHTML(r)}
+    </div>`;
+}
+
+// Pinta la "Ficha técnica" de una crónica: un bloque con los datos del
+// partido que el redactor ha rellenado a mano desde el panel (ver
+// admin.js, obtenerFichaTecnicaFormulario), pensado para ir al final del
+// cuerpo del artículo (ver noticia.html, renderizaArticulo). Es
+// independiente del "Resultado vinculado" que pinta marcadorArticuloHTML
+// más arriba: puede aparecer sola, junto a un marcador, o ninguna de las
+// dos, según lo que el redactor haya rellenado en cada crónica.
+// Devuelve "" (nada) si no hay ficha técnica o está completamente vacía,
+// para no dejar un hueco en blanco en el artículo.
+function fichaTecnicaArticuloHTML(ficha) {
+  if (!ficha || typeof ficha !== "object") return "";
+
+  const ETIQUETAS_FICHA = {
+    competicion: "Competición",
+    jornada: "Jornada",
+    fecha_hora: "Fecha y hora",
+    estadio: "Estadio",
+    ciudad: "Ciudad",
+    asistencia: "Asistencia",
+    arbitro: "Árbitro",
+    mvp: "MVP del partido",
+  };
+  const datosHTML = Object.entries(ETIQUETAS_FICHA)
+    .filter(([clave]) => ficha[clave])
+    .map(([clave, etiqueta]) => `
+      <div class="ficha-dato">
+        <span class="ficha-dato-etiqueta">${etiqueta}</span>
+        <span class="ficha-dato-valor">${escapeHtml(ficha[clave])}</span>
+      </div>`)
+    .join("");
+
+  // Las líneas de tarjetas se guardan como texto libre ("34' Roja - Jugador (Equipo)"),
+  // así que el tipo se deduce del texto para pintar cada marcador de su color.
+  // Solo se lee lo anterior al " - " (minuto + tipo), para que un motivo o un nombre
+  // no cambien el color. "Doble amarilla" se mira antes que "roja".
+  const claseTarjeta = (linea) => {
+    const t = String(linea || "").split(" - ")[0].normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    if (/\bdoble\s+amarilla\b|\b2\s*(?:ª|a)?\s*amarilla\b|\bsegunda\s+amarilla\b/.test(t)) return "ficha-tarjeta-doble";
+    if (/\broja\b|\bexpulsi/.test(t)) return "ficha-tarjeta-roja";
+    return "ficha-tarjeta-amarilla";
+  };
+  const listaHTML = (titulo, items, clase = "", clasePorLinea = null) => {
+    if (!Array.isArray(items) || items.length === 0) return "";
+    return `
+      <div class="ficha-lista${clase ? " " + clase : ""}">
+        <p class="ficha-lista-titulo">${titulo}</p>
+        <ul class="ficha-lista-items">
+          ${items.map((linea) => `<li${clasePorLinea ? ` class="${clasePorLinea(linea)}"` : ""}>${escapeHtml(linea)}</li>`).join("")}
+        </ul>
+      </div>`;
+  };
+  const listasHTML = listaHTML("Goleadores", ficha.goleadores, "ficha-lista-goleadores") + listaHTML("Tarjetas", ficha.tarjetas, "ficha-lista-tarjetas", claseTarjeta);
+
+  const notasHTML = ficha.notas ? `<div class="ficha-tecnica-notas">${escapeHtml(ficha.notas)}</div>` : "";
+
+  // Si no hay ni datos sueltos, ni goleadores/tarjetas, ni notas, no
+  // tiene sentido pintar la tarjeta (estaría vacía salvo la cabecera).
+  if (!datosHTML && !listasHTML && !notasHTML) return "";
+
+  return `
+    <div class="ficha-tecnica-articulo">
+      <div class="ficha-tecnica-cabecera">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <span class="ficha-tecnica-titulo">Ficha técnica</span>
+      </div>
+      <div class="ficha-tecnica-cuerpo">
+        ${datosHTML ? `<div class="ficha-tecnica-datos">${datosHTML}</div>` : ""}
+        ${listasHTML ? `<div class="ficha-tecnica-listas">${listasHTML}</div>` : ""}
+        ${notasHTML}
+      </div>
+    </div>`;
+}
+
+// Agrupa "Ver alineaciones" y "Ver goles y tarjetas" en una sola fila de
+// pestañas (en vez de dos botones sueltos, uno debajo del otro) y hace
+// que abrir una cierre la otra si estaba abierta (ver toggleEventosArticulo).
+// La alineación va primero/arriba porque es lo que más se suele mirar de
+// un vistazo (quién jugó) antes que el detalle de goles y tarjetas.
+// El botón muestra la alineación INICIAL con los cambios de la tabla de
+// eventos ya aplicados (ver alineacionesConCambiosAplicados): así, en un
+// partido en juego, quien esté jugando ahora mismo aparece como titular
+// aunque haya entrado de cambio a mitad del segundo tiempo. En la
+// noticia esto solo importa mientras el partido puede seguir cambiando
+// (en_juego); una vez "finalizado" el resultado ya no cambia, así que
+// también se aplican para dejar fijado el once final.
+// Debajo de esa fila de pestañas (si hay alguna) se añade el cartel de
+// invitación a la galería del partido (cartelGaleriaPartidoHTML), pero
+// solo cuando ya hay fotos subidas: va fuera de la fila porque, a
+// diferencia de esos dos botones que despliegan contenido en la misma
+// página, es una tarjeta más grande que enlaza a otra página (galeria.html).
+function togglesArticuloHTML(r) {
+  const alineaciones = alineacionesConCambiosAplicados(r.alineaciones, r.eventos, r.estado);
+  const { boton: botonAlineaciones, panel: panelAlineaciones } = alineacionesBotonYPanelHTML(alineaciones);
+  const { boton: botonEventos, panel: panelEventos } = eventosArticuloBotonYPanelHTML(r);
+  const filaBotones = (botonAlineaciones || botonEventos)
+    ? `<div class="toggles-articulo-fila">${botonAlineaciones}${botonEventos}</div>`
+    : "";
+  return `
+    ${filaBotones}
+    ${panelAlineaciones}
+    ${panelEventos}
+    ${cartelGaleriaPartidoHTML(r)}`;
+}
+
+// Cartel de invitación a la galería de fotos del partido: todas las
+// subidas por el/los fotógrafo/s, no solo las que el redactor haya
+// metido a mano en el cuerpo de la crónica. Solo se pinta cuando ya hay
+// fotos de verdad (r.galeria_disponible); si el partido tiene resultado
+// vinculado pero el fotógrafo todavía no ha subido nada, no se muestra
+// nada, en vez de invitar a una galería vacía.
+// Es un enlace normal (lleva a galeria.html), con su propio diseño tipo
+// "tarjeta" -ya no la píldora compacta de Alineaciones/Eventos- para que
+// destaque de verdad dentro de la crónica.
+function cartelGaleriaPartidoHTML(r) {
+  if (!r.url_galeria || !r.galeria_disponible) return "";
+  const fondoUrl = r.foto_portada_galeria ? cloudinaryOptimizada(r.foto_portada_galeria, 900) : "";
+  const estiloFondo = fondoUrl ? ` style="background-image:url('${escapeHtml(fondoUrl)}');"` : "";
+  return `
+    <a href="${escapeHtml(r.url_galeria)}" class="cartel-galeria-articulo con-foto"${estiloFondo}>
+      <span class="cartel-galeria-velo"></span>
+      <span class="cartel-galeria-icono" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6.5" width="19" height="14" rx="2.5"/><circle cx="12" cy="13.5" r="3.6"/><path d="M8.5 6.5l1.3-2.3a1 1 0 0 1 .87-.5h2.66a1 1 0 0 1 .87.5l1.3 2.3"/></svg>
+      </span>
+      <span class="cartel-galeria-texto">
+        <span class="cartel-galeria-titulo">Galería de fotos del partido</span>
+        <span class="cartel-galeria-desc">Todas las fotos de este encuentro, en la galería completa</span>
+      </span>
+      <span class="cartel-galeria-boton">
+        <span>Ver galería completa</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </span>
+    </a>`;
+}
+
+// Wrapper simple para sitios que solo necesitan el bloque de
+// alineaciones aislado (el modal de resultados lo agrupa junto al de
+// eventos por su cuenta, ver resultados.html/partidos.js).
+function alineacionesHTML(alineaciones) {
+  const { boton, panel } = alineacionesBotonYPanelHTML(alineaciones);
+  return boton ? `${boton}${panel}` : "";
+}
+
+// ---------- Alineación inicial + cambios = alineación "en vivo" ----------
+// La alineación que se guarda en el admin (alineacionesHTML/alineacionHTML
+// más abajo) es siempre la INICIAL: el once que salió de titular. Para
+// que en un partido "en_juego" (o ya "finalizado") se vea quién ha ido
+// entrando realmente, se recalcula un once "en vivo" a partir de esa
+// alineación inicial más los eventos de tipo "cambio" ya registrados:
+// - "jugador" en el evento de cambio es quien ENTRA.
+// - "jugador_asistencia" en el evento de cambio es quien SALE.
+// El que entra hereda la posición (x/y) del que sale en el campo, para
+// no tener que guardar coordenadas nuevas a mano en cada cambio; si no
+// se pudo identificar al que sale (nombre no coincide con nadie de la
+// alineación guardada), el cambio se ignora en el dibujo del campo -pero
+// sigue apareciendo igualmente en "Ver goles y tarjetas"-, para no
+// arriesgarse a mostrar algo incorrecto.
+// Un partido "programado" nunca tiene eventos todavía, así que ahí esto
+// no hace nada; se deja fuera explícitamente para no gastar ciclos.
+function alineacionesConCambiosAplicados(alineaciones, eventos, estado) {
+  if (!Array.isArray(alineaciones) || !alineaciones.length) return alineaciones;
+  if (estado !== "en_juego" && estado !== "finalizado") return alineaciones;
+  const cambios = (Array.isArray(eventos) ? eventos : []).filter((ev) => ev.tipo === "cambio");
+  if (!cambios.length) return alineaciones;
+
+  // Los cambios se aplican en orden de minuto, por si el mismo jugador
+  // vuelve a salir en un cambio posterior (poco común pero posible).
+  const cambiosOrdenados = [...cambios].sort((a, b) => (a.minuto ?? 0) - (b.minuto ?? 0));
+
+  return alineaciones.map((a) => {
+    const jugadores = (a.jugadores || []).map((j) => ({ ...j }));
+    cambiosOrdenados.forEach((ev) => {
+      const { dorsal: dorsalSale, nombre: nombreSale } = separarDorsalYJugadorPublico(ev.jugador_asistencia);
+      const { dorsal: dorsalEntra, nombre: nombreEntra } = separarDorsalYJugadorPublico(ev.jugador);
+      if (!nombreSale && !dorsalSale) return; // sin jugador identificado que sale, no se puede saber a quién sustituye en el campo
+      const sale = jugadores.find((j) =>
+        j.titular !== false &&
+        ((nombreSale && j.nombre && j.nombre.trim().toLowerCase() === nombreSale.trim().toLowerCase()) ||
+         (dorsalSale && String(j.dorsal ?? "") === dorsalSale))
+      );
+      if (!sale) return; // el que sale no pertenece a este equipo (o ya salió antes): se ignora aquí, se prueba con el otro equipo
+      sale.titular = false;
+      sale.salioDeCambio = true;
+      if (nombreEntra || dorsalEntra) {
+        jugadores.push({
+          x: sale.x, y: sale.y, dorsal: dorsalEntra || undefined,
+          nombre: nombreEntra || `Dorsal ${dorsalEntra}`, titular: true, entradoDeCambio: true,
+        });
+      }
+    });
+    return { ...a, jugadores };
+  });
+}
+
+// Separa el texto "dorsal · nombre" guardado en un evento (ver
+// combinarDorsalYJugador en el admin) en sus dos partes, para poder
+// cruzarlo con los jugadores de la alineación. Versión pública y
+// tolerante: si solo hay un trozo, decide si es dorsal (todo dígitos) o
+// nombre igual que hace el admin al repoblar su formulario.
+function separarDorsalYJugadorPublico(texto) {
+  if (!texto) return { dorsal: "", nombre: "" };
+  const partes = texto.split(" · ");
+  if (partes.length === 2) return { dorsal: partes[0].trim(), nombre: partes[1].trim() };
+  const t = texto.trim();
+  return /^\d+$/.test(t) ? { dorsal: t, nombre: "" } : { dorsal: "", nombre: t };
+}
+
+// ---------- Alineaciones ----------
+// Pinta el campo de fútbol con el once titular colocado por posición
+// (x/y en %) y, debajo, la lista de suplentes. Se usa tanto en la
+// noticia (marcadorArticuloHTML la puede incluir) como en el modal de
+// detalle de un partido en resultados.html.
+function alineacionHTML(a) {
+  const titulares = (a.jugadores || []).filter((j) => j.titular !== false);
+  const suplentes = (a.jugadores || []).filter((j) => j.titular === false);
+  const escudo = getEscudoUrl(a.equipo, a.escudo_url);
+  return `
+    <div class="alineacion-bloque">
+      <div class="alineacion-cabecera">
+        <img class="alineacion-escudo" src="${escudo}" alt="" loading="lazy" data-equipo="${escapeHtml(a.equipo)}" onerror="manejarErrorEscudo(this);">
+        <span class="alineacion-equipo">${escapeHtml(a.equipo)}</span>
+        <span class="alineacion-formacion">${escapeHtml(a.formacion || "")}</span>
+      </div>
+      <div class="alineacion-campo">
+        <div class="alineacion-campo-lineas"></div>
+        <div class="area-pequena-arriba"></div>
+        <div class="area-pequena-abajo"></div>
+        <div class="punto-penalti-arriba"></div>
+        <div class="punto-penalti-abajo"></div>
+        <div class="semicirculo-area-arriba"></div>
+        <div class="semicirculo-area-abajo"></div>
+        <div class="corner-arco corner-arco--tl"></div>
+        <div class="corner-arco corner-arco--tr"></div>
+        <div class="corner-arco corner-arco--bl"></div>
+        <div class="corner-arco corner-arco--br"></div>
+        ${titulares.map((j) => `
+          <div class="alineacion-jugador${j.entradoDeCambio ? " alineacion-jugador-cambio" : ""}" style="left:${j.x}%;top:${j.y}%;">
+            <span class="alineacion-dorsal">${j.dorsal ?? ""}</span>
+            <span class="alineacion-nombre">${escapeHtml(j.nombre)}${j.capitan ? ' <span class="alineacion-capitan-marca" title="Capitán">(C)</span>' : ""}</span>
+          </div>`).join("")}
+      </div>
+      ${suplentes.length ? `
+        <div class="alineacion-suplentes">
+          <p class="alineacion-suplentes-titulo">Suplentes</p>
+          <ul>${suplentes.map((j) => `<li><span class="alineacion-dorsal">${j.dorsal ?? ""}</span> ${escapeHtml(j.nombre)}${j.capitan ? ' <span class="alineacion-capitan-marca" title="Capitán">(C)</span>' : ""}${j.titular === false && j.salioDeCambio ? ` <span class="alineacion-sale-tag">Sustituido</span>` : ""}</li>`).join("")}</ul>
+        </div>` : ""}
+    </div>`;
+}
+
+// Envuelve una o dos alineaciones (local/visitante) en un bloque
+// Envuelve una o dos alineaciones (local/visitante) en un bloque
+// desplegable, agrupado junto al de "Ver goles y tarjetas" en la misma
+// fila de pestañas (ver marcadorArticuloHTML/toggleEventosArticulo):
+// solo puede haber un panel abierto a la vez.
+let CONTADOR_ALINEACIONES = 0;
+function alineacionesBotonYPanelHTML(alineaciones) {
+  if (!Array.isArray(alineaciones) || !alineaciones.length) return { boton: "", panel: "" };
+  const idBloque = `alineaciones-${++CONTADOR_ALINEACIONES}`;
+  const boton = `
+    <button type="button" class="toggle-eventos-articulo" aria-expanded="false" aria-controls="${idBloque}" onclick="toggleEventosArticulo(this, event)">
+      <span>Ver ${alineaciones.length > 1 ? "alineaciones" : "alineación"}</span>
+      <svg class="toggle-eventos-flecha" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+    </button>`;
+  const panel = `
+    <div class="alineaciones-wrap" id="${idBloque}" hidden>
+      ${alineaciones.map(alineacionHTML).join("")}
+    </div>`;
+  return { boton, panel };
+}
+
+// Bloque de goles y tarjetas dentro del marcador de la noticia. No se
+// muestra nada si el partido todavía no se ha jugado o no tiene eventos
+// registrados, para no añadir ruido a los partidos "Por jugar". Cada
+// evento es una fila propia (minuto, tipo, jugador y equipo), en vez
+// del grid a 3 columnas del modal de detalle: dentro del cuerpo de una
+// noticia el ancho disponible es mucho menor, así que una lista vertical
+// simple se lee mejor que comprimir el texto a un lado u otro.
+//
+// Los eventos van colapsados por defecto detrás de un botón "Ver goles y
+// tarjetas" con una flechita, agrupado junto al de alineaciones (ver
+// marcadorArticuloHTML): si no, una noticia sobre un partido con muchos
+// eventos (goles, amarillas...) puede ocupar más que el propio texto de
+// la noticia. idBloque identifica cada bloque para poder tener varios en
+// la misma página (varias tarjetas de preview) sin que se pisen entre sí.
+let CONTADOR_EVENTOS_ARTICULO = 0;
+function eventosArticuloBotonYPanelHTML(r) {
+  // Programado o anulado (se ve como "por jugar"): no hay eventos que mostrar.
+  if (r.estado === "programado" || r.estado === "anulado") return { boton: "", panel: "" };
+  const eventos = Array.isArray(r.eventos) ? r.eventos : [];
+  // Un partido finalizado sin cobertura en directo puede tener guardado
+  // igualmente el evento automático "inicio_partido" (y a veces
+  // "fin_partido"), sin que nadie haya llegado a anotar ningún gol,
+  // tarjeta u otro evento real. En ese caso no tiene sentido mostrar el
+  // botón "Ver goles y tarjetas", porque al abrirlo no habría nada que
+  // enseñar de verdad: solo se cuenta si hay al menos un evento que no
+  // sea puramente estructural (inicio/fin de partido, descansos...).
+  const TIPOS_SOLO_ESTRUCTURALES = [
+    "inicio_partido", "descanso", "fin_descanso",
+    "pausa_hidratacion", "fin_pausa_hidratacion",
+    "partido_retrasado", "fin_partido", "anadido",
+  ];
+  const hayEventosReales = eventos.some((ev) => !TIPOS_SOLO_ESTRUCTURALES.includes(ev.tipo));
+  if (!hayEventosReales) return { boton: "", panel: "" };
+  const idBloque = `eventos-articulo-${++CONTADOR_EVENTOS_ARTICULO}`;
+  const boton = `
+    <button type="button" class="toggle-eventos-articulo" aria-expanded="false" aria-controls="${idBloque}" onclick="toggleEventosArticulo(this, event)">
+      <span>Ver goles y tarjetas (${eventos.length})</span>
+      <svg class="toggle-eventos-flecha" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+    </button>`;
+  const panel = `
+    <div class="eventos-articulo" id="${idBloque}" hidden>
+      ${eventos.map(ev => `
+        <div class="evento-articulo-item ea-${String(ev.tipo || "").replace(/[^a-z_]/gi, "")}${ev.equipo === "local" ? " ea-local" : ev.equipo === "visitante" ? " ea-visitante" : ""}">
+          ${iconoEventoPublico(ev.tipo)}
+          <span class="mev-minuto">${formatMinutoEventoPublico(ev)}</span>
+          <span>${ev.tipo === "nota" ? escapeHtml(ev.jugador || "") : escapeHtml(etiquetaEventoPublico(ev)) + detalleJugadorEventoPublico(ev)}</span>
+          ${TIPOS_EVENTO_SIN_EQUIPO_PUBLICO.includes(ev.tipo) ? "" : `<span class="ea-equipo-tag">${ev.equipo === "local" ? escapeHtml(r.equipo_local) : escapeHtml(r.equipo_visitante)}</span>`}
+        </div>`).join("")}
+    </div>`;
+  return { boton, panel };
+}
+
+// Abre/cierra el bloque de goles y tarjetas de un marcador (dentro de una
+// noticia o de su preview en una tarjeta). En la preview el marcador
+// vive dentro de una tarjeta que es un enlace entero (<a class="card">),
+// así que hay que frenar tanto la acción por defecto del clic como su
+// propagación hacia ese <a>, o si no la tarjeta navegaría a la noticia
+// en vez de (o además de) desplegar los eventos.
+function toggleEventosArticulo(btn, event) {
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  const bloque = document.getElementById(btn.getAttribute("aria-controls"));
+  if (!bloque) return;
+  const abierto = btn.getAttribute("aria-expanded") === "true";
+  // Si este botón vive junto a otro en la misma fila de pestañas
+  // (.toggles-articulo-fila, ver togglesArticuloHTML), se cierra
+  // primero cualquier otro que estuviera abierto: solo un panel visible
+  // a la vez, igual que unas pestañas normales.
+  const fila = btn.closest(".toggles-articulo-fila");
+  if (fila) {
+    fila.querySelectorAll(".toggle-eventos-articulo").forEach((otro) => {
+      if (otro === btn) return;
+      otro.setAttribute("aria-expanded", "false");
+      otro.classList.remove("toggle-eventos-abierto");
+      const otroBloque = document.getElementById(otro.getAttribute("aria-controls"));
+      if (otroBloque) otroBloque.hidden = true;
+    });
+  }
+  btn.setAttribute("aria-expanded", abierto ? "false" : "true");
+  bloque.hidden = abierto;
+  btn.classList.toggle("toggle-eventos-abierto", !abierto);
+}
+
+function resumText(html, n = 140) {
+  if (!html) return "";
+  // Quita etiquetas y decodifica entidades (&amp;, &quot;, &#39;...) antes
+  // de recortar: si no se decodifican aquí, el resumen mostraría códigos
+  // de entidad en crudo (p. ej. "Barça &amp; Real Madrid") porque luego
+  // vuelve a pasar por escapeHtml() al insertarse en la tarjeta, que
+  // escapa el "&" literal en vez de reconocer una entidad ya existente.
+  // - Los cierres de bloque (</p>, <br>, <h2>...) se sustituyen por un espacio: sin él, "<p>Uno.</p><p>Dos.</p>"
+  //   salía como "Uno.Dos.". Las etiquetas en línea (<b>, <a>...) se quitan sin más para no partir palabras.
+  // - Una etiqueta cortada al final (el listado público solo trae el arranque del cuerpo) se descarta.
+  // - &amp; se decodifica el último para no decodificar dos veces ("&amp;lt;" es el texto "&lt;", no "<").
+  // - Se recorta por caracteres reales (no por unidades UTF-16) para no partir un emoji por la mitad.
+  const text = String(html)
+    .replace(/<[^>]*$/, "")
+    .replace(/<\/?(?:p|div|br|li|ul|ol|h[1-6]|blockquote|tr|td|th|figure|figcaption|section|article|hr)\b[^>]*>/gi, " ")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#0?39;/g, "'")
+    .replace(/&amp;/g, "&")
+    .replace(/\s+/g, " ")
+    .trim();
+  const caracteres = Array.from(text);
+  return caracteres.length > n ? caracteres.slice(0, n).join("") + "…" : text;
+}
+
+// ---------- Estados vacíos / carga / error reutilizables ----------
+// Se usan en portada, categoría, búsqueda, resultados, etc. para que
+// nunca se vea un simple "<p>texto</p>" suelto y descuidado.
+
+function iconoBalon() {
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 7.2l3.6 2.6-1.4 4.2h-4.4l-1.4-4.2z"/><path d="M12 3v4.2M4.5 8.6l3 2.1M19.5 8.6l-3 2.1M6.3 18.4l2.3-3.9M17.7 18.4l-2.3-3.9M4.3 12h2.4M17.3 12h2.4"/></svg>`;
+}
+function iconoLupa() {
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-4.3-4.3"/></svg>`;
+}
+function iconoAviso() {
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5l9.5 16.5H2.5z"/><path d="M12 9.5v4.2"/><path d="M12 16.8h.01"/></svg>`;
+}
+function iconoCompartir() {
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="5.5" r="2.5"/><circle cx="18" cy="18.5" r="2.5"/><path d="M8.2 10.7l7.5-4.1M8.2 13.3l7.5 4.1"/></svg>`;
+}
+
+// tipo: "vacio" | "busqueda" | "error" | "compartir"
+function estadoHTML({ titulo, texto, tipo = "vacio", cta = "" }) {
+  const iconos = { vacio: iconoBalon(), busqueda: iconoLupa(), error: iconoAviso(), compartir: iconoCompartir() };
+  const clase = tipo === "error" ? "estado-info estado-error" : "estado-info";
+  return `
+    <div class="${clase}">
+      ${iconos[tipo] || iconos.vacio}
+      <h3>${escapeHtml(titulo)}</h3>
+      <p>${escapeHtml(texto)}</p>
+      ${cta}
+    </div>`;
+}
+
+function spinnerHTML(texto = "Cargando...") {
+  return `<div class="estado-info" role="status" aria-live="polite"><div class="spinner" aria-hidden="true"></div><p>${escapeHtml(texto)}</p></div>`;
+}
+
+// Escapa texto antes de insertarlo en HTML (títulos, nombres de club, etc.)
+// para que comillas, < o > no rompan el marcado ni los atributos.
+function escapeHtml(str) {
+  if (str === null || str === undefined) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+// SEGURIDAD: URLs que vienen de la base de datos (redes sociales y fotos de
+// perfil, editables por cada redactor) y se meten en href="", src="" o
+// url('') sin pasar por un parser. Solo se admiten http(s); cualquier otra
+// cosa ("javascript:", "data:", etc.) devuelve "". El resultado ya va
+// escapado para atributos HTML.
+function urlExternaSegura(valor) {
+  try {
+    const u = new URL(String(valor ?? "").trim(), location.href);
+    return (u.protocol === "https:" || u.protocol === "http:") ? escapeHtml(u.href) : "";
+  } catch {
+    return "";
+  }
+}
+
+// Igual que urlExternaSegura, pero para usarla dentro de url('...') en un
+// atributo style="": además codifica comillas, paréntesis y barras para que
+// no puedan cerrar la cadena CSS.
+function urlSeguraParaCss(valor) {
+  try {
+    const u = new URL(String(valor ?? "").trim(), location.href);
+    if (u.protocol !== "https:" && u.protocol !== "http:") return "";
+    return escapeHtml(u.href.replace(/['"()\\\s<>]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase().padStart(2, "0")));
+  } catch {
+    return "";
+  }
+}
+
+
+// ---------- Saneado del HTML de artículos (anti XSS) ----------
+// El cuerpo de las noticias lo escribe la redacción con un editor de texto
+// enriquecido y se pinta con innerHTML. Para que una cuenta de redactor
+// comprometida (o un pegado malicioso) no pueda inyectar scripts que se
+// ejecuten en el navegador de lectores o de Responsables, el HTML se
+// filtra con una LISTA BLANCA de etiquetas y atributos antes de pintarse.
+// Se parsea dentro de un <template> (documento inerte: no ejecuta scripts ni
+// descarga imágenes mientras se limpia).
+const SAN_ETIQUETAS_OK = new Set([
+  "p", "br", "hr", "strong", "b", "em", "i", "u", "s", "strike", "del", "ins", "mark", "small",
+  "sub", "sup", "span", "div", "h1", "h2", "h3", "h4", "h5", "h6", "ul", "ol", "li", "blockquote",
+  "a", "img", "figure", "figcaption", "pre", "code", "table", "thead", "tbody", "tfoot", "tr", "th", "td",
+]);
+const SAN_ETIQUETAS_BORRAR = new Set([
+  "script", "style", "iframe", "object", "embed", "noscript", "template", "svg", "math", "form", "textarea",
+  "select", "option", "button", "input", "link", "meta", "base", "frame", "frameset", "applet", "title", "audio", "video", "source",
+]);
+const SAN_ATTR_GLOBALES = new Set(["class", "title", "lang", "dir", "style"]);
+const SAN_ATTR_POR_ETIQUETA = {
+  a: ["href", "target"],
+  img: ["src", "alt", "width", "height", "loading"],
+  td: ["colspan", "rowspan"],
+  th: ["colspan", "rowspan", "scope"],
+  ol: ["start", "type"],
+};
+
+function sanearHtmlContenido(html) {
+  if (html === null || html === undefined || html === "") return "";
+  let entrada = String(html);
+  // Primera barrera: DOMPurify (js/vendor/purify.min.js; lo cargan noticia.html y
+  // el panel). Resiste los bypass por mutación (mXSS) que un recorrido propio del
+  // DOM + reserialización con innerHTML no cubre. Se le da la MISMA lista blanca
+  // que usa el recorrido de abajo, que se mantiene como segunda barrera (y como
+  // única si DOMPurify no se ha cargado en la página).
+  if (typeof DOMPurify !== "undefined" && typeof DOMPurify.sanitize === "function") {
+    entrada = DOMPurify.sanitize(entrada, {
+      ALLOWED_TAGS: Array.from(SAN_ETIQUETAS_OK),
+      ALLOWED_ATTR: [
+        ...SAN_ATTR_GLOBALES,
+        ...new Set(Object.values(SAN_ATTR_POR_ETIQUETA).flat()),
+      ],
+      FORBID_TAGS: Array.from(SAN_ETIQUETAS_BORRAR),
+      ALLOW_DATA_ATTR: false,
+      ALLOW_ARIA_ATTR: false,
+      KEEP_CONTENT: true,
+    });
+  }
+  const plantilla = document.createElement("template");
+  plantilla.innerHTML = entrada;
+
+  const urlSegura = (valor, permitirDataImagen) => {
+    const limpio = String(valor).replace(/[\u0000-\u0020\u007f-\u009f\u200b-\u200f\u2028\u2029\ufeff]+/g, "");
+    if (!limpio) return false;
+    if (/^(https?:|mailto:|tel:)/i.test(limpio)) return true;
+    if (permitirDataImagen && /^data:image\/(png|jpe?g|gif|webp|avif);base64,[a-z0-9+\/=]+$/i.test(limpio)) return true;
+    return !/^[a-z][a-z0-9+.\-]*:/i.test(limpio); // ruta relativa / "#ancla"
+  };
+
+  const limpiar = (padre) => {
+    Array.from(padre.childNodes).forEach((nodo) => {
+      if (nodo.nodeType === 3) return; // texto
+      if (nodo.nodeType !== 1) { nodo.remove(); return; } // comentarios, etc.
+      const etiqueta = nodo.tagName.toLowerCase();
+      if (SAN_ETIQUETAS_BORRAR.has(etiqueta)) { nodo.remove(); return; }
+      if (!SAN_ETIQUETAS_OK.has(etiqueta)) {
+        // Etiqueta desconocida: se conserva su contenido, sin la etiqueta.
+        limpiar(nodo);
+        nodo.replaceWith(...Array.from(nodo.childNodes));
+        return;
+      }
+      const permitidos = SAN_ATTR_POR_ETIQUETA[etiqueta] || [];
+      Array.from(nodo.attributes).forEach((attr) => {
+        const nombre = attr.name.toLowerCase();
+        const valor = attr.value;
+        let conservar = SAN_ATTR_GLOBALES.has(nombre) || permitidos.includes(nombre);
+        if (nombre.startsWith("on")) conservar = false;
+        if (conservar && nombre === "href") conservar = urlSegura(valor, false);
+        if (conservar && nombre === "src") conservar = urlSegura(valor, true);
+        if (conservar && nombre === "style") conservar = !/expression|javascript:|vbscript:|behavior|@import|url\s*\(|\\|-moz-binding/i.test(valor);
+        if (conservar && nombre === "target") conservar = valor.toLowerCase() === "_blank";
+        if (!conservar) nodo.removeAttribute(attr.name);
+      });
+      if (etiqueta === "a" && nodo.getAttribute("target") === "_blank") nodo.setAttribute("rel", "noopener noreferrer");
+      limpiar(nodo);
+    });
+  };
+  limpiar(plantilla.content);
+  return plantilla.innerHTML;
+}
+
+// ---------- Bloque "Compártela" al final de cada noticia/crónica ----------
+
+const TIPOS_CONTENIDO = {
+  noticia: "noticia",
+  previa: "previa",
+  cronica: "crónica",
+  analisis: "análisis",
+  opinion: "opinión",
+  entrevista: "entrevista",
+  uno_por_uno: "1x1 de jugadores",
+  rdp_previa: "rueda de prensa previa",
+  rdp_post: "rueda de prensa posterior",
+};
+function tipoContenidoLabel(tipo) {
+  return TIPOS_CONTENIDO[tipo] || "noticia";
+}
+
+function iconoX() {
+  return `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M13.9 10.5 21.3 2h-1.9l-6.4 7.4L7.9 2H2l7.8 11.3L2 22h1.9l6.8-7.8L16.3 22h5.9l-8.3-11.5Zm-2.4 2.8-.8-1.1L4.4 3.4h2.8l5.1 7.2.8 1.1 6.6 9.3h-2.8l-5.4-7.6Z"/></svg>`;
+}
+function iconoFacebook() {
+  return `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M13.5 21v-7.9h2.65l.4-3.08H13.5V8.05c0-.89.25-1.5 1.52-1.5h1.63V3.8A21.7 21.7 0 0 0 14.24 3.7c-2.36 0-3.98 1.44-3.98 4.08v2.24H7.6v3.08h2.66V21z"/></svg>`;
+}
+function iconoTelegram() {
+  return `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.9 4.6 18.7 20c-.24 1.06-.87 1.32-1.76.82l-4.85-3.58-2.34 2.25c-.26.26-.48.48-.97.48l.35-4.94 9-8.13c.39-.35-.08-.54-.6-.2L6.4 12.9 1.62 11.4c-1.04-.32-1.06-1.04.22-1.55L20.6 3c.87-.32 1.63.2 1.3 1.6z"/></svg>`;
+}
+function iconoBluesky() {
+  return `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 10.8c-1.087-2.114-4.046-6.053-6.798-7.995C2.566.944 1.561 1.266.902 1.565.139 1.908 0 3.08 0 3.768c0 .69.378 5.65.624 6.479.815 2.736 3.713 3.66 6.383 3.364.136-.02.275-.039.415-.056-.138.022-.276.04-.415.056-3.912.58-7.387 2.005-2.83 7.078 5.013 5.19 6.87-1.113 7.823-4.308.953 3.195 2.05 9.271 7.733 4.308 4.267-4.308 1.172-6.498-2.74-7.078a8.741 8.741 0 0 1-.415-.056c.14.017.279.036.415.056 2.67.297 5.568-.628 6.383-3.364.246-.828.624-5.79.624-6.478 0-.69-.139-1.861-.902-2.206-.659-.298-1.664-.62-4.3 1.24C16.046 4.748 13.087 8.687 12 10.8Z"/></svg>`;
+}
+function iconoCorreo() {
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m4 7.5 8 6 8-6"/></svg>`;
+}
+function iconoInstagram() {
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="2.5" width="19" height="19" rx="5.5"/><circle cx="12" cy="12" r="4.3"/><circle cx="17.35" cy="6.65" r="1.05" fill="currentColor" stroke="none"/></svg>`;
+}
+function iconoEnlace() {
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 14.5l5-5"/><path d="M11 8.3l1-1a3.2 3.2 0 0 1 4.5 4.5l-1.4 1.4"/><path d="M13 15.7l-1 1a3.2 3.2 0 0 1-4.5-4.5l1.4-1.4"/></svg>`;
+}
+function iconoCompartirNativo() {
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><path d="M8.3 10.7l7.4-4.2M8.3 13.3l7.4 4.2"/></svg>`;
+}
+
+// Genera la fila de botones para compartir en redes y copiar enlace.
+// En móvil (donde suele haber navigator.share) se antepone un botón que
+// abre el menú de compartir nativo del sistema operativo -- el mismo
+// gesto al que ya está acostumbrado el usuario en cualquier otra app --
+// dejando los botones concretos de cada red como alternativa siempre
+// visible debajo, tanto por si el share nativo falla/se cancela como
+// para quien esté en escritorio (donde navigator.share no suele existir,
+// y ahí directamente no se pinta el botón nativo).
+// Añade parámetros UTM al enlace que se manda a cada red, para poder ver en
+// analíticas cuánto tráfico llega de lo que comparten los lectores. El
+// canonical, el og:url y el sitemap NUNCA llevan UTM (los generan el worker y
+// seo.js a partir de la ruta limpia), así que buscadores y redes consolidan
+// todo en la URL de siempre. "Copiar enlace" y el compartir nativo mandan la
+// URL limpia, porque ahí no sabemos a dónde se pegará.
+function urlConUtmCompartir(url, fuente) {
+  try {
+    const u = new URL(url, location.href);
+    u.hash = "";
+    if (!u.searchParams.has("utm_source")) {
+      u.searchParams.set("utm_source", fuente);
+      u.searchParams.set("utm_medium", "social");
+      u.searchParams.set("utm_campaign", "compartir_web");
+    }
+    return u.toString();
+  } catch (e) {
+    return url || "";
+  }
+}
+
+function botonesCompartirHTML(url, titulo) {
+  const titTxt = String(titulo || "");
+  const texto = encodeURIComponent(titTxt);
+  const via = (typeof SITE !== "undefined" && SITE.twitterUsuario) ? String(SITE.twitterUsuario).replace(/^@/, "") : "elotrofutbol";
+  const enlaceX = encodeURIComponent(urlConUtmCompartir(url, "x"));
+  const enlaceFb = encodeURIComponent(urlConUtmCompartir(url, "facebook"));
+  const enlaceTg = encodeURIComponent(urlConUtmCompartir(url, "telegram"));
+  const urlBsky = urlConUtmCompartir(url, "bluesky");
+  const urlMail = urlConUtmCompartir(url, "email");
+  const textoBsky = encodeURIComponent(`${titTxt} ${urlBsky}`.trim());
+  const asuntoMail = encodeURIComponent(titTxt);
+  const cuerpoMail = encodeURIComponent(`${titTxt}\n${urlMail}`);
+  const urlAttr = escapeHtml(url || "");
+  const tituloAttr = escapeHtml(titTxt);
+  // navigator.share existe sobre todo en navegadores móviles; se pinta el
+  // botón solo si el propio navegador lo soporta (comprobado en tiempo de
+  // ejecución más abajo, ver compartirNativo), así que aquí simplemente
+  // se incluye siempre en el HTML y se oculta con JS si no aplica -- así
+  // no hay que duplicar esta función para servidor/cliente.
+  // WhatsApp NO se incluye a propósito (se quitó de "compartir en redes").
+  return `
+    <div class="compartir-botones">
+      <button type="button" class="btn-compartir btn-compartir-nativo" data-url="${urlAttr}" data-titulo="${tituloAttr}" onclick="compartirNativo(this)" aria-label="Compartir" hidden><span class="btn-compartir-icono">${iconoCompartirNativo()}</span><span>Compartir</span></button>
+      <a class="btn-compartir btn-x" href="https://twitter.com/intent/tweet?text=${texto}&url=${enlaceX}&via=${encodeURIComponent(via)}" target="_blank" rel="noopener noreferrer" aria-label="Compartir en X"><span class="btn-compartir-icono">${iconoX()}</span><span>X</span></a>
+      <a class="btn-compartir btn-facebook" href="https://www.facebook.com/sharer/sharer.php?u=${enlaceFb}" target="_blank" rel="noopener noreferrer" aria-label="Compartir en Facebook"><span class="btn-compartir-icono">${iconoFacebook()}</span><span>Facebook</span></a>
+      <a class="btn-compartir btn-telegram" href="https://t.me/share/url?url=${enlaceTg}&text=${texto}" target="_blank" rel="noopener noreferrer" aria-label="Compartir en Telegram"><span class="btn-compartir-icono">${iconoTelegram()}</span><span>Telegram</span></a>
+      <a class="btn-compartir btn-bluesky" href="https://bsky.app/intent/compose?text=${textoBsky}" target="_blank" rel="noopener noreferrer" aria-label="Compartir en Bluesky"><span class="btn-compartir-icono">${iconoBluesky()}</span><span>Bluesky</span></a>
+      <a class="btn-compartir btn-correo" href="mailto:?subject=${asuntoMail}&body=${cuerpoMail}" aria-label="Enviar por correo"><span class="btn-compartir-icono">${iconoCorreo()}</span><span>Correo</span></a>
+      <a class="btn-compartir btn-instagram" href="${SITE.redes.instagram}" target="_blank" rel="noopener noreferrer" aria-label="Síguenos en Instagram"><span class="btn-compartir-icono">${iconoInstagram()}</span><span>Instagram</span></a>
+      <button type="button" class="btn-compartir btn-copiar" data-url="${urlAttr}" onclick="copiarEnlaceCompartir(this)" aria-label="Copiar enlace"><span class="btn-compartir-icono">${iconoEnlace()}</span><span>Copiar enlace</span></button>
+    </div>`;
+}
+
+// Revela el/los botón(es) de compartir nativo si el navegador soporta
+// navigator.share. OJO: este bloque se pinta mediante innerHTML (ver
+// compartirArticuloHTML más arriba), y los <script> insertados así NO se
+// ejecutan nunca -- por eso esto vive aquí como función normal, para
+// llamarla explícitamente en JS "de verdad" justo después de insertar el
+// bloque en el DOM (p. ej. al final de renderNoticia en noticia.html).
+function revelarBotonCompartirNativo() {
+  if (!navigator.share) return;
+  document.querySelectorAll(".btn-compartir-nativo[hidden]").forEach((b) => { b.hidden = false; });
+}
+
+// Abre el menú nativo de compartir del sistema (hoja de compartir de
+// iOS/Android). Si el usuario cancela el diálogo, el navegador rechaza la
+// promesa con AbortError: eso no es un fallo real, así que no se muestra
+// ningún error en ese caso, solo si share() falla por otro motivo (poco
+// habitual), en cuyo caso se cae a los botones de siempre, que ya están
+// justo debajo.
+function compartirNativo(btn) {
+  const url = btn.dataset.url;
+  const titulo = btn.dataset.titulo;
+  navigator.share({ title: titulo, url }).catch((err) => {
+    if (err && err.name === "AbortError") return;
+  });
+}
+
+// Bloque completo (mismo formato que estadoHTML) para poner al final de
+// cada noticia/crónica/opinión/entrevista, invitando a compartirla.
+function compartirArticuloHTML(article, url = location.href) {
+  const etiqueta = tipoContenidoLabel(article && article.tipo);
+  return estadoHTML({
+    titulo: "¿Te ha gustado?",
+    texto: `Si te ha gustado esta ${etiqueta}, ¡compártela!`,
+    tipo: "compartir",
+    cta: botonesCompartirHTML(url, article && article.titulo),
+  });
+}
+
+// Bloque de compartir para páginas que no son una noticia (galería de un
+// partido, minuto a minuto...). Mismo diseño que el del final de la noticia.
+function compartirPaginaHTML({ titulo = "¿Lo compartes?", texto = "", url = location.href, tituloCompartido = document.title } = {}) {
+  return estadoHTML({
+    titulo,
+    texto,
+    tipo: "compartir",
+    cta: botonesCompartirHTML(url, tituloCompartido),
+  });
+}
+
+// Copia el enlace al portapapeles y da feedback visual en el propio botón.
+function copiarEnlaceCompartir(btn) {
+  const url = btn.dataset.url;
+  // OJO: el botón tiene DOS <span> (el icono ".btn-compartir-icono" y el
+  // texto). querySelector("span") cogía el primero (el del icono) y al
+  // sustituir su contenido por "¡Copiado!" se perdía el SVG y se rompía
+  // el círculo del icono. Hay que coger el span de texto, que es el
+  // último de los dos.
+  const spans = btn.querySelectorAll("span");
+  const span = spans[spans.length - 1];
+  const original = span.textContent;
+  const marcarCopiado = () => {
+    span.textContent = "¡Copiado!";
+    btn.classList.add("copiado");
+    setTimeout(() => {
+      span.textContent = original;
+      btn.classList.remove("copiado");
+    }, 1800);
+  };
+  const mostrarEnlaceManual = () => {
+    if (window.EOF && EOF.preguntar) {
+      EOF.preguntar("Copia el enlace manualmente:", url, { soloLectura: true, textoConfirmar: "Cerrar" });
+    }
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(marcarCopiado).catch(mostrarEnlaceManual);
+  } else {
+    mostrarEnlaceManual();
+  }
+}
+// ---------- Volver del segundo plano (iPhone / app instalada) ----------
+// En iOS, una app instalada (PWA) que pasa un rato en segundo plano puede volver con la pantalla
+// negra aunque la página siga viva: WebKit suelta las capas de la GPU (backdrop-filter,
+// desenfoques, will-change) y no las repinta, o el splash de carga se queda a medias porque
+// requestAnimationFrame no corre mientras la app está oculta. Al volver se hace, sin recargar
+// nada (el panel puede tener texto sin guardar):
+//   1) si el splash sigue puesto cuando ya debería haber terminado (su plazo máximo es 6,5 s),
+//      se quita y se libera el scroll;
+//   2) se fuerza un repintado completo con un cambio mínimo de opacidad en la raíz.
+// Se ejecuta tanto en la web pública como en el panel (ambos cargan este fichero).
+(function () {
+  "use strict";
+  if (typeof window === "undefined" || typeof document === "undefined" || !document.addEventListener) return;
+  if (window.__eofReanudar) return;
+  window.__eofReanudar = true;
+
+  var CARGADA = Date.now();
+  var SPLASH_MAX_MS = 8000;      // splash.js se retira solo a los 6,5 s como mucho
+  var OCULTA_MIN_MS = 15000;     // por debajo de esto no hace falta repintar
+  var ocultaDesde = 0;
+
+  function quitarSplashAtascado() {
+    try {
+      var s = document.getElementById("eof-splash");
+      if (!s || Date.now() - CARGADA < SPLASH_MAX_MS) return;
+      if (s.parentNode) s.parentNode.removeChild(s);
+      var css = document.getElementById("eof-splash-css");
+      if (css && css.parentNode) css.parentNode.removeChild(css);
+      document.documentElement.classList.remove("eof-splash-on");
+    } catch (e) { /* nada */ }
+  }
+
+  function repintar() {
+    try {
+      var raiz = document.documentElement;
+      var antes = raiz.style.opacity;
+      raiz.style.opacity = "0.999";
+      void raiz.offsetHeight; // fuerza la recomposición
+      var devolver = function () { raiz.style.opacity = antes; };
+      if (window.requestAnimationFrame) {
+        requestAnimationFrame(function () { requestAnimationFrame(devolver); });
+      } else {
+        setTimeout(devolver, 50);
+      }
+    } catch (e) { /* nada */ }
+  }
+
+  function alVolver() {
+    var fuera = ocultaDesde ? Date.now() - ocultaDesde : 0;
+    ocultaDesde = 0;
+    quitarSplashAtascado();
+    if (fuera >= OCULTA_MIN_MS) repintar();
+  }
+
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) { ocultaDesde = Date.now(); return; }
+    alVolver();
+  });
+  // Al restaurar la página desde la caché de ida y vuelta (bfcache) no hay visibilitychange fiable.
+  window.addEventListener("pageshow", function (e) { if (e && e.persisted) { ocultaDesde = ocultaDesde || (Date.now() - OCULTA_MIN_MS); alVolver(); } });
+  window.addEventListener("pagehide", function () { ocultaDesde = Date.now(); });
+})();

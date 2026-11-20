@@ -1,20 +1,7 @@
-/* Avisos al entrar al panel: contador de la cabecera + tarjeta "Pendiente en el panel".
+/* Avisos al entrar al panel: tarjeta "Pendiente en el panel".
    Usa las variables del panel (--tarjeta, --borde, --celeste, --rojo, --marino...) y sigue el modo oscuro.
    Cada tipo de aviso tiene su color (--tono, en "r,g,b") para que se reconozcan de un vistazo. */
 
-/* ============ Contador en la cabecera (fondo --marino en los dos temas) ============ */
-.ae-chip{position:relative;display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 13px 0 9px;margin-right:8px;border-radius:999px;border:1px solid rgba(255,255,255,.24);
-  background:linear-gradient(180deg,rgba(255,255,255,.18),rgba(255,255,255,.07));color:#fff;font-size:.78rem;font-weight:700;letter-spacing:.2px;line-height:1;white-space:nowrap;cursor:pointer;user-select:none;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 2px 8px rgba(0,0,0,.18);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);transition:transform .18s cubic-bezier(.2,.8,.2,1),box-shadow .2s,background .2s,border-color .2s;}
-.ae-chip:hover{transform:translateY(-1px);border-color:rgba(255,255,255,.4);box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 6px 16px rgba(0,0,0,.28);}
-.ae-chip:active{transform:translateY(0);}
-.ae-chip:focus-visible{outline:2px solid var(--celeste-claro);outline-offset:2px;}
-.ae-chip svg{width:16px;height:16px;flex:none;color:var(--celeste-claro);}
-.ae-chip b{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:linear-gradient(135deg,var(--celeste-claro),var(--celeste));color:#0c1b2e;font-size:.74rem;font-variant-numeric:tabular-nums;box-shadow:0 1px 3px rgba(0,0,0,.25);}
-.ae-chip-urgente{border-color:rgba(255,128,146,.6);background:linear-gradient(180deg,rgba(255,64,90,.42),rgba(209,19,46,.28));box-shadow:inset 0 1px 0 rgba(255,255,255,.2),0 0 0 0 rgba(209,19,46,.5),0 4px 14px rgba(209,19,46,.35);animation:aeHalo 2.6s ease-out infinite;}
-.ae-chip-urgente svg{color:#ffd0d7;}
-.ae-chip-urgente b{background:linear-gradient(135deg,#ff6b81,var(--rojo,#d1132e));color:#fff;}
-@keyframes aeHalo{0%{box-shadow:inset 0 1px 0 rgba(255,255,255,.2),0 0 0 0 rgba(255,70,95,.55),0 4px 14px rgba(209,19,46,.35);}70%,100%{box-shadow:inset 0 1px 0 rgba(255,255,255,.2),0 0 0 9px rgba(255,70,95,0),0 4px 14px rgba(209,19,46,.35);}}
 
 /* ============ Tarjeta ============ */
 .ae-card{position:fixed;top:calc(env(safe-area-inset-top,0px) + 78px);right:20px;z-index:9990;width:min(420px,calc(100vw - 28px));max-height:calc(100vh - 106px);display:flex;flex-direction:column;
@@ -107,10 +94,8 @@
   .ae-card{top:calc(env(safe-area-inset-top,0px) + 64px);right:12px;left:12px;width:auto;max-height:calc(100vh - 150px);border-radius:20px;}
   .ae-cab{padding:18px 14px 14px 16px;gap:12px;}
   .ae-cab-txt strong{font-size:1.18rem;}
-  .ae-chip{margin-right:6px;padding:0 9px 0 8px;}
-  .ae-chip-txt{display:none;}
 }
 @media (prefers-reduced-motion:reduce){
-  .ae-card,.ae-card.ae-sale,.ae-lista li,.ae-cab::before,.ae-card-urgente .ae-cab-ico::after,.ae-stat-urg i,.ae-tag::before,.ae-chip-urgente{animation:none;}
-  .ae-fila,.ae-ico,.ae-flecha,.ae-chip,.ae-ok,.ae-cerrar{transition:none;}
+  .ae-card,.ae-card.ae-sale,.ae-lista li,.ae-cab::before,.ae-card-urgente .ae-cab-ico::after,.ae-stat-urg i,.ae-tag::before{animation:none;}
+  .ae-fila,.ae-ico,.ae-flecha,.ae-ok,.ae-cerrar{transition:none;}
 }

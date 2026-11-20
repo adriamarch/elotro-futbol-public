@@ -1,0 +1,97 @@
+/* ==========================================================================
+   Animaciones del resto de páginas públicas (versión "web" de las de portada)
+   Se activa solo cuando js/animaciones-web.js añade html.eof-web.
+   - Aparecer al hacer scroll (.rv / .rv-in)
+   - Marcadores: pop al cambiar el gol en directo
+   - Barra de progreso, foco de luz con el ratón, subrayado de títulos,
+     feedback al pulsar, halo del punto "en vivo"
+   Solo transform + opacity. Con "reducir movimiento" no se anima nada.
+   ========================================================================== */
+
+html.eof-web{--rv-ease:cubic-bezier(.22,.8,.3,1);--rv-dur:.65s}
+
+/* ---------- Barra de progreso ---------- */
+.eof-progreso{
+  position:fixed;top:0;left:0;right:0;height:3px;z-index:9999;
+  pointer-events:none;transform-origin:0 50%;
+  transform:scaleX(var(--p,0));
+  background:linear-gradient(90deg,var(--rojo,#d1132e),var(--celeste,#5bb8e8));
+  opacity:0;transition:opacity .25s;
+}
+.eof-progreso.on{opacity:1}
+
+/* ---------- Aparecer al hacer scroll ---------- */
+html.eof-web .rv{
+  opacity:0;
+  transform:translate3d(0,24px,0);
+  transition:opacity var(--rv-dur) var(--rv-ease),transform var(--rv-dur) var(--rv-ease);
+  transition-delay:var(--rv-d,0ms);
+}
+html.eof-web .rv[data-rv=left]{transform:translate3d(-18px,0,0)}
+html.eof-web .rv[data-rv=pop]{transform:translate3d(0,14px,0) scale(.97)}
+html.eof-web .rv.rv-in{opacity:1;transform:none}
+
+/* ---------- Marcadores ---------- */
+html.eof-web .partido .marcador{font-variant-numeric:tabular-nums}
+html.eof-web .partido .marcador.marcador-gol > span:first-child{
+  display:inline-block;animation:eofw-gol 1.1s var(--rv-ease) both;
+}
+@keyframes eofw-gol{
+  0%  {transform:scale(1);text-shadow:0 0 0 rgba(255,193,7,0)}
+  25% {transform:scale(1.45);text-shadow:0 0 18px rgba(255,193,7,.95)}
+  60% {transform:scale(.97);text-shadow:0 0 10px rgba(255,193,7,.45)}
+  100%{transform:scale(1);text-shadow:0 0 0 rgba(255,193,7,0)}
+}
+html.eof-web .partido.partido-en-vivo .marcador-en-vivo{
+  animation:eofw-respira 2.4s ease-in-out infinite;
+}
+@keyframes eofw-respira{0%,100%{opacity:1}50%{opacity:.78}}
+
+@media (prefers-reduced-motion:no-preference){
+
+  /* Subrayado de títulos que se dibuja */
+  html.eof-web .section-title.eof-linea-pre:after{clip-path:inset(0 100% 0 0)}
+  html.eof-web .section-title.eof-linea-in:after{
+    clip-path:inset(0 0 0 0);transition:clip-path .9s var(--rv-ease) .1s;
+  }
+
+  /* Halo del punto "en vivo" */
+  html.eof-web .en-vivo-punto{position:relative}
+  html.eof-web .en-vivo-punto::after{content:"";position:absolute;inset:0;border-radius:50%;
+    background:var(--rojo,#d1132e);pointer-events:none;
+    animation:eofw-halo 1.8s ease-out infinite}
+  @keyframes eofw-halo{from{transform:scale(1);opacity:.55}to{transform:scale(3.2);opacity:0}}
+
+
+  /* Feedback táctil al pulsar */
+  html.eof-web .card:active{transform:translateY(-2px) scale(.985)}
+  html.eof-web .mini-card:active,
+  html.eof-web .fila-noticia:active{transform:translate(2px) scale(.985)}
+  html.eof-web .partido:active{transform:scale(.99)}
+}
+
+/* ---------- Foco de luz que sigue al ratón (solo con ratón) ---------- */
+@media (hover:hover) and (pointer:fine) and (prefers-reduced-motion:no-preference){
+  html.eof-web .card{position:relative}
+  html.eof-web :is(.card,.mini-card,.fila-noticia)::after{
+    content:"";position:absolute;inset:0;z-index:2;
+    border-radius:inherit;pointer-events:none;
+    opacity:0;transition:opacity .35s;
+    background:radial-gradient(300px circle at var(--mx,50%) var(--my,50%),rgba(209,19,46,.09),transparent 65%);
+  }
+  html[data-theme=dark].eof-web :is(.card,.mini-card,.fila-noticia)::after{
+    background:radial-gradient(300px circle at var(--mx,50%) var(--my,50%),rgba(255,255,255,.09),transparent 65%);
+  }
+  html.eof-web :is(.card,.mini-card,.fila-noticia):hover::after{opacity:1}
+}
+
+/* ---------- Accesibilidad / impresión ---------- */
+@media (prefers-reduced-motion:reduce){
+  html.eof-web .rv,html.eof-web .rv.rv-in{opacity:1;transform:none;transition:none}
+  html.eof-web .partido .marcador.marcador-gol > span:first-child,
+  html.eof-web .partido.partido-en-vivo .marcador-en-vivo{animation:none}
+}
+@media print{
+  html.eof-web .rv{opacity:1;transform:none;transition:none}
+  .eof-progreso{display:none}
+}

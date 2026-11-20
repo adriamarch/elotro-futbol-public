@@ -944,7 +944,7 @@
   @media(min-width:601px){
     .lect-grid{grid-template-columns:repeat(auto-fill,minmax(285px,1fr));gap:26px}
     .lect-item .card{border-radius:16px;overflow:hidden}
-    .lect-item .card img{height:auto;aspect-ratio:16/10}
+    .lect-item .card img{display:block;width:100%;height:auto;aspect-ratio:16/10;object-fit:cover}
     .lect-item .card .cbody{padding:18px 18px 16px;gap:8px}
     .lect-item .card h3{font-size:1.1rem;line-height:1.3;transition:color .15s}
     .lect-item .card:hover h3,.lect-item .card:focus-visible h3{color:var(--rojo,#d1132e)}
@@ -976,9 +976,11 @@
   /* ----- móvil: lista compacta (miniatura a la izquierda, texto a la derecha) ----- */
   @media(max-width:600px){
     .lect-grid{grid-template-columns:1fr;gap:12px}
-    .lect-item .card{flex-direction:row;align-items:stretch;min-height:128px;height:auto;border-radius:14px}
-    .lect-item .card img{width:116px;min-width:116px;height:auto;min-height:128px;align-self:stretch}
-    .lect-item .card .cbody{padding:12px 12px 56px;gap:5px;min-width:0}
+    /* La miniatura va en absoluto: su alto lo marca la tarjeta, NUNCA la proporción de la
+       foto (una portada vertical o muy alta estiraba la tarjeta hasta ocupar media pantalla). */
+    .lect-item .card{position:relative;flex-direction:row;align-items:stretch;min-height:128px;height:auto;border-radius:14px}
+    .lect-item .card img{position:absolute;left:0;top:0;bottom:0;width:116px;min-width:0;height:100%;min-height:0;max-width:none;max-height:none;aspect-ratio:auto;object-fit:cover}
+    .lect-item .card .cbody{box-sizing:border-box;flex:1 1 0%;margin-left:116px;padding:12px 12px 56px;gap:5px;min-width:0}
     .lect-item .card h3{font-size:1rem;line-height:1.3;-webkit-line-clamp:3}
     .lect-item .card p{display:none}
     .lect-item .card .cat{font-size:.66rem}
@@ -1009,6 +1011,60 @@
     .lect-esqueleto{display:grid;grid-template-columns:116px 1fr;grid-template-rows:auto auto auto;column-gap:12px;align-content:center;min-height:128px;padding:12px 12px 12px 0}
     .lect-esq-img{grid-column:1;grid-row:1/4;height:auto;min-height:104px;margin:-12px 0;align-self:stretch}
     .lect-esq-l1,.lect-esq-l2,.lect-esq-l3{grid-column:2;margin:5px 0}
+  }
+  /* ----- ajustes responsive extra (Mis guardadas) ----- */
+  .lect-item{min-width:0}
+  .lect-item .card h3{overflow-wrap:anywhere}
+  .lect-grid,.lect-cabecera,.lect-herramientas,.lect-barra{max-width:100%}
+  /* tablet / móvil en horizontal: 2 columnas y la barra de herramientas en varias líneas */
+  @media(min-width:601px) and (max-width:820px){
+    .lect-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+    .lect-cabecera .lect-herramientas{flex:1 1 100%;max-width:none;flex-wrap:wrap}
+    .lect-cabecera .lect-buscar{flex:1 1 100%}
+    .lect-cabecera .lect-orden{flex:1 1 0;width:auto;min-width:0}
+  }
+  @media(max-width:600px){
+    .lect-cabecera{display:block}
+    .lect-item .card{overflow:hidden;-webkit-tap-highlight-color:transparent}
+    .lect-item .card img{display:block;object-fit:cover}
+    .lect-item .card h3{hyphens:manual;-webkit-hyphens:manual}
+  }
+  /* pantallas muy estrechas (<= 380px): miniatura más pequeña y controles en columna */
+  @media(max-width:380px){
+    .lect-grid{gap:10px}
+    .lect-item .card{min-height:112px}
+    .lect-item .card img{width:96px}
+    .lect-item .card .cbody{margin-left:96px;padding:10px 10px 54px}
+    .lect-item .card h3{font-size:.94rem}
+    .lect-quitar{right:6px;bottom:6px}
+    .lect-orden,.lect-chip{flex:1 1 100%}
+    .lect-esqueleto{grid-template-columns:96px 1fr;min-height:112px}
+    .lect-snack{left:8px;right:8px}
+    .lect-snack-accion{min-height:44px;padding:0 12px}
+  }
+  /* ----- blindaje (no depende de datos ni de la proporción de las fotos) ----- */
+  #contenedorGuardadas,.lect-grid,.lect-cabecera,.lect-herramientas,.lect-barra,.lect-nota,.lect-vacio{min-width:0;max-width:100%;box-sizing:border-box}
+  .lect-item,.lect-item .card,.lect-item .card .cbody{min-width:0;max-width:100%;box-sizing:border-box}
+  .lect-item .card img{max-width:100%}
+  .lect-item .card h3,.lect-item .card p,.lect-item .card .meta,.lect-item .card .cat,.lect-nota-texto,.lect-contador{overflow-wrap:anywhere;word-break:break-word}
+  .lect-item .card .cbody>*{min-width:0;max-width:100%}
+  .lect-buscar,.lect-orden{max-width:100%;-webkit-appearance:none;appearance:none}
+  .lect-orden{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239aa0ab' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;background-size:16px;padding-right:38px;text-overflow:ellipsis}
+  .lect-quitar,.lect-chip,.lect-btn-secundario,.lect-btn-primario,.lect-snack-accion{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+  .lect-quitar:focus-visible,.lect-chip:focus-visible,.lect-btn-secundario:focus-visible,.lect-buscar:focus-visible,.lect-orden:focus-visible,.lect-item .card:focus-visible{outline:3px solid var(--celeste,#5bb8e8);outline-offset:2px}
+  .lect-snack{max-width:calc(100vw - 24px);left:max(12px,env(safe-area-inset-left,0px));right:max(12px,env(safe-area-inset-right,0px))}
+  @supports not (-webkit-line-clamp:2){
+    .lect-item .card h3{max-height:3.9em;overflow:hidden}
+    .lect-item .card p{max-height:3em;overflow:hidden}
+  }
+  /* Móvil en horizontal (poca altura): 2-3 columnas en lugar de una lista alta */
+  @media(orientation:landscape) and (max-height:520px) and (min-width:601px){
+    .lect-grid{grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
+  }
+  /* Texto ampliado por accesibilidad: que la tarjeta crezca, nunca recorte */
+  @media(max-width:600px){
+    .lect-item .card .cbody{padding-bottom:calc(56px + .2em)}
+    .lect-herramientas{max-width:100%}
   }
   @media(prefers-reduced-motion:reduce){
     .lect-item .card,.lect-btn-primario,.lect-snack{transition:none;animation:none}

@@ -1,0 +1,29 @@
+/* Botón "Copiar campos grok" del editor de noticias (Nivel 4 y admin). Lógica: js/copiar-campos-grok.js */
+#btnCopiarGrok{
+  --cg-a:#111827;--cg-b:#374151;
+  position:relative;overflow:hidden;display:none;align-items:center;gap:9px;
+  padding:10px 18px 10px 14px;border:0;border-radius:999px;cursor:pointer;
+  background:linear-gradient(135deg,var(--cg-a),var(--cg-b));color:#fff;
+  font:inherit;font-size:.88rem;font-weight:800;letter-spacing:.01em;
+  box-shadow:0 4px 14px rgba(17,24,39,.3);
+  transition:transform .16s,box-shadow .16s,filter .16s,background .2s;
+}
+#btnCopiarGrok::after{ /* destello al pasar el ratón */
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(110deg,transparent 35%,rgba(255,255,255,.22) 50%,transparent 65%);
+  transform:translateX(-120%);transition:transform .6s;
+}
+#btnCopiarGrok:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(17,24,39,.38);filter:brightness(1.08);}
+#btnCopiarGrok:hover::after{transform:translateX(120%);}
+#btnCopiarGrok:active{transform:translateY(0);}
+#btnCopiarGrok:focus-visible{outline:2px solid var(--celeste,#5bb8e8);outline-offset:3px;}
+#btnCopiarGrok .cg-icono{width:18px;height:18px;flex:none;}
+#btnCopiarGrok.cg-ok{background:linear-gradient(135deg,#15803d,#22c55e);box-shadow:0 4px 14px rgba(22,163,74,.4);}
+#btnCopiarGrok.cg-error{background:linear-gradient(135deg,#b42318,#ef4444);box-shadow:0 4px 14px rgba(220,38,38,.4);}
+[data-theme="dark"] #btnCopiarGrok{--cg-a:#e5e7eb;--cg-b:#9ca3af;color:#111827;box-shadow:0 4px 14px rgba(0,0,0,.4);}
+[data-theme="dark"] #btnCopiarGrok.cg-ok,[data-theme="dark"] #btnCopiarGrok.cg-error{color:#fff;}
+@media (max-width:640px){#btnCopiarGrok{justify-content:center;width:100%;}}
+@media (prefers-reduced-motion:reduce){
+  #btnCopiarGrok,#btnCopiarGrok::after{transition:none;}
+  #btnCopiarGrok:hover,#btnCopiarGrok:hover::after{transform:none;}
+}

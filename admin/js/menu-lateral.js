@@ -26,13 +26,19 @@
     anuncio: '<path d="M3 11v2a1 1 0 001 1h2l5 4V6L6 10H4a1 1 0 00-1 1z"/><path d="M15.5 8.5a5 5 0 010 7M18.5 5.5a9 9 0 010 13"/>',
     usuarios: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
     reloj: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    papelera: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 12.2a2 2 0 0 0 2 1.8h6a2 2 0 0 0 2-1.8L18 7M9 7V4.5h6V7"/>',
     red: '<circle cx="6" cy="12" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><path d="M8.6 10.6l6.8-3.2M8.6 13.4l6.8 3.2"/>',
-    grafico: '<path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/>'
+    grafico: '<path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/>',
+    casa: '<path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9"/>',
+    calendario: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/>'
   };
 
   // tab/sub = botón original a pulsar; subs = subpestañas que cuentan como "esta entrada".
   // badge = id del contador original que se refleja en la entrada.
   var GRUPOS = [
+    { titulo: "Inicio", items: [
+      { t: "Resumen", ic: "casa", tab: "inicio" }
+    ]},
     { titulo: "Redacción", items: [
       { t: "Noticias", ic: "noticias", tab: "noticias", sub: "nueva", subs: ["nueva", "lista", "noticiasRapidas"] },
       { t: "Resultados", ic: "resultados", tab: "resultados", sub: "resultado", badge: "badgeResultadosAnulados" },
@@ -41,7 +47,8 @@
       { t: "Encuestas", ic: "encuestas", tab: "funcionalidades", sub: "encuestas" },
       { t: "Equipos", ic: "equipos", tab: "funcionalidades", sub: "equipos" },
       { t: "Propuestas de fichas", ic: "equipos", tab: "solicitudes", sub: "propuestasEquipos", badge: "badgeSolPropuestasEquipos" },
-      { t: "Jugadores", ic: "jugadores", tab: "funcionalidades", sub: "jugadores" }
+      { t: "Jugadores", ic: "jugadores", tab: "funcionalidades", sub: "jugadores" },
+      { t: "Papelera", ic: "papelera", tab: "papelera" }
     ]},
     { titulo: "Equipo", items: [
       { t: "Solicitudes de edición", ic: "check", tab: "solicitudes", sub: "solicitudesRecibidas", subs: ["solicitudesRecibidas", "solicitudesMias"], badge: "badgeSolicitudesPendientes" },
@@ -59,6 +66,7 @@
     { titulo: "Administración", items: [
       { t: "Colaboradores", ic: "usuarios", tab: "usuarios", sub: "redactores" },
       { t: "Formularios", ic: "check", tab: "solicitudes", sub: "formularios" },
+      { t: "Reuniones", ic: "calendario", tab: "funcionalidades", sub: "reuniones" },
       { t: "Responsabilidades", ic: "check", tab: "funcionalidades", sub: "responsabilidades" },
       { t: "Redes sociales", ic: "red", tab: "funcionalidades", sub: "redesSociales" },
       { t: "Historial", ic: "reloj", tab: "funcionalidades", sub: "historial" },

@@ -1,0 +1,10 @@
+/* Aviso de edición simultánea de una noticia (ver admin-src/26-bloqueo-edicion-simultanea-de-noticias.js) */
+.aviso-bloqueo-noticia{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;margin:0 0 16px;padding:12px 16px;border-radius:12px;border:1px solid #f59e0b;border-left-width:5px;background:#fff7e6;color:#5b3a00;font-size:.92rem;line-height:1.45;}
+.aviso-bloqueo-noticia span{flex:1 1 260px;}
+.aviso-bloqueo-noticia button{flex:0 0 auto;padding:8px 14px;border:0;border-radius:10px;background:#d97706;color:#fff;font:inherit;font-weight:600;cursor:pointer;}
+.aviso-bloqueo-noticia button:hover{filter:brightness(1.08);}
+#btnGuardar:disabled{opacity:.55;cursor:not-allowed;}
+@media (prefers-color-scheme:dark){
+  .aviso-bloqueo-noticia{background:#3a2a0a;border-color:#b7791f;color:#fde7b0;}
+}
+body.oscuro .aviso-bloqueo-noticia,body.dark .aviso-bloqueo-noticia,[data-tema="oscuro"] .aviso-bloqueo-noticia{background:#3a2a0a;border-color:#b7791f;color:#fde7b0;}

@@ -1,0 +1,455 @@
+/* ==========================================================================
+   Seleccionar varias cosas · aspecto unificado (casillas, chips y filas)
+   --------------------------------------------------------------------------
+   Va al final de todo (después de seleccion-contenido.css) y solo REEMPLAZA
+   el aspecto; no toca el JS ni el HTML. Cubre:
+     · Casillas de la tabla de jugadores (.sel-celda)
+     · Importación rápida (.import-rapida-fila-check) y su fila marcada
+     · Imágenes a compartir (.compartir-imagen-item / .cp-imagen-check)
+     · «Seleccionar visibles» y «Avisar por correo» de acreditaciones
+     · Casillas de importar eliminatorias (.el-chk)
+     · Chips de clubs/categorías (.equipos-picker-chip)
+     · Días de la plantilla de reuniones (.reun-pl-dias)
+     · Barra de acciones en lote de acreditaciones (contador y «Quitar»)
+   Funciona en claro y en oscuro ([data-theme="dark"]), en móvil y con
+   «reducir movimiento».
+   ========================================================================== */
+
+:root {
+  --sm-acento: var(--celeste, #5bb8e8);
+  --sm-acento-fuerte: #2b8fc7;
+  --sm-borde: #b6c3d4;
+  --sm-fondo: var(--tarjeta, #fff);
+  --sm-tam: 22px;
+  --sm-radio: 7px;
+  --sm-curva: cubic-bezier(.2, .8, .2, 1);
+  --sm-halo: color-mix(in srgb, var(--sm-acento) 28%, transparent);
+  --sm-tinte: color-mix(in srgb, var(--sm-acento) 14%, var(--tarjeta, #fff));
+}
+[data-theme="dark"] {
+  --sm-borde: rgba(255, 255, 255, .34);
+  --sm-fondo: #121823;
+  --sm-acento-fuerte: #3aa6dd;
+  --sm-halo: color-mix(in srgb, var(--sm-acento) 34%, transparent);
+  --sm-tinte: color-mix(in srgb, var(--sm-acento) 18%, #1a2130);
+}
+
+/* ---------- 1) Casilla única, la misma en todas partes ---------- */
+.jug-tabla .sel-celda input[type="checkbox"],
+.import-rapida-fila-check input[type="checkbox"],
+.compartir-imagen-item input[type="checkbox"],
+.cp-imagen-check,
+.acred-selvis input[type="checkbox"],
+.acred-correo-chk input[type="checkbox"],
+.el-chk input[type="checkbox"],
+.sm-check {
+  -webkit-appearance: none;
+  appearance: none;
+  position: relative;
+  flex: 0 0 auto;
+  width: var(--sm-tam);
+  height: var(--sm-tam);
+  margin: 0;
+  padding: 0;
+  border-radius: var(--sm-radio);
+  border: 2px solid var(--sm-borde);
+  background-color: var(--sm-fondo);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 74%;
+  cursor: pointer;
+  vertical-align: middle;
+  transform: none;
+  accent-color: var(--sm-acento);
+  transition: background-color .18s ease, border-color .18s ease, box-shadow .18s ease, transform .12s ease;
+}
+.jug-tabla .sel-celda input[type="checkbox"]:hover:not(:disabled),
+.import-rapida-fila-check input[type="checkbox"]:hover:not(:disabled),
+.compartir-imagen-item input[type="checkbox"]:hover:not(:disabled),
+.cp-imagen-check:hover:not(:disabled),
+.acred-selvis input[type="checkbox"]:hover:not(:disabled),
+.acred-correo-chk input[type="checkbox"]:hover:not(:disabled),
+.el-chk input[type="checkbox"]:hover:not(:disabled),
+.sm-check:hover:not(:disabled) {
+  border-color: var(--sm-acento);
+  box-shadow: 0 0 0 4px var(--sm-halo);
+}
+.jug-tabla .sel-celda input[type="checkbox"]:active:not(:disabled),
+.import-rapida-fila-check input[type="checkbox"]:active:not(:disabled),
+.compartir-imagen-item input[type="checkbox"]:active:not(:disabled),
+.cp-imagen-check:active:not(:disabled),
+.acred-selvis input[type="checkbox"]:active:not(:disabled),
+.acred-correo-chk input[type="checkbox"]:active:not(:disabled),
+.el-chk input[type="checkbox"]:active:not(:disabled),
+.sm-check:active:not(:disabled) {
+  transform: scale(.9);
+}
+.jug-tabla .sel-celda input[type="checkbox"]:focus-visible,
+.import-rapida-fila-check input[type="checkbox"]:focus-visible,
+.compartir-imagen-item input[type="checkbox"]:focus-visible,
+.cp-imagen-check:focus-visible,
+.acred-selvis input[type="checkbox"]:focus-visible,
+.acred-correo-chk input[type="checkbox"]:focus-visible,
+.el-chk input[type="checkbox"]:focus-visible,
+.sm-check:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--sm-acento) 60%, transparent);
+  outline-offset: 2px;
+}
+
+/* Marcada: relleno azul y tic blanco dibujado (sin depender del navegador) */
+.jug-tabla .sel-celda input[type="checkbox"]:checked,
+.import-rapida-fila-check input[type="checkbox"]:checked,
+.compartir-imagen-item input[type="checkbox"]:checked,
+.cp-imagen-check:checked,
+.acred-selvis input[type="checkbox"]:checked,
+.acred-correo-chk input[type="checkbox"]:checked,
+.el-chk input[type="checkbox"]:checked,
+.sm-check:checked {
+  border-color: var(--sm-acento-fuerte);
+  background-color: var(--sm-acento-fuerte);
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E"),
+    linear-gradient(135deg, var(--sm-acento), var(--sm-acento-fuerte));
+  background-size: 74%, 100%;
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--sm-acento-fuerte) 45%, transparent);
+}
+
+/* «Seleccionar todas» con solo algunas marcadas (si el JS pone indeterminate) */
+.jug-tabla .sel-celda input[type="checkbox"]:indeterminate,
+.acred-selvis input[type="checkbox"]:indeterminate,
+.sm-check:indeterminate {
+  border-color: var(--sm-acento-fuerte);
+  background-color: var(--sm-acento-fuerte);
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.6' stroke-linecap='round'%3E%3Cline x1='6' y1='12' x2='18' y2='12'/%3E%3C/svg%3E");
+  background-size: 74%;
+}
+
+.jug-tabla .sel-celda input[type="checkbox"]:disabled,
+.import-rapida-fila-check input[type="checkbox"]:disabled,
+.compartir-imagen-item input[type="checkbox"]:disabled,
+.acred-correo-chk input[type="checkbox"]:disabled,
+.el-chk input[type="checkbox"]:disabled,
+.sm-check:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* ---------- 2) Tabla de jugadores: celda de casilla más cómoda ---------- */
+.jug-tabla td.sel-celda,
+.jug-tabla th.sel-celda {
+  width: 52px;
+  padding-left: 14px;
+  padding-right: 6px;
+  text-align: center;
+}
+.jug-tabla th.sel-celda input[type="checkbox"] {
+  border-color: rgba(255, 255, 255, .7);
+  background-color: rgba(255, 255, 255, .12);
+}
+.jug-tabla tbody tr { cursor: default; }
+.jug-tabla tr.sel td.sel-celda input[type="checkbox"] {
+  box-shadow: 0 0 0 4px var(--sm-halo), 0 2px 6px color-mix(in srgb, var(--sm-acento-fuerte) 45%, transparent);
+}
+
+/* ---------- 3) Importación rápida: fila marcada con acento ---------- */
+.import-rapida-fila-check {
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+}
+.import-rapida-fila {
+  transition: background-color .18s ease, box-shadow .18s ease, border-color .18s ease, opacity .18s ease;
+}
+.import-rapida-fila:has(.importRapidaCheck:checked):not(.import-rapida-fila-excluida) {
+  box-shadow: inset 4px 0 0 var(--sm-acento-fuerte);
+  background-color: var(--sm-tinte);
+}
+
+/* ---------- 4) Imágenes a compartir: tarjetas elegibles ---------- */
+.compartir-imagen-item {
+  width: 96px;
+}
+.compartir-imagen-item img {
+  width: 96px;
+  height: 96px;
+  border-width: 2px;
+  border-radius: 14px;
+  transition: border-color .18s ease, box-shadow .18s ease, transform .2s var(--sm-curva), filter .2s ease;
+  filter: saturate(.85);
+}
+.compartir-imagen-item:has(.cp-imagen-check:checked) img {
+  border-color: var(--sm-acento-fuerte);
+  box-shadow: 0 0 0 3px var(--sm-halo), 0 10px 22px -10px rgba(12, 27, 46, .5);
+  filter: none;
+}
+.compartir-imagen-item:hover img { transform: translateY(-2px); }
+.compartir-imagen-item label {
+  justify-content: center;
+  gap: 7px;
+  margin-top: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1.5px solid var(--borde);
+  background: var(--tarjeta);
+  color: var(--texto-suave);
+  font-size: .76rem;
+  font-weight: 700;
+  letter-spacing: .2px;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: background-color .18s ease, border-color .18s ease, color .18s ease;
+}
+.compartir-imagen-item:has(.cp-imagen-check:checked) label {
+  border-color: var(--sm-acento-fuerte);
+  background: var(--sm-tinte);
+  color: var(--texto);
+}
+.compartir-imagen-item .cp-imagen-check,
+.compartir-imagen-item input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+}
+.compartir-imagenes-lista { gap: 14px; }
+
+/* ---------- 5) Acreditaciones: «Seleccionar visibles» y avisos ---------- */
+.acred-selvis {
+  padding: 6px 14px 6px 9px;
+  border-radius: 999px;
+  border: 1.5px solid var(--borde);
+  background: var(--tarjeta);
+  user-select: none;
+  -webkit-user-select: none;
+  transition: border-color .18s ease, background-color .18s ease, box-shadow .18s ease;
+}
+.acred-selvis:hover { border-color: var(--sm-acento); }
+.acred-selvis:has(input:checked),
+.acred-selvis:has(input:indeterminate) {
+  border-color: var(--sm-acento-fuerte);
+  background: var(--sm-tinte);
+  color: var(--texto);
+}
+.acred-selvis input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+}
+
+.acred-correo-chk {
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  border: 1.5px solid var(--borde);
+  background: color-mix(in srgb, var(--tarjeta) 70%, transparent);
+  line-height: 1.35;
+  transition: border-color .18s ease, background-color .18s ease;
+}
+.acred-correo-chk:hover { border-color: var(--sm-acento); }
+.acred-correo-chk:has(input:checked) {
+  border-color: var(--sm-acento-fuerte);
+  background: var(--sm-tinte);
+}
+.acred-correo-chk input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+}
+
+/* Barra flotante de acciones en lote */
+.acred-barra-n {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+.acred-barra-n b {
+  display: inline-grid;
+  place-items: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: var(--sm-acento);
+  color: #0c1b2e;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  box-shadow: 0 0 0 3px rgba(91, 184, 232, .25);
+}
+.acred-barra-x {
+  margin-left: auto;
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1.5px solid rgba(255, 255, 255, .28);
+  background: rgba(255, 255, 255, .08);
+  color: #fff;
+  font-size: .8rem;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color .18s ease, border-color .18s ease;
+}
+.acred-barra-x:hover {
+  background: rgba(255, 255, 255, .18);
+  border-color: rgba(255, 255, 255, .5);
+}
+
+/* ---------- 6) Importar eliminatorias (casilla de cada campo) ---------- */
+.el-chk {
+  gap: 10px;
+  padding: 4px 2px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.el-chk input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+}
+
+/* ---------- 7) Chips de clubs / categorías (elige varias) ---------- */
+.equipos-picker-chip,
+#modalEquiposUsuario .equipos-picker-chip,
+#subpanel-redactores .equipos-picker-chip {
+  position: relative;
+  gap: 6px;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: background-color .18s ease, border-color .18s ease, color .18s ease,
+              box-shadow .2s ease, transform .12s ease, padding .18s var(--sm-curva);
+}
+.equipos-picker-chip:active:not(.deshabilitado) { transform: scale(.96); }
+/* Tic que aparece al marcar el chip (ocupa 0 de ancho mientras no está marcado) */
+.equipos-picker-chip::before {
+  content: "";
+  flex: none;
+  width: 0;
+  height: 14px;
+  margin-right: -6px;
+  opacity: 0;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E") center / contain no-repeat;
+  transition: width .18s var(--sm-curva), margin .18s var(--sm-curva), opacity .18s ease;
+}
+.equipos-picker-chip.seleccionado::before {
+  width: 14px;
+  margin-right: 0;
+  opacity: 1;
+}
+.equipos-picker-chip:has(input:focus-visible) {
+  outline: 3px solid color-mix(in srgb, var(--sm-acento) 60%, transparent);
+  outline-offset: 2px;
+}
+.equipos-picker-chip.deshabilitado {
+  opacity: .42;
+  cursor: not-allowed;
+  background-image: repeating-linear-gradient(135deg, transparent 0 6px, rgba(128, 140, 160, .12) 6px 7px);
+}
+/* Contador «2/3» */
+.equipos-picker .equipos-picker-contador {
+  font-variant-numeric: tabular-nums;
+  background: var(--sm-tinte);
+  border: 1px solid color-mix(in srgb, var(--sm-acento) 35%, transparent);
+  color: var(--texto);
+}
+/* Oscuro: el azul marino casi se funde con la tarjeta; se usa el celeste */
+[data-theme="dark"] .equipos-picker-chip.seleccionado,
+[data-theme="dark"] #modalEquiposUsuario .equipos-picker-chip.seleccionado,
+[data-theme="dark"] #subpanel-redactores .equipos-picker-chip.seleccionado {
+  background: linear-gradient(135deg, #2b8fc7, #1f6f9f);
+  border-color: var(--celeste-claro, #a8dcf5);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(43, 143, 199, .35), inset 0 1px 0 rgba(255, 255, 255, .18);
+}
+
+/* ---------- 8) Días de la plantilla de reuniones (L M X J V S D) ---------- */
+#reunDlg .reun-pl-dias { gap: 8px; }
+#reunDlg .reun-pl-dias label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1.5px solid var(--borde, #d9dde3);
+  background: var(--tarjeta);
+  color: var(--texto);
+  font-size: .82rem;
+  font-weight: 800;
+  user-select: none;
+  -webkit-user-select: none;
+  overflow: hidden;
+  transition: background-color .18s ease, border-color .18s ease, color .18s ease, transform .12s ease, box-shadow .18s ease;
+}
+#reunDlg .reun-pl-dias label:hover { border-color: var(--sm-acento); }
+#reunDlg .reun-pl-dias label:active { transform: scale(.94); }
+#reunDlg .reun-pl-dias input[type="checkbox"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+#reunDlg .reun-pl-dias label:has(input:checked) {
+  background: linear-gradient(135deg, var(--marino, #0c1b2e), var(--marino2, #152b46));
+  border-color: var(--marino, #0c1b2e);
+  color: #fff;
+  box-shadow: 0 4px 12px -4px rgba(12, 27, 46, .5);
+}
+#reunDlg .reun-pl-dias label:has(input:focus-visible) {
+  outline: 3px solid color-mix(in srgb, var(--sm-acento) 60%, transparent);
+  outline-offset: 2px;
+}
+[data-theme="dark"] #reunDlg .reun-pl-dias label:has(input:checked) {
+  background: linear-gradient(135deg, #2b8fc7, #1f6f9f);
+  border-color: var(--celeste-claro, #a8dcf5);
+}
+
+/* ---------- 9) Móvil y accesibilidad ---------- */
+@media (pointer: coarse), (max-width: 640px) {
+  :root { --sm-tam: 26px; }
+  .jug-tabla td.sel-celda,
+  .jug-tabla th.sel-celda { width: 56px; }
+  .equipos-picker-chip,
+  #modalEquiposUsuario .equipos-picker-chip,
+  #subpanel-redactores .equipos-picker-chip { min-height: 40px; }
+  #reunDlg .reun-pl-dias label { min-width: 46px; height: 44px; }
+  .compartir-imagen-item,
+  .compartir-imagen-item img { width: 88px; }
+  .compartir-imagen-item img { height: 88px; }
+  .acred-barra-x { margin-left: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jug-tabla .sel-celda input[type="checkbox"],
+  .import-rapida-fila-check input[type="checkbox"],
+  .compartir-imagen-item input[type="checkbox"],
+  .acred-selvis, .acred-correo-chk, .el-chk input[type="checkbox"],
+  .equipos-picker-chip, .equipos-picker-chip::before,
+  .compartir-imagen-item img, .compartir-imagen-item label,
+  #reunDlg .reun-pl-dias label, .import-rapida-fila {
+    transition: none !important;
+  }
+}
+
+@media (forced-colors: active) {
+  .jug-tabla .sel-celda input[type="checkbox"]:checked,
+  .import-rapida-fila-check input[type="checkbox"]:checked,
+  .compartir-imagen-item input[type="checkbox"]:checked,
+  .acred-selvis input[type="checkbox"]:checked,
+  .acred-correo-chk input[type="checkbox"]:checked,
+  .el-chk input[type="checkbox"]:checked {
+    background-color: Highlight;
+    border-color: Highlight;
+    forced-color-adjust: none;
+  }
+  .equipos-picker-chip.seleccionado,
+  #reunDlg .reun-pl-dias label:has(input:checked) {
+    border-color: Highlight;
+    outline: 2px solid Highlight;
+  }
+}

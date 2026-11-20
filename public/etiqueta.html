@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta name="google-adsense-account" content="ca-pub-7347856722927942">
+<script src="js/tema.js?v=65626bb2"></script>
+<script src="js/preferencias.js?v=6e49f5b3"></script>
+<meta charset="UTF-8">
+<script>/* splash.js: bloquea el parseo solo si la web se abre como app (o ?splash=1); en navegador carga en async, sin frenar el pintado. */
+(function(){var a=false;try{a=matchMedia("(display-mode: standalone)").matches||matchMedia("(display-mode: fullscreen)").matches||matchMedia("(display-mode: minimal-ui)").matches||navigator.standalone===true;}catch(e){}
+if(a||/[?&]splash=1(&|$)/.test(location.search)){document.write('<script src="/js/splash.js?v=b5004788"><\/script>');}
+else{var s=document.createElement("script");s.src="/js/splash.js?v=b5004788";s.async=true;document.head.appendChild(s);}})();
+</script>
+<script src="/js/cargando.js?v=4a5cb1bc"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://api.elotrofutbol.media" crossorigin>
+<link rel="preconnect" href="https://res.cloudinary.com">
+<title id="pageTitle">Etiqueta — ELOTROFÚTBOLTV</title>
+<meta property="og:image" content="https://elotrofutbol.media/img/og-default.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://elotrofutbol.media/img/og-default.png">
+<link rel="icon" href="/favicon.ico?v=39af2432" sizes="any">
+<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=39af2432">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png?v=3f854c49">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;0,700;0,800;1,500;1,700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&display=swap" onload="this.onload=null;this.rel='stylesheet'"><noscript><link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;0,700;0,800;1,500;1,700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&display=swap" rel="stylesheet"></noscript>
+<link rel="stylesheet" href="css/style.css?v=6cd42e49">
+<link rel="stylesheet" href="css/modales-mejoras.css?v=982413bb">
+<link rel="stylesheet" href="css/accesibilidad.css?v=191b9263">
+<script src="js/accesibilidad.js?v=59fdae75" defer></script>
+<link rel="stylesheet" href="css/foco.css?v=c8652610">
+<link rel="stylesheet" href="css/etiqueta.css?v=8ec619b3">
+<link rel="stylesheet" href="css/app-movil.css?v=b6df23d4">
+<script src="js/app-movil.js?v=3b122790" defer></script>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="stylesheet" href="css/proteccion-copia.css?v=5d439156">
+<link rel="stylesheet" href="css/animaciones-web.css?v=844fde5e">
+</head>
+<body>
+
+<div id="site-header"></div>
+
+<main class="wrap">
+  <div id="cabeceraEtiqueta">
+    <div class="estado-info"><div class="spinner"></div><p>Cargando...</p></div>
+  </div>
+  <div id="noticiasEtiquetaWrap" style="display:none">
+    <div class="grid-noticias" id="gridEtiqueta"></div>
+    <div class="et-mas"><button type="button" class="btn-volver" id="btnMasEtiqueta" style="display:none">Cargar más noticias</button></div>
+  </div>
+</main>
+
+<div id="site-footer"></div>
+
+<script src="js/ui-alertas.js?v=4339c846"></script>
+<script src="js/foco.js?v=133ef790"></script>
+<script src="js/config.js?v=f440593b"></script>
+<script src="js/seo.js?v=51678a88"></script>
+<script src="js/clubs.js?v=cdbd504a"></script>
+<script src="js/lector-auth.js?v=9a1c7f1f"></script>
+<script src="js/lecturas.js?v=de5c36f5"></script>
+<script src="js/layout.js?v=e8597b26"></script>
+<script src="js/cookies.js?v=845d8f5c"></script>
+<script src="js/ads.js?v=a41f4506"></script>
+<script src="js/main.js?v=858efe67"></script>
+<script>
+const ET_POR_PAGINA = 12;
+// Mismo patrón que en src-worker.js: /etiqueta/<slug>. También vale ?e=<slug> por compatibilidad.
+function slugDeLaUrl() {
+  const m = location.pathname.match(/^\/etiqueta\/([^/]+)\/?$/);
+  let s = m ? m[1] : (new URLSearchParams(location.search).get("e") || "");
+  try { s = decodeURIComponent(s); } catch (_) {}
+  return s.trim();
+}
+
+function estadoEtiquetaNoEncontrada(cont, texto) {
+  _seoMeta("name", "robots", "noindex");
+  cont.innerHTML = estadoHTML({
+    titulo: "Etiqueta no encontrada",
+    texto,
+    tipo: "error",
+    cta: `<a href="/" class="btn-volver">Ir a portada</a>`,
+  });
+}
+
+async function cargaEtiqueta() {
+  const slug = slugDeLaUrl();
+  const cont = document.getElementById("cabeceraEtiqueta");
+  if (!slug) return estadoEtiquetaNoEncontrada(cont, "El enlace no incluye ninguna etiqueta. Vuelve a la portada para seguir navegando.");
+
+  let datos;
+  try {
+    datos = await conReintento(async () => {
+      const res = await apiFetch(`/api/etiquetas/${encodeURIComponent(slug)}`);
+      if (res.status === 404) return { noExiste: true };
+      if (!res.ok) throw new Error("Error " + res.status);
+      return res.json();
+    });
+  } catch (_) {
+    cont.innerHTML = estadoHTML({
+      titulo: "No se ha podido cargar esta etiqueta",
+      texto: "Hay un problema de conexión. Vuelve a la portada e inténtalo de nuevo.",
+      tipo: "error",
+      cta: `<a href="/" class="btn-volver">Ir a portada</a>`,
+    });
+    return;
+  }
+  if (datos.noExiste) return estadoEtiquetaNoEncontrada(cont, "Todavía no hay noticias con esta etiqueta.");
+
+  const { etiqueta, indexable } = datos;
+  const nombre = etiqueta.nombre;
+  const total = etiqueta.total;
+  const urlCanonica = `/etiqueta/${encodeURIComponent(etiqueta.slug)}`;
+  fijarSeoBasico({
+    titulo: `${nombre}: noticias y crónicas — ELOTROFÚTBOLTV`,
+    descripcion: `Todas las noticias de ELOTROFÚTBOLTV sobre ${nombre} (${total} ${total === 1 ? "noticia" : "noticias"}).`,
+    urlPath: urlCanonica,
+    migas: [{ nombre: `#${nombre}` }],
+    noindex: !indexable, // con una sola noticia sería contenido casi duplicado de esa noticia
+  });
+  fijarRssAlternativo(`/rss/etiqueta/${etiqueta.slug}.xml`, `${nombre} — ELOTROFÚTBOLTV`);
+
+  cont.innerHTML = `
+    <section class="et-cabecera" aria-labelledby="etNombre">
+      <span class="et-rotulo">Etiqueta</span>
+      <h1 class="et-nombre" id="etNombre"><span class="et-almohadilla" aria-hidden="true">#</span>${escapeHtml(nombre)}</h1>
+      <p class="et-conteo">${total} ${total === 1 ? "noticia" : "noticias"}</p>
+      <a class="et-rss" href="/rss/etiqueta/${escapeHtml(etiqueta.slug)}.xml" rel="alternate" type="application/rss+xml">Seguir por RSS</a>
+    </section>`;
+
+  const wrap = document.getElementById("noticiasEtiquetaWrap");
+  const grid = document.getElementById("gridEtiqueta");
+  const btn = document.getElementById("btnMasEtiqueta");
+  let offset = 0;
+  let cargando = false;
+  async function pedirPagina() {
+    if (cargando) return;
+    cargando = true;
+    btn.disabled = true;
+    try {
+      const res = await apiFetch(`/api/articles?etiqueta=${encodeURIComponent(etiqueta.slug)}&limit=${ET_POR_PAGINA}&offset=${offset}`);
+      if (!res.ok) throw new Error("Error " + res.status);
+      const { articles, hay_mas } = await res.json();
+      const lista = Array.isArray(articles) ? articles : [];
+      grid.insertAdjacentHTML("beforeend", lista.map(cardHTML).join(""));
+      offset += lista.length;
+      wrap.style.display = "block";
+      btn.style.display = hay_mas ? "inline-block" : "none";
+    } catch (_) {
+      btn.style.display = "inline-block";
+      btn.textContent = "No se han podido cargar. Reintentar";
+    } finally {
+      cargando = false;
+      btn.disabled = false;
+    }
+  }
+  btn.addEventListener("click", () => { btn.textContent = "Cargar más noticias"; pedirPagina(); });
+  pedirPagina();
+}
+document.addEventListener("DOMContentLoaded", cargaEtiqueta);
+</script>
+<script src="js/proteccion-copia.js?v=3a8bf3dd" defer></script>
+<script src="js/animaciones-web.js?v=e24adf73" defer></script>
+</body>
+</html>

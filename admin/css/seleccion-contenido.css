@@ -1,0 +1,434 @@
+/* ==========================================================================
+   Contenido · seleccionar varias fotos/vídeos (tarjetas, barra y arrastre)
+   --------------------------------------------------------------------------
+   Va después de admin.css y reemplaza el aspecto del modo «Seleccionar».
+   El rectángulo de selección (.sel-marquee) lo crea admin-src/12 al arrastrar.
+   ========================================================================== */
+
+/* ---------- Tarjetas en modo selección ---------- */
+.galeria-contenido-seleccionable .tarjeta-media {
+  cursor: pointer;
+  user-select: none; -webkit-user-select: none;
+  transition: transform .2s cubic-bezier(.2,.8,.2,1), box-shadow .2s ease, border-color .2s ease, opacity .2s ease, filter .2s ease;
+}
+
+/* Sin "salto" al pasar el ratón: cuando se arrastra, las tarjetas no deben moverse. */
+.galeria-contenido-seleccionable .tarjeta-media:hover {
+  transform: none;
+  border-color: color-mix(in srgb, var(--celeste) 70%, transparent);
+  box-shadow: 0 8px 22px rgba(12,27,46,.16);
+}
+
+.galeria-contenido-seleccionable .tarjeta-media .preview { cursor: pointer; }
+
+.galeria-contenido-seleccionable .tarjeta-media .preview img { transition: transform .35s cubic-bezier(.2,.8,.2,1), filter .25s ease; }
+
+.galeria-contenido-seleccionable .tarjeta-media .acciones-media { opacity: .55; pointer-events: none; transition: opacity .2s ease; }
+
+/* Tarjeta seleccionada: aro celeste, halo suave y velo sobre la imagen */
+.galeria-contenido-seleccionable .tarjeta-media.seleccionada {
+  border-color: var(--celeste);
+  box-shadow: 0 0 0 3px var(--celeste), 0 14px 30px -8px color-mix(in srgb, var(--celeste) 55%, transparent);
+  transform: scale(.985);
+}
+
+.galeria-contenido-seleccionable .tarjeta-media .preview::after {
+  content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; opacity: 0;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--celeste) 38%, transparent), color-mix(in srgb, var(--celeste) 14%, transparent));
+  transition: opacity .2s ease;
+}
+
+.galeria-contenido-seleccionable .tarjeta-media.seleccionada .preview::after { opacity: 1; }
+
+.galeria-contenido-seleccionable .tarjeta-media.seleccionada .preview img { transform: scale(1.05); }
+
+/* Mientras el rectángulo la toca: aviso suave antes de soltar */
+.galeria-contenido-seleccionable .tarjeta-media.sel-en-caja:not(.seleccionada) { box-shadow: 0 0 0 2px var(--celeste); }
+
+/* Tarjetas que no puedes seleccionar (de otra persona) */
+.galeria-contenido-seleccionable .tarjeta-media:not([data-seleccionable]) {
+  opacity: .42; filter: grayscale(.7); cursor: not-allowed;
+}
+
+.galeria-contenido-seleccionable .tarjeta-media:not([data-seleccionable]):hover { box-shadow: var(--sombra); border-color: var(--borde); }
+
+/* ---------- Casilla de selección ---------- */
+.galeria-contenido-seleccionable .tarjeta-media .check-seleccion {
+  position: absolute; top: 10px; right: 10px; z-index: 3;
+  width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(12,27,46,.38); border: 2px solid rgba(255,255,255,.95);
+  -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+  box-shadow: 0 2px 8px rgba(0,0,0,.35);
+  transition: background .18s ease, border-color .18s ease, transform .18s cubic-bezier(.3,1.6,.5,1);
+}
+
+.galeria-contenido-seleccionable .tarjeta-media:hover .check-seleccion { transform: scale(1.1); background: rgba(12,27,46,.55); }
+
+.galeria-contenido-seleccionable .tarjeta-media .check-seleccion svg {
+  display: block; width: 16px; height: 16px; fill: none; stroke: #fff; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round;
+  stroke-dasharray: 24; stroke-dashoffset: 24; transition: stroke-dashoffset .22s ease .04s;
+}
+
+.galeria-contenido-seleccionable .tarjeta-media.seleccionada .check-seleccion {
+  background: var(--celeste); border-color: #fff; transform: scale(1.1);
+  animation: selCheckPop .28s cubic-bezier(.3,1.6,.5,1);
+}
+
+.galeria-contenido-seleccionable .tarjeta-media.seleccionada .check-seleccion svg { stroke-dashoffset: 0; }
+
+@keyframes selCheckPop { 0% { transform: scale(.6); } 100% { transform: scale(1.1); } }
+
+/* ---------- Rectángulo de arrastre ---------- */
+.sel-marquee {
+  position: fixed; z-index: 9999; pointer-events: none; box-sizing: border-box;
+  border: 1.5px solid var(--celeste); border-radius: 8px;
+  background: color-mix(in srgb, var(--celeste) 16%, transparent);
+  box-shadow: 0 0 0 1px rgba(255,255,255,.35) inset, 0 6px 22px rgba(91,184,232,.25);
+}
+
+body.seleccionando-arrastre, body.seleccionando-arrastre * { cursor: crosshair !important; user-select: none !important; -webkit-user-select: none !important; }
+
+body.seleccionando-arrastre .tarjeta-media, body.seleccionando-arrastre .tarjeta-media * { transition: none !important; animation: none !important; }
+/* Rendimiento: mientras se arrastra las tarjetas no reciben el ratón (sin :hover, sombras ni transiciones
+   que repintar en cada movimiento). El rectángulo mide sus posiciones por su cuenta. */
+body.seleccionando-arrastre .galeria-contenido { pointer-events: none !important; }
+
+[data-theme="dark"] .galeria-contenido-seleccionable .tarjeta-media.seleccionada {
+  box-shadow: 0 0 0 3px var(--celeste), 0 14px 30px -8px rgba(91,184,232,.45);
+}
+
+@media (max-width: 720px) {
+.galeria-contenido-seleccionable .tarjeta-media .check-seleccion { width: 30px; height: 30px; }
+
+}
+
+@media (hover: none) {
+.galeria-contenido-seleccionable .tarjeta-media:hover { box-shadow: var(--sombra); }
+ }
+
+/* ==========================================================================
+   Mejoras v2 · Contenido: seleccionar varias fotos/vídeos
+   ========================================================================== */
+
+/* ---------- Botón de entrada «Seleccionar varios» ---------- */
+.carpetas-inicio-acciones .carpeta-acciones button[data-accion="seleccionar"],
+.carpeta-cabecera [data-accion="seleccionar"] {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 9px 18px; border-radius: 999px; font-weight: 700; font-size: .84rem;
+  border: 1.5px solid color-mix(in srgb, var(--celeste) 60%, transparent);
+  background: color-mix(in srgb, var(--celeste) 12%, var(--tarjeta)); color: var(--texto);
+  cursor: pointer; transition: background .18s ease, border-color .18s ease, transform .12s ease, box-shadow .18s ease;
+}
+
+.carpetas-inicio-acciones .carpeta-acciones button[data-accion="seleccionar"]::before,
+.carpeta-cabecera [data-accion="seleccionar"]::before {
+  content: ""; width: 16px; height: 16px; flex: none; background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='18' height='18' rx='5'/%3E%3Cpolyline points='8 12 11 15 16 9'/%3E%3C/svg%3E") center / contain no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='18' height='18' rx='5'/%3E%3Cpolyline points='8 12 11 15 16 9'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.carpetas-inicio-acciones .carpeta-acciones button[data-accion="seleccionar"]:hover,
+.carpeta-cabecera [data-accion="seleccionar"]:hover {
+  background: color-mix(in srgb, var(--celeste) 24%, var(--tarjeta)); border-color: var(--celeste);
+  box-shadow: 0 6px 16px -8px color-mix(in srgb, var(--celeste) 70%, transparent);
+}
+
+.carpetas-inicio-acciones .carpeta-acciones button[data-accion="seleccionar"]:active { transform: scale(.97); }
+
+/* ---------- Tarjetas: círculo siempre visible y selección más clara ---------- */
+.galeria-contenido-seleccionable .tarjeta-media .check-seleccion {
+  top: 10px; right: 10px; width: 30px; height: 30px;
+  background: rgba(12,27,46,.28); border: 2.5px solid rgba(255,255,255,.95);
+}
+
+.galeria-contenido-seleccionable .tarjeta-media.seleccionada .check-seleccion {
+  background: linear-gradient(135deg, var(--celeste), #2b8fc7); border-color: #fff;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--celeste) 35%, transparent), 0 3px 10px rgba(0,0,0,.35);
+}
+
+.galeria-contenido-seleccionable .tarjeta-media .check-seleccion svg { width: 17px; height: 17px; }
+
+.galeria-contenido-seleccionable .tarjeta-media.seleccionada .cuerpo {
+  background: color-mix(in srgb, var(--celeste) 14%, var(--tarjeta));
+  transition: background .2s ease;
+}
+
+.galeria-contenido-seleccionable .tarjeta-media.seleccionada .titulo-media { font-weight: 700; }
+
+.galeria-contenido-seleccionable .tarjeta-media:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--celeste) 65%, transparent); outline-offset: 3px;
+}
+
+/* En el modal «Añadir imágenes a la noticia» todas las tarjetas se pueden elegir
+   (no llevan data-seleccionable): se evita que salgan apagadas. */
+#modalGaleriaArticulo .galeria-contenido-seleccionable .tarjeta-media:not([data-seleccionable]) {
+  opacity: 1; filter: none; cursor: pointer;
+}
+
+#modalGaleriaArticulo .galeria-contenido-seleccionable .tarjeta-media:not([data-seleccionable]):hover {
+  border-color: color-mix(in srgb, var(--celeste) 70%, transparent);
+  box-shadow: 0 8px 22px rgba(12,27,46,.16);
+}
+
+#modalGaleriaArticulo .galeria-contenido-seleccionable .tarjeta-media.seleccionada {
+  box-shadow: 0 0 0 3px var(--celeste), 0 14px 30px -8px color-mix(in srgb, var(--celeste) 55%, transparent);
+}
+
+#modalGaleriaArticulo .galeria-contenido-seleccionable .tarjeta-media .acciones-media { display: none; }
+
+/* ---------- Móvil: botón de entrada a todo el ancho ---------- */
+@media (max-width: 720px) {
+  .carpetas-inicio-acciones .carpeta-acciones button[data-accion="seleccionar"] { width: 100%; }
+
+}
+
+[data-theme="dark"] .carpetas-inicio-acciones .carpeta-acciones button[data-accion="seleccionar"],
+[data-theme="dark"] .carpeta-cabecera [data-accion="seleccionar"] {
+  background: color-mix(in srgb, var(--celeste) 16%, #1a2130); color: var(--celeste-claro);
+}
+
+[data-theme="dark"] .galeria-contenido-seleccionable .tarjeta-media.seleccionada .cuerpo {
+  background: color-mix(in srgb, var(--celeste) 18%, #1a2130);
+}
+
+/* ==========================================================================
+   BARRA SUPERIOR DE «SELECCIONAR VARIOS»  (#barraSeleccionMedia)
+   --------------------------------------------------------------------------
+   Reescrita entera. Es la ÚNICA fuente de estilo de la barra: se usa el id
+   para ganar a las reglas antiguas de admin.css sin recurrir a !important.
+   Estructura (la crea panel.html, sin cambios):
+     .barra-seleccion-texto  · contador «N seleccionados»
+     .barra-seleccion-ayuda  · pista del ratón (solo escritorio)
+     #btnSeleccionarTodoMedia · #btnEditarSeleccionMedia
+     .barra-seleccion-etiqueta + #moverASelectMedia + #btnMoverSeleccionMedia
+     #btnCancelarSeleccionMedia
+   El JS la muestra/oculta con style.display («flex» / «none»).
+   ========================================================================== */
+#barraSeleccionMedia.barra-seleccion-media {
+  --bs-alto: 40px;
+  --bs-acento: var(--celeste, #5bb8e8);
+  --bs-acento-fuerte: #2b8fc7;
+  --bs-fondo: color-mix(in srgb, var(--tarjeta, #fff) 94%, transparent);
+  --bs-borde: color-mix(in srgb, var(--bs-acento) 60%, transparent);
+  --bs-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235a6270' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+
+  position: sticky;
+  top: 8px;
+  bottom: auto;
+  z-index: 30;
+  box-sizing: border-box;
+  display: flex;                 /* el JS lo pone a none/flex en línea */
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+  width: 100%;
+  margin: 0 0 18px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  border: 1.5px solid var(--bs-borde);
+  background: var(--bs-fondo);
+  color: var(--texto);
+  -webkit-backdrop-filter: blur(12px) saturate(1.25);
+  backdrop-filter: blur(12px) saturate(1.25);
+  box-shadow: 0 14px 34px -12px rgba(12, 27, 46, .38), 0 0 0 4px color-mix(in srgb, var(--bs-acento) 12%, transparent);
+  animation: barraSelEntra .26s cubic-bezier(.2, .8, .2, 1) both;
+}
+[data-theme="dark"] #barraSeleccionMedia.barra-seleccion-media {
+  --bs-fondo: color-mix(in srgb, var(--tarjeta, #1a2130) 94%, transparent);
+  --bs-acento-fuerte: #3aa6dd;
+  --bs-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239aa4b8' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  box-shadow: 0 16px 38px -12px rgba(0, 0, 0, .7), 0 0 0 4px color-mix(in srgb, var(--bs-acento) 14%, transparent);
+}
+@keyframes barraSelEntra { from { opacity: 0; transform: translateY(-10px) scale(.99); } to { opacity: 1; transform: none; } }
+
+/* Salto de línea: arriba contador + pista + cancelar; abajo las acciones */
+#barraSeleccionMedia.barra-seleccion-media::after {
+  content: ""; order: 4; flex: 1 0 100%; height: 0; margin: -4px 0;
+}
+
+/* Orden visual */
+#barraSeleccionMedia .barra-seleccion-texto  { order: 1; }
+#barraSeleccionMedia .barra-seleccion-ayuda  { order: 2; }
+#barraSeleccionMedia #btnCancelarSeleccionMedia { order: 3; }
+#barraSeleccionMedia #btnSeleccionarTodoMedia { order: 5; }
+#barraSeleccionMedia #btnEditarSeleccionMedia { order: 6; }
+#barraSeleccionMedia .barra-seleccion-etiqueta { order: 7; }
+#barraSeleccionMedia #moverASelectMedia      { order: 8; }
+#barraSeleccionMedia #btnMoverSeleccionMedia { order: 9; }
+
+/* Contador */
+#barraSeleccionMedia .barra-seleccion-texto {
+  display: inline-flex; align-items: center; justify-content: center;
+  height: var(--bs-alto); min-width: 150px; margin: 0; padding: 0 18px;
+  border-radius: 999px; box-sizing: border-box;
+  font-size: .88rem; font-weight: 800; line-height: 1; white-space: nowrap;
+  font-variant-numeric: tabular-nums; color: var(--texto);
+  background: color-mix(in srgb, var(--bs-acento) 18%, transparent);
+  border: 1.5px solid color-mix(in srgb, var(--bs-acento) 50%, transparent);
+}
+
+/* Pista del ratón */
+#barraSeleccionMedia .barra-seleccion-ayuda {
+  flex: 1 1 0; min-width: 0; margin: 0; display: flex; align-items: center; gap: 8px;
+  font-size: .78rem; line-height: 1.3; color: var(--texto-suave);
+}
+#barraSeleccionMedia .barra-seleccion-ayuda svg {
+  width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor;
+  stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+}
+#barraSeleccionMedia .barra-seleccion-ayuda kbd {
+  font: inherit; font-size: .72rem; font-weight: 700; padding: 1px 7px; border-radius: 6px;
+  border: 1px solid var(--borde); background: var(--fondo-alt); color: var(--texto);
+}
+
+/* Botones: misma altura, mismo radio */
+#barraSeleccionMedia .btn-primari,
+#barraSeleccionMedia .btn-secundari {
+  box-sizing: border-box; height: var(--bs-alto); margin: 0; padding: 0 20px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  border-radius: 999px; font-size: .84rem; font-weight: 700; line-height: 1; white-space: nowrap;
+  cursor: pointer;
+  transition: background-color .18s ease, border-color .18s ease, color .18s ease,
+              box-shadow .18s ease, transform .12s ease, opacity .18s ease;
+}
+#barraSeleccionMedia .btn-primari:active:not(:disabled),
+#barraSeleccionMedia .btn-secundari:active:not(:disabled) { transform: scale(.96); }
+#barraSeleccionMedia .btn-secundari {
+  background: transparent; color: var(--texto); border: 1.5px solid var(--borde);
+}
+#barraSeleccionMedia .btn-secundari:hover {
+  border-color: var(--bs-acento); background: color-mix(in srgb, var(--bs-acento) 12%, transparent);
+}
+#barraSeleccionMedia #btnCancelarSeleccionMedia { color: var(--texto-suave); }
+#barraSeleccionMedia #btnCancelarSeleccionMedia:hover {
+  border-color: var(--rojo, #d1132e); color: var(--rojo, #d1132e);
+  background: color-mix(in srgb, var(--rojo, #d1132e) 9%, transparent);
+}
+#barraSeleccionMedia .btn-primari {
+  border: 1.5px solid transparent; color: #fff;
+  background: linear-gradient(135deg, var(--bs-acento-fuerte), #1f6f9f);
+  box-shadow: 0 6px 16px -8px color-mix(in srgb, var(--bs-acento-fuerte) 80%, transparent);
+}
+#barraSeleccionMedia .btn-primari:hover:not(:disabled) {
+  filter: brightness(1.08);
+  box-shadow: 0 10px 22px -8px color-mix(in srgb, var(--bs-acento-fuerte) 85%, transparent);
+}
+#barraSeleccionMedia .btn-primari:disabled {
+  opacity: .45; cursor: not-allowed; filter: grayscale(.35); box-shadow: none;
+}
+#barraSeleccionMedia .btn-primari:focus-visible,
+#barraSeleccionMedia .btn-secundari:focus-visible,
+#barraSeleccionMedia select:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--bs-acento) 65%, transparent); outline-offset: 2px;
+}
+
+/* «Mover a» + carpeta */
+#barraSeleccionMedia .barra-seleccion-etiqueta {
+  margin: 0 -4px 0 auto; padding: 0 0 0 16px; border-left: 1.5px solid var(--borde);
+  font-size: .7rem; font-weight: 800; letter-spacing: .5px; text-transform: uppercase;
+  line-height: var(--bs-alto); color: var(--texto-suave); white-space: nowrap;
+}
+#barraSeleccionMedia #moverASelectMedia {
+  -webkit-appearance: none; appearance: none; box-sizing: border-box;
+  width: auto; min-width: 170px; max-width: 260px; height: var(--bs-alto); margin: 0;
+  padding: 0 38px 0 16px; border-radius: 999px;
+  border: 1.5px solid var(--borde); background-color: var(--fondo-alt);
+  background-image: var(--bs-chevron); background-repeat: no-repeat;
+  background-position: right 14px center; background-size: 14px;
+  color: var(--texto); font-size: .84rem; font-weight: 600; line-height: 1;
+  text-overflow: ellipsis; cursor: pointer;
+  transition: border-color .18s ease, background-color .18s ease;
+}
+#barraSeleccionMedia #moverASelectMedia:hover { border-color: var(--bs-acento); }
+#barraSeleccionMedia #moverASelectMedia option { color: #1a1c22; background: #fff; }
+[data-theme="dark"] #barraSeleccionMedia #moverASelectMedia option { color: #e7eaf0; background: #1a2130; }
+
+/* Portátiles estrechos: la pista ocupa demasiado, se oculta */
+@media (max-width: 1000px) {
+  #barraSeleccionMedia .barra-seleccion-ayuda { display: none; }
+  #barraSeleccionMedia .barra-seleccion-texto { flex: 1 1 auto; }
+}
+
+/* Móvil: hoja inferior, botones grandes y a todo el ancho */
+@media (max-width: 720px) {
+  #barraSeleccionMedia.barra-seleccion-media {
+    --bs-alto: 44px;
+    position: sticky; top: auto; bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    z-index: 60; gap: 8px; padding: 10px 12px; margin-bottom: 12px; border-radius: 20px;
+    box-shadow: 0 -6px 26px -6px rgba(12, 27, 46, .45), 0 0 0 4px color-mix(in srgb, var(--bs-acento) 12%, transparent);
+    animation-name: barraSelEntraMovil;
+  }
+  #barraSeleccionMedia.barra-seleccion-media::after { display: none; }
+  #barraSeleccionMedia .barra-seleccion-texto { order: 1; flex: 1 1 0; min-width: 0; padding: 0 12px; }
+  #barraSeleccionMedia #btnCancelarSeleccionMedia { order: 2; flex: 0 0 auto; padding: 0 16px; }
+  #barraSeleccionMedia #btnSeleccionarTodoMedia,
+  #barraSeleccionMedia #btnEditarSeleccionMedia { order: 3; flex: 1 1 calc(50% - 4px); padding: 0 10px; }
+  #barraSeleccionMedia .barra-seleccion-etiqueta {
+    order: 5; flex: 1 1 100%; margin: 4px 0 -2px; padding: 0; border-left: 0; line-height: 1.2;
+  }
+  #barraSeleccionMedia #moverASelectMedia { order: 6; flex: 1 1 0; min-width: 0; max-width: none; }
+  #barraSeleccionMedia #btnMoverSeleccionMedia { order: 7; flex: 0 0 auto; padding: 0 22px; }
+}
+@keyframes barraSelEntraMovil { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  #barraSeleccionMedia.barra-seleccion-media { animation: none; }
+  #barraSeleccionMedia .btn-primari, #barraSeleccionMedia .btn-secundari,
+  #barraSeleccionMedia #moverASelectMedia { transition: none; }
+  .galeria-contenido-seleccionable .tarjeta-media,
+  .galeria-contenido-seleccionable .tarjeta-media .preview img,
+  .galeria-contenido-seleccionable .tarjeta-media .check-seleccion,
+  .galeria-contenido-seleccionable .tarjeta-media.seleccionada .cuerpo,
+  .carpetas-inicio-acciones .carpeta-acciones button[data-accion="seleccionar"] { transition: none; animation: none; }
+}
+@media (forced-colors: active) {
+  #barraSeleccionMedia.barra-seleccion-media { border-color: CanvasText; backdrop-filter: none; -webkit-backdrop-filter: none; }
+  #barraSeleccionMedia .btn-primari { border-color: ButtonText; background: ButtonFace; color: ButtonText; }
+}
+
+/* Mientras se arrastra el rectángulo, todas las tarjetas miden su altura real: con
+   content-visibility:auto (altura provisional de 340px) las posiciones cambiaban al hacer scroll
+   y el rectángulo marcaba tarjetas que no tocaba. */
+body.seleccionando-arrastre .galeria-contenido > .tarjeta-media { content-visibility: visible !important; contain-intrinsic-size: none !important; }
+
+/* ==========================================================================
+   RENDIMIENTO del modo selección (va al final a propósito: pisa lo de arriba)
+   --------------------------------------------------------------------------
+   Con cientos de tarjetas, cada efecto «bonito» por tarjeta se multiplica:
+   - backdrop-filter (desenfoque del fondo) en la casilla de CADA tarjeta y en la barra fija:
+     lo más caro de pintar al hacer scroll → fondo sólido.
+   - sombras grandes con desenfoque, transform:scale y filter en cada tarjeta marcada → aro simple.
+   - animación de entrada por tarjeta y transiciones → fuera.
+   ========================================================================== */
+.galeria-contenido > .tarjeta-media { animation: none; contain: layout style; }
+
+.galeria-contenido-seleccionable .tarjeta-media,
+.galeria-contenido-seleccionable .tarjeta-media .preview img,
+.galeria-contenido-seleccionable .tarjeta-media .preview::after,
+.galeria-contenido-seleccionable .tarjeta-media .check-seleccion,
+.galeria-contenido-seleccionable .tarjeta-media .check-seleccion svg,
+.galeria-contenido-seleccionable .tarjeta-media .acciones-media { transition: none; }
+
+.galeria-contenido-seleccionable .tarjeta-media.seleccionada,
+[data-theme="dark"] .galeria-contenido-seleccionable .tarjeta-media.seleccionada,
+#modalGaleriaArticulo .galeria-contenido-seleccionable .tarjeta-media.seleccionada {
+  box-shadow: 0 0 0 3px var(--celeste);
+  transform: none;
+}
+.galeria-contenido-seleccionable .tarjeta-media.seleccionada .preview img { transform: none; }
+.galeria-contenido-seleccionable .tarjeta-media:hover,
+#modalGaleriaArticulo .galeria-contenido-seleccionable .tarjeta-media:not([data-seleccionable]):hover { box-shadow: none; }
+.galeria-contenido-seleccionable .tarjeta-media:not([data-seleccionable]) { filter: none; opacity: .45; }
+
+.galeria-contenido-seleccionable .tarjeta-media .check-seleccion {
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+  background: rgba(12,27,46,.62); box-shadow: none;
+}
+.galeria-contenido-seleccionable .tarjeta-media:hover .check-seleccion { transform: none; }
+.galeria-contenido-seleccionable .tarjeta-media.seleccionada .check-seleccion { animation: none; transform: none; }
+
+#barraSeleccionMedia.barra-seleccion-media {
+  -webkit-backdrop-filter: none; backdrop-filter: none; animation: none;
+  background: var(--tarjeta, #fff);
+}

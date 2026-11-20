@@ -1,0 +1,8 @@
+# Política de divulgación de vulnerabilidades de ELOTROFÚTBOLTV (RFC 9116).
+# Si has encontrado un fallo de seguridad, escríbenos antes de hacerlo público.
+
+Contact: mailto:contacto@elotrofutbol.media
+Expires: 2027-11-05T00:00:00.000Z
+Preferred-Languages: es, en
+Canonical: https://elotrofutbol.media/.well-known/security.txt
+Policy: https://elotrofutbol.media/aviso-legal

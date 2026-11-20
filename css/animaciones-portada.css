@@ -1,0 +1,167 @@
+/* ==========================================================================
+   Animaciones de la portada (index)
+   - Aparecer al hacer scroll (js/animaciones-portada.js añade .rv / .rv-in)
+   - Marcadores: pop cuando cambia el gol en directo; cifras tabulares
+   - Más leídas / Tendencias: números e iconos entran con rebote
+   Solo transform + opacity (sin layout). Con "reducir movimiento" no se anima nada.
+   ========================================================================== */
+
+body[data-page=inicio]{
+  --rv-ease:cubic-bezier(.22,.8,.3,1);
+  --rv-dur:.65s;
+}
+
+/* ---------- Aparecer al hacer scroll ---------- */
+/* Solo se oculta si el JS ha marcado el elemento (html.eof-anim + .rv):
+   sin JS o con reduce-motion todo se ve normal. */
+html.eof-anim body[data-page=inicio] .rv{
+  opacity:0;
+  transform:translate3d(0,24px,0);
+  transition:opacity var(--rv-dur) var(--rv-ease),
+             transform var(--rv-dur) var(--rv-ease);
+  transition-delay:var(--rv-d,0ms);
+}
+html.eof-anim body[data-page=inicio] .rv[data-rv=left]{transform:translate3d(-18px,0,0)}
+html.eof-anim body[data-page=inicio] .rv[data-rv=pop]{transform:translate3d(0,14px,0) scale(.97)}
+html.eof-anim body[data-page=inicio] .rv.rv-in{
+  opacity:1;
+  transform:none;
+}
+
+/* ---------- Marcadores ---------- */
+body[data-page=inicio] .partido .marcador{font-variant-numeric:tabular-nums}
+
+/* Gol en directo: el marcador crece y deja un destello */
+body[data-page=inicio] .partido .marcador.marcador-gol > span:first-child{
+  display:inline-block;
+  animation:eof-gol 1.1s var(--rv-ease) both;
+}
+@keyframes eof-gol{
+  0%  {transform:scale(1);text-shadow:0 0 0 rgba(255,193,7,0)}
+  25% {transform:scale(1.45);text-shadow:0 0 18px rgba(255,193,7,.95)}
+  60% {transform:scale(.97);text-shadow:0 0 10px rgba(255,193,7,.45)}
+  100%{transform:scale(1);text-shadow:0 0 0 rgba(255,193,7,0)}
+}
+
+/* Partido en juego: el marcador "respira" suavemente */
+body[data-page=inicio] .partido.partido-en-vivo .marcador-en-vivo{
+  animation:eof-vivo-respira 2.4s ease-in-out infinite;
+}
+@keyframes eof-vivo-respira{
+  0%,100%{opacity:1}
+  50%{opacity:.78}
+}
+
+/* ---------- Más leídas / Tendencias ---------- */
+html.eof-anim body[data-page=inicio] .fila-noticia.rv-in .fila-num,
+html.eof-anim body[data-page=inicio] .fila-noticia.rv-in .fila-icono{
+  animation:eof-num-entra .45s cubic-bezier(.22,.8,.3,1) both;
+  animation-delay:calc(var(--rv-d,0ms) + 120ms);
+}
+@keyframes eof-num-entra{
+  0%  {transform:scale(.85);opacity:0}
+  100%{transform:scale(1);opacity:1}
+}
+
+/* ---------- Accesibilidad / impresión ---------- */
+@media (prefers-reduced-motion:reduce){
+  html.eof-anim body[data-page=inicio] .rv,
+  html.eof-anim body[data-page=inicio] .rv.rv-in{
+    opacity:1;transform:none;transition:none;
+  }
+  body[data-page=inicio] .partido .marcador.marcador-gol > span:first-child,
+  body[data-page=inicio] .partido.partido-en-vivo .marcador-en-vivo,
+  html.eof-anim body[data-page=inicio] .fila-noticia.rv-in .fila-num,
+  html.eof-anim body[data-page=inicio] .fila-noticia.rv-in .fila-icono{
+    animation:none;
+  }
+}
+@media print{
+  html.eof-anim body[data-page=inicio] .rv{opacity:1;transform:none;transition:none}
+}
+
+/* ==========================================================================
+   v2 · Más animaciones, estilo moderno
+   (hero con entrada y parallax, barra de progreso, foco que sigue al ratón,
+   subrayado de títulos que se dibuja, feedback al pulsar, halo en directo)
+   ========================================================================== */
+
+/* ---------- Barra de progreso de lectura ---------- */
+.eof-progreso{
+  position:fixed;top:0;left:0;right:0;height:3px;z-index:9999;
+  pointer-events:none;transform-origin:0 50%;
+  transform:scaleX(var(--p,0));
+  background:linear-gradient(90deg,var(--rojo),var(--celeste));
+  opacity:0;transition:opacity .25s;
+}
+.eof-progreso.on{opacity:1}
+
+@media (prefers-reduced-motion:no-preference){
+
+  /* ---------- Hero: entrada al cargar + parallax ---------- */
+  body[data-page=inicio] .hero-principal:not(.hero-esqueleto) img:not(.ctx-logo):not(.ctx-escudo){
+    scale:1.1;
+    translate:0 var(--eof-par,0px);
+    animation:none;
+  }
+  @keyframes eof-hero-zoom{from{transform:scale(1.14)}to{transform:scale(1)}}
+
+  body[data-page=inicio] .hero-principal:not(.hero-esqueleto) .overlay > div > *{
+    animation:none;
+  }
+  body[data-page=inicio] .hero-principal:not(.hero-esqueleto) .overlay > div > *:nth-child(1){animation-delay:.25s}
+  body[data-page=inicio] .hero-principal:not(.hero-esqueleto) .overlay > div > *:nth-child(2){animation-delay:.33s}
+  body[data-page=inicio] .hero-principal:not(.hero-esqueleto) .overlay > div > *:nth-child(3){animation-delay:.41s}
+  body[data-page=inicio] .hero-principal:not(.hero-esqueleto) .overlay > div > *:nth-child(4){animation-delay:.49s}
+  body[data-page=inicio] .hero-principal:not(.hero-esqueleto) .overlay > div > *:nth-child(5){animation-delay:.57s}
+  @keyframes eof-sube{
+    from{opacity:0;transform:translate3d(0,18px,0)}
+    to{opacity:1;transform:none}
+  }
+
+  body[data-page=inicio] .hero-secundarias .mini-card:not(.hero-esqueleto){
+    animation:eof-entra-der .7s var(--rv-ease) backwards;
+  }
+  body[data-page=inicio] .hero-secundarias .mini-card:not(.hero-esqueleto):nth-child(1){animation-delay:.2s}
+  body[data-page=inicio] .hero-secundarias .mini-card:not(.hero-esqueleto):nth-child(2){animation-delay:.3s}
+  body[data-page=inicio] .hero-secundarias .mini-card:not(.hero-esqueleto):nth-child(3){animation-delay:.4s}
+  body[data-page=inicio] .hero-secundarias .mini-card:not(.hero-esqueleto):nth-child(4){animation-delay:.5s}
+  @keyframes eof-entra-der{
+    from{opacity:0;transform:translate3d(28px,0,0)}
+    to{opacity:1;transform:none}
+  }
+
+  /* ---------- Subrayado de títulos que se dibuja ---------- */
+  body[data-page=inicio] .section-title.eof-linea-pre:after{clip-path:inset(0 100% 0 0)}
+  body[data-page=inicio] .section-title.eof-linea-in:after{
+    clip-path:inset(0 0 0 0);
+    transition:clip-path .9s var(--rv-ease) .1s;
+  }
+
+  /* ---------- Redes: iconos con rebote escalonado ---------- */
+  body[data-page=inicio] .redes-section.rv-in .redes-icons a{
+    animation:eof-num-entra .45s cubic-bezier(.22,.8,.3,1) both;
+  }
+  body[data-page=inicio] .redes-section.rv-in .redes-icons a:nth-child(1){animation-delay:.15s}
+  body[data-page=inicio] .redes-section.rv-in .redes-icons a:nth-child(2){animation-delay:.22s}
+  body[data-page=inicio] .redes-section.rv-in .redes-icons a:nth-child(3){animation-delay:.29s}
+  body[data-page=inicio] .redes-section.rv-in .redes-icons a:nth-child(4){animation-delay:.36s}
+  body[data-page=inicio] .redes-section.rv-in .redes-icons a:nth-child(5){animation-delay:.43s}
+  body[data-page=inicio] .redes-section.rv-in .redes-icons a:nth-child(6){animation-delay:.5s}
+
+  /* ---------- Halo del punto "en vivo" ---------- */
+  body[data-page=inicio] .en-vivo-punto{position:relative}
+  body[data-page=inicio] .en-vivo-punto::after{content:"";position:absolute;inset:0;border-radius:50%;
+    background:var(--rojo,#d1132e);pointer-events:none;
+    animation:eof-halo 1.8s ease-out infinite}
+  @keyframes eof-halo{from{transform:scale(1);opacity:.55}to{transform:scale(3.2);opacity:0}}
+
+
+  /* ---------- Feedback táctil al pulsar ---------- */
+  body[data-page=inicio] .card:active{transform:scale(.99)}
+  body[data-page=inicio] .mini-card:active,
+  body[data-page=inicio] .fila-noticia:active{transform:scale(.99)}
+  body[data-page=inicio] .partido:active{transform:scale(.99)}
+  body[data-page=inicio] .btn-cargar-mas:active:not(:disabled){transform:scale(.96)}
+  body[data-page=inicio] .redes-icons a:active{transform:scale(.94)}
+}

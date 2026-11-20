@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta name="google-adsense-account" content="ca-pub-7347856722927942">
+<script>
+/* Perfil de autor: la petición a la API arranca YA, en paralelo con la descarga de los scripts del sitio
+   (antes esperaba a DOMContentLoaded, o sea, a que se ejecutaran todos). cargaPerfilAutor() la recoge de aquí;
+   si falla o no existe, hace su carga normal con apiFetch (mismo resultado, solo que más tarde). */
+(function(){try{var id=new URLSearchParams(location.search).get("id");if(!id||!window.fetch)return;
+window.__eofAutorPre={id:id,p:fetch("https://api.elotrofutbol.media/api/autores/"+encodeURIComponent(id),{cache:"no-store"}).then(function(r){return r.ok?r.json().then(function(d){return{status:200,datos:d};}):{status:r.status,datos:null};}).catch(function(){return null;})};}catch(e){}})();
+</script>
+<script src="js/tema.js?v=65626bb2"></script>
+<script src="js/preferencias.js?v=6e49f5b3"></script>
+<meta charset="UTF-8">
+<script>/* splash.js: bloquea el parseo solo si la web se abre como app (o ?splash=1); en navegador carga en async, sin frenar el pintado. */
+(function(){var a=false;try{a=matchMedia("(display-mode: standalone)").matches||matchMedia("(display-mode: fullscreen)").matches||matchMedia("(display-mode: minimal-ui)").matches||navigator.standalone===true;}catch(e){}
+if(a||/[?&]splash=1(&|$)/.test(location.search)){document.write('<script src="/js/splash.js?v=b5004788"><\/script>');}
+else{var s=document.createElement("script");s.src="/js/splash.js?v=b5004788";s.async=true;document.head.appendChild(s);}})();
+</script>
+<script src="/js/cargando.js?v=4a5cb1bc"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://api.elotrofutbol.media" crossorigin>
+<link rel="preconnect" href="https://res.cloudinary.com">
+<title id="pageTitle">Autor — ELOTROFÚTBOLTV</title>
+<meta property="og:image" content="https://elotrofutbol.media/img/og-default.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://elotrofutbol.media/img/og-default.png">
+<link rel="icon" href="/favicon.ico?v=39af2432" sizes="any">
+<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=39af2432">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png?v=3f854c49">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;0,700;0,800;1,500;1,700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&display=swap" onload="this.onload=null;this.rel='stylesheet'"><noscript><link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;0,700;0,800;1,500;1,700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&display=swap" rel="stylesheet"></noscript>
+<link rel="stylesheet" href="css/style.css?v=6cd42e49">
+<link rel="stylesheet" href="css/modales-mejoras.css?v=982413bb">
+<link rel="stylesheet" href="css/accesibilidad.css?v=191b9263">
+<script src="js/accesibilidad.js?v=59fdae75" defer></script>
+<link rel="stylesheet" href="css/foco.css?v=c8652610">
+<link rel="stylesheet" href="css/perfil-autor-mejoras.css?v=0842ede3">
+<link rel="stylesheet" href="css/app-movil.css?v=b6df23d4">
+<script src="js/app-movil.js?v=3b122790" defer></script>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="stylesheet" href="css/proteccion-copia.css?v=5d439156">
+<link rel="stylesheet" href="css/animaciones-web.css?v=844fde5e">
+</head>
+<body>
+
+<div id="site-header"></div>
+
+<main class="wrap">
+  <div id="perfilAutor">
+    <div class="pa-ficha pa-esq" role="status" aria-live="polite">
+      <span class="pa-sr">Cargando perfil…</span>
+      <div class="pa-banda" aria-hidden="true"></div>
+      <div class="pa-identidad" aria-hidden="true">
+        <div class="pa-avatar-wrap"><span class="pa-avatar pa-sk"></span></div>
+        <div class="pa-id-texto">
+          <span class="pa-sk pa-sk-rol"></span>
+          <span class="pa-sk pa-sk-nombre"></span>
+          <span class="pa-sk pa-sk-linea"></span>
+          <div class="pa-sk-chips"><span class="pa-sk"></span><span class="pa-sk"></span></div>
+        </div>
+      </div>
+      <div class="pa-cuerpo" aria-hidden="true">
+        <div class="pa-principal">
+          <span class="pa-sk pa-sk-h2"></span>
+          <span class="pa-sk pa-sk-p"></span>
+          <span class="pa-sk pa-sk-p"></span>
+          <span class="pa-sk pa-sk-p pa-sk-corto"></span>
+        </div>
+        <div class="pa-lateral">
+          <span class="pa-sk pa-sk-h2"></span>
+          <div class="pa-datos"><span class="pa-sk pa-sk-dato"></span><span class="pa-sk pa-sk-dato"></span><span class="pa-sk pa-sk-dato"></span><span class="pa-sk pa-sk-dato"></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="destacadosAutorWrap" class="pa-destacados" data-sin-anim style="display:none"></div>
+  <div id="galeriasAutorWrap" class="pa-galerias" data-sin-anim style="display:none"></div>
+  <div id="noticiasAutorWrap" data-sin-anim style="display:none">
+    <h2 class="section-title">Sus últimas noticias <span class="pa-contador" id="contadorAutor"></span></h2>
+    <div class="grid-noticias" id="gridAutor"></div>
+  </div>
+</main>
+
+<div id="site-footer"></div>
+
+<script src="js/ui-alertas.js?v=4339c846"></script>
+<script src="js/foco.js?v=133ef790"></script>
+<script src="js/config.js?v=f440593b"></script>
+<script src="js/seo.js?v=51678a88"></script>
+<script src="js/clubs.js?v=cdbd504a"></script>
+<script src="js/lector-auth.js?v=9a1c7f1f"></script>
+<script src="js/lecturas.js?v=de5c36f5"></script>
+<script src="js/layout.js?v=e8597b26"></script>
+<script src="js/cookies.js?v=845d8f5c"></script>
+<script src="js/ads.js?v=a41f4506"></script>
+<script src="js/main.js?v=858efe67"></script>
+<script>
+// Cifras de "Actividad": cuentan de 0 al valor al entrar en pantalla (sin movimiento si el sistema lo pide).
+function animarCifras(raiz) {
+  const els = raiz.querySelectorAll(".pa-cifra[data-n]");
+  if (!els.length) return;
+  if (!("IntersectionObserver" in window) || (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches)) return;
+  const t0 = performance.now();
+  const contar = (el) => {
+    const fin = Number(el.dataset.n);
+    if (!isFinite(fin) || fin <= 0) { el.textContent = (fin || 0).toLocaleString("es-ES"); return; }
+    const dur = Math.min(1300, 550 + Math.log10(fin + 1) * 220);
+    const ini = performance.now();
+    const paso = (t) => {
+      const p = Math.min((t - ini) / dur, 1);
+      el.textContent = Math.round(fin * (1 - Math.pow(1 - p, 3))).toLocaleString("es-ES");
+      if (p < 1) requestAnimationFrame(paso);
+    };
+    requestAnimationFrame(paso);
+  };
+  const hechos = new Set();
+  const io = new IntersectionObserver((entradas) => {
+    entradas.forEach((e) => {
+      if (!e.isIntersecting) return;
+      io.unobserve(e.target);
+      hechos.add(e.target);
+      // las cifras que ya están a la vista esperan a que termine la entrada de la ficha
+      setTimeout(() => contar(e.target), Math.max(0, 650 - (performance.now() - t0)));
+    });
+  }, { threshold: 0.6 });
+  els.forEach((el) => { el.textContent = "0"; io.observe(el); });
+  // red de seguridad: si algo no llegó a observarse, se deja el valor real
+  setTimeout(() => els.forEach((el) => { if (!hechos.has(el)) el.textContent = Number(el.dataset.n).toLocaleString("es-ES"); }), 6000);
+}
+
+let paEsqueleto = null;
+async function cargaPerfilAutor() {
+  const id = new URLSearchParams(location.search).get("id");
+  const cont = document.getElementById("perfilAutor");
+  if (paEsqueleto === null) paEsqueleto = cont.innerHTML; else cont.innerHTML = paEsqueleto;
+  if (!id) {
+    _seoMeta("name", "robots", "noindex");
+    cont.innerHTML = estadoHTML({
+      titulo: "Autor no especificado",
+      texto: "El enlace al que has accedido no incluye ningún autor. Vuelve a la portada para seguir navegando.",
+      tipo: "error",
+      cta: `<a href="/" class="btn-volver">Ir a portada</a>`,
+    });
+    return;
+  }
+  try {
+    // Primera vuelta: la respuesta que ya se pidió desde el <head> (solo una vez; los reintentos van por apiFetch).
+    const pre = window.__eofAutorPre && window.__eofAutorPre.id === id ? window.__eofAutorPre : null;
+    window.__eofAutorPre = null;
+    let preUsada = !pre;
+    const datos = await conReintento(async () => {
+      if (!preUsada) {
+        preUsada = true;
+        const v = await pre.p;
+        if (v && v.status === 404) return null;
+        if (v && v.status === 200 && v.datos) return v.datos;
+      }
+      const res = await apiFetch(`/api/autores/${encodeURIComponent(id)}`);
+      if (res.status === 404) return null;          // no existe: no tiene sentido reintentar
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return res.json();
+    });
+    if (!datos || !datos.autor) {
+      _seoMeta("name", "robots", "noindex");
+      cont.innerHTML = estadoHTML({
+        titulo: "Autor no encontrado",
+        texto: "Este perfil no existe o ya no está disponible. Vuelve a la portada para seguir navegando.",
+        tipo: "error",
+        cta: `<a href="/" class="btn-volver">Ir a portada</a>`,
+      });
+      return;
+    }
+    const { autor, articulos, galerias, fotos_sin_partido, fotos_total, estadisticas, destacado, mas_leidas } = datos;
+    fijarSeoBasico({
+      titulo: `${autor.nombre} — ELOTROFÚTBOLTV`,
+      descripcion: autor.bio || (autor.cargo ? `${autor.nombre}, ${autor.cargo} en ELOTROFÚTBOLTV.` : `Perfil de ${autor.nombre}, autor en ELOTROFÚTBOLTV.`),
+      urlPath: location.pathname + location.search,
+      imagen: autor.avatar_url || undefined,
+      migas: [{ nombre: autor.nombre }],
+    });
+    fijarRssAlternativo(`/rss/autor/${encodeURIComponent(id)}.xml`, `${autor.nombre} — ELOTROFÚTBOLTV`);
+
+    const nombre = autor.nombre || "";
+    const primerNombre = nombre.trim().split(/\s+/)[0] || nombre;
+    const lista = Array.isArray(articulos) ? articulos : [];
+    const esFotografo = autor.rol === "fotografo";
+    const listaGalerias = Array.isArray(galerias) ? galerias : [];
+    const listaOtrasFotos = Array.isArray(fotos_sin_partido) ? fotos_sin_partido : [];
+
+    Object.assign(NOMBRES_REDES, { linkedin: "LinkedIn", threads: "Threads", facebook: "Facebook", web: "Web" }, { ...NOMBRES_REDES });
+    const iconosExtra = {
+      linkedin: '<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M4.98 3.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM3 9.75h4v11.5H3zM9.75 9.75h3.83v1.57h.05c.53-1 1.84-2.07 3.78-2.07 4.04 0 4.79 2.66 4.79 6.12v5.88h-4v-5.2c0-1.24-.02-2.84-1.73-2.84-1.73 0-2 1.35-2 2.75v5.29h-4z"/></svg>',
+      threads: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M17.5 8.8C16.7 5.9 14.7 4.5 12 4.5c-3.5 0-5.5 2.6-5.5 7.5s2 7.5 5.5 7.5c2.9 0 4.6-1.5 4.6-3.6 0-2.2-1.9-3.3-4.4-3.3-1.7 0-3 .7-3 2 0 1.1.9 1.8 2.2 1.8 1.9 0 3.1-1.3 3.1-4.2V11c0-1.4-1-2.4-2.6-2.4"/></svg>',
+      facebook: '<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M13.5 21v-7.5h2.6l.4-3h-3V8.6c0-.9.3-1.5 1.6-1.5h1.6V4.4c-.3 0-1.2-.1-2.3-.1-2.3 0-3.9 1.4-3.9 4v2.2H8v3h2.5V21z"/></svg>',
+      web: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="12" cy="12" r="9.5"/><path d="M2.5 12h19M12 2.5c2.6 2.6 3.9 5.8 3.9 9.5s-1.3 6.9-3.9 9.5c-2.6-2.6-3.9-5.8-3.9-9.5S9.4 5.1 12 2.5z"/></svg>',
+    };
+    for (const [k, v] of Object.entries(iconosExtra)) if (!ICONOS_REDES[k]) ICONOS_REDES[k] = v;
+    const redesHTML = Object.entries(autor.redes || {})
+      .filter(([, url]) => urlExternaSegura(url))
+      .map(([key, url], i) => `<a style="--i:${i}" href="${urlExternaSegura(url)}" target="_blank" rel="noopener" title="${escapeHtml(NOMBRES_REDES[key] || key)}" aria-label="${escapeHtml(nombre)} en ${escapeHtml(NOMBRES_REDES[key] || key)}">${ICONOS_REDES[key] || ""}</a>`)
+      .join("");
+
+    // Avatar: foto con su foco, o iniciales si no hay foto (o si falla al cargar).
+    const inicialesAutor = escapeHtml(iniciales(nombre) || "?");
+    const avatarInterior = autor.avatar_url
+      ? `<img${EOF_FOCO.attrs(autor.avatar_foco, "pa-avatar")} src="${urlExternaSegura(cloudinaryOptimizada(autor.avatar_url, 340))}" alt="${escapeHtml(nombre)}" width="170" height="170" onload="this.classList.add('ok')" onerror="this.replaceWith(Object.assign(document.createElement('span'), {className:'pa-avatar pa-avatar-iniciales', textContent:'${inicialesAutor}'}))">`
+      : `<span class="pa-avatar pa-avatar-iniciales" aria-hidden="true">${inicialesAutor}</span>`;
+    const avatarHTML = `<span class="pa-avatar-wrap">${avatarInterior}</span>`;
+
+    // Clubes: etiqueta con escudo (el mismo que usa el resto de la web).
+    const equipos = Array.isArray(autor.equipo) ? autor.equipo : (autor.equipo ? [autor.equipo] : []);
+    const clubHTML = (nombreClub, i) => {
+      let escudo = "";
+      try {
+        let url = typeof getEscudoUrl === "function" ? getEscudoUrl(nombreClub) : "";
+        if (url) {
+          if (!/^(https?:)?\/\//.test(url) && !url.startsWith("/")) url = "/" + url;
+          escudo = `<img src="${escapeHtml(url)}" alt="" width="26" height="26" loading="lazy" data-equipo="${escapeHtml(nombreClub)}" onerror="manejarErrorEscudo(this)">`;
+        }
+      } catch (_) {}
+      return `<li class="pa-club" style="--i:${i}">${escudo}${escapeHtml(nombreClub)}</li>`;
+    };
+
+    // Experiencia: cada línea escrita en el panel pasa a ser un punto de la línea de tiempo.
+    const lineasExperiencia = String(autor.experiencia || "").split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    const experienciaHTML = lineasExperiencia.length
+      ? `<ol class="pa-linea">${lineasExperiencia.map((l, i) => `<li style="--i:${i}">${escapeHtml(l)}</li>`).join("")}</ol>`
+      : `<p class="pa-vacio">No hay experiencias previas.</p>`;
+
+    // Actividad, calculada con las noticias recientes que devuelve la API.
+    const hace = (fecha) => {
+      const dias = Math.floor((Date.now() - fecha.getTime()) / 86400000);
+      if (dias <= 0) return "Hoy";
+      if (dias === 1) return "Ayer";
+      if (dias < 7) return `Hace ${dias} días`;
+      if (dias < 30) { const s = Math.floor(dias / 7); return `Hace ${s} ${s === 1 ? "semana" : "semanas"}`; }
+      return formatFecha(fecha.toISOString());
+    };
+    const fechas = lista.map((a) => new Date(a.fecha_publicacion)).filter((d) => !isNaN(d.getTime())).sort((a, b) => b - a);
+    const cuentaCat = {};
+    lista.forEach((a) => { if (a.categoria) cuentaCat[a.categoria] = (cuentaCat[a.categoria] || 0) + 1; });
+    const secciones = Object.entries(cuentaCat).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([cat]) => cat);
+    const nf = (n) => Number(n).toLocaleString("es-ES");
+    // La cifra visible cuenta de 0 al valor; lectores de pantalla leen el valor final.
+    const cifra = (n) => `<strong class="pa-cifra" data-n="${Number(n) || 0}" aria-hidden="true">${nf(n)}</strong><span class="pa-sr">${nf(n)}</span>`;
+    const ETIQUETA_TIPO = { noticia: "Noticias", cronica: "Crónicas", previa: "Previas", opinion: "Opinión", entrevista: "Entrevistas", analisis: "Análisis", reportaje: "Reportajes" };
+    const nombreTipo = (t) => ETIQUETA_TIPO[t] || (String(t || "").charAt(0).toUpperCase() + String(t || "").slice(1).replace(/_/g, " "));
+    const stats = estadisticas && estadisticas.articulos_total > 0 ? estadisticas : null;
+    const desdeTxt = stats && stats.primera_publicacion && !isNaN(new Date(stats.primera_publicacion).getTime())
+      ? new Date(stats.primera_publicacion).toLocaleDateString("es-ES", { month: "short", year: "numeric" }) : "";
+    const ultimaFecha = stats && stats.ultima_publicacion ? new Date(stats.ultima_publicacion) : null;
+    const lateralStatsHTML = stats
+      ? `<aside class="pa-lateral" aria-label="Actividad de ${escapeHtml(nombre)}">
+          <h2 class="pa-h2">Actividad</h2>
+          <ul class="pa-datos">
+            <li>${cifra(stats.articulos_total)}<span>Publicaciones</span></li>
+            ${stats.lecturas_total ? `<li>${cifra(stats.lecturas_total)}<span>Lecturas</span></li>` : ""}
+            ${esFotografo && fotos_total ? `<li>${cifra(fotos_total)}<span>Fotos publicadas</span></li>` : ""}
+            ${desdeTxt ? `<li><strong class="pa-cifra pa-cifra-texto">${escapeHtml(desdeTxt)}</strong><span>Publicando desde</span></li>` : ""}
+            <li><strong class="pa-cifra pa-cifra-texto">${ultimaFecha && !isNaN(ultimaFecha.getTime()) ? escapeHtml(hace(ultimaFecha)) : "—"}</strong><span>Última publicación</span></li>
+          </ul>
+          ${(stats.por_tipo || []).length > 1 || ((stats.por_tipo || [])[0] && (stats.por_tipo[0].tipo !== "noticia")) ? `<h3 class="pa-h3">Qué publica</h3>
+          <ul class="pa-secciones">${stats.por_tipo.map((t) => `<li>${escapeHtml(nombreTipo(t.tipo))} · ${nf(t.n)}</li>`).join("")}</ul>` : ""}
+          ${(stats.por_categoria || []).length ? `<h3 class="pa-h3" style="margin-top:18px">Secciones en las que escribe</h3>
+          <ul class="pa-secciones">${stats.por_categoria.map((c) => `<li>${escapeHtml(categoriaLabel(c.categoria))} · ${nf(c.n)}</li>`).join("")}</ul>` : ""}
+        </aside>`
+      : "";
+    const lateralHTML = lateralStatsHTML ? lateralStatsHTML : (esFotografo && !lista.length && fotos_total)
+      ? `<aside class="pa-lateral" aria-label="Actividad de ${escapeHtml(nombre)}">
+          <h2 class="pa-h2">Actividad</h2>
+          <ul class="pa-datos">
+            <li>${cifra(fotos_total)}<span>Fotos publicadas</span></li>
+            <li>${cifra(listaGalerias.length)}<span>Partidos fotografiados</span></li>
+          </ul>
+        </aside>`
+      : lista.length
+      ? `<aside class="pa-lateral" aria-label="Actividad de ${escapeHtml(nombre)}">
+          <h2 class="pa-h2">Actividad</h2>
+          <ul class="pa-datos">
+            <li>${cifra(lista.length)}<span>Noticias recientes</span></li>
+            <li><strong class="pa-cifra pa-cifra-texto">${fechas.length ? escapeHtml(hace(fechas[0])) : "—"}</strong><span>Última publicación</span></li>
+          </ul>
+          ${secciones.length ? `<h3 class="pa-h3">Secciones en las que escribe</h3>
+          <ul class="pa-secciones">${secciones.map((cat) => `<li>${escapeHtml(categoriaLabel(cat))}</li>`).join("")}</ul>` : ""}
+        </aside>`
+      : `<aside class="pa-lateral" aria-label="Actividad de ${escapeHtml(nombre)}">
+          <h2 class="pa-h2">Actividad</h2>
+          <p class="pa-vacio">Todavía no ha publicado noticias.</p>
+        </aside>`;
+
+    cont.innerHTML = `
+      <section class="pa-ficha pa-in" aria-labelledby="paNombre">
+        <div class="pa-banda" aria-hidden="true"></div>
+        <div class="pa-identidad">
+          ${avatarHTML}
+          <div class="pa-id-texto">
+            <span class="pa-rol">${esFotografo ? "Fotógrafo" : "Autor"}</span>
+            <h1 class="pa-nombre" id="paNombre">${escapeHtml(nombre)}</h1>
+            ${(autor.cargo || autor.ciudad) ? `<p class="pa-subtitulo">${autor.cargo ? `<span class="pa-cargo">${escapeHtml(autor.cargo)}</span>` : ""}${autor.ciudad ? `<span class="pa-ciudad"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-5.6-7-11a7 7 0 0 1 14 0c0 5.4-7 11-7 11z"/><circle cx="12" cy="10" r="2.6"/></svg>${escapeHtml(autor.ciudad)}</span>` : ""}</p>` : ""}
+            ${equipos.length ? `<ul class="pa-clubes" aria-label="Clubes que sigue">${equipos.map(clubHTML).join("")}</ul>` : ""}
+          </div>
+          ${redesHTML ? `<div class="pa-redes" aria-label="Redes sociales">${redesHTML}</div>` : ""}
+        </div>
+        <div class="pa-cuerpo">
+          <div class="pa-principal">
+            <section class="pa-bloque">
+              <h2 class="pa-h2">Sobre ${escapeHtml(primerNombre)}</h2>
+              ${autor.bio
+                ? `<p class="pa-bio">${escapeHtml(autor.bio)}</p>`
+                : `<p class="pa-vacio">Este autor todavía no ha añadido una presentación.</p>`}
+            </section>
+            <section class="pa-bloque">
+              <h2 class="pa-h2">Experiencia previa</h2>
+              ${experienciaHTML}
+            </section>
+          </div>
+          ${lateralHTML}
+        </div>
+      </section>`;
+    animarCifras(cont);
+
+    // Noticia destacada (la que la propia persona fija) y lo más leído de su firma.
+    const destWrap = document.getElementById("destacadosAutorWrap");
+    if (destWrap) {
+      const masLeidas = (Array.isArray(mas_leidas) ? mas_leidas : []).filter((a) => a.lecturas > 0 && !(destacado && Number(destacado.id) === Number(a.id)));
+      const partes = [];
+      if (destacado) partes.push(`<h2 class="section-title">Noticia destacada</h2><div class="grid-noticias pa-dest-uno">${cardHTML(destacado)}</div>`);
+      if (masLeidas.length) partes.push(`<h2 class="section-title">Lo más leído de ${escapeHtml(primerNombre)}</h2><div class="grid-noticias">${masLeidas.map((a) => `<div class="pa-dest-item">${cardHTML(a)}</div>`).join("")}</div>`);
+      if (partes.length) { destWrap.innerHTML = partes.join(""); destWrap.style.display = "block"; }
+    }
+    // Galerías fotográficas del autor (una tarjeta por partido) + fotos sueltas.
+    const galeriasWrap = document.getElementById("galeriasAutorWrap");
+    if (galeriasWrap && (listaGalerias.length || listaOtrasFotos.length)) {
+      const imgFoto = (f, clase, ancho) => {
+        const src = urlExternaSegura(cloudinaryOptimizada(f.url, ancho, f.autor_nombre || nombre));
+        return src ? `<img${EOF_FOCO.attrs(f.foco, clase)} src="${src}" alt="${escapeHtml(f.titulo || ("Foto de " + nombre))}" loading="lazy" decoding="async" onload="this.classList.add('ok')" onerror="this.classList.add('err')">` : "";
+      };
+      const escudoMini = (equipo, url) => {
+        let u = "";
+        try { u = typeof getEscudoUrl === "function" ? getEscudoUrl(equipo, url) : ""; } catch (_) {}
+        if (!u) return "";
+        if (!/^(https?:)?\/\//.test(u) && !u.startsWith("/")) u = "/" + u;
+        return `<img src="${escapeHtml(u)}" alt="" width="22" height="22" loading="lazy" data-equipo="${escapeHtml(equipo)}" onerror="manejarErrorEscudo(this)">`;
+      };
+      const tarjetaGaleria = (g) => {
+        const [principal, ...resto] = g.fotos;
+        const miniaturas = resto.slice(0, 3).map((f) => `<span class="pa-gal-mini">${imgFoto(f, "pa-gal-img", 240)}</span>`).join("");
+        const extra = g.total > g.fotos.length ? `<span class="pa-gal-mas">+${g.total - g.fotos.length}</span>` : "";
+        const meta = [g.fecha_partido ? formatFecha(g.fecha_partido) : "", g.jornada ? `Jornada ${g.jornada}` : ""].filter(Boolean).join(" · ");
+        return `<a class="pa-gal-card" href="/galeria/${encodeURIComponent(g.slug)}">
+          <div class="pa-gal-collage pa-gal-collage-${Math.min(g.fotos.length, 4)}">
+            <span class="pa-gal-principal">${principal ? imgFoto(principal, "pa-gal-img", 640) : ""}</span>
+            ${miniaturas ? `<span class="pa-gal-minis">${miniaturas}${extra}</span>` : ""}
+          </div>
+          <div class="pa-gal-info">
+            <span class="pa-gal-equipos">${escudoMini(g.equipo_local, g.escudo_local_url)}<strong>${escapeHtml(g.equipo_local)} - ${escapeHtml(g.equipo_visitante)}</strong>${escudoMini(g.equipo_visitante, g.escudo_visitante_url)}</span>
+            <span class="pa-gal-meta">${escapeHtml(meta)}</span>
+            <span class="pa-gal-total">${g.total} ${g.total === 1 ? "foto" : "fotos"} · Ver galería →</span>
+          </div>
+        </a>`;
+      };
+      galeriasWrap.innerHTML = `
+        ${listaGalerias.length ? `<h2 class="section-title">Galerías fotográficas <span class="pa-contador">${listaGalerias.length}</span></h2>
+        <div class="pa-gal-grid">${listaGalerias.map(tarjetaGaleria).join("")}</div>` : ""}
+        ${listaOtrasFotos.length ? `<h3 class="pa-gal-subtitulo">${listaGalerias.length ? "Más fotos" : "Fotos"} de ${escapeHtml(primerNombre)}</h3>
+        <div class="pa-gal-sueltas">${listaOtrasFotos.map((f) => `<span class="pa-gal-suelta">${imgFoto(f, "pa-gal-img", 420)}</span>`).join("")}</div>` : ""}`;
+      galeriasWrap.style.display = "block";
+    }
+
+    const gridWrap = document.getElementById("noticiasAutorWrap");
+    const grid = document.getElementById("gridAutor");
+    if (articulos && articulos.length) {
+      gridWrap.style.display = "block";
+      grid.innerHTML = articulos.map(cardHTML).join("");
+      const contador = document.getElementById("contadorAutor");
+      if (contador) contador.textContent = articulos.length;
+    }
+  } catch (err) {
+    _seoMeta("name", "robots", "noindex");
+    cont.innerHTML = estadoHTML({
+      titulo: "No se ha podido cargar este perfil",
+      texto: "Ha habido un problema de conexión al cargar este perfil. Inténtalo de nuevo o vuelve a la portada.",
+      tipo: "error",
+      cta: `<div class="pa-acciones"><button type="button" class="btn-volver" onclick="cargaPerfilAutor()">Reintentar</button><a href="/" class="btn-volver pa-sec">Ir a portada</a></div>`,
+    });
+  }
+}
+document.addEventListener("DOMContentLoaded", cargaPerfilAutor);
+</script>
+<script src="js/proteccion-copia.js?v=3a8bf3dd" defer></script>
+<script src="js/animaciones-web.js?v=e24adf73" defer></script>
+</body>
+</html>

@@ -1,0 +1,584 @@
+/* =====================================================================
+   Panel · COLABORADORES + CARGOS · SISTEMA DE DISEÑO ÚNICO
+   ---------------------------------------------------------------------
+   Una sola hoja que define el lenguaje visual de todo lo que tiene que
+   ver con las personas del medio y sus cargos:
+
+     PÁGINAS
+       · Usuarios > Colaboradores / Lectores (incluida la LISTA de personas:
+         fila de tabla y tarjeta móvil, etiquetas, estado, nivel, avisos, 2FA,
+         cargos y botones de acción)
+       · Información > Sub-Responsables de áreas, Grupos de trabajo y
+         Organigrama del medio
+       · Responsabilidades > Recursos humanos (Contacto, Checklist, Fichajes)
+
+     MODALES
+       · Equipo y categoría, Nivel, Avisos de inactividad, Contraseña
+         restablecida, PIN compartido, PIN de "Última hora"
+       · Gestor de grupos y editor de funciones (.gt-modal)
+
+   CÓMO FUNCIONA
+     1. Los valores (radio, alto de control, foco, colores por rol y por
+        estado) viven SOLO en el bloque "0 · Tokens". Si quieres cambiar
+        algo en todo el panel de personas, se cambia ahí y en ningún
+        sitio más. Los tokens antiguos (--c-*, --u-*) pasan a ser alias.
+     2. El resto del archivo aplica esos tokens a cada componente.
+        Mismo botón, mismo campo, misma tarjeta, misma fila de persona,
+        mismo chip de rol, mismo foco y mismo modo oscuro en todas partes.
+
+   Reglas del sistema
+     · Tarjetas y secciones ........ radio 18px, borde fino, sombra suave.
+     · Botones, chips y buscadores .. píldora: 36px en página, 44px en modal.
+     · Campos de texto ............. radio 12px, foco celeste con aro.
+     · Color por rol ............... redactor celeste · fotógrafo violeta ·
+                                     Responsable rojo (igual en todas partes).
+     · Color por estado ............ verde = correcto · ámbar = aviso ·
+                                     rojo = error o acción destructiva.
+     · Acción principal ............ degradado rojo; el resto, neutro.
+
+   Solo CSS. Se carga DESPUÉS de colaboradores-coherencia.css y ANTES de
+   las hojas móviles (movil-responsive / movil-app / movil-app-pro).
+   ===================================================================== */
+
+/* =====================================================================
+   0 · TOKENS (única fuente de verdad)
+   ===================================================================== */
+:is(
+  #subpanel-redactores, #subpanel-lectores,
+  #infoAreasSub, #infoGrupos, #infoOrganigrama,
+  #subpanel-respRrhh,
+  #modalEquiposUsuario, #modalNivelUsuario, #modalAvisosUsuario,
+  #modalPasswordGenerada, #modalPinRedactor, #modalPinUltimaHora,
+  .gt-modal
+){
+  /* Geometría */
+  --cs-radio:18px;                 /* tarjetas, secciones, paneles */
+  --cs-radio-fila:14px;            /* filas dentro de una tarjeta */
+  --cs-campo:12px;                 /* inputs, selects, textareas */
+  --cs-ctl:44px;                   /* alto de control en modal */
+  --cs-ctl-s:36px;                 /* alto de control en página */
+  --cs-sombra:0 14px 30px -26px rgba(12,27,46,.6);
+
+  /* Foco */
+  --cs-foco:0 0 0 3px color-mix(in srgb,var(--celeste) 28%,transparent);
+
+  /* Superficies */
+  --cs-seccion:color-mix(in srgb,var(--celeste) 6%,var(--tarjeta));
+  --cs-seccion-borde:color-mix(in srgb,var(--borde) 90%,var(--celeste));
+  --cs-fila:color-mix(in srgb,var(--texto-suave,#5b6478) 8%,var(--tarjeta));
+  --cs-fila-hover:color-mix(in srgb,var(--celeste) 9%,var(--tarjeta));
+
+  /* Color por rol */
+  --cs-rol-redactor:var(--celeste,#2d9fdb);
+  --cs-rol-fotografo:#7c3aed;
+  --cs-rol-admin:var(--rojo,#d1132e);
+  --cs-tag-alto:20px;              /* alto de las etiquetas pequeñas de cada fila */
+
+  /* Color por estado */
+  --cs-ok:#15803d;
+  --cs-ok-fondo:color-mix(in srgb,#16a34a 12%,var(--tarjeta));
+  --cs-aviso:#b45309;
+  --cs-aviso-fondo:color-mix(in srgb,#f59e0b 14%,var(--tarjeta));
+  --cs-error:var(--rojo,#d1132e);
+  --cs-error-fondo:color-mix(in srgb,var(--rojo,#d1132e) 10%,var(--tarjeta));
+
+  /* Alias: lo que ya existía en las hojas anteriores sigue funcionando
+     pero ahora sale de este único bloque */
+  --c-radio:var(--cs-radio);
+  --c-campo:var(--cs-campo);
+  --c-ctl:var(--cs-ctl);
+  --c-foco:var(--cs-foco);
+  --c-seccion:var(--cs-seccion);
+  --c-seccion-borde:var(--cs-seccion-borde);
+  --c-ok:var(--cs-ok);
+  --c-ok-fondo:var(--cs-ok-fondo);
+  --c-peligro:var(--cs-error);
+  --u-radio:var(--cs-radio);
+  --u-ctl-alto:var(--cs-ctl-s);
+  --u-rol-redactor:var(--cs-rol-redactor);
+  --u-rol-fotografo:var(--cs-rol-fotografo);
+  --u-rol-admin:var(--cs-rol-admin);
+}
+
+[data-theme="dark"] :is(
+  #subpanel-redactores, #subpanel-lectores,
+  #infoAreasSub, #infoGrupos, #infoOrganigrama,
+  #subpanel-respRrhh,
+  #modalEquiposUsuario, #modalNivelUsuario, #modalAvisosUsuario,
+  #modalPasswordGenerada, #modalPinRedactor, #modalPinUltimaHora,
+  .gt-modal
+){
+  --cs-sombra:0 14px 30px -26px rgba(0,0,0,.85);
+  --cs-seccion:color-mix(in srgb,var(--celeste) 9%,var(--tarjeta));
+  --cs-seccion-borde:color-mix(in srgb,var(--borde) 80%,var(--celeste));
+  --cs-fila:color-mix(in srgb,#fff 6%,var(--tarjeta));
+  --cs-fila-hover:color-mix(in srgb,var(--celeste) 16%,var(--tarjeta));
+  --cs-rol-fotografo:#8b5cf6;
+  --cs-ok:#4ade80;
+  --cs-ok-fondo:rgba(34,197,94,.14);
+  --cs-aviso:#fbbf24;
+  --cs-aviso-fondo:rgba(245,158,11,.15);
+  --cs-error:#f87171;
+  --cs-error-fondo:rgba(248,113,113,.14);
+}
+
+/* Organigrama y RRHH traen su propia paleta (--org-*, --r-*): se enganchan
+   al mismo azul y al mismo radio que el resto */
+#infoOrganigrama .org{--org-azul:var(--celeste);}
+[data-theme="dark"] #infoOrganigrama .org{--org-azul:var(--celeste);}
+
+/* =====================================================================
+   1 · CABECERAS DE SECCIÓN (icono + etiqueta + título)
+   Todas las secciones de cargos y de RRHH comparten la misma pareja de
+   colores en vez de uno distinto por sección.
+   ===================================================================== */
+#infoAreasSub, #infoGrupos, #infoOrganigrama,
+#respSecRrhhContacto, #respSecRrhhClubes, #respSecRrhhFichajes{
+  --info-c1:var(--celeste,#2d9fdb);
+  --info-c2:var(--cs-rol-fotografo,#7c3aed);
+}
+:is(#infoAreasSub,#infoGrupos,#infoOrganigrama,#respSecRrhhContacto,#respSecRrhhClubes,#respSecRrhhFichajes) .info-cab{
+  border-radius:var(--cs-radio);box-shadow:var(--cs-sombra);
+}
+:is(#infoAreasSub,#infoGrupos,#infoOrganigrama,#respSecRrhhContacto,#respSecRrhhClubes,#respSecRrhhFichajes) .info-cab-ico{
+  border-radius:14px;
+}
+:is(#infoAreasSub,#infoGrupos,#infoOrganigrama,#respSecRrhhContacto,#respSecRrhhClubes,#respSecRrhhFichajes) .info-eyebrow{
+  color:var(--celeste);
+}
+
+/* =====================================================================
+   2 · BOTONES · mismo aspecto en .gt-btn, .org-btn, .resp-btn,
+       .sa-* y en los de los modales
+   ===================================================================== */
+:is(#infoAreasSub,#infoGrupos,#subpanel-respRrhh,#subpanel-redactores) .gt-btn,
+:is(#infoOrganigrama) .org-btn,
+:is(#subpanel-respRrhh) .resp-btn{
+  min-height:var(--cs-ctl-s);padding:6px 16px;border-radius:999px;
+  border:1.5px solid var(--borde);background:var(--tarjeta);color:var(--texto);
+  font-weight:800;font-size:.8rem;box-sizing:border-box;
+}
+:is(#infoAreasSub,#infoGrupos,#subpanel-respRrhh,#subpanel-redactores) .gt-btn:hover:not(:disabled),
+:is(#infoOrganigrama) .org-btn:hover:not(:disabled),
+:is(#subpanel-respRrhh) .resp-btn:hover:not(:disabled){
+  border-color:var(--celeste);color:var(--celeste);background:var(--cs-seccion);
+  transform:none;box-shadow:0 6px 16px -12px var(--celeste);
+}
+:is(#infoAreasSub,#infoGrupos,#subpanel-respRrhh,#subpanel-redactores) .gt-btn:focus-visible,
+:is(#infoOrganigrama) .org-btn:focus-visible,
+:is(#subpanel-respRrhh) .resp-btn:focus-visible,
+.gt-modal .gt-btn:focus-visible{
+  outline:2px solid var(--celeste);outline-offset:2px;
+}
+.gt-btn-peq{min-height:32px;}
+/* Botón pulsado (segmentados y conmutadores): marino, igual en los tres */
+:is(#infoOrganigrama) .org-btn[aria-pressed="true"],
+:is(#subpanel-respRrhh) .resp-btn[aria-pressed="true"]{
+  background:var(--marino,#0b1257);border-color:var(--marino,#0b1257);color:#fff;
+}
+/* Acción principal: degradado rojo en los cuatro sistemas */
+:is(#infoAreasSub,#infoGrupos,#subpanel-respRrhh,#subpanel-redactores) .gt-btn-pri,
+:is(#infoOrganigrama) .org-btn-guardar,
+:is(#subpanel-respRrhh) .resp-btn-pri{
+  background:linear-gradient(135deg,var(--rojo,#d1132e),var(--rojo-oscuro,#a30f24));
+  border-color:transparent;color:#fff;box-shadow:0 8px 16px -12px rgba(209,19,46,.75);
+}
+:is(#infoAreasSub,#infoGrupos,#subpanel-respRrhh,#subpanel-redactores) .gt-btn-pri:hover:not(:disabled),
+:is(#infoOrganigrama) .org-btn-guardar:hover:not(:disabled),
+:is(#subpanel-respRrhh) .resp-btn-pri:hover:not(:disabled){
+  background:linear-gradient(135deg,#e0152f,#8f0d20);color:#fff;border-color:transparent;
+}
+/* Acción destructiva: contorno rojo suave */
+#infoOrganigrama .org-peligro,
+#infoAreasSub .sa-borrar{
+  color:var(--cs-error);border-color:color-mix(in srgb,var(--cs-error) 40%,var(--borde));
+}
+#infoOrganigrama .org-peligro:hover:not(:disabled),
+#infoAreasSub .sa-borrar:hover{
+  background:var(--cs-error-fondo);border-color:var(--cs-error);color:var(--cs-error);
+}
+/* Enlaces de texto */
+.gt-enlace{color:var(--celeste);}
+
+/* Botones de los modales: mismos que los de la página pero a 44px */
+:is(#modalEquiposUsuario,#modalNivelUsuario,#modalAvisosUsuario,#modalPasswordGenerada,#modalPinRedactor,#modalPinUltimaHora,.gt-modal) :is(.btn-primari,.btn-secundari,.gt-btn){
+  min-height:var(--cs-ctl);border-radius:999px;font-weight:800;box-sizing:border-box;
+}
+
+/* =====================================================================
+   3 · CAMPOS · mismo input en toda la zona
+   ===================================================================== */
+#infoAreasSub .sa-anadir select,
+#infoAreasSub .sa-nueva input,
+#infoGrupos .gt-fila-campos input[type="text"],
+#infoOrganigrama .org-form :is(input[type="text"],input[type="tel"],textarea,select),
+#infoOrganigrama .org-busca input,
+#subpanel-respRrhh .resp-busca input,
+#subpanel-respRrhh .resp-form :is(input,select,textarea){
+  border:1.5px solid var(--borde);border-radius:var(--cs-campo);background-color:var(--tarjeta);
+  color:var(--texto);box-sizing:border-box;
+}
+#infoAreasSub .sa-anadir select,
+#infoAreasSub .sa-nueva input{min-height:var(--cs-ctl-s);padding:6px 12px;}
+#infoOrganigrama .org-busca input,
+#subpanel-respRrhh .resp-busca input{border-radius:999px;min-height:var(--cs-ctl-s);}
+#infoAreasSub .sa-anadir select:focus-visible,
+#infoAreasSub .sa-nueva input:focus-visible,
+#infoGrupos .gt-fila-campos input[type="text"]:focus-visible,
+#infoOrganigrama .org-form :is(input,textarea,select):focus,
+#infoOrganigrama .org-busca input:focus,
+#subpanel-respRrhh .resp-busca input:focus,
+#subpanel-respRrhh .resp-form :is(input,select,textarea):focus{
+  outline:none;border-color:var(--celeste);box-shadow:var(--cs-foco);
+}
+#infoAreasSub .sa-nueva{
+  border-radius:var(--cs-radio);border:1.5px dashed var(--cs-seccion-borde);background:var(--cs-seccion);
+}
+#infoAreasSub .sa-nueva label{color:var(--marino-texto,var(--marino));}
+
+/* =====================================================================
+   4 · TARJETAS Y PANELES · radio, borde y sombra únicos
+   ===================================================================== */
+#infoGrupos .gt-tarjeta,
+#infoGrupos .gt-tuyo,
+#infoGrupos .gt-vacio,
+#infoAreasSub .gt-tarjeta,
+#infoAreasSub .gt-vacio,
+#infoOrganigrama .org,
+#subpanel-respRrhh .resp-cm-card,
+#subpanel-respRrhh .resp-grupo{
+  border-radius:var(--cs-radio);
+}
+#infoGrupos .gt-tarjeta,
+#infoAreasSub .gt-tarjeta,
+#subpanel-respRrhh .resp-cm-card{box-shadow:var(--cs-sombra);}
+#infoGrupos .gt-tarjeta:hover,
+#infoAreasSub .gt-tarjeta:hover{transform:translateY(-2px);}
+#infoOrganigrama .org{box-shadow:var(--cs-sombra);}
+#infoOrganigrama .org-det,
+#subpanel-respRrhh .resp-cm-kpi{border-radius:var(--cs-radio-fila);}
+/* Resumen superior (píldoras con contador): igual que los de Usuarios */
+.gt-stat{background:var(--cs-seccion);border:1px solid var(--cs-seccion-borde);}
+/* Estado vacío */
+.gt-vacio{
+  border:1.5px dashed var(--cs-seccion-borde);
+  background:linear-gradient(180deg,var(--cs-seccion),transparent);
+}
+.gt-vacio-ico{background:color-mix(in srgb,var(--celeste) 14%,var(--tarjeta));color:var(--celeste);}
+/* Avisos dentro de las pantallas */
+.acred-aviso-sub,
+#infoOrganigrama .org-edit-barra{
+  border-radius:var(--cs-campo);
+}
+.acred-aviso-sub{
+  background:var(--cs-seccion);border:1px solid var(--cs-seccion-borde);color:var(--texto);
+}
+
+/* =====================================================================
+   5 · FILAS DE PERSONA (grupos, sub-responsables, RRHH) + CHIP DE ROL
+   ===================================================================== */
+.gt-miembros li,
+.sa-miembros li,
+#subpanel-respRrhh .resp-persona{
+  border-radius:var(--cs-radio-fila);background:var(--cs-fila);
+}
+.gt-miembros li:hover,
+.sa-miembros li:hover{background:var(--cs-fila-hover);}
+.gt-miembros li.gt-yo,
+.sa-miembros li.sa-yo{
+  background:color-mix(in srgb,var(--celeste) 16%,var(--tarjeta));font-weight:700;
+}
+.gt-sin-miembros{border-radius:var(--cs-radio-fila);background:var(--cs-fila);}
+
+/* Chip de rol: mismos colores que en Usuarios. El prefijo :root iguala la
+   especificidad de las reglas oscuras antiguas (que van por [data-theme]) y,
+   al cargarse después, las sustituye: una sola regla vale para claro y oscuro */
+:root .gt-rol,
+:root .resp-cm-rol{
+  background:color-mix(in srgb,var(--cs-rol-redactor) 14%,var(--tarjeta));
+  color:color-mix(in srgb,var(--cs-rol-redactor) 78%,var(--texto));
+}
+:root .gt-rol[data-rol="fotografo"],
+:root .resp-cm-rol.foto{
+  background:color-mix(in srgb,var(--cs-rol-fotografo) 14%,var(--tarjeta));
+  color:color-mix(in srgb,var(--cs-rol-fotografo) 78%,var(--texto));
+}
+:root .gt-rol[data-rol="admin"]{
+  background:color-mix(in srgb,var(--cs-rol-admin) 13%,var(--tarjeta));
+  color:color-mix(in srgb,var(--cs-rol-admin) 82%,var(--texto));
+}
+
+/* Botón "quitar" de una persona: mismo gesto en Sub-Responsables y grupos */
+.sa-quitar:hover,.sa-quitar:focus-visible{background:var(--cs-error-fondo);color:var(--cs-error);}
+.sa-quitar:focus-visible{outline:2px solid var(--celeste);outline-offset:1px;}
+
+/* =====================================================================
+   6 · CARGOS · Sub-Responsables de áreas y cargo bajo el nombre
+   ===================================================================== */
+.sa-ico{
+  background:linear-gradient(135deg,color-mix(in srgb,var(--celeste) 80%,#fff),var(--celeste));
+  box-shadow:0 8px 16px -10px var(--celeste);border-radius:13px;
+}
+.sa-permiso{background:var(--cs-ok-fondo);color:var(--cs-ok);}
+.sa-permiso-no{background:var(--cs-fila);color:var(--texto-suave);}
+.gt-cargo-area{--gt:var(--celeste);}
+.sa-nota{color:var(--texto-suave);}
+
+/* =====================================================================
+   7 · MODALES · marco común (los de personas y cargos)
+   ===================================================================== */
+:is(#modalEquiposUsuario,#modalNivelUsuario,#modalAvisosUsuario,#modalPasswordGenerada,#modalPinRedactor,#modalPinUltimaHora) .modal-caja,
+.gt-modal .modal-caja{
+  border-radius:var(--modal-radio,20px);
+}
+:is(#modalEquiposUsuario,#modalNivelUsuario,#modalAvisosUsuario,#modalPasswordGenerada,#modalPinRedactor,#modalPinUltimaHora) .modal-cerrar,
+.gt-modal .modal-cerrar{
+  width:36px;height:36px;top:14px;right:14px;
+}
+/* Campos del gestor de grupos (a 44px, igual que el resto de modales) */
+.gt-modal :is(input[type="text"],select,textarea){
+  min-height:var(--cs-ctl);border-radius:var(--cs-campo);
+  border:1.5px solid var(--borde);background-color:var(--tarjeta);color:var(--texto);
+}
+.gt-modal :is(input[type="text"],select,textarea):focus-visible{
+  outline:none;border-color:var(--celeste);box-shadow:var(--cs-foco);
+}
+/* Vista previa de la función: mismo aviso suave que el resto */
+.gt-modal .gt-func-prevbox{
+  background:var(--cs-seccion);border:1px dashed var(--cs-seccion-borde);color:var(--texto-suave);
+}
+.gt-modal .gt-func-prevbox strong{color:var(--cs-rol-admin);}
+/* Selectores de color e icono del gestor */
+.gt-modal .gt-color{border-radius:50%;}
+.gt-modal .gt-color:focus-visible,
+.gt-modal .gt-icono:focus-visible{outline:2px solid var(--celeste);outline-offset:2px;}
+/* Mensajes de estado: misma paleta por significado */
+:is(#modalEquiposUsuario,#modalNivelUsuario,#modalPinRedactor,#modalPinUltimaHora,.gt-modal) .modal-msg-ok{
+  background:var(--cs-ok-fondo);color:var(--cs-ok);border:1px solid color-mix(in srgb,var(--cs-ok) 30%,transparent);
+}
+:is(#modalEquiposUsuario,#modalNivelUsuario,#modalPinRedactor,#modalPinUltimaHora,.gt-modal) .modal-msg-err{
+  background:var(--cs-error-fondo);color:var(--cs-error);border:1px solid color-mix(in srgb,var(--cs-error) 30%,transparent);
+}
+
+/* =====================================================================
+   7b · LISTA DE COLABORADORES (Usuarios > Colaboradores)
+   Cada fila (tabla en escritorio, tarjeta en portátil/tablet/móvil) usa
+   las MISMAS piezas, con la misma forma y los mismos colores por estado:
+
+     · Etiqueta pequeña ...... #id, "Aún no ha entrado", "Sin correo",
+                               "2FA", cargos, "días sin publicar".
+     · Estado ................ Activo (verde) / Inactivo (gris).
+     · Rol ................... píldora de color por rol.
+     · Nivel y avisos ........ píldoras de 36px con el color de su nivel /
+                               de su estado (ok · aviso · grave · neutro).
+     · Acciones .............. fantasma, la destructiva en rojo.
+
+   El prefijo :root iguala la especificidad de las reglas oscuras antiguas
+   (que van por [data-theme]) y, al cargarse después, las sustituye: una
+   sola regla sirve para claro y oscuro porque usa los tokens.
+   ===================================================================== */
+
+/* --- COMPACTO: dentro de la tabla los controles miden 32px, para que la
+       lista no crezca (los filtros y las tarjetas de arriba no cambian) --- */
+#subpanel-redactores table.lista{--cs-ctl-s:32px;--u-ctl-alto:32px;}
+#subpanel-redactores table.lista .select-rol{height:32px;min-width:128px;font-size:.72rem;}
+
+/* --- Etiqueta pequeña común --- */
+:root #subpanel-redactores :is(.id-usuario-panel,.usuario-sin-acceso,.usuario-sin-correo,.usuario-sin-publicar,.badge-2fa,.gt-cargo,.gt-cargo-editar){
+  display:inline-flex;align-items:center;gap:6px;height:auto;min-height:var(--cs-tag-alto);box-sizing:border-box;
+  margin:0;padding:0 8px;border-radius:999px;
+  border:1px solid var(--tag-borde,var(--borde));
+  background:var(--tag-fondo,var(--cs-fila));color:var(--tag-color,var(--texto-suave));
+  font-size:.66rem;font-weight:800;letter-spacing:.1px;line-height:1.2;white-space:nowrap;max-width:100%;
+}
+/* Aviso (ámbar): aún sin entrar · lleva días sin publicar · 2FA pendiente */
+:root #subpanel-redactores :is(.usuario-sin-acceso,.usuario-sin-publicar,.badge-2fa-pend){
+  --tag-fondo:var(--cs-aviso-fondo);--tag-color:var(--cs-aviso);
+  --tag-borde:color-mix(in srgb,var(--cs-aviso) 35%,transparent);
+}
+:root #subpanel-redactores .usuario-sin-acceso::before{
+  width:6px;height:6px;background:var(--cs-aviso);box-shadow:0 0 0 3px color-mix(in srgb,var(--cs-aviso) 24%,transparent);
+}
+/* Correcto (verde): 2FA activo */
+:root #subpanel-redactores .badge-2fa-ok{
+  --tag-fondo:var(--cs-ok-fondo);--tag-color:var(--cs-ok);
+  --tag-borde:color-mix(in srgb,var(--cs-ok) 35%,transparent);
+}
+:root #subpanel-redactores .badge-2fa-btn{cursor:pointer;transition:border-color .15s,box-shadow .15s;}
+:root #subpanel-redactores .badge-2fa-btn:hover{border-color:var(--cs-ok);box-shadow:0 6px 14px -10px var(--cs-ok);}
+:root #subpanel-redactores .badge-2fa-btn:focus-visible{outline:2px solid var(--celeste);outline-offset:2px;}
+:root #subpanel-redactores .badge-2fa{margin-top:4px;}
+/* Neutras: #id y "Sin correo" */
+:root #subpanel-redactores .id-usuario-panel{
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-weight:700;
+}
+:root #subpanel-redactores .usuario-sin-correo{
+  --tag-fondo:transparent;border-style:dashed;font-style:normal;font-weight:600;
+}
+/* "Lleva N días sin publicar" es largo: puede ocupar dos líneas */
+:root #subpanel-redactores .usuario-sin-publicar{
+  display:flex;width:max-content;max-width:100%;margin-top:4px;white-space:normal;border-radius:var(--cs-campo);padding:2px 9px;
+}
+/* Texto secundario de la celda de nombre */
+#subpanel-redactores .usuario-alta{font-size:.72rem;font-weight:600;color:var(--texto-suave);}
+
+/* --- Cargos bajo el nombre --- */
+#subpanel-redactores .gt-cargos{gap:4px;margin-top:4px;}
+:root #subpanel-redactores .gt-cargo-resp{
+  --tag-fondo:color-mix(in srgb,var(--cs-rol-admin) 13%,var(--tarjeta));
+  --tag-color:color-mix(in srgb,var(--cs-rol-admin) 82%,var(--texto));
+  --tag-borde:color-mix(in srgb,var(--cs-rol-admin) 30%,transparent);
+}
+:root #subpanel-redactores .gt-cargo-sub{
+  --tag-fondo:color-mix(in srgb,var(--gt,#e08a00) 16%,var(--tarjeta));
+  --tag-color:color-mix(in srgb,var(--gt,#e08a00) 70%,var(--texto));
+  --tag-borde:color-mix(in srgb,var(--gt,#e08a00) 32%,transparent);
+}
+:root #subpanel-redactores .gt-cargo-editar{
+  --tag-fondo:transparent;--tag-color:var(--celeste);--tag-borde:var(--cs-seccion-borde);
+  border-style:dashed;cursor:pointer;font-family:inherit;
+}
+:root #subpanel-redactores .gt-cargo-editar:hover{border-color:var(--celeste);background:var(--cs-seccion);}
+:root #subpanel-redactores .gt-cargo-editar:focus-visible{outline:2px solid var(--celeste);outline-offset:2px;}
+
+/* --- Estado: Activo / Inactivo --- */
+:root #subpanel-redactores .usuario-estado{
+  --e-bg:var(--cs-ok-fondo);--e-fg:var(--cs-ok);
+  --e-bd:color-mix(in srgb,var(--cs-ok) 35%,transparent);--e-pt:var(--cs-ok);
+}
+:root #subpanel-redactores .usuario-estado.borrador{
+  --e-bg:var(--cs-fila);--e-fg:var(--texto-suave);--e-bd:var(--borde);--e-pt:var(--texto-suave);
+}
+
+/* --- Rol: píldora con el color del rol (mismo código que chips y avatar).
+       El violeta del fotógrafo es el mismo en claro y oscuro para que el
+       texto blanco se lea siempre. --- */
+#subpanel-redactores .select-rol{
+  border:0;color:#fff;font-weight:800;letter-spacing:.2px;cursor:pointer;
+}
+#subpanel-redactores .select-rol.rol-redactor{background-color:var(--cs-rol-redactor);}
+#subpanel-redactores .select-rol.rol-fotografo{background-color:var(--cs-rol-fotografo);}
+#subpanel-redactores .select-rol.rol-admin{background-color:var(--cs-rol-admin);}
+#subpanel-redactores .select-rol:focus-visible{outline:2px solid var(--celeste);outline-offset:2px;}
+
+/* --- Nivel: un tono por nivel, sacado de su propia variable (--nivel-N) --- */
+:root #subpanel-redactores .nivel-badge{
+  --nv:var(--texto-suave);
+  background:color-mix(in srgb,var(--nv) 13%,var(--tarjeta));
+  color:color-mix(in srgb,var(--nv) 85%,var(--texto));
+  border:1.5px solid color-mix(in srgb,var(--nv) 38%,var(--borde));
+  font-weight:800;box-shadow:none;
+}
+:root #subpanel-redactores .nivel-badge-1{--nv:var(--nivel-1);}
+:root #subpanel-redactores .nivel-badge-2{--nv:var(--nivel-2);}
+:root #subpanel-redactores .nivel-badge-3{--nv:var(--nivel-3);}
+:root #subpanel-redactores .nivel-badge-4{--nv:var(--nivel-4);}
+:root #subpanel-redactores .nivel-badge:hover:not(:disabled){
+  border-color:var(--nv);box-shadow:0 8px 16px -12px var(--nv);transform:none;
+}
+:root #subpanel-redactores .nivel-badge:disabled{opacity:.85;}
+:root #subpanel-redactores .nivel-badge-na{
+  --nv:var(--texto-suave);background:transparent;border-style:dashed;font-weight:600;
+}
+
+/* --- Avisos de inactividad: misma píldora de 36px; el color lo sigue
+       poniendo el estado (.av-ok · .av-aviso · .av-grave · .av-neutro) --- */
+#subpanel-redactores .avisos-btn{
+  min-height:var(--cs-ctl-s);padding:2px 12px 2px 3px;border-width:1.5px;box-sizing:border-box;
+  box-shadow:none;font-weight:800;
+}
+#subpanel-redactores .avisos-btn:hover{transform:none;box-shadow:0 8px 16px -12px rgba(var(--av-glow),.8);}
+#subpanel-redactores .avisos-btn-icono{width:26px;height:26px;box-shadow:none;}
+
+/* --- Acciones: fantasma; hover celeste; destructiva roja; deshabilitado claro --- */
+#subpanel-redactores table.lista td.acciones-usuario button:focus-visible{outline:2px solid var(--celeste);outline-offset:2px;}
+#subpanel-redactores table.lista td.acciones-usuario button:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+#subpanel-redactores table.lista td.acciones-usuario button.eliminar{
+  color:var(--cs-error);border-color:color-mix(in srgb,var(--cs-error) 35%,var(--borde));
+}
+#subpanel-redactores table.lista td.acciones-usuario button.eliminar:hover:not(:disabled){
+  background:var(--cs-error-fondo);border-color:var(--cs-error);color:var(--cs-error);
+}
+
+/* --- Filtros: foco igual que el resto de campos --- */
+#subpanel-redactores .usuarios-buscar:focus-visible,
+#subpanel-redactores .usuarios-orden:focus-visible{
+  outline:none;border-color:var(--celeste);box-shadow:var(--cs-foco);
+}
+
+/* --- Filas: la fila activa se nota (sin cambiar su altura) --- */
+#subpanel-redactores table.lista tbody tr{transition:background .15s;}
+#subpanel-redactores table.lista tbody tr:focus-within{background:var(--cs-fila-hover);}
+/* Tarjeta móvil: las etiquetas se alinean a la derecha como el resto de datos */
+@media (max-width:1280px){
+  #subpanel-redactores table.lista td .gt-cargos{justify-content:flex-end;}
+  :root #subpanel-redactores td[data-label="Correo"] :is(.usuario-sin-acceso){margin-left:auto;}
+}
+
+/* --- ANCHO: la tabla nunca debe ser más ancha que la pantalla.
+       Las etiquetas largas (cargos, avisos) envuelven en varias líneas en
+       vez de empujar las columnas; "Acciones" siempre queda visible. --- */
+#subpanel-redactores table.lista{width:100%;max-width:100%;}
+:root #subpanel-redactores :is(.gt-cargo,.gt-cargo-editar,.usuario-sin-acceso,.usuario-sin-publicar){
+  white-space:normal;overflow-wrap:anywhere;border-radius:10px;text-align:left;min-width:0;
+}
+:root #subpanel-redactores td[data-label="Correo"] .usuario-sin-acceso,
+:root #subpanel-redactores .usuario-sin-publicar{width:fit-content;max-width:100%;}
+@media (min-width:1281px) and (max-width:1600px){
+  #subpanel-redactores table.lista td{padding:12px 6px;}
+  #subpanel-redactores table.lista th{padding:13px 6px;}
+  #subpanel-redactores table.lista td[data-label="Usuario"]{min-width:110px;}
+  #subpanel-redactores table.lista td[data-label="Correo"]{min-width:110px;}
+  #subpanel-redactores table.lista .acciones{min-width:140px;}
+  #subpanel-redactores .select-rol{min-width:112px;}
+  #subpanel-redactores .btn-equipos-usuario,
+  #subpanel-redactores .gt-chip{max-width:180px;}
+}
+
+/* =====================================================================
+   8 · TEMA OSCURO (lo que antes no lo tenía)
+   ===================================================================== */
+[data-theme="dark"] #infoAreasSub .sa-anadir select,
+[data-theme="dark"] #infoAreasSub .sa-nueva input,
+[data-theme="dark"] #infoGrupos .gt-fila-campos input[type="text"],
+[data-theme="dark"] .gt-modal :is(input[type="text"],select,textarea){
+  background-color:var(--tarjeta);border-color:var(--borde);color:var(--texto);
+}
+[data-theme="dark"] .gt-stat b{color:var(--texto);}
+[data-theme="dark"] .gt-nombre{color:var(--texto);}
+[data-theme="dark"] .sa-ico{box-shadow:none;}
+[data-theme="dark"] #infoAreasSub .sa-nueva label{color:var(--texto);}
+[data-theme="dark"] .acred-aviso-sub{color:var(--texto);}
+
+/* =====================================================================
+   9 · MÓVIL
+   ===================================================================== */
+@media (max-width:640px){
+  :is(#infoAreasSub,#infoGrupos,#subpanel-respRrhh) .gt-pie,
+  #infoAreasSub .sa-pie{flex-direction:column;align-items:stretch;}
+  #infoAreasSub .sa-pie .gt-btn,
+  #infoAreasSub .sa-anadir{width:100%;flex:1 1 100%;}
+  :is(#infoAreasSub,#infoGrupos) .gt-rejilla{grid-template-columns:1fr;}
+  /* Objetivo táctil de 40px mínimo */
+  :is(#infoAreasSub,#infoGrupos,#subpanel-respRrhh) .gt-btn,
+  #infoOrganigrama .org-btn,
+  #subpanel-respRrhh .resp-btn{min-height:40px;}
+  /* 16px en inputs: evita el zoom automático de iOS */
+  #infoAreasSub .sa-anadir select,
+  #infoAreasSub .sa-nueva input,
+  #infoGrupos .gt-fila-campos input[type="text"],
+  .gt-modal :is(input[type="text"],select,textarea){font-size:16px;}
+}
+
+/* =====================================================================
+   10 · MOVIMIENTO REDUCIDO
+   ===================================================================== */
+@media (prefers-reduced-motion:reduce){
+  #infoGrupos .gt-tarjeta,
+  #infoAreasSub .gt-tarjeta,
+  :is(#infoAreasSub,#infoGrupos,#subpanel-respRrhh) .gt-btn,
+  #infoOrganigrama .org-btn,
+  #subpanel-respRrhh .resp-btn{transition:none;}
+  #infoGrupos .gt-tarjeta:hover,
+  #infoAreasSub .gt-tarjeta:hover{transform:none;}
+}

@@ -218,6 +218,25 @@ const SEO_IDIOMAS_WORKER = {
 const SEO_IDIOMA_DEFECTO_WORKER = "es";
 const SEO_TWITTER_SITE = "@elotrofutbol";
 
+// ENCUADRE SIN FOCO ELEGIDO (blindaje contra caras cortadas en X/Facebook/WhatsApp).
+// g_auto elige "la zona interesante" y en fotos de acción se queda con el balón o las
+// piernas y corta la cabeza. Sin foco se aplica, por orden:
+//   1) foto vertical/cuadrada conocida (ancho/alto < 1,15): se muestra ENTERA sobre un
+//      fondo difuminado de la propia foto (c_pad + b_blurred): no se corta nada;
+//   2) resto: recorte que se centra en la CARA mayor (g_face:auto) y, si no hay ninguna
+//      cara, vuelve solo a g_auto.
+// Con foco elegido por el redactor no cambia nada (g_xy_center). Mismo cálculo en
+// worker/src/index.js y worker-secondary/src/index.js (un test exige la MISMA URL).
+const SEO_RATIO_FOTO_VERTICAL = 1.15;
+const SEO_GRAVEDAD_SIN_FOCO = "g_face:auto";
+function seoTransformacionSocial(pf, dims, ancho, alto) {
+  if (pf) return `f_jpg,q_auto:good,c_fill,g_xy_center,x_${pf.x},y_${pf.y},w_${ancho},h_${alto}`;
+  if (dims && dims.w > 0 && dims.h > 0 && dims.w / dims.h < SEO_RATIO_FOTO_VERTICAL) {
+    return `f_jpg,q_auto:good,c_pad,b_blurred:400:15,w_${ancho},h_${alto}`;
+  }
+  return `f_jpg,q_auto:good,c_fill,${SEO_GRAVEDAD_SIN_FOCO},w_${ancho},h_${alto}`;
+}
+
 // Imagen para redes y Google Discover: las fotos de Cloudinary se sirven en un
 // recorte JPG del tamaño pedido (WhatsApp/Facebook/X piden ~1,91:1 y pesos
 // bajos; algunos no soportan webp/avif, por eso f_jpg y no f_auto). Si la URL no
@@ -230,18 +249,89 @@ function seoImagenSocialWorker(url, ancho, alto, foco, dims) {
   // Recorte alrededor del FOCO que el redactor eligió para la portada (el mismo
   // que respeta la web: "62% 30%"). Sin foco elegido (vacío o el centro por
   // defecto "50% 50%") se mantiene g_auto, como siempre.
-  const pf = seoFocoCentroCloudinary(foco, dims, ancho, alto) || seoFocoCloudinary(foco);
-  const gravedad = pf ? `g_xy_center,x_${pf.x},y_${pf.y}` : "g_auto";
-  const t = `f_jpg,q_auto:good,c_fill,${gravedad},w_${ancho},h_${alto}`;
+  // Si el llamador no pasa las medidas de la foto, se usan las que ya se
+  // conocen (memoria del worker): así TODAS las rutas (meta de personas,
+  // JSON-LD, autores, jugadores...) recortan igual que la web (object-position)
+  // en vez de centrar el recorte en el punto, que da otro encuadre.
+  const dimsConocidas = dims || OG_DIMS_MEM.get(url) || null;
+  const pf = seoFocoCentroCloudinary(foco, dimsConocidas, ancho, alto) || seoFocoCloudinary(foco);
+  const t = seoTransformacionSocial(pf, dimsConocidas, ancho, alto);
   return { url: url.slice(0, i + marca.length) + t + "/" + url.slice(i + marca.length), ancho, alto };
+}
+
+// ---------- FOCO: parser ÚNICO del worker del sitio ----------
+// Espejo EXACTO de EOF_FOCO.normalizar (public/js/foco.js) y de focoComoPar
+// (worker/src/index.js): acepta "62% 30%", "62 30", "62.5% 30%", "center top",
+// "right", {x, y} y [x, y]. Antes este worker solo entendía "N% N%" estricto y
+// cualquier otro formato válido para la web (que sí lo pintaba bien) hacía que
+// la tarjeta del enlace se recortase con g_auto, ignorando el foco elegido.
+// Devuelve [x, y] (0-100, un decimal) o null si no hay un foco interpretable.
+// Un test (worker/tests/foco-enlaces.test.mjs) lo contrasta con los otros dos.
+const SEO_FOCO_PALABRAS_X = { left: 0, center: 50, right: 100 };
+const SEO_FOCO_PALABRAS_Y = { top: 0, center: 50, bottom: 100 };
+function seoFocoNumero(token, palabras) {
+  if (token === null || token === undefined) return null;
+  const t = String(token).trim().toLowerCase();
+  if (!t) return null;
+  if (Object.prototype.hasOwnProperty.call(palabras, t)) return palabras[t];
+  const m = t.match(/^(-?\d{1,3}(?:\.\d+)?)%?$/);
+  if (!m) return null;
+  const n = parseFloat(m[1]);
+  return Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : null;
+}
+function seoFocoPar(valor) {
+  if (valor === null || valor === undefined || valor === "") return null;
+  let x = null;
+  let y = null;
+  if (typeof valor === "object") {
+    if (Array.isArray(valor)) {
+      x = seoFocoNumero(valor[0], SEO_FOCO_PALABRAS_X);
+      y = seoFocoNumero(valor[1], SEO_FOCO_PALABRAS_Y);
+    } else {
+      x = seoFocoNumero(valor.x, SEO_FOCO_PALABRAS_X);
+      y = seoFocoNumero(valor.y, SEO_FOCO_PALABRAS_Y);
+    }
+  } else if (typeof valor === "string" || typeof valor === "number") {
+    const texto = String(valor).trim();
+    if (texto.length > 40) return null;
+    const partes = texto.split(/\s+/);
+    if (partes.length === 1) {
+      const unico = partes[0].toLowerCase();
+      if (unico === "top" || unico === "bottom") {
+        x = 50;
+        y = SEO_FOCO_PALABRAS_Y[unico];
+      } else {
+        x = seoFocoNumero(unico, SEO_FOCO_PALABRAS_X);
+        y = 50;
+      }
+    } else if (partes.length === 2) {
+      const a = partes[0].toLowerCase();
+      const b = partes[1].toLowerCase();
+      if ((a === "top" || a === "bottom") && (b === "left" || b === "right" || b === "center")) {
+        x = seoFocoNumero(b, SEO_FOCO_PALABRAS_X);
+        y = seoFocoNumero(a, SEO_FOCO_PALABRAS_Y);
+      } else {
+        x = seoFocoNumero(a, SEO_FOCO_PALABRAS_X);
+        y = seoFocoNumero(b, SEO_FOCO_PALABRAS_Y);
+      }
+    }
+  }
+  if (x === null || y === null) return null;
+  return [Math.round(x * 10) / 10, Math.round(y * 10) / 10];
+}
+// Foco en forma canónica para claves de caché: "62% 30%", o "" si no hay foco
+// válido o es el centro (que se recorta igual que sin foco).
+function seoFocoClave(foco) {
+  const par = seoFocoPar(foco);
+  return par && !(par[0] === 50 && par[1] === 50) ? `${par[0]}% ${par[1]}%` : "";
 }
 
 // "62% 30%" -> { x: "0.62", y: "0.3" } (fracciones 0-1 de Cloudinary). null si
 // no hay foco válido o es el centro por defecto.
 function seoFocoCloudinary(foco) {
-  const m = /^\s*(\d{1,3}(?:\.\d+)?)%\s+(\d{1,3}(?:\.\d+)?)%\s*$/.exec(typeof foco === "string" ? foco : "");
-  if (!m) return null;
-  const x = Math.min(100, parseFloat(m[1])), y = Math.min(100, parseFloat(m[2]));
+  const par = seoFocoPar(foco);
+  if (!par) return null;
+  const x = par[0], y = par[1];
   if (x === 50 && y === 50) return null;
   // Cloudinary solo toma x/y como fracción si llevan decimales ("1" = 1 píxel):
   // 0 y 1 se escriben "0.0" y "1.0".
@@ -256,9 +346,9 @@ function seoFocoCloudinary(foco) {
 // que reproduce exactamente el de object-position. Devuelve {x, y} (fracciones
 // Cloudinary) o null si no hay foco/medidas válidas.
 function seoFocoCentroCloudinary(foco, dims, ancho, alto) {
-  const m = /^\s*(\d{1,3}(?:\.\d+)?)%\s+(\d{1,3}(?:\.\d+)?)%\s*$/.exec(typeof foco === "string" ? foco : "");
-  if (!m || !dims || !(dims.w > 0) || !(dims.h > 0) || !(ancho > 0) || !(alto > 0)) return null;
-  const fx = Math.min(100, parseFloat(m[1])) / 100, fy = Math.min(100, parseFloat(m[2])) / 100;
+  const par = seoFocoPar(foco);
+  if (!par || !dims || !(dims.w > 0) || !(dims.h > 0) || !(ancho > 0) || !(alto > 0)) return null;
+  const fx = par[0] / 100, fy = par[1] / 100;
   if (fx === 0.5 && fy === 0.5) return null;
   const T = ancho / alto, A = dims.w / dims.h;
   let cx = 0.5, cy = 0.5;
@@ -269,25 +359,51 @@ function seoFocoCentroCloudinary(foco, dims, ancho, alto) {
 }
 
 // Medidas (ancho x alto) de una foto de Cloudinary con fl_getinfo. null si no se puede.
+// SIN medidas no se puede reproducir el encuadre de la web (object-position) y el
+// recorte sale centrado en el punto: por eso se insiste (2 intentos, 3 s cada uno)
+// y se recuerdan en memoria y en la caché compartida (las medidas de una foto no cambian).
 const OG_DIMS_MEM = new Map();
+const OG_DIMS_TTL_S = 7 * 24 * 3600;
+function claveCacheMedidas(origenAbs) {
+  return new Request(`https://cache.elotrofutbol.media/__ogdims/${encodeURIComponent(origenAbs)}`);
+}
 async function medidasFotoCloudinary(origenAbs) {
   const marca = "/upload/";
   const i = origenAbs.indexOf(marca);
   if (i === -1 || !/res\.cloudinary\.com/.test(origenAbs)) return null;
   if (OG_DIMS_MEM.has(origenAbs)) return OG_DIMS_MEM.get(origenAbs);
-  const controlador = new AbortController();
-  const temporizador = setTimeout(() => controlador.abort(), 1500);
-  try {
-    const r = await fetch(origenAbs.slice(0, i + marca.length) + "fl_getinfo/" + origenAbs.slice(i + marca.length), { signal: controlador.signal });
-    if (!r.ok) return null;
-    const j = await r.json();
-    const w = Number(j && j.input && j.input.width), h = Number(j && j.input && j.input.height);
-    if (!(w > 0) || !(h > 0)) return null;
+  const recordar = (dims) => {
     if (OG_DIMS_MEM.size >= 500) OG_DIMS_MEM.delete(OG_DIMS_MEM.keys().next().value);
-    const dims = { w, h };
     OG_DIMS_MEM.set(origenAbs, dims);
     return dims;
-  } catch { return null; } finally { clearTimeout(temporizador); }
+  };
+  try {
+    const r = await caches.default.match(claveCacheMedidas(origenAbs));
+    if (r) {
+      const d = await r.json();
+      if (d && d.w > 0 && d.h > 0) return recordar({ w: Number(d.w), h: Number(d.h) });
+    }
+  } catch { /* sin caché compartida: se pregunta a Cloudinary */ }
+  const urlInfo = origenAbs.slice(0, i + marca.length) + "fl_getinfo/" + origenAbs.slice(i + marca.length);
+  for (let intento = 0; intento < 2; intento++) {
+    const controlador = new AbortController();
+    const temporizador = setTimeout(() => controlador.abort(), 3000);
+    try {
+      const r = await fetch(urlInfo, { signal: controlador.signal });
+      if (!r.ok) continue;
+      const j = await r.json();
+      const w = Number(j && j.input && j.input.width), h = Number(j && j.input && j.input.height);
+      if (!(w > 0) || !(h > 0)) continue;
+      const dims = recordar({ w, h });
+      try {
+        await caches.default.put(claveCacheMedidas(origenAbs), new Response(JSON.stringify(dims), {
+          headers: { "Content-Type": "application/json", "Cache-Control": `public, max-age=${OG_DIMS_TTL_S}` },
+        }));
+      } catch { /* solo es una optimización */ }
+      return dims;
+    } catch { /* se reintenta */ } finally { clearTimeout(temporizador); }
+  }
+  return null;
 }
 
 // SEGURIDAD: JSON-LD dentro de <script>: un "</script>" (o "<!--") en un titulo/
@@ -402,7 +518,7 @@ function quitarDatelineSeo(texto) {
 
 // Crédito (autor de la foto) de la imagen que se anuncia como principal, si lo hay.
 function creditoImagenPrincipalSeo(article) {
-  const fotos = Array.isArray(article && article.imagenes) ? article.imagenes.filter((x) => x && typeof x === "object" && x.url && x.tipo !== "tweet") : [];
+  const fotos = Array.isArray(article && article.imagenes) ? article.imagenes.filter((x) => x && typeof x === "object" && x.url && x.tipo !== "tweet" && x.tipo !== "video") : [];
   const principal = fotos.find((x) => x.url === article.imagen_url) || fotos[0];
   const c = principal && typeof principal.credito === "string" ? principal.credito.trim() : "";
   return c || "";
@@ -523,7 +639,10 @@ function seoDatosPartido(article, etiquetaCompeticion) {
   const grupoCrudo = r.grupo ? String(r.grupo).trim() : "";
   const grupo = grupoCrudo ? (/^grupo/i.test(grupoCrudo) ? grupoCrudo : `Grupo ${grupoCrudo}`) : "";
   const finalizado = r.estado === "finalizado" && r.goles_local != null && r.goles_visitante != null;
-  const f = seoPartesFecha(r.fecha_partido);
+  // Partido aplazado (estado "anulado": pendiente de reprogramar): la fecha/hora que
+  // quede guardada ya no vale, así que previas y crónicas no deben anunciar horario.
+  const aplazado = r.estado === "anulado";
+  const f = aplazado ? null : seoPartesFecha(r.fecha_partido);
   const mes = f ? SEO_MESES[parseInt(f.mo, 10) - 1] : "";
   const jornadaNum = parseInt(r.jornada, 10);
   return {
@@ -537,6 +656,7 @@ function seoDatosPartido(article, etiquetaCompeticion) {
     competicion: grupo ? `${base} ${grupo}`.trim() : base,
     jornada: SEO_COMPETICIONES_CON_JORNADA.has(clave) && jornadaNum > 0 ? jornadaNum : 0,
     fechaTxt: f && mes ? `${parseInt(f.d, 10)} de ${mes}` : "",
+    fechaCompletaTxt: f && mes ? `${parseInt(f.d, 10)} de ${mes} de ${f.y}` : "",
     hora: f && f.h && `${f.h}:${f.mi}` !== "00:00" ? `${f.h}:${f.mi}` : "",
     ubicacion: r.ubicacion ? String(r.ubicacion).trim() : "",
     resultado: r,
@@ -618,7 +738,7 @@ function seoSportsEventJsonLd(p, urlCanonica, urlAbs) {
     "name": `${p.local} - ${p.visitante}`,
     "description": `${p.competicion}${p.jornada ? `, jornada ${p.jornada}` : ""}`,
     "sport": "Fútbol",
-    "startDate": seoFechaPartidoIso(r.fecha_partido),
+    "startDate": r.estado === "anulado" ? undefined : seoFechaPartidoIso(r.fecha_partido),
     "eventStatus": estadoSchema[r.estado] || "https://schema.org/EventScheduled",
     "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
     "location": p.ubicacion ? { "@type": "Place", "name": p.ubicacion, "address": p.ubicacion } : undefined,
@@ -846,7 +966,7 @@ ${ogDims ? `<meta property="og:image:width" content="${ogDims.ancho}">\n<meta pr
 ${jsonLdPartido ? `<script type="application/ld+json" id="seo-jsonld-sportsevent">${jsonLdSeguro(jsonLdPartido)}</script>` : ""}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&family=Playfair+Display:wght@700;800&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">`;
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;0,700;0,800;1,500;1,700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&display=swap" rel="stylesheet">`;
 }
 
 // Buscadores (no las vistas previas de redes): a estos SÍ se les pide no
@@ -909,14 +1029,14 @@ function construirMetaNoticiaProgramada(prog, esBuscador, paraBot = false, image
     `<meta name="twitter:image:alt" content="${e(titulo)}">`,
     // Lo que noticia.html tenía entre <title> y los CSS (inyectarSeoEnHtml lo
     // sustituye todo): iconos y carga de fuentes sin bloquear el render.
-    `<link rel="icon" href="/favicon.ico?v=3" sizes="any">`,
-    `<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=3">`,
-    `<link rel="apple-touch-icon" href="/img/apple-touch-icon.png?v=2">`,
+    `<link rel="icon" href="/favicon.ico?v=39af2432" sizes="any">`,
+    `<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=39af2432">`,
+    `<link rel="apple-touch-icon" href="/img/apple-touch-icon.png?v=3f854c49">`,
     // Un rastreador no pinta la página: se le ahorran las fuentes.
     paraBot ? "" : `<link rel="preload" as="style" href="${FUENTES_NOTICIA_URL}" onload="this.onload=null;this.rel='stylesheet'"><noscript><link href="${FUENTES_NOTICIA_URL}" rel="stylesheet"></noscript>`,
   ].filter(Boolean).join("\n");
 }
-const FUENTES_NOTICIA_URL = "https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&family=Playfair+Display:wght@700;800&family=Lora:ital,wght@0,400;0,600;1,400&display=swap";
+const FUENTES_NOTICIA_URL = "https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;0,700;0,800;1,500;1,700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&display=swap";
 
 // Sustituye, dentro del <head> ya servido por env.ASSETS, el bloque
 // estático title+description por el bloque SEO real de la noticia.
@@ -1130,12 +1250,16 @@ const OG_IMG_MAX_BYTES = 4 * 1024 * 1024;
 const OG_IMG_MIN_BYTES = 200;
 const OG_IMG_OK_TTL_MS = 6 * 3600 * 1000;
 const OG_IMG_KO_TTL_MS = 60 * 1000;
+const OG_IMG_APROX_TTL_MS = 5 * 60 * 1000; // recorte sin medidas (aproximado): se rehace pronto
 const OG_IMG_PRESUPUESTO_MS = 5000; // tope total por noticia (X y WhatsApp esperan pocos segundos; antes 7000)
 const OG_IMG_MEM = new Map(); // clave -> { res, t, ttl }
 const OG_IMG_EN_CURSO = new Map(); // clave -> Promise (varios rastreadores a la vez comparten la comprobación)
 
 function claveImagenSocial(origenAbs, foco) {
-  return `${origenAbs}|${foco || ""}|v2`;
+  // Foco CANÓNICO: "62 30", "62% 30%" y {x:62,y:30} son el mismo recorte y
+  // comparten tarjeta; cambiar el foco en el panel cambia la clave y regenera.
+  // v6: invalida lo cacheado con g_auto (cortaba caras) y con recortes aproximados.
+  return `${origenAbs}|${seoFocoClave(foco)}|v6`;
 }
 function claveCacheImagenSocial(clave) {
   return new Request(`https://cache.elotrofutbol.media/__ogimg/${encodeURIComponent(clave)}`);
@@ -1159,7 +1283,8 @@ function candidatosImagenSocial(origenAbs, foco, dims) {
     // El respaldo sigue recortando alrededor del foco elegido (si lo hay); lo
     // único que pierde respecto al primero es g_auto/q_auto, que es lo que falla.
     const pfSimple = seoFocoCentroCloudinary(foco, dims, 1200, 630) || seoFocoCloudinary(foco);
-    const gravedadSimple = pfSimple ? `g_xy_center,x_${pfSimple.x},y_${pfSimple.y},` : "";
+    // Sin foco, el respaldo sin IA ancla arriba (g_north): en fotos de fútbol conserva las caras.
+    const gravedadSimple = pfSimple ? `g_xy_center,x_${pfSimple.x},y_${pfSimple.y},` : "g_north,";
     anadir(`${prefijo}f_jpg,q_80,c_fill,${gravedadSimple}w_1200,h_630/${resto}`, 1200, 630, "recorte-simple");
     anadir(`${prefijo}f_jpg,q_75,c_limit,w_1600,h_1600/${resto}`, 0, 0, "reducida");
   }
@@ -1219,12 +1344,40 @@ function guardarImagenSocialBuena(clave, res, ctx) {
 }
 
 async function resolverImagenSocialSinCache(origenAbs, foco, ctx, clave) {
-  const dims = foco ? await medidasFotoCloudinary(origenAbs) : null;
+  // Las medidas se piden SIEMPRE (se cachean 7 días): con foco dan el encuadre exacto de la web y
+  // sin foco deciden entre recorte con cara y foto entera sobre fondo difuminado.
+  const dims = await medidasFotoCloudinary(origenAbs);
   const candidatas = candidatosImagenSocial(origenAbs, foco, dims);
   const limite = Date.now() + OG_IMG_PRESUPUESTO_MS;
   let hubo503 = false;
   let inicio = 0;
-  const buena = (c) => ({ res: { url: c.url, ancho: c.ancho, alto: c.alto, via: c.via }, ttl: OG_IMG_OK_TTL_MS });
+  // Con foco elegido pero SIN medidas el recorte sale centrado en el punto (no igual
+  // que la web): se anuncia igualmente, pero solo se recuerda 5 min (no 6 h) para
+  // que el siguiente rastreador lo rehaga bien en cuanto Cloudinary responda.
+  const focoSinMedidas = !dims && /res\.cloudinary\.com/.test(origenAbs) && origenAbs.includes("/upload/");
+  const buena = (c) => ({
+    res: { url: c.url, ancho: c.ancho, alto: c.alto, via: focoSinMedidas ? c.via + "-aprox" : c.via },
+    ttl: focoSinMedidas ? OG_IMG_APROX_TTL_MS : OG_IMG_OK_TTL_MS,
+  });
+  // Las candidatas "reducida" y "original" no traen medidas: se leen de la foto
+  // (fl_getinfo) para anunciar og:image:width/height reales. La reducida es un
+  // c_limit 1600x1600, así que se calcula su tamaño final sin ampliar.
+  const buenaConMedidas = async (c) => {
+    const res = buena(c);
+    if (c.ancho > 0 && c.alto > 0) return res;
+    const medidas = dims || await medidasFotoCloudinary(origenAbs);
+    if (medidas && medidas.w > 0 && medidas.h > 0) {
+      if (c.via === "reducida") {
+        const k = Math.min(1, 1600 / medidas.w, 1600 / medidas.h);
+        res.res.ancho = Math.round(medidas.w * k);
+        res.res.alto = Math.round(medidas.h * k);
+      } else if (c.via === "original") {
+        res.res.ancho = medidas.w;
+        res.res.alto = medidas.h;
+      }
+    }
+    return res;
+  };
 
   // Las dos primeras candidatas de Cloudinary (recorte con foco y recorte
   // simple) se piden A LA VEZ. El recorte con foco (g_auto) es el lento la
@@ -1240,7 +1393,7 @@ async function resolverImagenSocialSinCache(origenAbs, foco, ctx, clave) {
     const v1 = await p1;
     if (v1 === "ok") {
       if (v0 === "lento" && ctx && typeof ctx.waitUntil === "function") {
-        ctx.waitUntil(p0.then((v) => { if (v === "ok" && clave) guardarImagenSocialBuena(clave, buena(c0).res, ctx); }).catch(() => {}));
+        ctx.waitUntil(p0.then((v) => { if (v === "ok" && clave && !focoSinMedidas) guardarImagenSocialBuena(clave, buena(c0).res, ctx); }).catch(() => {}));
       }
       return buena(c1);
     }
@@ -1253,7 +1406,7 @@ async function resolverImagenSocialSinCache(origenAbs, foco, ctx, clave) {
     if (restante < 500) { hubo503 = true; break; }
     const c = candidatas[n];
     const veredicto = await comprobarImagenSocial(c.url, Math.min(n === 0 ? 3000 : 2200, restante));
-    if (veredicto === "ok") return buena(c);
+    if (veredicto === "ok") return await buenaConMedidas(c);
     if (veredicto === "transitorio") hubo503 = true;
   }
   // Nada verificable. Si fue por timeouts/5xx (Cloudinary lento o caído) lo más
@@ -1307,6 +1460,15 @@ async function resolverImagenSocial(origen, foco, ctx) {
   }
 }
 
+// Resultado ya decidido en memoria (sin red ni esperas) o null.
+function imagenSocialEnMemoria(origen, foco) {
+  try {
+    if (!origen) return null;
+    const e = OG_IMG_MEM.get(claveImagenSocial(seoUrlAbsolutaWorker(origen), foco));
+    return e && Date.now() - e.t < e.ttl && e.res && e.res.url ? e.res : null;
+  } catch { return null; }
+}
+
 // Primera foto real de una noticia (ignora los tuits/posts incrustados, que
 // viven en "imagenes" pero no son imagen).
 // Portada REAL de una noticia para la tarjeta social: misma regla que la web
@@ -1324,7 +1486,7 @@ function leerImagenesArticuloSeo(imagenes) {
 function portadaSocialArticulo(article) {
   if (!article) return { url: "", foco: "" };
   if (article.imagen_url) return { url: article.imagen_url, foco: article.imagen_foco || "" };
-  const fotos = leerImagenesArticuloSeo(article.imagenes).filter((x) => x && (typeof x === "string" || (typeof x === "object" && x.url && x.tipo !== "tweet")));
+  const fotos = leerImagenesArticuloSeo(article.imagenes).filter((x) => x && (typeof x === "string" || (typeof x === "object" && x.url && x.tipo !== "tweet" && x.tipo !== "video")));
   const objeto = (x) => (x && typeof x === "object" ? x : null);
   const elegida = fotos.find((x) => objeto(x) && x.grupo) || fotos[0];
   if (!elegida) return { url: "", foco: "" };
@@ -1337,7 +1499,7 @@ function primeraFotoArticuloSeo(imagenes) {
   for (const x of imagenes) {
     if (!x) continue;
     if (typeof x === "string") return x;
-    if (x.tipo === "tweet") continue;
+    if (x.tipo === "tweet" || x.tipo === "video") continue;
     if (x.url) return x.url;
   }
   return "";
@@ -1729,10 +1891,10 @@ function construirCuerpoArticuloParaBot(article, idiomaQuery, recientes = []) {
   const autorTexto = article.autor_nombre
     ? ` · Por ${escapeHtmlSeo(article.autor_nombre)}${article.coautor_nombre ? ` y ${escapeHtmlSeo(article.coautor_nombre)}` : ""}`
     : "";
-  const fechaTexto = article.fecha_publicacion ? escapeHtmlSeo(article.fecha_publicacion.slice(0, 10)) : "";
+  const fechaTexto = article.fecha_publicacion ? escapeHtmlSeo(fechaLegibleSeo(article.fecha_publicacion)) : "";
 
   return `<div class="article-header">
-  <span class="cat">${escapeHtmlSeo(article.categoria || "")}${clubArticuloLegibleSeo(article.club) ? " · " + escapeHtmlSeo(clubArticuloLegibleSeo(article.club)) : ""}</span>
+  <span class="cat">${escapeHtmlSeo(etiquetaCategoriaWorker(article.categoria || ""))}${clubArticuloLegibleSeo(article.club) ? " · " + escapeHtmlSeo(clubArticuloLegibleSeo(article.club)) : ""}</span>
   <h1>${escapeHtmlSeo(titulo)}</h1>
   ${subtitulo ? `<p class="subtitulo">${escapeHtmlSeo(subtitulo)}</p>` : ""}
   <p class="meta">${fechaTexto}${autorTexto}</p>
@@ -1759,14 +1921,14 @@ function construirFichaPartidoParaBot(article) {
   const filas = [`<li>Partido: ${club(p.local)} - ${club(p.visitante)}</li>`];
   if (p.competicion) filas.push(`<li>Competición: ${esc(p.competicion)}${p.jornada ? ` · Jornada ${p.jornada}` : ""}</li>`);
   if (p.marcador) filas.push(`<li>Resultado final: ${esc(`${p.local} ${p.marcador} ${p.visitante}`)}</li>`);
-  if (p.fechaTxt) filas.push(`<li>Fecha: ${esc(p.fechaTxt)}${p.hora ? ` · ${esc(p.hora)} h` : ""}</li>`);
+  if (p.fechaTxt) filas.push(`<li>Fecha: ${esc(p.fechaCompletaTxt || p.fechaTxt)}${p.hora ? ` · ${esc(p.hora)} h` : ""}</li>`);
   if (p.ubicacion) filas.push(`<li>Estadio: ${esc(p.ubicacion)}</li>`);
   const relacionados = Array.isArray(article.relacionados_partido) ? article.relacionados_partido : [];
   relacionados.filter((x) => x && x.slug && x.titulo).forEach((x) => {
     const nombre = x.tipo === "cronica" ? "Crónica" : "Previa";
     filas.push(`<li>${nombre} del partido: ${enlace(urlNoticiaWorker(x.categoria || cat, x.slug), x.titulo)}</li>`);
   });
-  if (r.id) filas.push(`<li>${enlace(`/minuto-a-minuto.html?id=${encodeURIComponent(r.id)}`, `Minuto a minuto ${p.local} - ${p.visitante}`)}</li>`);
+  if (r.id) filas.push(`<li>${enlace(`/minuto-a-minuto?id=${encodeURIComponent(r.id)}`, `Minuto a minuto ${p.local} - ${p.visitante}`)}</li>`);
   if (r.url_galeria && r.galeria_disponible) filas.push(`<li>${enlace(r.url_galeria, `Galería de fotos ${p.local} - ${p.visitante}`)}</li>`);
   return `<section class="ficha-partido-bot"><h2>${esc(p.etiqueta)} ${esc(p.local)} - ${esc(p.visitante)}: datos del partido</h2><ul>${filas.join("")}</ul></section>`;
 }
@@ -1922,12 +2084,16 @@ async function servirNoticiaConSeo(noticiaRequest, env, slug, idiomaQuery, esBot
   // VERIFICADA"); si la derivada de Cloudinary falla se cae a otra que cargue.
   // La comprobación de la imagen y la lista de noticias recientes (solo bots) se
   // hacen EN PARALELO: antes iban una detrás de otra y sumaban sus esperas.
-  const [imagenSocial, recientesBot] = esBot
+  const [imagenSocialBot, recientesBot] = esBot
     ? await Promise.all([
         resolverImagenSocial(origenImagenArticulo(article), portadaSocialArticulo(article).foco, ctx),
         obtenerUltimasNoticiasParaBot(),
       ])
     : [null, null];
+  // Un rastreador que no está en la lista de bots (o una herramienta que lee el
+  // HTML como una persona) recibe la imagen ya verificada y con el foco bien
+  // aplicado si el worker ya la tiene en memoria; si no, la derivada de siempre.
+  const imagenSocial = imagenSocialBot || (esBot ? null : imagenSocialEnMemoria(origenImagenArticulo(article), portadaSocialArticulo(article).foco));
   // PRECALENTADO: cuando entra una persona (p. ej. quien acaba de publicar) se
   // verifica ya la imagen social en segundo plano, así cuando X/WhatsApp pidan
   // el enlace la tarjeta sale al instante desde la caché.
@@ -2023,6 +2189,150 @@ async function servir404Real(env, baseUrlComoTexto) {
 }
 
 // ============================================================
+// HERO DE LA PORTADA ADELANTADO EN EL BORDE (rendimiento, LCP móvil)
+//
+// index.html es una cáscara: el titular y la foto del hero solo se conocían
+// cuando el navegador pedía /api/articles (conexión nueva a la API, JSON) y
+// DESPUÉS pedía la imagen a Cloudinary: tres viajes encadenados antes de poder
+// pintar lo más grande de la página. Aquí, para lectores reales, el HTML ya
+// sale con (1) <link rel="preload" as="image"> de la foto del hero, que el
+// navegador empieza a bajar en cuanto lee el <head>, y (2) el propio hero
+// pintado, con el mismo marcado que ya crea el script temprano de index.html.
+// main.js (pintarHero) lo sustituye por la versión completa al llegar la API,
+// igual que antes.
+//
+// Nunca retrasa la portada más de unos cientos de ms: se sirve la última
+// noticia destacada conocida (caché en memoria del isolate, 30 s de frescura,
+// 10 min como máximo) y se refresca en segundo plano. Solo la primera petición
+// de un isolate frío espera la API, con tope de 700 ms. Si algo falla, la
+// portada se sirve exactamente igual que antes.
+// ============================================================
+const HERO_EDGE_API = "https://api.elotrofutbol.media/api/articles?destacado=1&limit=5";
+const HERO_EDGE_FRESCO_MS = 30000;
+const HERO_EDGE_MAX_EDAD_MS = 10 * 60 * 1000;
+const HERO_EDGE_ANCHOS = [360, 540, 720, 900, 1200];
+const HERO_EDGE_MARCA_ESQUELETO = '<div class="hero-principal hero-esqueleto" aria-hidden="true"></div>';
+let _heroEdgeArticulo = null;
+let _heroEdgeInstante = 0;
+let _heroEdgePendiente = null;
+
+function refrescarHeroEdge(timeoutMs) {
+  if (_heroEdgePendiente) return _heroEdgePendiente;
+  const tarea = (async () => {
+    const controlador = new AbortController();
+    const timeoutId = setTimeout(() => controlador.abort(), timeoutMs);
+    try {
+      const resp = await fetch(HERO_EDGE_API, {
+        signal: controlador.signal,
+        headers: { "Accept": "application/json" },
+      });
+      if (!resp.ok) return;
+      const json = await resp.json();
+      const a = json && Array.isArray(json.articles) ? json.articles[0] : null;
+      if (a && typeof a.imagen_url === "string" && typeof a.slug === "string" && a.slug) {
+        _heroEdgeArticulo = a;
+        _heroEdgeInstante = Date.now();
+      }
+    } catch (_) {
+      // accesorio: si falla, la portada sale sin adelantar el hero.
+    } finally {
+      clearTimeout(timeoutId);
+      _heroEdgePendiente = null;
+    }
+  })();
+  _heroEdgePendiente = tarea;
+  return tarea;
+}
+
+async function obtenerHeroEdge(ctx) {
+  const edad = Date.now() - _heroEdgeInstante;
+  if (_heroEdgeArticulo && edad < HERO_EDGE_MAX_EDAD_MS) {
+    if (edad >= HERO_EDGE_FRESCO_MS && ctx && typeof ctx.waitUntil === "function") {
+      ctx.waitUntil(refrescarHeroEdge(3000));
+    }
+    return _heroEdgeArticulo;
+  }
+  await refrescarHeroEdge(700);
+  return _heroEdgeArticulo && Date.now() - _heroEdgeInstante < HERO_EDGE_MAX_EDAD_MS
+    ? _heroEdgeArticulo
+    : null;
+}
+
+// Mismas URLs de Cloudinary que construye el script temprano de index.html
+// y main.js (cloudinaryOptimizada), para que el navegador reutilice la
+// descarga ya iniciada.
+function urlHeroEdge(imagenUrl, ancho) {
+  const i = imagenUrl.indexOf("/upload/") + 8;
+  return imagenUrl.slice(0, i) + "f_auto,q_auto,c_limit,dpr_auto,w_" + ancho + "/" + imagenUrl.slice(i);
+}
+
+// Port de EOF_FOCO.normalizar (public/js/foco.js): devuelve {x,y} en % o el
+// centro si el valor no es interpretable. Mantener alineado con foco.js.
+function focoHeroEdge(raw) {
+  const H = { left: 0, center: 50, right: 100 };
+  const V = { top: 0, center: 50, bottom: 100 };
+  const lim = (n) => (isFinite(n) ? Math.min(100, Math.max(0, n)) : null);
+  const red = (n) => Math.round(n * 10) / 10;
+  const val = (r, mapa) => {
+    if (r == null) return null;
+    const t = String(r).trim().toLowerCase();
+    if (!t) return null;
+    if (Object.prototype.hasOwnProperty.call(mapa, t)) return mapa[t];
+    const m = t.match(/^(-?\d{1,3}(?:\.\d+)?)%?$/);
+    return m ? lim(parseFloat(m[1])) : null;
+  };
+  const centro = { x: 50, y: 50 };
+  if (raw == null || raw === "") return centro;
+  let x = null, y = null;
+  if (typeof raw === "object") {
+    if (Array.isArray(raw)) { x = val(raw[0], H); y = val(raw[1], V); }
+    else { x = val(raw.x, H); y = val(raw.y, V); }
+  } else {
+    const p = String(raw).trim().split(/\s+/);
+    if (p.length === 1) {
+      const a0 = p[0].toLowerCase();
+      if (a0 === "top" || a0 === "bottom") { x = 50; y = V[a0]; }
+      else { x = val(a0, H); y = 50; }
+    } else if (p.length === 2) {
+      const a0 = p[0].toLowerCase(), b0 = p[1].toLowerCase();
+      if ((a0 === "top" || a0 === "bottom") && (b0 === "left" || b0 === "right" || b0 === "center")) {
+        x = val(b0, H); y = val(a0, V);
+      } else { x = val(a0, H); y = val(b0, V); }
+    }
+  }
+  return x == null || y == null ? centro : { x: red(x), y: red(y) };
+}
+
+function inyectarHeroEdge(html, a) {
+  const u0 = a && a.imagen_url;
+  if (typeof u0 !== "string" || !/^https:\/\/res\.cloudinary\.com\//.test(u0) || u0.indexOf("/upload/") < 0) return html;
+  const srcset = HERO_EDGE_ANCHOS.map((w) => urlHeroEdge(u0, w) + " " + w + "w").join(", ");
+  const sizes = "(max-width:900px) 100vw, 800px";
+  let salida = html;
+  const metaCharset = '<meta charset="UTF-8">';
+  if (salida.includes(metaCharset)) {
+    const preload =
+      '<link rel="preload" as="image" href="' + escapeHtmlSeo(urlHeroEdge(u0, 900)) + '"' +
+      ' imagesrcset="' + escapeHtmlSeo(srcset) + '" imagesizes="' + escapeHtmlSeo(sizes) + '" fetchpriority="high">';
+    salida = salida.replace(metaCharset, () => metaCharset + preload);
+  }
+  if (salida.includes(HERO_EDGE_MARCA_ESQUELETO)) {
+    const foco = focoHeroEdge(a.imagen_foco);
+    const estiloFoco = foco.x === 50 && foco.y === 50 ? "" : ' style="--foco-x:' + foco.x + '%;--foco-y:' + foco.y + '%"';
+    const cat = String(a.categoria || "").trim().toLowerCase().replace(/_/g, "-") || "general";
+    const titulo = escapeHtmlSeo(a.titulo || "");
+    const sub = a.subtitulo ? "<p>" + escapeHtmlSeo(a.subtitulo) + "</p>" : "";
+    const hero =
+      '<a class="hero-principal" href="/futbol/' + escapeHtmlSeo(encodeURIComponent(cat)) + "/" + escapeHtmlSeo(encodeURIComponent(a.slug)) + '">' +
+      '<img class="foco-img"' + estiloFoco + ' alt="' + titulo + '" src="' + escapeHtmlSeo(urlHeroEdge(u0, 900)) + '"' +
+      ' srcset="' + escapeHtmlSeo(srcset) + '" sizes="' + escapeHtmlSeo(sizes) + '" fetchpriority="high" decoding="async">' +
+      '<div class="overlay"><div><h1>' + titulo + "</h1>" + sub + "</div></div></a>";
+    salida = salida.replace(HERO_EDGE_MARCA_ESQUELETO, () => hero);
+  }
+  return salida;
+}
+
+// ============================================================
 // PORTADA PREPINTADA PARA BOTS
 //
 // index.html es una cáscara vacía ("Cargando lo último...") que se rellena
@@ -2072,7 +2382,7 @@ function construirListaPortadaParaBot(articulos) {
     const fechaIso = aFechaIsoSeo(a.fecha_publicacion);
     const resumen = resumirTextoSeo(String(a.subtitulo || a.contenido || "").replace(/<[^>]+>/g, " "), 160);
     return `<li><a href="${escapeHtmlSeo(href)}">${escapeHtmlSeo(a.titulo)}</a>`
-      + (fechaIso ? ` <time datetime="${fechaIso}">${fechaIso.slice(0, 10)}</time>` : "")
+      + (fechaIso ? ` <time datetime="${fechaIso}">${escapeHtmlSeo(fechaLegibleSeo(fechaIso))}</time>` : "")
       + (resumen ? `<p>${escapeHtmlSeo(resumen)}</p>` : "")
       + `</li>`;
   }).join("\n");
@@ -2087,6 +2397,114 @@ function inyectarPortadaParaBot(html, articulos) {
   // que aquí se añade un <h1> de marca oculto visualmente solo para bots.
   const h1Bot = '<h1 style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap">ELOTROFÚTBOLTV — Noticias del fútbol no profesional</h1>';
   return html.replace(marca, () => `${h1Bot}<div id="grid-categoria-home">${construirListaPortadaParaBot(articulos)}</div>`);
+}
+
+// ---- Partidos de la portada para bots ("Próximos partidos" y "Últimos
+// resultados"). Mismo planteamiento que las noticias: solo bots conocidos,
+// timeout corto, caché de 60 s y, si la API falla, se sirve la portada sin
+// tocar. Es una lista simple (sin el filtro de portada de main.js, que vive
+// en el cliente); los lectores siguen viendo la lista completa pintada por JS.
+let _cachePartidosPortadaBot = { t: 0, proximos: [], resultados: [] };
+
+async function obtenerPartidosPortadaParaBot() {
+  const ahora = Date.now();
+  if (ahora - _cachePartidosPortadaBot.t < 60000 &&
+      (_cachePartidosPortadaBot.proximos.length || _cachePartidosPortadaBot.resultados.length)) {
+    return _cachePartidosPortadaBot;
+  }
+  const pedir = async (consulta) => {
+    const controlador = new AbortController();
+    const timeoutId = setTimeout(() => controlador.abort(), 1500);
+    try {
+      const resp = await fetch(`https://api.elotrofutbol.media/api/results?${consulta}`, {
+        signal: controlador.signal,
+        headers: { "Accept": "application/json" },
+      });
+      if (!resp.ok) return null;
+      const data = await resp.json().catch(() => null);
+      return data && Array.isArray(data.results)
+        ? data.results.filter((r) => r && r.equipo_local && r.equipo_visitante)
+        : null;
+    } catch {
+      return null;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  };
+  const [prox, res] = await Promise.all([
+    pedir("estado=programado&orden=cercania&limit=40"),
+    pedir("estado=finalizado&limit=40"),
+  ]);
+  // Los programados cuya hora pasó hace más de 3 h son partidos que nunca
+  // se actualizaron: se descartan igual que hace main.js.
+  const limitePasado = ahora - 3 * 60 * 60 * 1000;
+  const proximos = (prox || []).filter((p) => {
+    const iso = seoFechaPartidoIso(p.fecha_partido);
+    const t = iso ? new Date(iso).getTime() : NaN;
+    return Number.isNaN(t) || t >= limitePasado;
+  }).slice(0, 40);
+  const resultados = (res || []).slice(0, 40);
+  if (proximos.length || resultados.length) {
+    _cachePartidosPortadaBot = { t: ahora, proximos, resultados };
+    return _cachePartidosPortadaBot;
+  }
+  return _cachePartidosPortadaBot;
+}
+
+function construirListaPartidosParaBot(partidos, { conMarcador }) {
+  const items = partidos.map((p) => {
+    // fecha_partido es hora local de España sin zona ("2026-11-14T16:30"):
+    // se formatea con sus propias partes, sin convertir de zona horaria.
+    const f = seoPartesFecha(p.fecha_partido);
+    let fechaTxt = "";
+    if (f && SEO_MESES[parseInt(f.mo, 10) - 1]) {
+      fechaTxt = `${parseInt(f.d, 10)} de ${SEO_MESES[parseInt(f.mo, 10) - 1]} de ${f.y}`;
+      if (f.h && `${f.h}:${f.mi}` !== "00:00") fechaTxt += ` a las ${f.h}:${f.mi}`;
+    }
+    const iso = f ? seoFechaPartidoIso(p.fecha_partido) : "";
+    const marcador = conMarcador && p.goles_local != null && p.goles_visitante != null
+      ? `${p.goles_local}-${p.goles_visitante}` : "vs";
+    const comp = p.competicion && p.competicion !== "amistoso" ? etiquetaCategoriaWorker(p.competicion) : (p.competicion ? "Amistoso" : "");
+    const jornada = p.competicion !== "amistoso" && p.jornada ? ` · Jornada ${escapeHtmlSeo(p.jornada_mostrar ?? p.jornada)}` : "";
+    const cruceHtml = `${escapeHtmlSeo(p.equipo_local)} <strong>${escapeHtmlSeo(marcador)}</strong> ${escapeHtmlSeo(p.equipo_visitante)}`;
+    // Enlace al centro de partido: hasta ahora solo se llegaba desde un modal con JS, así que
+    // los buscadores no tenían camino de rastreo hacia esas páginas.
+    const idCentro = Number.isInteger(Number(p.id)) && Number(p.id) > 0 ? Number(p.id) : 0;
+    const cruceEnlazado = idCentro
+      ? `<a href="${escapeHtmlSeo(seoUrlAbsolutaWorker(`/minuto-a-minuto?id=${idCentro}`))}">${cruceHtml}</a>` : cruceHtml;
+    return `<li>${cruceEnlazado}`
+      + (comp ? ` (${escapeHtmlSeo(comp)}${jornada})` : "")
+      + (fechaTxt ? ` <time datetime="${escapeHtmlSeo(iso)}">${escapeHtmlSeo(fechaTxt)}</time>` : "")
+      + `</li>`;
+  }).join("\n");
+  return `<ul class="lista-partidos-bot">\n${items}\n</ul>`;
+}
+
+// /calendario: el contenido real lo pinta el JS jornada a jornada; un bot sin JS
+// recibe antes una lista simple de próximos partidos y últimos resultados.
+function inyectarCalendarioParaBot(html, datos) {
+  const marca = '<div id="calendarioCont"></div>';
+  if (!html.includes(marca) || !(datos.proximos.length || datos.resultados.length)) return html;
+  const bloque = (titulo, lista, conMarcador) => lista.length
+    ? `<h2>${titulo}</h2>${construirListaPartidosParaBot(lista, { conMarcador })}` : "";
+  const contenido = bloque("Próximos partidos", datos.proximos.slice(0, 30), false)
+    + bloque("Últimos resultados", datos.resultados.slice(0, 30), true);
+  return html.replace(marca, () => `<div id="calendarioCont">${contenido}</div>`);
+}
+
+function inyectarPartidosPortadaParaBot(html, datos) {
+  datos = { proximos: datos.proximos.slice(0, 10), resultados: datos.resultados.slice(0, 10) };
+  const marcaProx = '<div id="proximos-home"></div>';
+  const marcaRes = '<div id="resultados-home"></div>';
+  if (datos.proximos.length && html.includes(marcaProx)) {
+    html = html.replace(marcaProx, () =>
+      `<div id="proximos-home">${construirListaPartidosParaBot(datos.proximos, { conMarcador: false })}</div>`);
+  }
+  if (datos.resultados.length && html.includes(marcaRes)) {
+    html = html.replace(marcaRes, () =>
+      `<div id="resultados-home">${construirListaPartidosParaBot(datos.resultados, { conMarcador: true })}</div>`);
+  }
+  return html;
 }
 
 // ============================================================
@@ -2105,6 +2523,7 @@ const CATEGORIAS_ETIQUETA_WORKER = {
   hypermotion: "LaLiga Hypermotion",
   primera_federacion: "Primera Federación",
   segunda_federacion: "Segunda Federación",
+  tercera_federacion: "Tercera Federación",
   copa_del_rey: "Copa del Rey",
   copa_federacion: "Copa Federación",
   general: "General",
@@ -2114,7 +2533,21 @@ const CATEGORIAS_ETIQUETA_WORKER = {
 };
 
 function etiquetaCategoriaWorker(cat) {
-  return CATEGORIAS_ETIQUETA_WORKER[cat] || cat;
+  if (CATEGORIAS_ETIQUETA_WORKER[cat]) return CATEGORIAS_ETIQUETA_WORKER[cat];
+  // Categoría sin etiqueta propia: nunca se enseña el identificador técnico
+  // con guiones bajos ("otra_categoria" -> "Otra categoria").
+  const texto = String(cat || "").replace(/_/g, " ").trim();
+  return texto ? texto.charAt(0).toUpperCase() + texto.slice(1) : texto;
+}
+
+// "2026-11-07 10:00:00" -> "7 de noviembre de 2026" (hora de Madrid). Si no se
+// puede interpretar, se devuelve el texto tal cual.
+function fechaLegibleSeo(valor) {
+  const iso = aFechaIsoSeo(valor);
+  if (!iso) return valor ? String(valor).slice(0, 10) : "";
+  try {
+    return new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", day: "numeric", month: "long", year: "numeric" }).format(new Date(iso));
+  } catch { return iso.slice(0, 10); }
 }
 
 const _cacheCategoriaBot = new Map();
@@ -2149,6 +2582,12 @@ async function obtenerNoticiasCategoriaParaBot(cat, club) {
   }
 }
 
+// Igual que slugEtiqueta() de worker/src/etiquetas.js (para /rss/club/<slug>.xml).
+function slugRssWorker(texto) {
+  return String(texto == null ? "" : texto).normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60).replace(/-+$/, "");
+}
+
 function inyectarCategoriaParaBot(html, cat, club, articulos) {
   if (!articulos.length) return html;
   const etiqueta = etiquetaCategoriaWorker(cat);
@@ -2165,7 +2604,7 @@ function inyectarCategoriaParaBot(html, cat, club, articulos) {
     const fechaIso = aFechaIsoSeo(a.fecha_publicacion);
     const resumen = resumirTextoSeo(String(a.subtitulo || a.contenido || "").replace(/<[^>]+>/g, " "), 160);
     return `<li><a href="${escapeHtmlSeo(href)}">${escapeHtmlSeo(a.titulo)}</a>`
-      + (fechaIso ? ` <time datetime="${fechaIso}">${fechaIso.slice(0, 10)}</time>` : "")
+      + (fechaIso ? ` <time datetime="${fechaIso}">${escapeHtmlSeo(fechaLegibleSeo(fechaIso))}</time>` : "")
       + (resumen ? `<p>${escapeHtmlSeo(resumen)}</p>` : "")
       + `</li>`;
   }).join("\n")}\n</ul></nav>`;
@@ -2203,6 +2642,11 @@ function inyectarCategoriaParaBot(html, cat, club, articulos) {
   let salida = html;
   salida = salida.replace(/<title id="pageTitle">[\s\S]*?<\/title>/, () =>
     `<title id="pageTitle">${escapeHtmlSeo(tituloCompleto)}</title>\n<meta name="description" content="${escapeHtmlSeo(descripcion)}">\n<link rel="canonical" href="${escapeHtmlSeo(canonica)}">\n<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">\n<meta property="og:type" content="website">\n<meta property="og:site_name" content="${escapeHtmlSeo(SEO_NOMBRE_SITIO)}">\n<meta property="og:locale" content="es_ES">\n<meta property="og:title" content="${escapeHtmlSeo(tituloCompleto)}">\n<meta property="og:description" content="${escapeHtmlSeo(descripcion)}">\n<meta property="og:url" content="${escapeHtmlSeo(canonica)}">\n<meta name="twitter:title" content="${escapeHtmlSeo(tituloCompleto)}">\n<meta name="twitter:description" content="${escapeHtmlSeo(descripcion)}">\n<meta name="twitter:site" content="${SEO_TWITTER_SITE}">\n<script type="application/ld+json" id="seo-jsonld-coleccion">${ldSeguro(jsonLdColeccion)}</script>\n<script type="application/ld+json" id="seo-jsonld-breadcrumb">${ldSeguro(jsonLdMigasCat)}</script>`);
+  // RSS propio de la categoría o del club (mismo slug que en la API: guiones, sin acentos).
+  const rssBot = club
+    ? `/rss/club/${slugRssWorker(club)}.xml`
+    : `/rss/categoria/${String(cat).replace(/_/g, "-")}.xml`;
+  salida = salida.replace("</head>", () => `<link rel="alternate" type="application/rss+xml" title="${escapeHtmlSeo(titulo)} — ${escapeHtmlSeo(SEO_NOMBRE_SITIO)}" href="${escapeHtmlSeo(seoUrlAbsolutaWorker(rssBot))}">\n</head>`);
   salida = salida.replace(/<h[12] class="section-title" id="tituloCategoria">Categoría<\/h[12]>/, () =>
     `<h1 class="section-title" id="tituloCategoria">${escapeHtmlSeo(titulo)}</h1>`);
   salida = salida.replace('<div class="grid-noticias" id="grid"></div>', () =>
@@ -2241,12 +2685,12 @@ function ldSeguroBot(objeto) {
 }
 
 // Bloque de metadatos común (title + description + canonical + og + twitter).
-function bloqueMetaPaginaBot({ titulo, descripcion, canonica, imagen, ancho, alto, tipoOg = "website", extra = "" }) {
+function bloqueMetaPaginaBot({ titulo, descripcion, canonica, imagen, ancho, alto, tipoOg = "website", extra = "", robots = "index, follow, max-image-preview:large, max-snippet:-1" }) {
   const e = escapeHtmlSeo;
   return `<title id="pageTitle">${e(titulo)}</title>
 <meta name="description" content="${e(descripcion)}">
 <link rel="canonical" href="${e(canonica)}">
-<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+<meta name="robots" content="${e(robots)}">
 <meta property="og:type" content="${tipoOg}">
 <meta property="og:site_name" content="${e(SEO_NOMBRE_SITIO)}">
 <meta property="og:locale" content="es_ES">
@@ -2317,7 +2761,8 @@ function inyectarAutorParaBot(html, id, autor, articulos) {
       { "@type": "ListItem", "position": 2, "name": nombre },
     ],
   };
-  const extra = `<script type="application/ld+json" id="seo-jsonld-perfil">${ldSeguroBot(jsonLdPerfil)}</script>\n<script type="application/ld+json" id="seo-jsonld-breadcrumb">${ldSeguroBot(jsonLdMigas)}</script>`;
+  const rssAutor = `<link rel="alternate" type="application/rss+xml" title="${e(nombre)} — ${e(SEO_NOMBRE_SITIO)}" href="${e(seoUrlAbsolutaWorker(`/rss/autor/${encodeURIComponent(id)}.xml`))}">\n`;
+  const extra = rssAutor + `<script type="application/ld+json" id="seo-jsonld-perfil">${ldSeguroBot(jsonLdPerfil)}</script>\n<script type="application/ld+json" id="seo-jsonld-breadcrumb">${ldSeguroBot(jsonLdMigas)}</script>`;
 
   const lista = (articulos || []).filter((a) => a && a.slug && a.titulo).slice(0, 30).map((a) =>
     `<li><a href="${e(seoUrlAbsolutaWorker(urlNoticiaWorker(a.categoria, a.slug)))}">${e(a.titulo)}</a></li>`).join("\n");
@@ -2334,6 +2779,49 @@ function inyectarAutorParaBot(html, id, autor, articulos) {
   return salida;
 }
 
+function inyectarEtiquetaParaBot(html, etiqueta, indexable, articulos) {
+  const nombre = String(etiqueta.nombre || "").trim();
+  if (!nombre) return html;
+  const e = escapeHtmlSeo;
+  const total = Number(etiqueta.total) || 0;
+  const titulo = `${nombre}: noticias y crónicas — ${SEO_NOMBRE_SITIO}`;
+  const descripcion = `Todas las noticias de ${SEO_NOMBRE_SITIO} sobre ${nombre} (${total} ${total === 1 ? "noticia" : "noticias"}).`;
+  const canonica = seoUrlAbsolutaWorker(`/etiqueta/${encodeURIComponent(etiqueta.slug)}`);
+  const lista = (articulos || []).filter((a) => a && a.slug && a.titulo).slice(0, 30);
+  const jsonLdColeccion = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "url": canonica,
+    "name": titulo,
+    "inLanguage": "es",
+    "isPartOf": { "@type": "WebSite", "@id": SEO_DOMINIO_WORKER + "/#sitio" },
+    "mainEntity": {
+      "@type": "ItemList",
+      "numberOfItems": total,
+      "itemListElement": lista.map((a, i) => ({ "@type": "ListItem", "position": i + 1, "url": seoUrlAbsolutaWorker(urlNoticiaWorker(a.categoria, a.slug)), "name": a.titulo })),
+    },
+  };
+  const jsonLdMigas = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Inicio", "item": seoUrlAbsolutaWorker("/") },
+      { "@type": "ListItem", "position": 2, "name": `#${nombre}` },
+    ],
+  };
+  const extra = `<script type="application/ld+json" id="seo-jsonld-coleccion">${ldSeguroBot(jsonLdColeccion)}</script>\n<script type="application/ld+json" id="seo-jsonld-breadcrumb">${ldSeguroBot(jsonLdMigas)}</script>\n<link rel="alternate" type="application/rss+xml" title="${e(nombre)} — ${e(SEO_NOMBRE_SITIO)}" href="${e(seoUrlAbsolutaWorker(`/rss/etiqueta/${etiqueta.slug}.xml`))}">`;
+  const items = lista.map((a) => `<li><a href="${e(seoUrlAbsolutaWorker(urlNoticiaWorker(a.categoria, a.slug)))}">${e(a.titulo)}</a></li>`).join("\n");
+  const cuerpo = `<section class="et-cabecera"><h1>#${e(nombre)}</h1><p>${total} ${total === 1 ? "noticia" : "noticias"}</p></section>`
+    + (items ? `<nav aria-label="Noticias de ${e(nombre)}"><ul class="lista-ultimas-bot">\n${items}\n</ul></nav>` : "");
+  let salida = quitarMetaImagenGenerica(html);
+  salida = salida.replace(/<title id="pageTitle">[\s\S]*?<\/title>/, () =>
+    bloqueMetaPaginaBot({ titulo, descripcion, canonica, imagen: seoUrlAbsolutaWorker("img/og-default.png"), ancho: 1200, alto: 630, extra }));
+  // Con menos de 2 noticias la página no se indexa (casi duplicada de esa noticia).
+  if (!indexable) salida = salida.replace(/<meta name="robots" content="[^"]*">/, '<meta name="robots" content="noindex, follow">');
+  salida = salida.replace('<div class="estado-info"><div class="spinner"></div><p>Cargando...</p></div>', () => cuerpo);
+  return salida;
+}
+
 function primeraFotoGaleriaConFoco(grupos) {
   for (const valor of Object.values(grupos || {})) {
     const lista = Array.isArray(valor) ? valor : (valor && Array.isArray(valor.fotos) ? valor.fotos : []);
@@ -2346,6 +2834,28 @@ function primeraFotoGaleriaConFoco(grupos) {
   }
   return { url: "", foco: "" };
 }
+// Primer VÍDEO público de la galería (para galerías que solo tienen vídeos: sin
+// foto que enseñar, la tarjeta del enlace usa un fotograma del vídeo).
+function primerVideoGaleria(grupos) {
+  for (const valor of Object.values(grupos || {})) {
+    const lista = Array.isArray(valor) ? valor : (valor && Array.isArray(valor.fotos) ? valor.fotos : []);
+    for (const f of lista) {
+      if (!f || typeof f !== "object") continue;
+      const u = f.cloudinary_url || f.url || "";
+      if (typeof u === "string" && /^https?:\/\//i.test(u) && (f.tipo === "video" || /\.(mp4|webm|mov)(\?|$)/i.test(u))) return u;
+    }
+  }
+  return "";
+}
+// Fotograma (segundo 0) de un vídeo de Cloudinary recortado para la tarjeta social.
+function seoPosterVideoSocialWorker(url, ancho, alto) {
+  const marca = "/video/upload/";
+  const i = typeof url === "string" ? url.indexOf(marca) : -1;
+  if (i === -1 || !/res\.cloudinary\.com/.test(url)) return { url: "", ancho: 0, alto: 0 };
+  const resto = url.slice(i + marca.length).replace(/\?.*$/, "").replace(/\.[a-z0-9]{2,4}$/i, ".jpg");
+  return { url: `${url.slice(0, i + marca.length)}so_0,f_jpg,q_auto:good,c_fill,g_auto,w_${ancho},h_${alto}/${resto}`, ancho, alto };
+}
+
 function primeraFotoGaleria(grupos) {
   return primeraFotoGaleriaConFoco(grupos).url;
 }
@@ -2372,7 +2882,13 @@ function inyectarGaleriaParaBot(html, slug, partido, grupos, portadaElegida) {
   const { url: foto, foco: focoFoto } = portadaOk
     ? { url: portadaElegida.url, foco: portadaElegida.foco || "" }
     : primeraFotoGaleriaConFoco(grupos);
-  const img = foto ? seoImagenSocialWorker(foto, 1200, 630, focoFoto) : { url: "", ancho: 0, alto: 0 };
+  let img = foto ? seoImagenSocialWorker(foto, 1200, 630, focoFoto) : { url: "", ancho: 0, alto: 0 };
+  // Galería solo de vídeos (sin ninguna foto pública): fotograma del primer vídeo en vez de la imagen genérica.
+  let usaFotogramaVideo = false;
+  if (!foto) {
+    const poster = seoPosterVideoSocialWorker(primerVideoGaleria(grupos), 1200, 630);
+    if (poster.url) { img = poster; usaFotogramaVideo = true; }
+  }
   const imagen = img.url || foto || seoUrlAbsolutaWorker("img/og-default.png");
   const ancho = img.ancho || (foto ? 0 : 1200);
   const alto = img.alto || (foto ? 0 : 630);
@@ -2384,7 +2900,7 @@ function inyectarGaleriaParaBot(html, slug, partido, grupos, portadaElegida) {
     "description": descripcion,
     "url": canonica,
     "inLanguage": "es",
-    "image": foto ? imagen : undefined,
+    "image": (foto || usaFotogramaVideo) ? imagen : undefined,
     "isPartOf": { "@type": "WebSite", "@id": SEO_DOMINIO_WORKER + "/#sitio" },
     "about": {
       "@type": "SportsEvent",
@@ -2424,25 +2940,174 @@ function inyectarGaleriaParaBot(html, slug, partido, grupos, portadaElegida) {
 // (?ligero=1: una sola fila, con caché corta en la API) y se reescriben
 // título, descripción, canonical, og:* y twitter:*.
 // ============================================================
-function inyectarMinutoAMinutoParaBot(html, id, partido) {
+// Datos normalizados del partido para el centro de partido (título, descripción,
+// JSON-LD y texto para bots). null si faltan los equipos. OJO: mamSeoCentro() de
+// public/minuto-a-minuto.html calcula lo mismo en el navegador; si no coinciden,
+// el título que ve Googlebot (HTML del worker) y el que deja el JS al ejecutarse
+// «bailarían». Cualquier cambio de texto va en los dos sitios.
+function seoDatosCentroPartido(partido) {
   const local = String(partido.equipo_local || "").trim();
   const visitante = String(partido.equipo_visitante || "").trim();
-  if (!local || !visitante) return html;
-  const tieneMarcador = partido.goles_local != null && partido.goles_visitante != null;
-  const marcador = tieneMarcador ? `${partido.goles_local}-${partido.goles_visitante}` : "";
+  if (!local || !visitante) return null;
   const estado = String(partido.estado || "");
-  const prefijo = estado === "en_juego" ? "EN DIRECTO: " : "";
-  const sufijoEstado = estado === "finalizado" ? " (final)" : "";
-  const titulo = `${prefijo}${local} ${marcador ? marcador + " " : ""}${visitante}${sufijoEstado} — Minuto a minuto — ${SEO_NOMBRE_SITIO}`;
-  const fecha = aFechaIsoSeo(partido.fecha_partido);
-  const fechaTxt = fecha ? new Date(fecha).toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Madrid" }) : "";
-  const competicion = partido.competicion ? etiquetaCategoriaWorker(partido.competicion) : "";
-  const verbo = estado === "finalizado" ? "Revive" : "Sigue";
-  const descripcion = resumirTextoSeo(
-    `${verbo} el ${local} - ${visitante}${competicion ? ` de ${competicion}` : ""}${partido.jornada ? `, jornada ${partido.jornada}` : ""}${fechaTxt ? `, ${fechaTxt}` : ""}, minuto a minuto: goles, tarjetas, cambios y todos los eventos.`,
-    160);
+  const conGoles = partido.goles_local != null && partido.goles_visitante != null;
+  const marcador = conGoles && (estado === "finalizado" || estado === "en_juego")
+    ? `${partido.goles_local}-${partido.goles_visitante}` : "";
+  const clave = String(partido.competicion || "");
+  const grupoCrudo = partido.grupo ? String(partido.grupo).trim() : "";
+  const grupo = grupoCrudo ? (/^grupo/i.test(grupoCrudo) ? grupoCrudo : `Grupo ${grupoCrudo}`) : "";
+  const base = clave ? etiquetaCategoriaWorker(clave) : "";
+  const jornadaCruda = partido.jornada_mostrar ?? partido.jornada;
+  const jornadaTxt = jornadaCruda == null ? "" : String(jornadaCruda).trim();
+  // Un partido anulado es un aplazado pendiente de reprogramar: la fecha guardada ya no vale.
+  const aplazado = estado === "anulado";
+  const f = aplazado ? null : seoPartesFecha(partido.fecha_partido);
+  const mes = f ? SEO_MESES[parseInt(f.mo, 10) - 1] : "";
+  return {
+    local,
+    visitante,
+    estado,
+    aplazado,
+    marcador,
+    claveCompeticion: clave,
+    competicion: grupo ? `${base} ${grupo}`.trim() : base,
+    jornada: clave !== "amistoso" && jornadaTxt && jornadaTxt !== "0" ? jornadaTxt : "",
+    fechaTxt: f && mes ? `${parseInt(f.d, 10)} de ${mes}` : "",
+    fechaCompletaTxt: f && mes ? `${parseInt(f.d, 10)} de ${mes} de ${f.y}` : "",
+    fechaIso: f ? `${f.y}-${f.mo}-${f.d}` : "",
+    hora: f && f.h && `${f.h}:${f.mi}` !== "00:00" ? `${f.h}:${f.mi}` : "",
+    ubicacion: String(partido.ubicacion || partido.estadio || "").trim(),
+    resultado: partido,
+  };
+}
+
+// <title>: «Local 2-1 Visitante (final) — resultado y minuto a minuto — Marca». Se
+// prueba de más a menos completo y se queda con el primero que cabe en ~66 caracteres.
+function seoTituloCentroPartido(d, marca) {
+  const MAX = 66;
+  const cruce = d.marcador ? `${d.local} ${d.marcador} ${d.visitante}` : `${d.local} - ${d.visitante}`;
+  let cabeza = cruce;
+  let sufijos = [];
+  if (d.estado === "en_juego") {
+    cabeza = `EN DIRECTO: ${cruce}`;
+    sufijos = ["minuto a minuto"];
+  } else if (d.estado === "finalizado") {
+    cabeza = `${cruce} (final)`;
+    sufijos = ["resultado y minuto a minuto", "minuto a minuto"];
+  } else if (d.aplazado) {
+    cabeza = `${cruce} (aplazado)`;
+  } else {
+    sufijos = [...(d.fechaTxt ? [`${d.fechaTxt}, previa y directo`] : []), "previa y directo"];
+  }
+  const candidatos = [...sufijos.map((x) => `${cabeza} — ${x} — ${marca}`), `${cabeza} — ${marca}`, cabeza];
+  return candidatos.find((c) => c.length <= MAX) || cabeza;
+}
+
+// <meta name="description">: empieza por el cruce (lo que Google resalta al buscarlo) y
+// dice qué hay en la página según el estado del partido.
+function seoDescripcionCentroPartido(d, maxLen = 160) {
+  const cruce = d.marcador ? `${d.local} ${d.marcador} ${d.visitante}` : `${d.local} - ${d.visitante}`;
+  const donde = [d.competicion, d.jornada ? `jornada ${d.jornada}` : ""].filter(Boolean).join(", ");
+  const entreParentesis = donde ? ` (${donde})` : "";
+  let t;
+  if (d.estado === "en_juego") {
+    t = `En directo: ${cruce}${entreParentesis}. Goles, tarjetas y cambios al minuto en ${SEO_NOMBRE_SITIO}.`;
+  } else if (d.estado === "finalizado") {
+    t = `Resultado final: ${cruce}${entreParentesis}${d.fechaCompletaTxt ? `, ${d.fechaCompletaTxt}` : ""}. Goles, tarjetas, cambios y resumen del partido minuto a minuto.`;
+  } else if (d.aplazado) {
+    t = `${cruce}${entreParentesis}: partido aplazado, pendiente de nueva fecha.`;
+  } else {
+    const cuando = d.fechaTxt ? `, el ${d.fechaTxt}${d.hora ? ` a las ${d.hora}` : ""}` : "";
+    const lugar = d.ubicacion ? ` en ${d.ubicacion}` : "";
+    t = `${cruce}${entreParentesis}${cuando}${lugar}. Sigue el partido en directo, minuto a minuto.`;
+  }
+  return resumirTextoSeo(t, maxLen);
+}
+
+// Contenido visible para quien no ejecuta JS (sustituye al esqueleto de carga de
+// #mamContenido; en el navegador lo reemplaza el pintado real): resumen con los datos
+// del partido, goles y expulsiones (mismo criterio que mamGoleadoresHTML) y enlaces.
+function construirCentroPartidoParaBot(d, eventos) {
+  const esc = escapeHtmlSeo;
+  const enlace = (href, texto) => `<a href="${esc(seoUrlAbsolutaWorker(href))}">${esc(texto)}</a>`;
+  const lista = Array.isArray(eventos) ? eventos.filter((e) => e && typeof e === "object") : [];
+  const minuto = (e) => (e.minuto != null && e.minuto !== "" ? `${e.minuto}${e.minuto_extra ? `+${e.minuto_extra}` : ""}' ` : "");
+  const equipoDe = (lado) => (lado === "local" ? d.local : lado === "visitante" ? d.visitante : "");
+  const sufijoEquipo = (n) => (n ? ` (${esc(n)})` : "");
+
+  const filas = [];
+  if (d.marcador) filas.push(`<li>${d.estado === "en_juego" ? "Marcador en directo" : "Resultado final"}: ${esc(`${d.local} ${d.marcador} ${d.visitante}`)}</li>`);
+  if (d.competicion) filas.push(`<li>Competición: ${esc(d.competicion)}${d.jornada ? ` · Jornada ${esc(d.jornada)}` : ""}</li>`);
+  if (d.aplazado) filas.push("<li>Fecha: por confirmar (partido aplazado)</li>");
+  else if (d.fechaCompletaTxt) filas.push(`<li>Fecha: <time datetime="${esc(d.fechaIso)}">${esc(d.fechaCompletaTxt)}</time>${d.hora ? ` · ${esc(d.hora)} h` : ""}</li>`);
+  if (d.ubicacion) filas.push(`<li>Estadio: ${esc(d.ubicacion)}</li>`);
+
+  const goles = lista.filter((e) => e.tipo === "gol" || e.tipo === "gol_pp").slice(0, 30).map((e) => {
+    const lado = e.tipo === "gol_pp" ? (e.equipo === "local" ? "visitante" : "local") : e.equipo;
+    const marca = e.tipo === "gol_pp" ? " (p.p.)" : (e.es_penalti ? " (pen.)" : "");
+    return `<li>${esc(minuto(e))}${esc(e.jugador || "Gol")}${marca}${sufijoEquipo(equipoDe(lado))}</li>`;
+  });
+  const rojas = lista.filter((e) => e.tipo === "roja" || e.tipo === "doble_amarilla").slice(0, 20).map((e) =>
+    `<li>${esc(minuto(e))}${esc(e.jugador || "Expulsión")}${sufijoEquipo(equipoDe(e.equipo))}</li>`);
+
+  const enlaces = [enlace("/calendario", "Calendario y resultados"), enlace("/clasificacion", "Clasificación")];
+  if (d.claveCompeticion && d.claveCompeticion !== "amistoso") {
+    enlaces.push(enlace(`/categoria?cat=${encodeURIComponent(d.claveCompeticion)}`, `Noticias de ${d.competicion || etiquetaCategoriaWorker(d.claveCompeticion)}`));
+  }
+  return `<article class="mam-seo-bot">
+<h2>${esc(`${d.local} - ${d.visitante}`)}</h2>
+<p>${esc(seoDescripcionCentroPartido(d, 400))}</p>
+<ul>${filas.join("")}</ul>
+${goles.length ? `<h3>Goles</h3><ul>${goles.join("")}</ul>` : ""}
+${rojas.length ? `<h3>Tarjetas rojas</h3><ul>${rojas.join("")}</ul>` : ""}
+<p>${enlaces.join(" · ")}</p>
+</article>`;
+}
+
+function inyectarMinutoAMinutoParaBot(html, id, partido, eventos = []) {
+  const d = seoDatosCentroPartido(partido);
+  if (!d) return html;
+  if (!/<title id="pageTitle">/.test(html)) return html;
+  const titulo = seoTituloCentroPartido(d, SEO_NOMBRE_SITIO);
+  const descripcion = seoDescripcionCentroPartido(d);
   const canonica = seoUrlAbsolutaWorker(`/minuto-a-minuto?id=${encodeURIComponent(id)}`);
   const imagen = seoUrlAbsolutaWorker("img/og-default.png");
+  const nombreCruce = `${d.local} - ${d.visitante}`;
+  // Un partido que terminó sin que la redacción lo cubriera no tiene nada que indexar
+  // (sin goles ni eventos): se sirve noindex, follow. Lo mismo hace el sitemap de partidos.
+  const sinCubrir = Number(partido.finalizado_no_cubierto) === 1;
+
+  const eventoSchema = seoSportsEventJsonLd(d, canonica, seoUrlAbsolutaWorker);
+  const sportsEvent = {
+    ...eventoSchema,
+    description: [d.marcador ? `${d.estado === "en_juego" ? "Marcador en directo" : "Resultado final"}: ${d.marcador}` : "", d.competicion, d.jornada ? `jornada ${d.jornada}` : ""].filter(Boolean).join(", ") || eventoSchema.description,
+    // Un partido «anulado» es un aplazado pendiente de nueva fecha, no una cancelación.
+    eventStatus: d.aplazado ? "https://schema.org/EventPostponed" : eventoSchema.eventStatus,
+  };
+  const pagina = {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "@id": `${canonica}#pagina`,
+    "url": canonica,
+    "name": titulo,
+    "description": descripcion,
+    "inLanguage": "es",
+    "isPartOf": { "@id": `${SEO_DOMINIO_WORKER}/#sitio` },
+    "publisher": { "@id": `${SEO_DOMINIO_WORKER}/#organizacion` },
+    "about": { "@type": "SportsEvent", "name": nombreCruce },
+  };
+  const migas = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Inicio", "item": seoUrlAbsolutaWorker("/") },
+      { "@type": "ListItem", "position": 2, "name": "Calendario", "item": seoUrlAbsolutaWorker("/calendario") },
+      { "@type": "ListItem", "position": 3, "name": nombreCruce },
+    ],
+  };
+  // Mismos id que usa seo.js en el navegador: al ejecutarse el JS se sustituyen, no se duplican.
+  const ld = (idScript, objeto) => `<script type="application/ld+json" id="${idScript}">${ldSeguroBot(objeto)}</script>`;
+  const extra = [ld("seo-jsonld-pagina", pagina), ld("seo-jsonld-sportsevent", sportsEvent), ld("seo-jsonld-breadcrumb", migas)].join("\n");
 
   let salida = quitarMetaImagenGenerica(html);
   // La plantilla repite og:title/og:description/og:url/twitter:title/twitter:description
@@ -2451,12 +3116,21 @@ function inyectarMinutoAMinutoParaBot(html, id, partido) {
     .replace(/<meta property="og:(title|description|url|type|site_name|locale|image:width|image:height|image:alt)" content="[^"]*">\r?\n?/g, "")
     .replace(/<meta name="twitter:(title|description|site)" content="[^"]*">\r?\n?/g, "");
   salida = salida.replace(/<meta name="description" content="[^"]*">\r?\n?/, "");
+  // El bloque nuevo lleva su propio robots (antes quedaban dos etiquetas robots) y el
+  // JSON-LD genérico de la plantilla (WebPage sin partido) se sustituye por el del partido.
+  salida = salida.replace(/<meta name="robots" content="[^"]*">\r?\n?/, "");
+  salida = salida.replace(/<script type="application\/ld\+json" id="seo-jsonld-pagina">[\s\S]*?<\/script>\r?\n?/, "");
   salida = salida.replace(/<link rel="canonical"[^>]*>\r?\n?/, "");
-  if (!/<title id="pageTitle">/.test(salida)) return html;
   salida = salida.replace(/<title id="pageTitle">[\s\S]*?<\/title>/, () =>
-    bloqueMetaPaginaBot({ titulo, descripcion, canonica, imagen, ancho: 1200, alto: 630 }));
+    bloqueMetaPaginaBot({
+      titulo, descripcion, canonica, imagen, ancho: 1200, alto: 630, extra,
+      robots: sinCubrir ? "noindex, follow" : "index, follow, max-image-preview:large, max-snippet:-1",
+    }));
   // El <h1> oculto de minuto-a-minuto.html (id=seoH1) lleva los dos equipos para quien no ejecuta JS.
-  salida = salida.replace(/(<h1 id="seoH1"[^>]*>)[\s\S]*?(<\/h1>)/, (m, ab, ce) => ab + escapeHtmlSeo(`Minuto a minuto: ${local} - ${visitante}`) + ce);
+  salida = salida.replace(/(<h1 id="seoH1"[^>]*>)[\s\S]*?(<\/h1>)/, (m, ab, ce) => ab + escapeHtmlSeo(`Centro de partido: ${nombreCruce}`) + ce);
+  // Resumen con datos reales en lugar del esqueleto «Cargando partido».
+  const conEventos = d.estado === "en_juego" || d.estado === "finalizado" ? eventos : [];
+  salida = salida.replace(/<!--mam-skel-->[\s\S]*?<!--\/mam-skel-->/, () => construirCentroPartidoParaBot(d, conEventos));
   return salida;
 }
 
@@ -2591,8 +3265,18 @@ const FEEDS_API = {
   "/sitemap-news.xml": { tipo: "application/xml; charset=UTF-8", ttl: 600 },
   "/sitemap-clubes.xml": { tipo: "application/xml; charset=UTF-8", ttl: 3600 },
   "/sitemap-jugadores.xml": { tipo: "application/xml; charset=UTF-8", ttl: 3600 },
+  "/sitemap-partidos.xml": { tipo: "application/xml; charset=UTF-8", ttl: 1800 },
   "/rss.xml": { tipo: "application/rss+xml; charset=UTF-8", ttl: 900 },
+  // Solo anuncia etiquetas con 2+ noticias: puede estar vacío mientras no haya ninguna.
+  "/sitemap-etiquetas.xml": { tipo: "application/xml; charset=UTF-8", ttl: 3600 },
 };
+
+// RSS filtrados: /rss/categoria|club|autor|etiqueta/<x>.xml (los genera la API). Un filtro
+// que no existe o no tiene noticias responde 404 en la API y aquí también (no un 503).
+const RSS_FILTRADO_RE = /^\/rss\/(categoria|club|autor|etiqueta)\/([a-z0-9_-]{1,80})\.xml$/;
+const CFG_RSS_FILTRADO = { tipo: "application/rss+xml; charset=UTF-8", ttl: 900, dinamico: true };
+const FEED_NO_EXISTE = Symbol("feed-no-existe");
+const FEED_MEM_MAX = 300; // los feeds filtrados son muchos: la memoria del isolate va acotada
 
 // Los sitemaps y el RSS se guardan (memoria del isolate + Cache API) para:
 //  - responder al instante mientras la copia es reciente (la API construye
@@ -2628,7 +3312,9 @@ async function leerFeedCache(path) {
 
 function guardarFeedCache(path, cuerpo, ctx) {
   const entrada = { cuerpo, t: Date.now() };
+  FEED_MEM.delete(path);
   FEED_MEM.set(path, entrada);
+  while (FEED_MEM.size > FEED_MEM_MAX) FEED_MEM.delete(FEED_MEM.keys().next().value); // el más antiguo
   const tarea = (async () => {
     try {
       await caches.default.put(claveCacheFeed(path), new Response(cuerpo, {
@@ -2648,6 +3334,7 @@ async function pedirFeedAApi(path, cfg, timeoutMs) {
       signal: controlador.signal,
       headers: { "Accept": "application/xml, text/xml, */*" },
     });
+    if (resp.status === 404 && cfg && cfg.dinamico) return FEED_NO_EXISTE;
     if (!resp.ok) return null;
     const cuerpo = await resp.text();
     if (!(cuerpo && cuerpo.trimStart().startsWith("<"))) return null;
@@ -2658,7 +3345,7 @@ async function pedirFeedAApi(path, cfg, timeoutMs) {
     // para NO pisar la última copia buena (que se sigue sirviendo como STALE) ni dar
     // a Google un sitemap vacío con 200. El de Google News sí puede estar vacío de
     // verdad (ninguna noticia en 48 h), así que se acepta.
-    if (path !== "/sitemap-news.xml" && !/<(url|item|sitemap)[\s>]/.test(cuerpo)) return null;
+    if (path !== "/sitemap-news.xml" && path !== "/sitemap-etiquetas.xml" && !/<(url|item|sitemap)[\s>]/.test(cuerpo)) return null;
     return cuerpo;
   } catch {
     return null;
@@ -2679,8 +3366,8 @@ function respuestaFeed(cfg, cuerpo, estado) {
   });
 }
 
-async function servirFeedDesdeApi(path, ctx) {
-  const cfg = FEEDS_API[path];
+async function servirFeedDesdeApi(path, ctx, cfgDinamica) {
+  const cfg = cfgDinamica || FEEDS_API[path];
   const copia = await leerFeedCache(path);
   const edad = copia ? Date.now() - copia.t : Infinity;
   const frescoMs = Math.min(cfg.ttl, 600) * 1000;
@@ -2690,7 +3377,7 @@ async function servirFeedDesdeApi(path, ctx) {
       FEED_REFRESCANDO.add(path);
       ctx.waitUntil(
         pedirFeedAApi(path, cfg, 8000)
-          .then((c) => { if (c) guardarFeedCache(path, c, ctx); })
+          .then((c) => { if (c === FEED_NO_EXISTE) FEED_MEM.delete(path); else if (c) guardarFeedCache(path, c, ctx); })
           .catch(() => {})
           .finally(() => FEED_REFRESCANDO.delete(path))
       );
@@ -2698,6 +3385,13 @@ async function servirFeedDesdeApi(path, ctx) {
     return respuestaFeed(cfg, copia.cuerpo, "SWR");
   }
   const cuerpo = await pedirFeedAApi(path, cfg, copia ? 4000 : 8000);
+  if (cuerpo === FEED_NO_EXISTE) {
+    FEED_MEM.delete(path);
+    return new Response("Feed no encontrado", {
+      status: 404,
+      headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "public, max-age=300" },
+    });
+  }
   if (cuerpo) {
     guardarFeedCache(path, cuerpo, ctx);
     return respuestaFeed(cfg, cuerpo, "MISS");
@@ -2724,7 +3418,7 @@ const FORMULARIO_PREVIEW_FIJO = {
   "formulario-de-incorporacion-elotrofutbol": {
     titulo: "Formulario de incorporación | ElOtroFútbol",
     descripcion: "Cuéntanos tu perfil y tu experiencia para unirte como redactor o fotógrafo a ElOtroFútbol.",
-    imagen: "/img/og-incorporacion.jpg?v=1",
+    imagen: "/img/og-incorporacion.jpg?v=dbe8e1c1",
     imagenAlt: "ElOtroFútbol: formulario de incorporación",
     imagenTipo: "image/jpeg", ancho: 1200, alto: 630,
   },
@@ -2902,6 +3596,13 @@ const RUTAS_PRIVADAS = [
   /^\/credenciales\.txt$/,
   /^\/_(headers|redirects)$/,
   /\.(map|sql|md)$/,
+  // Defensa en profundidad: scripts de mantenimiento, workflows, copias de
+  // trabajo y metadatos de sistema que viven junto al sitio en esta carpeta
+  // pero nunca deben servirse (ya los excluye .assetsignore al desplegar).
+  /^\/(herramientas|\.github|__pycache__)(\/|$)/,
+  /\.(py|pyc|ps1|sh|ya?ml|bak|orig|swp|log)$/,
+  /(^|\/)desktop\.ini$/,
+  /^\/(package(-lock)?\.json|yarn\.lock|pnpm-lock\.yaml)$/,
 ];
 
 function esRutaPrivada(rutaBruta) {
@@ -2949,6 +3650,7 @@ const CSP_SCRIPT_BASE = ["https://challenges.cloudflare.com", "https://accounts.
 const CSP_CONNECT_BASE = [
   "https://api.elotrofutbol.media", "https://elotro-futbol-api-production.up.railway.app",
   "https://accounts.google.com", "https://login.microsoftonline.com",
+  "https://fonts.googleapis.com", "https://fonts.gstatic.com",
 ];
 const CSP_CONNECT_ANUNCIOS = [
   "https://*.googlesyndication.com", "https://*.doubleclick.net", "https://*.adtrafficquality.google",
@@ -2990,7 +3692,7 @@ function construirCSP({ anuncios = true, permitirEval = anuncios, wikipedia = fa
 // Páginas que NO cargan js/ads.js ni ninguna red de anuncios: política sin
 // 'unsafe-eval' ni orígenes de publicidad/CDN de terceros. (Las de cuenta —
 // acceso, cuenta, recuperar/verificar— ya tienen la suya más abajo.)
-const RUTAS_SIN_ANUNCIOS = /^\/(acreditacion|formulario|minuto-a-minuto|politica-cookies|politica-privacidad|newsletter_preview|panel-analiticas)(\.html)?\/?$/;
+const RUTAS_SIN_ANUNCIOS = /^\/(acreditacion|formulario|minuto-a-minuto|politica-cookies|politica-privacidad|aviso-legal|newsletter_preview|panel-analiticas)(\.html)?\/?$/;
 
 function aplicarCSPSinAnuncios(respuesta, url, metodo) {
   try {
@@ -3093,6 +3795,9 @@ const manejadorPrincipal = {
     if (request.method === "GET" && FEEDS_API[path]) {
       return servirFeedDesdeApi(path, ctx);
     }
+    if (request.method === "GET" && RSS_FILTRADO_RE.test(path)) {
+      return servirFeedDesdeApi(path, ctx, CFG_RSS_FILTRADO);
+    }
 
     // --- URL bonita: /futbol/{categoria}/{slug} -> sirve noticia ---
     // IMPORTANTE: se reescribe hacia "/noticia" (SIN extensión .html).
@@ -3170,6 +3875,34 @@ const manejadorPrincipal = {
       return respuestaGaleria;
     }
 
+    // --- URL bonita: /etiqueta/{slug} -> sirve etiqueta.html ---
+    // Igual que /galeria/{slug}: se reescribe internamente hacia "/etiqueta" con el slug
+    // como query param (etiqueta.html también lee el slug del pathname). Los bots reciben
+    // <head> y listado reales, y un 404 real si la etiqueta no existe.
+    const matchEtiqueta = path.match(/^\/etiqueta\/([^/]+)\/?$/);
+    if (matchEtiqueta && request.method === "GET") {
+      let slugEt = matchEtiqueta[1];
+      try { slugEt = decodeURIComponent(slugEt); } catch { /* se deja tal cual */ }
+      const etiquetaUrl = new URL("/etiqueta", url);
+      etiquetaUrl.searchParams.set("e", slugEt);
+      const respuestaEtiqueta = await env.ASSETS.fetch(new Request(etiquetaUrl.toString(), request));
+      if (esUserAgentBot(request.headers.get("User-Agent")) && /^[A-Za-z0-9%_-]{1,80}$/.test(slugEt)
+          && respuestaEtiqueta.status === 200 && (respuestaEtiqueta.headers.get("Content-Type") || "").includes("text/html")) {
+        const datosEt = await obtenerJsonApiParaBot(`/api/etiquetas/${encodeURIComponent(slugEt)}`);
+        if (datosEt && datosEt.noExiste) return servir404Real(env, url.toString());
+        if (datosEt && datosEt.etiqueta) {
+          // El slug canónico puede diferir del pedido (mayúsculas, acentos): se anuncia el canónico.
+          const listaEt = await obtenerJsonApiParaBot(`/api/articles?etiqueta=${encodeURIComponent(datosEt.etiqueta.slug)}&limit=30`);
+          const htmlEt = inyectarEtiquetaParaBot(await respuestaEtiqueta.text(), datosEt.etiqueta, datosEt.indexable !== false, listaEt && listaEt.articles);
+          const headersEt = new Headers(respuestaEtiqueta.headers);
+          headersEt.delete("Content-Length");
+          headersEt.set("Vary", "User-Agent");
+          return new Response(htmlEt, { status: 200, headers: headersEt });
+        }
+      }
+      return respuestaEtiqueta;
+    }
+
     // --- /autor?id=...: perfil del autor con metadatos y noticias para bots.
     if (path === "/autor" && request.method === "GET" && esUserAgentBot(request.headers.get("User-Agent"))) {
       const idAutor = (url.searchParams.get("id") || "").trim();
@@ -3199,10 +3932,16 @@ const manejadorPrincipal = {
       if (/^\d{1,9}$/.test(idMam)) {
         const respuestaMam = await env.ASSETS.fetch(request);
         if (respuestaMam.status === 200 && (respuestaMam.headers.get("Content-Type") || "").includes("text/html")) {
-          const datosMam = await obtenerJsonApiParaBot(`/api/results/${idMam}?ligero=1`);
+          // Partido y eventos a la vez (dos consultas sencillas en la API): los goles y las
+          // expulsiones salen en el HTML que lee el bot. Si los eventos fallan, se sirve sin ellos.
+          const [datosMam, datosEventosMam] = await Promise.all([
+            obtenerJsonApiParaBot(`/api/results/${idMam}?ligero=1`),
+            obtenerJsonApiParaBot(`/api/results/${idMam}/eventos`),
+          ]);
           if (datosMam && datosMam.noExiste) return servir404Real(env, url.toString());
           if (datosMam && datosMam.resultado) {
-            const htmlMam = inyectarMinutoAMinutoParaBot(await respuestaMam.text(), idMam, datosMam.resultado);
+            const eventosMam = datosEventosMam && Array.isArray(datosEventosMam.eventos) ? datosEventosMam.eventos : [];
+            const htmlMam = inyectarMinutoAMinutoParaBot(await respuestaMam.text(), idMam, datosMam.resultado, eventosMam);
             const headersMam = new Headers(respuestaMam.headers);
             headersMam.delete("Content-Length");
             headersMam.set("Vary", "User-Agent");
@@ -3211,8 +3950,17 @@ const manejadorPrincipal = {
         }
         return respuestaMam;
       }
+      // Sin id válido la página solo dice «enlace no válido»: nada que indexar. Se deja
+      // pasar tal cual pero con X-Robots-Tag, para que no entre en el índice como página vacía.
+      const respuestaMamSinId = await env.ASSETS.fetch(request);
+      if (respuestaMamSinId.status === 200) {
+        const headersSinId = new Headers(respuestaMamSinId.headers);
+        headersSinId.set("X-Robots-Tag", "noindex, follow");
+        headersSinId.set("Vary", "User-Agent");
+        return new Response(respuestaMamSinId.body, { status: 200, headers: headersSinId });
+      }
+      return respuestaMamSinId;
     }
-
     // --- /jugador?c=...&j=... y /plantilla?c=...&club=...: para bots, metadatos reales,
     // JSON-LD y enlaces a las fichas (ver "FICHAS DE JUGADOR Y PLANTILLAS: METADATOS REALES
     // PARA BOTS"). Un jugador que la API da por inexistente (oculto por un admin o de una
@@ -3268,7 +4016,19 @@ const manejadorPrincipal = {
       // para que ella lea el contenido temporal de sessionStorage/localStorage.
       // Antes este caso caía en el 404 real de abajo.
       if (url.searchParams.get("preview") === "1") {
-        return env.ASSETS.fetch(request);
+        // El visor del panel (/admin/previsualizar.html, con marcos de iPhone, iPad y
+        // portátil) incrusta esta página en un <iframe> del MISMO dominio. Solo para
+        // esta variante (?preview=1, que no es indexable ni lleva datos reales) se
+        // relaja frame-ancestors de 'none' a 'self': ningún sitio de terceros puede
+        // incrustarla, y el resto de la CSP queda exactamente como la entrega _headers.
+        const respuestaPrev = await env.ASSETS.fetch(request);
+        const cabPrev = new Headers(respuestaPrev.headers);
+        const cspPrev = cabPrev.get("Content-Security-Policy");
+        if (cspPrev) {
+          cabPrev.set("Content-Security-Policy", cspPrev.replace(/frame-ancestors\s+'none'/, "frame-ancestors 'self'"));
+        }
+        cabPrev.set("X-Frame-Options", "SAMEORIGIN");
+        return new Response(respuestaPrev.body, { status: respuestaPrev.status, statusText: respuestaPrev.statusText, headers: cabPrev });
       }
       const slug = url.searchParams.get("slug");
       if (slug) {
@@ -3289,6 +4049,23 @@ const manejadorPrincipal = {
     // noticia rápida en las etiquetas Open Graph/Twitter para que el enlace salga bien en redes.
     if ((path === "/noticias-rapidas" || path === "/noticias-rapidas.html") && request.method === "GET" && url.searchParams.get("nr")) {
       return servirNoticiaRapidaConPreview(request, env, url, ctx);
+    }
+
+    // --- /calendario: para bots conocidos se prepintan próximos partidos y
+    // últimos resultados (ver inyectarCalendarioParaBot). Lectores: igual que antes.
+    if ((path === "/calendario" || path === "/calendario.html") && request.method === "GET" && esUserAgentBot(request.headers.get("User-Agent"))) {
+      const respuestaCal = await env.ASSETS.fetch(request);
+      if (respuestaCal.status === 200 && (respuestaCal.headers.get("Content-Type") || "").includes("text/html")) {
+        const datosCal = await obtenerPartidosPortadaParaBot();
+        if (datosCal.proximos.length || datosCal.resultados.length) {
+          const htmlCal = inyectarCalendarioParaBot(await respuestaCal.text(), datosCal);
+          const headersCal = new Headers(respuestaCal.headers);
+          headersCal.delete("Content-Length");
+          headersCal.set("Vary", "User-Agent");
+          return new Response(htmlCal, { status: 200, headers: headersCal });
+        }
+      }
+      return respuestaCal;
     }
 
     // --- /categoria?cat=...[&club=...]: para bots conocidos se sirve con
@@ -3330,7 +4107,21 @@ const manejadorPrincipal = {
     // para la portada, a 'self' (se deja embeber por el propio dominio,
     // nunca por terceros), igual que ya se hace con /admin/panel.html.
     if ((path === "/" || path === "/index.html") && request.method === "GET") {
-      const respuesta = await env.ASSETS.fetch(request);
+      const esBotPortada = esUserAgentBot(request.headers.get("User-Agent"));
+      // Lectores reales: se pide a ASSETS sin cabeceras condicionales (si no, un
+      // 304 haría reutilizar una copia en caché sin el hero adelantado) y a la
+      // vez se obtiene el hero destacado. Cualquier fallo -> portada de siempre.
+      let reqPortada = request;
+      if (!esBotPortada && (request.headers.has("If-None-Match") || request.headers.has("If-Modified-Since"))) {
+        const hCond = new Headers(request.headers);
+        hCond.delete("If-None-Match");
+        hCond.delete("If-Modified-Since");
+        reqPortada = new Request(request, { headers: hCond });
+      }
+      const [respuesta, heroEdge] = await Promise.all([
+        env.ASSETS.fetch(reqPortada),
+        esBotPortada ? Promise.resolve(null) : obtenerHeroEdge(ctx).catch(() => null),
+      ]);
       const nuevas = new Headers(respuesta.headers);
       nuevas.delete("Content-Security-Policy");
       nuevas.delete("X-Frame-Options");
@@ -3343,10 +4134,35 @@ const manejadorPrincipal = {
       // últimas noticias (ver "PORTADA PREPINTADA PARA BOTS").
       let cuerpoPortada = respuesta.body;
       if (esUserAgentBot(request.headers.get("User-Agent")) && (respuesta.headers.get("Content-Type") || "").includes("text/html")) {
-        const articulos = await obtenerUltimasNoticiasParaBot();
-        if (articulos.length) {
-          cuerpoPortada = inyectarPortadaParaBot(await respuesta.text(), articulos);
+        const [articulos, partidosBot] = await Promise.all([
+          obtenerUltimasNoticiasParaBot(),
+          obtenerPartidosPortadaParaBot(),
+        ]);
+        if (articulos.length || partidosBot.proximos.length || partidosBot.resultados.length) {
+          let htmlPortada = await respuesta.text();
+          if (articulos.length) htmlPortada = inyectarPortadaParaBot(htmlPortada, articulos);
+          htmlPortada = inyectarPartidosPortadaParaBot(htmlPortada, partidosBot);
+          cuerpoPortada = htmlPortada;
           nuevas.delete("Content-Length");
+        }
+      }
+      // Lectores reales: hero adelantado (ver "HERO DE LA PORTADA ADELANTADO EN EL BORDE").
+      if (heroEdge && respuesta.status === 200 && (respuesta.headers.get("Content-Type") || "").includes("text/html")) {
+        try {
+          const htmlOriginal = await respuesta.text();
+          const htmlHero = inyectarHeroEdge(htmlOriginal, heroEdge);
+          if (htmlHero !== htmlOriginal) {
+            cuerpoPortada = htmlHero;
+            nuevas.delete("Content-Length");
+            nuevas.delete("ETag");
+            nuevas.delete("Last-Modified");
+          } else {
+            cuerpoPortada = htmlOriginal;
+          }
+        } catch (_) {
+          // el body ya se consumió: se vuelve a pedir la portada intacta.
+          const respuestaIntacta = await env.ASSETS.fetch(reqPortada);
+          cuerpoPortada = respuestaIntacta.body;
         }
       }
       nuevas.set("Vary", "User-Agent");
@@ -3413,6 +4229,21 @@ const manejadorPrincipal = {
           .replace(/media-src ([^;]*)/, "media-src $1 https:")
       );
       return new Response(respuesta.body, { status: respuesta.status, headers: nuevas });
+    }
+
+    // --- /admin/previsualizar.html: visor de previsualización con marcos de dispositivo.
+    // Incrusta /noticia?preview=1 en un <iframe> propio, y la CSP global lleva un
+    // frame-src sin 'self' (solo terceros), así que aquí se añade 'self' a frame-src.
+    // Igual que el resto de rutas de este Worker, se fija a mano porque Pages ignora
+    // _headers en las rutas que pasan por aquí.
+    if ((path === "/admin/previsualizar.html" || path === "/admin/previsualizar") && request.method === "GET") {
+      const respuestaVisor = await env.ASSETS.fetch(request);
+      const cabVisor = new Headers(respuestaVisor.headers);
+      const cspVisor = cabVisor.get("Content-Security-Policy");
+      if (cspVisor) {
+        cabVisor.set("Content-Security-Policy", cspVisor.replace(/frame-src\s+/, "frame-src 'self' "));
+      }
+      return new Response(respuestaVisor.body, { status: respuestaVisor.status, statusText: respuestaVisor.statusText, headers: cabVisor });
     }
 
     // --- /admin/panel.html: su CSP/X-Frame-Options se fijan aquí a mano

@@ -24,6 +24,14 @@
   const ICO_RELOJ = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 2"/></svg>';
   const ICO_INFO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>';
 
+  const svgF = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+  const ICO_FRANJA = {
+    manana: svgF('<path d="M3 18h18M7 18a5 5 0 0 1 10 0M12 5v3M4.6 9.6l1.8 1.8M19.4 9.6l-1.8 1.8"/>'),
+    mediodia: svgF('<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/>'),
+    tarde: svgF('<path d="M3 19h18M6.5 19a5.5 5.5 0 0 1 11 0M12 8V5M5.2 11.2 3.8 9.8M18.8 11.2l1.4-1.4"/>'),
+    noche: svgF('<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>'),
+  };
+
   const $ = (id) => document.getElementById(id);
   const mayus = (t) => t ? t.charAt(0).toUpperCase() + t.slice(1) : t;
   const pad = (n) => String(n).padStart(2, "0");
@@ -186,6 +194,7 @@
     ov.setAttribute("aria-hidden", "true");
     ov.innerHTML = `
       <div class="sfm-caja" role="dialog" aria-modal="true" aria-labelledby="sfmTitulo">
+        <span class="sfm-grip" aria-hidden="true"></span>
         <header class="sfm-cab">
           <span class="sfm-cab-ico" aria-hidden="true"></span>
           <div><h3 id="sfmTitulo"></h3><p class="sfm-sub"></p></div>
@@ -217,6 +226,7 @@
       </div>`;
     document.body.appendChild(ov);
     caja = ov.querySelector(".sfm-caja");
+    activarArrastre();
 
     ov.addEventListener("mousedown", (e) => { if (e.target === ov) ov._cierraPorFondo = true; });
     ov.addEventListener("click", (e) => {
@@ -238,6 +248,51 @@
     });
   }
 
+  // Móvil: arrastrar la asa o la cabecera hacia abajo cierra la hoja.
+  function activarArrastre() {
+    let y0 = null, dy = 0;
+    const zona = (t) => t.closest(".sfm-grip, .sfm-cab") && !t.closest(".sfm-x");
+    caja.addEventListener("touchstart", (e) => {
+      if (!window.matchMedia("(max-width:700px)").matches || !zona(e.target)) return;
+      y0 = e.touches[0].clientY; dy = 0;
+      caja.classList.add("sfm-arrastrando");
+    }, { passive: true });
+    caja.addEventListener("touchmove", (e) => {
+      if (y0 === null) return;
+      dy = Math.max(0, e.touches[0].clientY - y0);
+      caja.style.transform = `translateY(${dy}px)`;
+    }, { passive: true });
+    const fin = () => {
+      if (y0 === null) return;
+      caja.classList.remove("sfm-arrastrando");
+      const cierra = dy > 90;
+      y0 = null;
+      caja.style.transform = "";
+      if (cierra) cerrar(true);
+    };
+    caja.addEventListener("touchend", fin);
+    caja.addEventListener("touchcancel", fin);
+  }
+
+  // Altura REAL visible (sin la barra del navegador ni el teclado): en móviles 100vh/94vh incluye
+  // la zona tapada y el pie con «Aplicar» quedaba fuera de la pantalla.
+  function ajustarViewport() {
+    if (!ov) return;
+    const vv = window.visualViewport;
+    const h = Math.round(vv ? vv.height : window.innerHeight);
+    const top = Math.round(vv ? vv.offsetTop : 0);
+    ov.style.setProperty("--sfm-vh", h + "px");
+    ov.style.setProperty("--sfm-top", top + "px");
+  }
+  function escucharViewport(on) {
+    const vv = window.visualViewport;
+    const fn = ajustarViewport;
+    [[window, "resize"], [window, "orientationchange"], [vv, "resize"], [vv, "scroll"]].forEach(([t, ev]) => {
+      if (!t) return;
+      on ? t.addEventListener(ev, fn) : t.removeEventListener(ev, fn);
+    });
+  }
+
   function atraparFoco(e) {
     const f = [...caja.querySelectorAll("button:not([disabled]):not([hidden]), input:not([disabled])")].filter((x) => x.offsetParent !== null);
     if (!f.length) return;
@@ -256,6 +311,8 @@
     const base = parse(st.d || hoyMadrid());
     st.vista = { y: base.getFullYear(), m: base.getMonth() };
 
+    caja.dataset.sfmModo = modo;
+    caja.style.transform = "";
     q(".sfm-cab-ico").innerHTML = esPref ? ICO_CAL : ICO_RELOJ;
     q("#sfmTitulo").textContent = esPref ? "Fecha de preferencia" : "Programar publicación";
     q(".sfm-sub").textContent = esPref
@@ -279,7 +336,7 @@
       </div>
       <div class="sfm-franja-zona" hidden>
         <p class="sfm-etq">Franja</p>
-        <div class="sfm-franjas">${FRANJAS.map((f) => `<button type="button" class="sfm-franja" data-franja="${f.id}"><b>${f.nombre}</b><small>${f.d} – ${f.h}</small></button>`).join("")}</div>
+        <div class="sfm-franjas">${FRANJAS.map((f) => `<button type="button" class="sfm-franja" data-franja="${f.id}"><span class="sfm-franja-ico" aria-hidden="true">${ICO_FRANJA[f.id]}</span><b>${f.nombre}</b><small>${f.d} – ${f.h}</small></button>`).join("")}</div>
       </div>
       <div class="sfm-franja-zona" hidden>
         <p class="sfm-etq">Ajuste manual</p>
@@ -307,9 +364,13 @@
     q('[data-accion="quitar"]').hidden = !st.tieneValorInicial;
     q('[data-accion="aplicar"]').textContent = esPref ? "Aplicar fecha" : "Programar";
 
+    ajustarViewport();
+    escucharViewport(true);
     ov.classList.add("sfm-abierto");
     ov.setAttribute("aria-hidden", "false");
     document.documentElement.classList.add("sfm-bloqueo");
+    document.body.classList.add("sfm-modal-abierto");
+    q(".sfm-cuerpo").scrollTop = 0;
     pintar();
     setTimeout(() => (q(".sfm-dia:not(:disabled).sfm-ini") || q(".sfm-dia:not(:disabled).sfm-hoy") || q('[data-accion="aplicar"]'))?.focus({ preventScroll: true }), 60);
   }
@@ -322,6 +383,8 @@
     ov.classList.remove("sfm-abierto");
     ov.setAttribute("aria-hidden", "true");
     document.documentElement.classList.remove("sfm-bloqueo");
+    document.body.classList.remove("sfm-modal-abierto");
+    escucharViewport(false);
     // Si el modal se abrió solo al activar el interruptor y no se llegó a elegir nada,
     // el interruptor se vuelve a desmarcar (salvo que sea obligatorio).
     if (descartar && auto && !tieneValorInicial) {

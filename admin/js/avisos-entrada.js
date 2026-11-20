@@ -157,28 +157,11 @@
 
   // ---------- Contador en la cabecera ----------
   function pintarChip() {
-    let chip = $("aeChip");
-    const total = items.reduce((s, f) => s + f.n, 0);
-    const urg = items.reduce((s, f) => s + f.urgente, 0);
-    if (!total) { if (chip) chip.remove(); return; }
-    if (!chip) {
-      const ancla = $("notifWrap") || $("cuentaWrap");
-      if (!ancla || !ancla.parentNode) return;
-      chip = document.createElement("span");
-      chip.id = "aeChip";
-      chip.className = "ae-chip";
-      chip.tabIndex = 0;
-      chip.setAttribute("role", "button");
-      chip.setAttribute("aria-haspopup", "dialog");
-      const alternar = () => ($("aeCard") ? cerrarTarjeta() : abrirTarjeta());
-      chip.addEventListener("click", (e) => { e.stopPropagation(); alternar(); });
-      chip.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); alternar(); } });
-      ancla.parentNode.insertBefore(chip, ancla);
-    }
-    chip.classList.toggle("ae-chip-urgente", urg > 0);
-    chip.setAttribute("aria-label", `${plural(total, "aviso pendiente", "avisos pendientes")}${urg ? `, ${plural(urg, "urgente", "urgentes")}` : ""}. Abrir resumen`);
-    const cifra = urg || total;
-    chip.innerHTML = `${ICO.lista}<b>${cifra > 99 ? "99+" : cifra}</b><span class="ae-chip-txt">${urg ? (urg === 1 ? "Urgente" : "Urgentes") : (total === 1 ? "Pendiente" : "Pendientes")}</span>`;
+    // Avisa a la página «Inicio» (inicio-resumen.js), que muestra estos mismos pendientes en el resumen.
+    try { document.dispatchEvent(new CustomEvent("eof:avisos", { detail: { items } })); } catch { /* nada */ }
+    // Ya no hay contador «Pendientes» en la cabecera: los pendientes se ven en la página «Inicio» (inicio-resumen.js).
+    const viejo = $("aeChip");
+    if (viejo) viejo.remove();
   }
 
   // ---------- Tarjeta ----------
@@ -237,7 +220,7 @@
         const nuevo = !apagado();
         try { nuevo ? localStorage.setItem(CLAVE_APAGADO, "1") : localStorage.removeItem(CLAVE_APAGADO); } catch { /* nada */ }
         b.textContent = nuevo ? "Volver a mostrar al entrar" : "No abrir al entrar";
-        if (window.EOF && window.EOF.toast) window.EOF.toast(nuevo ? "No se abrirá sola al entrar. El contador de la cabecera sigue ahí." : "Se abrirá al entrar cuando haya algo pendiente.", "info");
+        if (window.EOF && window.EOF.toast) window.EOF.toast(nuevo ? "No se abrirá sola al entrar. Sigues viéndolo todo en Inicio." : "Se abrirá al entrar cuando haya algo pendiente.", "info");
         return;
       }
       if (acc === "ir") { marcarVisto(); cerrarTarjeta(); irA(b.dataset.id); }
@@ -277,7 +260,9 @@
       try { visto = sessionStorage.getItem(CLAVE_VISTO) || ""; } catch { /* nada */ }
       // Al entrar: se abre si hay algo nuevo respecto a lo ya visto en esta sesión. En rechequeos
       // posteriores solo vuelve a abrirse si han aparecido urgencias nuevas.
-      const abrir = items.length && !apagado() && ultimaFirma !== visto && (inicial || urg > ultimaUrgentes);
+      // Si se está viendo «Inicio» (ya lista los pendientes), no se abre la tarjeta flotante al entrar.
+      const inicioVisible = !!($("panel-inicio") && $("panel-inicio").classList.contains("activo"));
+      const abrir = items.length && !apagado() && ultimaFirma !== visto && ((inicial && !inicioVisible) || urg > ultimaUrgentes);
       ultimaUrgentes = urg;
       if (abrir) {
         // Si la celebración de racha está en pantalla (o a punto de salir), la tarjeta espera a que se cierre.
@@ -330,6 +315,68 @@
     refrescando = false;
   }
 
+  // ---------- Refresco en vivo de TODOS los pendientes ----------
+  // Además de lo de Resultados, se recalculan revisión, redes, acreditaciones, ediciones y comentarios:
+  //   · cada 2 min con la pestaña visible,
+  //   · al volver a la pestaña (si han pasado más de 30 s),
+  //   · y 1,5 s después de cualquier cambio hecho desde el panel (publicar, revisar, aceptar una
+  //     acreditación, responder una solicitud…), para que el contador baje o suba al momento.
+  // Qué avisa: una urgencia nueva abre la tarjeta; un pendiente nuevo de cualquier tipo, un toast.
+  const REFRESCO_TODO_MS = 2 * 60 * 1000;
+  const NOMBRES_AVISO = {
+    revision: ["noticia en revisión", "noticias en revisión"], redes: ["noticia por subir a redes", "noticias por subir a redes"],
+    acreditaciones: ["acreditación pendiente", "acreditaciones pendientes"], ediciones: ["solicitud de edición", "solicitudes de edición"],
+    feedback: ["comentario nuevo de revisión", "comentarios nuevos de revisión"], sincubrir: ["partido sin cubrir", "partidos sin cubrir"],
+    anulados: ["partido anulado por reprogramar", "partidos anulados por reprogramar"],
+  };
+  let refrescandoTodo = false;
+  async function refrescarTodo() {
+    if (refrescandoTodo || refrescando || calculando || !ultimaComprobacion) return;
+    refrescandoTodo = true;
+    try {
+      const previos = new Map(items.map((f) => [f.id, f.n]));
+      const nuevos = await calcular();
+      ultimaComprobacion = Date.now();
+      ultimoRefresco = Date.now();
+      items = nuevos;
+      pintarChip();
+      const urg = items.reduce((t, f) => t + f.urgente, 0);
+      const firmaNueva = items.map((f) => `${f.id}:${f.n}:${f.urgente}`).join("|");
+      const cambio = firmaNueva !== ultimaFirma;
+      ultimaFirma = firmaNueva;
+      const urgNueva = urg > ultimaUrgentes;
+      ultimaUrgentes = urg;
+      if (!cambio) return;
+      if (!items.length) { cerrarTarjeta(); return; }
+      if ($("aeCard")) { $("aeCard").remove(); abrirTarjeta(); return; }
+      if (urgNueva && !apagado()) { abrirTarjeta(); return; }
+      const partes = items.filter((f) => f.n > (previos.get(f.id) || 0)).map((f) => {
+        const nom = NOMBRES_AVISO[f.id] || ["aviso", "avisos"];
+        return plural(f.n - (previos.get(f.id) || 0), nom[0], nom[1]);
+      });
+      if (partes.length) { try { if (window.EOF && EOF.toast) EOF.toast(`Nuevo pendiente: ${partes.join(" · ")}.`, "info", 6000); } catch { /* sin toast */ } }
+    } catch { /* un fallo de red no molesta: se reintenta en el siguiente ciclo */ }
+    refrescandoTodo = false;
+  }
+  // Tras un cambio hecho desde el panel (cualquier petición que no sea de lectura) se recalcula en breve.
+  function vigilarCambiosDelPanel() {
+    if (typeof window.apiFetch !== "function" || window.apiFetch.__eofAvisos) return;
+    const original = window.apiFetch;
+    let t = null;
+    const envuelta = function (path, options) {
+      const r = original.apply(this, arguments);
+      try {
+        const metodo = String((options && options.method) || "GET").toUpperCase();
+        if (metodo !== "GET" && /^\/api\/(articles|acreditaciones|edit-requests|feedback|results)/.test(String(path))) {
+          Promise.resolve(r).then(() => { clearTimeout(t); t = setTimeout(refrescarTodo, 1500); }, () => {});
+        }
+      } catch { /* nada */ }
+      return r;
+    };
+    envuelta.__eofAvisos = true;
+    window.apiFetch = envuelta;
+  }
+
   // ---------- Aviso breve al entrar en la pestaña Resultados ----------
   const CLAVE_TOAST = "eof_avisos_resultados_toast";
   function avisarAlEntrarEnResultados() {
@@ -355,6 +402,15 @@
     }).observe(panel, { attributes: true, attributeFilter: ["class"] });
   }
 
+  // API para la página «Inicio»: leer los pendientes ya calculados, pedir el primer cálculo sin esperar
+  // y navegar a cada uno con los mismos filtros que la tarjeta.
+  window.EOFAvisosEntrada = {
+    items: () => items.slice(),
+    listo: () => ultimaComprobacion > 0,
+    pedir: () => { if (!ultimaComprobacion && !calculando) comprobar(true); },
+    ir: irA,
+  };
+
   function iniciar() {
     vigilarPestanaResultados();
     setInterval(() => { if (document.visibilityState === "visible" && ultimaComprobacion > 0 && Date.now() - ultimoRefresco > REFRESCO_RESULTADOS_MS - 5000) refrescarResultados(); }, 30000);
@@ -369,11 +425,12 @@
         return r;
       };
     }
+    vigilarCambiosDelPanel();
+    setInterval(() => { if (document.visibilityState === "visible" && ultimaComprobacion > 0 && Date.now() - ultimaComprobacion > REFRESCO_TODO_MS - 5000) refrescarTodo(); }, 30000);
     // Un poco después de arrancar, para no competir con la carga del panel (el aviso del resumen mensual va a los 3,5 s).
-    setTimeout(() => comprobar(true), 5000);
+    setTimeout(() => { if (!ultimaComprobacion && !calculando) comprobar(true); }, 5000);
     document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible" && Date.now() - ultimoRefresco > REFRESCO_RESULTADOS_MS) refrescarResultados();
-      if (document.visibilityState === "visible" && Date.now() - ultimaComprobacion > RECHEQUEO_MS) comprobar(false);
+      if (document.visibilityState === "visible" && Date.now() - ultimaComprobacion > 30000) refrescarTodo();
     });
     // Si hay un solo documento abierto mucho rato, también se refresca el contador.
     setInterval(() => { if (document.visibilityState === "visible" && Date.now() - ultimaComprobacion > RECHEQUEO_MS) comprobar(false); }, RECHEQUEO_MS);

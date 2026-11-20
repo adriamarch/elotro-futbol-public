@@ -1,0 +1,424 @@
+/* =====================================================================
+   Panel > Usuarios > Colaboradores · COHERENCIA FINAL (página + modales)
+   ---------------------------------------------------------------------
+   Remata usuarios-unificado.css llevando el mismo lenguaje a TODO lo
+   que cuelga de esta pantalla:
+
+     · Página: tarjeta de PIN, "Crear usuario", filtros, tabla/tarjetas.
+     · Modales fijos: equipos, nivel, avisos de inactividad, contraseña
+       restablecida, PIN compartido y PIN de "Última hora".
+     · Modales del gestor de grupos (.gt-modal): grupos y funciones.
+
+   Reglas de diseño (iguales en todo):
+     · Tarjetas / secciones internas ...... radio 18px, borde fino.
+     · Controles (botones, chips, campos) .. píldora de 44px en modal,
+                                              36px en la tabla.
+     · Campos de texto ..................... radio 12px, foco celeste.
+     · Color por significado: celeste = acción neutra, rojo = acción
+       principal o destructiva, verde / rojo suave = estado.
+     · Mismo foco visible, mismo modo oscuro, mismo movimiento reducido.
+
+   Solo CSS. Se carga DESPUÉS de usuarios-unificado.css y antes de las
+   hojas móviles (movil-responsive / movil-app / movil-app-pro).
+   ===================================================================== */
+
+#subpanel-redactores,
+#subpanel-lectores,
+#modalEquiposUsuario,
+#modalNivelUsuario,
+#modalAvisosUsuario,
+#modalPasswordGenerada,
+#modalPinRedactor,
+#modalPinUltimaHora,
+.gt-modal{
+  --c-radio:18px;          /* tarjetas y secciones */
+  --c-campo:12px;          /* inputs, selects, textareas */
+  --c-ctl:44px;            /* alto de control en modal */
+  --c-foco:0 0 0 3px color-mix(in srgb,var(--celeste) 28%,transparent);
+  --c-seccion:color-mix(in srgb,var(--celeste) 6%,var(--tarjeta));
+  --c-seccion-borde:color-mix(in srgb,var(--borde) 90%,var(--celeste));
+  --c-ok:#15803d;
+  --c-ok-fondo:color-mix(in srgb,#16a34a 12%,var(--tarjeta));
+  --c-peligro:var(--rojo,#d1132e);
+}
+
+/* =====================================================================
+   1 · PÁGINA
+   ===================================================================== */
+
+/* Pestañas Colaboradores / Lectores: píldoras como el resto de controles */
+#panel-usuarios .subtabs button{border-radius:999px;}
+#panel-usuarios .subtabs button:focus-visible{outline:2px solid var(--celeste);outline-offset:2px;}
+
+/* Foco visible en TODO lo interactivo de la pantalla (antes solo algunos) */
+#subpanel-redactores .usuarios-stat:focus-visible,
+#subpanel-redactores .usuarios-chips button:focus-visible,
+#subpanel-redactores .btn-ver-pin-ultima-hora:focus-visible,
+#subpanel-redactores .usuarios-limpiar:focus-visible,
+#subpanel-redactores .btn-equipos-usuario:focus-visible,
+#subpanel-redactores .nivel-badge:focus-visible,
+#subpanel-redactores .gt-chip:focus-visible,
+#subpanel-redactores table.lista td.acciones-usuario button:focus-visible{
+  outline:2px solid var(--celeste);outline-offset:2px;
+}
+
+/* --- Tarjetas de resumen: la activa se nota (filtro aplicado) --- */
+#subpanel-redactores .usuarios-stat{cursor:pointer;transition:transform .15s,box-shadow .15s,border-color .15s;}
+#subpanel-redactores .usuarios-stat:hover{transform:translateY(-2px);}
+#subpanel-redactores .usuarios-stat.activo,
+#subpanel-redactores .usuarios-stat[aria-pressed="true"]{
+  border-color:var(--acento,var(--celeste));
+  box-shadow:0 0 0 1px var(--acento,var(--celeste)),0 16px 28px -20px var(--acento,var(--celeste));
+}
+#subpanel-redactores .usuarios-stat.stat-aviso{--acento:#ea580c;}
+#subpanel-redactores .usuarios-stat.stat-inactivo{--acento:#6b7280;}
+
+/* --- Tarjeta del PIN: texto legible y botón alineado --- */
+#subpanel-redactores .usuarios-pin{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-top:16px;padding-bottom:16px;}
+#subpanel-redactores .usuarios-pin-texto{flex:1 1 280px;min-width:0;display:flex;flex-direction:column;gap:3px;}
+#subpanel-redactores .usuarios-pin-texto strong{font-family:var(--font-tit);font-size:.98rem;letter-spacing:.3px;color:var(--marino-texto);}
+#subpanel-redactores .usuarios-pin-texto span{font-size:.84rem;line-height:1.45;color:var(--texto-suave);max-width:64ch;}
+
+/* --- "Crear nuevo usuario": mismo sistema de campos que los modales --- */
+#subpanel-redactores .usuarios-crear-card{padding:26px;border:1px solid var(--borde);}
+#subpanel-redactores .usuarios-crear-card form{display:flex;flex-direction:column;gap:2px;}
+#subpanel-redactores .usuarios-crear-card .row2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+#subpanel-redactores .usuarios-crear-card label:not(.equipos-picker-chip){
+  margin:16px 0 6px;font-size:.8rem;font-weight:800;letter-spacing:.2px;color:var(--marino-texto);
+}
+#subpanel-redactores .usuarios-crear-card input:not([type="checkbox"]):not([type="radio"]),
+#subpanel-redactores .usuarios-crear-card select{
+  min-height:var(--c-ctl);border-radius:var(--c-campo);border:1.5px solid var(--borde);
+  background-color:var(--tarjeta);box-sizing:border-box;
+}
+#subpanel-redactores .usuarios-crear-card input:focus-visible,
+#subpanel-redactores .usuarios-crear-card select:focus-visible{outline:none;border-color:var(--celeste);box-shadow:var(--c-foco);}
+#subpanel-redactores .usuarios-crear-card .btn-primari{align-self:flex-start;margin-top:22px;}
+#subpanel-redactores .usuarios-crear-card #msgOkUsuario:not(:empty){
+  margin:14px 0 0;padding:10px 14px;border-radius:var(--c-campo);font-size:.85rem;font-weight:700;color:var(--c-ok);background:var(--c-ok-fondo);
+}
+#subpanel-redactores .usuarios-crear-card #errUsuario:not(:empty){
+  margin:14px 0 0;padding:10px 14px;border-radius:var(--c-campo);font-size:.85rem;font-weight:700;color:#b4132a;background:#fde8eb;
+}
+@media (max-width:640px){
+  #subpanel-redactores .usuarios-crear-card{padding:18px;}
+  #subpanel-redactores .usuarios-crear-card .row2{grid-template-columns:1fr;gap:0;}
+  #subpanel-redactores .usuarios-crear-card .btn-primari{align-self:stretch;}
+}
+
+/* --- Botones primarios y secundarios: píldora en toda la pantalla --- */
+#subpanel-redactores .btn-primari,
+#modalEquiposUsuario .btn-primari,#modalNivelUsuario .btn-primari,#modalAvisosUsuario .btn-primari,
+#modalPasswordGenerada .btn-primari,#modalPinRedactor .btn-primari,#modalPinUltimaHora .btn-primari,
+.gt-modal .btn-primari{
+  min-height:var(--c-ctl);border-radius:999px;padding:10px 26px;font-weight:800;font-size:.88rem;box-sizing:border-box;
+}
+#modalEquiposUsuario .btn-secundari,#modalNivelUsuario .btn-secundari,#modalAvisosUsuario .btn-secundari,
+#modalPasswordGenerada .btn-secundari,#modalPinRedactor .btn-secundari,#modalPinUltimaHora .btn-secundari,
+.gt-modal .btn-secundari{
+  min-height:var(--c-ctl);border-radius:999px;padding:10px 24px;font-weight:700;font-size:.88rem;box-sizing:border-box;
+}
+#subpanel-redactores .btn-primari:focus-visible,
+#modalEquiposUsuario .btn-primari:focus-visible,#modalNivelUsuario .btn-primari:focus-visible,
+#modalPasswordGenerada .btn-primari:focus-visible,#modalPinRedactor .btn-primari:focus-visible,
+#modalPinUltimaHora .btn-primari:focus-visible,.gt-modal .btn-primari:focus-visible,
+#modalEquiposUsuario .btn-secundari:focus-visible,#modalNivelUsuario .btn-secundari:focus-visible,
+#modalAvisosUsuario .btn-secundari:focus-visible,#modalPasswordGenerada .btn-secundari:focus-visible,
+#modalPinRedactor .btn-secundari:focus-visible,#modalPinUltimaHora .btn-secundari:focus-visible,
+.gt-modal .btn-secundari:focus-visible{outline:2px solid var(--celeste);outline-offset:2px;}
+
+/* --- Estado vacío de la tabla (sin resultados) --- */
+#subpanel-redactores table.lista tbody td[colspan]{
+  padding:34px 18px;text-align:center;color:var(--texto-suave);font-size:.9rem;
+}
+
+/* =====================================================================
+   2 · MODALES · piezas comunes
+   ===================================================================== */
+
+/* Título: mismo tamaño y espacio en todos */
+#modalEquiposUsuario .modal-caja > h3,
+#modalNivelUsuario .modal-caja > h3,
+#modalPasswordGenerada .modal-caja > h3,
+#modalPinRedactor .modal-caja > h3,
+#modalPinUltimaHora .modal-caja > h3,
+.gt-modal .modal-caja > h3,
+.gt-modal .modal-caja > .gt-cab h3{
+  font-size:1.12rem;margin-bottom:10px;
+}
+#modalEquiposUsuario .modal-caja > h3 span,
+#modalNivelUsuario .modal-caja > h3 span{
+  display:inline-block;max-width:100%;vertical-align:bottom;
+  color:var(--celeste);overflow-wrap:anywhere;
+}
+
+/* Modales de aviso (contraseña, PIN): título centrado, sin la barra roja
+   lateral, que solo tiene sentido en títulos alineados a la izquierda */
+#modalPasswordGenerada .modal-caja > h3,
+#modalPinRedactor .modal-caja > h3,
+#modalPinUltimaHora .modal-caja > h3{
+  border-left:0;padding:0;text-align:center;justify-content:center;
+}
+#modalPasswordGenerada .password-modal-copiado{min-height:1.2em;}
+
+/* Etiquetas y textos de ayuda: misma jerarquía */
+#modalEquiposUsuario label:not(.equipos-picker-chip),
+#modalNivelUsuario label,
+.gt-modal label:not(.gt-func-campo){
+  display:block;margin:18px 0 6px;font-size:.8rem;font-weight:800;letter-spacing:.2px;color:var(--marino-texto);
+}
+#modalEquiposUsuario .ayuda-editor,
+#modalNivelUsuario .ayuda-editor,
+#modalPasswordGenerada .ayuda-editor,
+#modalPinRedactor .ayuda-editor,
+#modalPinUltimaHora .ayuda-editor,
+.gt-modal .ayuda-editor{
+  font-size:.84rem;line-height:1.5;color:var(--texto-suave);
+}
+
+/* Campos: radio, alto y foco idénticos a los de la página */
+#modalEquiposUsuario input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+#modalNivelUsuario select,
+#modalNivelUsuario textarea,
+.gt-modal input[type="text"],
+.gt-modal select{
+  border:1.5px solid var(--borde);border-radius:var(--c-campo);background-color:var(--tarjeta);
+  box-sizing:border-box;width:100%;
+}
+#modalNivelUsuario select{
+  min-height:var(--c-ctl);padding:0 40px 0 14px;appearance:none;-webkit-appearance:none;cursor:pointer;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238a93a3' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 14px center;
+}
+#modalNivelUsuario textarea{min-height:92px;padding:11px 14px;resize:vertical;line-height:1.45;}
+
+/* Mensajes de estado: mismo radio que los campos, con icono tipográfico */
+#modalEquiposUsuario .modal-msg,
+#modalNivelUsuario .modal-msg,
+#modalPinRedactor .modal-msg,
+#modalPinUltimaHora .modal-msg,
+.gt-modal .modal-msg{
+  border-radius:var(--c-campo);display:flex;align-items:flex-start;gap:8px;
+}
+#modalEquiposUsuario .modal-msg-ok::before,
+#modalNivelUsuario .modal-msg-ok::before,
+#modalPinRedactor .modal-msg-ok::before,
+.gt-modal .modal-msg-ok::before{content:"✓";font-weight:900;}
+#modalEquiposUsuario .modal-msg-err::before,
+#modalNivelUsuario .modal-msg-err::before,
+#modalPinRedactor .modal-msg-err::before,
+#modalPinUltimaHora .modal-msg-err::before,
+.gt-modal .modal-msg-err::before{content:"!";font-weight:900;}
+
+/* Pie de acciones: el principal a la derecha, botones del mismo alto */
+#modalEquiposUsuario .modal-acciones,
+#modalNivelUsuario .modal-acciones:not(.modal-acciones-simple),
+.gt-modal .modal-acciones{gap:10px;}
+#modalNivelUsuario .modal-acciones-simple{display:flex;flex-direction:row-reverse;justify-content:flex-start;gap:10px;flex-wrap:wrap;}
+
+/* =====================================================================
+   3 · MODAL · Equipo y categoría (+ selector de equipos de "Crear")
+   ===================================================================== */
+#modalEquiposUsuario .equipos-picker,
+#subpanel-redactores .equipos-picker{
+  padding:16px;border-radius:var(--c-radio);
+  border:1px solid var(--c-seccion-borde);background:var(--c-seccion);
+}
+#modalEquiposUsuario .equipos-picker-cabecera,
+#subpanel-redactores .equipos-picker-cabecera{margin-bottom:12px;}
+#modalEquiposUsuario .equipos-picker-contador,
+#subpanel-redactores .equipos-picker-contador{
+  padding:5px 12px;font-size:.74rem;font-weight:800;border-radius:999px;
+  background:color-mix(in srgb,var(--marino) 9%,var(--tarjeta));color:var(--marino-texto);
+}
+#modalEquiposUsuario .equipos-picker-contador.completo,
+#subpanel-redactores .equipos-picker-contador.completo{background:var(--celeste);color:#fff;}
+#modalEquiposUsuario .equipos-picker-contador.excedido,
+#subpanel-redactores .equipos-picker-contador.excedido{background:var(--rojo);color:#fff;}
+#modalEquiposUsuario .equipos-picker-buscador,
+#subpanel-redactores .equipos-picker-buscador{
+  min-height:var(--c-ctl);padding:0 16px;border:1.5px solid var(--borde);border-radius:999px;
+  background-color:var(--tarjeta);font-size:.86rem;margin-bottom:12px;box-sizing:border-box;
+}
+#modalEquiposUsuario .equipos-picker-buscador:focus-visible,
+#subpanel-redactores .equipos-picker-buscador:focus-visible{outline:none;border-color:var(--celeste);box-shadow:var(--c-foco);}
+#modalEquiposUsuario .equipos-picker-lista,
+#subpanel-redactores .equipos-picker-lista{gap:8px;max-height:min(260px,34dvh);padding:3px;scrollbar-width:thin;}
+#modalEquiposUsuario .equipos-picker-chip,
+#subpanel-redactores .equipos-picker-chip{
+  min-height:var(--u-ctl-alto,36px);margin:0;padding:3px 14px;border-radius:999px;font-size:.82rem;font-weight:700;
+  letter-spacing:0;gap:6px;color:var(--texto);box-sizing:border-box;
+}
+#modalEquiposUsuario .equipos-picker-chip:hover:not(.deshabilitado):not(.seleccionado),
+#subpanel-redactores .equipos-picker-chip:hover:not(.deshabilitado):not(.seleccionado){
+  border-color:var(--celeste);background:color-mix(in srgb,var(--celeste) 8%,var(--tarjeta));
+}
+#modalEquiposUsuario .equipos-picker-chip.seleccionado,
+#subpanel-redactores .equipos-picker-chip.seleccionado{
+  background:linear-gradient(120deg,color-mix(in srgb,var(--celeste) 22%,var(--tarjeta)),color-mix(in srgb,var(--celeste) 8%,var(--tarjeta)));
+  border-color:var(--celeste);color:var(--texto);box-shadow:0 8px 16px -12px var(--celeste);
+}
+#modalEquiposUsuario .equipos-picker-chip.seleccionado::before,
+#subpanel-redactores .equipos-picker-chip.seleccionado::before{content:"✓";font-weight:900;color:var(--celeste);}
+#modalEquiposUsuario .equipos-picker-chip:has(input:focus-visible),
+#subpanel-redactores .equipos-picker-chip:has(input:focus-visible){outline:2px solid var(--celeste);outline-offset:2px;}
+#modalEquiposUsuario .equipos-picker-ayuda,
+#subpanel-redactores .equipos-picker-ayuda{margin:12px 0 0;font-size:.78rem;}
+
+/* =====================================================================
+   4 · MODAL · Nivel del colaborador
+   ===================================================================== */
+#modalNivelUsuario #nivelUsuarioProgreso{
+  padding:16px;border-radius:var(--c-radio);border:1px solid var(--c-seccion-borde);background:var(--c-seccion);
+}
+#modalNivelUsuario .nivel-insignia{border-radius:var(--c-radio);}
+#modalNivelUsuario .nivel-stat,
+#modalNivelUsuario .nivel-barra-fila{border-radius:14px;}
+#modalNivelUsuario #nuAyudaNivel{
+  margin:8px 0 0;padding:10px 14px;border-radius:var(--c-campo);
+  border:1px dashed var(--c-seccion-borde);background:var(--c-seccion);
+}
+/* Historial de niveles: filas con la misma tarjeta que el resto */
+#modalNivelUsuario .modal-acciones ~ .titulo-subseccion{
+  margin:26px 0 12px;font-size:.92rem;letter-spacing:.4px;
+}
+#modalNivelUsuario .modal-acciones ~ .lista-sesiones{
+  padding-bottom:6px;
+}
+#modalNivelUsuario .fila-sesion{
+  border-radius:14px;padding:12px 14px;gap:12px;
+  background:var(--c-seccion);border-color:var(--c-seccion-borde);
+}
+#modalNivelUsuario .sesiones-vacio{
+  padding:16px;text-align:center;border-radius:14px;border:1px dashed var(--borde);
+}
+
+/* =====================================================================
+   5 · MODAL · Avisos de inactividad
+   ===================================================================== */
+#modalAvisosUsuario .modal-caja{border-radius:var(--modal-radio,20px);overflow:hidden auto;}
+#modalAvisosUsuario .avisos-cuerpo{display:flex;flex-direction:column;gap:14px;}
+#modalAvisosUsuario .avisos-fila{border-top-color:var(--borde);}
+#modalAvisosUsuario .avisos-pie{
+  position:sticky;bottom:0;z-index:2;background:var(--tarjeta);border-top:1px solid var(--borde);
+  padding:14px 26px calc(14px + env(safe-area-inset-bottom,0px));
+}
+#modalAvisosUsuario .avisos-pie .btn-secundari{margin:0;}
+@media (max-width:640px){
+  #modalAvisosUsuario .avisos-pie{padding-left:16px;padding-right:16px;}
+  #modalAvisosUsuario .avisos-pie .btn-secundari{width:100%;}
+}
+
+/* =====================================================================
+   6 · MODAL · Contraseña restablecida
+   ===================================================================== */
+#modalPasswordGenerada .password-modal-texto{margin:0 0 16px;}
+#modalPasswordGenerada .password-modal-caja{
+  display:flex;align-items:stretch;gap:8px;padding:6px;
+  border:1.5px solid var(--c-seccion-borde);border-radius:var(--c-radio);background:var(--c-seccion);
+}
+#modalPasswordGenerada .password-modal-caja input{
+  flex:1;min-width:0;min-height:var(--c-ctl);border:0;background:transparent;box-shadow:none;
+  font-size:1.02rem;font-weight:700;text-align:center;color:var(--texto);
+}
+#modalPasswordGenerada .password-modal-caja input:focus-visible{outline:none;}
+#modalPasswordGenerada .password-modal-caja button{
+  min-height:var(--c-ctl);border-radius:999px;padding:0 18px;
+  background:var(--marino);color:#fff;font-weight:800;font-size:.84rem;
+}
+#modalPasswordGenerada .password-modal-caja button:hover{background:var(--rojo);}
+#modalPasswordGenerada .password-modal-caja button.copiado{background:#15803d;}
+#modalPasswordGenerada .password-modal-caja button:focus-visible{outline:2px solid var(--celeste);outline-offset:2px;}
+#modalPasswordGenerada .password-modal-copiado{margin:10px 0 0;text-align:center;font-weight:700;color:var(--c-ok);}
+@media (max-width:420px){
+  #modalPasswordGenerada .password-modal-caja{flex-direction:column;}
+  #modalPasswordGenerada .password-modal-caja button{justify-content:center;}
+}
+
+/* =====================================================================
+   7 · MODALES · PIN compartido y PIN de "Última hora"
+   ===================================================================== */
+#modalPinRedactor .pin-modal-inputs,
+#modalPinUltimaHora .pin-modal-inputs{display:flex;justify-content:center;gap:12px;margin:22px 0 4px;}
+#modalPinUltimaHora .pin-modal-inputs input{
+  width:54px;height:62px;min-height:62px;padding:0;text-align:center;
+  font-size:1.5rem;font-weight:800;border:1.5px solid var(--borde);border-radius:var(--c-campo);background:var(--tarjeta);
+}
+#modalPinUltimaHora .pin-modal-inputs input:focus-visible{outline:none;border-color:var(--celeste);box-shadow:var(--c-foco);}
+#modalPinRedactor .pin-digito-mostrado{
+  width:54px;height:62px;border-radius:var(--c-campo);font-size:1.5rem;
+  border-color:var(--c-seccion-borde);background:var(--c-seccion);
+}
+#modalPinRedactor .modal-msg-ok{justify-content:center;}
+@media (max-width:380px){
+  #modalPinRedactor .pin-modal-inputs,
+  #modalPinUltimaHora .pin-modal-inputs{gap:8px;}
+  #modalPinRedactor .pin-digito-mostrado,
+  #modalPinUltimaHora .pin-modal-inputs input{width:48px;height:56px;min-height:56px;}
+}
+
+/* =====================================================================
+   8 · MODALES · Gestor de grupos y funciones (.gt-modal)
+   ===================================================================== */
+.gt-modal .gt-caja{border-radius:var(--modal-radio,20px);}
+.gt-modal .gt-fila{border-radius:var(--c-radio);}
+.gt-modal .gt-fila-campos input[type="text"],
+.gt-modal .gt-func-campo input{
+  min-height:var(--c-ctl);border-radius:var(--c-campo);border:1.5px solid var(--borde);
+}
+.gt-modal .gt-fila-campos input[type="text"]:focus-visible,
+.gt-modal .gt-func-campo input:focus-visible{border-color:var(--celeste);box-shadow:var(--c-foco);}
+.gt-modal .gt-func-campo{font-size:.8rem;font-weight:800;color:var(--marino-texto);}
+.gt-modal .gt-func-prevbox{border-radius:var(--c-campo);}
+.gt-modal .gt-icono{width:36px;height:36px;border-radius:50%;}
+.gt-modal .gt-icono:focus-visible,
+.gt-modal .gt-color:focus-visible{outline:2px solid var(--celeste);outline-offset:2px;}
+.gt-modal .gt-pie{padding-top:16px;border-top:1px solid var(--borde);}
+.gt-modal .gt-btn{min-height:var(--c-ctl);border-radius:999px;font-weight:800;}
+.gt-modal .gt-btn:focus-visible{outline:2px solid var(--celeste);outline-offset:2px;}
+@media (max-width:640px){
+  .gt-modal .gt-pie{flex-direction:column;align-items:stretch;}
+  .gt-modal .gt-pie-der{flex-direction:column;}
+  .gt-modal .gt-btn{width:100%;justify-content:center;}
+}
+
+/* =====================================================================
+   9 · TEMA OSCURO
+   ===================================================================== */
+[data-theme="dark"] #subpanel-redactores,
+[data-theme="dark"] #subpanel-lectores,
+[data-theme="dark"] #modalEquiposUsuario,
+[data-theme="dark"] #modalNivelUsuario,
+[data-theme="dark"] #modalAvisosUsuario,
+[data-theme="dark"] #modalPasswordGenerada,
+[data-theme="dark"] #modalPinRedactor,
+[data-theme="dark"] #modalPinUltimaHora,
+[data-theme="dark"] .gt-modal{
+  --c-seccion:color-mix(in srgb,var(--celeste) 9%,var(--tarjeta));
+  --c-seccion-borde:color-mix(in srgb,var(--borde) 80%,var(--celeste));
+  --c-ok:#4ade80;
+  --c-ok-fondo:rgba(34,197,94,.14);
+}
+[data-theme="dark"] #subpanel-redactores .usuarios-crear-card #errUsuario:not(:empty){color:#f87171;background:rgba(248,113,113,.14);}
+[data-theme="dark"] #modalEquiposUsuario .equipos-picker-contador,
+[data-theme="dark"] #subpanel-redactores .equipos-picker-contador{background:rgba(255,255,255,.1);color:var(--texto);}
+[data-theme="dark"] #modalEquiposUsuario .equipos-picker-chip.seleccionado,
+[data-theme="dark"] #subpanel-redactores .equipos-picker-chip.seleccionado{
+  background:linear-gradient(120deg,color-mix(in srgb,var(--celeste) 32%,var(--tarjeta)),color-mix(in srgb,var(--celeste) 14%,var(--tarjeta)));
+}
+[data-theme="dark"] #modalPasswordGenerada .password-modal-caja button{background:#2a3a57;}
+[data-theme="dark"] #modalPasswordGenerada .password-modal-caja button:hover{background:var(--rojo);}
+[data-theme="dark"] #modalPasswordGenerada .password-modal-caja button.copiado{background:#15803d;}
+[data-theme="dark"] #modalAvisosUsuario .avisos-pie{background:var(--tarjeta);border-top-color:var(--borde);}
+[data-theme="dark"] #modalNivelUsuario .fila-sesion{background:var(--c-seccion);}
+
+/* =====================================================================
+   10 · MOVIMIENTO REDUCIDO
+   ===================================================================== */
+@media (prefers-reduced-motion:reduce){
+  #subpanel-redactores .usuarios-stat,
+  #modalEquiposUsuario .equipos-picker-chip,
+  #subpanel-redactores .equipos-picker-chip,
+  #modalPinUltimaHora .pin-modal-inputs input{transition:none;}
+  #subpanel-redactores .usuarios-stat:hover{transform:none;}
+}

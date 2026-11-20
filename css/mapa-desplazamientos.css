@@ -1,0 +1,75 @@
+/* Mapa de desplazamientos (Fase 1). Usa las variables de style.css, así que respeta el modo oscuro. */
+.mapad-intro{color:var(--texto-suave);font-size:.95rem;max-width:640px;margin:-10px 0 22px}
+.mapad-aviso{max-width:560px;padding:26px;border:1px solid var(--borde);border-radius:var(--radio-lg);background:var(--tarjeta);box-shadow:var(--sombra-sm)}
+.mapad-aviso h2{font-family:var(--font-tit);font-size:1.3rem;margin:0 0 8px;color:var(--marino-texto)}
+.mapad-aviso p{margin:0 0 16px;color:var(--texto-suave)}
+
+.mapad-equipo{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.mapad-equipo label{font-family:var(--font-tit);font-weight:600;color:var(--marino-texto)}
+.mapad-equipo .select-filtro{min-width:min(100%,280px)}
+.mapad-escudo{display:inline-flex;width:44px;height:44px;align-items:center;justify-content:center}
+.mapad-escudo:empty{display:none}
+.mapad-escudo img{width:44px;height:44px;object-fit:contain}
+.mapad-ayuda{color:var(--texto-suave);font-size:.9rem;margin:0 0 14px}
+
+.mapad-layout{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(300px,1fr);gap:22px;align-items:start}
+.mapad-lienzo,.mapad-panel{min-width:0}
+.mapad-lienzo{position:relative;border:1px solid var(--borde);border-radius:var(--radio-lg);background:var(--tarjeta);box-shadow:var(--sombra-sm);overflow:hidden}
+#mapadSvg{display:block;width:100%;height:auto;touch-action:pan-y;cursor:grab;user-select:none}
+.mapad-tierra path{fill:var(--borde);stroke:var(--tarjeta);stroke-width:.9;stroke-linejoin:round}
+.mapad-marco{fill:none;stroke:var(--texto-suave);stroke-width:1;opacity:.5}
+.mapad-rutas path{fill:none;stroke:var(--rojo);stroke-width:1.8;stroke-linecap:round;opacity:.5}
+.mapad-hit{fill:transparent}
+.mapad-punto{cursor:pointer;outline:none}
+.mapad-dot{fill:var(--texto-suave);opacity:.55;stroke:var(--tarjeta);stroke-width:1;transition:fill .15s,opacity .15s}
+.mapad-punto:hover .mapad-dot,.mapad-punto:focus-visible .mapad-dot{opacity:1;fill:var(--celeste);stroke:var(--marino);stroke-width:1.2}
+.mapad-punto.on .mapad-dot{fill:var(--rojo);opacity:1;stroke:#fff;stroke-width:1.6}
+.mapad-punto.casa .mapad-dot{fill:var(--marino);opacity:1;stroke:var(--celeste);stroke-width:2.4}
+.mapad-nombres text{fill:var(--marino-texto);font-family:var(--font-text);font-weight:700;paint-order:stroke;stroke:var(--tarjeta);stroke-width:3.5px;stroke-linejoin:round;pointer-events:none}
+
+.mapad-zoom{position:absolute;right:10px;bottom:10px;display:flex;flex-direction:column;gap:6px}
+.mapad-zoom button{width:38px;height:38px;border:1px solid var(--borde);border-radius:10px;background:var(--tarjeta);color:var(--marino-texto);font-size:1.15rem;line-height:1;cursor:pointer;box-shadow:var(--sombra-sm)}
+.mapad-zoom button:hover{border-color:var(--celeste)}
+
+.mapad-panel{display:flex;flex-direction:column;gap:14px}
+.mapad-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mapad-stats>div{display:flex;flex-direction:column;gap:2px;padding:12px 14px;border:1px solid var(--borde);border-radius:var(--radio-md);background:var(--tarjeta)}
+.mapad-stat-ancho{grid-column:1/-1}
+.mapad-stat-valor{font-family:var(--font-tit);font-weight:700;font-size:1.9rem;line-height:1.1;color:var(--marino-texto)}
+.mapad-stat-texto{font-family:var(--font-tit);font-weight:600;font-size:1.05rem;color:var(--marino-texto)}
+.mapad-stat-etq{font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--texto-suave);font-weight:600}
+.mapad-nota{margin:-4px 0 0;font-size:.78rem;color:var(--texto-suave)}
+.mapad-opciones{display:flex;gap:18px;flex-wrap:wrap;font-size:.9rem}
+.mapad-opciones label{display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+
+.mapad-acciones{display:flex;gap:10px;flex-wrap:wrap}
+.mapad-btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 18px;border:1px solid var(--borde);border-radius:10px;background:var(--tarjeta);color:var(--marino-texto);font-family:var(--font-tit);font-weight:600;font-size:.95rem;text-decoration:none;cursor:pointer;transition:border-color .15s,background .15s,opacity .15s}
+.mapad-btn:hover:not(:disabled){border-color:var(--celeste)}
+.mapad-btn:disabled{opacity:.5;cursor:not-allowed}
+.mapad-btn-principal{background:var(--marino);border-color:var(--marino);color:#fff}
+.mapad-btn-principal:hover:not(:disabled){background:var(--marino2);border-color:var(--marino2)}
+.mapad-guardado{min-height:1.2em;margin:-6px 0 0;font-size:.8rem;color:var(--texto-suave)}
+.mapad-guardado-error{color:var(--rojo)}
+
+.mapad-buscador{display:flex;flex-direction:column;gap:6px}
+.mapad-buscador label{font-family:var(--font-tit);font-weight:600;color:var(--marino-texto)}
+.mapad-buscador input{min-height:44px;padding:0 12px;border:1px solid var(--borde);border-radius:10px;background:var(--tarjeta);color:var(--texto);font:inherit}
+.mapad-lista{list-style:none;margin:0;padding:0;max-height:340px;overflow-y:auto;border:1px solid var(--borde);border-radius:var(--radio-md);background:var(--tarjeta)}
+.mapad-item{border-bottom:1px solid var(--borde)}
+.mapad-item:last-child{border-bottom:0}
+.mapad-item label{display:flex;align-items:center;gap:10px;padding:10px 12px;min-height:48px;cursor:pointer}
+.mapad-item input{width:20px;height:20px;flex-shrink:0;accent-color:var(--rojo)}
+.mapad-item-txt{display:flex;flex-direction:column;min-width:0}
+.mapad-item-txt strong{font-size:.92rem;color:var(--marino-texto)}
+.mapad-item-txt small{font-size:.76rem;color:var(--texto-suave);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mapad-item-casa{background:var(--fondo-alt)}
+.mapad-item-casa strong::after{content:" · tu estadio";font-weight:500;color:var(--texto-suave)}
+.mapad-link{align-self:flex-start;background:none;border:0;padding:4px 0;color:var(--texto-suave);font:inherit;font-size:.85rem;text-decoration:underline;cursor:pointer}
+.mapad-link:disabled{opacity:.45;cursor:default;text-decoration:none}
+
+@media (max-width:860px){
+  .mapad-layout{grid-template-columns:minmax(0,1fr)}
+  .mapad-lista{max-height:300px}
+  .mapad-btn{flex:1 1 140px}
+}
+@media (prefers-reduced-motion:reduce){.mapad-dot,.mapad-btn{transition:none}}

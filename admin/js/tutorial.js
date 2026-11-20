@@ -73,7 +73,7 @@
   }
 
   function etiquetaRol(ctx) {
-    if (ctx.esAdmin) return "Administrador";
+    if (ctx.esAdmin) return "Responsable";
     if (ctx.esFotografo) return "Fotógrafo";
     return "Redactor · Nivel " + ctx.nivel;
   }
@@ -184,9 +184,9 @@
         titulo: "Cómo se publica",
         texto: "Marca <strong>Noticia destacada</strong> para que salga en portada y decide si queda <strong>publicada</strong> o como <strong>borrador</strong> para terminarla más tarde. Si tu rol lo permite, también puedes marcarla como <strong>última hora</strong>.",
         consejo: function (c) {
-          return c.esAdmin || c.nivel >= 2
+          return c.esAdmin || c.nivel >= 3
             ? "Como tienes nivel " + c.nivel + ", puedes publicar sin revisión administrativa."
-            : "Con nivel 1 la casilla «Publicada» viene desmarcada: tu noticia queda como borrador para que el equipo la revise.";
+            : "Con nivel 1 o 2 la casilla «Publicada» viene desmarcada: tu noticia queda como borrador para que el equipo la revise.";
         }
       },
       {
@@ -271,7 +271,7 @@
         titulo: "Solicitudes",
         texto: function (c) {
           return "Cuando alguien quiere editar algo tuyo (o tú algo de otra persona) se pide permiso aquí: <strong>Ediciones pendientes de mi respuesta</strong> y <strong>Mis solicitudes de edición</strong>." +
-            (c.esAdmin ? " Como administrador, también gestionas las <strong>propuestas de equipos</strong> y los <strong>formularios</strong> (acreditaciones e incorporaciones)." : "");
+            (c.esAdmin ? " Como Responsable, también gestionas las <strong>propuestas de equipos</strong> y los <strong>formularios</strong> (acreditaciones e incorporaciones)." : "");
         },
         consejo: "El número rojo sobre la pestaña indica cuántas tienes pendientes."
       },
@@ -320,11 +320,11 @@
         alSalir: function () { const m = document.getElementById("cuentaMenu"); if (m) m.classList.remove("abierto"); },
         titulo: "Tu menú de cuenta",
         texto: function (c) {
-          return "<strong>Ajustes de cuenta</strong> reúne tu perfil público, la seguridad (contraseña y verificación en dos pasos), tu progreso y tus dispositivos; y <strong>Preferencias</strong>, cómo ves el panel." +
+          return "<strong>Mi cuenta</strong> reúne todas tus secciones: perfil público, seguridad (contraseña y verificación en dos pasos), progreso, estadísticas, resumen del mes, dispositivos y preferencias (cómo ves el panel)." +
             " Y aquí mismo puedes volver a abrir este tutorial con <strong>Ver tutorial</strong>.";
         },
         consejo: function (c) {
-          return c.esAdmin ? "Como administrador, la verificación en dos pasos es obligatoria." : "Activar la verificación en dos pasos en Seguridad protege tu cuenta.";
+          return c.esAdmin ? "Como Responsable, la verificación en dos pasos es obligatoria." : "Activar la verificación en dos pasos en Seguridad protege tu cuenta.";
         }
       },
       {

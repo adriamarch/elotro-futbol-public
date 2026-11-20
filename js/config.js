@@ -183,6 +183,7 @@ const EOF_ESCRITURAS_SEGURAS_PARA_FAILOVER = new Set([
   // verifican credenciales o disparan un correo, repetirlas en la
   // secundaria no puede duplicar ningún dato de negocio).
   "/api/readers/login",
+  "/api/readers/login/2fa",
   "/api/readers/forgot-password",
   "/api/readers/forgot-password/confirmar",
 ]);
@@ -363,11 +364,10 @@ const SITE = {
 //   destacado  -> true para el/los patrocinador(es) principal(es) (se pintan
 //                 más grandes en la portada, en su propia fila superior)
 const PATROCINADORES = [
-  // ---- EJEMPLOS DE PRUEBA: sustituye por los patrocinadores reales ----
-  // (borra estas líneas y añade las tuyas con el mismo formato; los
-  // logos de ejemplo están en img/patrocinadores/*.svg). Cuantos más
-  // patrocinadores normales (sin destacado) haya, más lleno y vistoso
-  // se ve el carrusel — no hay límite de cuántos puedes poner.
+  // Patrocinadores reales (los mismos que cita el Portal de transparencia).
+  // Para añadir otro, copia una línea con el mismo formato y deja el logo en
+  // img/patrocinadores/. Cuantos más patrocinadores normales (sin destacado)
+  // haya, más lleno se ve el carrusel — no hay límite.
   { nombre: "TarrakoStore", logo: "img/patrocinadores/TarrakoStore.webp", url: "https://tarrako.store", destacado: true },
   { nombre: "NàsticExpress", logo: "img/patrocinadores/NasticExpress.webp", url: "https://www.instagram.com/nastic.express/" },
 ];
@@ -386,7 +386,11 @@ const CATEGORIES = {
 };
 
 function categoriaLabel(cat) {
-  return CATEGORIES[cat] || cat;
+  if (CATEGORIES[cat]) return CATEGORIES[cat];
+  // Categoría desconocida: nunca se enseña el identificador interno
+  // (p. ej. "tercera_federacion"); se convierte en texto legible.
+  const t = String(cat ?? "").replace(/[_-]+/g, " ").trim();
+  return t ? t.charAt(0).toUpperCase() + t.slice(1) : "";
 }
 
 // "club" de un artículo (columna "club" en articles) puede ser un único
@@ -432,6 +436,75 @@ function urlNoticia(categoria, slug) {
   return `/futbol/${categoriaUrlSlug(categoria)}/${encodeURIComponent(slug)}`;
 }
 
+// ---------- Marca de agua automática (arriba a la derecha, dentro de la propia foto) ----------
+// Se pide a Cloudinary como capa (overlay) en la URL de ENTREGA: el archivo original
+// guardado NO se modifica y no hay que hacer nada al subir una foto, todas las fotos públicas
+// salen marcadas solas. Es un componente aparte, DESPUÉS del redimensionado, y con tamaño
+// relativo (fl_relative): ocupa siempre la misma proporción del ancho, sea cual sea la foto.
+// - Por defecto es TEXTO (no depende de ningún fichero en Cloudinary, no puede romper fotos).
+// - Para usar el LOGO: sube img/logo-blanco.png a Cloudinary con el public ID "eof/marca-agua"
+//   y pon aquí logoId: "eof:marca-agua" (las "/" del public ID se escriben ":").
+// - Se omite en imágenes pequeñas (anchoMin): avatares y miniaturas donde no se leería.
+// Apagar todo: activa:false.
+const EOF_MARCA_AGUA = {
+  activa: true,
+  texto: "ELOTROFÚTBOLTV",
+  logoId: "",
+  anchoMin: 400,   // px: por debajo de este ancho no se marca
+  tamano: 0.19,    // ancho de la marca = 19 % del ancho de la foto
+  // Estilo de la marca del sitio: etiqueta azul marino translúcida (color de la marca, el
+  // mismo --marino de la web) con letras blancas, en mayúsculas separadas. Se lee bien sobre
+  // césped, cielo o camisetas. "fondo" admite rgb:RRGGBBAA (AA = transparencia); "" = sin etiqueta.
+  fondo: "rgb:12325aCC",
+  espaciado: 7,    // separación entre letras (letter_spacing)
+  margen: 0.02,    // separación al borde = 2 % del ancho
+  opacidad: 92,    // 0-100
+  // Marca del AUTOR de la foto (fotógrafo / crédito), abajo a la izquierda, en la posición
+  // contraria a la del sitio. Solo se pinta si la foto tiene autor. autor.activa:false la apaga.
+  autor: {
+    activa: true,
+    tamano: 0.26,    // tope del ancho de la marca = 26 % del ancho de la foto
+    opacidad: 92,
+    maxCaracteres: 40,
+  },
+};
+
+// Texto de una capa de Cloudinary: URL-encode y doble codificación de "," y "/" (que en la
+// URL de transformación separan componentes).
+function marcaTextoCloudinary(t) {
+  return encodeURIComponent(t).replace(/%2C/g, "%252C").replace(/%2F/g, "%252F");
+}
+
+// Componente de la marca del autor (abajo a la izquierda) o "" si no hay autor / está apagada.
+function marcaAutorComponente(credito) {
+  const a = EOF_MARCA_AGUA.autor;
+  if (!a || !a.activa) return "";
+  let t = String(credito || "").replace(/^\s*©\s*/, "").replace(/\s+/g, " ").trim();
+  if (!t) return "";
+  if (t.length > a.maxCaracteres) t = t.slice(0, a.maxCaracteres - 1).trim() + "…";
+  const m = EOF_MARCA_AGUA;
+  // Ancho relativo proporcional al nº de caracteres (así la letra mide lo mismo en todas las
+  // fotos y los nombres cortos no salen enormes), con tope en autor.tamano.
+  const ancho = Math.min(a.tamano, Math.round((t.length + 2) * 12.5) / 1000);
+  return `l_text:Arial_60_bold_italic:${marcaTextoCloudinary("© " + t)},co_white`
+    + `/c_scale,w_${ancho},fl_relative/o_${a.opacidad}/e_shadow:55,x_2,y_3`
+    + `/fl_layer_apply,g_south_west,x_${m.margen},y_${m.margen}`;
+}
+
+// Devuelve el componente de transformación (sin "/" inicial ni final) o "" si no toca marcar.
+function marcaAguaComponente(ancho, credito) {
+  const m = EOF_MARCA_AGUA;
+  if (!m.activa) return "";
+  if (ancho && ancho < m.anchoMin) return "";
+  const autor = marcaAutorComponente(credito);
+  const capa = m.logoId
+    ? `l_${m.logoId}/c_scale,w_${m.tamano},fl_relative/o_${m.opacidad}`
+    : `l_text:Arial_90_bold_letter_spacing_${m.espaciado}:${marcaTextoCloudinary(m.texto)},co_white`
+      + (m.fondo ? `,b_${m.fondo},bo_14px_solid_${m.fondo}` : "")
+      + `/c_scale,w_${m.tamano},fl_relative/o_${m.opacidad}/e_shadow:35,x_2,y_3`;
+  return `${capa}/fl_layer_apply,g_north_east,x_${m.margen},y_${m.margen}` + (autor ? "/" + autor : "");
+}
+
 // ---------- Optimización de imágenes de Cloudinary ----------
 // Las fotos de noticias/collages/avatares se suben a Cloudinary tal
 // cual llegan del redactor (sin recomprimir ni recodificar, ver
@@ -448,12 +521,14 @@ function urlNoticia(categoria, slug) {
 // Se aplica solo si la URL es realmente de Cloudinary (contiene
 // "/upload/"): los escudos locales (img/escudos/...) y el logo del
 // sitio no pasan por aquí, así que se devuelven tal cual.
-function cloudinaryOptimizada(url, anchoMax) {
+function cloudinaryOptimizada(url, anchoMax, credito) {
   if (!url || typeof url !== "string") return url;
   const marca = "/upload/";
   const i = url.indexOf(marca);
   if (i === -1) return url;
-  const transformacion = `f_auto,q_auto,c_limit,dpr_auto${anchoMax ? `,w_${anchoMax}` : ""}`;
+  let transformacion = `f_auto,q_auto,c_limit,dpr_auto${anchoMax ? `,w_${anchoMax}` : ""}`;
+  const marcaAgua = marcaAguaComponente(anchoMax, credito);
+  if (marcaAgua) transformacion += "/" + marcaAgua;
   return url.slice(0, i + marca.length) + transformacion + "/" + url.slice(i + marca.length);
 }
 
@@ -490,23 +565,25 @@ function realceActivo() {
 }
 
 // "realce" es opcional: si no se indica, se usa la preferencia del dispositivo.
-function cloudinaryMiniatura(url, ancho, recortar, realce) {
+function cloudinaryMiniatura(url, ancho, recortar, realce, credito) {
   if (!url || typeof url !== "string") return url;
   const marca = "/upload/";
   const i = url.indexOf(marca);
   if (i === -1) return url;
   const forma = recortar === false ? "c_limit" : "c_lfill,g_auto,ar_4:5";
   const on = realce === undefined ? realceActivo() : !!realce;
-  const t = on
+  let t = on
     ? `${forma},w_${ancho}/${EOF_REALCE_FX}/f_auto,q_auto:good,fl_progressive`
     : `${forma},w_${ancho},f_auto,q_auto:good,fl_progressive`;
+  const marcaAgua = marcaAguaComponente(ancho, credito);
+  if (marcaAgua) t += "/" + marcaAgua;
   return url.slice(0, i + marca.length) + t + "/" + url.slice(i + marca.length);
 }
 
-function cloudinarySrcset(url, recortar, realce) {
+function cloudinarySrcset(url, recortar, realce, credito) {
   if (!url || typeof url !== "string" || url.indexOf("/upload/") === -1) return "";
   return MINIATURA_ANCHOS
-    .map((w) => `${cloudinaryMiniatura(url, w, recortar, realce)} ${w}w`)
+    .map((w) => `${cloudinaryMiniatura(url, w, recortar, realce, credito)} ${w}w`)
     .join(", ");
 }
 
@@ -630,6 +707,15 @@ function categoriaParaEnlaceClub(club, categoriaNoticia) {
   return categoriaNoticia || "general";
 }
 
+// Mismo criterio que slugEtiqueta() de worker/src/etiquetas.js: sin acentos, minúsculas,
+// guiones; "Ascenso 2026" -> "ascenso-2026". Si cambia allí, cambia aquí.
+function slugEtiquetaCliente(texto) {
+  return String(texto == null ? "" : texto)
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")
+    .slice(0, 60).replace(/-+$/, "");
+}
+
 // Hashtags de una noticia para la cabecera (SEO + navegación). Cada uno es
 // { texto, href, titulo } y lleva a una página real del sitio:
 //   competición / categorías adicionales -> categoria?cat=...
@@ -659,6 +745,12 @@ function hashtagsNoticia(a, max = 9) {
   });
   (Array.isArray(a.categorias_adicionales) ? a.categorias_adicionales : []).forEach((c) => {
     poner(textoCat(c), urlCat(c), `Noticias de ${categoriaLabel(c)}`);
+  });
+  // Etiquetas reales escritas por el redactor (columna articles.etiquetas): cada una
+  // enlaza a su página /etiqueta/<slug>. Van antes de los hashtags genéricos del sitio.
+  (Array.isArray(a.etiquetas) ? a.etiquetas : []).forEach((nombre) => {
+    const slug = slugEtiquetaCliente(nombre);
+    if (slug) poner(hashtagDeTexto(nombre), `/etiqueta/${slug}`, `Noticias sobre ${nombre}`);
   });
   poner("#FutbolNoProfesional", "/", "Portada de ELOTROFÚTBOLTV");
   poner("#ElOtroFutbol", "/quienes-somos", "Quiénes somos");
@@ -1014,17 +1106,27 @@ function fichaTecnicaArticuloHTML(ficha) {
       </div>`)
     .join("");
 
-  const listaHTML = (titulo, items, clase = "") => {
+  // Las líneas de tarjetas se guardan como texto libre ("34' Roja - Jugador (Equipo)"),
+  // así que el tipo se deduce del texto para pintar cada marcador de su color.
+  // Solo se lee lo anterior al " - " (minuto + tipo), para que un motivo o un nombre
+  // no cambien el color. "Doble amarilla" se mira antes que "roja".
+  const claseTarjeta = (linea) => {
+    const t = String(linea || "").split(" - ")[0].normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    if (/\bdoble\s+amarilla\b|\b2\s*(?:ª|a)?\s*amarilla\b|\bsegunda\s+amarilla\b/.test(t)) return "ficha-tarjeta-doble";
+    if (/\broja\b|\bexpulsi/.test(t)) return "ficha-tarjeta-roja";
+    return "ficha-tarjeta-amarilla";
+  };
+  const listaHTML = (titulo, items, clase = "", clasePorLinea = null) => {
     if (!Array.isArray(items) || items.length === 0) return "";
     return `
       <div class="ficha-lista${clase ? " " + clase : ""}">
         <p class="ficha-lista-titulo">${titulo}</p>
         <ul class="ficha-lista-items">
-          ${items.map((linea) => `<li>${escapeHtml(linea)}</li>`).join("")}
+          ${items.map((linea) => `<li${clasePorLinea ? ` class="${clasePorLinea(linea)}"` : ""}>${escapeHtml(linea)}</li>`).join("")}
         </ul>
       </div>`;
   };
-  const listasHTML = listaHTML("Goleadores", ficha.goleadores, "ficha-lista-goleadores") + listaHTML("Tarjetas", ficha.tarjetas, "ficha-lista-tarjetas");
+  const listasHTML = listaHTML("Goleadores", ficha.goleadores, "ficha-lista-goleadores") + listaHTML("Tarjetas", ficha.tarjetas, "ficha-lista-tarjetas", claseTarjeta);
 
   const notasHTML = ficha.notas ? `<div class="ficha-tecnica-notas">${escapeHtml(ficha.notas)}</div>` : "";
 
@@ -1386,7 +1488,7 @@ function estadoHTML({ titulo, texto, tipo = "vacio", cta = "" }) {
 }
 
 function spinnerHTML(texto = "Cargando...") {
-  return `<div class="estado-info"><div class="spinner"></div><p>${escapeHtml(texto)}</p></div>`;
+  return `<div class="estado-info" role="status" aria-live="polite"><div class="spinner" aria-hidden="true"></div><p>${escapeHtml(texto)}</p></div>`;
 }
 
 // Escapa texto antes de insertarlo en HTML (títulos, nombres de club, etc.)
@@ -1433,7 +1535,7 @@ function urlSeguraParaCss(valor) {
 // El cuerpo de las noticias lo escribe la redacción con un editor de texto
 // enriquecido y se pinta con innerHTML. Para que una cuenta de redactor
 // comprometida (o un pegado malicioso) no pueda inyectar scripts que se
-// ejecuten en el navegador de lectores o de administradores, el HTML se
+// ejecuten en el navegador de lectores o de Responsables, el HTML se
 // filtra con una LISTA BLANCA de etiquetas y atributos antes de pintarse.
 // Se parsea dentro de un <template> (documento inerte: no ejecuta scripts ni
 // descarga imágenes mientras se limpia).
@@ -1701,3 +1803,65 @@ function copiarEnlaceCompartir(btn) {
     mostrarEnlaceManual();
   }
 }
+// ---------- Volver del segundo plano (iPhone / app instalada) ----------
+// En iOS, una app instalada (PWA) que pasa un rato en segundo plano puede volver con la pantalla
+// negra aunque la página siga viva: WebKit suelta las capas de la GPU (backdrop-filter,
+// desenfoques, will-change) y no las repinta, o el splash de carga se queda a medias porque
+// requestAnimationFrame no corre mientras la app está oculta. Al volver se hace, sin recargar
+// nada (el panel puede tener texto sin guardar):
+//   1) si el splash sigue puesto cuando ya debería haber terminado (su plazo máximo es 6,5 s),
+//      se quita y se libera el scroll;
+//   2) se fuerza un repintado completo con un cambio mínimo de opacidad en la raíz.
+// Se ejecuta tanto en la web pública como en el panel (ambos cargan este fichero).
+(function () {
+  "use strict";
+  if (typeof window === "undefined" || typeof document === "undefined" || !document.addEventListener) return;
+  if (window.__eofReanudar) return;
+  window.__eofReanudar = true;
+
+  var CARGADA = Date.now();
+  var SPLASH_MAX_MS = 8000;      // splash.js se retira solo a los 6,5 s como mucho
+  var OCULTA_MIN_MS = 15000;     // por debajo de esto no hace falta repintar
+  var ocultaDesde = 0;
+
+  function quitarSplashAtascado() {
+    try {
+      var s = document.getElementById("eof-splash");
+      if (!s || Date.now() - CARGADA < SPLASH_MAX_MS) return;
+      if (s.parentNode) s.parentNode.removeChild(s);
+      var css = document.getElementById("eof-splash-css");
+      if (css && css.parentNode) css.parentNode.removeChild(css);
+      document.documentElement.classList.remove("eof-splash-on");
+    } catch (e) { /* nada */ }
+  }
+
+  function repintar() {
+    try {
+      var raiz = document.documentElement;
+      var antes = raiz.style.opacity;
+      raiz.style.opacity = "0.999";
+      void raiz.offsetHeight; // fuerza la recomposición
+      var devolver = function () { raiz.style.opacity = antes; };
+      if (window.requestAnimationFrame) {
+        requestAnimationFrame(function () { requestAnimationFrame(devolver); });
+      } else {
+        setTimeout(devolver, 50);
+      }
+    } catch (e) { /* nada */ }
+  }
+
+  function alVolver() {
+    var fuera = ocultaDesde ? Date.now() - ocultaDesde : 0;
+    ocultaDesde = 0;
+    quitarSplashAtascado();
+    if (fuera >= OCULTA_MIN_MS) repintar();
+  }
+
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) { ocultaDesde = Date.now(); return; }
+    alVolver();
+  });
+  // Al restaurar la página desde la caché de ida y vuelta (bfcache) no hay visibilitychange fiable.
+  window.addEventListener("pageshow", function (e) { if (e && e.persisted) { ocultaDesde = ocultaDesde || (Date.now() - OCULTA_MIN_MS); alVolver(); } });
+  window.addEventListener("pagehide", function () { ocultaDesde = Date.now(); });
+})();

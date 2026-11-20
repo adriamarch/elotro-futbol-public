@@ -1,22 +1,4 @@
-// ---------- Alertas bonitas (sustituyen a alert/confirm/prompt del navegador) ----------
-// Expone window.EOF con: toast(), confirmar(), preguntar(), alertaModal().
-// Se apoya en las variables de color/tipografía ya definidas en css/style.css
-// para que encaje con el resto del sitio (portada y panel de administración).
-(function () {
-  if (window.EOF && window.EOF._alertasCargadas) return;
-
-  const ICONOS = {
-    exito: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
-    error: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>',
-    info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16v-4M12 8h.01"/><circle cx="12" cy="12" r="9"/></svg>',
-    pregunta: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 9a2.5 2.5 0 0 1 4.9.75c0 1.5-2.15 2.1-2.4 3.4M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg>',
-  };
-
-  function inyectarEstilos() {
-    if (document.getElementById("eof-alertas-css")) return;
-    const style = document.createElement("style");
-    style.id = "eof-alertas-css";
-    style.textContent = `
+(function(){if(window.EOF&&window.EOF._alertasCargadas)return;const b={exito:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',error:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>',info:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16v-4M12 8h.01"/><circle cx="12" cy="12" r="9"/></svg>',pregunta:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 9a2.5 2.5 0 0 1 4.9.75c0 1.5-2.15 2.1-2.4 3.4M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg>'};function k(){if(document.getElementById("eof-alertas-css"))return;const e=document.createElement("style");e.id="eof-alertas-css",e.textContent=`
 .eof-toast-contenedor{position:fixed;bottom:20px;right:20px;z-index:99999;display:flex;flex-direction:column-reverse;gap:10px;max-width:360px;width:calc(100% - 40px);pointer-events:none;}
 .eof-toast{pointer-events:auto;background:var(--tarjeta,#fff);border-radius:var(--radio,8px);box-shadow:var(--sombra,0 4px 18px rgba(12,27,46,.18));padding:13px 14px;display:flex;align-items:flex-start;gap:10px;border-left:4px solid var(--celeste,#5bb8e8);font-family:var(--font-text,Arial,sans-serif);font-size:.87rem;color:var(--texto,#1a1c22);transform:translateX(120%);opacity:0;transition:transform .3s ease,opacity .3s ease;}
 .eof-toast-visible{transform:translateX(0);opacity:1;}
@@ -74,332 +56,41 @@
   .eof-modal-caja{padding:26px 18px 20px;}
   .eof-modal-botones{flex-direction:column-reverse;}
 }
-`;
-    document.head.appendChild(style);
-  }
-
-  function contenedorToasts() {
-    let cont = document.getElementById("eof-toast-contenedor");
-    if (!cont) {
-      cont = document.createElement("div");
-      cont.id = "eof-toast-contenedor";
-      cont.className = "eof-toast-contenedor";
-      document.body.appendChild(cont);
-    }
-    return cont;
-  }
-
-  // Notificación breve, no bloqueante. tipo: "exito" | "error" | "info".
-  // ---------- Cola de avisos mientras la celebración de racha está en pantalla ----------
-  // La celebración de la racha semanal (panel) no debe interrumpirse: mientras está abierta (o se está
-  // comprobando si hay que enseñarla al entrar), los avisos automáticos esperan y salen DESPUÉS, de uno en
-  // uno. Cualquiera puede pedir turno con `await EOF.esperarRacha()`; los toasts lo hacen solos.
-  const RACHA_BLOQUEOS = new Set();
-  const RACHA_COLA = [];
-  let rachaVaciando = false;
-  function rachaVaciar() {
-    if (rachaVaciando) return;
-    rachaVaciando = true;
-    const siguiente = () => {
-      if (RACHA_BLOQUEOS.size) { rachaVaciando = false; return; } // volvió a abrirse: el resto sigue esperando
-      const fn = RACHA_COLA.shift();
-      if (!fn) { rachaVaciando = false; return; }
-      try { fn(); } catch (e) { /* un aviso que falla no frena al resto */ }
-      setTimeout(siguiente, 450);
-    };
-    setTimeout(siguiente, 350); // margen para que termine la animación de cierre
-  }
-  function rachaBloquear(motivo) { RACHA_BLOQUEOS.add(motivo); }
-  function rachaLiberar(motivo) {
-    if (!RACHA_BLOQUEOS.delete(motivo)) return;
-    if (!RACHA_BLOQUEOS.size && RACHA_COLA.length) rachaVaciar();
-  }
-  function esperarRacha() {
-    if (!RACHA_BLOQUEOS.size && !RACHA_COLA.length) return Promise.resolve();
-    return new Promise((resolver) => { RACHA_COLA.push(resolver); if (!RACHA_BLOQUEOS.size) rachaVaciar(); });
-  }
-
-  function toast(mensaje, tipo = "info", duracion = 4500) {
-    // Con la celebración de racha abierta el toast espera a que se cierre (se mostraría ENCIMA de ella).
-    if (RACHA_BLOQUEOS.has("celebracion")) {
-      RACHA_COLA.push(() => toast(mensaje, tipo, duracion));
-      return () => {};
-    }
-    inyectarEstilos();
-    const cont = contenedorToasts();
-    const el = document.createElement("div");
-    el.className = `eof-toast eof-toast-${tipo}`;
-    el.innerHTML = `<span class="eof-toast-icono">${ICONOS[tipo] || ICONOS.info}</span><span class="eof-toast-texto"></span><button type="button" class="eof-toast-cerrar" aria-label="Cerrar">&times;</button>`;
-    el.querySelector(".eof-toast-texto").textContent = mensaje;
-    cont.appendChild(el);
-    requestAnimationFrame(() => el.classList.add("eof-toast-visible"));
-    let temporizador;
-    const cerrar = () => {
-      clearTimeout(temporizador);
-      el.classList.remove("eof-toast-visible");
-      el.classList.add("eof-toast-saliendo");
-      setTimeout(() => el.remove(), 250);
-    };
-    el.querySelector(".eof-toast-cerrar").addEventListener("click", cerrar);
-    temporizador = setTimeout(cerrar, duracion);
-    return cerrar;
-  }
-
-  function crearModalBase(claseExtra) {
-    inyectarEstilos();
-    const overlay = document.createElement("div");
-    overlay.className = "eof-modal-overlay";
-    const caja = document.createElement("div");
-    caja.className = `eof-modal-caja ${claseExtra || ""}`;
-    caja.setAttribute("role", "alertdialog");
-    caja.setAttribute("aria-modal", "true");
-    overlay.appendChild(caja);
-    document.body.appendChild(overlay);
-    requestAnimationFrame(() => overlay.classList.add("eof-modal-visible"));
-    return { overlay, caja };
-  }
-
-  function cerrarModal(overlay) {
-    overlay.classList.remove("eof-modal-visible");
-    setTimeout(() => overlay.remove(), 200);
-  }
-
-  // Modal informativo con un único botón de confirmación (sustituye a
-  // los alert() que necesitan que el usuario los reconozca antes de
-  // continuar, como el aviso de cierre de sesión por inactividad).
-  function alertaModal(mensaje, opciones = {}) {
-    return new Promise((resolve) => {
-      const { overlay, caja } = crearModalBase("eof-modal-alerta");
-      const tipo = opciones.tipo || "info";
-      caja.innerHTML = `
-        <div class="eof-modal-icono eof-modal-icono-${tipo}">${ICONOS[tipo] || ICONOS.info}</div>
+`,document.head.appendChild(e)}function C(){let e=document.getElementById("eof-toast-contenedor");return e||(e=document.createElement("div"),e.id="eof-toast-contenedor",e.className="eof-toast-contenedor",document.body.appendChild(e)),e}const m=new Set,x=[];let h=!1;function w(){if(h)return;h=!0;const e=()=>{if(m.size){h=!1;return}const t=x.shift();if(!t){h=!1;return}try{t()}catch{}setTimeout(e,450)};setTimeout(e,350)}function L(e){m.add(e)}function j(e){m.delete(e)&&!m.size&&x.length&&w()}function S(){return!m.size&&!x.length?Promise.resolve():new Promise(e=>{x.push(e),m.size||w()})}function E(e,t="info",i=4500){if(m.has("celebracion"))return x.push(()=>E(e,t,i)),()=>{};k();const c=C(),o=document.createElement("div");o.className=`eof-toast eof-toast-${t}`,o.innerHTML=`<span class="eof-toast-icono">${b[t]||b.info}</span><span class="eof-toast-texto"></span><button type="button" class="eof-toast-cerrar" aria-label="Cerrar">&times;</button>`,o.querySelector(".eof-toast-texto").textContent=e,c.appendChild(o),requestAnimationFrame(()=>o.classList.add("eof-toast-visible"));let a;const r=()=>{clearTimeout(a),o.classList.remove("eof-toast-visible"),o.classList.add("eof-toast-saliendo"),setTimeout(()=>o.remove(),250)};return o.querySelector(".eof-toast-cerrar").addEventListener("click",r),a=setTimeout(r,i),r}function v(e){k();const t=document.createElement("div");t.className="eof-modal-overlay";const i=document.createElement("div");return i.className=`eof-modal-caja ${e||""}`,i.setAttribute("role","alertdialog"),i.setAttribute("aria-modal","true"),t.appendChild(i),document.body.appendChild(t),requestAnimationFrame(()=>t.classList.add("eof-modal-visible")),{overlay:t,caja:i}}function p(e){e.classList.remove("eof-modal-visible"),setTimeout(()=>e.remove(),200)}function q(e,t={}){return new Promise(i=>{const{overlay:c,caja:o}=v("eof-modal-alerta"),a=t.tipo||"info";o.innerHTML=`
+        <div class="eof-modal-icono eof-modal-icono-${a}">${b[a]||b.info}</div>
         <p class="eof-modal-mensaje"></p>
         <div class="eof-modal-botones">
           <button type="button" class="eof-btn eof-btn-primario"></button>
-        </div>`;
-      caja.querySelector(".eof-modal-mensaje").textContent = mensaje;
-      const btn = caja.querySelector(".eof-btn-primario");
-      btn.textContent = opciones.textoBoton || "Entendido";
-      const cerrar = () => { cerrarModal(overlay); resolve(); };
-      btn.addEventListener("click", cerrar);
-      setTimeout(() => btn.focus(), 50);
-    });
-  }
-
-  // Sustituye a confirm(). Devuelve una Promise<boolean>.
-  function confirmar(mensaje, opciones = {}) {
-    return new Promise((resolve) => {
-      const { overlay, caja } = crearModalBase("eof-modal-confirmar");
-      const tipo = opciones.tipo || "pregunta";
-      caja.innerHTML = `
-        <div class="eof-modal-icono eof-modal-icono-${tipo}">${ICONOS[tipo] || ICONOS.pregunta}</div>
+        </div>`,o.querySelector(".eof-modal-mensaje").textContent=e;const r=o.querySelector(".eof-btn-primario");r.textContent=t.textoBoton||"Entendido";const s=()=>{p(c),i()};r.addEventListener("click",s),setTimeout(()=>r.focus(),50)})}function T(e,t={}){return new Promise(i=>{const{overlay:c,caja:o}=v("eof-modal-confirmar"),a=t.tipo||"pregunta";o.innerHTML=`
+        <div class="eof-modal-icono eof-modal-icono-${a}">${b[a]||b.pregunta}</div>
         <p class="eof-modal-mensaje"></p>
         <div class="eof-modal-botones">
           <button type="button" class="eof-btn eof-btn-secundario"></button>
-          <button type="button" class="eof-btn ${opciones.peligroso ? "eof-btn-peligro" : "eof-btn-primario"}"></button>
-        </div>`;
-      caja.querySelector(".eof-modal-mensaje").textContent = mensaje;
-      const [btnCancelar, btnConfirmar] = caja.querySelectorAll(".eof-btn");
-      btnCancelar.textContent = opciones.textoCancelar || "Cancelar";
-      btnConfirmar.textContent = opciones.textoConfirmar || "Confirmar";
-      const resolver = (valor) => { cerrarModal(overlay); document.removeEventListener("keydown", tecla); resolve(valor); };
-      btnCancelar.addEventListener("click", () => resolver(false));
-      btnConfirmar.addEventListener("click", () => resolver(true));
-      overlay.addEventListener("click", (e) => { if (e.target === overlay) resolver(false); });
-      function tecla(e) { if (e.key === "Escape") resolver(false); }
-      document.addEventListener("keydown", tecla);
-      setTimeout(() => btnConfirmar.focus(), 50);
-    });
-  }
-
-  // Sustituye a prompt(). Devuelve una Promise<string|null>: null solo si
-  // se cancela (botón Cancelar, Escape o clic fuera); si se confirma con
-  // el campo vacío, se devuelve "" (cadena vacía), NO null, para que
-  // quien llama pueda distinguir "canceló" de "confirmó sin escribir
-  // nada" (p.ej. un campo opcional como los minutos de tiempo añadido).
-  // Si opciones.soloLectura es true, el campo se muestra de solo lectura
-  // y seleccionado (útil para "copia este enlace a mano").
-  function preguntar(mensaje, valorPorDefecto = "", opciones = {}) {
-    return new Promise((resolve) => {
-      const { overlay, caja } = crearModalBase("eof-modal-preguntar");
-      caja.innerHTML = `
+          <button type="button" class="eof-btn ${t.peligroso?"eof-btn-peligro":"eof-btn-primario"}"></button>
+        </div>`,o.querySelector(".eof-modal-mensaje").textContent=e;const[r,s]=o.querySelectorAll(".eof-btn");r.textContent=t.textoCancelar||"Cancelar",s.textContent=t.textoConfirmar||"Confirmar";const l=n=>{p(c),document.removeEventListener("keydown",d),i(n)};r.addEventListener("click",()=>l(!1)),s.addEventListener("click",()=>l(!0)),c.addEventListener("click",n=>{n.target===c&&l(!1)});function d(n){n.key==="Escape"&&l(!1)}document.addEventListener("keydown",d),setTimeout(()=>s.focus(),50)})}function M(e,t="",i={}){return new Promise(c=>{const{overlay:o,caja:a}=v("eof-modal-preguntar");a.innerHTML=`
         <p class="eof-modal-mensaje"></p>
         <input type="text" class="eof-modal-input" autocomplete="off" />
         <div class="eof-modal-botones">
           <button type="button" class="eof-btn eof-btn-secundario">Cancelar</button>
           <button type="button" class="eof-btn eof-btn-primario"></button>
-        </div>`;
-      caja.querySelector(".eof-modal-mensaje").textContent = mensaje;
-      const input = caja.querySelector(".eof-modal-input");
-      input.value = valorPorDefecto || "";
-      if (opciones.placeholder) input.placeholder = opciones.placeholder;
-      if (opciones.soloLectura) input.readOnly = true;
-      const btnConfirmar = caja.querySelector(".eof-btn-primario");
-      btnConfirmar.textContent = opciones.textoConfirmar || "Aceptar";
-      const resolver = (valor) => { cerrarModal(overlay); document.removeEventListener("keydown", tecla); resolve(valor); };
-      caja.querySelector(".eof-btn-secundario").addEventListener("click", () => resolver(null));
-      btnConfirmar.addEventListener("click", () => resolver(input.value.trim()));
-      input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); resolver(input.value.trim()); } });
-      function tecla(e) { if (e.key === "Escape") resolver(null); }
-      document.addEventListener("keydown", tecla);
-      overlay.addEventListener("click", (e) => { if (e.target === overlay) resolver(null); });
-      setTimeout(() => { input.focus(); if (opciones.soloLectura) input.select(); }, 50);
-    });
-  }
-
-  // Como preguntar(), pero con un <textarea> grande en vez de un campo de
-  // una línea: para pegar bloques largos de código HTML (p. ej. la
-  // traducción devuelta por una IA) sin que se corte la vista.
-  function preguntarHTML(mensaje, valorPorDefecto = "", opciones = {}) {
-    return new Promise((resolve) => {
-      const { overlay, caja } = crearModalBase("eof-modal-preguntar eof-modal-preguntar-html");
-      caja.innerHTML = `
+        </div>`,a.querySelector(".eof-modal-mensaje").textContent=e;const r=a.querySelector(".eof-modal-input");r.value=t||"",i.placeholder&&(r.placeholder=i.placeholder),i.soloLectura&&(r.readOnly=!0);const s=a.querySelector(".eof-btn-primario");s.textContent=i.textoConfirmar||"Aceptar";const l=n=>{p(o),document.removeEventListener("keydown",d),c(n)};a.querySelector(".eof-btn-secundario").addEventListener("click",()=>l(null)),s.addEventListener("click",()=>l(r.value.trim())),r.addEventListener("keydown",n=>{n.key==="Enter"&&(n.preventDefault(),l(r.value.trim()))});function d(n){n.key==="Escape"&&l(null)}document.addEventListener("keydown",d),o.addEventListener("click",n=>{n.target===o&&l(null)}),setTimeout(()=>{r.focus(),i.soloLectura&&r.select()},50)})}function z(e,t="",i={}){return new Promise(c=>{const{overlay:o,caja:a}=v("eof-modal-preguntar eof-modal-preguntar-html");a.innerHTML=`
         <p class="eof-modal-mensaje"></p>
         <textarea class="eof-modal-input eof-modal-textarea" autocomplete="off" rows="12"></textarea>
         <div class="eof-modal-botones">
           <button type="button" class="eof-btn eof-btn-secundario">Cancelar</button>
           <button type="button" class="eof-btn eof-btn-primario"></button>
-        </div>`;
-      caja.querySelector(".eof-modal-mensaje").textContent = mensaje;
-      const input = caja.querySelector(".eof-modal-textarea");
-      input.value = valorPorDefecto || "";
-      const btnConfirmar = caja.querySelector(".eof-btn-primario");
-      btnConfirmar.textContent = opciones.textoConfirmar || "Aceptar";
-      const resolver = (valor) => { cerrarModal(overlay); document.removeEventListener("keydown", tecla); resolve(valor); };
-      caja.querySelector(".eof-btn-secundario").addEventListener("click", () => resolver(null));
-      // Igual que preguntar(): null SOLO significa "se canceló". Si se
-      // confirma con el campo vacío hay que devolver "" (no null), o
-      // quien llama no puede distinguir "canceló" de "confirmó en
-      // blanco" (p. ej. querer borrar una traducción existente).
-      btnConfirmar.addEventListener("click", () => resolver(input.value.trim()));
-      function tecla(e) { if (e.key === "Escape") resolver(null); }
-      document.addEventListener("keydown", tecla);
-      overlay.addEventListener("click", (e) => { if (e.target === overlay) resolver(null); });
-      setTimeout(() => { input.focus(); }, 50);
-    });
-  }
-
-  // Como preguntar(), pero pensada específicamente para insertar un enlace
-  // con texto propio: pide el texto visible y la URL de destino en dos
-  // campos separados. Devuelve {texto, url} o null si se cancela. Si el
-  // texto se deja en blanco, se usa la propia URL como texto visible.
-  function preguntarEnlace(mensaje, valoresPorDefecto = {}) {
-    return new Promise((resolve) => {
-      const { overlay, caja } = crearModalBase("eof-modal-preguntar");
-      caja.innerHTML = `
+        </div>`,a.querySelector(".eof-modal-mensaje").textContent=e;const r=a.querySelector(".eof-modal-textarea");r.value=t||"";const s=a.querySelector(".eof-btn-primario");s.textContent=i.textoConfirmar||"Aceptar";const l=n=>{p(o),document.removeEventListener("keydown",d),c(n)};a.querySelector(".eof-btn-secundario").addEventListener("click",()=>l(null)),s.addEventListener("click",()=>l(r.value.trim()));function d(n){n.key==="Escape"&&l(null)}document.addEventListener("keydown",d),o.addEventListener("click",n=>{n.target===o&&l(null)}),setTimeout(()=>{r.focus()},50)})}function A(e,t={}){return new Promise(i=>{const{overlay:c,caja:o}=v("eof-modal-preguntar");o.innerHTML=`
         <p class="eof-modal-mensaje"></p>
         <input type="text" class="eof-modal-input eof-modal-input-texto" autocomplete="off" placeholder="Texto del enlace" />
         <input type="text" class="eof-modal-input eof-modal-input-url" autocomplete="off" placeholder="URL (https://...)" />
         <div class="eof-modal-botones">
           <button type="button" class="eof-btn eof-btn-secundario">Cancelar</button>
           <button type="button" class="eof-btn eof-btn-primario"></button>
-        </div>`;
-      caja.querySelector(".eof-modal-mensaje").textContent = mensaje;
-      const inputTexto = caja.querySelector(".eof-modal-input-texto");
-      const inputUrl = caja.querySelector(".eof-modal-input-url");
-      inputTexto.value = valoresPorDefecto.texto || "";
-      inputUrl.value = valoresPorDefecto.url || "";
-      const btnConfirmar = caja.querySelector(".eof-btn-primario");
-      btnConfirmar.textContent = "Aceptar";
-      const resolver = (valor) => { cerrarModal(overlay); document.removeEventListener("keydown", tecla); resolve(valor); };
-      const confirmarSiHayUrl = () => {
-        const url = inputUrl.value.trim();
-        if (!url) { inputUrl.focus(); return; }
-        resolver({ texto: inputTexto.value.trim(), url });
-      };
-      caja.querySelector(".eof-btn-secundario").addEventListener("click", () => resolver(null));
-      btnConfirmar.addEventListener("click", confirmarSiHayUrl);
-      [inputTexto, inputUrl].forEach((input) => {
-        input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); confirmarSiHayUrl(); } });
-      });
-      function tecla(e) { if (e.key === "Escape") resolver(null); }
-      document.addEventListener("keydown", tecla);
-      overlay.addEventListener("click", (e) => { if (e.target === overlay) resolver(null); });
-      setTimeout(() => { (inputTexto.value ? inputUrl : inputTexto).focus(); }, 50);
-    });
-  }
-
-  // Modal específico para pedir un correo electrónico con guardado en el
-  // servidor (a diferencia de preguntar(), que solo devuelve el texto
-  // tal cual y no sabe nada de si el envío tuvo éxito). Pensado para
-  // flujos como "añade tu correo real" tras entrar con X: valida el
-  // formato en el propio campo (type="email" + comprobación básica) y,
-  // si el servidor rechaza el valor (correo duplicado, formato inválido
-  // según el backend, etc.), muestra ese error DENTRO del modal y deja
-  // reintentar sin cerrarlo, en vez de darlo por bueno silenciosamente o
-  // cerrarse igualmente.
-  //
-  // opciones.onEnviar(email) debe ser una función async que intenta
-  // guardar el correo y:
-  //   - o bien devuelve normalmente (éxito: el modal se cierra), 
-  //   - o bien lanza un Error con un mensaje legible (el modal muestra
-  //     ese mensaje y deja corregir el campo).
-  // Devuelve una Promise<boolean>: true si se guardó, false si se canceló.
-  function preguntarEmail(mensaje, opciones = {}) {
-    return new Promise((resolve) => {
-      const { overlay, caja } = crearModalBase("eof-modal-preguntar eof-modal-email");
-      caja.innerHTML = `
+        </div>`,o.querySelector(".eof-modal-mensaje").textContent=e;const a=o.querySelector(".eof-modal-input-texto"),r=o.querySelector(".eof-modal-input-url");a.value=t.texto||"",r.value=t.url||"";const s=o.querySelector(".eof-btn-primario");s.textContent="Aceptar";const l=f=>{p(c),document.removeEventListener("keydown",n),i(f)},d=()=>{const f=r.value.trim();if(!f){r.focus();return}l({texto:a.value.trim(),url:f})};o.querySelector(".eof-btn-secundario").addEventListener("click",()=>l(null)),s.addEventListener("click",d),[a,r].forEach(f=>{f.addEventListener("keydown",g=>{g.key==="Enter"&&(g.preventDefault(),d())})});function n(f){f.key==="Escape"&&l(null)}document.addEventListener("keydown",n),c.addEventListener("click",f=>{f.target===c&&l(null)}),setTimeout(()=>{(a.value?r:a).focus()},50)})}function O(e,t={}){return new Promise(i=>{const{overlay:c,caja:o}=v("eof-modal-preguntar eof-modal-email");o.innerHTML=`
         <p class="eof-modal-mensaje"></p>
         <input type="email" class="eof-modal-input" autocomplete="email" inputmode="email" />
         <p class="eof-modal-email-error" role="alert"></p>
         <div class="eof-modal-botones">
           <button type="button" class="eof-btn eof-btn-secundario">Cancelar</button>
           <button type="button" class="eof-btn eof-btn-primario"></button>
-        </div>`;
-      caja.querySelector(".eof-modal-mensaje").textContent = mensaje;
-      const input = caja.querySelector(".eof-modal-input");
-      const elError = caja.querySelector(".eof-modal-email-error");
-      if (opciones.placeholder) input.placeholder = opciones.placeholder;
-      const btnConfirmar = caja.querySelector(".eof-btn-primario");
-      const btnCancelar = caja.querySelector(".eof-btn-secundario");
-      btnConfirmar.textContent = opciones.textoConfirmar || "Guardar";
-      btnCancelar.textContent = opciones.textoCancelar || "Cancelar";
-
-      const mostrarErrorCampo = (texto) => {
-        elError.textContent = texto;
-        elError.style.display = texto ? "block" : "none";
-        input.classList.toggle("eof-modal-input-error", !!texto);
-      };
-
-      let enviando = false;
-      const resolverCancelar = () => { cerrarModal(overlay); document.removeEventListener("keydown", tecla); resolve(false); };
-      const intentarEnviar = async () => {
-        if (enviando) return;
-        const valor = input.value.trim();
-        if (!valor || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(valor)) {
-          mostrarErrorCampo("Introduce un correo electrónico válido.");
-          input.focus();
-          return;
-        }
-        mostrarErrorCampo("");
-        enviando = true;
-        btnConfirmar.disabled = true;
-        btnConfirmar.textContent = "Guardando…";
-        try {
-          if (opciones.onEnviar) await opciones.onEnviar(valor);
-          cerrarModal(overlay);
-          document.removeEventListener("keydown", tecla);
-          resolve(true);
-        } catch (err) {
-          mostrarErrorCampo(err.message || "No se ha podido guardar el correo.");
-          input.focus();
-        } finally {
-          enviando = false;
-          btnConfirmar.disabled = false;
-          btnConfirmar.textContent = opciones.textoConfirmar || "Guardar";
-        }
-      };
-      btnCancelar.addEventListener("click", resolverCancelar);
-      btnConfirmar.addEventListener("click", intentarEnviar);
-      input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); intentarEnviar(); } });
-      input.addEventListener("input", () => mostrarErrorCampo(""));
-      function tecla(e) { if (e.key === "Escape") resolverCancelar(); }
-      document.addEventListener("keydown", tecla);
-      overlay.addEventListener("click", (e) => { if (e.target === overlay) resolverCancelar(); });
-      setTimeout(() => input.focus(), 50);
-    });
-  }
-
-  window.EOF = window.EOF || {};
-  Object.assign(window.EOF, { toast, rachaBloquear, rachaLiberar, esperarRacha, confirmar, preguntar, preguntarEnlace, preguntarHTML, preguntarEmail, alertaModal, _alertasCargadas: true });
-})();
+        </div>`,o.querySelector(".eof-modal-mensaje").textContent=e;const a=o.querySelector(".eof-modal-input"),r=o.querySelector(".eof-modal-email-error");t.placeholder&&(a.placeholder=t.placeholder);const s=o.querySelector(".eof-btn-primario"),l=o.querySelector(".eof-btn-secundario");s.textContent=t.textoConfirmar||"Guardar",l.textContent=t.textoCancelar||"Cancelar";const d=u=>{r.textContent=u,r.style.display=u?"block":"none",a.classList.toggle("eof-modal-input-error",!!u)};let n=!1;const f=()=>{p(c),document.removeEventListener("keydown",y),i(!1)},g=async()=>{if(n)return;const u=a.value.trim();if(!u||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(u)){d("Introduce un correo electrónico válido."),a.focus();return}d(""),n=!0,s.disabled=!0,s.textContent="Guardando…";try{t.onEnviar&&await t.onEnviar(u),p(c),document.removeEventListener("keydown",y),i(!0)}catch(H){d(H.message||"No se ha podido guardar el correo."),a.focus()}finally{n=!1,s.disabled=!1,s.textContent=t.textoConfirmar||"Guardar"}};l.addEventListener("click",f),s.addEventListener("click",g),a.addEventListener("keydown",u=>{u.key==="Enter"&&(u.preventDefault(),g())}),a.addEventListener("input",()=>d(""));function y(u){u.key==="Escape"&&f()}document.addEventListener("keydown",y),c.addEventListener("click",u=>{u.target===c&&f()}),setTimeout(()=>a.focus(),50)})}window.EOF=window.EOF||{},Object.assign(window.EOF,{toast:E,rachaBloquear:L,rachaLiberar:j,esperarRacha:S,confirmar:T,preguntar:M,preguntarEnlace:A,preguntarHTML:z,preguntarEmail:O,alertaModal:q,_inyectarCss:k,_alertasCargadas:!0})})();

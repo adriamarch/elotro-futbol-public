@@ -64,6 +64,29 @@
   .racha-tira{gap:4px;}
   .racha-stats{grid-template-columns:repeat(2,1fr);}
 }
+/* PC: en pantallas anchas las celdas cuadradas (aspect-ratio:1) se hacían enormes y las
+   estadísticas quedaban estiradas. Se limita el alto de las celdas y, desde 1100px, la
+   tarjeta pasa a 2 columnas (cabecera | tira de semanas) en vez de una columna larguísima. */
+@media (min-width:781px){
+  .racha{max-width:1100px;}
+  .racha-celda{aspect-ratio:auto; height:34px;}
+  .racha-stats strong{font-size:1.5rem;}
+}
+@media (min-width:1100px){
+  .racha{
+    display:grid; grid-template-columns:minmax(0,1.15fr) minmax(0,1fr); column-gap:32px; align-items:start;
+    grid-template-areas:"cab tira" "cab leyenda" "stats stats" "hito hito" "ayuda ayuda";
+    padding:24px 28px;
+  }
+  .racha-cabecera{grid-area:cab; align-self:center;}
+  .racha-tira{grid-area:tira; margin-top:0; align-self:end;}
+  .racha-tira-leyenda{grid-area:leyenda;}
+  .racha-stats{grid-area:stats;}
+  .racha-hito{grid-area:hito;}
+  .racha > .nivel-ayuda{grid-area:ayuda;}
+  .racha-llama{width:66px; height:66px;}
+  .racha-num{font-size:3.2rem;}
+}
 @media (prefers-reduced-motion:reduce){
   .racha-llama, .racha-celda, .racha-hito-relleno{animation:none !important; transition:none !important;}
 }

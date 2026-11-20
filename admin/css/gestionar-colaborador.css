@@ -1,0 +1,314 @@
+/* =====================================================================
+   «Gestionar colaborador» · mejoras visuales
+   Se carga DESPUÉS de cargos-equipo.css y excepcionalidades.css: solo pule el aspecto (no toca estructura ni JS).
+   Todo cuelga de .gc-caja, así que no afecta a los demás modales. Variables del panel + bloque propio de modo oscuro.
+   ===================================================================== */
+
+.gc-caja{
+  --gc-acc:var(--ce-rol-redactor);
+  --gc-sup:var(--tarjeta,#fff);
+  --gc-sup-2:color-mix(in srgb,var(--ce-azul) 4%,var(--tarjeta,#fff));
+  --gc-linea:color-mix(in srgb,var(--borde,#dde3f0) 85%,transparent);
+  border-radius:26px;
+  box-shadow:0 36px 90px -20px rgba(8,16,28,.5),0 0 0 1px rgba(127,127,127,.12);
+}
+/* Color de acento según el rol de la persona (admin, fotógrafo o redactor) */
+.gc-caja:has(.ce-cab .gc-rol-admin){--gc-acc:var(--ce-rol-admin);}
+.gc-caja:has(.ce-cab .gc-rol-fotografo){--gc-acc:var(--ce-rol-fotografo);}
+
+/* ---------- Cabecera ---------- */
+.gc-caja .ce-cab{
+  position:relative;align-items:flex-start;gap:18px;padding:28px 64px 20px 28px;
+  background:
+    radial-gradient(120% 140% at 0% 0%,color-mix(in srgb,var(--gc-acc) 16%,transparent) 0,transparent 62%),
+    var(--gc-sup);
+  border-bottom:0;
+}
+.gc-caja .ce-cab::before{content:"";position:absolute;left:0;right:0;top:0;height:4px;background:linear-gradient(90deg,var(--gc-acc),color-mix(in srgb,var(--gc-acc) 35%,transparent));}
+.gc-caja .ce-av-xl{width:72px;height:72px;font-size:1.35rem;box-shadow:0 0 0 3px var(--gc-sup),0 0 0 5px color-mix(in srgb,var(--gc-acc) 55%,transparent),0 12px 24px -12px rgba(8,16,28,.55);}
+.gc-caja .ce-cab-txt{gap:5px;flex:1 1 auto;}
+.gc-caja .ce-eyebrow{align-self:flex-start;padding:2px 10px;border-radius:999px;background:color-mix(in srgb,var(--gc-acc) 13%,transparent);color:color-mix(in srgb,var(--gc-acc) 78%,#000);font-size:.64rem;letter-spacing:1px;}
+.gc-caja .ce-cab h3{font-size:1.45rem;letter-spacing:-.01em;}
+.gc-caja .gc-sub{font-size:.82rem;}
+.gc-caja .ce-cargos{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;}
+.gc-caja .gc-chip{padding:3px 12px;border-radius:999px;}
+.gc-caja .gc-chip-ok::before,.gc-caja .gc-chip-off::before{content:"";width:7px;height:7px;margin-right:6px;border-radius:50%;background:currentColor;}
+.gc-caja .gc-perfil{margin-top:4px;padding:4px 0;}
+.gc-caja .modal-cerrar{top:16px;right:16px;width:38px;height:38px;}
+
+/* ---------- Pestañas ---------- */
+.gc-caja .gc-tabs{
+  gap:2px;padding:0 24px;border-bottom:1px solid var(--gc-linea);background:var(--gc-sup);
+  scroll-snap-type:x proximity;
+}
+.gc-caja .gc-tab{
+  position:relative;gap:8px;padding:13px 14px 14px;margin-bottom:-1px;border:0;border-radius:0;
+  background:transparent;box-shadow:none;scroll-snap-align:start;
+}
+.gc-caja .gc-tab::after{content:"";position:absolute;left:12px;right:12px;bottom:0;height:3px;border-radius:3px 3px 0 0;background:var(--ce-azul);transform:scaleX(0);transform-origin:center;transition:transform .2s cubic-bezier(.2,.8,.2,1);}
+.gc-caja .gc-tab:hover{background:transparent;color:var(--ce-azul);}
+.gc-caja .gc-tab[aria-selected="true"]{background:transparent;border:0;box-shadow:none;color:var(--ce-azul);}
+.gc-caja .gc-tab[aria-selected="true"]::after{transform:scaleX(1);}
+.gc-caja .gc-tab:focus-visible{outline:2px solid var(--ce-azul);outline-offset:-3px;border-radius:10px;}
+.gc-caja .gc-tab.gc-tab-bloqueada::after{display:none;}
+
+/* ---------- Cuerpo y secciones ---------- */
+.gc-caja .gc-cuerpo{padding:20px 28px 8px;background:var(--gc-sup-2);scrollbar-width:thin;scrollbar-color:rgba(127,127,127,.35) transparent;}
+.gc-caja .gc-panel{gap:16px;}
+.gc-caja .ce-sec{padding:18px 18px 16px;border-radius:18px;border:1px solid var(--gc-linea);background:var(--gc-sup);box-shadow:0 1px 2px rgba(12,27,46,.04),0 10px 24px -22px rgba(12,27,46,.45);}
+.gc-caja .ce-sec h4{gap:11px;margin:0 0 12px;font-size:.98rem;letter-spacing:-.005em;}
+.gc-caja .ce-sec h4 span{width:30px;height:30px;border-radius:50%;box-shadow:0 6px 12px -8px rgba(29,111,209,.9);}
+.gc-caja .ce-nota{font-size:.84rem;line-height:1.5;color:var(--ce-suave);}
+
+/* Filas con interruptor */
+.gc-caja .ce-fila{padding:12px 16px;border-radius:14px;border:1.5px solid var(--gc-linea);background:var(--gc-sup-2);}
+.gc-caja .ce-fila:hover{border-color:color-mix(in srgb,var(--ce-azul) 40%,var(--borde,#dde3f0));}
+.gc-caja .ce-fila-on{background:color-mix(in srgb,var(--ce-azul) 9%,var(--gc-sup));}
+.gc-caja .ce-fila-txt b{font-size:.92rem;}
+.gc-caja .ce-perm{display:inline-flex;align-items:center;gap:6px;font-size:.74rem;color:var(--ce-suave);}
+.gc-caja .ce-perm::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.55;}
+.gc-caja .ce-perm-si{color:#12703f;font-weight:700;}
+.gc-caja .ce-perm-si::before{opacity:1;}
+.gc-caja .ce-switch{width:50px;height:30px;}
+.gc-caja .ce-switch i{top:4px;left:4px;width:22px;height:22px;}
+.gc-caja .ce-switch[aria-checked="true"] i{transform:translateX(20px);}
+
+/* Campos: mismo alto, esquinas y flecha propia en los <select> */
+.gc-caja .ce-campo select,.gc-caja #gcNivelSel,.gc-caja .gc-exc-form input[type="date"],.gc-caja .gc-exc-form textarea,.gc-caja textarea{border-radius:14px;border-color:var(--gc-linea);background-color:var(--gc-sup);}
+.gc-caja .ce-campo select,.gc-caja #gcNivelSel{
+  appearance:none;-webkit-appearance:none;padding-right:38px;cursor:pointer;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a93a3' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center;background-size:16px;
+}
+.gc-caja .ce-campo select:hover,.gc-caja #gcNivelSel:hover,.gc-caja .gc-exc-form input[type="date"]:hover,.gc-caja textarea:hover{border-color:color-mix(in srgb,var(--ce-azul) 45%,var(--borde,#dde3f0));}
+.gc-caja .ce-campo select:disabled,.gc-caja #gcNivelSel:disabled{cursor:not-allowed;opacity:.6;}
+.gc-caja .ce-nueva{gap:10px;}
+.gc-caja .ce-nueva input{border-radius:14px;border-color:var(--gc-linea);}
+
+/* ---------- Pestaña «Actividad» (excepcionalidades) ---------- */
+.gc-caja .gc-exc-form{gap:16px;}
+.gc-caja .gc-exc-lbl{margin:0 0 6px;font-size:.74rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--ce-suave);}
+.gc-caja .gc-exc-durs{display:inline-flex;flex-wrap:wrap;gap:4px;padding:4px;border-radius:999px;background:color-mix(in srgb,var(--ce-azul) 7%,var(--gc-sup));border:1px solid var(--gc-linea);}
+.gc-caja .gc-exc-dur span{min-height:34px;padding:4px 18px;border:0;border-radius:999px;background:transparent;font-size:.86rem;color:var(--ce-suave);}
+.gc-caja .gc-exc-dur:hover input:not(:checked)+span{color:var(--ce-azul);}
+.gc-caja .gc-exc-dur input:checked+span{background:var(--ce-azul);color:#fff;box-shadow:0 8px 16px -10px rgba(29,111,209,.95);}
+.gc-caja .gc-exc-atajos{margin-top:-6px;}
+.gc-caja .gc-exc-atajo{padding:5px 13px;border-color:var(--gc-linea);background:var(--gc-sup);}
+.gc-caja .gc-dd-btn{min-height:50px;border-radius:14px;border-color:var(--gc-linea);background:var(--gc-sup);}
+.gc-caja .gc-dd-ico{width:34px;height:34px;border-radius:50%;}
+.gc-caja .gc-dd-lista{border-radius:16px;box-shadow:0 22px 48px -18px rgba(12,27,46,.55);}
+.gc-caja .gc-exc-form > .ce-btn-pri{width:100%;min-height:46px;font-size:.9rem;}
+
+.gc-caja .gc-exc-aviso{padding:10px 14px;border-radius:12px;font-size:.84rem;line-height:1.45;}
+.gc-caja .gc-exc-lista{gap:12px;}
+.gc-caja .gc-exc-item{position:relative;padding:14px 16px 12px 18px;border:1px solid var(--gc-linea);border-left-width:1px;border-radius:16px;background:var(--gc-sup-2);overflow:hidden;}
+.gc-caja .gc-exc-item::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:#9aa3b2;}
+.gc-caja .gc-exc-vigente::before{background:#1c9c5b;}
+.gc-caja .gc-exc-programada::before{background:#2d6cdf;}
+.gc-caja .gc-exc-vigente{background:color-mix(in srgb,#1c9c5b 7%,var(--gc-sup));}
+.gc-caja .gc-exc-item-cab b{font-size:.94rem;}
+.gc-caja .gc-exc-estado{padding:3px 10px;font-size:.66rem;letter-spacing:.06em;}
+.gc-caja .gc-exc-item-det{margin-top:5px;line-height:1.45;}
+.gc-caja .gc-exc-item-nota{padding:7px 10px;border-radius:10px;background:rgba(127,127,127,.09);font-size:.82rem;}
+.gc-caja .gc-exc-item-pie{margin-top:10px;padding-top:10px;border-top:1px dashed var(--gc-linea);}
+
+/* ---------- Mensaje y pie ---------- */
+.gc-caja .gc-msg{margin:0;padding:11px 28px;border-radius:0;font-size:.85rem;border-top:1px solid var(--gc-linea);}
+.gc-caja .ce-pie{
+  padding:14px 28px;border-top:1px solid var(--gc-linea);
+  background:color-mix(in srgb,var(--gc-sup) 92%,transparent);
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  box-shadow:0 -12px 24px -20px rgba(12,27,46,.5);
+}
+.gc-caja .ce-pie .ce-btn-pri{min-width:132px;min-height:42px;}
+
+/* ---------- Móvil: hoja inferior con asa ---------- */
+@media (max-width:640px){
+  .gc-caja{border-radius:26px 26px 0 0;}
+  .gc-caja::before{content:"";position:absolute;top:8px;left:50%;z-index:5;width:42px;height:5px;margin-left:-21px;border-radius:5px;background:rgba(127,127,127,.4);pointer-events:none;}
+  .gc-caja .ce-cab{padding:22px 58px 16px 18px;gap:14px;}
+  .gc-caja .ce-av-xl{width:56px;height:56px;font-size:1.05rem;}
+  .gc-caja .ce-cab h3{font-size:1.2rem;}
+  .gc-caja .gc-tabs{padding:0 8px;overflow-x:auto;}
+  .gc-caja .gc-tab{padding:12px 10px 13px;font-size:.8rem;}
+  .gc-caja .gc-tab svg{display:none;}
+  .gc-caja .gc-tab.gc-tab-bloqueada svg:last-child{display:block;}
+  .gc-caja .gc-cuerpo{padding:14px 14px 6px;}
+  .gc-caja .ce-sec{padding:14px;border-radius:16px;}
+  .gc-caja .gc-msg{padding:10px 16px;}
+  .gc-caja .ce-pie{padding:12px 14px calc(12px + env(safe-area-inset-bottom,0px));}
+  .gc-caja .gc-exc-durs{display:flex;width:100%;}
+  .gc-caja .gc-exc-dur{flex:1 1 0;}
+  .gc-caja .gc-exc-dur span{width:100%;justify-content:center;padding:4px 8px;}
+}
+
+/* ---------- Modo oscuro ---------- */
+[data-theme="dark"] .gc-caja{
+  --gc-sup:#1a2130;--gc-sup-2:#161c2a;--gc-linea:rgba(255,255,255,.09);
+  box-shadow:0 36px 90px -20px rgba(0,0,0,.8),0 0 0 1px rgba(255,255,255,.07);
+}
+[data-theme="dark"] .gc-caja .ce-cab{background:radial-gradient(120% 140% at 0% 0%,color-mix(in srgb,var(--gc-acc) 22%,transparent) 0,transparent 62%),#1a2130;}
+[data-theme="dark"] .gc-caja .ce-eyebrow{color:color-mix(in srgb,var(--gc-acc) 55%,#fff);}
+[data-theme="dark"] .gc-caja .ce-av-xl{box-shadow:0 0 0 3px #1a2130,0 0 0 5px color-mix(in srgb,var(--gc-acc) 70%,transparent),0 12px 24px -12px rgba(0,0,0,.9);}
+[data-theme="dark"] .gc-caja .gc-tabs{background:#1a2130;}
+[data-theme="dark"] .gc-caja .gc-tab[aria-selected="true"],[data-theme="dark"] .gc-caja .gc-tab:hover{background:transparent;border:0;box-shadow:none;color:#8fc0ff;}
+[data-theme="dark"] .gc-caja .gc-tab::after{background:#4c9bf0;}
+[data-theme="dark"] .gc-caja .ce-sec{box-shadow:none;}
+[data-theme="dark"] .gc-caja .ce-fila{background:rgba(255,255,255,.035);}
+[data-theme="dark"] .gc-caja .ce-fila-on{background:rgba(76,155,240,.14);}
+[data-theme="dark"] .gc-caja .ce-perm-si{color:#6fdca4;}
+[data-theme="dark"] .gc-caja .ce-campo select,[data-theme="dark"] .gc-caja #gcNivelSel{
+  background-color:#121823;border-color:rgba(255,255,255,.14);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239aa6bd' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="dark"] .gc-caja .gc-exc-form input[type="date"],[data-theme="dark"] .gc-caja textarea{background-color:#121823;border-color:rgba(255,255,255,.14);}
+[data-theme="dark"] .gc-caja .gc-exc-durs{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.10);}
+[data-theme="dark"] .gc-caja .gc-exc-dur span{background:transparent;border:0;color:#9aa6bd;}
+[data-theme="dark"] .gc-caja .gc-exc-dur input:checked+span{background:#3b82d6;color:#fff;}
+[data-theme="dark"] .gc-caja .gc-exc-item{background:rgba(255,255,255,.035);border-color:rgba(255,255,255,.09);}
+[data-theme="dark"] .gc-caja .gc-exc-vigente{background:rgba(46,160,90,.10);}
+[data-theme="dark"] .gc-caja .gc-exc-item-nota{background:rgba(255,255,255,.06);}
+[data-theme="dark"] .gc-caja .ce-pie{background:rgba(26,33,48,.92);box-shadow:0 -12px 24px -20px rgba(0,0,0,.9);}
+[data-theme="dark"] .gc-caja .gc-av-neutro{color:#cbd5e1;}
+
+/* Estado «Excepcionalidad en vigor» en la fila de avisos de la pestaña Cuenta */
+.gc-av-neutro{color:#475569;}
+
+@media (prefers-reduced-motion:reduce){
+  .gc-caja .gc-tab::after{transition:none;}
+}
+
+/* =====================================================================
+   DESPLEGABLES · arreglos de «bugs» (equipo, nivel, rol, causa) — v2
+   Solo CSS. Causas que corrige:
+   · La lista propia de «Causa» (.gc-dd-lista) se abría dentro de .gc-cuerpo (overflow:auto) y .gc-caja
+     (overflow:hidden): se recortaba, hacía saltar el scroll o quedaba tapada por el pie fijo.
+   · Las listas de los <select> nativos salían blancas con texto claro en modo oscuro (ilegibles) y, en la
+     tabla de Usuarios, heredaban el color de fondo de la píldora de rol.
+   · Textos largos (equipos, causas) desbordaban; en iOS el foco hacía zoom; objetivos táctiles pequeños.
+   ===================================================================== */
+
+/* ---------- 1 · <select> nativos: un solo estilo para equipo, rol y nivel ---------- */
+.gc-caja .ce-campo select,
+.gc-caja #gcNivelSel,
+#modalNivelUsuario select,
+.ce-caja select[data-ce-grupo]{
+  color-scheme:light;
+  min-width:0;max-width:100%;
+  text-overflow:ellipsis;white-space:nowrap;overflow:hidden;
+  line-height:1.3;
+  transition:border-color .15s,box-shadow .15s,background-color .15s;
+}
+.gc-caja .ce-campo select:focus-visible,
+.gc-caja #gcNivelSel:focus-visible,
+.ce-caja select[data-ce-grupo]:focus-visible{
+  outline:none;border-color:var(--ce-azul,#1d6fd1);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--ce-azul,#1d6fd1) 28%,transparent);
+}
+.gc-caja .ce-campo select:disabled,
+.gc-caja #gcNivelSel:disabled{
+  -webkit-text-fill-color:currentColor;           /* iOS apagaba el texto al deshabilitar */
+  background-color:color-mix(in srgb,var(--ce-suave,#5b6478) 8%,var(--gc-sup,#fff));
+}
+/* Lista de opciones: fondo y texto propios (no heredan el color de la píldora ni del tema) */
+.gc-caja select option,
+.gc-caja select optgroup,
+#subpanel-redactores .select-rol option,
+#modalNivelUsuario select option,
+.ce-caja select option{
+  background-color:var(--tarjeta,#fff);color:var(--texto,#1b2430);
+  font-weight:600;padding:8px 12px;
+}
+.gc-caja select option:checked,
+#subpanel-redactores .select-rol option:checked{background-color:color-mix(in srgb,var(--ce-azul,#1d6fd1) 16%,var(--tarjeta,#fff));}
+.gc-caja select option:disabled{color:var(--ce-suave,#5b6478);}
+
+[data-theme="dark"] .gc-caja .ce-campo select,
+[data-theme="dark"] .gc-caja #gcNivelSel,
+[data-theme="dark"] #modalNivelUsuario select,
+[data-theme="dark"] .ce-caja select[data-ce-grupo],
+[data-theme="dark"] #subpanel-redactores .select-rol{color-scheme:dark;}
+[data-theme="dark"] .gc-caja select option,
+[data-theme="dark"] .gc-caja select optgroup,
+[data-theme="dark"] #subpanel-redactores .select-rol option,
+[data-theme="dark"] #modalNivelUsuario select option,
+[data-theme="dark"] .ce-caja select option{background-color:#121823;color:#e7eaf0;}
+[data-theme="dark"] .gc-caja select option:checked,
+[data-theme="dark"] #subpanel-redactores .select-rol option:checked{background-color:#1f3350;}
+
+/* Select de rol de la tabla de Usuarios: píldora con flecha propia, texto siempre legible */
+#subpanel-redactores .select-rol{
+  appearance:none;-webkit-appearance:none;
+  padding:0 30px 0 14px;text-overflow:ellipsis;white-space:nowrap;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 10px center;background-size:12px;
+  transition:filter .15s,box-shadow .15s;
+}
+#subpanel-redactores .select-rol:hover:not(:disabled){filter:brightness(1.06);}
+#subpanel-redactores .select-rol:disabled{opacity:.6;cursor:not-allowed;-webkit-text-fill-color:#fff;}
+
+/* ---------- 2 · Desplegable propio de «Causa» ---------- */
+.gc-caja .gc-dd{position:relative;}
+.gc-caja .gc-dd-btn{
+  transition:border-color .15s,box-shadow .15s,background-color .15s;
+  -webkit-tap-highlight-color:transparent;
+}
+.gc-caja .gc-dd-btn:focus-visible,
+.gc-caja .gc-dd-btn[aria-expanded="true"]{
+  border-color:var(--ce-azul,#1d6fd1);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--ce-azul,#1d6fd1) 26%,transparent);
+}
+.gc-caja .gc-dd-lista{
+  z-index:60;                                      /* por encima del pie fijo (.ce-pie, z-index:3) */
+  max-height:min(260px,42dvh);
+  scrollbar-width:thin;scrollbar-color:rgba(127,127,127,.4) transparent;
+  background-color:var(--gc-sup,var(--tarjeta,#fff));
+}
+.gc-caja .gc-dd-op{min-height:44px;transition:background-color .12s;}
+.gc-caja .gc-dd-op.gc-dd-foco{outline:2px solid color-mix(in srgb,var(--ce-azul,#1d6fd1) 55%,transparent);outline-offset:-2px;}
+.gc-caja .gc-dd-txt b,
+.gc-caja .gc-dd-txt small{overflow-wrap:anywhere;}
+.gc-caja .gc-dd-btn .gc-dd-txt b{white-space:nowrap;}
+
+/* Navegadores con anclaje CSS: la lista sale del recorte del modal, se pega al botón y,
+   si no cabe debajo, se voltea hacia arriba sola. */
+@supports (anchor-name:--gc-dd){
+  .gc-caja .gc-dd-btn{anchor-name:--gc-dd;}
+  .gc-caja .gc-dd-lista{
+    position:fixed;position-anchor:--gc-dd;
+    top:calc(anchor(bottom) + 6px);left:anchor(left);right:auto;
+    width:anchor-size(width);
+    position-try-fallbacks:flip-block;
+    position-try-order:most-height;
+    max-height:min(260px,42dvh);
+  }
+}
+/* Sin anclaje (Firefox, Safari antiguo): se reserva hueco bajo la lista al abrirla para que no se recorte */
+@supports not (anchor-name:--gc-dd){
+  .gc-caja .gc-panel:has(.gc-dd-btn[aria-expanded="true"]){padding-bottom:min(240px,38dvh);}
+}
+
+/* ---------- 3 · Móvil y táctil ---------- */
+@media (max-width:720px){
+  .gc-caja .ce-campo select,
+  .gc-caja #gcNivelSel,
+  #modalNivelUsuario select,
+  .ce-caja select[data-ce-grupo],
+  .gc-caja .gc-dd-btn{font-size:16px;}            /* evita el zoom automático de iOS al enfocar */
+  .gc-caja .gc-dd-lista{max-height:min(240px,38dvh);}
+}
+@media (pointer:coarse){
+  .gc-caja .ce-campo select,
+  .gc-caja #gcNivelSel,
+  .ce-caja select[data-ce-grupo]{min-height:46px;}
+  #subpanel-redactores .select-rol{min-height:40px;}
+}
+
+/* ---------- 4 · Modo oscuro del desplegable propio ---------- */
+[data-theme="dark"] .gc-caja .gc-dd-lista{background-color:#121823;border-color:rgba(255,255,255,.16);box-shadow:0 22px 48px -18px rgba(0,0,0,.8);}
+[data-theme="dark"] .gc-caja .gc-dd-btn{background-color:#121823;}
+
+@media (prefers-reduced-motion:reduce){
+  .gc-caja .gc-dd-lista{animation:none;}
+  .gc-caja .ce-campo select,.gc-caja .gc-dd-btn,.gc-caja .gc-dd-op{transition:none;}
+}

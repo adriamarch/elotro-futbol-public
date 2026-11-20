@@ -145,6 +145,7 @@ function categoriaLabel(categoria){
     primera_federacion: '1ª Federación',
 
     segunda_federacion: '2ª Federación',
+    tercera_federacion: '3ª Federación',
     copa_del_rey: 'Copa del Rey',
     copa_federacion: 'Copa Federación',
 
@@ -158,7 +159,9 @@ function categoriaLabel(categoria){
 
   };
 
-  return labels[categoria] || categoria;
+  if (labels[categoria]) return labels[categoria];
+  const t = String(categoria || '').replace(/[_-]+/g, ' ').trim();
+  return t ? t.charAt(0).toUpperCase() + t.slice(1) : '';
 }
 
 
@@ -776,7 +779,7 @@ async function cargarResumen(dias){
               usePointStyle:true,
               boxWidth:8,
               font:{
-                family:'Inter',
+                family:(getComputedStyle(document.documentElement).getPropertyValue('--font-text').trim() || 'Inter'),
                 size:11
               }
             }
@@ -871,7 +874,7 @@ async function cargarMasLeidas(dias){
                   class="tag-cat"
                   style="margin-top:2px"
                 >
-                  ${n.categoria || ''}
+                  ${categoriaLabel(n.categoria)}
                 </span>
 
                 <span>
@@ -1241,6 +1244,7 @@ const CAT_COLOR = {
   primera_federacion:'#5bb8e8',
 
   segunda_federacion:'#d1132e',
+  tercera_federacion:'#16a34a',
   copa_del_rey:'#b8860b',
   copa_federacion:'#2f6f9f',
 
@@ -1419,10 +1423,14 @@ function competicionLabelAnaliticas(cod){
     hypermotion: 'LaLiga Hypermotion',
     primera_federacion: 'Primera Federación',
     segunda_federacion: 'Segunda Federación',
+    tercera_federacion: 'Tercera Federación',
     copa_del_rey: 'Copa del Rey',
     copa_federacion: 'Copa Federación',
+    amistoso: 'Amistoso',
   };
-  return etiquetas[cod] || cod || '';
+  if (etiquetas[cod]) return etiquetas[cod];
+  const t = String(cod || '').replace(/[_-]+/g, ' ').trim();
+  return t ? t.charAt(0).toUpperCase() + t.slice(1) : '';
 }
 
 async function cargarPartidosSeguidos(dias){
@@ -1669,7 +1677,7 @@ async function cargarComparativaMensual(){
               usePointStyle:true,
               boxWidth:8,
               font:{
-                family:'Inter',
+                family:(getComputedStyle(document.documentElement).getPropertyValue('--font-text').trim() || 'Inter'),
                 size:11
               }
             }
@@ -2938,7 +2946,7 @@ function crearPromesaChartJs(){
     // (las DevTools piden el .map con fetch y connect-src no lista los CDN).
     // Los CDN quedan solo como respaldo.
     const sources = [
-      '/js/vendor/chart.umd.min.js?v=1',
+      '/js/vendor/chart.umd.min.js?v=d1a834b3',
       'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js',
       'https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js'
     ];

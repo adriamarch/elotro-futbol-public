@@ -48,3 +48,10 @@
 @media (prefers-reduced-motion:reduce){
   .hito, .hito-barra-relleno{transition:none;}
 }
+
+/* Acción directa y "siguiente insignia" (la pendiente más cercana). */
+.hito-ir{align-self:flex-start; margin-top:6px; padding:5px 11px; border:1px solid var(--nivel-2,#2563eb); border-radius:999px; background:transparent; color:var(--nivel-2,#2563eb); font-size:.76rem; font-weight:700; cursor:pointer;}
+.hito-ir:hover,.hito-ir:focus-visible{background:var(--nivel-2,#2563eb); color:#fff;}
+.hito-siguiente{border-color:var(--nivel-2,#2563eb);}
+.hito-siguiente .hito-icono{filter:none; opacity:1;}
+.hito-siguiente-tag{align-self:flex-start; margin-top:2px; padding:1px 8px; border-radius:999px; background:rgba(37,99,235,.12); color:var(--nivel-2,#2563eb); font-size:.68rem; font-weight:700; letter-spacing:.2px;}

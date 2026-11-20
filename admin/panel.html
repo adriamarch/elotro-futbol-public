@@ -2,11 +2,16 @@
 <html lang="es">
 <head>
 <meta name="color-scheme" content="light dark">
-<script src="/js/tema.js?v=2"></script>
-<script src="/js/preferencias.js?v=20"></script>
-<script src="/admin/js/rol-inicial.js?v=4"></script>
+<script src="/js/tema.js?v=65626bb2"></script>
+<script src="/js/preferencias.js?v=6e49f5b3"></script>
+<script src="/admin/js/rol-inicial.js?v=547dba45"></script>
 <meta charset="UTF-8">
-<script src="/js/splash.js?v=2"></script>
+<script>/* splash.js: bloquea el parseo solo si la web se abre como app (o ?splash=1); en navegador carga en async, sin frenar el pintado. */
+(function(){var a=false;try{a=matchMedia("(display-mode: standalone)").matches||matchMedia("(display-mode: fullscreen)").matches||matchMedia("(display-mode: minimal-ui)").matches||navigator.standalone===true;}catch(e){}
+if(a||/[?&]splash=1(&|$)/.test(location.search)){document.write('<script src="/js/splash.js?v=b5004788"><\/script>');}
+else{var s=document.createElement("script");s.src="/js/splash.js?v=b5004788";s.async=true;document.head.appendChild(s);}})();
+</script>
+<script src="/js/cargando.js?v=4a5cb1bc"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Redacción — ELOTROFÚTBOLTV</title>
 <meta name="robots" content="noindex, nofollow">
@@ -19,66 +24,90 @@
 <meta property="og:image" content="https://elotrofutbol.media/img/og-default.png">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://elotrofutbol.media/img/og-default.png">
-<link rel="icon" href="/favicon.ico?v=3" sizes="any">
-<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=3">
-<link rel="apple-touch-icon" href="/img/apple-touch-icon.png?v=2">
+<link rel="icon" href="/favicon.ico?v=39af2432" sizes="any">
+<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=39af2432">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png?v=3f854c49">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&family=Playfair+Display:wght@700;800&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/style.css?v=35">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;0,700;0,800;1,500;1,700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css?v=6cd42e49">
 <!-- Sistema de foco de imagen (mismo CSS que la web pública, ver js/foco.js). -->
-<link rel="stylesheet" href="/css/foco.css?v=1">
+<link rel="stylesheet" href="/css/foco.css?v=c8652610">
 <!-- CSS específico del panel de administración: tablas, formularios,
      media, y el overlay del panel de Minuto a Minuto (.mam-*). Antes no
      estaba enlazado aquí, así que ese overlay se activaba (la clase
      "mam-abierto" sí se añadía) pero sin ningún estilo aplicado: sin
      position:fixed, sin z-index, sin fondo... por eso el clic parecía
      "no hacer nada" (solo el salto del overflow:hidden del body). -->
-<link rel="stylesheet" href="/admin/css/admin.css?v=90">
-<link rel="stylesheet" href="/admin/css/modales.css?v=10">
-<link rel="stylesheet" href="/css/modales-mejoras.css?v=1">
-<link rel="stylesheet" href="/admin/css/aviso-inactividad.css?v=2">
-<link rel="stylesheet" href="/css/visor-media.css?v=10">
-<link rel="stylesheet" href="/admin/css/apellidos-obligatorios.css?v=2">
+<link rel="stylesheet" href="/admin/css/admin.css?v=702bfb9f">
+<link rel="stylesheet" href="/admin/css/lectores.css?v=2bc5897b">
+<link rel="stylesheet" href="/admin/css/modales.css?v=e63221b1">
+<link rel="stylesheet" href="/css/modales-mejoras.css?v=982413bb">
+<link rel="stylesheet" href="/admin/css/aviso-inactividad.css?v=205f002e">
+<link rel="stylesheet" href="/admin/css/bloqueo-edicion-noticias.css?v=72b09006">
+<link rel="stylesheet" href="/css/visor-media.css?v=db0d997d">
+<link rel="stylesheet" href="/admin/css/apellidos-obligatorios.css?v=9bd9fca5">
 <!-- Selector de foco único del panel (ver js/foco-selector.js). -->
-<link rel="stylesheet" href="/admin/css/foco-selector.css?v=4">
+<link rel="stylesheet" href="/admin/css/foco-selector.css?v=93ae6259">
 <!-- Tutorial guiado interactivo para nuevos redactores (overlay con
      flechas/spotlight sobre el propio panel, ver js/tutorial.js). -->
-<link rel="stylesheet" href="/admin/css/tutorial.css?v=3">
-<link rel="stylesheet" href="/admin/css/primera-tarea.css?v=1">
+<link rel="stylesheet" href="/admin/css/tutorial.css?v=8557f94a">
+<link rel="stylesheet" href="/admin/css/primera-tarea.css?v=da9f0f06">
 <!-- Votaciones internas del equipo (pestaña "Votaciones", ver js/votaciones.js). -->
-<link rel="stylesheet" href="/admin/css/votaciones.css?v=5">
-<link rel="stylesheet" href="/admin/css/podcast-admin.css?v=1">
-<link rel="stylesheet" href="/admin/css/feedback-revision.css?v=2">
-<link rel="stylesheet" href="/admin/css/funcionalidades.css?v=4">
-<link rel="stylesheet" href="/admin/css/tienda-mejoras.css?v=1">
-<link rel="stylesheet" href="/admin/css/calendario-contenido.css?v=6">
-<link rel="stylesheet" href="/admin/css/calendario-jornadas.css?v=2">
-<link rel="stylesheet" href="/admin/css/relleno-mejoras.css?v=1">
-<link rel="stylesheet" href="/admin/css/organigrama.css?v=6">
-<link rel="stylesheet" href="/admin/css/responsabilidades.css?v=9">
-<link rel="stylesheet" href="/admin/css/jugadores-admin.css?v=3">
-<link rel="stylesheet" href="/admin/css/formularios-resumen.css?v=2">
-<link rel="stylesheet" href="/admin/css/modales-partido.css?v=6">
-<link rel="stylesheet" href="/admin/css/selector-fecha-modal.css?v=1">
-<link rel="stylesheet" href="/admin/css/ajustes-cuenta-mejoras.css?v=1">
-<link rel="stylesheet" href="/admin/css/usuarios-etiquetas-mejoras.css?v=1">
-<link rel="stylesheet" href="/admin/css/niveles-fotografia.css?v=1">
-<link rel="stylesheet" href="/admin/css/rachas-semanales.css?v=2">
-<link rel="stylesheet" href="/admin/css/ruta-bienvenida.css?v=1">
-<link rel="stylesheet" href="/admin/css/insignias-hitos.css?v=1">
-<link rel="stylesheet" href="/admin/css/racha-celebracion.css?v=1">
-<link rel="stylesheet" href="/admin/css/analiticas-panel.css?v=1">
-<link rel="stylesheet" href="/admin/css/menu-lateral.css?v=6">
-<link rel="stylesheet" href="/admin/css/resultados-mejoras.css?v=4">
-<link rel="stylesheet" href="/admin/css/resumen-mensual.css?v=8">
-<link rel="stylesheet" href="/admin/css/mam-avisos-push.css?v=1">
-<link rel="stylesheet" href="/admin/css/avisos-entrada.css?v=3">
-<link rel="stylesheet" href="/admin/css/movil-responsive.css?v=2">
-<link rel="stylesheet" href="/admin/css/movil-app.css?v=1">
-<link rel="stylesheet" href="/admin/css/movil-app-pro.css?v=3">
-<link rel="stylesheet" href="/css/accesibilidad.css?v=2">
-<script src="/js/accesibilidad.js?v=1" defer></script>
+<link rel="stylesheet" href="/admin/css/votaciones.css?v=5415633e">
+<link rel="stylesheet" href="/admin/css/podcast-admin.css?v=146fac66">
+<link rel="stylesheet" href="/admin/css/feedback-revision.css?v=7d2d26d0">
+<link rel="stylesheet" href="/admin/css/copiar-campos-grok.css?v=124ac43e">
+<link rel="stylesheet" href="/admin/css/historial-versiones.css?v=e91ac402">
+<link rel="stylesheet" href="/admin/css/papelera.css?v=74a12dd9">
+<link rel="stylesheet" href="/admin/css/funcionalidades.css?v=3ca0ac21">
+<link rel="stylesheet" href="/admin/css/tienda-mejoras.css?v=50731be8">
+<link rel="stylesheet" href="/admin/css/calendario-contenido.css?v=cff16e93">
+<link rel="stylesheet" href="/admin/css/calendario-jornadas.css?v=bc9c4958">
+<link rel="stylesheet" href="/admin/css/relleno-mejoras.css?v=96ecb4a7">
+<link rel="stylesheet" href="/admin/css/organigrama.css?v=92604cdb">
+<link rel="stylesheet" href="/admin/css/grupos-trabajo.css?v=c7e93ea8">
+<link rel="stylesheet" href="/admin/css/subresponsables-areas.css?v=0548298a">
+<link rel="stylesheet" href="/admin/css/responsabilidades.css?v=ca0decec">
+<link rel="stylesheet" href="/admin/css/responsabilidades-fotografia.css?v=9c766b7f">
+<link rel="stylesheet" href="/admin/css/responsabilidades-niveles.css?v=b504cf8c">
+<link rel="stylesheet" href="/admin/css/responsabilidades-organizacion.css?v=d340f7cb">
+<link rel="stylesheet" href="/admin/css/jugadores-admin.css?v=d3bcddd9">
+<link rel="stylesheet" href="/admin/css/formularios-resumen.css?v=0bb62084">
+<link rel="stylesheet" href="/admin/css/modales-partido.css?v=cb1d28fa">
+<link rel="stylesheet" href="/admin/css/selector-fecha-modal.css?v=aca1d060">
+<link rel="stylesheet" href="/admin/css/ajustes-cuenta-mejoras.css?v=275b4515">
+<link rel="stylesheet" href="/admin/css/usuarios-etiquetas-mejoras.css?v=5139f4bd">
+<link rel="stylesheet" href="/admin/css/noticias-rapidas-mejoras.css?v=f1c3e2d3">
+<link rel="stylesheet" href="/admin/css/usuarios-unificado.css?v=e4bf156d">
+<link rel="stylesheet" href="/admin/css/colaboradores-coherencia.css?v=728bc5b7">
+<link rel="stylesheet" href="/admin/css/colaboradores-sistema.css?v=fce9eead">
+<link rel="stylesheet" href="/admin/css/niveles-fotografia.css?v=66c22b81">
+<link rel="stylesheet" href="/admin/css/rachas-semanales.css?v=8795b8f9">
+<link rel="stylesheet" href="/admin/css/ruta-bienvenida.css?v=8c3eb99c">
+<link rel="stylesheet" href="/admin/css/insignias-hitos.css?v=b300326f">
+<link rel="stylesheet" href="/admin/css/racha-celebracion.css?v=ceace17e">
+<link rel="stylesheet" href="/admin/css/analiticas-panel.css?v=e2044bab">
+<link rel="stylesheet" href="/admin/css/menu-lateral.css?v=e672e6a8">
+<link rel="stylesheet" href="/admin/css/resultados-mejoras.css?v=76c13c57">
+<link rel="stylesheet" href="/admin/css/estadisticas-cuenta.css?v=56eb2dc6">
+<link rel="stylesheet" href="/admin/css/resumen-mensual.css?v=64cec6ee">
+<link rel="stylesheet" href="/admin/css/mam-avisos-push.css?v=cfd2e599">
+<link rel="stylesheet" href="/admin/css/avisos-entrada.css?v=490f68aa">
+<link rel="stylesheet" href="/admin/css/movil-responsive.css?v=82f177ab">
+<link rel="stylesheet" href="/admin/css/movil-app.css?v=ac9989d1">
+<link rel="stylesheet" href="/admin/css/movil-app-pro.css?v=90df552d">
+<link rel="stylesheet" href="/admin/css/reuniones-panel.css?v=1abf3ab9">
+<link rel="stylesheet" href="/admin/css/cargos-equipo.css?v=17198da1">
+<link rel="stylesheet" href="/admin/css/excepcionalidades.css?v=17b14950">
+<link rel="stylesheet" href="/admin/css/gestionar-colaborador.css?v=86b4b061">
+<link rel="stylesheet" href="/admin/css/progreso-pro.css?v=f8d693cf">
+<link rel="stylesheet" href="/admin/css/inicio-resumen.css?v=2b1a22f9">
+<link rel="stylesheet" href="/admin/css/inicio-personalizar.css?v=34cbdc75">
+<link rel="stylesheet" href="/admin/css/seleccion-contenido.css?v=9ab048ff">
+<link rel="stylesheet" href="/admin/css/seleccion-multiple.css?v=2d1b3e2e">
+<link rel="stylesheet" href="/css/accesibilidad.css?v=191b9263">
+<script src="/js/accesibilidad.js?v=59fdae75" defer></script>
 </head>
 <body>
 
@@ -90,7 +119,7 @@
       <img src="/img/logo.png" alt="ELOTROFÚTBOLTV - logo oficial">
       <div class="brand-textos">
         <span>EL<span class="brand-rojo">OTROFÚTBOL</span>TV</span>
-        <span class="brand-seccion"><span class="brand-sep"> · </span><span id="tituloSeccion">Redacción</span></span>
+        <span class="brand-seccion"><span class="brand-sep"> · </span><span id="tituloSeccion">Resumen</span></span>
       </div>
     </div>
     <div class="user-info">
@@ -147,9 +176,13 @@
               <span id="cuentaRolEtiqueta"></span>
             </div>
           </div>
+          <div class="ud-grupo" id="cuentaMenuGrupo">Mi cuenta</div>
+          <div class="ud-secciones" id="cuentaMenuSecciones">
           <a href="javascript:void(0)" onclick="irAAjustesCuenta('perfil')"><span class="ud-ico" aria-hidden="true"><svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>Ajustes de cuenta</a>
           <a href="javascript:void(0)" class="rm-enlace" onclick="irAAjustesCuenta('resumenMes')"><span class="ud-ico" aria-hidden="true"><svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15v3"/><path d="M12 9v9"/><path d="M17 5v13"/></svg></span>Resumen del mes<span class="rm-punto" hidden role="img" aria-label="Resumen nuevo disponible"></span></a>
           <a href="javascript:void(0)" onclick="irAAjustesCuenta('preferencias')"><span class="ud-ico" aria-hidden="true"><svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg></span>Preferencias</a>
+          </div>
+          <div class="ud-sep" role="separator"></div>
           <a href="/index.html" rel="noopener"><span class="ud-ico" aria-hidden="true"><svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span>Ver la web</a>
           <div class="ud-sep" role="separator"></div>
           <button type="button" onclick="logout()"><span class="ud-ico" aria-hidden="true"><svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></span>Cerrar sesión</button>
@@ -161,11 +194,13 @@
 
 <div class="wrap">
   <div class="tabs">
-    <button data-grupo="editorial" class="activo" data-tab="noticias"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z" opacity="0"/><path d="M19 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1Z"/><path d="M8 9h8M8 13h8M8 17h4"/></svg>Noticias</button>
+    <button data-grupo="inicio" class="activo" data-tab="inicio" id="tabInicio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9"/></svg>Inicio</button>
+    <button data-grupo="editorial" data-tab="noticias"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z" opacity="0"/><path d="M19 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1Z"/><path d="M8 9h8M8 13h8M8 17h4"/></svg>Noticias</button>
     <button data-grupo="editorial" data-tab="resultados"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.2l3.6 2.6-1.4 4.2h-4.4l-1.4-4.2z"/></svg>Resultados<span class="tab-badge-pendientes" id="badgeResultadosAnulados" style="display:none;">0</span></button>
     <button data-grupo="editorial" data-tab="contenido" id="tabContenido"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>Contenido</button>
     <button data-grupo="editorial" data-tab="podcast" id="tabPodcast"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>Podcast</button>
     <button data-grupo="editorial" data-tab="solicitudes" id="tabSolicitudes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Solicitudes<span class="tab-badge-pendientes" id="badgeSolicitudesPendientes" style="display:none;">0</span></button>
+    <button data-grupo="editorial" data-tab="papelera" id="tabPapelera"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12.2a2 2 0 0 0 2 1.8h6a2 2 0 0 0 2-1.8L18 7M9 7V4.5h6V7"/></svg>Papelera</button>
     <button data-grupo="comunidad" data-tab="tienda" id="tabTienda"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>Tienda<span class="tab-badge-pendientes" id="badgeTiendaPendientes" style="display:none;">0</span></button>
     <button data-grupo="comunidad" data-tab="votaciones" id="tabVotaciones"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V8l3-5 4 4v4"/><path d="m9 16 2 2 4-4"/></svg>Votaciones<span class="tab-badge-pendientes" id="badgeVotPendientes" style="display:none;">0</span></button>
     <button data-grupo="comunidad" data-tab="feedback" id="tabFeedback"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="m9 10 2 2 4-4"/></svg>Feedback<span class="tab-badge-pendientes" id="badgeFeedbackNoLeidos" style="display:none;">0</span></button>
@@ -175,8 +210,11 @@
     <button data-grupo="admin" data-tab="analiticas" id="tabAnaliticas" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>Analíticas</button>
   </div>
 
+  <!-- INICIO: resumen con lo más importante y estadísticas (lógica en admin/js/inicio-resumen.js) -->
+  <div class="panel activo" id="panel-inicio" aria-label="Resumen"></div>
+
   <!-- NOTICIAS: nueva noticia + listado -->
-  <div class="panel activo" id="panel-noticias">
+  <div class="panel" id="panel-noticias">
     <div class="subtabs" id="subtabsNoticias">
       <button class="activo" data-subtab="nueva">+ Nueva noticia</button>
       <button data-subtab="lista">Ver noticias</button>
@@ -257,6 +295,10 @@
             <span id="categorias_adicionales_ayuda">Puedes dejarlo sin especificar.</span>
           </p>
 
+          <label for="etiquetas">Etiquetas (opcional)</label>
+          <input type="text" id="etiquetas" maxlength="400" autocomplete="off" placeholder="Ej.: Ascenso 2026, Fichajes">
+          <p class="ayuda-editor">Separadas por comas. Máximo 8, de hasta 40 caracteres. Cada una tiene su propia página en la web.</p>
+
           <hr class="nn-sep">
           <div class="row2 nn-firma">
             <div class="nn-campo">
@@ -307,7 +349,8 @@
             <div class="nn-seccion-cuerpo">
           <div id="tweetsLista"></div>
           <button type="button" class="btn-secundari" id="btnAddTweet" style="margin-top:8px;">+ Añadir tweet o post</button>
-          <details class="nn-ayuda"><summary>Cómo añadirlos</summary><p class="ayuda-editor">Pega la URL de un tweet (x.com o twitter.com) o de un post/reel de Instagram y elige dónde debe aparecer dentro de la noticia con el mismo selector de posición que las fotos. La plataforma se detecta sola a partir de la URL. Aquí se ve exactamente igual que en la web ya publicada.</p></details>
+          <button type="button" class="btn-secundari" id="btnAddVideo" style="margin-top:8px;">+ Añadir vídeo</button>
+          <details class="nn-ayuda"><summary>Cómo añadirlos</summary><p class="ayuda-editor">Pega la URL de un tweet (x.com o twitter.com) o de un post/reel de Instagram y elige dónde debe aparecer dentro de la noticia con el mismo selector de posición que las fotos. La plataforma se detecta sola a partir de la URL. Aquí se ve exactamente igual que en la web ya publicada. Con «Añadir vídeo» puedes incrustar un vídeo de YouTube o uno ya subido a la mediateca (pega su URL de Cloudinary) y ponerle un pie opcional; se coloca igual que un tweet.</p></details>
 
           </div>
           </details>
@@ -333,7 +376,7 @@
               <button type="button" class="btn-secundari nn-sub-btn" id="btnAnadirAlineacionArticulo" disabled>+ Añadir alineación</button>
             </div>
             <div id="listaAlineacionesArticulo" class="lista-alineaciones"></div>
-            <p class="ayuda-editor nn-sub-aviso" id="ayudaAlineacionArticulo">Guarda primero la noticia como borrador para poder añadirle alineaciones.</p>
+            <p class="ayuda-editor nn-sub-aviso" id="ayudaAlineacionArticulo">Vincula un partido (arriba) o guarda la noticia como borrador para poder añadirle alineaciones.</p>
             <p class="ayuda-editor nn-sub-nota" id="ayudaAlineacionArticuloVinculada" style="display:none;">Esta noticia está vinculada a un partido: la alineación es la misma que la del partido y se gestiona desde aquí o desde "Resultados" indistintamente, siempre sincronizada.</p>
           </div>
 
@@ -511,7 +554,7 @@
                   <span id="bannerUrgenteEstado" class="opcion-toggle-sub" style="display:none;"></span>
                 </span>
               </label>
-              <p class="ayuda-editor" id="avisoBannerUrgentePermiso" style="display:none;">Solo un administrador o un redactor de Nivel 2 o superior puede activar este banner.</p>
+              <p class="ayuda-editor" id="avisoBannerUrgentePermiso" style="display:none;">Solo un Responsable o un redactor de Nivel 3 o superior puede activar este banner.</p>
             </div>
 
             <div id="bloqueProgramarNoticia" style="display:none;">
@@ -571,6 +614,8 @@
           <div class="barra-acciones-form nn-barra">
             <button type="submit" class="btn-primari" id="btnGuardar">Publicar noticia</button>
             <button type="button" class="btn-secundari" id="btnPrevisualizar">Previsualizar</button>
+            <button type="button" class="btn-secundari" id="btnCopiarGrok" style="display:none" title="Copia al portapapeles el titular, el subtítulo y el cuerpo en HTML"><svg class="cg-icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg><span class="cg-texto">Copiar campos grok</span></button>
+            <button type="button" class="btn-secundari" id="btnHistorialVersiones" style="display:none" title="Ver versiones anteriores de esta noticia y recuperarlas">🕘 Historial de versiones</button>
             <button type="button" class="btn-secundari" id="btnCancelar" style="display:none" onclick="cancelarEdicion()">Cancelar edición</button>
           </div>
           <p id="msgOk">Guardado correctamente.</p>
@@ -595,13 +640,13 @@
           <span class="chip-noticia-txt"><strong>Borradores en proceso</strong><small>Aún se están escribiendo</small></span>
           <span class="chip-noticia-n" id="contadorEnProceso">0</span>
         </button>
-        <button type="button" class="chip-noticia chip-noticia-redes" data-filtro-noticias="redes" aria-pressed="false" title="Noticias publicadas sin revisión (autores de Nivel 2) que aún no se han marcado ni subido a redes. Si no las sube alguien de Nivel 4, nadie lo hará">
+        <button type="button" class="chip-noticia chip-noticia-redes" data-filtro-noticias="redes" aria-pressed="false" title="Noticias publicadas sin revisión (autores de Nivel 3) que aún no se han marcado ni subido a redes. Si no las sube alguien de Nivel 4, nadie lo hará">
           <span class="chip-noticia-ico" aria-hidden="true">📣</span>
           <span class="chip-noticia-txt"><strong>Por subir a redes</strong><small>Publicadas sin revisión</small></span>
           <span class="chip-noticia-n" id="contadorPorSubirRedes">0</span>
         </button>
       </div>
-      <!-- Organización para redes: etiquetas de carrusel (solo admin y Nivel 4+). Lógica en admin.js (pintarOrganizacionRedes). -->
+      <!-- Organización para redes: etiquetas de carrusel (solo admin y Nivel 3+). Lógica en admin.js (pintarOrganizacionRedes). -->
       <details class="redes-org" id="redesOrg" style="display:none;">
         <summary class="redes-org-resumen">
           <span class="redes-org-titulo">Organización para redes</span>
@@ -845,6 +890,8 @@
                 <option value="primera_federacion">Primera Federación</option>
                 <option value="segunda_federacion">Segunda Federación</option>
                 <option value="tercera_federacion">Tercera Federación</option>
+                <option value="copa_del_rey">Copa del Rey</option>
+                <option value="copa_federacion">Copa Federación</option>
                 <option value="amistoso">Amistoso</option>
               </select>
             </div>
@@ -881,6 +928,20 @@
               <input type="text" id="r_ubicacion" placeholder="Ej. Estadio Municipal, Tarragona">
             </div>
           </div>
+          <details class="r-datos-partido" id="r_datos_partido_wrap" style="margin:10px 0">
+            <summary style="cursor:pointer;font-weight:600">Datos del encuentro y estadísticas (Centro de partido)</summary>
+            <p class="hint" style="margin:8px 0">Opcional. Se muestran en la pestaña Resumen del partido. Deja en blanco lo que no sepas.</p>
+            <div class="row2">
+              <div><label>Árbitro</label><input type="text" id="r_dp_arbitro" maxlength="120" placeholder="Ej. Pérez Pérez (Comité andaluz)"></div>
+              <div><label>Asistencia</label><input type="text" id="r_dp_asistencia" maxlength="120" placeholder="Ej. 1.250 espectadores"></div>
+            </div>
+            <div class="row2">
+              <div><label>Dónde verlo (TV / streaming)</label><input type="text" id="r_dp_tv" maxlength="120" placeholder="Ej. Footters, TV autonómica"></div>
+              <div><label>Clima</label><input type="text" id="r_dp_clima" maxlength="120" placeholder="Ej. Nublado, 14 °C"></div>
+            </div>
+            <label style="margin-top:8px">Estadísticas (local · visitante)</label>
+            <div id="r_dp_estadisticas" style="display:grid;grid-template-columns:1fr 70px 70px;gap:6px 8px;align-items:center"></div>
+          </details>
           <div class="row2" id="r_retrasado_wrap" style="display:none">
             <div>
               <label>Nueva fecha y hora prevista</label>
@@ -1078,7 +1139,7 @@
              sentido una vez el resultado ya existe (necesita su id). -->
         <div id="bloqueAlineacionesResultado" style="display:none">
           <h4 class="titulo-eventos-partido">Alineaciones</h4>
-          <p class="ayuda-editor">Añade el once inicial de cada equipo sobre el campo. Es opcional: puedes añadir solo la del local, solo la del visitante, las dos, o ninguna.</p>
+          <p class="ayuda-editor">Pulsa en la tarjeta de cada equipo para añadir o editar su once. Es opcional: puedes poner solo una, las dos o ninguna.</p>
           <div id="listaAlineacionesResultado" class="lista-alineaciones"></div>
           <button type="button" class="btn-secundari" id="btnAnadirAlineacionResultado">+ Añadir alineación</button>
         </div>
@@ -1417,6 +1478,7 @@
       <button class="activo" data-subtab="perfil">Editar perfil</button>
       <button data-subtab="seguridad" id="subtabSeguridad_btn">Seguridad</button>
       <button data-subtab="progreso">Mi progreso</button>
+      <button data-subtab="estadisticas">Estadísticas</button>
       <button data-subtab="resumenMes">Resumen del mes<span class="rm-punto" hidden role="img" aria-label="Resumen nuevo disponible"></span></button>
       <button data-subtab="sesiones">Dispositivos</button>
       <button data-subtab="preferencias">Preferencias</button>
@@ -1432,15 +1494,27 @@
           <label for="perfil_email">Correo electrónico</label>
           <input type="email" id="perfil_email">
 
+          <div class="row2">
+            <div>
+              <label for="perfil_cargo">Cargo o especialidad</label>
+              <input type="text" id="perfil_cargo" maxlength="80" placeholder="Ej.: Redactor de Hypermotion · Fotógrafo de partidos">
+            </div>
+            <div>
+              <label for="perfil_ciudad">Ciudad</label>
+              <input type="text" id="perfil_ciudad" maxlength="80" placeholder="Ej.: Tarragona">
+            </div>
+          </div>
+          <p class="ayuda-editor">El cargo se muestra bajo tu nombre en el perfil público, y la ciudad junto a él.</p>
+
           <label for="perfil_equipo">Equipo</label>
           <div class="equipo-bloqueado" id="perfil_equipo">
             <span class="equipo-vacio" id="perfilEquipoVacio">— Sin especificar —</span>
             <span class="equipo-candado">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
-              Solo un administrador puede cambiarlo
+              Solo un Responsable puede cambiarlo
             </span>
           </div>
-          <p class="ayuda-editor">El o los clubes de fútbol que sigues o cubres habitualmente. Se muestran en tu perfil público y junto a tu nombre al elegir autor en una noticia. Este campo lo asigna un administrador desde "Usuarios"; no se puede editar desde aquí.</p>
+          <p class="ayuda-editor">El o los clubes de fútbol que sigues o cubres habitualmente. Se muestran en tu perfil público y junto a tu nombre al elegir autor en una noticia. Este campo lo asigna un Responsable desde "Usuarios"; no se puede editar desde aquí.</p>
 
 <label for="perfil_avatar">Foto de perfil</label>
 <div class="fila-imagen-grupo avatar-picker-wrap">
@@ -1469,6 +1543,12 @@
           <textarea id="perfil_experiencia" rows="4" maxlength="1200" placeholder="Medios en los que has trabajado, estudios, años de experiencia, etc."></textarea>
           <p class="ayuda-editor">Se muestra también en tu perfil público, debajo de la biografía.</p>
 
+          <label for="perfil_destacado">Noticia destacada</label>
+          <select id="perfil_destacado">
+            <option value="">— Ninguna —</option>
+          </select>
+          <p class="ayuda-editor">Fija arriba de tu perfil público una de tus noticias ya publicadas (se listan tus 60 más recientes).</p>
+
           <label style="margin-top:22px;">Mis redes sociales</label>
           <p class="ayuda-editor" style="margin:0 0 4px;">Distintas de las redes del medio: estas son las tuyas propias, y solo se muestran en tu perfil de autor.</p>
           <div class="row2">
@@ -1491,6 +1571,26 @@
               <input type="url" id="perfil_youtube" placeholder="https://youtube.com/@...">
             </div>
           </div>
+          <div class="row2">
+            <div>
+              <label for="perfil_linkedin">LinkedIn</label>
+              <input type="url" id="perfil_linkedin" placeholder="https://linkedin.com/in/...">
+            </div>
+            <div>
+              <label for="perfil_threads">Threads</label>
+              <input type="url" id="perfil_threads" placeholder="https://threads.net/@...">
+            </div>
+          </div>
+          <div class="row2">
+            <div>
+              <label for="perfil_facebook">Facebook</label>
+              <input type="url" id="perfil_facebook" placeholder="https://facebook.com/...">
+            </div>
+            <div>
+              <label for="perfil_web">Web o portfolio</label>
+              <input type="url" id="perfil_web" placeholder="https://...">
+            </div>
+          </div>
 
           <div class="barra-acciones-form">
             <button type="submit" class="btn-primari">Guardar cambios</button>
@@ -1505,6 +1605,12 @@
     <div class="subpanel" id="subpanel-progreso">
       <div class="form-card" id="progresoNivelCont">
         <p class="sesiones-vacio">Cargando tu progreso…</p>
+      </div>
+    </div>
+
+    <div class="subpanel" id="subpanel-estadisticas">
+      <div class="form-card" id="estadisticasCuentaCont">
+        <p class="sesiones-vacio">Cargando…</p>
       </div>
     </div>
 
@@ -1576,6 +1682,7 @@
         <button data-subtab="responsabilidades" id="subtabFuncResponsabilidades_btn"><span class="func-nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span><span class="func-nav-txt">Responsabilidades</span></button>
         <button data-subtab="redesSociales" id="subtabRedesSociales_btn"><span class="func-nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg></span><span class="func-nav-txt">Redes sociales</span></button>
         <button data-subtab="historial" id="subtabFuncHistorial_btn"><span class="func-nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><span class="func-nav-txt">Historial</span></button>
+        <button data-subtab="reuniones" id="subtabFuncReuniones_btn"><span class="func-nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/></svg></span><span class="func-nav-txt">Reuniones</span></button>
         </div>
       </div>
     </div>
@@ -1637,7 +1744,7 @@
 
     <!-- ANUNCIOS POR CORREO: mensajes puntuales a colaboradores y lectores (solo admins) -->
     <div class="subpanel" id="subpanel-anuncios">
-      <header class="func-head"><span class="func-head-ico celeste"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11v2a1 1 0 001 1h2l5 4V6L6 10H4a1 1 0 00-1 1z"/><path d="M15.5 8.5a5 5 0 010 7M18.5 5.5a9 9 0 010 13"/></svg></span><div class="func-head-txt"><h3>Anuncios por correo</h3><p>Escribe un mensaje y elige a quién llega: grupos enteros o personas concretas. Cada persona recibe su propio correo; nadie ve las direcciones de los demás.</p></div></header>
+      <header class="func-head"><span class="func-head-ico celeste"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11v2a1 1 0 001 1h2l5 4V6L6 10H4a1 1 0 00-1 1z"/><path d="M15.5 8.5a5 5 0 010 7M18.5 5.5a9 9 0 010 13"/></svg></span><div class="func-head-txt"><h3>Anuncios por correo</h3><p>Escribe un mensaje y elige a quién llega: roles, grupos de trabajo o personas concretas. Cada persona recibe su propio correo; nadie ve las direcciones de los demás.</p></div></header>
       <p id="anuncioAvisoConfig" class="an-aviso" style="display:none;">El envío de correo no está configurado en el servidor (falta RESEND_API_KEY). Puedes redactar, pero no enviar.</p>
 
       <div class="an-layout">
@@ -1658,8 +1765,8 @@
 
           <!-- 2 · DESTINATARIOS -->
           <section class="an-card">
-            <header class="an-card-cab"><span class="an-paso">2</span><div><h4>Destinatarios</h4><p>Marca un grupo entero o pulsa <b>Elegir</b> para seleccionar personas una a una.</p></div>
-              <div class="an-presets"><button type="button" class="an-preset" data-preset="equipo">Todo el equipo</button><button type="button" class="an-preset an-preset-limpiar" data-preset="limpiar">Limpiar</button></div>
+            <header class="an-card-cab"><span class="an-paso">2</span><div><h4>Destinatarios</h4><p>Marca un grupo entero (de rol o <b>de trabajo</b>) o pulsa <b>Elegir</b> para seleccionar personas una a una.</p></div>
+              <div class="an-presets"><button type="button" class="an-preset" data-preset="equipo">Todo el equipo</button><button type="button" class="an-preset" data-preset="grupos" hidden>Grupos de trabajo</button><button type="button" class="an-preset an-preset-limpiar" data-preset="limpiar">Limpiar</button></div>
             </header>
             <div id="anuncioGrupos" class="an-grupos"><p class="an-vacio">Cargando personas…</p></div>
             <p class="an-nota">Los suscriptores del boletín han pedido recibir correos y llevan enlace de baja. A los lectores con cuenta, mándales solo avisos del servicio (cambios en la web, cuentas, normas), no publicidad.</p>
@@ -1702,8 +1809,98 @@
     </div>
 
     <!-- HISTORIAL DE ACCIONES (solo admins) -->
-    <div class="subpanel" id="subpanel-historial">
-      <header class="func-head"><span class="func-head-ico ambar"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><div class="func-head-txt"><h3>Historial de acciones</h3><p>Registro de lo que hace cada persona del equipo: quién, qué acción, sobre qué y cuándo. Solo lo puede ver un administrador.</p></div></header>
+    <div class="subpanel" id="subpanel-reuniones">
+      <header class="func-head"><span class="func-head-ico celeste"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/></svg></span><div class="func-head-txt"><h3>Reuniones</h3><p>Convoca reuniones con el equipo: abre franjas, mira quién puede y cuándo, y confirma con enlace de videollamada. Se actualiza en vivo.</p></div><div class="func-head-acc"><span class="reun-vivo" title="Los datos se actualizan solos"><i aria-hidden="true"></i>En vivo</span></div></header>
+      <p id="reunAjEstado" class="an-aviso" style="display:none;"></p>
+      <nav class="reun-tabs" id="reunTabs" aria-label="Secciones de reuniones">
+        <button type="button" class="reun-tab activo" data-sec="agenda">Agenda</button>
+        <button type="button" class="reun-tab" data-sec="calendario">Calendario</button>
+        <button type="button" class="reun-tab" data-sec="reuniones">Reuniones <span class="reun-n" id="reunNReuniones">0</span></button>
+        <button type="button" class="reun-tab" data-sec="participantes">Participantes <span class="reun-n" id="reunNPersonas">0</span></button>
+        <button type="button" class="reun-tab" data-sec="ajustes">Ajustes</button>
+        <button type="button" class="an-btn an-btn-sec reun-actualizar" id="reunActualizar">Actualizar</button>
+      </nav>
+
+      <div class="reun-sec" data-sec="agenda">
+        <div id="reunAgenda"><p class="reun-vacio">Cargando agenda…</p></div>
+      </div>
+
+      <div class="reun-sec" data-sec="calendario" hidden>
+        <div class="reun-barra">
+          <div class="reun-nav">
+            <button type="button" class="an-btn an-btn-sec" id="reunPrev" aria-label="Semana anterior">‹</button>
+            <strong id="reunSemana"></strong>
+            <button type="button" class="an-btn an-btn-sec" id="reunNext" aria-label="Semana siguiente">›</button>
+            <button type="button" class="an-btn an-btn-sec" id="reunHoy">Hoy</button>
+          </div>
+          <div class="reun-herr" role="radiogroup" aria-label="Herramienta">
+            <button type="button" class="reun-h activo" data-herr="disponible" role="radio" aria-checked="true">Habilitar</button>
+            <button type="button" class="reun-h" data-herr="no_puc" role="radio" aria-checked="false">Bloquear</button>
+            <button type="button" class="reun-h" data-herr="buit" role="radio" aria-checked="false">Borrar</button>
+            <button type="button" class="reun-h" data-herr="respuestas" role="radio" aria-checked="false">Respuestas</button>
+            <button type="button" class="reun-h" data-herr="confirmar" role="radio" aria-checked="false">Confirmar reunión</button>
+          </div>
+        </div>
+        <div class="reun-extra"><button type="button" class="an-btn an-btn-sec" id="reunPlantilla">Plantilla de horarios</button><button type="button" class="an-btn an-btn-sec" id="reunInvitar">Copiar invitación</button></div>
+        <p class="reun-ayuda" id="reunAyudaHerr"></p>
+        <div class="reun-leyenda"><span class="reun-ley d"></span>Habilitada <span class="reun-ley n"></span>Bloqueada <span class="reun-ley c"></span>Reunión confirmada <em>El número es cuántas personas han marcado la franja.</em></div>
+        <div class="reun-grid-caja"><div id="reunGrid" class="reun-grid"></div></div>
+      </div>
+
+      <div class="reun-sec" data-sec="reuniones" hidden>
+        <div id="reunListaReuniones"></div>
+      </div>
+
+      <div class="reun-sec" data-sec="participantes" hidden>
+        <div id="reunListaPersonas"></div>
+      </div>
+
+      <dialog id="reunDlg" class="reun-dlg"><form method="dialog" id="reunDlgForm"></form></dialog>
+
+      <div class="reun-sec" data-sec="ajustes" hidden>
+      <div class="reun-aj-grid">
+        <section class="an-card">
+          <header class="an-card-cab"><div><h4>Calendario</h4><p>Lo que ven los participantes en la página de reuniones.</p></div></header>
+          <label class="reun-aj-check"><input type="checkbox" id="reunAjAbierto"><span>Calendario abierto a nuevas respuestas<small>Si lo cierras, nadie podrá marcar ni cambiar franjas; las reuniones ya confirmadas siguen igual.</small></span></label>
+          <label class="an-label" for="reunAjTitulo">Título de la página</label>
+          <input type="text" id="reunAjTitulo" class="an-input" maxlength="80" placeholder="Reuniones">
+          <label class="an-label" for="reunAjDescripcion">Texto de presentación</label>
+          <textarea id="reunAjDescripcion" class="an-input an-textarea" rows="5" maxlength="600"></textarea>
+        </section>
+
+        <section class="an-card" id="reunAjAvisosCaja">
+          <header class="an-card-cab"><div><h4>Avisos push</h4><p>Notificaciones a los Responsables y a los convocados a cada reunión. Cada aviso se envía una sola vez.</p></div></header>
+          <label class="reun-aj-check"><input type="checkbox" id="reunAjAvisosOn"><span>Enviar avisos de las reuniones<small>Si lo desactivas, no sale ninguna notificación (el resto del calendario sigue funcionando).</small></span></label>
+          <label class="an-label">Cuándo avisar <em>(hasta 4)</em></label>
+          <div class="reun-aj-fila" id="reunAjAvisos"></div>
+          <div class="reun-aj-fila" id="reunAjPresets"></div>
+          <div class="reun-aj-fila reun-aj-nuevo">
+            <input type="number" id="reunAjMinutos" class="an-input" min="0" max="180" step="1" placeholder="Minutos" aria-label="Minutos antes de la reunión">
+            <button type="button" class="an-btn an-btn-sec" id="reunAjAnadir">Añadir aviso</button>
+          </div>
+          <p id="reunAjTope" class="an-aviso" style="display:none;">Has llegado al máximo de 4 avisos por reunión. Quita uno para añadir otro.</p>
+        </section>
+
+        <section class="an-card">
+          <header class="an-card-cab"><div><h4>Correos a los convocados</h4><p>Correo con fecha, horario, asunto y enlace de la videollamada para cada persona convocada.</p></div></header>
+          <label class="reun-aj-check"><input type="checkbox" id="reunAjCorreos"><span>Enviar correos de las reuniones<small>Al confirmar una reunión se envía la convocatoria; si cambian el enlace o el asunto, un aviso de actualización; y si se cancela, un aviso de cancelación. Solo llega a quien tiene cuenta de colaborador con correo y no está en pausa. Si lo desactivas, sigues pudiendo enviarlos a mano con «Enviar por correo» en la Agenda.</small></span></label>
+        </section>
+
+        <section class="an-card">
+          <header class="an-card-cab"><div><h4>Regla de participación</h4><p>Cómo se reparten las personas entre reuniones.</p></div></header>
+          <label class="reun-aj-check"><input type="checkbox" id="reunAjUna"><span>Una reunión por persona<small>Si alguien ya tiene una reunión programada, sus otras reuniones quedan en pausa y no se le avisa de ellas. Vale la que se programó primero; no se borra nada y, si esa se cancela, las demás vuelven solas. Si lo desactivas, una persona puede estar en varias reuniones.</small></span></label>
+        </section>
+
+        <div class="reun-aj-acciones">
+          <button type="button" class="an-btn an-btn-pri" id="reunAjGuardar">Guardar ajustes</button>
+          <button type="button" class="an-btn an-btn-sec" id="reunAjRestablecer">Valores habituales</button>
+        </div>
+      </div>
+      </div>
+    </div>
+
+<div class="subpanel" id="subpanel-historial">
+      <header class="func-head"><span class="func-head-ico ambar"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><div class="func-head-txt"><h3>Historial de acciones</h3><p>Registro de lo que hace cada persona del equipo: quién, qué acción, sobre qué y cuándo. Solo lo puede ver un Responsable.</p></div></header>
       <div class="func-filtros">
         <div><label for="hist_q">Buscar</label><input type="text" id="hist_q" placeholder="Descripción o nombre..."></div>
         <div><label for="hist_usuario">Usuario</label><select id="hist_usuario"><option value="">— Todos —</option></select></div>
@@ -1778,7 +1975,7 @@
           <div class="info-cab-txt">
             <span class="info-eyebrow">Calendario editorial</span>
             <h4 class="info-titulo" id="infoHorarioTitulo">Horario de publicación</h4>
-            <p class="info-sub">Qué toca publicar cada día, en qué franja y quién se encarga. Pulsa una tarea para ver a las personas asignadas; un administrador puede editarlo todo.</p>
+            <p class="info-sub">Qué toca publicar cada día, en qué franja y quién se encarga. Pulsa una tarea para ver a las personas asignadas; un Responsable puede editarlo todo.</p>
           </div>
         </header>
         <div class="form-card cc-card-wrap">
@@ -1793,22 +1990,65 @@
           <div class="info-cab-txt">
             <span class="info-eyebrow">El medio</span>
             <h4 class="info-titulo" id="infoOrganigramaTitulo">Organigrama del medio</h4>
-            <p class="info-sub">Quién es quién en todo el medio (dirección, redacción, redes, fotografía, tienda, web…) y de quién depende cada persona; una casilla puede depender de varias a la vez. Pulsa una casilla para ver su detalle; un administrador puede configurarlo.</p>
+            <p class="info-sub">Quién es quién en todo el medio (dirección, redacción, redes, fotografía, tienda, web…) y de quién depende cada persona; una casilla puede depender de varias a la vez. Pulsa una casilla para ver su detalle; un Responsable puede configurarlo.</p>
           </div>
         </header>
         <div id="organigrama"></div>
       </section>
+
+      <section class="info-seccion" id="infoResponsables" aria-labelledby="infoResponsablesTitulo">
+        <header class="info-cab">
+          <span class="info-cab-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.8 6.8 19.6l1-5.8L3.5 9.7l5.9-.9z"/></svg></span>
+          <div class="info-cab-txt">
+            <span class="info-eyebrow">Quién se encarga de qué</span>
+            <h4 class="info-titulo" id="infoResponsablesTitulo">Responsables</h4>
+            <p class="info-sub">Las personas que gestionan el panel y la web, y la función o funciones de las que responde cada una (por ejemplo, «Responsable del Sitio Web y los Recursos Humanos»). Las funciones las asigna un Responsable desde aquí o desde Usuarios.</p>
+          </div>
+        </header>
+        <div id="responsablesEquipo"><p class="gt-vacio">Cargando Responsables…</p></div>
+      </section>
+
+      <section class="info-seccion" id="infoAreasSub" hidden aria-labelledby="infoAreasSubTitulo">
+        <header class="info-cab">
+          <span class="info-cab-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.8 6.8 19.6l1-5.8L3.5 9.7l5.9-.9z"/></svg></span>
+          <div class="info-cab-txt">
+            <span class="info-eyebrow">Cargos que no son grupos</span>
+            <h4 class="info-titulo" id="infoAreasSubTitulo">Sub-Responsables de áreas</h4>
+            <p class="info-sub">Personas que ayudan a un Responsable en un área concreta, como «Sub-Responsable de las acreditaciones». El de acreditaciones puede gestionar las solicitudes del formulario (revisarlas, aprobarlas o rechazarlas), pero no el PIN, el acceso, el formulario ni la importación. Los nombra un Responsable.</p>
+          </div>
+        </header>
+        <div id="areasSubResponsables"><p class="gt-vacio">Cargando áreas…</p></div>
+      </section>
+
+      <section class="info-seccion" id="infoGrupos" aria-labelledby="infoGruposTitulo">
+        <header class="info-cab">
+          <span class="info-cab-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><circle cx="17" cy="9.5" r="2.5"/><path d="M3 19c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5M15.5 14.2c3 0 5.5 1.8 5.5 4.8"/></svg></span>
+          <div class="info-cab-txt">
+            <span class="info-eyebrow">Para organizarnos</span>
+            <h4 class="info-titulo" id="infoGruposTitulo">Grupos de trabajo</h4>
+            <p class="info-sub">Con quién trabaja cada redactor y Responsable. Es solo una etiqueta para organizarse: no cambia el rol, el nivel ni lo que cada uno puede publicar. Los grupos y sus miembros los gestiona un Responsable.</p>
+          </div>
+        </header>
+        <div id="gruposTrabajo"><p class="gt-vacio">Cargando grupos de trabajo…</p></div>
+      </section>
     </div>
 
     <div class="subpanel resp" id="subpanel-responsabilidades">
-      <header class="func-head"><span class="func-head-ico violeta"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span><div class="func-head-txt"><h3>Responsabilidades específicas</h3><p>Las áreas de las que te ocupas directamente: la relación con los clubes y los fichajes de personas para el medio. Todo se guarda solo.</p></div><div class="resp-estado" id="respEstado" role="status" aria-live="polite"></div></header>
+      <header class="func-head"><span class="func-head-ico violeta"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span><div class="func-head-txt"><h3>Responsabilidades específicas</h3><p>Las cuatro áreas de las que te ocupas directamente: relaciones institucionales, recursos humanos, redacción y fotografía. Empieza por el Resumen para ver qué necesita tu atención. Todo se guarda solo.</p></div><div class="resp-estado" id="respEstado" role="status" aria-live="polite"></div></header>
 
       <div class="subtabs" id="subtabsResponsabilidades">
-        <button class="activo" data-subtab="respRelaciones">Relaciones institucionales</button>
+        <button class="activo" data-subtab="respResumen">Resumen</button>
+        <button data-subtab="respRelaciones">Relaciones institucionales</button>
         <button data-subtab="respRrhh">Recursos humanos</button>
+        <button data-subtab="respRedaccion">Redacción</button>
+        <button data-subtab="respFotografia">Fotografía</button>
       </div>
 
-      <div class="subpanel activo" id="subpanel-respRelaciones">
+      <div class="subpanel activo" id="subpanel-respResumen">
+        <div id="respResumen"><p class="solicitudes-vacio">Cargando el resumen…</p></div>
+      </div>
+
+      <div class="subpanel" id="subpanel-respRelaciones">
       <section class="info-seccion" id="respSecRelClubes" aria-labelledby="respSecRelClubesTitulo">
         <header class="info-cab">
           <span class="info-cab-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg></span>
@@ -1886,6 +2126,48 @@
           </div>
         </header>
         <div id="respRrhhFichajes"></div>
+      </section>
+      </div>
+
+      <div class="subpanel" id="subpanel-respRedaccion">
+      <section class="info-seccion" id="respSecRedaccion" aria-labelledby="respSecRedaccionTitulo">
+        <header class="info-cab">
+          <span class="info-cab-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg></span>
+          <div class="info-cab-txt">
+            <span class="info-eyebrow">Redacción</span>
+            <h4 class="info-titulo" id="respSecRedaccionTitulo">Niveles de los redactores</h4>
+            <p class="info-sub">Quién ya cumple los requisitos del siguiente nivel y espera tu decisión, y quién está más cerca. Cumplirlos no sube el nivel: lo decides tú.</p>
+          </div>
+        </header>
+        <div id="respNivRedaccion"><p class="solicitudes-vacio">Abre esta pestaña para cargar los niveles.</p></div>
+      </section>
+      </div>
+
+      <div class="subpanel" id="subpanel-respFotografia">
+      <section class="info-seccion" id="respSecFotografia" aria-labelledby="respSecFotografiaTitulo">
+        <header class="info-cab">
+          <span class="info-cab-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.6"/></svg></span>
+          <div class="info-cab-txt">
+            <span class="info-eyebrow">Fotografía</span>
+            <h4 class="info-titulo" id="respSecFotografiaTitulo">Fotógrafos acreditados por jornada</h4>
+            <p class="info-sub">Cada fotógrafo con la acreditación aprobada, su partido y su contacto, agrupados por fin de semana (de viernes a lunes). En cada tarjeta se ve a la vista si la galería del partido está publicada o no.</p>
+          </div>
+        </header>
+        <div class="rf-barra-acciones" id="respFotoBarra"></div>
+        <div class="rf-filtros" id="respFotoFiltros"></div>
+        <div id="respFotoLista"><p class="solicitudes-vacio">Abre esta pestaña para cargar los fotógrafos.</p></div>
+      </section>
+
+      <section class="info-seccion" id="respSecNivelesFoto" aria-labelledby="respSecNivelesFotoTitulo">
+        <header class="info-cab">
+          <span class="info-cab-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.7 5.5 6 .9-4.35 4.2 1 6-5.35-2.85L6.65 19.6l1-6L3.3 9.4l6-.9z"/></svg></span>
+          <div class="info-cab-txt">
+            <span class="info-eyebrow">Fotografía</span>
+            <h4 class="info-titulo" id="respSecNivelesFotoTitulo">Niveles de los fotógrafos</h4>
+            <p class="info-sub">Quién ya cumple las cifras para optar a F2 y quién está más cerca. El ascenso es una valoración global: tú decides.</p>
+          </div>
+        </header>
+        <div id="respNivFotografia"><p class="solicitudes-vacio">Abre esta pestaña para cargar los niveles.</p></div>
       </section>
       </div>
     </div>
@@ -2032,7 +2314,7 @@
               </span>
               <span class="opcion-visibilidad-texto">
                 <b>Privado</b>
-                <small>Solo lo ven los administradores en el panel</small>
+                <small>Solo lo ven los Responsables en el panel</small>
               </span>
             </button>
           </div>
@@ -2062,7 +2344,7 @@
             </div>
             <p>Arrastra aquí tus fotos y vídeos</p>
             <span>o haz clic para seleccionarlos — puedes subir varios a la vez, en la calidad original</span>
-            <input type="file" id="inputArchivos" multiple accept="image/*,video/*">
+            <input type="file" id="inputArchivos" multiple accept="image/*,video/*,.raw,.dng,.cr2,.cr3,.nef,.nrw,.arw,.srf,.sr2,.orf,.rw2,.raf,.pef,.srw,.3fr,.erf,.mrw,.kdc,.dcr">
           </div>
 
           <details class="guia-pesado" id="guiaPesado">
@@ -2105,7 +2387,9 @@
         <div class="carpetas-contenido" id="carpetasContenido"></div>
         <div class="barra-seleccion-media" id="barraSeleccionMedia" style="display:none;">
           <span class="barra-seleccion-texto" id="textoSeleccionMedia">0 seleccionados</span>
+          <span class="barra-seleccion-ayuda"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h5M4 4v5M20 4h-5M20 4v5M4 20h5M4 20v-5M20 20h-5M20 20v-5"/></svg>Arrastra con el ratón para marcar varias · <kbd>Ctrl</kbd> suma · <kbd>Esc</kbd> cancela</span>
           <button type="button" class="btn-secundari" id="btnSeleccionarTodoMedia">Seleccionar todo</button>
+          <button type="button" class="btn-primari" id="btnEditarSeleccionMedia" disabled>Editar seleccionados</button>
           <label for="moverASelectMedia" class="barra-seleccion-etiqueta">Mover a</label>
           <select id="moverASelectMedia"></select>
           <button type="button" class="btn-primari" id="btnMoverSeleccionMedia" disabled>Mover</button>
@@ -2151,7 +2435,7 @@
         <button type="button" class="usuarios-stat" data-rol="todos"><span class="usuarios-stat-num" id="statUsuTotal">0</span><span class="usuarios-stat-etq">Usuarios</span></button>
         <button type="button" class="usuarios-stat stat-redactor" data-rol="redactor"><span class="usuarios-stat-num" id="statUsuRedactores">0</span><span class="usuarios-stat-etq">Redactores</span></button>
         <button type="button" class="usuarios-stat stat-fotografo" data-rol="fotografo"><span class="usuarios-stat-num" id="statUsuFotografos">0</span><span class="usuarios-stat-etq">Fotógrafos</span></button>
-        <button type="button" class="usuarios-stat stat-admin" data-rol="admin"><span class="usuarios-stat-num" id="statUsuAdmins">0</span><span class="usuarios-stat-etq">Administradores</span></button>
+        <button type="button" class="usuarios-stat stat-admin" data-rol="admin"><span class="usuarios-stat-num" id="statUsuAdmins">0</span><span class="usuarios-stat-etq">Responsables</span></button>
         <button type="button" class="usuarios-stat stat-aviso" data-estado="sin_acceso"><span class="usuarios-stat-num" id="statUsuSinAcceso">0</span><span class="usuarios-stat-etq">Aún sin entrar</span></button>
         <button type="button" class="usuarios-stat stat-inactivo" data-estado="inactivos" title="Cuentas desactivadas y redactores que llevan 30 días o más sin publicar"><span class="usuarios-stat-num" id="statUsuInactivos">0</span><span class="usuarios-stat-etq">Inactivos</span></button>
       </div>
@@ -2185,7 +2469,7 @@
               <select id="nu_rol">
                 <option value="redactor">Redactor</option>
                 <option value="fotografo">Fotógrafo</option>
-                <option value="admin">Administrador</option>
+                <option value="admin">Responsable</option>
               </select>
             </div>
             <div>
@@ -2241,13 +2525,17 @@
             <option value="nivel">Orden: nivel (mayor primero)</option>
           </select>
         </div>
-        <div class="usuarios-toolbar-fila">
+        <div class="usuarios-filtro">
+          <span class="usuarios-fila-etq">Rol</span>
           <div class="usuarios-chips" id="usuariosChipsRol" role="group" aria-label="Filtrar por rol">
             <button type="button" class="activo" data-rol="todos">Todos <b>0</b></button>
             <button type="button" data-rol="redactor">Redactores <b>0</b></button>
             <button type="button" data-rol="fotografo">Fotógrafos <b>0</b></button>
-            <button type="button" data-rol="admin">Administradores <b>0</b></button>
+            <button type="button" data-rol="admin">Responsables <b>0</b></button>
           </div>
+        </div>
+        <div class="usuarios-filtro">
+          <span class="usuarios-fila-etq">Estado</span>
           <div class="usuarios-chips" id="usuariosChipsEstado" role="group" aria-label="Filtrar por estado">
             <button type="button" class="activo" data-estado="todos">Todos los estados</button>
             <button type="button" data-estado="activos">Activos <b>0</b></button>
@@ -2255,6 +2543,7 @@
             <button type="button" data-estado="sin_acceso">Aún sin entrar <b>0</b></button>
           </div>
         </div>
+        <div id="usuariosGruposBarra" class="gt-barra-wrap" hidden></div>
         <div class="usuarios-toolbar-pie">
           <span id="usuariosResultado" class="usuarios-resultado" aria-live="polite"></span>
           <button type="button" id="usuariosLimpiar" class="usuarios-limpiar" style="display:none;">Quitar filtros</button>
@@ -2266,18 +2555,24 @@
       </table>
     </div>
 
-    <!-- LECTORES: cuentas públicas registradas para comentar, solo lectura -->
+    <!-- LECTORES: cuentas públicas registradas para comentar; los Responsables pueden desactivarlas o eliminarlas -->
     <div class="subpanel" id="subpanel-lectores">
       <h3 class="titulo-subseccion" style="margin-top:0;">Lectores registrados</h3>
       <p class="ayuda-editor" style="margin:0 0 20px;">
-        Personas que se han creado una cuenta pública desde "Acceso" (modo Lector). Estas cuentas son independientes de las de colaboradores/administradores y se gestionan solas desde la web: aquí solo se pueden consultar.
+        Personas que se han creado una cuenta pública desde "Acceso" (modo Lector). Estas cuentas son independientes de las de colaboradores/Responsables y se gestionan solas desde la web (registro, verificación, contraseña). Desde aquí puedes buscarlas, desactivar o reactivar su acceso y eliminarlas.
       </p>
-      <div class="contador-usuarios" id="contadorLectores" style="display:none;">
-        <span class="contador-usuarios-numero" id="contadorLectoresNumero">0 / 0</span>
-        <span class="contador-usuarios-etiqueta">lectores con el correo verificado</span>
+      <div class="lectores-stats" id="lectoresStats">
+        <button type="button" class="lectores-stat activo" data-filtro="todos"><span class="lectores-stat-num" id="statLecTotal">0</span><span class="lectores-stat-etq">Lectores</span></button>
+        <button type="button" class="lectores-stat stat-ok" data-filtro="verificados"><span class="lectores-stat-num" id="statLecVerificados">0</span><span class="lectores-stat-etq">Verificados</span></button>
+        <button type="button" class="lectores-stat stat-aviso" data-filtro="sin_verificar"><span class="lectores-stat-num" id="statLecSinVerificar">0</span><span class="lectores-stat-etq">Sin verificar</span></button>
+        <button type="button" class="lectores-stat stat-inactivo" data-filtro="inactivos"><span class="lectores-stat-num" id="statLecInactivos">0</span><span class="lectores-stat-etq">Inactivos</span></button>
       </div>
-      <table class="lista">
-        <thead><tr><th>Nombre</th><th>Correo</th><th>Estado</th><th>Fecha de registro</th></tr></thead>
+      <div class="lectores-toolbar">
+        <input type="search" id="buscadorLectores" class="lectores-buscar" placeholder="Buscar por nombre o correo..." autocomplete="off">
+        <span class="lectores-resultado" id="resultadoLectores" role="status"></span>
+      </div>
+      <table class="lista tabla-lectores">
+        <thead><tr><th>Lector</th><th>Estado</th><th>Registro</th><th style="text-align:right;">Acciones</th></tr></thead>
         <tbody id="tablaLectores"></tbody>
       </table>
     </div>
@@ -2294,7 +2589,7 @@
     </div>
 
     <div class="subpanel activo" id="subpanel-solicitudesRecibidas">
-      <p class="ayuda-editor" style="margin:0 0 14px;">Solicitudes que otro colaborador te ha enviado (o, si eres administrador, todas las pendientes) para editar una noticia, crónica o resultado que no es suyo.</p>
+      <p class="ayuda-editor" style="margin:0 0 14px;">Solicitudes que otro colaborador te ha enviado (o, si eres Responsable, todas las pendientes) para editar una noticia, crónica o resultado que no es suyo.</p>
       <div id="listaSolicitudesRecibidas"><p class="solicitudes-vacio">Cargando...</p></div>
     </div>
 
@@ -2309,7 +2604,7 @@
         <span class="prop-hero-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.2 8.2-8 9-4.8-.8-8-4.5-8-9V6l8-3z"/><path d="M9 12l2.2 2.2L15.5 10"/></svg></span>
         <div class="prop-hero-txt">
           <h3>Propuestas de fichas de equipo</h3>
-          <p>Las envían los redactores de Nivel 1 y no se aplican hasta que un administrador (o un redactor de Nivel 4) las aprueba. Las fichas ya guardadas se gestionan en Funcionalidades &rsaquo; Equipos.</p>
+          <p>Las envían los redactores de Nivel 1 y no se aplican hasta que un Responsable (o un redactor de Nivel 4) las aprueba. Las fichas ya guardadas se gestionan en Funcionalidades &rsaquo; Equipos.</p>
         </div>
       </div>
 
@@ -2351,13 +2646,13 @@
           </p>
         </div>
         <div class="acred-hero-acciones">
-          <button type="button" class="acred-btn acred-btn-sec" onclick="abrirImportarAcreditaciones()">
+          <button type="button" id="acredBtnImportar" class="acred-btn acred-btn-sec" onclick="abrirImportarAcreditaciones()">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3m0 0L8 7m4-4l4 4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>Importar
           </button>
           <button type="button" class="acred-btn acred-btn-sec" onclick="exportarAcreditacionesCSV()">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>Descargar CSV
           </button>
-          <button type="button" class="acred-btn" onclick="abrirEditorFormularioAcreditacion()">
+          <button type="button" id="acredBtnPersonalizar" class="acred-btn" onclick="abrirEditorFormularioAcreditacion()">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>Personalizar formulario
           </button>
         </div>
@@ -2372,34 +2667,24 @@
         <button type="button" class="acred-stat est-cancelada" data-filtro="cancelada" onclick="filtrarAcreditaciones('cancelada')"><span class="acred-stat-num" id="acredNumCancelada">0</span><span class="acred-stat-et">Canceladas</span></button>
       </div>
       <p class="acred-aviso" id="acredAviso" hidden>Falta aplicar la migración <code>migracion_acreditaciones_v2.sql</code>: hasta entonces no se guarda la hora de «solicitada».</p>
+      <p class="acred-aviso-sub" id="acredAvisoSub" hidden>Gestionas las solicitudes como Sub-Responsable de las acreditaciones. El PIN, el acceso, el formulario, la importación y borrar solicitudes los gestiona un Responsable.</p>
       <div class="acred-envivo" id="acredEnVivo" role="status" aria-live="polite" hidden></div>
+      <div class="acred-control" id="acredControl" role="region" aria-label="Control de solicitudes sin pedir al club" hidden></div>
 
-      <div class="acred-modo" id="acredModo" role="radiogroup" aria-label="Cómo se accede al formulario">
+      <div class="acred-modo" id="acredModo" role="note">
         <div class="acred-modo-tit">Acceso al formulario</div>
         <div class="acred-modo-opciones">
-          <label class="acred-modo-op"><input type="radio" name="acredAcceso" value="pin" onchange="cambiarAccesoAcreditacion(this.value)"><span><strong>Con PIN</strong><small>Hay que introducir el PIN que tú compartes.</small></span></label>
-          <label class="acred-modo-op"><input type="radio" name="acredAcceso" value="login" onchange="cambiarAccesoAcreditacion(this.value)"><span><strong>Con login de colaborador</strong><small>Solo entra quien inicie sesión con su cuenta (admin, redactor o fotógrafo).</small></span></label>
-          <label class="acred-modo-op"><input type="radio" name="acredAcceso" value="solicitar" onchange="cambiarAccesoAcreditacion(this.value)"><span><strong>Solicitar (libre)</strong><small>Cualquiera con el enlace envía su solicitud, sin PIN ni cuenta.</small></span></label>
+          <div class="acred-modo-op activo"><span><strong>🔒 Solo con cuenta (redactores, desde el Nivel 2)</strong><small>Entran los Responsables, todos los fotógrafos y los redactores de Nivel 2 (Aprendiz) o superior. Sin cuenta, o con Nivel 1, el formulario queda cerrado. Ya no hay PIN ni acceso libre.</small></span></div>
         </div>
       </div>
 
-      <div class="acred-acceso">
+      <div class="acred-acceso" id="acredAccesoCajas">
         <div class="acred-caja">
           <div class="acred-caja-cab"><span class="acred-caja-icono"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 007.5.5l3-3a5 5 0 00-7-7l-1.7 1.7M14 11a5 5 0 00-7.5-.5l-3 3a5 5 0 007 7l1.7-1.7"/></svg></span><label for="acredEnlace">Enlace del formulario</label></div>
           <div class="acred-enlace-fila">
             <input type="text" id="acredEnlace" readonly>
             <button type="button" class="acred-btn" onclick="copiarEnlaceAcreditacion()">Copiar</button>
             <button type="button" class="acred-btn acred-btn-sec" onclick="window.open(document.getElementById('acredEnlace').value, '_blank', 'noopener')">Abrir</button>
-          </div>
-        </div>
-        <div class="acred-caja" id="acredCajaPin">
-          <div class="acred-caja-cab"><span class="acred-caja-icono"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg></span><label for="acredPin">PIN de acceso</label></div>
-          <p class="acred-caja-ayuda">El formulario lo pide siempre al entrar. Si lo cambias, el anterior deja de valer al momento.</p>
-          <div class="acred-enlace-fila">
-            <input type="text" id="acredPin" class="acred-pin" inputmode="numeric" maxlength="8" placeholder="Cargando...">
-            <button type="button" class="acred-btn" onclick="guardarPinAcreditacionPanel()">Guardar</button>
-            <button type="button" class="acred-btn acred-btn-sec" onclick="guardarPinAcreditacionPanel(true)">Generar</button>
-            <button type="button" class="acred-btn acred-btn-sec" onclick="copiarPinAcreditacion()">Copiar</button>
           </div>
         </div>
       </div>
@@ -2411,7 +2696,7 @@
           <button type="button" class="acred-buscador-x" id="acredBuscadorX" aria-label="Borrar búsqueda" onclick="limpiarBusquedaAcreditaciones()">×</button>
         </div>
         <select id="acredOrden" onchange="pintarAcreditaciones()" aria-label="Ordenar">
-          <option value="prioridad">Prioridad (abiertas y urgentes primero)</option>
+          <option value="prioridad">Prioridad (pendientes primero)</option>
           <option value="recientes">Más recientes primero</option>
           <option value="antiguas">Más antiguas primero</option>
           <option value="nombre">Nombre (A-Z)</option>
@@ -2430,6 +2715,21 @@
 
       <div id="formCustomVista" hidden></div>
     </div>
+  </div>
+
+  <!-- PAPELERA: borrado recuperable (ver js/papelera.js) -->
+  <div class="panel" id="panel-papelera">
+    <div class="pap-cabecera">
+      <h2 class="pap-titulo-pag">Papelera</h2>
+      <p class="pap-sub">Las noticias y los archivos que eliminas se guardan aquí <b><span id="papDias">30</span> días</b> por si te equivocas. Una noticia restaurada vuelve como <b>borrador</b>.</p>
+      <p class="pap-sub" id="papAvisoAdmin" hidden>Como Responsable ves lo que ha borrado todo el equipo.</p>
+    </div>
+    <div class="pap-filtros" id="papFiltros" role="group" aria-label="Filtrar por tipo">
+      <button type="button" class="activo" data-filtro="todos" aria-pressed="true">Todo <span class="pap-n">0</span></button>
+      <button type="button" data-filtro="articulo" aria-pressed="false">Noticias <span class="pap-n">0</span></button>
+      <button type="button" data-filtro="media" aria-pressed="false">Archivos <span class="pap-n">0</span></button>
+    </div>
+    <ul class="pap-lista" id="papLista"></ul>
   </div>
 
   <!-- FEEDBACK DE REVISORES (ver js/feedback-revision.js) -->
@@ -2464,9 +2764,11 @@
   <!-- VOTACIONES INTERNAS DEL EQUIPO -->
   <div class="panel" id="panel-podcast">
     <div class="pca-cab">
-      <div><h2>Podcast</h2><p>Episodios, entrevistas y clips que salen en /podcast.</p></div>
-      <button type="button" class="pca-btn pca-primario" data-act="nuevo">+ Nuevo</button>
+      <span class="pca-cab-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2.5" width="6" height="11" rx="3"/><path d="M5 10.5a7 7 0 0 0 14 0M12 17.5v4M8.5 21.5h7"/></svg></span>
+      <div class="pca-cab-txt"><h2>Podcast</h2><p>Episodios, entrevistas y clips que salen en /podcast.</p></div>
+      <button type="button" class="pca-btn pca-primario pca-btn-nuevo" data-act="nuevo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Nuevo</button>
     </div>
+    <div id="pcAdminResumen" class="pca-resumen" hidden></div>
     <div id="pcAdminForm" hidden></div>
     <div id="pcAdminLista"><p class="pca-vacio">Cargando…</p></div>
   </div>
@@ -2533,7 +2835,7 @@
             <label><input type="radio" name="votVis" value="siempre"><span>Siempre</span></label>
             <label><input type="radio" name="votVis" value="al_cerrar"><span>Al cerrar</span></label>
           </div>
-          <p class="vot-ayuda-mini" id="votAyudaVis">Los administradores ven siempre los resultados, salvo en «Al cerrar».</p>
+          <p class="vot-ayuda-mini" id="votAyudaVis">Los Responsables ven siempre los resultados, salvo en «Al cerrar».</p>
 
           <label class="vot-label" for="votCierraEn">Fecha límite <span class="vot-opcional">(opcional)</span></label>
           <input type="datetime-local" id="votCierraEn">
@@ -2649,7 +2951,7 @@
     </div>
   </div>
 
-  <!-- ANALÍTICAS (solo administradores).
+  <!-- ANALÍTICAS (solo Responsables).
        Antes era una página aparte (panel-analiticas.html) que se recargaba entera
        cada vez que se entraba. Ahora es una pestaña más: el marcado vive aquí, el
        JS (admin/js/analiticas-panel.js) se carga UNA vez al abrirla por primera vez
@@ -3540,80 +3842,7 @@
   </div>
 </div>
 
-<!-- Editar equipos de un usuario (solo admins, desde la tabla de Usuarios) -->
-
-<div class="modal-overlay" id="modalEquiposUsuario">
-  <div class="modal-caja" role="dialog" aria-modal="true" aria-labelledby="modalEquiposUsuarioTitulo">
-    <button type="button" class="modal-cerrar" onclick="cerrarModalEquiposUsuario()" aria-label="Cerrar">&times;</button>
-    <h3 class="titulo-subseccion" id="modalEquiposUsuarioTitulo">Equipo y categoría de <span id="equiposUsuarioNombre"></span></h3>
-    <input type="hidden" id="equiposUsuarioId">
-    <label for="equiposUsuarioCategoriaFijaBuscador">Categoría complementaria</label>
-    <p class="ayuda-editor" style="margin:0 0 8px;">Opcional. Añade una categoría (p. ej. "Arbitraje" o "Jurisdicción deportiva") como complemento de sus equipos. No limita lo que puede publicar.</p>
-    <div class="equipos-picker" id="equiposUsuario_categoria_fija_picker">
-      <div class="equipos-picker-cabecera">
-        <span class="equipos-picker-contador" id="equiposUsuarioCategoriaFijaContador">0 seleccionadas</span>
-      </div>
-      <input type="text" class="equipos-picker-buscador" id="equiposUsuarioCategoriaFijaBuscador" placeholder="Buscar categoría…">
-      <div class="equipos-picker-lista" id="equiposUsuarioCategoriaFijaLista"></div>
-      <p class="equipos-picker-ayuda" id="equiposUsuarioCategoriaFijaAyuda">Puedes dejarlo sin especificar.</p>
-    </div>
-    <div id="equiposUsuario_equipo_bloque" style="margin-top:14px;">
-      <label for="equiposUsuarioBuscador">Equipos</label>
-      <p class="ayuda-editor" style="margin:0 0 10px;">Opcional. Puedes dejarlo sin especificar o elegir hasta 3 equipos.</p>
-      <div class="equipos-picker" id="equiposUsuarioPicker">
-        <div class="equipos-picker-cabecera">
-          <span class="equipos-picker-contador" id="equiposUsuarioContador">0 seleccionados</span>
-        </div>
-        <input type="text" class="equipos-picker-buscador" id="equiposUsuarioBuscador" placeholder="Buscar equipo…">
-        <div class="equipos-picker-lista" id="equiposUsuarioLista"></div>
-        <p class="equipos-picker-ayuda" id="equiposUsuarioAyuda">Puedes elegir hasta 3 equipos (o ninguno).</p>
-      </div>
-    </div>
-    <p id="msgOkEquiposUsuario" class="modal-msg modal-msg-ok" role="status" style="display:none;">Guardado correctamente.</p>
-    <p id="errEquiposUsuario" class="modal-msg modal-msg-err" role="alert" style="display:none;"></p>
-    <div class="modal-acciones">
-      <button type="button" class="btn-primari" id="btnGuardarEquiposUsuario">Guardar</button>
-      <button type="button" class="btn-secundari" onclick="cerrarModalEquiposUsuario()">Cancelar</button>
-    </div>
-  </div>
-</div>
-
-<!-- Nivel del colaborador (tabla de Usuarios, solo admins) -->
-<div class="modal-overlay" id="modalNivelUsuario">
-  <div class="modal-caja" role="dialog" aria-modal="true" aria-labelledby="modalNivelUsuarioTitulo">
-    <button type="button" class="modal-cerrar" onclick="cerrarModalNivelUsuario()" aria-label="Cerrar">&times;</button>
-    <h3 class="titulo-subseccion" id="modalNivelUsuarioTitulo">Nivel de <span id="nivelUsuarioNombre"></span></h3>
-    <input type="hidden" id="nivelUsuarioId">
-
-    <div id="nivelUsuarioProgreso" style="margin-bottom:16px;">
-      <p class="sesiones-vacio">Cargando…</p>
-    </div>
-
-    <label for="nu_nivel_select">Nivel</label>
-    <select id="nu_nivel_select">
-      <option value="1">🟢 Nivel 1 — Principiante</option>
-      <option value="2">🔵 Nivel 2 — Aprendiz</option>
-      <option value="3">🟣 Nivel 3 — Maestro</option>
-      <option value="4">🟠 Nivel 4 — Experto</option>
-    </select>
-    <p class="ayuda-editor" id="nuAyudaNivel" style="margin:6px 0 0;">Cumplir las cifras mínimas no sube el nivel solo: valora también la calidad del trabajo, la puntualidad y el cumplimiento de las normas antes de decidir el ascenso.</p>
-
-    <label for="nu_nivel_nota">Nota (opcional)</label>
-    <textarea id="nu_nivel_nota" rows="3" maxlength="500" placeholder="Motivo del cambio, algo a mejorar, por qué todavía no sube aunque cumpla las cifras, etc."></textarea>
-
-    <p id="msgOkNivelUsuario" class="modal-msg modal-msg-ok" role="status" style="display:none;">Guardado correctamente.</p>
-    <p id="errNivelUsuario" class="modal-msg modal-msg-err" role="alert" style="display:none;"></p>
-    <div class="modal-acciones modal-acciones-simple">
-      <button type="button" class="btn-primari" id="btnGuardarNivelUsuario">Guardar nivel</button>
-      <button type="button" class="btn-secundari" onclick="cerrarModalNivelUsuario()">Cancelar</button>
-    </div>
-
-    <h3 class="titulo-subseccion" style="margin-top:22px;">Historial de niveles</h3>
-    <div id="nivelUsuarioHistorial" class="lista-sesiones">
-      <p class="sesiones-vacio">—</p>
-    </div>
-  </div>
-</div>
+<!-- Equipo, categoría y nivel de un colaborador: ahora van en el modal «Gestionar colaborador» (cargos-equipo.js) -->
 
 <!-- Detalle de los avisos de inactividad de un redactor (tabla de Usuarios, solo admins) -->
 <div class="modal-overlay" id="modalAvisosUsuario">
@@ -3718,7 +3947,7 @@
           </span>
           <span class="opcion-visibilidad-texto">
             <b>Privado</b>
-            <small>Solo lo ven los administradores en el panel</small>
+            <small>Solo lo ven los Responsables en el panel</small>
           </span>
         </button>
       </div>
@@ -3760,6 +3989,71 @@
       <div class="modal-acciones">
         <button type="submit" class="btn-primari">Guardar cambios</button>
         <button type="button" class="btn-secundari" onclick="cerrarModalEditarMedia()">Cancelar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Editar varios archivos a la vez ("Ver contenido subido" > Seleccionar > Editar seleccionados). Lógica en admin-src/27-edicion-en-lote-de-contenido.js -->
+<div class="modal-overlay" id="modalEditarLoteMedia">
+  <div class="modal-caja modal-caja-editar-lote" role="dialog" aria-modal="true" aria-labelledby="modalEditarLoteMediaTitulo">
+    <button type="button" class="modal-cerrar" id="btnCerrarEditarLoteMedia" aria-label="Cerrar">&times;</button>
+    <h3 class="titulo-subseccion" id="modalEditarLoteMediaTitulo">Editar varios archivos</h3>
+    <form id="formEditarLoteMedia" novalidate>
+      <div class="el-cuerpo">
+        <div class="el-resumen" id="el_resumen"></div>
+        <p class="ayuda-editor el-ayuda-general">Marca solo lo que quieras cambiar: lo que dejes sin marcar se queda como está en cada archivo.</p>
+
+        <fieldset class="el-campo" id="el_campo_titulo" disabled>
+          <legend><label class="el-chk"><input type="checkbox" id="el_chk_titulo" data-campo="titulo"> Título</label></legend>
+          <input type="text" id="el_titulo" maxlength="190" placeholder="Mismo título para todos">
+          <label class="el-chk el-chk-sub"><input type="checkbox" id="el_numerar"> Numerarlos (Título 1, Título 2…), en el orden en que aparecen</label>
+        </fieldset>
+
+        <fieldset class="el-campo" id="el_campo_descripcion" disabled>
+          <legend><label class="el-chk"><input type="checkbox" id="el_chk_descripcion" data-campo="descripcion"> Descripción</label></legend>
+          <textarea id="el_descripcion" placeholder="Misma descripción para todos. Déjala vacía para borrarla de todos."></textarea>
+        </fieldset>
+
+        <fieldset class="el-campo" id="el_campo_partido" disabled>
+          <legend><label class="el-chk"><input type="checkbox" id="el_chk_partido" data-campo="partido"> Partido</label></legend>
+          <div class="autocompletar-resultado" id="el_partidoWrap" style="position:relative;">
+            <input type="text" id="el_partido_buscador" placeholder="Escribe un equipo, competición o jornada…" autocomplete="off">
+            <div id="el_partido_sugerencias" class="autocompletar-resultado-lista" style="display:none;"></div>
+          </div>
+          <input type="hidden" id="el_partido">
+          <p class="ayuda-editor">Si eliges un partido, todos se añaden (o se mueven) a su galería pública. Si lo dejas vacío, se quitan de la galería de su partido.</p>
+          <div id="el_equipoWrap" style="display:none;">
+            <label for="el_equipo">¿De qué equipo son? (opcional)</label>
+            <select id="el_equipo"><option value="">— Fotos/vídeos generales del partido —</option></select>
+          </div>
+        </fieldset>
+
+        <fieldset class="el-campo" id="el_campo_club" disabled>
+          <legend><label class="el-chk"><input type="checkbox" id="el_chk_club" data-campo="club"> Club</label></legend>
+          <select id="el_club"><option value="">— Quitar el club —</option></select>
+          <p class="ayuda-editor" id="el_ayudaClub">No se aplica a los archivos que vincules a un partido (su equipo se deduce del partido).</p>
+        </fieldset>
+
+        <fieldset class="el-campo" id="el_campo_visibilidad" disabled>
+          <legend><label class="el-chk"><input type="checkbox" id="el_chk_visibilidad" data-campo="visibilidad"> Visibilidad</label></legend>
+          <select id="el_visibilidad">
+            <option value="publico">Público · aparece en la galería del sitio</option>
+            <option value="privado">Privado · solo lo ven los Responsables</option>
+          </select>
+          <p class="ayuda-editor">Al pasar a público, los archivos salen de su carpeta.</p>
+        </fieldset>
+
+        <fieldset class="el-campo" id="el_campo_carpeta" disabled>
+          <legend><label class="el-chk"><input type="checkbox" id="el_chk_carpeta" data-campo="carpeta"> Carpeta</label></legend>
+          <select id="el_carpeta"><option value="">— Sin carpeta —</option></select>
+          <p class="ayuda-editor">Solo se aplica al contenido privado: los archivos públicos no tienen carpeta.</p>
+        </fieldset>
+      </div>
+      <p id="errEditarLoteMedia" class="el-error" role="alert"></p>
+      <div class="modal-acciones">
+        <button type="submit" class="btn-primari" id="btnGuardarEditarLoteMedia">Aplicar cambios</button>
+        <button type="button" class="btn-secundari" id="btnCancelarEditarLoteMedia">Cancelar</button>
       </div>
     </form>
   </div>
@@ -3835,7 +4129,7 @@
     <div class="pin-modal-icono" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></div>
     <h3 class="titulo-subseccion" id="modalPinUltimaHoraTitulo">Última hora</h3>
     <p class="ayuda-editor" style="margin:0;">
-      Como redactor, tus noticias se guardan como borrador hasta que las revise un administrador. Si es urgente, introduce tu PIN de 4 dígitos de "Última hora" para publicarla directamente y activar el banner de última hora.
+      Como redactor, tus noticias se guardan como borrador hasta que las revise un Responsable. Si es urgente, introduce tu PIN de 4 dígitos de "Última hora" para publicarla directamente y activar el banner de última hora.
     </p>
     <!-- Antes esto estaba envuelto en un <form> para que Chrome dejara de
          avisar "Password field is not contained in a form". Se revirtió:
@@ -3887,7 +4181,7 @@
     <button type="button" class="modal-cerrar" onclick="cerrarModalSolicitarEdicion()" aria-label="Cerrar">&times;</button>
     <h3 class="titulo-subseccion" id="modalSolicitarEdicionTitulo">Solicitar edición</h3>
     <p class="ayuda-editor" style="margin:0 0 10px;">
-      Esto no es tuyo. Se enviará una solicitud al autor original y a los administradores; en cuanto la aprueben, podrás editarlo durante un tiempo limitado.
+      Esto no es tuyo. Se enviará una solicitud al autor original y a los Responsables; en cuanto la aprueben, podrás editarlo durante un tiempo limitado.
     </p>
     <input type="hidden" id="se_tipo">
     <input type="hidden" id="se_id">
@@ -4131,9 +4425,10 @@
   </div>
 </div>
 
-<!-- Modal editor de alineación: campo de fútbol donde se arrastran los
-     jugadores a su posición. Un único formulario físico, reutilizado
-     tanto desde el editor de noticias como desde el de resultados (ver
+<!-- Modal editor de alineación: lista de once titulares a la izquierda y
+     campo en vivo a la derecha (se puede arrastrar a cada jugador para
+     afinar su posición). Un único formulario físico, reutilizado tanto
+     desde el editor de noticias como desde el de resultados (ver
      abrirEditorAlineacion() en admin.js). -->
 <div class="modal-overlay" id="modalAlineacion">
   <div class="modal-caja modal-caja-alineacion" role="dialog" aria-modal="true" aria-labelledby="alineacionModalTitulo">
@@ -4142,78 +4437,74 @@
     <input type="hidden" id="al_id">
     <input type="hidden" id="al_article_id">
     <input type="hidden" id="al_result_id">
+    <input type="hidden" id="al_formacion" value="4-3-3">
 
-    <div class="row3">
-      <div>
-        <label>Equipo *</label>
-        <div id="al_equipo_picker" class="team-picker"></div>
-        <div id="al_equipo_otro_wrap" class="equipo-otro-wrap" style="display:none">
-          <input type="text" id="al_equipo_otro_nombre" placeholder="Nombre del equipo">
+    <div class="al-layout">
+      <div class="al-col-form">
+        <div class="al-bloque">
+          <label>Equipo *</label>
+          <div id="al_equipo_picker" class="team-picker"></div>
+          <div id="al_equipo_otro_wrap" class="equipo-otro-wrap" style="display:none">
+            <input type="text" id="al_equipo_otro_nombre" placeholder="Nombre del equipo">
+          </div>
+        </div>
+
+        <div class="al-bloque">
+          <label>Formación</label>
+          <div class="al-formaciones" id="alFormaciones" role="group" aria-label="Formación"></div>
+        </div>
+
+        <!-- Últimas alineaciones guardadas de este equipo (hasta 3) para
+             copiar el once entero de un clic. Se rellena al elegir equipo
+             (ver cargarUltimasAlineacionesEquipo()). Oculto si no hay. -->
+        <div id="al_ultimas_wrap" class="alineacion-ultimas-wrap" style="display:none">
+          <label>Copiar de un partido anterior</label>
+          <div id="al_ultimas_lista" class="alineacion-ultimas-lista"></div>
+        </div>
+
+        <div class="al-bloque">
+          <div class="al-bloque-cab">
+            <label>Once titular</label>
+            <button type="button" class="al-enlace" id="btnPegarListaAlineacion">Pegar lista</button>
+          </div>
+          <div class="al-pegar" id="alPegarWrap" style="display:none">
+            <textarea id="alPegarTexto" rows="6" placeholder="Una línea por jugador, por ejemplo:&#10;1 Álex Remiro&#10;2 Aihen Muñoz&#10;...&#10;Suplentes&#10;13 Unai Marrero"></textarea>
+            <p class="ayuda-editor">Los once primeros pasan a titulares, en el orden del campo (portero primero). Escribe «Suplentes» en una línea para empezar el banquillo. Añade (C) al capitán.</p>
+            <div class="al-pegar-acciones">
+              <button type="button" class="btn-primari" id="btnAplicarListaAlineacion">Rellenar</button>
+              <button type="button" class="btn-secundari" id="btnCancelarListaAlineacion">Cancelar</button>
+            </div>
+          </div>
+          <div id="alTitularesLista" class="al-titulares"></div>
+        </div>
+
+        <div class="al-bloque alineacion-editor-suplentes">
+          <label>Suplentes (opcional)</label>
+          <div id="alineacionEditorSuplentesLista"></div>
+          <button type="button" class="btn-secundari" id="btnAnadirSuplenteAlineacion">+ Añadir suplente</button>
         </div>
       </div>
-      <div>
-        <label for="al_formacion">Formación</label>
-        <select id="al_formacion">
-          <option value="4-3-3">4-3-3</option>
-          <option value="4-4-2">4-4-2</option>
-          <option value="4-2-3-1">4-2-3-1</option>
-          <option value="4-5-1">4-5-1</option>
-          <option value="3-4-3">3-4-3</option>
-          <option value="3-5-2">3-5-2</option>
-          <option value="5-3-2">5-3-2</option>
-          <option value="5-4-1">5-4-1</option>
-        </select>
-      </div>
-    </div>
-    <p class="ayuda-editor">Elige la formación para colocar automáticamente al once titular; después puedes arrastrar cada jugador para ajustar su posición exacta. Haz clic en un jugador para escribir su dorsal y nombre.</p>
 
-    <!-- Últimas alineaciones guardadas de este equipo (hasta 3, de sus
-         partidos finalizados más recientes), para copiar el once entero
-         de un plumazo en vez de escribirlo de nuevo. Se rellena al
-         elegir equipo -ver cargarUltimasAlineacionesEquipo() en
-         admin.js-. Oculto si el equipo no tiene alineaciones previas. -->
-    <div id="al_ultimas_wrap" class="alineacion-ultimas-wrap" style="display:none">
-      <label>Copiar de un partido anterior</label>
-      <div id="al_ultimas_lista" class="alineacion-ultimas-lista"></div>
-    </div>
-
-    <div class="alineacion-editor-campo-wrap">
-      <div class="alineacion-editor-campo" id="alineacionEditorCampo">
-        <div class="alineacion-campo-lineas"></div>
-        <div class="area-pequena-arriba"></div>
-        <div class="area-pequena-abajo"></div>
-        <div class="punto-penalti-arriba"></div>
-        <div class="punto-penalti-abajo"></div>
-        <div class="semicirculo-area-arriba"></div>
-        <div class="semicirculo-area-abajo"></div>
-        <div class="corner-arco corner-arco--tl"></div>
-        <div class="corner-arco corner-arco--tr"></div>
-        <div class="corner-arco corner-arco--bl"></div>
-        <div class="corner-arco corner-arco--br"></div>
-      </div>
-    </div>
-
-    <div class="alineacion-editor-jugador-datos" id="alineacionEditorDatos" style="display:none">
-      <p class="alineacion-editor-jugador-titulo" id="alineacionEditorDatosTitulo">Jugador</p>
-      <div class="row2">
-        <div>
-          <label>Dorsal</label>
-          <input type="text" id="al_jug_dorsal" inputmode="numeric" placeholder="Ej. 9">
-        </div>
-        <div>
-          <label>Nombre *</label>
-          <input type="text" id="al_jug_nombre" placeholder="Nombre del jugador">
+      <div class="al-col-campo">
+        <div class="al-campo-sticky">
+          <div class="alineacion-editor-campo-wrap">
+            <div class="alineacion-editor-campo" id="alineacionEditorCampo">
+              <div class="alineacion-campo-lineas"></div>
+              <div class="area-pequena-arriba"></div>
+              <div class="area-pequena-abajo"></div>
+              <div class="punto-penalti-arriba"></div>
+              <div class="punto-penalti-abajo"></div>
+              <div class="semicirculo-area-arriba"></div>
+              <div class="semicirculo-area-abajo"></div>
+              <div class="corner-arco corner-arco--tl"></div>
+              <div class="corner-arco corner-arco--tr"></div>
+              <div class="corner-arco corner-arco--bl"></div>
+              <div class="corner-arco corner-arco--br"></div>
+            </div>
+          </div>
+          <p class="al-campo-ayuda">Vista previa en vivo. Arrastra a un jugador para afinar su posición.</p>
         </div>
       </div>
-      <label class="al-jug-capitan-label">
-        <input type="checkbox" id="al_jug_capitan"> Capitán del equipo
-      </label>
-    </div>
-
-    <div class="alineacion-editor-suplentes">
-      <label>Suplentes (opcional)</label>
-      <div id="alineacionEditorSuplentesLista"></div>
-      <button type="button" class="btn-secundari" id="btnAnadirSuplenteAlineacion">+ Añadir suplente</button>
     </div>
 
     <p class="msg-error-alineacion" id="msgErrorAlineacion" style="display:none"></p>
@@ -4230,44 +4521,59 @@
      abrirPanelMinutoAMinuto). Vacío por defecto. -->
 <div id="panelMinutoAMinuto"></div>
 
-<script src="/js/foco.js?v=1"></script>
-<script src="/js/ui-alertas.js?v=6"></script>
-<script src="/js/visor-media.js?v=7"></script>
-<script src="/js/vendor/purify.min.js?v=1"></script>
-<script src="/js/config.js?v=36"></script>
-<script src="/js/clubs.js?v=8"></script>
-<script src="/js/clubs-redes.js?v=3"></script>
-<script src="/js/corrector-formato.js?v=1"></script>
-<script src="/admin/js/foco-selector.js?v=2"></script>
+<script src="/js/foco.js?v=133ef790"></script>
+<script src="/js/ui-alertas.js?v=4339c846"></script>
+<script src="/js/visor-media.js?v=1ba00c78"></script>
+<script src="/js/vendor/purify.min.js?v=fc42f9bf"></script>
+<script src="/js/config.js?v=8002da47"></script>
+<script src="/js/clubs.js?v=cdbd504a"></script>
+<script src="/js/clubs-redes.js?v=9dc630c0"></script>
+<script src="/js/corrector-formato.js?v=f2d089f6"></script>
+<script src="/admin/js/foco-selector.js?v=2481f2ab"></script>
 <script src="/js/vendor/qrcode.js"></script>
-<script src="/admin/js/admin.js?v=193"></script>
-<script src="/admin/js/formularios-resumen.js?v=2"></script>
-<script src="/admin/js/modales-partido.js?v=7"></script>
-<script src="/admin/js/menu-lateral.js?v=9"></script>
-<script src="/admin/js/func-nav.js?v=1"></script>
-<script src="/admin/js/movil-app.js?v=2" defer></script>
-<script src="/admin/js/movil-app-pro.js?v=1" defer></script>
-<script src="/admin/js/selector-fecha-modal.js?v=1"></script>
-<script src="/admin/js/dropzone-global.js?v=1"></script>
-<script src="/admin/js/minuto-a-minuto.js?v=18"></script>
-<script src="/admin/js/importacion-rapida.js?v=3"></script>
-<script src="/admin/js/importacion-rapida-eventos.js?v=2"></script>
-<script src="/admin/js/apellidos-obligatorios.js?v=4"></script>
-<script src="/admin/js/tutorial.js?v=7"></script>
-<script src="/admin/js/primera-tarea.js?v=1"></script>
-<script src="/admin/js/nueva-noticia-ui.js?v=2"></script>
-<script src="/admin/js/votaciones.js?v=4"></script>
-<script src="/admin/js/podcast-admin.js?v=1"></script>
-<script src="/admin/js/feedback-revision.js?v=3"></script>
-<script src="/admin/js/calendario-contenido.js?v=4"></script>
-<script src="/admin/js/organigrama.js?v=9"></script>
-<script src="/admin/js/responsabilidades-plantillas.js?v=2"></script>
-<script src="/admin/js/responsabilidades.js?v=10"></script>
-<script src="/admin/js/jugadores-admin.js?v=3"></script>
-<script src="/admin/js/resumen-mensual.js?v=6"></script>
-<script src="/admin/js/avisos-entrada.js?v=6"></script>
-<script src="/admin/js/racha-celebracion.js?v=3"></script>
-<script src="/admin/js/ruta-bienvenida.js?v=1"></script>
-<script src="/admin/js/ubicacion-panel.js?v=1"></script>
+<script src="/admin/js/historial-versiones.js?v=f291777a"></script>
+<script src="/admin/js/copiar-campos-grok.js?v=4d978252"></script>
+<script src="/admin/js/admin.js?v=001197f6"></script>
+<script src="/admin/js/formularios-resumen.js?v=1e6f6a17"></script>
+<script src="/admin/js/modales-partido.js?v=4bb2cdbd"></script>
+<script src="/admin/js/menu-lateral.js?v=706ba7e1"></script>
+<script src="/admin/js/func-nav.js?v=8231f0fd"></script>
+<script src="/admin/js/vigilante-sesion.js?v=38d34395" defer></script>
+<script src="/admin/js/movil-app.js?v=a393d7a0" defer></script>
+<script src="/admin/js/movil-app-pro.js?v=c7f2990e" defer></script>
+<script src="/admin/js/selector-fecha-modal.js?v=c42480c2"></script>
+<script src="/admin/js/dropzone-global.js?v=190691b5"></script>
+<script src="/admin/js/minuto-a-minuto.js?v=4e03c6be"></script>
+<script src="/admin/js/importacion-rapida.js?v=5b5327b2"></script>
+<script src="/admin/js/importacion-rapida-eventos.js?v=ec682965"></script>
+<script src="/admin/js/apellidos-obligatorios.js?v=c005b71d"></script>
+<script src="/admin/js/tutorial.js?v=2fa71866"></script>
+<script src="/admin/js/primera-tarea.js?v=1f78e4e5"></script>
+<script src="/admin/js/nueva-noticia-ui.js?v=9d6da94b"></script>
+<script src="/admin/js/votaciones.js?v=20326437"></script>
+<script src="/admin/js/podcast-admin.js?v=62b50450"></script>
+<script src="/admin/js/feedback-revision.js?v=1a3733d1"></script>
+<script src="/admin/js/papelera.js?v=5a7902ac"></script>
+<script src="/admin/js/calendario-contenido.js?v=7be7bb14"></script>
+<script src="/admin/js/organigrama.js?v=7d3317f7"></script>
+<script src="/admin/js/grupos-trabajo.js?v=113e26a6"></script>
+<script src="/admin/js/subresponsables-areas.js?v=5d5c1371"></script>
+<script src="/admin/js/cargos-equipo.js?v=968687d0"></script>
+<script src="/admin/js/luto.js?v=ae568562"></script>
+<script src="/admin/js/responsabilidades-plantillas.js?v=3a010e39"></script>
+<script src="/admin/js/responsabilidades.js?v=ba9133e9"></script>
+<script src="/admin/js/responsabilidades-fotografia.js?v=4347db03"></script>
+<script src="/admin/js/responsabilidades-niveles.js?v=c3253dca"></script>
+<script src="/admin/js/responsabilidades-organizacion.js?v=e296065c"></script>
+<script src="/admin/js/jugadores-admin.js?v=ee24a746"></script>
+<script src="/admin/js/estadisticas-cuenta.js?v=0f83d608"></script>
+<script src="/admin/js/resumen-mensual.js?v=3a78b346"></script>
+<script src="/admin/js/inactividad-sesion.js?v=1756f0e2"></script>
+<script src="/admin/js/avisos-entrada.js?v=78708a3b"></script>
+<script src="/admin/js/inicio-personalizar.js?v=4595237b"></script>
+<script src="/admin/js/inicio-resumen.js?v=4b5757f2"></script>
+<script src="/admin/js/racha-celebracion.js?v=e621ebf8"></script>
+<script src="/admin/js/ruta-bienvenida.js?v=8a62f30b"></script>
+<script src="/admin/js/ubicacion-panel.js?v=d15bd818"></script>
 </body>
 </html>

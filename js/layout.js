@@ -1,305 +1,44 @@
-// Carga bajo demanda el antispam (Cloudflare Turnstile) para los formularios de
-// newsletter que viven en el pie/modal de todas las páginas.
-function eofCargarTurnstile() {
-  if (window.EOFTurnstile) return Promise.resolve();
-  if (window.__eofTurnstileCarga) return window.__eofTurnstileCarga;
-  window.__eofTurnstileCarga = new Promise((ok) => {
-    const sc = document.createElement("script");
-    sc.src = "/js/turnstile.js?v=2";
-    sc.async = true;
-    sc.onload = () => ok();
-    sc.onerror = () => ok(); // sin el script el servidor decidirá
-    document.head.appendChild(sc);
-  });
-  return window.__eofTurnstileCarga;
-}
-// Precalienta el captcha del formulario de newsletter al enfocarlo o cuando el
-// pie de página entra en pantalla, para no esperar al pulsar "Suscribirme".
-function eofPrecalentarNewsletter(form) {
-  if (!form || form.__eofPre) return;
-  form.__eofPre = true;
-  const arrancar = async () => {
-    await eofCargarTurnstile();
-    const cont = form.querySelector("[data-eof-turnstile]");
-    if (window.EOFTurnstile && cont) window.EOFTurnstile.precalentar(cont);
-  };
-  form.addEventListener("focusin", arrancar, { once: true });
-  if ("IntersectionObserver" in window) {
-    const io = new IntersectionObserver((es) => {
-      if (es.some((x) => x.isIntersecting)) { io.disconnect(); arrancar(); }
-    }, { rootMargin: "300px" });
-    io.observe(form);
-  }
-}
-async function eofTokenNewsletter(form) {
-  await eofCargarTurnstile();
-  const cont = form && form.querySelector("[data-eof-turnstile]");
-  if (!window.EOFTurnstile || !cont) return { cont, token: "", web: "" };
-  const token = await window.EOFTurnstile.esperarToken(cont);
-  return { cont, token, web: window.EOFTurnstile.trampa(cont) };
-}
-
-// Estructura de la barra de navegación. "enlace" = enlace suelto;
-// "grupo" = botón con desplegable al pasar el ratón por encima. Dentro
-// de un grupo, un item con clubes:true abre además una cascada lateral
-// con los clubes de esa competición (Ligas). Las "key" coinciden con
-// document.body.dataset.page para marcar la opción activa.
-const NAV_MENU = [
-  { tipo: "enlace", key: "inicio", label: "Portada", href: "" },
-  {
-    tipo: "grupo", id: "ligas", label: "Ligas",
-    items: [
-      { key: "hypermotion", label: "LaLiga Hypermotion", href: "categoria?cat=hypermotion", clubes: true },
-      { key: "primera_federacion", label: "Primera Federación", href: "categoria?cat=primera_federacion", clubes: true },
-      { key: "segunda_federacion", label: "Segunda Federación", href: "categoria?cat=segunda_federacion", clubes: true },
-      { key: "tercera_federacion", label: "Tercera Federación", href: "categoria?cat=tercera_federacion", clubes: true },
-    ],
-  },
-  {
-    tipo: "grupo", id: "campeonatos", label: "Campeonatos",
-    items: [
-      { key: "copa_del_rey", label: "Copa del Rey", href: "categoria?cat=copa_del_rey" },
-      { key: "copa_federacion", label: "Copa Federación", href: "categoria?cat=copa_federacion" },
-    ],
-  },
-  {
-    tipo: "grupo", id: "secciones", label: "Secciones específicas",
-    items: [
-      { key: "arbitraje", label: "Arbitraje", href: "categoria?cat=arbitraje" },
-      { key: "jurisdiccion", label: "Jurisdicción deportiva", href: "categoria?cat=jurisdiccion" },
-    ],
-  },
-  { tipo: "enlace", key: "calendario", label: "Calendario", href: "calendario" },
-  { tipo: "enlace", key: "galerias", label: "Galerías", href: "galerias" },
-  { tipo: "enlace", key: "podcast", label: "Podcast", href: "podcast" },
-  { tipo: "enlace", key: "clasificacion", label: "Clasificación", href: "clasificacion" },
-  { tipo: "enlace", key: "estadisticas", label: "Estadísticas", href: "estadisticas" },
-  { tipo: "enlace", key: "predicciones", label: "Porras", href: "predicciones" },
-];
-
-const ICONOS_REDES = {
-  twitter: '<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>',
-  instagram: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><rect x="2.5" y="2.5" width="19" height="19" rx="5.5"/><circle cx="12" cy="12" r="4.3"/><circle cx="17.35" cy="6.65" r="1.05" fill="currentColor" stroke="none"/></svg>',
-  tiktok: '<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M16.5 2h-3.2v13.6a3 3 0 1 1-2.4-2.94V9.3a6.2 6.2 0 1 0 5.6 6.17V8.9a7.6 7.6 0 0 0 4.6 1.55V7.2A4.4 4.4 0 0 1 16.5 2z"/></svg>',
-  youtube: '<svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" fill-rule="evenodd" d="M23 12s0-3.4-.44-4.9a2.9 2.9 0 0 0-2-2C18.9 4.6 12 4.6 12 4.6s-6.9 0-8.56.5a2.9 2.9 0 0 0-2 2C1 8.6 1 12 1 12s0 3.4.44 4.9a2.9 2.9 0 0 0 2 2c1.66.5 8.56.5 8.56.5s6.9 0 8.56-.5a2.9 2.9 0 0 0 2-2C23 15.4 23 12 23 12zM9.8 15.6V8.4l6.4 3.6z"/></svg>',
-};
-
-const NOMBRES_REDES = { twitter: "X (Twitter)", instagram: "Instagram", tiktok: "TikTok", youtube: "YouTube" };
-
-function baseHref() {
-  // Todas las páginas del sitio viven bajo la raíz del dominio (nunca
-  // hay subcarpetas reales como public/categoria/ dentro de las que se
-  // navegue), EXCEPTO admin/, que sí es una carpeta real. Antes esto
-  // devolvía siempre "" (ruta relativa), asumiendo que layout.js solo
-  // se cargaba desde páginas en la raíz -- pero eso rompe el header/
-  // pie en cualquier situación donde la URL del navegador no sea la
-  // raíz aunque el contenido servido sí lo sea: el caso más claro es
-  // la página de error 404 (Cloudflare Pages sirve 404.html pero deja
-  // la URL tal cual, así que un enlace inventado dentro de admin/, p.
-  // ej. admin/lo-que-sea, servía el 404 con las rutas relativas del
-  // header resolviéndose contra admin/, un 404 dentro de un 404).
-  // Con "/" siempre, los enlaces y el logo apuntan a la raíz del sitio
-  // sin importar desde qué URL se haya cargado esta página.
-  return "/";
-}
-
-// Cascada lateral con los clubes de una liga (aparece al pasar por
-// encima de la liga dentro del desplegable "Ligas").
-function clubSubmenuHTML(cat, clubes) {
-  const items = clubes
-    .map((club) => `<li><a href="${baseHref()}categoria?cat=${encodeURIComponent(cat)}&club=${encodeURIComponent(club)}">${club}</a></li>`)
-    .join("");
-  return `<ul class="nav-flyout">${items}</ul>`;
-}
-
-// Clubes que se muestran en el menú para una competición. Segunda
-// Federación tiene 90 clubes en clubs.js (para los desplegables del
-// panel, Calendario y Clasificación), pero en la cabecera solo salen los
-// que cubrimos editorialmente (CLUBS_SEGUNDA_FEDERACION_CUBIERTOS_PORTADA).
-function clubesParaMenu(key) {
-  if (key === "segunda_federacion" && typeof CLUBS_SEGUNDA_FEDERACION_CUBIERTOS_PORTADA !== "undefined") {
-    return CLUBS_SEGUNDA_FEDERACION_CUBIERTOS_PORTADA.slice().sort((a, b) => a.localeCompare(b, "es"));
-  }
-  return typeof getClubsForCategoria === "function" ? getClubsForCategoria(key) : [];
-}
-
-function navMenuHTML(activePage) {
-  return NAV_MENU.map((entrada) => {
-    if (entrada.tipo === "enlace") {
-      const activo = entrada.key === activePage ? "activo" : "";
-      return `<li><a href="${baseHref()}${entrada.href}" class="${activo}">${entrada.label}</a></li>`;
-    }
-    const hijoActivo = entrada.items.some((it) => it.key === activePage);
-    const itemsHTML = entrada.items.map((it) => {
-      const activo = it.key === activePage ? "activo" : "";
-      const clubes = it.clubes ? clubesParaMenu(it.key) : [];
-      if (clubes.length) {
-        return `
+function eofCargarTurnstile(){return window.EOFTurnstile?Promise.resolve():(window.__eofTurnstileCarga||(window.__eofTurnstileCarga=new Promise(e=>{const t=document.createElement("script");t.src="/js/turnstile.js?v=c9b660c4",t.async=!0,t.onload=()=>e(),t.onerror=()=>e(),document.head.appendChild(t)})),window.__eofTurnstileCarga)}function eofPrecalentarNewsletter(e){if(!e||e.__eofPre)return;e.__eofPre=!0;const t=async()=>{await eofCargarTurnstile();const a=e.querySelector("[data-eof-turnstile]");window.EOFTurnstile&&a&&window.EOFTurnstile.precalentar(a)};if(e.addEventListener("focusin",t,{once:!0}),"IntersectionObserver"in window){const a=new IntersectionObserver(n=>{n.some(r=>r.isIntersecting)&&(a.disconnect(),t())},{rootMargin:"300px"});a.observe(e)}}async function eofTokenNewsletter(e){await eofCargarTurnstile();const t=e&&e.querySelector("[data-eof-turnstile]");if(!window.EOFTurnstile||!t)return{cont:t,token:"",web:""};const a=await window.EOFTurnstile.esperarToken(t);return{cont:t,token:a,web:window.EOFTurnstile.trampa(t)}}const NAV_MENU=[{tipo:"enlace",key:"inicio",label:"Portada",href:""},{tipo:"grupo",id:"ligas",label:"Ligas",items:[{key:"hypermotion",label:"LaLiga Hypermotion",href:"categoria?cat=hypermotion",clubes:!0},{key:"primera_federacion",label:"Primera Federación",href:"categoria?cat=primera_federacion",clubes:!0},{key:"segunda_federacion",label:"Segunda Federación",href:"categoria?cat=segunda_federacion",clubes:!0},{key:"tercera_federacion",label:"Tercera Federación",href:"categoria?cat=tercera_federacion",clubes:!0}]},{tipo:"grupo",id:"campeonatos",label:"Campeonatos",items:[{key:"copa_del_rey",label:"Copa del Rey",href:"categoria?cat=copa_del_rey"},{key:"copa_federacion",label:"Copa Federación",href:"categoria?cat=copa_federacion"}]},{tipo:"grupo",id:"secciones",label:"Secciones específicas",items:[{key:"arbitraje",label:"Arbitraje",href:"categoria?cat=arbitraje"},{key:"jurisdiccion",label:"Jurisdicción deportiva",href:"categoria?cat=jurisdiccion"}]},{tipo:"enlace",key:"calendario",label:"Calendario",href:"calendario"},{tipo:"enlace",key:"galerias",label:"Galerías",href:"galerias"},{tipo:"enlace",key:"podcast",label:"Podcast",href:"podcast"},{tipo:"enlace",key:"clasificacion",label:"Clasificación",href:"clasificacion"},{tipo:"enlace",key:"estadisticas",label:"Estadísticas",href:"estadisticas"},{tipo:"enlace",key:"predicciones",label:"Porras",href:"predicciones"},{tipo:"enlace",key:"mapa-desplazamientos",label:"Mi mapa",href:"mapa-desplazamientos"}],ICONOS_REDES={twitter:'<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>',instagram:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><rect x="2.5" y="2.5" width="19" height="19" rx="5.5"/><circle cx="12" cy="12" r="4.3"/><circle cx="17.35" cy="6.65" r="1.05" fill="currentColor" stroke="none"/></svg>',tiktok:'<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M16.5 2h-3.2v13.6a3 3 0 1 1-2.4-2.94V9.3a6.2 6.2 0 1 0 5.6 6.17V8.9a7.6 7.6 0 0 0 4.6 1.55V7.2A4.4 4.4 0 0 1 16.5 2z"/></svg>',youtube:'<svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" fill-rule="evenodd" d="M23 12s0-3.4-.44-4.9a2.9 2.9 0 0 0-2-2C18.9 4.6 12 4.6 12 4.6s-6.9 0-8.56.5a2.9 2.9 0 0 0-2 2C1 8.6 1 12 1 12s0 3.4.44 4.9a2.9 2.9 0 0 0 2 2c1.66.5 8.56.5 8.56.5s6.9 0 8.56-.5a2.9 2.9 0 0 0 2-2C23 15.4 23 12 23 12zM9.8 15.6V8.4l6.4 3.6z"/></svg>'},NOMBRES_REDES={twitter:"X (Twitter)",instagram:"Instagram",tiktok:"TikTok",youtube:"YouTube"};function baseHref(){return"/"}function clubSubmenuHTML(e,t){return`<ul class="nav-flyout">${t.map(n=>`<li><a href="${baseHref()}categoria?cat=${encodeURIComponent(e)}&club=${encodeURIComponent(n)}">${n}</a></li>`).join("")}</ul>`}function clubesParaMenu(e){return e==="segunda_federacion"&&typeof CLUBS_SEGUNDA_FEDERACION_CUBIERTOS_PORTADA<"u"?CLUBS_SEGUNDA_FEDERACION_CUBIERTOS_PORTADA.slice().sort((t,a)=>t.localeCompare(a,"es")):typeof getClubsForCategoria=="function"?getClubsForCategoria(e):[]}function navMenuHTML(e){return NAV_MENU.map(t=>{if(t.tipo==="enlace"){const r=t.key===e?"activo":"";return`<li><a href="${baseHref()}${t.href}" class="${r}">${t.label}</a></li>`}const a=t.items.some(r=>r.key===e),n=t.items.map(r=>{const o=r.key===e?"activo":"",c=r.clubes?clubesParaMenu(r.key):[];return c.length?`
           <li class="nav-liga">
-            <a href="${baseHref()}${it.href}" class="${activo}">${it.label}</a>
-            <button type="button" class="nav-liga-toggle" aria-label="Ver clubes de ${it.label}">▸</button>
-            ${clubSubmenuHTML(it.key, clubes)}
-          </li>`;
-      }
-      return `<li><a href="${baseHref()}${it.href}" class="${activo}">${it.label}</a></li>`;
-    }).join("");
-    return `
+            <a href="${baseHref()}${r.href}" class="${o}">${r.label}</a>
+            <button type="button" class="nav-liga-toggle" aria-label="Ver clubes de ${r.label}">▸</button>
+            ${clubSubmenuHTML(r.key,c)}
+          </li>`:`<li><a href="${baseHref()}${r.href}" class="${o}">${r.label}</a></li>`}).join("");return`
       <li class="nav-grupo">
-        <button type="button" class="nav-grupo-btn ${hijoActivo ? "activo" : ""}" aria-haspopup="true" aria-expanded="false">${entrada.label}<span class="nav-caret" aria-hidden="true">▾</span></button>
-        <ul class="nav-drop">${itemsHTML}</ul>
-      </li>`;
-  }).join("");
-}
-
-function iconosRedesHTML() {
-  return Object.entries(SITE.redes)
-    .filter(([, url]) => urlExternaSegura(url))
-    .map(([key, url]) => `<a href="${urlExternaSegura(url)}" target="_blank" rel="noopener" title="${escapeHtml(NOMBRES_REDES[key] || key)}">${ICONOS_REDES[key] || ""}</a>`)
-    .join("");
-}
-
-// Vuelve a pintar los iconos de redes sociales allá donde aparezcan
-// (cabecera, pie y, si existe, la portada) usando el SITE.redes actual.
-function refrescarIconosRedes() {
-  document.querySelectorAll(".redes-mini, .redes-footer").forEach((el) => {
-    el.innerHTML = iconosRedesHTML();
-  });
-  const redesPortada = document.getElementById("redes-icons-portada");
-  if (redesPortada) redesPortada.innerHTML = iconosRedesHTML();
-}
-
-// Las redes sociales se gestionan desde un único sitio: el panel de
-// administración (pestaña "Redes sociales"), guardadas en el servidor.
-// Aquí las cargamos y sustituimos el valor de reserva de config.js por
-// el real, sin recargar el resto de la cabecera/pie para evitar parpadeos.
-async function cargarRedesSociales() {
-  try {
-    const res = await apiFetch(`/api/settings`);
-    if (!res.ok) return;
-    const { redes } = await res.json();
-    if (redes && Object.keys(redes).length) {
-      SITE.redes = redes;
-      refrescarIconosRedes();
-    }
-  } catch (err) {
-    // Sin conexión con la API: nos quedamos con el valor de reserva de config.js.
-  }
-}
-
-function sesionActual() {
-  try {
-    const token = localStorage.getItem("eof_token");
-    const user = JSON.parse(localStorage.getItem("eof_user") || "null");
-    if (!token || !user) return null;
-    return user;
-  } catch {
-    return null;
-  }
-}
-
-function cerrarSesionGlobal() {
-  localStorage.removeItem("eof_token");
-  localStorage.removeItem("eof_user");
-  location.reload();
-}
-
-function iniciales(nombre) {
-  return (nombre || "").trim().split(/\s+/).slice(0, 2).map((p) => p[0]).join("").toUpperCase();
-}
-
-function avatarHTML(user, clase = "user-avatar") {
-  if (user && user.avatar_url) {
-    const urlAvatar = urlSeguraParaCss(user.avatar_url);
-    if (urlAvatar) {
-      // El foco se valida y se pinta con el motor común (js/foco.js).
-      return `<span class="${clase} user-avatar-foto foco-bg" style="background-image:url('${urlAvatar}');${EOF_FOCO.estilo(user.avatar_foco)}"></span>`;
-    }
-  }
-  return `<span class="${clase}">${escapeHtml(iniciales(user && user.nombre)) || "?"}</span>`;
-}
-
-// Iconos del desplegable de cuenta (mismo set que el panel). Se pintan dentro
-// de <span class="ud-ico"> para que web pública y panel se vean idénticos.
-const ICONOS_CUENTA = {
-  usuario: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
-  ajustes: '<line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>',
-  panel: '<rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>',
-  guardadas: '<path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>',
-  historial: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
-  salir: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>'
-};
-function iconoCuentaHTML(nombre) {
-  return `<span class="ud-ico" aria-hidden="true"><svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONOS_CUENTA[nombre] || ""}</svg></span>`;
-}
-
-function accesoHeaderHTML() {
-  const user = sesionActual();
-  if (!user) {
-    // Sin sesión de redactor: el botón de acceso único lo pinta
-    // accesoLectorHeaderHTML() (lleva a acceso.html, con la pestaña de
-    // Redactor disponible ahí dentro), así que aquí no se pinta nada.
-    return "";
-  }
-  return `
+        <button type="button" class="nav-grupo-btn ${a?"activo":""}" aria-haspopup="true" aria-expanded="false">${t.label}<span class="nav-caret" aria-hidden="true">▾</span></button>
+        <ul class="nav-drop">${n}</ul>
+      </li>`}).join("")}function iconosRedesHTML(){return Object.entries(SITE.redes).filter(([,e])=>urlExternaSegura(e)).map(([e,t])=>`<a href="${urlExternaSegura(t)}" target="_blank" rel="noopener" title="${escapeHtml(NOMBRES_REDES[e]||e)}">${ICONOS_REDES[e]||""}</a>`).join("")}function refrescarIconosRedes(){document.querySelectorAll(".redes-mini, .redes-footer").forEach(t=>{t.innerHTML=iconosRedesHTML()});const e=document.getElementById("redes-icons-portada");e&&(e.innerHTML=iconosRedesHTML())}async function cargarRedesSociales(){try{const e=await apiFetch("/api/settings");if(!e.ok)return;const{redes:t}=await e.json();t&&Object.keys(t).length&&(SITE.redes=t,refrescarIconosRedes())}catch{}}function sesionActual(){try{const e=localStorage.getItem("eof_token"),t=JSON.parse(localStorage.getItem("eof_user")||"null");return!e||!t?null:t}catch{return null}}function cerrarSesionGlobal(){localStorage.removeItem("eof_token"),localStorage.removeItem("eof_user"),location.reload()}function iniciales(e){return(e||"").trim().split(/\s+/).slice(0,2).map(t=>t[0]).join("").toUpperCase()}function avatarHTML(e,t="user-avatar"){if(e&&e.avatar_url){const a=urlSeguraParaCss(e.avatar_url);if(a)return`<span class="${t} user-avatar-foto foco-bg" style="background-image:url('${a}');${EOF_FOCO.estilo(e.avatar_foco)}"></span>`}return`<span class="${t}">${escapeHtml(iniciales(e&&e.nombre))||"?"}</span>`}const ICONOS_CUENTA={usuario:'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',ajustes:'<line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>',panel:'<rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>',guardadas:'<path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>',historial:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',seguridad:'<path d="M12 2 4 6v6c0 5 3.4 8.4 8 10 4.6-1.6 8-5 8-10V6l-8-4Z"/><path d="m9 12 2 2 4-4"/>',progreso:'<circle cx="12" cy="8" r="6"/><path d="M15.5 13.5 17 22l-5-3-5 3 1.5-8.5"/>',estadisticas:'<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',resumenMes:'<path d="M3 3v18h18"/><path d="M7 15v3"/><path d="M12 9v9"/><path d="M17 5v13"/>',sesiones:'<rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>',salir:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>'};const SECCIONES_CUENTA=[["perfil","Editar perfil","usuario"],["seguridad","Seguridad","seguridad"],["progreso","Mi progreso","progreso"],["estadisticas","Estadísticas","estadisticas"],["resumenMes","Resumen del mes","resumenMes"],["sesiones","Dispositivos","sesiones"],["preferencias","Preferencias","ajustes"]];function iconoCuentaHTML(e){return`<span class="ud-ico" aria-hidden="true"><svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONOS_CUENTA[e]||""}</svg></span>`}function accesoHeaderHTML(){const e=sesionActual();return e?`
     <div class="user-menu" id="userMenu">
       <button type="button" class="btn-usuario" id="userMenuToggle" aria-label="Cuenta" aria-haspopup="true" aria-expanded="false">
-        ${avatarHTML(user)}
-        <span class="user-nombre">${escapeHtml(user.nombre || user.username)}</span>
+        ${avatarHTML(e)}
+        <span class="user-nombre">${escapeHtml(e.nombre||e.username)}</span>
       </button>
       <div class="user-dropdown" id="userDropdown">
         <div class="user-dropdown-info">
-          ${avatarHTML(user, "user-avatar user-avatar-grande")}
+          ${avatarHTML(e,"user-avatar user-avatar-grande")}
           <div class="user-dropdown-textos">
-            <strong>${escapeHtml(user.nombre || user.username)}</strong>
-            <span>${user.rol === "admin" ? "Administrador" : (user.rol === "fotografo" ? "Fotógrafo" : "Colaborador")}</span>
+            <strong>${escapeHtml(e.nombre||e.username)}</strong>
+            <span>${e.rol==="admin"?"Responsable":e.rol==="fotografo"?"Fotógrafo":"Colaborador"}</span>
           </div>
         </div>
-        <a href="${baseHref()}admin/panel.html?ajustes=perfil">${iconoCuentaHTML("usuario")}Ajustes de cuenta</a>
-        <a href="${baseHref()}admin/panel.html?ajustes=preferencias">${iconoCuentaHTML("ajustes")}Preferencias</a>
+        <div class="ud-grupo">Mi cuenta</div>
+        <div class="ud-secciones">${SECCIONES_CUENTA.map(([i,t,c])=>`<a href="${baseHref()}admin/panel.html?ajustes=${i}" class="ud-seccion">${iconoCuentaHTML(c)}${t}</a>`).join("")}</div>
+        <div class="ud-sep" role="separator"></div>
         <a href="${baseHref()}admin/panel.html">${iconoCuentaHTML("panel")}Ir al panel</a>
         <div class="ud-sep" role="separator"></div>
         <button type="button" id="btnCerrarSesion">${iconoCuentaHTML("salir")}Cerrar sesión</button>
       </div>
-    </div>`;
-}
-
-// Icono de "Mis guardadas" con contador (lo rellena js/lecturas.js con
-// EOFLecturas.pintarInsignia). Se ve siempre, con o sin sesión: los visitantes
-// también guardan (en su navegador).
-function guardadasHeaderHTML() {
-  return `<a href="${baseHref()}guardadas" class="theme-toggle lect-header-btn" aria-label="Mis guardadas" title="Mis guardadas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg><span class="lect-badge" hidden></span></a>`;
-}
-
-// renderHeader() sustituye la cabecera entera: hay que volver a pintar el contador.
-function pintarInsigniaGuardadas() {
-  if (window.EOFLecturas && typeof EOFLecturas.pintarInsignia === "function") EOFLecturas.pintarInsignia();
-}
-
-function accesoLectorHeaderHTML() {
-  // Si ya hay sesión de redactor/admin abierta en este navegador, no se
-  // muestra el icono de lector aparte: el menú de usuario del panel ya
-  // cubre "quién eres" en el header, y mostrar los dos a la vez confunde
-  // más de lo que ayuda. Fuera de ese caso, se ve siempre (con o sin
-  // sesión de lector) como EL ÚNICO botón de acceso del sitio: lleva al
-  // hub unificado (acceso.html), donde la pestaña "Redactor" sigue
-  // disponible para quien la necesite.
-  if (sesionActual()) return "";
-  const reader = sesionLectorActual();
-  const volver = encodeURIComponent(location.pathname + location.search);
-  if (!reader) {
-    return `<a href="${baseHref()}acceso?volver=${volver}" class="btn-login" aria-label="Acceso" title="Iniciar sesión o registrarte"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></a>`;
-  }
-  return `
+    </div>`:""}function guardadasHeaderHTML(){return`<a href="${baseHref()}guardadas" class="theme-toggle lect-header-btn" aria-label="Mis guardadas" title="Mis guardadas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg><span class="lect-badge" hidden></span></a>`}function pintarInsigniaGuardadas(){window.EOFLecturas&&typeof EOFLecturas.pintarInsignia=="function"&&EOFLecturas.pintarInsignia()}function accesoLectorHeaderHTML(){if(sesionActual())return"";const e=sesionLectorActual(),t=encodeURIComponent(location.pathname+location.search);return e?`
     <div class="user-menu" id="lectorMenu">
       <button type="button" class="btn-usuario" id="lectorMenuToggle" aria-label="Mi cuenta" aria-haspopup="true" aria-expanded="false">
-        ${avatarHTML(reader)}
-        <span class="user-nombre">${escapeHtml(reader.nombre)}</span>
+        ${avatarHTML(e)}
+        <span class="user-nombre">${escapeHtml(e.nombre)}</span>
       </button>
       <div class="user-dropdown" id="lectorDropdown">
         <div class="user-dropdown-info">
-          ${avatarHTML(reader, "user-avatar user-avatar-grande")}
+          ${avatarHTML(e,"user-avatar user-avatar-grande")}
           <div class="user-dropdown-textos">
-            <strong>${escapeHtml(reader.nombre)}</strong>
+            <strong>${escapeHtml(e.nombre)}</strong>
             <span>Lector</span>
           </div>
         </div>
@@ -310,20 +49,11 @@ function accesoLectorHeaderHTML() {
         <div class="ud-sep" role="separator"></div>
         <button type="button" id="btnCerrarSesionLectorHeader">${iconoCuentaHTML("salir")}Cerrar sesión</button>
       </div>
-    </div>`;
-}
-
-function renderHeader() {
-  const activePage = document.body.dataset.page || "";
-  const navHTML = navMenuHTML(activePage);
-
-  const redesMini = iconosRedesHTML();
-
-  return `
+    </div>`:`<a href="${baseHref()}acceso?volver=${t}" class="btn-login" aria-label="Acceso" title="Iniciar sesión o registrarte"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></a>`}function renderHeader(){const e=document.body.dataset.page||"",t=navMenuHTML(e);return`
     <div class="top-bar">
       <div class="wrap">
         <span id="fecha-hoy"></span>
-        <div class="redes-mini">${redesMini}</div>
+        <div class="redes-mini">${iconosRedesHTML()}</div>
       </div>
     </div>
 
@@ -343,6 +73,7 @@ function renderHeader() {
             <svg class="theme-icon-luna" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
             <svg class="theme-icon-sol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2.4M12 19.1v2.4M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M2.5 12h2.4M19.1 12h2.4M4.9 19.1l1.7-1.7M17.4 6.6l1.7-1.7"/></svg>
           </button>
+          <a class="btn-instalar-app" href="${baseHref()}instalar" title="Instalar la app en tu móvil u ordenador"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7.5 10.5L12 15l4.5-4.5M5 20h14"/></svg><span>Instalar app</span></a>
           ${guardadasHeaderHTML()}
           ${accesoHeaderHTML()}
           ${accesoLectorHeaderHTML()}
@@ -352,26 +83,19 @@ function renderHeader() {
     </header>
 
     <nav class="main-nav">
-      <ul id="navList">${navHTML}</ul>
+      <ul id="navList">${t}</ul>
     </nav>
-  `;
-}
-
-function renderBloqueNewsletter() {
-  const yaSuscrito = estadoModalNewsletter().suscrito;
-  return yaSuscrito
-    ? `
+  `}function renderBloqueNewsletter(){return estadoModalNewsletter().suscrito?`
         <div class="newsletter-bloque newsletter-bloque-suscrito">
           <div class="newsletter-texto">
-            <h4>¡Ya estás dentro del boletín! 📬</h4>
+            <p class="footer-titulo">¡Ya estás dentro del boletín! 📬</p>
             <p>Gracias por suscribirte. Cada semana te llega a tu correo un resumen con lo más destacado.</p>
             <button type="button" class="newsletter-olvidar-suscripcion" id="btnOlvidarSuscripcionNewsletter">¿Ya no recibes el boletín? Pulsa aquí</button>
           </div>
-        </div>`
-    : `
+        </div>`:`
         <div class="newsletter-bloque">
           <div class="newsletter-texto">
-            <h4>Boletín semanal</h4>
+            <p class="footer-titulo">Boletín semanal</p>
             <p>Recibe cada semana un resumen con lo más destacado, directo a tu correo.</p>
           </div>
           <form class="newsletter-form" id="newsletterForm">
@@ -379,108 +103,21 @@ function renderBloqueNewsletter() {
             <div data-eof-turnstile style="margin:.4rem 0 0"></div>
             <button type="submit">Suscribirme</button>
           </form>
-        </div>`;
-}
-
-// Vuelve a pintar SOLO el bloque de newsletter del pie (no todo el
-// footer, que perdería otros listeners ya enganchados como los de
-// redes sociales) y reengancha sus propios listeners. Se llama tras
-// suscribirse o tras pulsar "¿Ya no recibes el boletín?", para que el
-// pie refleje el nuevo estado sin esperar a recargar la página.
-function renderFooter_actualizarBloqueNewsletter() {
-  const contenedor = document.querySelector("#site-footer .newsletter-bloque, #site-footer .newsletter-bloque-suscrito");
-  if (!contenedor) return;
-  contenedor.outerHTML = renderBloqueNewsletter();
-  inicializarFormularioNewsletter();
-}
-
-// Franja compacta de patrocinadores dentro del pie de página, visible en
-// TODAS las páginas del sitio (a diferencia del carrusel grande, que solo
-// vive en la portada — ver pintarPatrocinadoresHome). Es también un
-// carrusel de scroll infinito, más pequeño y en una única fila.
-// Si no hay ningún patrocinador cargado en PATROCINADORES (config.js), no
-// se pinta nada.
-//
-// OJO con el número de copias: la animación CSS desplaza la tira un -50%,
-// así que necesitamos que UNA MITAD del track ya llene (o sobrepase) el
-// ancho visible del carrusel; si no, con pocos patrocinadores queda un
-// hueco vacío a la derecha y, además, ese -50% equivale a muy pocos
-// píxeles reales, así que a duración fija (segundos) el desplazamiento se
-// ve larguísimo y lentísimo. Por eso el número de copias y la duración de
-// la animación se recalculan en inicializarCarruselPatrocinadoresFooter()
-// una vez el track ya está en el DOM y conocemos su ancho real.
-function renderPatrocinadoresFooterHTML() {
-  if (!PATROCINADORES || !PATROCINADORES.length) return "";
-  const logoHTML = (p) => `<a href="${p.url || "#"}" target="_blank" rel="noopener sponsored" title="${escapeHtml(p.nombre)}">
-        <img src="${baseHref()}${p.logo}" alt="${escapeHtml(p.nombre)}" loading="lazy">
-      </a>`;
-  // Arrancamos con 2 copias (el mínimo para que el bucle del -50% no se
-  // note); si hacen falta más para llenar el ancho visible, se añaden en
-  // inicializarCarruselPatrocinadoresFooter() tras medir el DOM real.
-  const logos = [...PATROCINADORES, ...PATROCINADORES].map(logoHTML).join("");
-  return `
-    <div class="patrocinadores-footer">
+        </div>`}function renderFooter_actualizarBloqueNewsletter(){const e=document.querySelector("#site-footer .newsletter-bloque, #site-footer .newsletter-bloque-suscrito");e&&(e.outerHTML=renderBloqueNewsletter(),inicializarFormularioNewsletter())}function renderPatrocinadoresFooterHTML(){if(!PATROCINADORES||!PATROCINADORES.length)return"";const e=a=>`<a href="${a.url||"#"}" target="_blank" rel="noopener sponsored" title="${escapeHtml(a.nombre)}">
+        <img src="${baseHref()}${a.logo}" alt="${escapeHtml(a.nombre)}" loading="lazy">
+      </a>`;return`
+    <div class="patrocinadores-footer" id="patrocinadores">
       <span class="patrocinadores-footer-label">Con el apoyo de</span>
       <div class="patrocinadores-footer-carrusel">
-        <div class="patrocinadores-footer-track">${logos}</div>
+        <div class="patrocinadores-footer-track">${[...PATROCINADORES,...PATROCINADORES].map(e).join("")}</div>
       </div>
-    </div>`;
-}
-
-// Velocidad constante del carrusel, en píxeles por segundo. Al fijar la
-// velocidad (en vez de una duración fija en segundos para toda la tira),
-// el desplazamiento se percibe igual de "rápido" tanto si hay 2
-// patrocinadores como si hay 20, en vez de ralentizarse cuando el track es
-// corto (que es lo que pasaba con una duración fija tipo "34s" sobre un
-// -50% que, con pocos logos, son pocos píxeles).
-const PATROCINADORES_FOOTER_VELOCIDAD_PXS = 18;
-
-// Tras insertar el footer en el DOM, ajusta el carrusel de patrocinadores
-// para que: 1) la tira tenga las copias necesarias para llenar (o
-// sobrepasar) el ancho visible del carrusel, y 2) la animación se mueva a
-// velocidad constante en vez de a duración fija, para que no se vea lenta
-// cuando hay pocos logos. Se llama una vez tras pintar el footer y de
-// nuevo si la ventana cambia de tamaño (un logo más o menos por fila puede
-// cambiar cuántas copias hacen falta).
-function inicializarCarruselPatrocinadoresFooter() {
-  const carrusel = document.querySelector(".patrocinadores-footer-carrusel");
-  const track = document.querySelector(".patrocinadores-footer-track");
-  if (!carrusel || !track || !PATROCINADORES || !PATROCINADORES.length) return;
-
-  const logoHTML = (p) => `<a href="${p.url || "#"}" target="_blank" rel="noopener sponsored" title="${escapeHtml(p.nombre)}">
-        <img src="${baseHref()}${p.logo}" alt="${escapeHtml(p.nombre)}" loading="lazy">
-      </a>`;
-
-  // Reconstruimos el track con exactamente 1 tanda de patrocinadores para
-  // medir su ancho "natural" (el de una sola pasada), y a partir de ahí
-  // calculamos cuántas copias hacen falta para llenar el carrusel.
-  track.innerHTML = PATROCINADORES.map(logoHTML).join("");
-  const anchoUnaTanda = track.scrollWidth || 1;
-  const anchoVisible = carrusel.clientWidth || 0;
-
-  // Necesitamos al menos 2 copias (para el bucle del -50%) y, además, que
-  // esas 2 copias sobrepasen el ancho visible; si con pocos logos el
-  // carrusel es más ancho que 2 tandas, añadimos las copias que falten.
-  const copias = Math.max(2, Math.ceil((anchoVisible * 2) / anchoUnaTanda));
-  track.innerHTML = Array(copias).fill(PATROCINADORES.map(logoHTML).join("")).join("");
-
-  // Con "copias" tandas en el track, la animación recorre un -50%, es
-  // decir, la mitad del track: copias/2 tandas de ancho anchoUnaTanda.
-  const distanciaRecorrida = (copias / 2) * anchoUnaTanda;
-  const duracionSegundos = distanciaRecorrida / PATROCINADORES_FOOTER_VELOCIDAD_PXS;
-  track.style.animationDuration = `${duracionSegundos}s`;
-}
-
-function renderFooter() {
-  const redesFooter = iconosRedesHTML();
-  const bloqueNewsletter = renderBloqueNewsletter();
-  const bloquePatrocinadoresFooter = renderPatrocinadoresFooterHTML();
-
-  return `
+    </div>`}const PATROCINADORES_FOOTER_VELOCIDAD_PXS=18;function inicializarCarruselPatrocinadoresFooter(){const e=document.querySelector(".patrocinadores-footer-carrusel"),t=document.querySelector(".patrocinadores-footer-track");if(!e||!t||!PATROCINADORES||!PATROCINADORES.length)return;const a=s=>`<a href="${s.url||"#"}" target="_blank" rel="noopener sponsored" title="${escapeHtml(s.nombre)}">
+        <img src="${baseHref()}${s.logo}" alt="${escapeHtml(s.nombre)}" loading="lazy">
+      </a>`;t.innerHTML=PATROCINADORES.map(a).join("");const n=t.scrollWidth||1,r=e.clientWidth||0,o=Math.max(2,Math.ceil(r*2/n));t.innerHTML=Array(o).fill(PATROCINADORES.map(a).join("")).join("");const i=o/2*n/PATROCINADORES_FOOTER_VELOCIDAD_PXS;t.style.animationDuration=`${i}s`}function renderFooter(){const e=iconosRedesHTML(),t=renderBloqueNewsletter(),a=renderPatrocinadoresFooterHTML();return`
     <footer>
       <div class="wrap">
-        ${bloqueNewsletter}
-        ${bloquePatrocinadoresFooter}
+        ${t}
+        ${a}
         <div id="modalNewsletter" class="modal-newsletter" aria-hidden="true">
           <div class="modal-newsletter-fondo" onclick="cerrarModalNewsletter()"></div>
           <div class="modal-newsletter-caja" role="dialog" aria-modal="true" aria-labelledby="modalNewsletterTitulo" aria-describedby="modalNewsletterDesc" tabindex="-1">
@@ -504,7 +141,7 @@ function renderFooter() {
                 <svg class="modal-newsletter-sobre" viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 7.2l8.5 6.3 8.5-6.3"/></svg>
                 <svg class="modal-newsletter-balon" viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><circle cx="12" cy="12" r="10.5" fill="#fff" stroke="#0c1b2e" stroke-width="1.5"/><path d="M12 7.2l3.6 2.6-1.4 4.2H9.8L8.4 9.8z" fill="#0c1b2e"/><path d="M12 7.2V2M15.6 9.8L20.6 8M14.2 14l3 4.2M9.8 14l-3 4.2M8.4 9.8L3.4 8" stroke="#0c1b2e" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg>
               </div>
-              <h3 id="modalNewsletterTitulo">No te pierdas nada</h3>
+              <div id="modalNewsletterTitulo" class="t-h3">No te pierdas nada</div>
               <p id="modalNewsletterDesc" class="modal-newsletter-sub">Tu jornada de fútbol no profesional, cada semana en tu correo.</p>
             </div>
 
@@ -542,26 +179,27 @@ function renderFooter() {
               <div class="modal-newsletter-exito-icono">
                 <svg viewBox="0 0 52 52" width="52" height="52" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="nl-check" d="M14 27.5l8.5 8.5L38.5 18"/></svg>
               </div>
-              <h3>¡Ya estás dentro!</h3>
+              <div class="t-h3">¡Ya estás dentro!</div>
               <p>Cada semana recibirás el resumen en tu correo.</p>
             </div>
           </div>
         </div>
         <div class="footer-grid">
           <div class="footer-col-brand">
-            <div class="footer-brand">
-              <img src="${baseHref()}img/logo.png" alt="ELOTROFÚTBOLTV - logo oficial">
-              <span>EL<span class="brand-rojo">OTROFÚTBOL</span>TV</span>
-            </div>
+            <a class="footer-brand" href="${baseHref()}" aria-label="ELOTROFÚTBOLTV - ir a la portada">
+              <span class="footer-brand-logo"><img src="${baseHref()}img/logo.png" alt="" width="46" height="46"></span>
+              <span class="footer-brand-nombre">EL<span class="brand-rojo">OTROFÚTBOL</span><span class="footer-brand-tv">TV</span></span>
+            </a>
             <p>Crónicas, noticias y resultados del fútbol no profesional español: LaLiga Hypermotion, Primera y Segunda Federación.</p>
-            <div class="redes-footer">${redesFooter}</div>
+            <div class="redes-footer">${e}</div>
           </div>
           <div>
-            <h4>Secciones</h4>
+            <p class="footer-titulo">Secciones</p>
             <ul>
               <li><a href="${baseHref()}categoria?cat=hypermotion">LaLiga Hypermotion</a></li>
               <li><a href="${baseHref()}categoria?cat=primera_federacion">Primera Federación</a></li>
               <li><a href="${baseHref()}categoria?cat=segunda_federacion">Segunda Federación</a></li>
+              <li><a href="${baseHref()}categoria?cat=tercera_federacion">Tercera Federación</a></li>
               <li><a href="${baseHref()}categoria?cat=copa_del_rey">Copa del Rey</a></li>
               <li><a href="${baseHref()}categoria?cat=copa_federacion">Copa Federación</a></li>
               <li><a href="${baseHref()}categoria?cat=arbitraje">Arbitraje</a></li>
@@ -569,7 +207,7 @@ function renderFooter() {
             </ul>
           </div>
           <div>
-            <h4>Resultados</h4>
+            <p class="footer-titulo">Resultados</p>
             <ul>
               <li><a href="${baseHref()}calendario">Calendario</a></li>
               <li><a href="${baseHref()}clasificacion">Clasificación</a></li>
@@ -577,27 +215,31 @@ function renderFooter() {
               <li><a href="${baseHref()}predicciones">Porras</a></li>
               <li><a href="${baseHref()}noticias-rapidas">Noticias rápidas</a></li>
               <li><a href="${baseHref()}galerias">Galería de contenido</a></li>
+              <li><a href="${baseHref()}resumenes">Resúmenes y vídeos</a></li>
               <li><a href="${baseHref()}podcast">Podcast</a></li>
               <li><a href="${baseHref()}buscar">Buscar noticias</a></li>
               <li><a href="${baseHref()}guardadas">Mis guardadas</a></li>
             </ul>
           </div>
           <div>
-            <h4>El medio</h4>
+            <p class="footer-titulo">El medio</p>
             <ul>
               <li><a href="${baseHref()}">Portada</a></li>
               <li><a href="${baseHref()}quienes-somos">Quiénes somos</a></li>
               <li><a href="${baseHref()}linea-editorial">Línea editorial</a></li>
               <li><a href="${baseHref()}contacto">Contacto de prensa</a></li>
               <li><a href="${baseHref()}widgets">Widgets para tu web</a></li>
+              <li><a href="${baseHref()}instalar">Instalar la app</a></li>
               <li><a href="${baseHref()}transparencia">Portal de transparencia</a></li>
               <li><a href="${baseHref()}estado">Estado del servicio</a></li>
+              <li><a href="${baseHref()}mapa-del-sitio">Mapa del sitio</a></li>
               <li><a href="${baseHref()}acceso">Acceso</a></li>
             </ul>
           </div>
           <div>
-            <h4>Legal</h4>
+            <p class="footer-titulo">Legal</p>
             <ul>
+              <li><a href="${baseHref()}aviso-legal">Aviso legal</a></li>
               <li><a href="${baseHref()}politica-privacidad">Política de privacidad</a></li>
               <li><a href="${baseHref()}politica-cookies">Política de cookies</a></li>
               <li><button type="button" class="footer-link-boton" onclick="if(window.eofAbrirPreferenciasCookies)eofAbrirPreferenciasCookies();">Configurar cookies</button></li>
@@ -613,792 +255,24 @@ function renderFooter() {
         </div>
       </div>
     </footer>
-  `;
-}
-
-// Pinta la fecha de hoy en el <span id="fecha-hoy"> de la barra
-// superior. Aparte del arranque inicial, hay que volver a llamarla cada
-// vez que se repinta la cabecera con renderHeader() (p. ej. al llegar
-// los clubes personalizados), porque eso sustituye el <span> por uno
-// vacío y, si no se repinta la fecha, se queda en blanco.
-function pintarFechaHoy() {
-  const fechaHoy = document.getElementById("fecha-hoy");
-  if (fechaHoy) {
-    fechaHoy.textContent = new Date().toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Madrid" });
-  }
-}
-
-// ---------- Banner flotante de "Última hora" ----------
-// Se consulta desde CUALQUIER página del sitio (una sola llamada
-// ligera, ver /api/articles/banner-urgente en el worker). El propio
-// backend ya resuelve la expiración con el WHERE de su consulta, así
-// que aquí basta con pintar o no según lo que responda; no hace falta
-// ningún temporizador que lo desactive por su cuenta en el cliente.
-//
-// Además de la comprobación inicial al cargar la página, se repite
-// cada minuto en segundo plano: así, si un redactor activa el banner
-// mientras alguien ya está leyendo el sitio, aparece solo, sin que el
-// lector tenga que recargar. Por el mismo motivo, si el banner se
-// desactiva (o caduca) estando la página abierta, se retira solo en la
-// siguiente comprobación.
-const UH_INTERVALO_COMPROBACION_MS = 60000; // 1 minuto
-
-async function cargarBannerUrgente() {
-  // Sin cookies aceptadas no se muestran avisos secundarios (ver
-  // eofAlAceptarCookies más abajo): ni se pide ni se deja pintado.
-  if (!eofCookiesAceptadasAhora()) {
-    quitarBannerUrgenteDelDOM();
-    return;
-  }
-  try {
-    const res = await apiFetch("/api/articles/banner-urgente");
-    // apiFetch (config.js) devuelve un Response crudo, igual que fetch
-    // nativo, NO el JSON ya parseado (a diferencia del apiFetch de
-    // admin.js, que sí lo parsea): hay que llamar a .json() aquí.
-    if (!res || !res.ok) return;
-    const data = await res.json();
-    const bannerActual = document.getElementById("banner-ultima-hora");
-
-    if (!data || !data.activo) {
-      // Si había un banner pintado y ya no hay nada activo (se quitó
-      // desde el panel, o expiraron las 2h), se retira solo.
-      if (bannerActual) quitarBannerUrgenteDelDOM();
-      return;
-    }
-
-    // Respeta el cierre manual del banner para esta pestaña/sesión: si
-    // el lector lo cerró, no debe reaparecer hasta la próxima visita
-    // aunque siga activo en el servidor, SALVO que sea una noticia
-    // distinta a la que cerró (nueva última hora), en cuyo caso sí
-    // tiene sentido volver a mostrarla.
-    const urlCerrada = sessionStorage.getItem("bannerUrgenteCerradoUrl");
-    if (urlCerrada === data.url) return;
-
-    if (bannerActual) {
-      // Ya había un banner (p. ej. de una comprobación anterior): si es
-      // la misma noticia no hace falta rehacer nada; si ha cambiado el
-      // título/URL, se sustituye por el nuevo sin duplicar.
-      if (bannerActual.dataset.uhUrl === data.url) return;
-      quitarBannerUrgenteDelDOM();
-    }
-
-    pintarBannerUrgente(data);
-  } catch (e) {
-    // Un fallo aquí (red, failover agotado, etc.) no debe romper el
-    // resto de la página: simplemente no se muestra el banner.
-    console.error("Error cargando banner de última hora:", e);
-  }
-}
-
-function quitarBannerUrgenteDelDOM() {
-  const banner = document.getElementById("banner-ultima-hora");
-  if (!banner) return;
-  banner.remove();
-  document.body.classList.remove("con-banner-ultima-hora");
-}
-
-function pintarBannerUrgente(datos) {
-  if (document.getElementById("banner-ultima-hora")) return;
-
-  const banner = document.createElement("div");
-  banner.id = "banner-ultima-hora";
-  // La URL llega de la API (la fija el panel): solo rutas del propio sitio o
-  // http(s); cualquier otro esquema (javascript:, data:...) se descarta.
-  const urlBanner = (() => {
-    const u = String(datos.url == null ? "" : datos.url).trim();
-    return /^(\/(?!\/)|https?:\/\/)/i.test(u) ? u : "#";
-  })();
-  banner.dataset.uhUrl = urlBanner;
-  banner.innerHTML = `
+  `}function pintarFechaHoy(){const e=document.getElementById("fecha-hoy");e&&(e.textContent=new Date().toLocaleDateString("es-ES",{weekday:"long",day:"numeric",month:"long",year:"numeric",timeZone:"Europe/Madrid"}))}const UH_INTERVALO_COMPROBACION_MS=6e4;async function cargarBannerUrgente(){if(!eofCookiesAceptadasAhora()){quitarBannerUrgenteDelDOM();return}try{const e=await apiFetch("/api/articles/banner-urgente");if(!e||!e.ok)return;const t=await e.json(),a=document.getElementById("banner-ultima-hora");if(!t||!t.activo){a&&quitarBannerUrgenteDelDOM();return}if(sessionStorage.getItem("bannerUrgenteCerradoUrl")===t.url)return;if(a){if(a.dataset.uhUrl===t.url)return;quitarBannerUrgenteDelDOM()}pintarBannerUrgente(t)}catch(e){console.error("Error cargando banner de última hora:",e)}}function quitarBannerUrgenteDelDOM(){const e=document.getElementById("banner-ultima-hora");e&&(e.remove(),document.body.classList.remove("con-banner-ultima-hora"))}function pintarBannerUrgente(e){if(document.getElementById("banner-ultima-hora"))return;const t=document.createElement("div");t.id="banner-ultima-hora";const a=(()=>{const o=String(e.url==null?"":e.url).trim();return/^(\/(?!\/)|https?:\/\/)/i.test(o)?o:"#"})();t.dataset.uhUrl=a,t.innerHTML=`
     <div class="uh-franja">
       <span class="uh-live">
         <span class="uh-live-punto" aria-hidden="true"></span>
         ÚLTIMA HORA
       </span>
       <div class="uh-texto-wrap">
-        <a class="uh-texto" href="${escaparHtmlBasico(urlBanner)}">${escaparHtmlBasico(datos.titulo)}</a>
+        <a class="uh-texto" href="${escaparHtmlBasico(a)}">${escaparHtmlBasico(e.titulo)}</a>
       </div>
-      <a class="uh-ver" href="${escaparHtmlBasico(urlBanner)}">Leer <span aria-hidden="true">→</span></a>
+      <a class="uh-ver" href="${escaparHtmlBasico(a)}">Leer <span aria-hidden="true">→</span></a>
       <button type="button" class="uh-cerrar" aria-label="Cerrar aviso de última hora">✕</button>
     </div>
-  `;
-
-  document.body.prepend(banner);
-  document.body.classList.add("con-banner-ultima-hora");
-
-  // El desplazamiento tipo marquee solo se activa si el título no cabe
-  // entero en el hueco disponible; con un título corto se queda fijo y
-  // centrado, sin animación de scroll.
-  const textoWrap = banner.querySelector(".uh-texto-wrap");
-  const textoEl = banner.querySelector(".uh-texto");
-  requestAnimationFrame(() => {
-    if (textoEl.scrollWidth > textoWrap.clientWidth) {
-      banner.classList.add("uh-marquee");
-    }
-  });
-
-  banner.querySelector(".uh-cerrar").addEventListener("click", () => {
-    quitarBannerUrgenteDelDOM();
-    sessionStorage.setItem("bannerUrgenteCerradoUrl", datos.url);
-  });
-}
-
-// Escapado mínimo para el título de la noticia dentro del banner (no se
-// reutiliza escapeHtml de admin.js porque ese archivo no se carga en
-// las páginas públicas).
-function escaparHtmlBasico(texto) {
-  const div = document.createElement("div");
-  div.textContent = texto || "";
-  return div.innerHTML;
-}
-
-// Accesibilidad: enlace "Saltar al contenido" (WCAG 2.4.1). Solo se ve al
-// enfocarlo con el teclado; lleva al <main> de la página (se le da un id si
-// no lo tiene). Los estilos van aquí para no depender de la versión del CSS.
-function montarEnlaceSaltarContenido() {
-  if (document.getElementById("eof-saltar-contenido")) return;
-  const main = document.querySelector("main");
-  if (!main) return;
-  if (!main.id) main.id = "contenido-principal";
-  if (!main.hasAttribute("tabindex")) main.setAttribute("tabindex", "-1");
-  const estilo = document.createElement("style");
-  estilo.textContent =
-    "#eof-saltar-contenido{position:fixed;top:8px;left:8px;z-index:100000;padding:10px 16px;" +
-    "background:#111;color:#fff;font:600 14px/1.2 system-ui,sans-serif;border-radius:8px;" +
-    "text-decoration:none;transform:translateY(-200%);transition:transform .15s}" +
-    "#eof-saltar-contenido:focus{transform:translateY(0);outline:3px solid #ffbf47;outline-offset:2px}" +
-    "main:focus{outline:none}";
-  document.head.appendChild(estilo);
-  const enlace = document.createElement("a");
-  enlace.id = "eof-saltar-contenido";
-  enlace.href = "#" + main.id;
-  enlace.textContent = "Saltar al contenido";
-  enlace.addEventListener("click", () => { setTimeout(() => main.focus({ preventScroll: false }), 0); });
-  document.body.insertBefore(enlace, document.body.firstChild);
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  montarEnlaceSaltarContenido();
-  const headerEl = document.getElementById("site-header");
-  const footerEl = document.getElementById("site-footer");
-  if (headerEl) headerEl.innerHTML = renderHeader();
-  pintarInsigniaGuardadas();
-  if (footerEl) footerEl.innerHTML = renderFooter();
-  // Notificaciones push + PWA (manifest y service worker): se carga
-  // aparte, desde aqui, para que llegue a todas las paginas publicas sin
-  // tener que tocar el <head> de cada una. Ver js/push.js.
-  if (!document.querySelector('script[src*="js/push.js"]')) {
-    const scriptPush = document.createElement("script");
-    scriptPush.src = "/js/push.js?v=6";
-    scriptPush.defer = true;
-    document.head.appendChild(scriptPush);
-  }
-  // Ajusta el carrusel de "Con el apoyo de" (nº de copias de logos y
-  // velocidad de la animación) una vez el footer ya está en el DOM y se
-  // puede medir su ancho real; ver inicializarCarruselPatrocinadoresFooter().
-  inicializarCarruselPatrocinadoresFooter();
-  let patrocinadoresFooterResizeTimeout;
-  window.addEventListener("resize", () => {
-    clearTimeout(patrocinadoresFooterResizeTimeout);
-    patrocinadoresFooterResizeTimeout = setTimeout(inicializarCarruselPatrocinadoresFooter, 200);
-  });
-  pintarFechaHoy();
-  // El banner de "última hora" no tiene sentido en la pantalla de acceso
-  // (login/registro): no hay nada de contenido debajo que "interrumpir"
-  // y solo distrae de un formulario que el usuario necesita completar.
-  const esPaginaAcceso = /(^|\/)acceso(\.html)?(\/)?$/.test(location.pathname);
-  if (!esPaginaAcceso) {
-    eofAlAceptarCookies(cargarBannerUrgente);
-    // Comprobación periódica: así, si se activa (o se quita) el banner
-    // mientras alguien ya tiene la página abierta, se refleja solo, sin
-    // que tenga que recargar. Se limpia si la pestaña se cierra o
-    // navega, aunque en la práctica no supone un problema real dejarlo
-    // corriendo hasta entonces (una llamada ligera por minuto).
-    setInterval(cargarBannerUrgente, UH_INTERVALO_COMPROBACION_MS);
-  }
-  // Si en algún momento la persona rechaza las cookies (p. ej. desde
-  // "Configurar cookies" en el pie), se retiran los avisos que ya estuvieran
-  // a la vista.
-  document.addEventListener("eof:cookies-rechazadas", () => {
-    cerrarModalNewsletter();
-    quitarBannerUrgenteDelDOM();
-  });
-
-  // Los clubes "personalizados" (añadidos desde "Otro equipo" en el
-  // panel) se cargan aparte, sin bloquear la primera pintura del menú;
-  // en cuanto llegan, si añaden algún club nuevo al submenú de alguna
-  // liga, se vuelve a pintar la cabecera para incluirlos. OJO: al
-  // volver a pintar con innerHTML se sustituye también el <input> del
-  // buscador (y el <span> de la fecha) por unos nuevos sin contenido,
-  // así que hay que reenganchar la búsqueda en vivo y volver a pintar
-  // la fecha aquí también (antes solo se llamaba una vez al final de
-  // este DOMContentLoaded, y como esta llamada de red casi siempre
-  // tarda más que el resto del arranque, el buscador se quedaba
-  // "muerto" y la fecha se quedaba en blanco en cuanto llegaba la
-  // respuesta).
-  if (headerEl && typeof cargarCustomClubs === "function") {
-    cargarCustomClubs().then(() => {
-      headerEl.innerHTML = renderHeader();
-      pintarInsigniaGuardadas();
-      pintarFechaHoy();
-      reengancharMenu();
-      inicializarBusquedaEnVivo();
-    });
-  }
-
-  // Escritorio: la lista de clubes solo se ve mientras el ratón está
-  // encima de la liga; en cuanto sale, se cierra al momento.
-  // Móvil: como no hay hover, el botón "▾" abre/cierra la lista al tocarlo.
-  reengancharMenu();
-
-  const redesPortada = document.getElementById("redes-icons-portada");
-  if (redesPortada) redesPortada.innerHTML = iconosRedesHTML();
-
-  cargarRedesSociales();
-  inicializarBusquedaEnVivo();
-  inicializarMenuUsuario();
-  inicializarMenuLector();
-  inicializarToggleTema();
-  inicializarFormularioNewsletter();
-  inicializarModalNewsletter();
-});
-
-// ---------- Avisos secundarios y consentimiento de cookies ----------
-// Regla del sitio: mientras no se hayan ACEPTADO cookies (no se ha contestado
-// todavía al aviso de cookies, o se ha pulsado "Rechazar no necesarias"), no
-// aparece ningún otro aviso (modal de newsletter, banner de última hora).
-// El estado lo fija cookies.js (window.EOF_CONSENTIMIENTO_*) y avisa con los
-// eventos "eof:cookies-aceptadas" / "eof:cookies-rechazadas".
-function eofCookiesAceptadasAhora() {
-  return !!(window.EOF_CONSENTIMIENTO_ANALITICA || window.EOF_CONSENTIMIENTO_PUBLICIDAD);
-}
-
-// Ejecuta fn ahora si ya hay cookies aceptadas, y otra vez cada vez que se
-// (re)acepten. Cubre los dos órdenes de arranque posibles entre layout.js y
-// cookies.js: si la decisión ya estaba aplicada se ejecuta al momento, y si
-// se aplica después se ejecuta con el evento.
-function eofAlAceptarCookies(fn) {
-  if (eofCookiesAceptadasAhora()) fn();
-  document.addEventListener("eof:cookies-aceptadas", fn);
-}
-
-// ---------- Modal de suscripción al boletín (lectores) ----------
-// Se muestra hasta dos veces por persona, pensado para captar
-// suscripciones sin resultar cargante: la primera vez poco después de
-// aceptar las cookies (con un pequeño respiro para no interrumpir), y la
-// segunda pasado un rato de lectura en una visita posterior. Si en
-// cualquiera de las dos ya se ha suscrito, o si ya se ha mostrado dos
-// veces, no se vuelve a insistir. Todo se recuerda en localStorage, así
-// que es por navegador, no por sesión. Sin cookies aceptadas no se muestra.
-const NEWSLETTER_MODAL_CLAVE = "eof_newsletter_modal";
-const NEWSLETTER_MODAL_RETRASO_PRIMERA_VEZ_MS = 4000; // pequeño respiro tras cargar/aceptar
-const NEWSLETTER_MODAL_RETRASO_SEGUNDA_VEZ_MS = 45000; // "pasado un tiempo" en una visita posterior
-const NEWSLETTER_MODAL_EXITO_MS = 2600; // cuánto se ve el "¡Ya estás dentro!" antes de cerrarse solo
-
-function estadoModalNewsletter() {
-  try {
-    return JSON.parse(localStorage.getItem(NEWSLETTER_MODAL_CLAVE)) || { veces: 0, suscrito: false };
-  } catch (e) {
-    return { veces: 0, suscrito: false };
-  }
-}
-
-function guardarEstadoModalNewsletter(estado) {
-  try {
-    localStorage.setItem(NEWSLETTER_MODAL_CLAVE, JSON.stringify(estado));
-  } catch (e) {
-    // Sin localStorage disponible (modo privado estricto, etc.): el modal
-    // podría repetirse más de la cuenta, pero no es motivo para romper
-    // nada más de la página.
-  }
-}
-
-function abrirModalNewsletter() {
-  const modal = document.getElementById("modalNewsletter");
-  if (!modal) return;
-  if (!eofCookiesAceptadasAhora()) return;
-  // Si ya hay otro modal (p. ej. el de detalle de partido) abierto encima,
-  // no se superpone el de newsletter: se deja para la próxima ocasión.
-  if (document.querySelector(".modal-partido.abierto")) return;
-  modal.classList.add("abierto");
-  modal.setAttribute("aria-hidden", "false");
-  const caja = modal.querySelector(".modal-newsletter-caja");
-  if (caja) caja.focus({ preventScroll: true });
-}
-
-function cerrarModalNewsletter() {
-  const modal = document.getElementById("modalNewsletter");
-  if (!modal) return;
-  modal.classList.remove("abierto");
-  modal.setAttribute("aria-hidden", "true");
-}
-
-// Sustituye el formulario del modal por el mensaje de "¡Ya estás dentro!".
-function mostrarExitoModalNewsletter() {
-  const caja = document.querySelector("#modalNewsletter .modal-newsletter-caja");
-  if (!caja) return;
-  caja.classList.add("modal-newsletter-caja--exito");
-  const cabecera = caja.querySelector(".modal-newsletter-cabecera");
-  const cuerpo = caja.querySelector(".modal-newsletter-cuerpo");
-  const exito = caja.querySelector(".modal-newsletter-exito");
-  if (cabecera) cabecera.hidden = true;
-  if (cuerpo) cuerpo.hidden = true;
-  if (exito) exito.hidden = false;
-}
-
-function inicializarModalNewsletter() {
-  const modal = document.getElementById("modalNewsletter");
-  const form = document.getElementById("modalNewsletterForm");
-  if (!modal || !form) return;
-  eofPrecalentarNewsletter(form);
-
-  const estado = estadoModalNewsletter();
-  if (!estado.suscrito && estado.veces < 2) {
-    let programado = false;
-    // El temporizador arranca cuando hay cookies aceptadas (al cargar, si ya
-    // estaban aceptadas de una visita anterior, o justo tras pulsar
-    // "Aceptar" en el aviso de cookies), no antes.
-    eofAlAceptarCookies(() => {
-      if (programado) return;
-      const estadoInicial = estadoModalNewsletter();
-      if (estadoInicial.suscrito || estadoInicial.veces >= 2) return;
-      programado = true;
-      const retraso = estadoInicial.veces === 0 ? NEWSLETTER_MODAL_RETRASO_PRIMERA_VEZ_MS : NEWSLETTER_MODAL_RETRASO_SEGUNDA_VEZ_MS;
-      setTimeout(() => {
-        // Se vuelve a comprobar todo al saltar el timeout (no solo al
-        // programarlo): si mientras tanto la persona ya se ha suscrito
-        // desde el pie de página, o ha retirado las cookies, no tiene
-        // sentido interrumpirle.
-        const estadoActual = estadoModalNewsletter();
-        if (estadoActual.suscrito || estadoActual.veces >= 2) return;
-        if (!eofCookiesAceptadasAhora()) { programado = false; return; }
-        abrirModalNewsletter();
-        guardarEstadoModalNewsletter({ ...estadoActual, veces: estadoActual.veces + 1 });
-      }, retraso);
-    });
-  }
-
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && modal.classList.contains("abierto")) cerrarModalNewsletter();
-  });
-
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const input = document.getElementById("modalNewsletterEmail");
-    const errorEl = document.getElementById("modalNewsletterError");
-    const email = (input.value || "").trim();
-    if (errorEl) { errorEl.hidden = true; errorEl.textContent = ""; }
-    if (!email) {
-      if (errorEl) { errorEl.textContent = "Escribe tu correo electrónico."; errorEl.hidden = false; }
-      input.focus();
-      return;
-    }
-    const boton = form.querySelector("button[type=\"submit\"]");
-    const textoOriginal = boton.textContent;
-    boton.disabled = true;
-    boton.textContent = "Enviando...";
-    try {
-      const ts = await eofTokenNewsletter(form);
-      const res = await apiFetch("/api/newsletter/suscribir", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, turnstileToken: ts.token, web: ts.web }),
-      });
-      if (window.EOFTurnstile) window.EOFTurnstile.reiniciar(ts.cont);
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "No se pudo completar la suscripción");
-      }
-      guardarEstadoModalNewsletter({ ...estadoModalNewsletter(), suscrito: true });
-      mostrarExitoModalNewsletter();
-      renderFooter_actualizarBloqueNewsletter();
-      setTimeout(cerrarModalNewsletter, NEWSLETTER_MODAL_EXITO_MS);
-    } catch (err) {
-      // Error dentro del propio modal (junto al campo), no en un toast que
-      // quedaría fuera del foco de atención.
-      if (errorEl) {
-        errorEl.textContent = err.message || "No se pudo completar la suscripción";
-        errorEl.hidden = false;
-      } else if (window.EOF && EOF.toast) {
-        EOF.toast(err.message || "No se pudo completar la suscripción", "error");
-      }
-    } finally {
-      boton.disabled = false;
-      boton.textContent = textoOriginal;
-    }
-  });
-}
-
-// ---------- Modo oscuro ----------
-// El modo por defecto es siempre claro (ver tema.js); este botón es la
-// ÚNICA forma de pasar a oscuro, y la elección se recuerda en
-// localStorage para las siguientes visitas.
-//
-// Se engancha con delegación de eventos en document en vez de buscar
-// el botón una sola vez: la cabecera se vuelve a pintar por completo
-// (innerHTML) en cuanto llegan los clubes personalizados (ver más
-// arriba, cargarCustomClubs().then(...)), lo que sustituye el botón
-// original por uno nuevo y se llevaba por delante cualquier listener
-// enganchado directamente a él. Delegar en document sobrevive a
-// cualquier repintado futuro de la cabecera sin tener que acordarse de
-// reengancharlo cada vez.
-function inicializarToggleTema() {
-  if (document.body.dataset.temaDelegado) return; // no engancharlo dos veces
-  document.body.dataset.temaDelegado = "1";
-  document.addEventListener("click", (e) => {
-    const btn = e.target.closest("#themeToggle");
-    if (!btn) return;
-    const esOscuroAhora = document.documentElement.getAttribute("data-theme") === "dark";
-    const nuevo = esOscuroAhora ? "light" : "dark";
-    if (window.EOFTema) { window.EOFTema.fijar(nuevo); return; }
-    if (nuevo === "dark") {
-      document.documentElement.setAttribute("data-theme", "dark");
-    } else {
-      document.documentElement.removeAttribute("data-theme");
-    }
-    try {
-      localStorage.setItem("eof_tema", nuevo);
-    } catch {}
-  });
-}
-
-// ---------- Formulario de suscripción al boletín (pie de página) ----------
-function inicializarFormularioNewsletter() {
-  const form = document.getElementById("newsletterForm");
-  // Enlace "¿Ya no recibes el boletín?" que aparece en el bloque de "ya
-  // suscrito": no llama a ningún endpoint de baja (aquí no hay forma de
-  // saber el baja_token del suscriptor, solo se guardó en el correo),
-  // así que solo "olvida" el estado local (eof_newsletter_modal) para
-  // que este navegador vuelva a mostrar el formulario normal de
-  // suscripción. Pensado para cuando la persona ya se dio de baja desde
-  // el enlace del correo pero en OTRO dispositivo/navegador, donde ese
-  // aviso de "ya estás dentro" no se pudo limpiar solo.
-  const btnOlvidar = document.getElementById("btnOlvidarSuscripcionNewsletter");
-  if (btnOlvidar) {
-    btnOlvidar.addEventListener("click", () => {
-      guardarEstadoModalNewsletter({ veces: estadoModalNewsletter().veces, suscrito: false });
-      if (window.EOF && EOF.toast) {
-        EOF.toast("Listo. Ya puedes volver a suscribirte cuando quieras.", "exito");
-      }
-      renderFooter_actualizarBloqueNewsletter();
-    });
-  }
-  if (!form) return;
-  eofPrecalentarNewsletter(form);
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const input = document.getElementById("newsletterEmail");
-    const email = (input.value || "").trim();
-    if (!email) return;
-    const boton = form.querySelector("button");
-    const textoOriginal = boton.textContent;
-    boton.disabled = true;
-    boton.textContent = "Enviando...";
-    try {
-      const ts = await eofTokenNewsletter(form);
-      const res = await apiFetch("/api/newsletter/suscribir", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, turnstileToken: ts.token, web: ts.web }),
-      });
-      if (window.EOFTurnstile) window.EOFTurnstile.reiniciar(ts.cont);
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "No se pudo completar la suscripción");
-      }
-      input.value = "";
-      guardarEstadoModalNewsletter({ ...estadoModalNewsletter(), suscrito: true });
-      if (window.EOF && EOF.toast) {
-        EOF.toast("¡Suscripción realizada! Revisa tu correo cada semana.", "exito");
-      }
-      renderFooter_actualizarBloqueNewsletter();
-    } catch (err) {
-      if (window.EOF && EOF.toast) {
-        EOF.toast(err.message || "No se pudo completar la suscripción", "error");
-      }
-    } finally {
-      boton.disabled = false;
-      boton.textContent = textoOriginal;
-    }
-  });
-}
-
-// Engancha los listeners de apertura/cierre del submenú de clubes de
-// cada liga. Se llama al arrancar y también cada vez que se vuelve a
-// pintar la cabecera (p. ej. al llegar los clubes personalizados), ya
-// que renderHeader() sustituye el HTML entero y los listeners viejos se
-// pierden con los elementos a los que estaban enganchados.
-function reengancharMenu() {
-  const toggle = document.getElementById("navToggle");
-  const navList = document.getElementById("navList");
-  if (toggle && navList) {
-    toggle.addEventListener("click", () => navList.classList.toggle("abierta"));
-  }
-  // En escritorio con ratón los desplegables se abren solo con CSS
-  // (:hover). Con táctil, o en móvil (menú en acordeón), se abren
-  // pulsando: la clase "abierto" es la que los muestra.
-  const hoverReal = () => window.innerWidth > 900 && window.matchMedia("(hover: hover)").matches;
-  const cerrarMenus = (excepto) => {
-    document.querySelectorAll("nav.main-nav .abierto").forEach((el) => {
-      if (excepto && (el === excepto || el.contains(excepto) || excepto.contains(el))) return;
-      el.classList.remove("abierto");
-      const b = el.querySelector(":scope > .nav-grupo-btn");
-      if (b) b.setAttribute("aria-expanded", "false");
-    });
-  };
-  document.querySelectorAll(".nav-grupo-btn").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (hoverReal()) return; // ya se abre con el ratón
-      const li = btn.closest("li");
-      const yaAbierto = li.classList.contains("abierto");
-      cerrarMenus();
-      if (!yaAbierto) {
-        li.classList.add("abierto");
-        btn.setAttribute("aria-expanded", "true");
-      }
-    });
-  });
-  document.querySelectorAll(".nav-liga-toggle").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (hoverReal()) return; // con ratón la cascada sale por :hover
-      const li = btn.closest("li");
-      const yaAbierto = li.classList.contains("abierto");
-      // Se cierran las otras ligas, pero el grupo "Ligas" se queda abierto.
-      li.parentElement.querySelectorAll(":scope > li.nav-liga.abierto").forEach((otra) => otra.classList.remove("abierto"));
-      if (!yaAbierto) li.classList.add("abierto");
-    });
-  });
-}
-document.addEventListener("click", (e) => {
-  if (e.target.closest(".nav-grupo")) return;
-  document.querySelectorAll("nav.main-nav .abierto").forEach((el) => el.classList.remove("abierto"));
-  document.querySelectorAll(".nav-grupo-btn[aria-expanded=true]").forEach((b) => b.setAttribute("aria-expanded", "false"));
-});
-
-// Desplegable del nombre de usuario en la cabecera (sesión iniciada
-// desde el panel, visible en cualquier página pública sin tener que
-// volver a iniciar sesión).
-function inicializarMenuUsuario() {
-  if (!document.getElementById("userMenu")) return;
-  // Delegación en document: sobrevive a que renderHeader() vuelva a
-  // pintar la cabecera (p. ej. al llegar los clubes personalizados) y
-  // sustituya estos elementos por otros nuevos con los mismos ids.
-  if (window.__menuUsuarioListenersListos) return;
-  window.__menuUsuarioListenersListos = true;
-
-  document.addEventListener("click", (e) => {
-    const toggle = e.target.closest("#userMenuToggle");
-    const dropdown = document.getElementById("userDropdown");
-    if (!dropdown) return;
-    if (toggle) {
-      e.stopPropagation();
-      dropdown.classList.toggle("abierto");
-      toggle.setAttribute("aria-expanded", String(dropdown.classList.contains("abierto")));
-      return;
-    }
-    if (e.target.closest("#btnCerrarSesion")) {
-      cerrarSesionGlobal();
-      return;
-    }
-    const menu = document.getElementById("userMenu");
-    if (menu && !menu.contains(e.target)) {
-      dropdown.classList.remove("abierto");
-      const t = document.getElementById("userMenuToggle");
-      if (t) t.setAttribute("aria-expanded", "false");
-    }
-  });
-  document.addEventListener("keydown", (e) => {
-    if (e.key !== "Escape") return;
-    const d = document.getElementById("userDropdown");
-    if (!d || !d.classList.contains("abierto")) return;
-    d.classList.remove("abierto");
-    const t = document.getElementById("userMenuToggle");
-    if (t) { t.setAttribute("aria-expanded", "false"); t.focus(); }
-  });
-}
-
-// Mismo patrón que inicializarMenuUsuario(), pero para el desplegable
-// de cuenta de lector (#lectorMenu) que aparece en el header cuando hay
-// sesión de lector iniciada. Independiente a propósito: los dos menús
-// pueden coexistir en el DOM aunque solo uno se muestre a la vez (ver
-// accesoLectorHeaderHTML), y no comparten ids ni lógica de cierre.
-function inicializarMenuLector() {
-  if (window.__menuLectorListenersListos) return;
-  window.__menuLectorListenersListos = true;
-
-  document.addEventListener("click", async (e) => {
-    const toggle = e.target.closest("#lectorMenuToggle");
-    const dropdown = document.getElementById("lectorDropdown");
-    if (!dropdown) return;
-    if (toggle) {
-      e.stopPropagation();
-      dropdown.classList.toggle("abierto");
-      toggle.setAttribute("aria-expanded", String(dropdown.classList.contains("abierto")));
-      return;
-    }
-    if (e.target.closest("#btnCerrarSesionLectorHeader")) {
-      await cerrarSesionLector();
-      location.reload();
-      return;
-    }
-    const menu = document.getElementById("lectorMenu");
-    if (menu && !menu.contains(e.target)) {
-      dropdown.classList.remove("abierto");
-      const t = document.getElementById("lectorMenuToggle");
-      if (t) t.setAttribute("aria-expanded", "false");
-    }
-  });
-  document.addEventListener("keydown", (e) => {
-    if (e.key !== "Escape") return;
-    const d = document.getElementById("lectorDropdown");
-    if (!d || !d.classList.contains("abierto")) return;
-    d.classList.remove("abierto");
-    const t = document.getElementById("lectorMenuToggle");
-    if (t) { t.setAttribute("aria-expanded", "false"); t.focus(); }
-  });
-}
-
-// ---------- Búsqueda en vivo: resultados automáticos conforme se escribe,
-// sin necesidad de pulsar ningún botón/lupa. Se muestra un desplegable
-// con las coincidencias bajo el propio cuadro de búsqueda de la cabecera.
-// Se puede llamar más de una vez en la misma página (p. ej. cuando
-// cargarCustomClubs() vuelve a pintar la cabecera y sustituye el
-// <input> por uno nuevo): cada llamada reengancha los listeners propios
-// del input actual, pero el cierre del desplegable al hacer clic fuera
-// se engancha una sola vez en document (con __busquedaClickFueraListo)
-// para no ir acumulando listeners duplicados en cada repintado.
-let __busquedaClickFueraListo = false;
-function inicializarBusquedaEnVivo() {
-  const input = document.getElementById("searchInput");
-  const resultadosEl = document.getElementById("searchResultados");
-  if (!input || !resultadosEl) return;
-
-  let temporizador;
-  let controlador;
-
-  // En la página de resultados el cuadro conserva lo buscado.
-  if (!input.value && /\/buscar(\.html)?$/.test(location.pathname)) {
-    const qActual = new URLSearchParams(location.search).get("q");
-    if (qActual) input.value = qActual;
-  }
-
-  input.addEventListener("input", () => {
-    clearTimeout(temporizador);
-    const q = input.value.trim();
-    if (!q) {
-      if (controlador) controlador.abort();   // que una respuesta tardía no reabra el desplegable
-      resultadosEl.classList.remove("visible");
-      resultadosEl.innerHTML = "";
-      return;
-    }
-    temporizador = setTimeout(() => buscarEnVivo(q), 250);
-  });
-
-  async function buscarEnVivo(q) {
-    if (controlador) controlador.abort();
-    controlador = new AbortController();
-    resultadosEl.classList.add("visible");
-    resultadosEl.innerHTML = `<div class="search-cargando">Buscando...</div>`;
-
-    // Si lo que se ha escrito coincide con el nombre de uno o varios
-    // equipos (con o sin sigla, con o sin tildes), se ofrece primero un
-    // acceso directo a la ficha de CADA club que encaje -- no solo el
-    // primero -- además de las noticias que encajen con el texto tal
-    // cual. Por ejemplo, buscar "nas" debe ofrecer todos los equipos
-    // que contengan esas letras (p.ej. "Arenas Club"), no quedarse solo
-    // con el primero que se encuentre y ocultar el resto.
-    const MAX_CLUBES_EN_BUSCADOR = 5;
-    const clubes = (typeof buscarClubesPorTexto === "function") ? buscarClubesPorTexto(q) : [];
-    const clubesAMostrar = clubes.slice(0, MAX_CLUBES_EN_BUSCADOR);
-    const itemClubHTML = clubesAMostrar.map(club => `
-      <a class="search-item search-item-club" href="${baseHref()}categoria?cat=${encodeURIComponent(club.categoria)}&club=${encodeURIComponent(club.nombre)}">
+  `,document.body.prepend(t),document.body.classList.add("con-banner-ultima-hora");const n=t.querySelector(".uh-texto-wrap"),r=t.querySelector(".uh-texto");requestAnimationFrame(()=>{r.scrollWidth>n.clientWidth&&t.classList.add("uh-marquee")}),t.querySelector(".uh-cerrar").addEventListener("click",()=>{quitarBannerUrgenteDelDOM(),sessionStorage.setItem("bannerUrgenteCerradoUrl",e.url)})}function escaparHtmlBasico(e){const t=document.createElement("div");return t.textContent=e||"",t.innerHTML}function montarEnlaceSaltarContenido(){if(document.getElementById("eof-saltar-contenido"))return;const e=document.querySelector("main");if(!e)return;e.id||(e.id="contenido-principal"),e.hasAttribute("tabindex")||e.setAttribute("tabindex","-1");const t=document.createElement("style");t.textContent="#eof-saltar-contenido{position:fixed;top:8px;left:8px;z-index:100000;padding:10px 16px;background:#111;color:#fff;font:600 14px/1.2 system-ui,sans-serif;border-radius:8px;text-decoration:none;transform:translateY(-200%);transition:transform .15s}#eof-saltar-contenido:focus{transform:translateY(0);outline:3px solid #ffbf47;outline-offset:2px}main:focus{outline:none}",document.head.appendChild(t);const a=document.createElement("a");a.id="eof-saltar-contenido",a.href="#"+e.id,a.textContent="Saltar al contenido",a.addEventListener("click",()=>{setTimeout(()=>e.focus({preventScroll:!1}),0)}),document.body.insertBefore(a,document.body.firstChild)}document.addEventListener("DOMContentLoaded",()=>{montarEnlaceSaltarContenido();const e=document.getElementById("site-header"),t=document.getElementById("site-footer");if(e&&(e.innerHTML=renderHeader()),pintarInsigniaGuardadas(),t&&(t.innerHTML=renderFooter()),!document.querySelector('script[src*="js/offline.js"]')){const o=document.createElement("script");o.src="/js/offline.js?v=c9fa79be",o.defer=!0,document.head.appendChild(o)}if(!document.querySelector('script[src*="js/push.js"]')){const o=document.createElement("script");o.src="/js/push.js?v=ab6a3bae",o.defer=!0,document.head.appendChild(o)}inicializarCarruselPatrocinadoresFooter();let a;window.addEventListener("resize",()=>{clearTimeout(a),a=setTimeout(inicializarCarruselPatrocinadoresFooter,200)}),pintarFechaHoy(),/(^|\/)acceso(\.html)?(\/)?$/.test(location.pathname)||(eofAlAceptarCookies(cargarBannerUrgente),setInterval(cargarBannerUrgente,UH_INTERVALO_COMPROBACION_MS)),document.addEventListener("eof:cookies-rechazadas",()=>{quitarBannerUrgenteDelDOM()}),e&&typeof cargarCustomClubs=="function"&&cargarCustomClubs().then(()=>{e.innerHTML=renderHeader(),pintarInsigniaGuardadas(),pintarFechaHoy(),reengancharMenu(),inicializarBusquedaEnVivo()}),reengancharMenu();const r=document.getElementById("redes-icons-portada");r&&(r.innerHTML=iconosRedesHTML()),cargarRedesSociales(),inicializarBusquedaEnVivo(),inicializarMenuUsuario(),inicializarMenuLector(),inicializarToggleTema(),inicializarFormularioNewsletter(),inicializarModalNewsletter()});function eofCookiesAceptadasAhora(){return!!(window.EOF_CONSENTIMIENTO_ANALITICA||window.EOF_CONSENTIMIENTO_PUBLICIDAD)}function eofCookiesDecididasAhora(){return!!window.EOF_COOKIES_DECIDIDO||eofCookiesAceptadasAhora()}function eofAlDecidirCookies(e){eofCookiesDecididasAhora()&&e(),document.addEventListener("eof:cookies-decididas",e),document.addEventListener("eof:cookies-aceptadas",e)}function eofAlAceptarCookies(e){eofCookiesAceptadasAhora()&&e(),document.addEventListener("eof:cookies-aceptadas",e)}const NEWSLETTER_MODAL_CLAVE="eof_newsletter_modal",NEWSLETTER_MODAL_RETRASO_PRIMERA_VEZ_MS=700,NEWSLETTER_MODAL_RETRASO_SEGUNDA_VEZ_MS=45e3,NEWSLETTER_MODAL_EXITO_MS=2600;function estadoModalNewsletter(){try{return JSON.parse(localStorage.getItem(NEWSLETTER_MODAL_CLAVE))||{veces:0,suscrito:!1}}catch{return{veces:0,suscrito:!1}}}function guardarEstadoModalNewsletter(e){try{localStorage.setItem(NEWSLETTER_MODAL_CLAVE,JSON.stringify(e))}catch{}}function abrirModalNewsletter(){const e=document.getElementById("modalNewsletter");if(!e||!eofCookiesDecididasAhora()||(e.parentElement!==document.body&&document.body.appendChild(e),document.querySelector(".modal-partido.abierto, #eof-cookies-aviso")))return!1;e.classList.add("abierto"),e.setAttribute("aria-hidden","false");const t=e.querySelector(".modal-newsletter-caja");return t&&t.focus({preventScroll:!0}),!0}function cerrarModalNewsletter(){const e=document.getElementById("modalNewsletter");e&&(e.classList.remove("abierto"),e.setAttribute("aria-hidden","true"))}function mostrarExitoModalNewsletter(){const e=document.querySelector("#modalNewsletter .modal-newsletter-caja");if(!e)return;e.classList.add("modal-newsletter-caja--exito");const t=e.querySelector(".modal-newsletter-cabecera"),a=e.querySelector(".modal-newsletter-cuerpo"),n=e.querySelector(".modal-newsletter-exito");t&&(t.hidden=!0),a&&(a.hidden=!0),n&&(n.hidden=!1)}function inicializarModalNewsletter(){const e=document.getElementById("modalNewsletter"),t=document.getElementById("modalNewsletterForm");if(!e||!t)return;e.parentElement!==document.body&&document.body.appendChild(e),eofPrecalentarNewsletter(t);const a=estadoModalNewsletter();if(!a.suscrito&&a.veces<2){let n=!1;eofAlDecidirCookies(()=>{if(n)return;const r=estadoModalNewsletter();if(r.suscrito||r.veces>=2)return;n=!0;const o=r.veces===0?NEWSLETTER_MODAL_RETRASO_PRIMERA_VEZ_MS:NEWSLETTER_MODAL_RETRASO_SEGUNDA_VEZ_MS;setTimeout(()=>{const c=estadoModalNewsletter();if(!(c.suscrito||c.veces>=2)){if(!eofCookiesDecididasAhora()){n=!1;return}abrirModalNewsletter()&&guardarEstadoModalNewsletter({...c,veces:c.veces+1})}},o)})}document.addEventListener("keydown",n=>{n.key==="Escape"&&e.classList.contains("abierto")&&cerrarModalNewsletter()}),t.addEventListener("submit",async n=>{n.preventDefault();const r=document.getElementById("modalNewsletterEmail"),o=document.getElementById("modalNewsletterError"),c=(r.value||"").trim();if(o&&(o.hidden=!0,o.textContent=""),!c){o&&(o.textContent="Escribe tu correo electrónico.",o.hidden=!1),r.focus();return}const i=t.querySelector('button[type="submit"]'),s=i.textContent;i.disabled=!0,i.textContent="Enviando...";try{const l=await eofTokenNewsletter(t),d=await apiFetch("/api/newsletter/suscribir",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:c,turnstileToken:l.token,web:l.web})});if(window.EOFTurnstile&&window.EOFTurnstile.reiniciar(l.cont),!d.ok){const m=await d.json().catch(()=>({}));throw new Error(m.error||"No se pudo completar la suscripción")}guardarEstadoModalNewsletter({...estadoModalNewsletter(),suscrito:!0}),mostrarExitoModalNewsletter(),renderFooter_actualizarBloqueNewsletter(),setTimeout(cerrarModalNewsletter,NEWSLETTER_MODAL_EXITO_MS)}catch(l){o?(o.textContent=l.message||"No se pudo completar la suscripción",o.hidden=!1):window.EOF&&EOF.toast&&EOF.toast(l.message||"No se pudo completar la suscripción","error")}finally{i.disabled=!1,i.textContent=s}})}function inicializarToggleTema(){document.body.dataset.temaDelegado||(document.body.dataset.temaDelegado="1",document.addEventListener("click",e=>{if(!e.target.closest("#themeToggle"))return;const n=document.documentElement.getAttribute("data-theme")==="dark"?"light":"dark";if(window.EOFTema){window.EOFTema.fijar(n);return}n==="dark"?document.documentElement.setAttribute("data-theme","dark"):document.documentElement.removeAttribute("data-theme");try{localStorage.setItem("eof_tema",n)}catch{}}))}function inicializarFormularioNewsletter(){const e=document.getElementById("newsletterForm"),t=document.getElementById("btnOlvidarSuscripcionNewsletter");t&&t.addEventListener("click",()=>{guardarEstadoModalNewsletter({veces:estadoModalNewsletter().veces,suscrito:!1}),window.EOF&&EOF.toast&&EOF.toast("Listo. Ya puedes volver a suscribirte cuando quieras.","exito"),renderFooter_actualizarBloqueNewsletter()}),e&&(eofPrecalentarNewsletter(e),e.addEventListener("submit",async a=>{a.preventDefault();const n=document.getElementById("newsletterEmail"),r=(n.value||"").trim();if(!r)return;const o=e.querySelector("button"),c=o.textContent;o.disabled=!0,o.textContent="Enviando...";try{const i=await eofTokenNewsletter(e),s=await apiFetch("/api/newsletter/suscribir",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:r,turnstileToken:i.token,web:i.web})});if(window.EOFTurnstile&&window.EOFTurnstile.reiniciar(i.cont),!s.ok){const l=await s.json().catch(()=>({}));throw new Error(l.error||"No se pudo completar la suscripción")}n.value="",guardarEstadoModalNewsletter({...estadoModalNewsletter(),suscrito:!0}),window.EOF&&EOF.toast&&EOF.toast("¡Suscripción realizada! Revisa tu correo cada semana.","exito"),renderFooter_actualizarBloqueNewsletter()}catch(i){window.EOF&&EOF.toast&&EOF.toast(i.message||"No se pudo completar la suscripción","error")}finally{o.disabled=!1,o.textContent=c}}))}function reengancharMenu(){const e=document.getElementById("navToggle"),t=document.getElementById("navList");e&&t&&e.addEventListener("click",()=>t.classList.toggle("abierta"));const a=()=>window.innerWidth>900&&window.matchMedia("(hover: hover)").matches,n=r=>{document.querySelectorAll("nav.main-nav .abierto").forEach(o=>{if(r&&(o===r||o.contains(r)||r.contains(o)))return;o.classList.remove("abierto");const c=o.querySelector(":scope > .nav-grupo-btn");c&&c.setAttribute("aria-expanded","false")})};document.querySelectorAll(".nav-grupo-btn").forEach(r=>{r.addEventListener("click",o=>{if(o.preventDefault(),o.stopPropagation(),a())return;const c=r.closest("li"),i=c.classList.contains("abierto");n(),i||(c.classList.add("abierto"),r.setAttribute("aria-expanded","true"))})}),document.querySelectorAll(".nav-liga-toggle").forEach(r=>{r.addEventListener("click",o=>{if(o.preventDefault(),o.stopPropagation(),a())return;const c=r.closest("li"),i=c.classList.contains("abierto");c.parentElement.querySelectorAll(":scope > li.nav-liga.abierto").forEach(s=>s.classList.remove("abierto")),i||c.classList.add("abierto")})})}document.addEventListener("click",e=>{e.target.closest(".nav-grupo")||(document.querySelectorAll("nav.main-nav .abierto").forEach(t=>t.classList.remove("abierto")),document.querySelectorAll(".nav-grupo-btn[aria-expanded=true]").forEach(t=>t.setAttribute("aria-expanded","false")))});function inicializarMenuUsuario(){document.getElementById("userMenu")&&(window.__menuUsuarioListenersListos||(window.__menuUsuarioListenersListos=!0,document.addEventListener("click",e=>{const t=e.target.closest("#userMenuToggle"),a=document.getElementById("userDropdown");if(!a)return;if(t){e.stopPropagation(),a.classList.toggle("abierto"),t.setAttribute("aria-expanded",String(a.classList.contains("abierto")));return}if(e.target.closest("#btnCerrarSesion")){cerrarSesionGlobal();return}const n=document.getElementById("userMenu");if(n&&!n.contains(e.target)){a.classList.remove("abierto");const r=document.getElementById("userMenuToggle");r&&r.setAttribute("aria-expanded","false")}}),document.addEventListener("keydown",e=>{if(e.key!=="Escape")return;const t=document.getElementById("userDropdown");if(!t||!t.classList.contains("abierto"))return;t.classList.remove("abierto");const a=document.getElementById("userMenuToggle");a&&(a.setAttribute("aria-expanded","false"),a.focus())})))}function inicializarMenuLector(){window.__menuLectorListenersListos||(window.__menuLectorListenersListos=!0,document.addEventListener("click",async e=>{const t=e.target.closest("#lectorMenuToggle"),a=document.getElementById("lectorDropdown");if(!a)return;if(t){e.stopPropagation(),a.classList.toggle("abierto"),t.setAttribute("aria-expanded",String(a.classList.contains("abierto")));return}if(e.target.closest("#btnCerrarSesionLectorHeader")){await cerrarSesionLector(),location.reload();return}const n=document.getElementById("lectorMenu");if(n&&!n.contains(e.target)){a.classList.remove("abierto");const r=document.getElementById("lectorMenuToggle");r&&r.setAttribute("aria-expanded","false")}}),document.addEventListener("keydown",e=>{if(e.key!=="Escape")return;const t=document.getElementById("lectorDropdown");if(!t||!t.classList.contains("abierto"))return;t.classList.remove("abierto");const a=document.getElementById("lectorMenuToggle");a&&(a.setAttribute("aria-expanded","false"),a.focus())}))}let __busquedaClickFueraListo=!1;function inicializarBusquedaEnVivo(){const e=document.getElementById("searchInput"),t=document.getElementById("searchResultados");if(!e||!t)return;let a,n;if(!e.value&&/\/buscar(\.html)?$/.test(location.pathname)){const i=new URLSearchParams(location.search).get("q");i&&(e.value=i)}e.addEventListener("input",()=>{clearTimeout(a);const i=e.value.trim();if(!i){n&&n.abort(),t.classList.remove("visible"),t.innerHTML="";return}a=setTimeout(()=>r(i),250)});async function r(i){n&&n.abort(),n=new AbortController,t.classList.add("visible"),t.innerHTML='<div class="search-cargando">Buscando...</div>';const d=(typeof buscarClubesPorTexto=="function"?buscarClubesPorTexto(i):[]).slice(0,5),m=d.map(u=>`
+      <a class="search-item search-item-club" href="${baseHref()}categoria?cat=${encodeURIComponent(u.categoria)}&club=${encodeURIComponent(u.nombre)}">
         <span class="search-item-cat">Ficha del equipo</span>
-        <span class="search-item-titulo">${escapeHtml(club.nombre)}</span>
-      </a>`).join("");
-
-    try {
-      const res = await apiFetch(`/api/articles?q=${encodeURIComponent(q)}&limit=6`, { signal: controlador.signal });
-      const { articles = [], busqueda = null } = await res.json();
-      if (input.value.trim() !== q) return;   // el texto ya cambió: respuesta obsoleta
-      if (!articles.length && !clubesAMostrar.length) {
-        resultadosEl.innerHTML = `<div class="search-vacio">Sin resultados para "${escapeHtml(q)}"</div>`;
-        return;
-      }
-      // Si el texto tenía una errata, el servidor busca con la forma corregida
-      // y lo indica en "busqueda.corregido": se avisa para que no sorprenda.
-      const avisoCorreccion = busqueda && busqueda.corregido
-        ? `<div class="search-vacio">Mostrando resultados para <strong>${escapeHtml(busqueda.corregido)}</strong></div>`
-        : "";
-      resultadosEl.innerHTML = avisoCorreccion + itemClubHTML + articles.map(a => `
-        <a class="search-item" href="${urlNoticia(a.categoria, a.slug)}">
-          <span class="search-item-cat">${categoriaLabel(a.categoria)}</span>
-          <span class="search-item-titulo">${escapeHtml(a.titulo)}</span>
-        </a>`).join("") +
-        `<a class="search-vermas" href="${baseHref()}buscar?q=${encodeURIComponent(q)}&todos=1">Ver todos los resultados →</a>`;
-    } catch (err) {
-      if (err.name === "AbortError") return;
-      resultadosEl.innerHTML = itemClubHTML || `<div class="search-vacio">No se ha podido buscar. Inténtalo de nuevo.</div>`;
-    }
-  }
-
-  // Flechas arriba/abajo recorren las sugerencias; Intro abre la marcada.
-  const opciones = () => [...resultadosEl.querySelectorAll("a.search-item, a.search-vermas")];
-  const marcar = (lista, i) => {
-    lista.forEach((a, k) => a.classList.toggle("search-activo", k === i));
-    if (lista[i]) lista[i].scrollIntoView({ block: "nearest" });
-  };
-
-  input.addEventListener("keydown", (e) => {
-    const lista = resultadosEl.classList.contains("visible") ? opciones() : [];
-    const actual = lista.findIndex((a) => a.classList.contains("search-activo"));
-    if (e.key === "ArrowDown" && lista.length) {
-      e.preventDefault();
-      marcar(lista, actual + 1 >= lista.length ? 0 : actual + 1);
-      return;
-    }
-    if (e.key === "ArrowUp" && lista.length) {
-      e.preventDefault();
-      marcar(lista, actual <= 0 ? lista.length - 1 : actual - 1);
-      return;
-    }
-    if (e.key === "Enter" && actual >= 0) {
-      e.preventDefault();
-      lista[actual].click();
-      return;
-    }
-    if (e.key === "Enter" && input.value.trim()) {
-      // Si el texto coincide con UN solo equipo, "Intro" lleva a su ficha. Con
-      // varios (p. ej. "nas") no se elige a ciegas: se muestran los resultados,
-      // donde aparecen todos los equipos como accesos directos.
-      const clubes = (typeof buscarClubesPorTexto === "function") ? buscarClubesPorTexto(input.value.trim()) : [];
-      if (clubes.length === 1) {
-        location.href = `${baseHref()}categoria?cat=${encodeURIComponent(clubes[0].categoria)}&club=${encodeURIComponent(clubes[0].nombre)}`;
-      } else {
-        location.href = `${baseHref()}buscar?q=${encodeURIComponent(input.value.trim())}&todos=1`;
-      }
-    }
-    if (e.key === "Escape") {
-      resultadosEl.classList.remove("visible");
-      input.blur();
-    }
-  });
-
-  if (!__busquedaClickFueraListo) {
-    __busquedaClickFueraListo = true;
-    // Delegado en document (no en la variable local searchBox, que
-    // podría quedar obsoleta si la cabecera se repinta): busca el
-    // #searchBox y el #searchResultados actuales en cada clic, así que
-    // sigue funcionando bien pase lo que pase con los repintados.
-    document.addEventListener("click", (e) => {
-      const searchBoxActual = document.getElementById("searchBox");
-      const resultadosActual = document.getElementById("searchResultados");
-      if (searchBoxActual && resultadosActual && !searchBoxActual.contains(e.target)) {
-        resultadosActual.classList.remove("visible");
-      }
-    });
-  }
-}
+        <span class="search-item-titulo">${escapeHtml(u.nombre)}</span>
+      </a>`).join("");try{const u=await apiFetch(`/api/articles?q=${encodeURIComponent(i)}&limit=6`,{signal:n.signal}),{articles:h=[],busqueda:p=null}=await u.json();if(e.value.trim()!==i)return;if(!h.length&&!d.length){t.innerHTML=`<div class="search-vacio">Sin resultados para "${escapeHtml(i)}"</div>`;return}const g=p&&p.corregido?`<div class="search-vacio">Mostrando resultados para <strong>${escapeHtml(p.corregido)}</strong></div>`:"";t.innerHTML=g+m+h.map(f=>`
+        <a class="search-item" href="${urlNoticia(f.categoria,f.slug)}">
+          <span class="search-item-cat">${categoriaLabel(f.categoria)}</span>
+          <span class="search-item-titulo">${escapeHtml(f.titulo)}</span>
+        </a>`).join("")+`<a class="search-vermas" href="${baseHref()}buscar?q=${encodeURIComponent(i)}&todos=1">Ver todos los resultados →</a>`}catch(u){if(u.name==="AbortError")return;t.innerHTML=m||'<div class="search-vacio">No se ha podido buscar. Inténtalo de nuevo.</div>'}}const o=()=>[...t.querySelectorAll("a.search-item, a.search-vermas")],c=(i,s)=>{i.forEach((l,d)=>l.classList.toggle("search-activo",d===s)),i[s]&&i[s].scrollIntoView({block:"nearest"})};e.addEventListener("keydown",i=>{const s=t.classList.contains("visible")?o():[],l=s.findIndex(d=>d.classList.contains("search-activo"));if(i.key==="ArrowDown"&&s.length){i.preventDefault(),c(s,l+1>=s.length?0:l+1);return}if(i.key==="ArrowUp"&&s.length){i.preventDefault(),c(s,l<=0?s.length-1:l-1);return}if(i.key==="Enter"&&l>=0){i.preventDefault(),s[l].click();return}if(i.key==="Enter"&&e.value.trim()){const d=typeof buscarClubesPorTexto=="function"?buscarClubesPorTexto(e.value.trim()):[];d.length===1?location.href=`${baseHref()}categoria?cat=${encodeURIComponent(d[0].categoria)}&club=${encodeURIComponent(d[0].nombre)}`:location.href=`${baseHref()}buscar?q=${encodeURIComponent(e.value.trim())}&todos=1`}i.key==="Escape"&&(t.classList.remove("visible"),e.blur())}),__busquedaClickFueraListo||(__busquedaClickFueraListo=!0,document.addEventListener("click",i=>{const s=document.getElementById("searchBox"),l=document.getElementById("searchResultados");s&&l&&!s.contains(i.target)&&l.classList.remove("visible")}))}

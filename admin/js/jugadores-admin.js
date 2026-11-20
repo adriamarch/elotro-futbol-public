@@ -1,4 +1,4 @@
-// ---------- Funcionalidades > Jugadores (solo administradores) ----------
+// ---------- Funcionalidades > Jugadores (solo Responsables) ----------
 // Corrección manual de las fichas de jugador que calcula el servidor a partir
 // del minuto a minuto. Backend: /api/admin/jugadores (worker y worker-secondary).
 //   GET  /api/admin/jugadores?competicion=&grupo=&club=&q=  -> fichas automáticas + corregidos

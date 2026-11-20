@@ -737,6 +737,12 @@
 .an-chip[data-color=ambar]{--c:var(--an-ambar);--c-bg:var(--an-ambar-bg);--c-t:var(--an-ambar-t);}
 .an-chip[data-color=verde]{--c:var(--an-verde);--c-bg:var(--an-verde-bg);--c-t:var(--an-verde-t);}
 .an-chip i{width:7px;height:7px;border-radius:50%;background:var(--c);}
+/* Grupos de trabajo como destinatarios: cada grupo trae su color (--gt) */
+.an-grupo[data-color=grupo],.an-chip[data-color=grupo]{--c:var(--gt,#5b6672);--c-bg:color-mix(in srgb,var(--gt,#5b6672) 14%,transparent);--c-t:color-mix(in srgb,var(--gt,#5b6672) 78%,var(--texto,#000));}
+.an-grupo[data-color=grupo] .an-grupo-ico{background:linear-gradient(135deg,color-mix(in srgb,var(--gt,#5b6672) 82%,#fff),var(--gt,#5b6672));color:#fff;box-shadow:0 8px 16px -10px var(--gt,#5b6672);}
+.an-grupo[data-trabajo="1"] .an-seg button:disabled{opacity:.4;cursor:not-allowed;}
+.an-preset[hidden]{display:none;}
+
 .an-chip b{background:var(--tarjeta);border-radius:9px;padding:0 6px;font-size:.7rem;color:var(--c-t);}
 .an-acciones{display:flex;gap:10px;flex-wrap:wrap;}
 .an-btn{

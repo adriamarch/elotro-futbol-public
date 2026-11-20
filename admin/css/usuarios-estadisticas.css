@@ -1,0 +1,78 @@
+/* =====================================================================
+   USUARIOS · columna «Actividad» (js/usuarios-estadisticas.js)
+   Solo CSS de la columna añadida; acotado a #subpanel-redactores. Sigue el modo
+   oscuro con [data-theme="dark"] y en móvil la celda pasa a bloque con su etiqueta.
+   ===================================================================== */
+#subpanel-redactores{
+  --ue-acento:var(--celeste,#2d9fdb);
+  --ue-acento-2:#1d6fd1;
+  --ue-suave:var(--texto-suave,#5b6478);
+  --ue-borde:var(--borde,#dde3f0);
+  --ue-ok:#1b7f3b;
+  --ue-aviso:#b45309;
+}
+[data-theme="dark"] #subpanel-redactores{
+  --ue-acento:#4c9bf0;
+  --ue-acento-2:#8fc0ff;
+  --ue-suave:#9aa6bd;
+  --ue-borde:rgba(255,255,255,.14);
+  --ue-ok:#4cc27a;
+  --ue-aviso:#f0a14c;
+}
+
+#subpanel-redactores table.tabla-usuarios th.ue-th{white-space:nowrap;}
+#subpanel-redactores table.tabla-usuarios td.ue-td{min-width:190px;vertical-align:top;}
+
+.ue-celda{display:flex;flex-direction:column;gap:7px;min-width:0;}
+.ue-graf{display:flex;align-items:center;gap:9px;}
+.ue-spark{display:block;width:104px;height:30px;flex:none;overflow:visible;}
+.ue-b{fill:var(--ue-acento);transition:fill .15s;}
+.ue-b-actual{opacity:.55;}
+.ue-b-vacia{fill:var(--ue-borde);}
+.ue-b:hover{fill:var(--ue-acento-2);}
+.ue-tend{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:99px;font-size:.74rem;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.ue-tend.ue-sube{color:var(--ue-ok);background:color-mix(in srgb,var(--ue-ok) 13%,transparent);}
+.ue-tend.ue-baja{color:var(--ue-aviso);background:color-mix(in srgb,var(--ue-aviso) 14%,transparent);}
+.ue-tend.ue-igual{color:var(--ue-suave);background:color-mix(in srgb,var(--ue-acento) 10%,transparent);}
+
+.ue-datos{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:3px 12px;font-size:.78rem;color:var(--ue-suave);}
+.ue-datos b{color:var(--texto,#1a2233);font-variant-numeric:tabular-nums;}
+[data-theme="dark"] .ue-datos b{color:#e7eaf0;}
+
+.ue-act-txt{margin:0;display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:.76rem;line-height:1.35;color:var(--ue-suave);}
+.ue-act-txt::before{content:"";width:8px;height:8px;border-radius:50%;flex:none;background:var(--ue-borde);}
+.ue-act-txt.ue-act::before{background:var(--ue-ok);box-shadow:0 0 0 3px color-mix(in srgb,var(--ue-ok) 22%,transparent);}
+.ue-act-txt.ue-sin::before{background:var(--ue-aviso);}
+.ue-act-txt b{color:var(--texto,#1a2233);}
+[data-theme="dark"] .ue-act-txt b{color:#e7eaf0;}
+
+.ue-botones{display:flex;flex-wrap:wrap;gap:6px;}
+.ue-btn{
+  appearance:none;cursor:pointer;font:inherit;font-size:.76rem;font-weight:700;padding:5px 11px;border-radius:9px;line-height:1.2;
+  border:1px solid color-mix(in srgb,var(--ue-acento) 55%,transparent);color:var(--ue-acento-2);background:color-mix(in srgb,var(--ue-acento) 10%,transparent);
+  transition:background .15s,border-color .15s,transform .15s;
+}
+.ue-btn:hover{background:color-mix(in srgb,var(--ue-acento) 20%,transparent);border-color:var(--ue-acento);transform:translateY(-1px);}
+.ue-btn:focus-visible{outline:2px solid #2d6cdf;outline-offset:2px;}
+.ue-btn-sec{border-color:var(--ue-borde);color:var(--ue-suave);background:transparent;}
+.ue-btn-sec:hover{color:var(--ue-acento-2);}
+
+.ue-error{font-size:.78rem;color:var(--ue-suave);}
+.ue-cargando{gap:8px;}
+.ue-esq{display:block;height:30px;border-radius:9px;background:linear-gradient(100deg,color-mix(in srgb,var(--ue-acento) 10%,transparent) 30%,color-mix(in srgb,var(--ue-acento) 22%,transparent) 50%,color-mix(in srgb,var(--ue-acento) 10%,transparent) 70%);background-size:300% 100%;animation:ueBrillo 1.3s linear infinite;}
+.ue-esq-corto{height:14px;width:70%;}
+@keyframes ueBrillo{from{background-position:100% 0;}to{background-position:-100% 0;}}
+
+/* Móvil: cada fila ya es una tarjeta (td con data-label); la celda ocupa todo el ancho. */
+@media (max-width:900px){
+  #subpanel-redactores table.tabla-usuarios td.ue-td{min-width:0;}
+  .ue-spark{width:130px;height:36px;}
+  .ue-botones{margin-top:2px;}
+  .ue-btn{padding:8px 14px;font-size:.82rem;}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .ue-b,.ue-btn{transition:none;}
+  .ue-esq{animation:none;}
+  .ue-btn:hover{transform:none;}
+}

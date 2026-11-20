@@ -28,3 +28,15 @@ herramientas
 *.map
 *.sql
 *.bak
+
+# Scripts, metadatos de sistema y copias de trabajo
+desktop.ini
+__pycache__
+*.pyc
+*.py
+*.ps1
+*.sh
+*.orig
+*.swp
+package.json
+package-lock.json

@@ -1,0 +1,492 @@
+/* ============================================================
+   CENTRO DE PARTIDO (fase 1): pestañas y paneles de
+   /minuto-a-minuto?id=N. Se carga DESPUÉS de minuto-a-minuto.css.
+   Usa las variables de la web (--tarjeta, --borde, --celeste...) para
+   que el modo oscuro funcione solo.
+   ============================================================ */
+
+body[data-page=minuto-a-minuto] { --cp-top: 0px; }
+
+/* ---------- Barra de pestañas ---------- */
+.cp-pestanas {
+  position: sticky;
+  top: var(--cp-top, 0px);
+  z-index: 25;
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  margin: -26px -20px 22px;
+  padding: 10px 20px;
+  background: color-mix(in srgb, var(--fondo-alt) 92%, transparent);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--borde);
+  scroll-snap-type: x proximity;
+}
+.cp-pestanas::-webkit-scrollbar { display: none; }
+.cp-pestanas[hidden] { display: none; }
+
+.cp-pestana {
+  font: inherit;
+  font-size: .84rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--borde);
+  background: var(--tarjeta);
+  color: var(--gris-texto);
+  scroll-snap-align: center;
+  transition: background .18s ease, color .18s ease, border-color .18s ease, transform .18s ease;
+}
+.cp-pestana:focus-visible { outline: 2px solid var(--celeste); outline-offset: 2px; }
+.cp-pestana[aria-selected=true] {
+  background: var(--marino);
+  border-color: var(--marino);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(12, 27, 46, .22);
+}
+[data-theme=dark] .cp-pestana[aria-selected=true] {
+  background: var(--celeste);
+  border-color: var(--celeste);
+  color: #0c1b2e;
+}
+@media (hover: hover) {
+  .cp-pestana:not([aria-selected=true]):hover { border-color: var(--celeste); color: var(--texto, inherit); transform: translateY(-1px); }
+}
+.cp-pestana-vivo {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #e5383b;
+  box-shadow: 0 0 0 0 rgba(229, 56, 59, .6);
+  animation: cpLatido 1.6s ease-out infinite;
+}
+.cp-pestana-n {
+  font-size: .7rem;
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  text-align: center;
+  background: rgba(127, 140, 160, .18);
+}
+.cp-pestana[aria-selected=true] .cp-pestana-n { background: rgba(255, 255, 255, .22); }
+@keyframes cpLatido {
+  0% { box-shadow: 0 0 0 0 rgba(229, 56, 59, .55); }
+  70% { box-shadow: 0 0 0 8px rgba(229, 56, 59, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(229, 56, 59, 0); }
+}
+
+/* ---------- Paneles ---------- */
+.cp-panel { animation: cpEntrada .28s ease both; scroll-margin-top: 120px; }
+.cp-panel[hidden] { display: none; }
+@keyframes cpEntrada { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+.cp-tarjeta {
+  background: var(--tarjeta);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-md, 12px);
+  padding: 16px 18px;
+  margin: 0 0 22px;
+  box-shadow: var(--sombra-sm, none);
+}
+.cp-titulo {
+  font-family: var(--font-tit);
+  font-size: .78rem;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--gris-texto);
+  margin: 0 0 12px;
+  text-align: center;
+}
+.cp-vacio {
+  text-align: center;
+  color: var(--gris-texto);
+  font-size: .92rem;
+  padding: 40px 20px;
+}
+
+/* ---------- Momentos clave ---------- */
+.cp-momentos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.cp-mom {
+  display: grid;
+  grid-template-columns: 54px 26px 1fr;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-top: 1px solid var(--borde);
+  font-size: .9rem;
+}
+.cp-mom:first-child { border-top: 0; }
+.cp-mom-min {
+  font-family: var(--font-tit);
+  font-weight: 600;
+  font-size: .85rem;
+  color: var(--gris-texto);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.cp-mom-ico { display: inline-flex; width: 22px; height: 22px; }
+.cp-mom-ico svg { width: 100%; height: 100%; }
+.cp-mom-texto { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.cp-mom-texto strong { font-weight: 600; overflow-wrap: anywhere; }
+.cp-mom-texto small { color: var(--gris-texto); font-size: .76rem; display: inline-flex; align-items: center; gap: 6px; }
+.cp-mom-texto small img { width: 14px; height: 14px; object-fit: contain; }
+.cp-mom-visitante .cp-mom-min { color: var(--mam-visit, var(--gris-texto)); }
+
+/* ---------- Ficha del partido ---------- */
+.cp-ficha { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 18px; margin: 0; }
+.cp-ficha div { min-width: 0; }
+.cp-ficha dt { font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; color: var(--gris-texto); margin: 0 0 2px; }
+.cp-ficha dd { margin: 0; font-weight: 600; font-size: .92rem; overflow-wrap: anywhere; }
+.cp-ficha-ancho { grid-column: 1 / -1; }
+
+/* ---------- Alineaciones ---------- */
+.cp-alineaciones { display: flex; flex-direction: column; gap: 22px; }
+.cp-alineaciones .alineacion-bloque { margin: 0; }
+.cp-aviso {
+  font-size: .8rem;
+  color: var(--gris-texto);
+  text-align: center;
+  margin: 0 0 16px;
+}
+
+/* ---------- Crónica y previa ---------- */
+.cp-noticias { display: flex; flex-direction: column; gap: 12px; }
+.cp-noticia {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  text-decoration: none;
+  color: inherit;
+  background: var(--tarjeta);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-md, 12px);
+  box-shadow: var(--sombra-sm, none);
+  transition: border-color .18s ease, transform .18s ease;
+}
+.cp-noticia:focus-visible { outline: 2px solid var(--celeste); outline-offset: 2px; }
+@media (hover: hover) { .cp-noticia:hover { border-color: var(--celeste); transform: translateY(-2px); } }
+.cp-noticia-cuerpo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.cp-noticia-tipo {
+  align-self: flex-start;
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgba(209, 19, 46, .1);
+  color: #d1132e;
+}
+[data-theme=dark] .cp-noticia-tipo { color: #ff7a8c; background: rgba(255, 122, 140, .14); }
+.cp-noticia-titulo { font-weight: 600; font-size: .98rem; line-height: 1.3; overflow-wrap: anywhere; }
+.cp-noticia svg { width: 18px; height: 18px; flex: none; color: var(--gris-texto); }
+
+/* ---------- Fotos ---------- */
+.cp-fotos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.cp-foto {
+  display: block;
+  position: relative;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: 10px;
+  background: var(--borde);
+  border: 0;
+  padding: 0;
+  cursor: zoom-in;
+}
+.cp-foto img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .3s ease; }
+@media (hover: hover) { .cp-foto:hover img { transform: scale(1.05); } }
+.cp-foto:focus-visible { outline: 2px solid var(--celeste); outline-offset: 2px; }
+.cp-fotos-pie { display: flex; justify-content: center; margin-top: 18px; }
+.cp-boton {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 22px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: .88rem;
+  text-decoration: none;
+  background: var(--marino);
+  color: #fff;
+}
+[data-theme=dark] .cp-boton { background: var(--celeste); color: #0c1b2e; }
+.cp-skel-foto { aspect-ratio: 4 / 3; border-radius: 10px; background: var(--borde); animation: cpPulso 1.2s ease-in-out infinite; }
+@keyframes cpPulso { 50% { opacity: .55; } }
+
+@media (max-width: 700px) {
+  .cp-pestanas { margin: -26px -20px 18px; padding: 8px 14px; }
+  .cp-pestana { padding: 8px 14px; font-size: .8rem; }
+  .cp-fotos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cp-ficha { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cp-panel, .cp-pestana-vivo, .cp-skel-foto { animation: none; }
+  .cp-pestana, .cp-noticia, .cp-foto img { transition: none; }
+}
+
+/* ============================================================
+   Fase 2 · Clasificación, forma reciente y cara a cara
+   ============================================================ */
+.cp-nota { margin: 12px 0 0; font-size: .78rem; line-height: 1.5; color: var(--gris-texto); text-align: center; }
+
+/* ---------- Clasificación ---------- */
+.cp-tarjeta-tabla { padding: 16px 0 18px; }
+.cp-tarjeta-tabla .cp-titulo, .cp-tarjeta-tabla .cp-nota, .cp-tarjeta-tabla .cp-fotos-pie, .cp-clas-leyenda { padding-left: 18px; padding-right: 18px; }
+.cp-clas-scroll { overflow-x: auto; }
+.cp-clas { width: 100%; border-collapse: collapse; font-size: .86rem; font-variant-numeric: tabular-nums; }
+.cp-clas th, .cp-clas td { padding: 8px 6px; text-align: center; border-top: 1px solid var(--borde); white-space: nowrap; }
+.cp-clas thead th {
+  border-top: 0; padding-top: 2px; padding-bottom: 8px;
+  font-family: var(--font-tit); font-size: .68rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--gris-texto);
+}
+.cp-clas abbr { text-decoration: none; cursor: help; }
+.cp-clas .cp-c-pos { width: 44px; padding-left: 14px; }
+.cp-clas .cp-c-eq { text-align: left; width: 100%; }
+.cp-clas .cp-c-pts { font-weight: 700; color: var(--marino-texto); padding-right: 16px; }
+.cp-clas td.cp-c-eq a { display: flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; min-width: 0; }
+.cp-clas td.cp-c-eq a:hover span { text-decoration: underline; text-underline-offset: 3px; }
+.cp-clas td.cp-c-eq img { width: 24px; height: 24px; object-fit: contain; flex: none; }
+.cp-clas td.cp-c-eq span { overflow: hidden; text-overflow: ellipsis; max-width: 15rem; }
+.cp-clas-pos {
+  display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 9px;
+  background: var(--fondo-alt); color: var(--texto-suave); font-family: var(--font-tit); font-size: .86rem; font-weight: 700;
+}
+.cp-clas-pos[data-zona=ascenso], .cp-clas-leyenda i[data-zona=ascenso] { background: var(--ui-verde, #2e9e57); color: #fff; }
+.cp-clas-pos[data-zona=playoff], .cp-clas-leyenda i[data-zona=playoff] { background: var(--celeste); color: #0c1b2e; }
+.cp-clas-pos[data-zona=playout], .cp-clas-leyenda i[data-zona=playout] { background: #8e5bd9; color: #fff; }
+.cp-clas-pos[data-zona=descenso], .cp-clas-leyenda i[data-zona=descenso] { background: var(--rojo); color: #fff; }
+.cp-clas tbody tr.cp-clas-sel td { background: color-mix(in srgb, var(--celeste) 16%, transparent); font-weight: 700; }
+.cp-clas tbody tr.cp-clas-sel td.cp-c-pos { box-shadow: inset 3px 0 0 var(--celeste); }
+.cp-clas tbody tr[data-vivo] .cp-c-pts { color: var(--rojo); }
+[data-theme=dark] .cp-clas tbody tr[data-vivo] .cp-c-pts { color: #ff7487; }
+.cp-clas .en-vivo-punto { flex: none; margin-left: 2px; }
+.cp-clas-leyenda { display: flex; flex-wrap: wrap; gap: 6px 14px; justify-content: center; margin-top: 10px; font-size: .74rem; color: var(--texto-suave); }
+.cp-clas-leyenda span { display: inline-flex; align-items: center; gap: 6px; }
+.cp-clas-leyenda i { width: 10px; height: 10px; border-radius: 3px; }
+.cp-skel-tabla { display: grid; gap: 10px; padding: 8px 0; }
+.cp-skel-fila { height: 38px; border-radius: 10px; background: var(--borde); animation: cpPulso 1.2s ease-in-out infinite; }
+
+/* ---------- Forma reciente ---------- */
+.cp-forma-fila { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 0; border-top: 1px solid var(--borde); }
+.cp-forma-fila:first-of-type { border-top: 0; }
+.cp-forma-eq { display: flex; align-items: center; gap: 10px; min-width: 0; font-weight: 600; font-size: .9rem; }
+.cp-forma-eq img { width: 26px; height: 26px; object-fit: contain; flex: none; }
+.cp-forma-eq span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cp-forma-chips { display: flex; gap: 5px; flex: none; }
+.cp-forma-nd { color: var(--gris-texto); font-size: .78rem; }
+.cp-chip {
+  display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 8px;
+  font-family: var(--font-tit); font-size: .8rem; font-weight: 700; text-decoration: none; color: var(--texto-suave); background: var(--fondo-alt);
+}
+.cp-chip-V { color: #1b7a46; background: #e3f4ea; }
+.cp-chip-D { color: #b4112a; background: #fce7ea; }
+.cp-chip-E { color: var(--texto-suave); background: var(--fondo-alt); box-shadow: inset 0 0 0 1px var(--borde); }
+[data-theme=dark] .cp-chip-V { color: #63d492; background: rgba(99, 212, 146, .14); }
+[data-theme=dark] .cp-chip-D { color: #ff8a99; background: rgba(255, 138, 153, .14); }
+.cp-chip:focus-visible { outline: 2px solid var(--celeste); outline-offset: 2px; }
+@media (hover: hover) { .cp-chip:hover { transform: translateY(-2px); } }
+
+/* ---------- Cara a cara ---------- */
+.cp-h2h-cifras { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; text-align: center; }
+.cp-h2h-cifras div { min-width: 0; }
+.cp-h2h-cifras b { display: block; font-family: var(--font-tit); font-size: 2rem; line-height: 1.1; color: var(--marino-texto); }
+.cp-h2h-cifras small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .76rem; color: var(--gris-texto); }
+.cp-h2h-barra { display: flex; gap: 3px; height: 8px; margin: 10px 0 0; border-radius: 6px; overflow: hidden; }
+.cp-h2h-barra i { display: block; min-width: 4px; }
+.cp-h2h-barra .a { background: var(--celeste); }
+.cp-h2h-barra .e { background: var(--borde); }
+.cp-h2h-barra .b { background: var(--rojo); }
+.cp-h2h-lista { list-style: none; margin: 14px 0 0; padding: 0; }
+.cp-h2h-lista li { border-top: 1px solid var(--borde); }
+.cp-h2h-lista a { display: grid; gap: 2px; padding: 9px 0; color: inherit; text-decoration: none; }
+.cp-h2h-fecha { font-size: .74rem; color: var(--gris-texto); }
+.cp-h2h-res { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; font-size: .88rem; }
+.cp-h2h-res span:first-child { text-align: right; }
+.cp-h2h-res span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cp-h2h-res b { font-family: var(--font-tit); font-variant-numeric: tabular-nums; padding: 2px 10px; border-radius: 8px; background: var(--fondo-alt); }
+@media (hover: hover) { .cp-h2h-lista a:hover .cp-h2h-res b { background: color-mix(in srgb, var(--celeste) 24%, var(--fondo-alt)); } }
+
+@media (max-width: 520px) {
+  .cp-clas .cp-c-peq { display: none; }
+  .cp-clas td.cp-c-eq span { max-width: 9.5rem; }
+  .cp-clas .cp-c-pos { width: 38px; padding-left: 10px; }
+  .cp-forma-eq span { max-width: 7.5rem; }
+  .cp-chip { width: 26px; height: 26px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cp-skel-fila { animation: none; }
+  .cp-chip { transition: none; }
+}
+
+/* Estadísticas del partido (reutiliza las filas con barra del Resumen) */
+.cp-estadisticas .mam-res-fila { margin-bottom: 12px; }
+.cp-estadisticas .mam-res-fila:last-child { margin-bottom: 0; }
+.cp-claves .mam-res-fila { margin-bottom: 12px; }
+.cp-clave { margin: 4px 0 0; font-size: .88rem; color: var(--gris-texto); }
+.cp-clave strong { color: inherit; }
+
+/* ============================================================
+   MODO TABLERO (pantallas anchas, >= 1320px): sin pestañas.
+   Centro: el directo (minuto a minuto). Izquierda: resumen, estadísticas y
+   cara a cara. Derecha: alineaciones, clasificación, crónica y fotos.
+   Lo monta cpAplicarTablero() en minuto-a-minuto.html moviendo los mismos
+   paneles; por debajo de 1320px todo sigue con pestañas.
+   ============================================================ */
+body.cp-modo-tablero .mam-wrap { max-width: 1560px; }
+body.cp-modo-tablero .cp-pestanas { display: none !important; }
+body.cp-modo-tablero .mam-cuerpo { padding-top: 22px; }
+
+.cp-tablero {
+  display: grid;
+  grid-template-columns: minmax(300px, 340px) minmax(0, 1fr) minmax(300px, 340px);
+  gap: 24px;
+  align-items: start;
+}
+.cp-col { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.cp-col > .cp-panel { margin: 0; animation: none; }
+.cp-col > .cp-panel[hidden] { display: none; }
+
+/* Columnas laterales: se quedan a la vista mientras se baja por el directo y, si son más altas
+   que la pantalla, se desplazan por dentro. */
+.cp-col-lat {
+  position: sticky;
+  top: calc(var(--cp-top, 0px) + 12px);
+  max-height: calc(100vh - var(--cp-top, 0px) - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  padding: 2px 4px 2px 0;
+}
+
+/* Título de los bloques que no traen el suyo (en pestañas lo daba la propia pestaña). */
+body.cp-modo-tablero .cp-panel[data-cp-titulo]::before {
+  content: attr(data-cp-titulo);
+  display: block;
+  margin: 0 0 10px;
+  font-family: var(--font-tit);
+  font-size: .78rem;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--gris-texto);
+}
+
+/* Los momentos clave repiten lo que ya se ve en el directo, justo al lado. */
+body.cp-modo-tablero #cpMomentos { display: none; }
+
+/* Bloques a ancho de columna lateral. */
+.cp-col-lat .mam-resumen,
+.cp-col-lat .mam-mvp { margin-bottom: 16px; }
+.cp-col-lat .cp-tarjeta { margin-bottom: 14px; }
+.cp-col-lat .cp-fotos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.cp-col-lat .cp-ficha { grid-template-columns: 1fr; }
+.cp-col-lat .cp-clas td.cp-c-eq span { max-width: 9rem; }
+.cp-col-lat .cp-clas .cp-c-peq { display: none; }
+
+/* El directo del centro ocupa su columna entera. */
+.cp-col-centro > .cp-panel { min-width: 0; }
+
+/* ---------- Modo tablero · acabado visual (v2) ---------- */
+body.cp-modo-tablero { --cp-gap: 26px; }
+.cp-tablero {
+  grid-template-columns: minmax(290px, 330px) minmax(0, 1fr) minmax(290px, 340px);
+  gap: var(--cp-gap);
+}
+@media (min-width: 1600px) {
+  .cp-tablero { grid-template-columns: 340px minmax(0, 1fr) 360px; }
+}
+
+/* Títulos de bloque con acento y línea, para separar bien cada zona. */
+body.cp-modo-tablero .cp-panel[data-cp-titulo]::before {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 12px;
+  padding-left: 12px;
+  position: relative;
+  color: var(--marino-texto, var(--texto));
+}
+body.cp-modo-tablero .cp-panel[data-cp-titulo]::before { background: none; }
+body.cp-modo-tablero .cp-panel[data-cp-titulo] { position: relative; }
+body.cp-modo-tablero .cp-panel[data-cp-titulo]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 2px;
+  width: 4px;
+  height: 1.05rem;
+  border-radius: 4px;
+  background: linear-gradient(180deg, var(--celeste), var(--marino));
+}
+[data-theme=dark] body.cp-modo-tablero .cp-panel[data-cp-titulo]::after,
+body.cp-modo-tablero[data-theme=dark] .cp-panel[data-cp-titulo]::after {
+  background: linear-gradient(180deg, var(--celeste), #fff 160%);
+}
+
+/* Tarjetas de las columnas con el mismo aire y sombra suave. */
+.cp-col .cp-tarjeta,
+.cp-col .mam-resumen,
+.cp-col .mam-mvp {
+  border-radius: 14px;
+  box-shadow: 0 1px 2px #0c1b2e0d, 0 6px 18px #0c1b2e0f;
+}
+[data-theme=dark] .cp-col .cp-tarjeta,
+[data-theme=dark] .cp-col .mam-resumen,
+[data-theme=dark] .cp-col .mam-mvp { box-shadow: 0 1px 2px #0000004d, 0 6px 18px #00000038; }
+.cp-col .cp-tarjeta:last-child { margin-bottom: 0; }
+
+/* Columnas laterales: barra fina discreta y difuminado al final cuando hay más por ver. */
+.cp-col-lat {
+  scrollbar-color: color-mix(in srgb, var(--gris-texto) 45%, transparent) transparent;
+  padding: 2px 6px 18px 2px;
+  -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 22px), transparent);
+  mask-image: linear-gradient(180deg, #000 calc(100% - 22px), transparent);
+}
+.cp-col-lat::-webkit-scrollbar { width: 6px; }
+.cp-col-lat::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--gris-texto) 40%, transparent); border-radius: 6px; }
+.cp-col-lat::-webkit-scrollbar-track { background: transparent; }
+
+/* Clasificación en columna estrecha: filas compactas y pie centrado. */
+.cp-col-lat .cp-tarjeta-tabla { padding: 14px 0 14px; overflow: hidden; }
+.cp-col-lat .cp-clas { font-size: .82rem; }
+.cp-col-lat .cp-clas th, .cp-col-lat .cp-clas td { padding: 7px 5px; }
+.cp-col-lat .cp-clas .cp-c-pos { width: 38px; padding-left: 12px; }
+.cp-col-lat .cp-clas td.cp-c-eq img { width: 20px; height: 20px; }
+.cp-col-lat .cp-clas td.cp-c-eq span { max-width: 8.5rem; }
+.cp-col-lat .cp-clas .cp-c-pts { padding-right: 12px; }
+.cp-col-lat .cp-clas-leyenda { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: .72rem; }
+.cp-col-lat .cp-fotos-pie { margin-top: 12px; }
+
+/* Alineaciones y crónica: sin márgenes extra y a ancho completo de la columna. */
+.cp-col-lat .cp-alineaciones { gap: 16px; }
+.cp-col-lat .cp-aviso { font-size: .76rem; }
+.cp-col-lat .cp-noticia { padding: 12px 14px; }
+.cp-col-lat .cp-foto { border-radius: 10px; }
+
+/* Centro: el directo respira y sus controles quedan pegados arriba. */
+.cp-col-centro .mam-controles { margin-bottom: 18px; }
+.cp-col-centro .mam-resumen:first-child { margin-top: 0; }
+
+/* Entrada suave de las columnas (solo si no se pide menos movimiento). */
+@media (prefers-reduced-motion: no-preference) {
+  .cp-col-lat { animation: cpColEntra .4s ease both; }
+  .cp-col-lat + .cp-col-centro + .cp-col-lat { animation-delay: .06s; }
+}
+@keyframes cpColEntra { 0% { opacity: 0; transform: translateY(8px); } 100% { opacity: 1; transform: none; } }
+
+/* ---------- Partido sin jugar: cara a cara y «Cómo llegan» bajo la cuenta atrás (Directo) ---------- */
+.cp-previa-directo { margin-top: 22px; }
+.cp-previa-directo:empty { display: none; }
+.cp-previa-directo .cp-tarjeta:last-child { margin-bottom: 0; }
+.cp-vacio-previa { padding: 10px 6px 6px; line-height: 1.5; }
+.cp-forma-nom { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.cp-forma-nom small { font-weight: 500; font-size: .74rem; color: var(--gris-texto); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

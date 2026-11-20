@@ -1,0 +1,279 @@
+/* portada-escenario.css  ·  FASE 1 de la nueva portada
+ * Hero "Escenario": la noticia principal en un panel marino con la FRANJA DIAGONAL
+ * de camiseta (roja + celeste) separando texto y foto, y debajo el rail de DORSALES
+ * (las 5 destacadas) que cambian la noticia del escenario.
+ *
+ * Compatibilidad: el primer pintado (inline de index.html y hero adelantado en el
+ * borde, _worker.js) sigue generando  a.hero-principal > img + .overlay > div > h1 + p.
+ * Todo lo de aquí funciona con ese marcado mínimo y con el completo de main.js.
+ * Se carga DESPUÉS de portada-mejoras.css y animaciones-portada.css.
+ */
+
+body[data-page=inicio]{
+  --esc-alto:clamp(440px,43vw,548px);
+  --esc-rail:104px;
+  --esc-corte:112px;            /* cuánto "cae" la diagonal (px) */
+  --esc-foto:56%;               /* ancho de la foto */
+  --esc-radio:20px;
+  --esc-marino:#0c1b2e;
+  --esc-marino-2:#17335a;
+}
+
+/* ---------- contenedor ---------- */
+body[data-page=inicio] .hero{display:block;margin-bottom:0}
+body[data-page=inicio] .hero-escena{
+  position:relative;
+  border-radius:var(--esc-radio);
+  overflow:hidden;
+  background:var(--tarjeta);
+  border:1px solid var(--borde);
+  box-shadow:0 22px 46px -22px rgba(12,27,46,.6);
+}
+body[data-page=inicio] .hero-escenario{display:grid;touch-action:pan-y}
+
+/* ---------- escenario (cada slide) ---------- */
+html body[data-page=inicio] .hero-principal{
+  position:relative;
+  display:flex;align-items:stretch;
+  min-height:var(--esc-alto);
+  color:#fff;
+  border-radius:0;
+  box-shadow:none;
+  isolation:isolate;
+  overflow:hidden;
+  background:
+    radial-gradient(circle at 0% 100%,transparent 0 172px,rgba(255,255,255,.06) 172px 174px,transparent 174px),
+    radial-gradient(120% 95% at 0% 0%,var(--esc-marino-2) 0%,var(--esc-marino) 64%);
+}
+/* primer pintado (sin .hero-escena todavía): el escenario va solo, con su radio */
+body[data-page=inicio] .hero>.hero-principal{border-radius:var(--esc-radio) var(--esc-radio) 0 0}
+body[data-page=inicio] .hero-escenario>.hero-principal{grid-area:1/1}
+
+/* foto: a la derecha, con el borde izquierdo en diagonal */
+html body[data-page=inicio] .hero-principal:not(.hero-esqueleto) img:not(.ctx-logo):not(.ctx-escudo){
+  position:absolute;top:0;right:0;bottom:0;left:auto;
+  width:var(--esc-foto);height:100%;
+  object-fit:cover;
+  z-index:0;opacity:1;
+  clip-path:polygon(var(--esc-corte) 0,100% 0,100% 100%,0 100%);
+  scale:1;translate:none;transform:none;animation:none;transition:none;
+}
+html body[data-page=inicio] .hero-principal:hover img:not(.ctx-logo):not(.ctx-escudo){transform:none}
+
+/* franja de camiseta: roja + fina celeste, paralela al corte de la foto */
+body[data-page=inicio] .hero-principal:not(.hero-esqueleto):before,
+body[data-page=inicio] .hero-principal:not(.hero-esqueleto):after{
+  content:"";position:absolute;top:0;bottom:0;z-index:1;pointer-events:none;
+  left:calc(100% - var(--esc-foto) - 40px);
+  width:calc(var(--esc-corte) + 40px);
+}
+body[data-page=inicio] .hero-principal:not(.hero-esqueleto):before{
+  background:var(--rojo);
+  clip-path:polygon(calc(var(--esc-corte) + 18px) 0,calc(var(--esc-corte) + 40px) 0,40px 100%,18px 100%);
+}
+body[data-page=inicio] .hero-principal:not(.hero-esqueleto):after{
+  background:var(--celeste);
+  clip-path:polygon(calc(var(--esc-corte) + 4px) 0,calc(var(--esc-corte) + 12px) 0,12px 100%,4px 100%);
+}
+
+/* texto: columna izquierda sobre marino liso (nada de degradados sobre la foto) */
+html body[data-page=inicio] .hero-principal .overlay{
+  position:relative;z-index:2;
+  width:calc(100% - var(--esc-foto));
+  height:auto;
+  display:flex;align-items:center;
+  padding:clamp(28px,3.4vw,46px) 58px clamp(28px,3.4vw,46px) clamp(24px,3.4vw,46px);
+  background:none;
+}
+body[data-page=inicio] .hero-principal .overlay>div{width:100%;max-width:none}
+body[data-page=inicio] .hero-principal .overlay>*{max-width:none}
+body[data-page=inicio] .hero-principal h1,
+body[data-page=inicio] .hero-principal h2{
+  font-family:var(--font-headline);font-weight:800;
+  font-size:clamp(1.55rem,2.65vw,2.45rem);
+  line-height:1.12;letter-spacing:-.012em;
+  margin:0 0 14px;
+  text-shadow:none;text-wrap:balance;
+  display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;
+}
+body[data-page=inicio] .hero-principal p{
+  font-family:var(--font-body);
+  font-size:1.02rem;line-height:1.55;
+  color:rgba(255,255,255,.78);
+  max-width:46ch;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;
+}
+
+/* pie del slide: botón + meta */
+body[data-page=inicio] .hero-pie{display:flex;align-items:center;flex-wrap:wrap;gap:12px 18px;margin-top:22px}
+body[data-page=inicio] .hero-leer{
+  display:inline-flex;align-items:center;gap:12px;
+  padding:6px 7px 6px 18px;
+  border-radius:999px;
+  background:#fff;color:var(--esc-marino);
+  font-family:var(--font-tit);font-weight:600;font-size:.88rem;letter-spacing:.35px;line-height:1;
+  box-shadow:0 8px 20px -8px rgba(0,0,0,.55);
+  transition:background .2s,color .2s,box-shadow .2s;
+}
+body[data-page=inicio] .hero-leer i{
+  display:grid;place-items:center;flex:none;
+  width:30px;height:30px;border-radius:50%;
+  background:var(--rojo);color:#fff;
+  transition:transform .25s var(--pt-ease,ease);
+}
+body[data-page=inicio] .hero-leer svg{width:15px;height:15px}
+body[data-page=inicio] .hero-principal:hover .hero-leer,
+body[data-page=inicio] .hero-principal:focus-visible .hero-leer{background:var(--celeste-claro)}
+body[data-page=inicio] .hero-principal:hover .hero-leer i{transform:translateX(3px)}
+body[data-page=inicio] .hero-principal:focus-visible{outline:3px solid var(--celeste);outline-offset:-6px}
+body[data-page=inicio] .hero-meta{font-size:.8rem;color:rgba(255,255,255,.66);line-height:1.3}
+
+/* ---------- varios slides: solo se ve el activo ---------- */
+body[data-page=inicio] .hero-slide{
+  transition:opacity .55s ease,visibility 0s linear .55s;
+}
+body[data-page=inicio] .hero-slide:not(.activa){opacity:0;visibility:hidden;pointer-events:none}
+body[data-page=inicio] .hero-slide.activa{opacity:1;visibility:visible;z-index:1;transition:opacity .55s ease,visibility 0s}
+
+@media (prefers-reduced-motion:no-preference){
+  /* el texto entra solo cuando cambia la noticia, no en la carga inicial */
+  body[data-page=inicio] .hero-escena.animar .hero-slide.activa .overlay>div>*{animation:esc-sube .6s var(--pt-ease,ease) both}
+  body[data-page=inicio] .hero-escena.animar .hero-slide.activa .overlay>div>*:nth-child(2){animation-delay:.06s}
+  body[data-page=inicio] .hero-escena.animar .hero-slide.activa .overlay>div>*:nth-child(3){animation-delay:.12s}
+  body[data-page=inicio] .hero-escena.animar .hero-slide.activa .overlay>div>*:nth-child(4){animation-delay:.18s}
+  body[data-page=inicio] .hero-escena.animar .hero-slide.activa img:not(.ctx-logo):not(.ctx-escudo){animation:esc-foto .8s var(--pt-ease,ease) both}
+}
+@keyframes esc-sube{from{opacity:0;transform:translate3d(0,16px,0)}to{opacity:1;transform:none}}
+@keyframes esc-foto{from{opacity:.0;transform:translate3d(26px,0,0)}to{opacity:1;transform:none}}
+
+/* ---------- rail de dorsales ---------- */
+body[data-page=inicio] .hero-dorsales{
+  display:grid;grid-template-columns:repeat(var(--n,5),minmax(0,1fr));
+  height:var(--esc-rail);
+  background:var(--tarjeta);
+  border-top:1px solid var(--borde);
+}
+body[data-page=inicio] .hero-dorsal{
+  position:relative;overflow:hidden;
+  appearance:none;-webkit-appearance:none;
+  display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:12px;
+  padding:14px 16px 14px 18px;
+  border:0;border-left:1px solid var(--borde);border-radius:0;
+  background:transparent;color:var(--texto);
+  font:inherit;text-align:left;cursor:pointer;
+  transition:background .2s;
+}
+body[data-page=inicio] .hero-dorsal:first-child{border-left:0}
+body[data-page=inicio] .hero-dorsal:hover{background:var(--fondo-alt)}
+body[data-page=inicio] .hero-dorsal:focus-visible{outline:3px solid var(--celeste);outline-offset:-3px}
+body[data-page=inicio] .hero-dorsal.activa{background:color-mix(in srgb,var(--rojo) 6%,var(--tarjeta))}
+body[data-page=inicio] .hero-dorsal .num{
+  font-family:var(--font-tit);font-weight:700;font-size:2.7rem;line-height:1;
+  color:transparent;
+  -webkit-text-stroke:1.5px color-mix(in srgb,var(--marino-texto) 34%,transparent);
+  font-variant-numeric:tabular-nums;
+  transition:color .25s,-webkit-text-stroke-color .25s;
+  min-width:1.15em;text-align:center;
+}
+body[data-page=inicio] .hero-dorsal.activa .num{color:var(--rojo);-webkit-text-stroke-color:var(--rojo)}
+body[data-page=inicio] .hero-dorsal .dt{display:flex;flex-direction:column;gap:3px;min-width:0}
+body[data-page=inicio] .hero-dorsal .dc{
+  font-family:var(--font-tit);font-weight:600;font-size:.66rem;letter-spacing:.5px;text-transform:uppercase;
+  color:var(--rojo);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+body[data-page=inicio] .hero-dorsal .dtit{
+  font-weight:600;font-size:.84rem;line-height:1.25;color:var(--marino-texto);
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
+[data-theme=dark] body[data-page=inicio] .hero-dorsal .dc{color:#ff7d8d}
+
+/* barra de progreso del autoplay (y marca fija de "activa" cuando es manual) */
+body[data-page=inicio] .hero-dorsal .prog{
+  position:absolute;left:0;right:0;top:0;height:3px;
+  background:var(--rojo);transform:scaleX(0);transform-origin:left;pointer-events:none;
+}
+body[data-page=inicio] .hero-escena.manual .hero-dorsal.activa .prog{transform:scaleX(1)}
+body[data-page=inicio] .hero-escena.auto .hero-dorsal.activa .prog{animation:esc-prog var(--esc-dur,7s) linear forwards}
+body[data-page=inicio] .hero-escena.auto:hover .hero-dorsal.activa .prog,
+body[data-page=inicio] .hero-escena.auto:focus-within .hero-dorsal.activa .prog{animation-play-state:paused}
+@keyframes esc-prog{to{transform:scaleX(1)}}
+
+/* un solo slide: sin rail */
+body[data-page=inicio] .hero-escena.una .hero-dorsales{display:none}
+body[data-page=inicio] .hero-escena.una .hero-principal{min-height:calc(var(--esc-alto) + var(--esc-rail) * .5)}
+
+/* ---------- esqueleto (antes de que lleguen los datos) ---------- */
+body[data-page=inicio] .hero-principal.hero-esqueleto{
+  border-radius:var(--esc-radio) var(--esc-radio) 0 0;
+  min-height:var(--esc-alto);border-bottom:0;
+}
+body[data-page=inicio] .hero-dorsales-esqueleto{
+  border:1px solid var(--borde);border-top:1px solid var(--borde);
+  border-radius:0 0 var(--esc-radio) var(--esc-radio);overflow:hidden;
+}
+body[data-page=inicio] .hero-dorsales-esqueleto>span{position:relative;display:block;border:0;border-left:1px solid var(--borde);border-radius:0}
+body[data-page=inicio] .hero-dorsales-esqueleto>span:first-child{border-left:0}
+/* el esqueleto ya no usa la lista lateral */
+body[data-page=inicio] .hero-secundarias{display:none}
+
+/* ---------- pantallas medianas ---------- */
+@media(max-width:1100px){
+  body[data-page=inicio]{--esc-foto:54%;--esc-corte:92px}
+  body[data-page=inicio] .hero-dorsal{gap:9px;padding:12px 12px 12px 14px}
+  body[data-page=inicio] .hero-dorsal .num{font-size:2.2rem}
+}
+
+/* ---------- móvil: foto arriba con corte inferior diagonal, texto debajo ---------- */
+@media(max-width:900px){
+  body[data-page=inicio]{--esc-alto:0px;--esc-rail:96px;--esc-radio:16px;--esc-tajo:30px}
+  html body[data-page=inicio] .hero-principal{flex-direction:column;min-height:0;
+    background:radial-gradient(120% 70% at 0% 100%,var(--esc-marino-2) 0%,var(--esc-marino) 70%)}
+  html body[data-page=inicio] .hero-principal:not(.hero-esqueleto) img:not(.ctx-logo):not(.ctx-escudo){
+    position:relative;inset:auto;width:100%;height:auto;aspect-ratio:16/10;flex:none;
+    clip-path:polygon(0 0,100% 0,100% calc(100% - var(--esc-tajo) - 18px),0 calc(100% - 18px));
+  }
+  body[data-page=inicio] .hero-principal:not(.hero-esqueleto):before,
+  body[data-page=inicio] .hero-principal:not(.hero-esqueleto):after{
+    left:0;right:0;width:auto;top:0;bottom:auto;aspect-ratio:16/10;
+  }
+  body[data-page=inicio] .hero-principal:not(.hero-esqueleto):before{
+    clip-path:polygon(0 calc(100% - 18px),100% calc(100% - var(--esc-tajo) - 18px),100% calc(100% - var(--esc-tajo)),0 100%);
+  }
+  body[data-page=inicio] .hero-principal:not(.hero-esqueleto):after{display:none}
+  html body[data-page=inicio] .hero-principal .overlay{
+    width:100%;padding:20px 20px 24px;align-items:flex-start;
+  }
+  body[data-page=inicio] .hero-principal h1,
+  body[data-page=inicio] .hero-principal h2{font-size:clamp(1.4rem,5.6vw,1.8rem);-webkit-line-clamp:4}
+  body[data-page=inicio] .hero-principal p{font-size:.95rem;-webkit-line-clamp:2;max-width:none}
+  body[data-page=inicio] .hero-pie{margin-top:16px}
+
+  body[data-page=inicio] .hero-principal.hero-esqueleto{min-height:min(96vw,420px)}
+
+  /* rail horizontal con imán */
+  body[data-page=inicio] .hero-dorsales{
+    display:flex;overflow-x:auto;overscroll-behavior-x:contain;
+    scroll-snap-type:x mandatory;scrollbar-width:none;
+  }
+  body[data-page=inicio] .hero-dorsales::-webkit-scrollbar{display:none}
+  body[data-page=inicio] .hero-dorsal{flex:0 0 74%;scroll-snap-align:start}
+  body[data-page=inicio] .hero-dorsal .num{font-size:2rem}
+  body[data-page=inicio] .hero-dorsales-esqueleto{overflow:hidden}
+  body[data-page=inicio] .hero-dorsales-esqueleto>span{flex:0 0 74%}
+}
+@media(max-width:480px){
+  body[data-page=inicio] .hero-dorsal{flex-basis:82%}
+}
+
+/* ---------- movimiento reducido / contraste ---------- */
+@media(prefers-reduced-motion:reduce){
+  body[data-page=inicio] .hero-slide,
+  body[data-page=inicio] .hero-slide.activa{transition:none}
+  body[data-page=inicio] .hero-leer i{transition:none}
+  body[data-page=inicio] .hero-principal:hover .hero-leer i{transform:none}
+}
+@media(forced-colors:active){
+  body[data-page=inicio] .hero-principal:before,body[data-page=inicio] .hero-principal:after{display:none}
+  body[data-page=inicio] .hero-dorsal.activa{outline:2px solid Highlight;outline-offset:-2px}
+}
+@media print{body[data-page=inicio] .hero-dorsales{display:none}}

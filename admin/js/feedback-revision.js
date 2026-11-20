@@ -259,7 +259,23 @@
   }
 
   // Al abrir la pestaña (o llegar por enlace): se ve lo que ya había y se refresca por detrás.
+  // «Enviados» (las notas que se dejan al aprobar o programar piezas ajenas) solo lo ven los
+  // Responsables y los redactores de Nivel 4. El servidor lo exige igualmente.
+  function puedeVerEnviados() {
+    try {
+      const u = window.USER || JSON.parse(localStorage.getItem("eof_user") || "null") || {};
+      return u.rol === "admin" || (Number(u.nivel) || 1) >= 4;
+    } catch (_) { return false; }
+  }
+  function aplicarVisibilidadEnviados() {
+    const ok = puedeVerEnviados();
+    const grupo = document.querySelector("#panel-feedback .fbk-modo");
+    if (grupo) grupo.style.display = ok ? "" : "none";
+    if (!ok && modo === "enviados") cambiarModo("recibidos");
+  }
+
   function alMostrar() {
+    aplicarVisibilidadEnviados();
     if (!cargado[modo]) cargar(modo);
     else if (Date.now() - ultimaCarga[modo] > REFRESCO_MIN_MS) cargar(modo, true);
   }
@@ -298,6 +314,7 @@
   // ---------- Cambios de vista ----------
   function cambiarModo(nuevo) {
     if (nuevo === modo || !datos[nuevo]) return;
+    if (nuevo === "enviados" && !puedeVerEnviados()) return;
     modo = nuevo; filtro = "todos"; busqueda = "";
     const b = $("fbkBuscar"); if (b) b.value = "";
     document.querySelectorAll("#panel-feedback [data-modo]").forEach((x) => {
@@ -448,6 +465,7 @@
     }
     const tab = document.querySelector('.tabs button[data-tab="feedback"]');
     if (tab) tab.addEventListener("click", alMostrar);
+    aplicarVisibilidadEnviados();
     refrescarResumen();
     setInterval(() => { if (!document.hidden) refrescarResumen(); }, 120000);
     document.addEventListener("visibilitychange", () => { if (!document.hidden) refrescarResumen(); });

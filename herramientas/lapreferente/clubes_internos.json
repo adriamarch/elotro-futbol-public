@@ -922,5 +922,41 @@
     "competicion": "tercera_federacion",
     "grupo": "Grupo 2",
     "slug": "sporting-atletico"
+  },
+  {
+    "nombre": "UD Montijo",
+    "competicion": "tercera_federacion",
+    "grupo": "Grupo 14",
+    "slug": "ud-montijo"
+  },
+  {
+    "nombre": "SP Villafranca",
+    "competicion": "tercera_federacion",
+    "grupo": "Grupo 14",
+    "slug": "sp-villafranca"
+  },
+  {
+    "nombre": "CD Zafra",
+    "competicion": "tercera_federacion",
+    "grupo": "Grupo 14",
+    "slug": "cd-zafra"
+  },
+  {
+    "nombre": "CD Toledo",
+    "competicion": "tercera_federacion",
+    "grupo": "Grupo 18",
+    "slug": "cd-toledo"
+  },
+  {
+    "nombre": "Cádiz CF Mirandilla",
+    "competicion": "tercera_federacion",
+    "grupo": "Grupo 10",
+    "slug": "cadiz-cf-mirandilla"
+  },
+  {
+    "nombre": "CD Santa Amalia",
+    "competicion": "tercera_federacion",
+    "grupo": "Grupo 14",
+    "slug": "cd-santa-amalia"
   }
 ]

@@ -57,3 +57,66 @@
 [data-theme="dark"] .sesion-cerrada-borrador .sesion-cerrada-chip{color:#4ade80;background:rgba(74,222,128,.14);}
 @media (max-width:480px){.sesion-cerrada-tarjeta{padding:32px 20px 22px;border-radius:22px}.sesion-cerrada-tarjeta h2{font-size:1.45rem}}
 @media (prefers-reduced-motion:reduce){.sesion-cerrada,.sesion-cerrada-tarjeta,.sesion-cerrada-fondo span,.sesion-cerrada-icono::after,.sesion-cerrada-arco{animation:none;transition:none;}}
+
+/* ---------- Pulido responsive y de accesibilidad ---------- */
+.aviso-inactividad{
+  padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));
+  overflow-y:auto;overscroll-behavior:contain;
+}
+.aviso-inactividad-tarjeta{
+  position:relative;margin:auto;max-height:100%;overflow:hidden;
+  transition:border-color .3s,box-shadow .3s;
+}
+.aviso-inactividad-tarjeta::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#f59e0b,#fbbf24);transition:background .3s;}
+.aviso-inactividad.urgente .aviso-inactividad-tarjeta{border-color:rgba(225,29,72,.5);box-shadow:0 24px 70px rgba(0,0,0,.45),0 0 0 4px rgba(225,29,72,.14);}
+.aviso-inactividad.urgente .aviso-inactividad-tarjeta::before{background:linear-gradient(90deg,#e11d48,#fb7185);}
+.aviso-inactividad-tarjeta h2{text-wrap:balance;line-height:1.2;}
+.aviso-inactividad-tarjeta p{text-wrap:pretty;}
+.aviso-inactividad-nota{padding:10px 12px;border-radius:12px;background:rgba(120,132,152,.1);opacity:.85 !important;}
+.aviso-inactividad-seguir{min-height:50px;box-shadow:0 8px 20px rgba(29,111,224,.32);transition:filter .15s,transform .15s,box-shadow .15s;}
+.aviso-inactividad-seguir:active{transform:translateY(1px);}
+.aviso-inactividad-salir{min-height:44px;border-radius:10px;}
+.aviso-inactividad-salir:hover{opacity:1;}
+.aviso-inactividad-seguir:focus-visible,.aviso-inactividad-salir:focus-visible{outline:3px solid rgba(91,184,232,.6);outline-offset:3px;}
+[data-theme="dark"] .aviso-inactividad-tarjeta{box-shadow:0 24px 70px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.08);}
+[data-theme="dark"] .aviso-inactividad-nota{background:rgba(255,255,255,.06);}
+
+@media (max-width:480px){
+  .aviso-inactividad{align-items:flex-end;}
+  .aviso-inactividad-tarjeta{max-width:none;padding:24px 18px calc(18px + env(safe-area-inset-bottom,0px));border-radius:22px 22px 0 0;margin:auto 0 0;}
+  .aviso-inactividad-reloj{width:112px;height:112px;}
+  .aviso-inactividad-tiempo{font-size:1.7rem;}
+  .aviso-inactividad-tarjeta h2{font-size:1.2rem;}
+}
+/* Móvil apaisado / pantallas bajas: reloj y botones en dos columnas */
+@media (max-height:520px){
+  .aviso-inactividad-tarjeta{max-width:620px;display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:22px;text-align:left;padding:20px 22px;}
+  .aviso-inactividad-reloj{grid-row:1 / span 5;width:96px;height:96px;margin:0;align-self:center;}
+  .aviso-inactividad-tiempo{font-size:1.5rem;}
+  .aviso-inactividad-tarjeta h2,.aviso-inactividad-tarjeta p{grid-column:2;margin-bottom:6px;}
+  .aviso-inactividad-botones{grid-column:2;flex-direction:row;align-items:center;margin-top:8px;}
+  .aviso-inactividad-seguir{flex:1;}
+}
+
+/* Pantalla «Sesión cerrada»: que se pueda desplazar en pantallas bajas */
+.sesion-cerrada{
+  overflow-x:hidden;overflow-y:auto;
+  padding:max(20px,env(safe-area-inset-top,0px)) max(20px,env(safe-area-inset-right,0px)) max(20px,env(safe-area-inset-bottom,0px)) max(20px,env(safe-area-inset-left,0px));
+}
+.sesion-cerrada-tarjeta{margin:auto;}
+.sesion-cerrada-tarjeta h2{text-wrap:balance;}
+.sesion-cerrada-sub{text-wrap:pretty;}
+.sesion-cerrada-boton{min-height:52px;}
+@media (max-height:560px){
+  .sesion-cerrada-tarjeta{padding:22px 22px 18px;}
+  .sesion-cerrada-icono{width:60px;height:60px;margin-bottom:12px;}
+  .sesion-cerrada-icono svg{width:32px;height:32px;}
+  .sesion-cerrada-sub,.sesion-cerrada-lista{margin-bottom:14px;}
+}
+@media (max-width:360px){
+  .aviso-inactividad-botones{gap:6px;}
+  .sesion-cerrada-lista li{padding:10px 11px;font-size:.84rem;}
+}
+@media (prefers-reduced-motion:reduce){
+  .aviso-inactividad-tarjeta,.aviso-inactividad-seguir{transition:none;}
+}

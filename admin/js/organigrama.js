@@ -1,7 +1,7 @@
 // ---------- Organigrama interactivo del medio (Funcionalidades > Información) ----------
 // Backend: GET/PUT /api/organigrama (worker y worker-secondary), guardado en
 // la tabla `settings` bajo la clave 'organigrama'. Cualquier miembro del
-// equipo lo ve; solo un administrador puede editarlo.
+// equipo lo ve; solo un Responsable puede editarlo.
 //
 // Vista (todos):  buscar, plegar/desplegar ramas, zoom, cambiar orientación,
 //                 pulsar una casilla para ver su detalle y su cadena de mando.
@@ -9,7 +9,8 @@
 //                 reportan (una casilla puede depender de VARIAS: lista de
 //                 jefes con desplegable, o arrastrando una casilla sobre otra;
 //                 con Mayús al soltar se añade un jefe más en vez de cambiarlo),
-//                 reordenar entre hermanas, color, plegada por defecto.
+//                 reordenar entre hermanas (botones ↑ ↓ ⇤ ⇥ o arrastrando una casilla al
+//                 borde de otra: antes / después), color, plegada por defecto.
 // Datos: cada casilla guarda `padres` (lista de ids; el primero es el jefe
 //        principal, bajo el que se dibuja su equipo) y `padre` (= padres[0],
 //        por compatibilidad con versiones anteriores).
@@ -23,7 +24,7 @@
 
   const MAX_NODOS = 300;
   const COLORES = ["azul", "rojo", "verde", "amarillo", "morado", "rosa", "gris", "naranja"];
-  const ZOOM_MIN = 0.5, ZOOM_MAX = 1.5, ZOOM_PASO = 0.1;
+  const ZOOM_MIN = 0.3, ZOOM_MAX = 1.5, ZOOM_PASO = 0.1;
   const MAX_COPIAS = 1500; // pasado este nº de casillas dibujadas, las copias «enlace» nuevas salen plegadas
   const MAX_JEFES = 10; // máximo de jefes por casilla (igual que en el servidor)
   const ICONO_ENLACE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>';
@@ -42,6 +43,8 @@
     guardando: false,
     zoom: 1,
     busqueda: "",
+    soloVacantes: false,   // filtro: resaltar solo los puestos vacantes
+    animar: false,         // animación de entrada (solo tras cargar)
     arrastrando: null,
     arrastrandoDesde: null, // jefe bajo el que estaba dibujada la casilla arrastrada
     snapshot: null,        // copia de lo último guardado, para descartar
@@ -160,6 +163,7 @@
       const d = await apiFetch("/api/organigrama");
       aplicarDatos(d);
       estado.cargado = true;
+      estado.animar = true;
     } catch (err) {
       estado.error = err.message || "No se ha podido cargar el organigrama";
     } finally {
@@ -313,6 +317,56 @@
     pintarTodo();
   }
 
+  // Mueve la casilla a la primera o última posición entre sus hermanas (bajo su jefe principal).
+  function reordenarExtremo(id, alFinal) {
+    const n = porId(id);
+    if (!n) return;
+    const hermanas = hijos(padresDe(n)[0] || null);
+    if (hermanas.length < 2) return;
+    const objetivo = alFinal ? hermanas[hermanas.length - 1] : hermanas[0];
+    if (objetivo === n) return;
+    estado.nodos.splice(estado.nodos.indexOf(n), 1);
+    const i = estado.nodos.indexOf(objetivo);
+    estado.nodos.splice(alFinal ? i + 1 : i, 0, n);
+    marcarSucio();
+    pintarTodo();
+  }
+
+  // Arrastrar al borde de otra casilla: la deja justo antes/después de ella, bajo el mismo jefe
+  // bajo el que está dibujada (si cambia de jefe, sustituye el jefe desde el que se arrastró;
+  // con Mayús se añade como jefe extra en vez de sustituir).
+  function colocarJunto(id, idRef, lado, padreCtx, opciones) {
+    const op = opciones || {};
+    const n = porId(id), ref = porId(idRef);
+    if (!n || !ref || n === ref) return;
+    const ctx = padreCtx || null;
+    if (ctx && (ctx === n.id || descendientes(n.id).has(ctx))) {
+      toast("Una casilla no puede depender de sí misma ni de una de sus subordinadas.", "error");
+      return;
+    }
+    const actuales = padresDe(n);
+    let nuevos;
+    if (!ctx) {
+      nuevos = op.desde && actuales.length > 1 ? actuales.filter((p) => p !== op.desde) : [];
+    } else if (actuales.includes(ctx)) {
+      nuevos = actuales;
+    } else if (op.anadir) {
+      if (actuales.length >= MAX_JEFES) { toast(`Una casilla puede depender como máximo de ${MAX_JEFES} casillas.`, "error"); return; }
+      nuevos = actuales.concat(ctx);
+    } else if (op.desde && actuales.includes(op.desde)) {
+      nuevos = actuales.map((p) => (p === op.desde ? ctx : p));
+    } else {
+      nuevos = [ctx];
+    }
+    fijarPadres(n, nuevos);
+    estado.nodos.splice(estado.nodos.indexOf(n), 1);
+    const i = estado.nodos.indexOf(ref);
+    estado.nodos.splice(lado === "antes" ? i : i + 1, 0, n);
+    if (ctx) estado.plegados.delete(ctx);
+    marcarSucio();
+    pintarTodo();
+  }
+
   async function quitar(id, conRama) {
     const n = porId(id);
     if (!n) return;
@@ -371,10 +425,11 @@
   // ---------- Búsqueda ----------
   function coincidencias() {
     const q = sinTildes(estado.busqueda.trim());
-    if (!q) return null;
+    if (!q && !estado.soloVacantes) return null;
     const set = new Set();
     estado.nodos.forEach((n) => {
-      if (sinTildes((esVacante(n) ? VACANTE + " vacante " : n.nombre) + " " + n.cargo + " " + n.nota + " " + (n.telefono || "") + " " + (n.twitter || "") + " " + (n.instagram || "")).includes(q)) set.add(n.id);
+      if (estado.soloVacantes && !esVacante(n)) return;
+      if (!q || sinTildes((esVacante(n) ? VACANTE + " vacante " : n.nombre) + " " + n.cargo + " " + n.nota + " " + (n.telefono || "") + " " + (n.twitter || "") + " " + (n.instagram || "")).includes(q)) set.add(n.id);
     });
     return set;
   }
@@ -397,6 +452,7 @@
           <button type="button" class="org-btn org-btn-ico" data-act="zoom-menos" aria-label="Alejar">−</button>
           <button type="button" class="org-btn org-zoom-val" data-act="zoom-reset" aria-label="Restablecer zoom" id="orgZoomVal">100%</button>
           <button type="button" class="org-btn org-btn-ico" data-act="zoom-mas" aria-label="Acercar">+</button>
+          <button type="button" class="org-btn" data-act="zoom-ajustar" title="Ajustar el organigrama al ancho disponible">Ajustar</button>
         </div>
         <div class="org-grupo" role="group" aria-label="Orientación">
           <button type="button" class="org-btn" data-act="orient-v" id="orgOrV" aria-pressed="true">Vertical</button>
@@ -406,8 +462,10 @@
           <button type="button" class="org-btn" data-act="descargar-claro" title="Descargar el organigrama completo como imagen PNG (fondo claro)">Imagen clara</button>
           <button type="button" class="org-btn" data-act="descargar-oscuro" title="Descargar el organigrama completo como imagen PNG (modo oscuro)">Imagen oscura</button>
         </div>
+        <button type="button" class="org-btn" data-act="pantalla" id="orgBtnPantalla" hidden title="Ver el organigrama a pantalla completa">⛶ Pantalla completa</button>
         <button type="button" class="org-btn org-btn-edit" data-act="editar" id="orgBtnEditar" hidden>Editar organigrama</button>
       </div>
+      <div class="org-stats" id="orgStats" aria-live="polite"></div>
       <div class="org-edit-barra" id="orgEditBarra" hidden></div>
       <div class="org-dropraiz" id="orgDropRaiz" hidden>Suelta aquí para quitarle este jefe (si no tiene más, pasa a ser casilla raíz)</div>
       <div class="org-lienzo" id="orgLienzo" tabindex="0" aria-label="Organigrama"><div class="org-zoom" id="orgZoom"></div></div>
@@ -424,6 +482,7 @@
     raiz.addEventListener("dragend", onDragEnd);
     $("orgBusca").addEventListener("input", (e) => { estado.busqueda = e.target.value; pintarArbol(); });
     activarPaneo($("orgLienzo"));
+    document.addEventListener("fullscreenchange", () => { pintarBarras(); });
     window.addEventListener("beforeunload", (e) => { if (estado.sucio) { e.preventDefault(); e.returnValue = ""; } });
   }
 
@@ -446,6 +505,46 @@
     $("orgOrH").setAttribute("aria-pressed", String(estado.orientacion === "horizontal"));
     $("orgZoomVal").textContent = Math.round(estado.zoom * 100) + "%";
     raiz.classList.toggle("org-editando", estado.editando);
+    const bp = $("orgBtnPantalla");
+    if (bp) {
+      bp.hidden = !(document.fullscreenEnabled && raiz.requestFullscreen);
+      bp.textContent = document.fullscreenElement === raiz ? "✕ Salir de pantalla completa" : "⛶ Pantalla completa";
+    }
+  }
+
+  // ---------- Resumen (personas, vacantes, áreas, niveles) ----------
+  function pintarStats() {
+    const b = $("orgStats");
+    if (!b) return;
+    if (!estado.nodos.length) { b.innerHTML = ""; return; }
+    const total = estado.nodos.length;
+    const vacantes = estado.nodos.filter(esVacante).length;
+    const areas = estado.nodos.filter((n) => hijos(n.id).length).length;
+    const niveles = estado.nodos.reduce((m, n) => Math.max(m, ruta(n.id).length), 0);
+    const chip = (num, txt, ico) => `<span class="org-stat"><span class="org-stat-ico" aria-hidden="true">${ico}</span><strong>${num}</strong><span>${txt}</span></span>`;
+    b.innerHTML = chip(total - vacantes, total - vacantes === 1 ? "persona" : "personas", "👥")
+      + (vacantes
+        ? `<button type="button" class="org-stat org-stat-btn" data-act="filtro-vacantes" aria-pressed="${estado.soloVacantes}" title="Resaltar solo los puestos vacantes"><span class="org-stat-ico" aria-hidden="true">🔎</span><strong>${vacantes}</strong><span>${vacantes === 1 ? "puesto vacante" : "puestos vacantes"}</span></button>`
+        : chip(0, "puestos vacantes", "✅"))
+      + chip(areas, areas === 1 ? "equipo" : "equipos", "🧩")
+      + chip(niveles, niveles === 1 ? "nivel" : "niveles", "📶");
+  }
+
+  // Ajusta el zoom para que el organigrama quepa en el ancho del lienzo.
+  function ajustarZoom() {
+    const zoom = $("orgZoom"), lienzo = $("orgLienzo");
+    const arbol = zoom && zoom.firstElementChild;
+    if (!arbol || !lienzo) return;
+    zoom.style.zoom = "1";
+    const w = arbol.scrollWidth || arbol.getBoundingClientRect().width;
+    cambiarZoom(w ? (lienzo.clientWidth - 24) / w : 1);
+    lienzo.scrollLeft = 0;
+  }
+  function alternarPantalla() {
+    try {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else raiz.requestFullscreen();
+    } catch { /* sin pantalla completa */ }
   }
 
   function pintarBarraEdicion() {
@@ -455,7 +554,7 @@
     b.hidden = false;
     const lleno = estado.nodos.length >= MAX_NODOS;
     b.innerHTML = `
-      <span class="org-edit-info"><strong>Modo edición.</strong> Pulsa una casilla para editarla. Arrástrala sobre otra para cambiar de jefe; mantén <kbd>Mayús</kbd> al soltar para añadirle un jefe más. ${estado.nodos.length}/${MAX_NODOS} casillas.</span>
+      <span class="org-edit-info"><strong>Modo edición.</strong> Pulsa una casilla para editarla. Arrástrala al centro de otra para cambiar de jefe, o al borde de otra para cambiar el orden; mantén <kbd>Mayús</kbd> al soltar para añadirle un jefe más. ${estado.nodos.length}/${MAX_NODOS} casillas.</span>
       <span class="org-edit-acciones">
         <button type="button" class="org-btn" data-act="anadir-raiz" ${lleno ? "disabled" : ""}>+ Casilla raíz</button>
         <button type="button" class="org-btn" data-act="descartar" ${estado.sucio ? "" : "disabled"}>Descartar</button>
@@ -465,7 +564,8 @@
 
   // `desde` = casilla bajo la que se dibuja esta copia. Si la casilla depende de varias, su equipo se
   // dibuja solo bajo su jefe principal (el primero); bajo los demás aparece como "enlace" sin equipo.
-  function nodoHTML(n, ctx, desde) {
+  function nodoHTML(n, ctx, desde, prof) {
+    prof = prof || 0;
     const jefes = padresDe(n);
     const enlace = !!desde && jefes[0] !== desde;
     // Una copia «enlace» (la casilla bajo uno de sus otros jefes) muestra su equipo igual que la principal; se puede plegar.
@@ -494,13 +594,13 @@
         : `Depende de varias casillas: ${nombres.join(", ")}.`;
       insignia = `<span class="org-enlace" title="${esc(aviso)}">${ICONO_ENLACE}</span>`;
     }
-    const li = `<li><div class="${clases.join(" ")}" data-id="${esc(n.id)}" data-padre="${esc(desde || "")}" role="button" tabindex="0" aria-pressed="${estado.sel === n.id}" ${estado.editando ? 'draggable="true"' : ""}>
+    const li = `<li><div class="${clases.join(" ")}" data-id="${esc(n.id)}" data-padre="${esc(desde || "")}" role="button" tabindex="0" aria-pressed="${estado.sel === n.id}" style="--d:${Math.min(prof, 12) * 70}ms" ${estado.editando ? 'draggable="true"' : ""}>
         <span class="org-ini">${esc(esVacante(n) ? "?" : iniciales(n.nombre))}</span>
         <span class="org-txt"><span class="org-nombre">${esc(nombreDe(n))}</span>${n.cargo ? `<span class="org-cargo">${esc(n.cargo)}</span>` : ""}</span>
         ${insignia}${toggle}
       </div>`;
     if (!kids.length || plegado) return li + "</li>";
-    return li + `<ul>${kids.map((h) => nodoHTML(h, ctx, n.id)).join("")}</ul></li>`;
+    return li + `<ul>${kids.map((h) => nodoHTML(h, ctx, n.id, prof + 1)).join("")}</ul></li>`;
   }
 
   function pintarArbol() {
@@ -508,6 +608,7 @@
     const lienzo = $("orgLienzo");
     if (!zoom) return;
     zoom.style.zoom = String(estado.zoom);
+    pintarStats();
     if (estado.cargando && !estado.cargado) { zoom.innerHTML = '<p class="org-vacio">Cargando organigrama…</p>'; return; }
     if (estado.error) {
       zoom.innerHTML = `<div class="org-vacio org-error"><p>No se ha podido cargar el organigrama: ${esc(estado.error)}</p><button type="button" class="org-btn" data-act="reintentar">Reintentar</button></div>`;
@@ -527,7 +628,8 @@
     const rutaSel = new Set(estado.sel ? [estado.sel, ...ancestros(estado.sel)] : []);
     const ctx = { coinciden, forzados, ruta: rutaSel, cuenta: 0, truncado: false };
     const scrollX = lienzo.scrollLeft, scrollY = lienzo.scrollTop;
-    zoom.innerHTML = `<ul class="org-arbol ${estado.orientacion === "horizontal" ? "org-h" : "org-v"}">${hijos(null).map((n) => nodoHTML(n, ctx, null)).join("")}</ul>`;
+    zoom.innerHTML = `<ul class="org-arbol ${estado.orientacion === "horizontal" ? "org-h" : "org-v"}${estado.animar ? " org-anim" : ""}">${hijos(null).map((n) => nodoHTML(n, ctx, null, 0)).join("")}</ul>`;
+    estado.animar = false;
     lienzo.scrollLeft = scrollX; lienzo.scrollTop = scrollY;
     if (ctx.truncado) zoom.insertAdjacentHTML("beforeend", '<p class="org-sin-resultados">El organigrama es muy grande: algunas copias «enlace» se muestran plegadas (pulsa su botón +N para verlas).</p>');
     if (coinciden && !coinciden.size) {
@@ -616,6 +718,7 @@
           <dl class="org-det-datos">
             <div><dt>${jefes.length > 1 ? "Cadenas de mando" : "Cadena de mando"}</dt><dd>${cadenas}</dd></div>
             <div><dt>Reporta a</dt><dd>${jefes.length ? jefes.map((j) => `<button type="button" class="org-chip" data-sel="${esc(j.id)}">${esc(nombreDe(j))}</button>`).join(" ") : "— (casilla raíz)"}</dd></div>
+            ${kids.length ? (() => { const dd = [...descendientes(n.id)].map(porId).filter(Boolean); const vac = dd.filter(esVacante).length; return `<div><dt>Equipo total</dt><dd>${dd.length} casilla${dd.length === 1 ? "" : "s"}${vac ? ` · ${vac} vacante${vac === 1 ? "" : "s"}` : ""}</dd></div>`; })() : ""}
             <div><dt>Equipo directo</dt><dd>${kids.length ? kids.map((k) => `<button type="button" class="org-chip" data-sel="${esc(k.id)}">${esc(nombreDe(k))}</button>`).join(" ") : "Sin subordinadas"}</dd></div>
           </dl>
         </div>`;
@@ -661,8 +764,10 @@
         </div>
         <div class="org-acciones">
           <button type="button" class="org-btn" data-act="anadir-hijo" ${estado.nodos.length >= MAX_NODOS ? "disabled" : ""}>+ Añadir subordinada</button>
+          <button type="button" class="org-btn" data-act="primera" ${i <= 0 ? "disabled" : ""} title="Ponerla la primera entre sus hermanas">⇤ Primera</button>
           <button type="button" class="org-btn" data-act="subir" ${i <= 0 ? "disabled" : ""} title="Mover antes entre sus hermanas">↑ Subir</button>
           <button type="button" class="org-btn" data-act="bajar" ${i >= hermanas.length - 1 ? "disabled" : ""} title="Mover después entre sus hermanas">↓ Bajar</button>
+          <button type="button" class="org-btn" data-act="ultima" ${i >= hermanas.length - 1 ? "disabled" : ""} title="Ponerla la última entre sus hermanas">⇥ Última</button>
           <button type="button" class="org-btn org-peligro" data-act="quitar">Quitar casilla</button>
           ${kids.length ? '<button type="button" class="org-btn org-peligro" data-act="quitar-rama">Quitar con subordinadas</button>' : ""}
         </div>
@@ -670,10 +775,18 @@
   }
 
   // ---------- Eventos ----------
+  // En móvil el árbol es una lista larga: al elegir una casilla se baja hasta su detalle/edición.
+  function verDetalleEnMovil() {
+    if (!estado.sel || !(window.matchMedia && window.matchMedia("(max-width: 720px)").matches)) return;
+    const d = $("orgDetalle");
+    if (d && d.scrollIntoView) d.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   function seleccionar(id) {
     estado.sel = estado.sel === id && !estado.editando ? null : id;
     pintarArbol();
     pintarDetalle();
+    verDetalleEnMovil();
     if (estado.editando && estado.sel) {
       const f = $("orgFNombre");
       if (f && window.matchMedia && window.matchMedia("(min-width: 700px)").matches) f.focus({ preventScroll: true });
@@ -709,7 +822,7 @@
       return;
     }
     const chip = e.target.closest("[data-sel]");
-    if (chip) { estado.sel = chip.dataset.sel; pintarArbol(); pintarDetalle(); return; }
+    if (chip) { estado.sel = chip.dataset.sel; pintarArbol(); pintarDetalle(); verDetalleEnMovil(); return; }
     const nodo = e.target.closest(".org-nodo");
     if (nodo) { seleccionar(nodo.dataset.id); return; }
     const btn = e.target.closest("[data-act]");
@@ -723,6 +836,9 @@
       case "zoom-mas": cambiarZoom(estado.zoom + ZOOM_PASO); break;
       case "zoom-menos": cambiarZoom(estado.zoom - ZOOM_PASO); break;
       case "zoom-reset": cambiarZoom(1); break;
+      case "zoom-ajustar": ajustarZoom(); break;
+      case "pantalla": alternarPantalla(); break;
+      case "filtro-vacantes": estado.soloVacantes = !estado.soloVacantes; pintarStats(); pintarArbol(); break;
       case "orient-v": case "orient-h": {
         const nueva = btn.dataset.act === "orient-h" ? "horizontal" : "vertical";
         if (nueva !== estado.orientacion) { estado.orientacion = nueva; if (estado.editando) marcarSucio(); pintarBarras(); pintarArbol(); }
@@ -738,6 +854,8 @@
       case "anadir-hijo": anadir(estado.sel); break;
       case "subir": reordenar(estado.sel, -1); break;
       case "bajar": reordenar(estado.sel, 1); break;
+      case "primera": reordenarExtremo(estado.sel, false); break;
+      case "ultima": reordenarExtremo(estado.sel, true); break;
       case "quitar": quitar(estado.sel, false); break;
       case "quitar-rama": quitar(estado.sel, true); break;
       case "cerrar": estado.sel = null; pintarArbol(); pintarDetalle(); break;
@@ -823,16 +941,38 @@
     const dz = $("orgDropRaiz");
     if (dz && padresDe(porId(nodo.dataset.id)).length) dz.hidden = false;
   }
+  // Zona del puntero sobre la casilla: "antes" / "despues" (bordes: cambiar el orden) o "dentro" (centro: cambiar de jefe).
+  function zonaDrop(e, nodo) {
+    const r = nodo.getBoundingClientRect();
+    const apiladas = estado.orientacion === "horizontal" || (window.matchMedia && window.matchMedia("(max-width: 720px)").matches);
+    const f = apiladas ? (e.clientY - r.top) / (r.height || 1) : (e.clientX - r.left) / (r.width || 1);
+    return f < 0.28 ? "antes" : f > 0.72 ? "despues" : "dentro";
+  }
+  // ¿Se puede soltar la casilla arrastrada junto a `nodo` (a su lado, bajo el jefe con el que está dibujada)?
+  function bordeValido(nodo) {
+    const a = estado.arrastrando;
+    if (!a || nodo.dataset.id === a) return false;
+    const ctx = nodo.dataset.padre || null;
+    return !ctx || (ctx !== a && !descendientes(a).has(ctx));
+  }
+  function limpiarMarcasDrop() {
+    raiz.querySelectorAll(".org-drop, .org-drop-antes, .org-drop-despues").forEach((el) => el.classList.remove("org-drop", "org-drop-antes", "org-drop-despues"));
+  }
   function onDragOver(e) {
     if (!estado.arrastrando) return;
     const nodo = e.target.closest(".org-nodo");
     const dz = e.target.closest("#orgDropRaiz");
-    if (nodo && destinoValido(nodo.dataset.id)) { e.preventDefault(); nodo.classList.add("org-drop"); }
-    else if (dz) { e.preventDefault(); dz.classList.add("org-drop"); }
+    limpiarMarcasDrop();
+    if (nodo) {
+      const zona = zonaDrop(e, nodo);
+      if (zona === "dentro" && destinoValido(nodo.dataset.id)) { e.preventDefault(); nodo.classList.add("org-drop"); return; }
+      if (zona !== "dentro" && bordeValido(nodo)) { e.preventDefault(); nodo.classList.add(zona === "antes" ? "org-drop-antes" : "org-drop-despues"); return; }
+      return;
+    } else if (dz) { e.preventDefault(); dz.classList.add("org-drop"); }
   }
   function onDragLeave(e) {
     const nodo = e.target.closest && e.target.closest(".org-nodo");
-    if (nodo) nodo.classList.remove("org-drop");
+    if (nodo) nodo.classList.remove("org-drop", "org-drop-antes", "org-drop-despues");
     const dz = e.target.closest && e.target.closest("#orgDropRaiz");
     if (dz) dz.classList.remove("org-drop");
   }
@@ -843,17 +983,24 @@
     const anadir = !!(e.shiftKey || e.ctrlKey || e.altKey || e.metaKey); // con Mayús: un jefe más
     const nodo = e.target.closest(".org-nodo");
     const dz = e.target.closest("#orgDropRaiz");
-    const destino = nodo ? nodo.dataset.id : null;
-    const valido = nodo ? destinoValido(destino) : false;
+    let accion = null;
+    if (nodo) {
+      const zona = zonaDrop(e, nodo);
+      const destino = nodo.dataset.id;
+      if (zona === "dentro" && destinoValido(destino)) accion = () => mover(id, destino, { desde, anadir });
+      else if (zona !== "dentro" && bordeValido(nodo)) {
+        const ctx = nodo.dataset.padre || null;
+        accion = () => colocarJunto(id, destino, zona, ctx, { desde, anadir });
+      }
+    } else if (dz) accion = () => mover(id, null, { desde });
     limpiarArrastre();
-    if (nodo && valido) { e.preventDefault(); mover(id, destino, { desde, anadir }); }
-    else if (dz) { e.preventDefault(); mover(id, null, { desde }); }
+    if (accion) { e.preventDefault(); accion(); }
   }
   function onDragEnd() { limpiarArrastre(); }
   function limpiarArrastre() {
     estado.arrastrando = null;
     estado.arrastrandoDesde = null;
-    raiz.querySelectorAll(".org-drop, .org-arrastrando").forEach((el) => el.classList.remove("org-drop", "org-arrastrando"));
+    raiz.querySelectorAll(".org-drop, .org-drop-antes, .org-drop-despues, .org-arrastrando").forEach((el) => el.classList.remove("org-drop", "org-drop-antes", "org-drop-despues", "org-arrastrando"));
     const dz = $("orgDropRaiz"); if (dz) dz.hidden = true;
   }
 
@@ -866,7 +1013,7 @@
     claro:  { fondo: "#ffffff", caja: "#ffffff", borde: "#dde3f0", linea: "#aab5cf", texto: "#16204a", suave: "#5b6478", sombra: "rgba(11,18,87,.18)", col: HEX },
     oscuro: { fondo: "#131925", caja: "#1f2840", borde: "#3a4660", linea: "#4a5878", texto: "#e6ebf7", suave: "#98a3bb", sombra: "rgba(0,0,0,.45)", col: { ...HEX, azul: "#5b9bff", gris: "#8591ab" } },
   };
-  const FUENTE = '"Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif';
+  const FUENTE = (getComputedStyle(document.documentElement).getPropertyValue('--font-text').trim() || 'Inter') + ', "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
   const F_NOMBRE = `800 12px ${FUENTE}`, F_CARGO = `600 10.5px ${FUENTE}`;
   const LH_NOMBRE = 14, LH_CARGO = 13;
 

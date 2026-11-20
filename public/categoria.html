@@ -1,0 +1,1526 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta name="google-adsense-account" content="ca-pub-7347856722927942">
+<script src="js/tema.js?v=65626bb2"></script>
+<script src="js/preferencias.js?v=6e49f5b3"></script>
+<meta charset="UTF-8">
+<script>/* splash.js: bloquea el parseo solo si la web se abre como app (o ?splash=1); en navegador carga en async, sin frenar el pintado. */
+(function(){var a=false;try{a=matchMedia("(display-mode: standalone)").matches||matchMedia("(display-mode: fullscreen)").matches||matchMedia("(display-mode: minimal-ui)").matches||navigator.standalone===true;}catch(e){}
+if(a||/[?&]splash=1(&|$)/.test(location.search)){document.write('<script src="/js/splash.js?v=b5004788"><\/script>');}
+else{var s=document.createElement("script");s.src="/js/splash.js?v=b5004788";s.async=true;document.head.appendChild(s);}})();
+</script>
+<script src="/js/cargando.js?v=4a5cb1bc"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://api.elotrofutbol.media" crossorigin>
+<link rel="preconnect" href="https://res.cloudinary.com">
+<title id="pageTitle">Categoría — ELOTROFÚTBOLTV</title>
+<meta property="og:image" content="https://elotrofutbol.media/img/og-default.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://elotrofutbol.media/img/og-default.png">
+<link rel="alternate" type="application/rss+xml" title="ELOTROFÚTBOLTV" href="https://elotrofutbol.media/rss.xml">
+<link rel="icon" href="/favicon.ico?v=39af2432" sizes="any">
+<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=39af2432">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png?v=3f854c49">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;0,700;0,800;1,500;1,700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&display=swap" onload="this.onload=null;this.rel='stylesheet'"><noscript><link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;0,700;0,800;1,500;1,700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&display=swap" rel="stylesheet"></noscript>
+<link rel="stylesheet" href="css/style.css?v=6cd42e49">
+<link rel="stylesheet" href="css/modales-mejoras.css?v=982413bb">
+<link rel="stylesheet" href="css/accesibilidad.css?v=191b9263">
+<script src="js/accesibilidad.js?v=59fdae75" defer></script>
+<script src="js/equipo-ficha.js?v=1b027322"></script>
+<link rel="stylesheet" href="css/foco.css?v=c8652610">
+<link rel="stylesheet" href="css/plantilla-club.css?v=7bfbbca2">
+<link rel="stylesheet" href="css/equipo-partidos-mejoras.css?v=00bbb1de">
+<link rel="stylesheet" href="css/equipo-ficha.css?v=f791dc73">
+<link rel="stylesheet" href="css/app-movil.css?v=b6df23d4">
+<script src="js/app-movil.js?v=3b122790" defer></script>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="stylesheet" href="css/proteccion-copia.css?v=5d439156">
+<link rel="stylesheet" href="css/animaciones-web.css?v=844fde5e">
+</head>
+<body>
+<script>document.body.dataset.page = new URLSearchParams(location.search).get("cat") || "general";</script>
+
+<div id="site-header"></div>
+
+<main class="wrap">
+  <div id="ad-cabecera-categoria"></div>
+  <div id="cabeceraClub" class="cabecera-club" hidden>
+    <div class="cabecera-club-escudo-wrap">
+      <img id="escudoClub" class="cabecera-club-escudo" src="" alt="">
+    </div>
+    <button id="btnAbrirComparador" type="button" class="btn-comparar-equipo" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5M8 3H3v5M3 16v5h5M21 16v5h-5M4 4l7 7m2 2l7 7"/></svg>
+      Comparar con otro equipo
+    </button>
+  </div>
+  <h1 class="section-title" id="tituloCategoria">Categoría</h1>
+  <p class="section-subtitle" id="subtituloCategoria" style="display:none"></p>
+  <div id="infoClub" class="info-club" style="display:none"></div>
+  <div id="partidosClub" class="partidos-club" style="display:none">
+    <div class="partidos-club-col">
+      <h3 class="partidos-club-titulo">Últimos resultados</h3>
+      <div id="ultimosResultadosClub"></div>
+    </div>
+    <div class="partidos-club-col">
+      <h3 class="partidos-club-titulo">Próximos partidos</h3>
+      <div id="proximosPartidosClub"></div>
+    </div>
+  </div>
+  <section class="pc" id="plantillaEquipo" aria-label="Plantilla del equipo" hidden></section>
+  <div class="grid-noticias" id="grid"></div>
+  <div data-eof-ad="pie"></div>
+</main>
+
+<!-- Modal de detalle del partido, reutilizado igual que en resultados.html
+     para poder abrir el detalle de un partido del bloque de arriba. -->
+<div id="modalPartido" class="modal-partido" aria-hidden="true">
+  <div class="modal-partido-fondo" onclick="cerrarModalPartido()"></div>
+  <div class="modal-partido-caja" role="dialog" aria-modal="true" aria-labelledby="modalPartidoTitulo">
+    <button type="button" class="modal-partido-cerrar" onclick="cerrarModalPartido()" aria-label="Cerrar">✕</button>
+    <div class="modal-partido-cabecera">
+      <div class="modal-partido-equipo">
+        <img id="modalEscudoLocal" class="modal-partido-escudo" src="" alt="" loading="lazy">
+        <span id="modalNombreLocal" class="modal-partido-nombre"></span>
+      </div>
+      <div class="modal-partido-marcador">
+        <span id="modalMarcador"></span>
+        <span id="modalEstado" class="modal-partido-estado"></span>
+      </div>
+      <div class="modal-partido-equipo">
+        <img id="modalEscudoVisitante" class="modal-partido-escudo" src="" alt="" loading="lazy">
+        <span id="modalNombreVisitante" class="modal-partido-nombre"></span>
+      </div>
+    </div>
+    <p id="modalPartidoTitulo" class="modal-partido-subtitulo"></p>
+    <a id="modalEnlaceFlashscore" class="enlace-flashscore" href="" target="_blank" rel="noopener noreferrer" hidden>Ver en Flashscore<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></a>
+    <a id="modalEnlaceGaleria" class="enlace-flashscore" href="" hidden>Ver galería de fotos<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></a>
+    <div id="modalNoticiasVinculadas" class="modal-noticias-vinculadas" hidden></div>
+    <div id="modalPartidoMvp" class="modal-partido-mvp" hidden></div>
+    <div id="modalPartidoAlineaciones" class="modal-partido-alineaciones"></div>
+    <div id="modalPartidoEventos" class="modal-partido-eventos"></div>
+  </div>
+</div>
+
+<!-- Modal del comparador de equipos: se abre desde el botón "Comparar"
+     de la cabecera del club, ya con este equipo fijado como equipo A. -->
+<div id="modalComparador" class="modal-comparador" aria-hidden="true" hidden>
+  <div class="modal-comparador-fondo" onclick="cerrarModalComparador()"></div>
+  <div class="modal-comparador-caja" role="dialog" aria-modal="true" aria-labelledby="modalComparadorTitulo">
+    <button type="button" class="modal-partido-cerrar comp-cerrar" onclick="cerrarModalComparador()" aria-label="Cerrar">✕</button>
+
+    <div class="comp-cabecera">
+      <h3 id="modalComparadorTitulo" class="modal-comparador-titulo">Comparador de equipos</h3>
+      <p class="comp-subtitulo">Estadísticas cara a cara de la temporada</p>
+    </div>
+
+    <div class="comp-cara-a-cara">
+      <div class="comp-equipo-tarjeta" id="compTarjetaFija">
+        <div class="comp-equipo-escudo-wrap">
+          <img id="compEscudoFijo" class="comp-equipo-escudo" src="" alt="" loading="lazy">
+        </div>
+        <span id="compNombreFijo" class="comp-equipo-nombre"></span>
+        <span id="compCategoriaFija" class="comp-equipo-categoria"></span>
+      </div>
+
+      <div class="comp-vs-col">
+        <span class="comp-vs-grande">VS</span>
+        <span id="compEstadoCarga" class="comp-estado-carga" role="status" hidden><span class="spinner" aria-hidden="true"></span><span class="eof-cargador-txt">Cargando…</span></span>
+      </div>
+
+      <div class="comp-equipo-tarjeta" id="compTarjetaRival">
+        <div class="comp-equipo-escudo-wrap comp-equipo-escudo-wrap--vacio" id="compEscudoRivalWrap">
+          <img id="compEscudoRival" class="comp-equipo-escudo" src="" alt="" loading="lazy" hidden>
+          <svg id="compIconoInterrogante" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="10"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2 1.8-2 3.5" stroke-linecap="round"/><circle cx="12" cy="17" r=".6" fill="currentColor" stroke="none"/></svg>
+        </div>
+        <select id="compSelectorRival" class="comp-selector-rival-select" aria-label="Elige el equipo rival">
+          <option value="">Elige un rival…</option>
+        </select>
+        <span id="compCategoriaRival" class="comp-equipo-categoria"></span>
+      </div>
+    </div>
+
+    <div id="compComparadorError" class="comp-error" hidden></div>
+
+    <div id="compComparadorResultado" class="comp-resultado">
+
+      <!-- Resumen rápido: forma reciente + racha de victorias -->
+      <div class="comp-resumen-rapido">
+        <div class="comp-resumen-col">
+          <span class="comp-resumen-label">Forma reciente</span>
+          <div id="compFormaA" class="comp-racha comp-racha--grande"></div>
+        </div>
+        <div class="comp-resumen-col comp-resumen-col--centro">
+          <span class="comp-resumen-label">Historial directo</span>
+          <div id="compResumenH2h" class="comp-resumen-h2h"></div>
+        </div>
+        <div class="comp-resumen-col">
+          <span class="comp-resumen-label">Forma reciente</span>
+          <div id="compFormaB" class="comp-racha comp-racha--grande"></div>
+        </div>
+      </div>
+
+      <!-- Filtro de categoría de estadísticas -->
+      <div class="comp-tabs" role="tablist" aria-label="Categorías de estadísticas">
+        <button type="button" class="comp-tab activa" data-tab="general" role="tab" aria-selected="true">General</button>
+        <button type="button" class="comp-tab" data-tab="ataque" role="tab" aria-selected="false">Ataque</button>
+        <button type="button" class="comp-tab" data-tab="defensa" role="tab" aria-selected="false">Defensa</button>
+        <button type="button" class="comp-tab" data-tab="local-visitante" role="tab" aria-selected="false">Local / Visitante</button>
+      </div>
+
+      <p class="comp-tabla-ayuda">Toca cualquier estadística para ver los partidos que la componen</p>
+
+      <div class="comp-tabla-wrap">
+        <table class="comp-tabla" id="compTablaComparativa">
+          <thead>
+            <tr><th id="compColA"></th><th>Estadística</th><th id="compColB"></th></tr>
+          </thead>
+          <tbody id="compCuerpoTabla"></tbody>
+        </table>
+      </div>
+
+      <div class="comp-h2h-titulo t-h4">Últimos enfrentamientos directos</div>
+      <div id="compH2hLista" class="comp-h2h-lista"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Sub-modal de detalle de una estadística del comparador: se abre al
+     pulsar una fila de la tabla comparativa, y lista los partidos
+     concretos que forman ese dato (mismo patrón que modalPartido, pero
+     con z-index superior porque se abre encima del comparador). -->
+<div id="modalCompDetalle" class="modal-comp-detalle" aria-hidden="true" hidden>
+  <div class="modal-comp-detalle-fondo" onclick="cerrarModalCompDetalle()"></div>
+  <div class="modal-comp-detalle-caja" role="dialog" aria-modal="true" aria-labelledby="compDetalleTitulo">
+    <button type="button" class="modal-partido-cerrar" onclick="cerrarModalCompDetalle()" aria-label="Cerrar">✕</button>
+    <div id="compDetalleTitulo" class="modal-comp-detalle-titulo t-h4"></div>
+    <p id="compDetalleSubtitulo" class="modal-comp-detalle-subtitulo"></p>
+    <div id="compDetalleLista" class="modal-comp-detalle-lista"></div>
+  </div>
+</div>
+
+<div id="site-footer"></div>
+
+<script src="js/ui-alertas.js?v=4339c846"></script>
+<script src="js/foco.js?v=133ef790"></script>
+<script src="js/config.js?v=f440593b"></script>
+<script src="js/en-vivo.js?v=3e8f8994"></script>
+<script src="js/seo.js?v=51678a88"></script>
+<script src="js/clubs.js?v=cdbd504a"></script>
+<script src="js/info-club-estatica.js?v=f35b93bb"></script>
+<script src="js/clubs-redes.js?v=9dc630c0"></script>
+<script src="js/lector-auth.js?v=9a1c7f1f"></script>
+<script src="js/lecturas.js?v=de5c36f5"></script>
+<script src="js/layout.js?v=e8597b26"></script>
+<script src="js/partidos.js?v=e6388483"></script>
+<script src="js/plantilla-lp.js?v=d20a1e8a"></script>
+<script src="js/plantilla-club.js?v=905a66e5"></script>
+<script src="js/main.js?v=858efe67"></script>
+<script src="js/cookies.js?v=845d8f5c"></script>
+<script src="js/ads.js?v=a41f4506"></script>
+<script>
+document.getElementById("ad-cabecera-categoria").innerHTML = adSlot("cabecera");
+async function cargaCategoria() {
+  const params = new URLSearchParams(location.search);
+  const cat = params.get("cat") || "general";
+  const club = params.get("club");
+  // ?tipo=cronica|previa|opinion|...: solo ese tipo de noticia (enlaces de los
+  // hashtags de la cabecera de una noticia). Se ignora si no es un tipo conocido.
+  const tipoParam = params.get("tipo");
+  const tipo = tipoParam && typeof TIPO_NOTICIA_PLURAL !== "undefined" && TIPO_NOTICIA_PLURAL[tipoParam] ? tipoParam : "";
+
+  // Clubes "personalizados" (añadidos desde "Otro equipo"), para que si
+  // el club de esta página es uno de ellos, se le pueda resolver bien el
+  // escudo (getEscudoUrl los consulta una vez cargados).
+  if (club) await cargarCustomClubs();
+
+  const titulo = club || (tipo ? `${TIPO_NOTICIA_PLURAL[tipo]} · ${categoriaLabel(cat)}` : categoriaLabel(cat));
+  document.getElementById("tituloCategoria").textContent = titulo;
+
+  const subtitulo = document.getElementById("subtituloCategoria");
+  if (club) {
+    // Se ha entrado desde una competición concreta, pero como ahora se
+    // listan TODAS las noticias del club (de cualquier competición o
+    // amistoso), el subtítulo ya no dice solo "Hypermotion" sino que
+    // deja claro que se ven todas.
+    subtitulo.textContent = `Todas las noticias · ${categoriaLabel(cat)} y otras competiciones`;
+    subtitulo.style.display = "block";
+
+    const cabecera = document.getElementById("cabeceraClub");
+    const escudoImg = document.getElementById("escudoClub");
+    escudoImg.classList.remove("logo-competicion-cabecera", "logo-competicion-invertir");
+    escudoImg.src = getEscudoUrl(club);
+    escudoImg.alt = `Escudo del ${club}`;
+    escudoImg.onerror = () => {
+      const slugFilial = resolverSlugEscudoFilial(club);
+      if (slugFilial) {
+        escudoImg.onerror = () => { escudoImg.src = ESCUDO_GENERICO; escudoImg.onerror = null; };
+        escudoImg.src = `img/escudos/${slugFilial}.png`;
+      } else {
+        escudoImg.src = ESCUDO_GENERICO;
+        escudoImg.onerror = null;
+      }
+    };
+    cabecera.hidden = false;
+    if (typeof montarFichaEquipo === "function") montarFichaEquipo(club);
+    cargaInfoClub(club);
+    cargaPartidosClub(club);
+    if (typeof cargarPlantillaEquipo === "function") cargarPlantillaEquipo(club, cat);
+
+    // Botón "Comparar": solo tiene sentido en la ficha de un club
+    // concreto (no en la vista general de la competición).
+    const btnComparar = document.getElementById("btnAbrirComparador");
+    btnComparar.hidden = false;
+    btnComparar.onclick = () => abrirModalComparador(club);
+  } else {
+    const logoCat = categoriaLogo(cat);
+    if (logoCat) {
+      const cabecera = document.getElementById("cabeceraClub");
+      const escudoImg = document.getElementById("escudoClub");
+      // Solo el logo de LaLiga Hypermotion se pinta de blanco en modo
+      // oscuro (ver CSS más abajo): los de Primera y Segunda Federación
+      // se dejan tal cual, a petición expresa.
+      escudoImg.classList.toggle("logo-competicion-cabecera", cat === "hypermotion");
+      // Copa del Rey y Copa Federación (trofeo casi negro / azul marino con
+      // "RFEF" en negro) se pierden sobre fondo oscuro: en modo oscuro se
+      // invierte la luminosidad conservando el tono (ver CSS más abajo).
+      escudoImg.classList.toggle("logo-competicion-invertir", cat === "copa_del_rey" || cat === "copa_federacion" || cat === "tercera_federacion");
+      escudoImg.src = logoCat;
+      escudoImg.alt = `Logo de ${titulo}`;
+      escudoImg.onerror = () => { cabecera.hidden = true; };
+      cabecera.hidden = false;
+    }
+  }
+
+  // Migas: Inicio > Categoría [> Club]. Cuando se está viendo la ficha
+  // de un club, la categoría desde la que se entró sigue siendo el nivel
+  // intermedio (aunque esa página liste noticias de todas las
+  // competiciones del club), porque es el camino de navegación real que
+  // ha seguido el lector.
+  const migas = [{ nombre: categoriaLabel(cat), urlPath: `categoria.html?cat=${encodeURIComponent(cat)}` }];
+  if (club) migas.push({ nombre: club });
+
+  fijarSeoBasico({
+    titulo: `${titulo} — ELOTROFÚTBOLTV`,
+    descripcion: club
+      ? `Noticias, crónicas y resultados del ${club} en ELOTROFÚTBOLTV.`
+      : tipo
+        ? `${TIPO_NOTICIA_PLURAL[tipo]} de ${categoriaLabel(cat)} en ELOTROFÚTBOLTV.`
+        : `Noticias y crónicas de ${categoriaLabel(cat)} en ELOTROFÚTBOLTV.`,
+    urlPath: location.pathname + location.search,
+    migas,
+  });
+  // RSS propio: el del club si se está viendo un club; si no, el de la categoría.
+  if (club) fijarRssAlternativo(`/rss/club/${slugEtiquetaCliente(club)}.xml`, `${club} — ELOTROFÚTBOLTV`);
+  else if (cat) fijarRssAlternativo(`/rss/categoria/${String(cat).replace(/_/g, "-")}.xml`, `${categoriaLabel(cat)} — ELOTROFÚTBOLTV`);
+
+  const grid = document.getElementById("grid");
+  grid.innerHTML = spinnerHTML();
+  try {
+    // Si se está viendo la ficha de un CLUB (viene "club" en la URL), se
+    // quiere ver TODO lo publicado sobre ese club, sin restringir por la
+    // competición desde la que se ha entrado: un mismo club puede tener
+    // noticias de LaLiga Hypermotion, de un amistoso, etc. Por eso aquí
+    // NO se manda "categoria" a la API cuando hay club (antes se mandaban
+    // los dos y, al combinarse con AND en el backend, se perdían las
+    // noticias del club que fueran de otra competición o de amistosos).
+    // Sin club (viendo la categoría entera), sí se sigue filtrando por
+    // categoría como siempre.
+    let path = club
+      ? `/api/articles?club=${encodeURIComponent(club)}&limit=40`
+      : `/api/articles?categoria=${encodeURIComponent(cat)}${tipo ? `&tipo=${encodeURIComponent(tipo)}` : ""}&limit=40`;
+    const { articles } = await conReintento(async () => {
+      const res = await apiFetch(path);
+      return res.json();
+    });
+    if (!articles.length) _seoMeta("name", "robots", "noindex, follow");
+    grid.innerHTML = articles.length
+      ? articles.map(cardHTML).join("")
+      : estadoHTML({
+          titulo: "Todavía no hay noticias aquí",
+          texto: club
+            ? `Aún no hemos publicado crónicas ni noticias sobre el ${club}. Vuelve pronto.`
+            : `De momento no hay contenido publicado en ${titulo}. Estamos trabajando en ello.`,
+          cta: `<a href="/" class="btn-volver">Ir a portada</a>`,
+        });
+    if (articles.length) insertarAdsEnGrid(grid);
+    iniciarCategoriaEnVivo(path, articles);
+  } catch (err) {
+    grid.innerHTML = estadoHTML({
+      titulo: "No se ha podido conectar",
+      texto: "Ha habido un problema al cargar las noticias. Comprueba tu conexión e inténtalo de nuevo.",
+      tipo: "error",
+      cta: `<a href="javascript:location.reload()" class="btn-volver">Reintentar</a>`,
+    });
+  }
+}
+// ---------- Listado en directo ----------
+// Cada ~25 s se vuelve a pedir el mismo listado. Si hay cambios, se
+// aplican SOBRE EL DOM EXISTENTE (se añade lo nuevo arriba, se cambia lo
+// editado, se quita lo retirado) en vez de repintar todo el grid: así no
+// se reinician los anuncios intercalados, no se pierde la posición de
+// scroll y no parpadean las tarjetas que no han cambiado.
+let categoriaFirmas = new Map(); // id -> firma de la tarjeta pintada
+
+function categoriaTarjetaEl(a) {
+  const t = document.createElement("template");
+  t.innerHTML = cardHTML(a).trim();
+  return t.content.firstElementChild;
+}
+
+function aplicarCambiosCategoria(grid, articles) {
+  const ids = new Set(articles.map((a) => String(a.id)));
+  const esTarjeta = (n) => n.classList.contains("card") && n.dataset.artId;
+  // Primera tarjeta que sigue a `el` (o la primera del grid si el = null).
+  const siguienteTarjeta = (el) => {
+    let n = el ? el.nextElementSibling : grid.firstElementChild;
+    while (n && !esTarjeta(n)) n = n.nextElementSibling;
+    return n;
+  };
+  // 1) fuera las retiradas
+  grid.querySelectorAll(".card[data-art-id]").forEach((el) => {
+    if (!ids.has(el.dataset.artId)) { categoriaFirmas.delete(el.dataset.artId); el.remove(); }
+  });
+  // 2) recorrer en el orden del servidor, colocando cada tarjeta justo detrás de la anterior
+  const destacar = [];
+  let previo = null;
+  articles.forEach((a) => {
+    const id = String(a.id);
+    const f = firmaArticulos([a]);
+    let el = grid.querySelector(`.card[data-art-id="${id}"]`);
+    if (el && categoriaFirmas.get(id) !== f) {
+      const nuevo = categoriaTarjetaEl(a);
+      el.replaceWith(nuevo);
+      el = nuevo;
+      destacar.push(el);
+    } else if (!el) {
+      el = categoriaTarjetaEl(a);
+      grid.insertBefore(el, siguienteTarjeta(previo));
+      destacar.push(el);
+    }
+    const esperado = siguienteTarjeta(previo);
+    if (el !== esperado) grid.insertBefore(el, esperado);
+    categoriaFirmas.set(id, f);
+    previo = el;
+  });
+  destacar.forEach((el) => EOF_VIVO.resaltar(el));
+  reubicarAnunciosGrid(grid);
+  // Los anuncios solo se insertan si aún no había ninguno y ya hay tarjetas suficientes.
+  if (!grid.querySelector(".eof-ad-grid-item") && typeof insertarAdsEnGrid === "function") insertarAdsEnGrid(grid);
+}
+
+// Tras añadir/quitar tarjetas, los huecos de anuncio que ya estaban en la
+// página se COLOCAN de nuevo cada N tarjetas (sin recrearlos, para no
+// recargar el anuncio). Los que sobran por haber menos tarjetas se quitan.
+function reubicarAnunciosGrid(grid) {
+  if (typeof EOF_ADS_CADA_N_TARJETAS === "undefined") return;
+  const n = EOF_ADS_CADA_N_TARJETAS;
+  const anuncios = [...grid.querySelectorAll(":scope > .eof-ad-grid-item")];
+  if (!anuncios.length) return;
+  const tarjetas = [...grid.querySelectorAll(":scope > .card[data-art-id]")];
+  anuncios.forEach((ad, k) => {
+    const ref = tarjetas[(k + 1) * n];
+    if (!ref) { ad.remove(); return; }
+    if (ref.previousElementSibling !== ad) grid.insertBefore(ad, ref);
+  });
+}
+
+function iniciarCategoriaEnVivo(path, articulosIniciales) {
+  if (!window.EOF_VIVO) return;
+  categoriaFirmas = new Map();
+  articulosIniciales.forEach((a) => categoriaFirmas.set(String(a.id), firmaArticulos([a])));
+  let firmaLista = firmaArticulos(articulosIniciales);
+  EOF_VIVO.cada("categoria", async () => {
+    const res = await apiFetch(path);
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const { articles } = await res.json();
+    if (!Array.isArray(articles)) throw new Error("respuesta inesperada");
+    const f = firmaArticulos(articles);
+    if (f === firmaLista) return;
+    firmaLista = f;
+    const grid = document.getElementById("grid");
+    if (!grid) return;
+    if (!articles.length) return; // no se vacía una lista que el lector ya está leyendo
+    // Si el grid mostraba un aviso de "sin noticias", se parte de cero.
+    if (!grid.querySelector(".card[data-art-id]")) grid.innerHTML = "";
+    aplicarCambiosCategoria(grid, articles);
+  }, 25000);
+}
+
+// Recuadro de info del equipo (entrenador, estadio, año de fundación,
+// ciudad). Solo se muestra si un admin ha rellenado esa ficha desde el
+// panel ("Ajustes del medio" -> "Equipos"); si el club no tiene fila en
+// club_info, el recuadro se queda oculto sin más (no es un error).
+const ICONOS_INFO_CLUB = {
+  Entrenador: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0 1 16 0v1"/></svg>`,
+  Estadio: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="12" rx="9" ry="6"/><ellipse cx="12" cy="12" rx="4" ry="6"/></svg>`,
+  Fundación: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>`,
+  Ciudad: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c-4.5-4.2-7-7.8-7-11a7 7 0 0 1 14 0c0 3.2-2.5 6.8-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>`,
+  Competición: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3"/></svg>`,
+  "Cuenta de X": `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l16 16M20 4L4 20"/></svg>`,
+  Balance: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>`,
+  Goles: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8l3.5 2.5-1.3 4h-4.4l-1.3-4z"/></svg>`,
+  "Próximo partido": `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/></svg>`,
+  Grupo: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>`,
+};
+
+// Etiquetas para las que el valor enlaza a su artículo de Wikipedia en
+// español. No incluye "Fundación": es un año, no el nombre de algo con
+// ficha propia en Wikipedia.
+//
+// En vez de construir la URL a ciegas (es.wikipedia.org/wiki/Nombre),
+// que puede dar un 404 si el artículo no se llama exactamente así, o
+// puede aterrizar en la página de otra persona/lugar que se llama
+// igual, se usa la API de búsqueda de Wikipedia para encontrar el
+// artículo real más parecido. Se añade una palabra de contexto a la
+// búsqueda para reducir (que no eliminar del todo) las coincidencias
+// con homónimos: el nombre del club para entrenador/estadio, y
+// "ciudad" para la ciudad. Si la búsqueda no devuelve nada, el dato
+// se muestra como texto normal, sin enlace.
+const ETIQUETAS_CON_WIKIPEDIA = new Set(["Entrenador", "Estadio", "Ciudad"]);
+const CACHE_WIKIPEDIA = new Map(); // evita repetir la misma búsqueda si se recarga la ficha
+
+async function buscaArticuloWikipediaTermino(termino) {
+  try {
+    const url = `https://es.wikipedia.org/w/api.php?action=query&list=search&format=json&origin=*&srlimit=1&srsearch=${encodeURIComponent(termino)}`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const titulo = data?.query?.search?.[0]?.title;
+    if (!titulo) return null;
+    return `https://es.wikipedia.org/wiki/${encodeURIComponent(titulo.replace(/ /g, "_"))}`;
+  } catch (err) {
+    return null; // sin conexión, CORS bloqueado, etc.: se deja sin enlazar
+  }
+}
+
+async function buscaArticuloWikipedia(valor, contexto, contextoAlternativo) {
+  const clave = `${valor}||${contexto || ""}||${contextoAlternativo || ""}`;
+  if (CACHE_WIKIPEDIA.has(clave)) return CACHE_WIKIPEDIA.get(clave);
+
+  const promesa = (async () => {
+    const terminoPrincipal = contexto ? `${valor} ${contexto}` : valor;
+    const url = await buscaArticuloWikipediaTermino(terminoPrincipal);
+    if (url) return url;
+    // Si la búsqueda con el contexto específico (p. ej. "entrenador") no
+    // encuentra nada -entrenadores poco conocidos cuya ficha no incluye
+    // esa palabra-, se reintenta con el nombre del club como último
+    // recurso: sigue siendo mejor que dejar el dato sin enlazar.
+    if (!contextoAlternativo) return null;
+    return buscaArticuloWikipediaTermino(`${valor} ${contextoAlternativo}`);
+  })();
+
+  CACHE_WIKIPEDIA.set(clave, promesa);
+  return promesa;
+}
+
+// Datos de la ficha calculados con los partidos del club (balance, goles,
+// próximo partido). Llegan por otra petición, así que se guardan y se
+// añaden a la cuadrícula de la ficha cuando esta existe, llegue antes o después.
+let EXTRAS_INFO_CLUB = [];
+function pintarExtrasInfoClub() {
+  const cont = document.getElementById("infoClub");
+  if (!cont || !EXTRAS_INFO_CLUB.length) return;
+  let rejilla = cont.querySelector(".info-club-datos");
+  if (!rejilla) {
+    cont.innerHTML = `<p class="info-club-titulo">Ficha del equipo</p><div class="info-club-datos"></div>`;
+    rejilla = cont.querySelector(".info-club-datos");
+  }
+  EXTRAS_INFO_CLUB.forEach(([etiqueta, valor]) => {
+    if (rejilla.querySelector(`[data-extra="${etiqueta}"]`)) return;
+    rejilla.insertAdjacentHTML("beforeend", `
+      <div class="info-club-dato" data-extra="${escapeHtml(etiqueta)}">
+        <span class="info-club-icono">${ICONOS_INFO_CLUB[etiqueta] || ""}</span>
+        <span class="info-club-texto">
+          <span class="info-club-etiqueta">${escapeHtml(etiqueta)}</span>
+          <span class="info-club-valor">${escapeHtml(String(valor))}</span>
+        </span>
+      </div>`);
+  });
+  cont.style.display = "block";
+}
+
+function calcularExtrasInfoClub(club, results) {
+  const nombre = (x) => String(x || "").trim();
+  let v = 0, e = 0, d = 0, gf = 0, gc = 0, pj = 0;
+  results.forEach((p) => {
+    if (p.estado !== "finalizado") return;
+    if (typeof esFinalizadoSinCubrir === "function" && esFinalizadoSinCubrir(p)) return;
+    const local = nombre(p.equipo_local) === nombre(club);
+    const visit = nombre(p.equipo_visitante) === nombre(club);
+    if (!local && !visit) return;
+    const a = Number(p.goles_local), b = Number(p.goles_visitante);
+    if (isNaN(a) || isNaN(b) || p.goles_local == null || p.goles_visitante == null) return;
+    const r = resultadoDelClub(p, local);
+    if (!r) return;
+    pj++; gf += local ? a : b; gc += local ? b : a;
+    if (r === "v") v++; else if (r === "e") e++; else d++;
+  });
+  const extras = [];
+  if (pj) {
+    extras.push(["Balance", `${pj} PJ · ${v}V ${e}E ${d}D`]);
+    extras.push(["Goles", `${gf} a favor · ${gc} en contra`]);
+  }
+  const prox = ordenarPartidosCronologicamente(results).find((p) => p.estado === "programado");
+  if (prox) {
+    const rival = nombre(prox.equipo_local) === nombre(club) ? prox.equipo_visitante : prox.equipo_local;
+    const cuando = prox.fecha_partido && typeof formatFecha === "function" ? ` · ${formatFecha(prox.fecha_partido)}` : "";
+    extras.push(["Próximo partido", `${rival}${cuando}`]);
+  }
+  return extras;
+}
+
+async function cargaInfoClub(club) {
+  const cont = document.getElementById("infoClub");
+  try {
+    const res = await apiFetch(`/api/club-info?club=${encodeURIComponent(club)}`);
+    const { info: infoApi } = await res.json();
+    const info = infoApi || {};
+
+    // Datos que ya conoce la web aunque el club no tenga ficha rellenada en
+    // el panel: competición, grupo y estadio. El estadio del panel manda; el
+    // de la lista interna solo se usa si el panel no tiene ninguno.
+    const LIGAS_CLUB = ["hypermotion", "primera_federacion", "segunda_federacion", "tercera_federacion"];
+    let ligaClub = null;
+    try {
+      ligaClub = LIGAS_CLUB.find(l => getClubsForCategoria(l).includes(club)) || null;
+    } catch (e) { /* sin clubs.js: se omite */ }
+    let grupoClub = "";
+    try { grupoClub = (typeof getGrupoClub === "function" && getGrupoClub(club)) || ""; } catch (e) {}
+    let estadioClub = "";
+    try { estadioClub = (typeof getEstadioClub === "function" && getEstadioClub(club)) || ""; } catch (e) {}
+
+    let estatica = {};
+    try { estatica = (typeof getInfoClubEstatica === "function" && getInfoClubEstatica(club)) || {}; } catch (e) {}
+    let cuentaX = "";
+    try { cuentaX = (typeof cuentaXDeClub === "function" && cuentaXDeClub(club)) || ""; } catch (e) {}
+
+    const datos = [
+      ["Competición", ligaClub && typeof CATEGORIES !== "undefined" ? CATEGORIES[ligaClub] : ""],
+      ["Grupo", grupoClub],
+      ["Entrenador", info.entrenador],
+      ["Estadio", info.estadio || estadioClub],
+      ["Fundación", info.fundacion || estatica.fundacion],
+      ["Ciudad", info.ciudad || estatica.ciudad],
+      ["Cuenta de X", cuentaX],
+    ].filter(([, valor]) => valor);
+    if (!datos.length) return;
+
+    // Se pinta primero todo como texto plano (respuesta inmediata) y,
+    // en cuanto cada búsqueda en Wikipedia resuelve, se convierte ese
+    // dato concreto en enlace. Así la ficha no se queda esperando a la
+    // red externa para aparecer.
+    cont.innerHTML = `
+      <p class="info-club-titulo">Ficha del equipo</p>
+      <div class="info-club-datos">
+        ${datos.map(([etiqueta, valor], i) => `
+          <div class="info-club-dato">
+            <span class="info-club-icono">${ICONOS_INFO_CLUB[etiqueta] || ""}</span>
+            <span class="info-club-texto">
+              <span class="info-club-etiqueta">${escapeHtml(etiqueta)}</span>
+              <span class="info-club-valor" id="infoClubValor${i}">${escapeHtml(String(valor))}</span>
+            </span>
+          </div>`).join("")}
+      </div>`;
+    cont.style.display = "block";
+
+    pintarExtrasInfoClub();
+
+    datos.forEach(([etiqueta, valor], i) => {
+      if (etiqueta === "Cuenta de X") {
+        const span = document.getElementById(`infoClubValor${i}`);
+        if (span) span.innerHTML = `<a href="https://x.com/${encodeURIComponent(String(valor).replace(/^@/, ""))}" target="_blank" rel="noopener noreferrer" class="info-club-enlace">${escapeHtml(String(valor))}</a>`;
+        return;
+      }
+      if (!ETIQUETAS_CON_WIKIPEDIA.has(etiqueta)) return;
+      const CONTEXTOS = { Entrenador: "entrenador de fútbol", Estadio: "estadio de fútbol", Ciudad: "ciudad" };
+      const contexto = CONTEXTOS[etiqueta];
+      const contextoAlternativo = etiqueta === "Ciudad" ? null : club;
+      buscaArticuloWikipedia(valor, contexto, contextoAlternativo).then(url => {
+        if (!url) return; // no se encontró artículo: se deja como texto
+        const span = document.getElementById(`infoClubValor${i}`);
+        if (!span) return; // el usuario ya navegó a otra ficha
+        span.innerHTML = `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="info-club-enlace">${escapeHtml(String(valor))}</a>`;
+      });
+    });
+  } catch (err) {
+    // Si falla, simplemente no se muestra el recuadro; no bloquea el
+    // resto de la página (noticias del club) por este dato accesorio.
+  }
+}
+
+// Últimos resultados y próximos partidos del club, en la propia ficha del
+// equipo. Se piden con "club=" (partido tanto de local como visitante,
+// de cualquier competición o amistoso, igual que las noticias de más
+// abajo) y luego se separan en dos listas usando el mismo criterio de
+// prioridad/orden que ya usa resultados.html (ordenarPartidosCronologicamente).
+// Presentación de los partidos de la ficha del equipo (ver css/equipo-partidos-mejoras.css).
+// Solo añade atributos, clases y chips: no cambia el markup de partidoHTML() ni el clic.
+//  · data-estado en cada tarjeta (para el "vs" suave de los partidos por jugar).
+//  · equipo-propio en el lado del club de esta ficha.
+//  · data-res="v|e|d" + chip "Victoria/Empate/Derrota" en los partidos jugados y cubiertos.
+//  · racha de los últimos 5 (V E D) en la cabecera de "Últimos resultados".
+function resultadoDelClub(p, esLocal) {
+  const gl = Number(p.goles_local ?? 0), gv = Number(p.goles_visitante ?? 0);
+  if (isNaN(gl) || isNaN(gv)) return null;
+  const propio = esLocal ? gl : gv, rival = esLocal ? gv : gl;
+  if (propio !== rival) return propio > rival ? "v" : "d";
+  const pl = p.penaltis_local, pv = p.penaltis_visitante;
+  if (pl !== null && pl !== undefined && pv !== null && pv !== undefined) {
+    const pp = Number(esLocal ? pl : pv), pr = Number(esLocal ? pv : pl);
+    if (!isNaN(pp) && !isNaN(pr) && pp !== pr) return pp > pr ? "v" : "d";
+  }
+  return "e";
+}
+const ETIQUETA_RESULTADO_CLUB = { v: "Victoria", e: "Empate", d: "Derrota" };
+
+function marcarPartidosClub(club, jugados) {
+  const cont = document.getElementById("partidosClub");
+  if (!cont) return;
+  const nombre = (s) => String(s || "").trim();
+  const resDe = (p) => {
+    if (!p || p.estado !== "finalizado") return null;
+    if (typeof esFinalizadoSinCubrir === "function" && esFinalizadoSinCubrir(p)) return null;
+    const esLocal = nombre(p.equipo_local) === nombre(club);
+    const esVisit = nombre(p.equipo_visitante) === nombre(club);
+    if (!esLocal && !esVisit) return null;
+    return resultadoDelClub(p, esLocal);
+  };
+  cont.querySelectorAll(".partido[data-id]").forEach((el) => {
+    const p = PARTIDOS_CACHE[el.dataset.id];
+    if (!p) return;
+    el.dataset.estado = p.estado || "";
+    const esLocal = nombre(p.equipo_local) === nombre(club);
+    const esVisit = nombre(p.equipo_visitante) === nombre(club);
+    if (esLocal || esVisit) {
+      const lado = el.querySelector(esLocal ? ".equipo-local" : ".equipo-visitante");
+      if (lado) lado.classList.add("equipo-propio");
+    }
+    const r = resDe(p);
+    if (!r) return;
+    el.dataset.res = r;
+    const badge = el.querySelector(".estado-badge");
+    if (badge) badge.insertAdjacentHTML("afterbegin", `<span class="club-res club-res-${r}">${ETIQUETA_RESULTADO_CLUB[r]}</span>`);
+  });
+  // Racha: los últimos 5 jugados, del más antiguo al más reciente (izquierda → derecha).
+  const racha = (jugados || []).map(resDe).filter(Boolean).slice(0, 5).reverse();
+  const titulo = cont.querySelector(".partidos-club-titulo");
+  if (titulo && racha.length && !titulo.querySelector(".club-forma")) {
+    titulo.insertAdjacentHTML("beforeend",
+      `<span class="club-forma" role="img" aria-label="Racha reciente: ${racha.map((r) => ETIQUETA_RESULTADO_CLUB[r]).join(", ")}">` +
+      racha.map((r) => `<span class="club-forma-chip club-res-${r}" title="${ETIQUETA_RESULTADO_CLUB[r]}" aria-hidden="true">${r.toUpperCase()}</span>`).join("") +
+      `</span>`);
+  }
+}
+
+const MAX_PARTIDOS_CLUB = 5;
+
+async function cargaPartidosClub(club) {
+  const cont = document.getElementById("partidosClub");
+  const contResultados = document.getElementById("ultimosResultadosClub");
+  const contProximos = document.getElementById("proximosPartidosClub");
+  try {
+    const { results } = await conReintento(async () => {
+      const res = await apiFetch(`/api/results?club=${encodeURIComponent(club)}&limit=100&con_no_cubiertos=1`);
+      return res.json();
+    });
+    if (!results.length) return; // Sin partidos: el bloque se queda oculto, no es un error.
+
+    try {
+      EXTRAS_INFO_CLUB = calcularExtrasInfoClub(club, results);
+      pintarExtrasInfoClub();
+    } catch (e) { /* dato accesorio */ }
+
+    const ordenados = ordenarPartidosCronologicamente(results);
+    // Un partido anulado sigue "por jugar" (pendiente de reprogramar).
+    const proximos = ordenados.filter(p => p.estado === "programado" || p.estado === "anulado").slice(0, MAX_PARTIDOS_CLUB);
+    const jugados = ordenados.filter(p => p.estado !== "programado" && p.estado !== "anulado").slice(0, MAX_PARTIDOS_CLUB);
+
+    contResultados.innerHTML = jugados.length
+      ? jugados.map(p => partidoHTML(p, { mostrarCompeticion: true })).join("")
+      : `<p class="partidos-club-vacio">Todavía no hay resultados.</p>`;
+    contProximos.innerHTML = proximos.length
+      ? partidosListaAgrupadaHTML(proximos, { mostrarCompeticion: true })
+      : `<p class="partidos-club-vacio">No hay próximos partidos programados.</p>`;
+
+    // Se guardan en la misma caché global que usa partidos.js para poder
+    // abrir el modal de detalle al hacer clic, igual que en resultados.html.
+    PARTIDOS_CACHE = {};
+    results.forEach(r => { PARTIDOS_CACHE[r.id] = r; });
+    inicializarClicsPartidos("partidosClub");
+    marcarPartidosClub(club, jugados);
+
+    cont.style.display = "grid";
+  } catch (err) {
+    // Si falla, no se muestra el bloque; no bloquea el resto de la
+    // página (info del club, noticias) por este dato accesorio.
+  }
+}
+
+/*
+ * ============================================================
+ * COMPARADOR DE EQUIPOS (desde la ficha del club)
+ * ============================================================
+ * Se abre con el club de esta ficha ya fijado como equipo A; el usuario
+ * solo elige el rival. Reutiliza el mismo endpoint público que ya usa
+ * el bloque de "Últimos resultados / Próximos partidos" de más arriba
+ * (GET /api/results?club=...&estado=finalizado), así que no hace falta
+ * tocar el Worker ni el esquema de la base de datos.
+ */
+let CLUB_COMPARADOR_FIJO = null;
+// Guarda los partidos ya descargados de cada equipo de la comparación
+// activa, para que las filas clickeables puedan abrir el detalle sin
+// volver a pedirlos al servidor.
+let COMP_PARTIDOS_A = [];
+let COMP_PARTIDOS_B = [];
+let COMP_NOMBRE_A = "";
+let COMP_NOMBRE_B = "";
+let COMP_TAB_ACTIVA = "general";
+
+// Devuelve la categoría (competición) en la que juega un equipo, a
+// partir de la misma tabla que ya usa el resto del sitio para pintar
+// las listas de clubes por competición.
+function categoriaDeEquipo(nombreEquipo) {
+  for (const [cat, equipos] of Object.entries(CLUBS_BY_CATEGORY)) {
+    if (equipos.includes(nombreEquipo)) return cat;
+  }
+  if (typeof CUSTOM_CLUBS_BY_CATEGORY !== "undefined") {
+    for (const [cat, equipos] of Object.entries(CUSTOM_CLUBS_BY_CATEGORY)) {
+      if (equipos.some(c => c.nombre === nombreEquipo)) return cat;
+    }
+  }
+  return null;
+}
+
+function listaEquiposParaComparador(excluir) {
+  const base = Object.values(CLUBS_BY_CATEGORY).flat();
+  const personalizados = typeof CUSTOM_CLUBS_BY_CATEGORY !== "undefined"
+    ? Object.values(CUSTOM_CLUBS_BY_CATEGORY).flat().map(c => c.nombre)
+    : [];
+  const todos = Array.from(new Set([...base, ...personalizados])).filter(n => n !== excluir);
+  todos.sort((a, b) => a.localeCompare(b, "es"));
+  return todos;
+}
+
+function pintarCategoriaBadge(elId, nombreEquipo) {
+  const el = document.getElementById(elId);
+  const cat = categoriaDeEquipo(nombreEquipo);
+  if (cat) {
+    el.textContent = categoriaLabel(cat);
+    el.hidden = false;
+  } else {
+    el.textContent = "";
+    el.hidden = true;
+  }
+}
+
+async function abrirModalComparador(club) {
+  CLUB_COMPARADOR_FIJO = club;
+  const modal = document.getElementById("modalComparador");
+  const escudoFijo = document.getElementById("compEscudoFijo");
+  escudoFijo.src = getEscudoUrl(club);
+  escudoFijo.alt = club;
+  escudoFijo.dataset.equipo = club;
+  escudoFijo.onerror = () => manejarErrorEscudo(escudoFijo);
+  document.getElementById("compNombreFijo").textContent = club;
+  pintarCategoriaBadge("compCategoriaFija", club);
+
+  const selectorRival = document.getElementById("compSelectorRival");
+  const opciones = listaEquiposParaComparador(club)
+    .map(nombre => `<option value="${nombre}">${nombre}</option>`).join("");
+  selectorRival.innerHTML = `<option value="">Elige un rival…</option>${opciones}`;
+  selectorRival.value = "";
+
+  // El hueco del rival empieza con el icono de interrogante (todavía no
+  // se ha elegido nadie); en cuanto se elige, se sustituye por su escudo
+  // real, igual de grande que el del equipo fijo, para que la tarjeta
+  // quede simétrica y "de enfrentamiento" en vez de un simple desplegable.
+  const escudoRivalImg = document.getElementById("compEscudoRival");
+  const iconoInterrogante = document.getElementById("compIconoInterrogante");
+  escudoRivalImg.hidden = true;
+  escudoRivalImg.src = "";
+  iconoInterrogante.hidden = false;
+  document.getElementById("compCategoriaRival").hidden = true;
+
+  // Vuelve siempre a la pestaña "General" al abrir una comparación nueva.
+  COMP_TAB_ACTIVA = "general";
+  document.querySelectorAll(".comp-tab").forEach(t => {
+    const activa = t.dataset.tab === "general";
+    t.classList.toggle("activa", activa);
+    t.setAttribute("aria-selected", activa ? "true" : "false");
+  });
+
+  selectorRival.onchange = () => {
+    const rival = selectorRival.value;
+    if (!rival) {
+      escudoRivalImg.hidden = true;
+      iconoInterrogante.hidden = false;
+      document.getElementById("compCategoriaRival").hidden = true;
+      document.getElementById("compComparadorResultado").classList.remove("visible");
+      return;
+    }
+    escudoRivalImg.src = getEscudoUrl(rival);
+    escudoRivalImg.alt = rival;
+    escudoRivalImg.dataset.equipo = rival;
+    escudoRivalImg.onerror = () => manejarErrorEscudo(escudoRivalImg);
+    escudoRivalImg.hidden = false;
+    iconoInterrogante.hidden = true;
+    pintarCategoriaBadge("compCategoriaRival", rival);
+    compararEquipos(club, rival);
+  };
+
+  document.getElementById("compComparadorResultado").classList.remove("visible");
+  document.getElementById("compComparadorError").hidden = true;
+
+  modal.hidden = false;
+  modal.setAttribute("aria-hidden", "false");
+  document.body.style.overflow = "hidden";
+  // Foco al botón de cerrar al abrir, como en el modal de partido: así
+  // el teclado/lector de pantalla entra directamente al diálogo en vez
+  // de quedarse "perdido" en el contenido de detrás.
+  const btnCerrar = modal.querySelector(".modal-partido-cerrar");
+  if (btnCerrar) btnCerrar.focus();
+}
+
+function cerrarModalComparador() {
+  const modal = document.getElementById("modalComparador");
+  // Si el botón "Cerrar" (u otro elemento dentro del modal) todavía tiene
+  // el foco, hay que quitárselo ANTES de marcar el modal como
+  // aria-hidden/oculto: si no, el navegador avisa (y algunos lectores de
+  // pantalla se confunden) de que se ha ocultado un elemento que sigue
+  // teniendo el foco. Se devuelve el foco al botón que abrió el
+  // comparador, que es donde tiene sentido que vuelva el usuario.
+  if (modal.contains(document.activeElement)) {
+    document.activeElement.blur();
+    const btnComparar = document.getElementById("btnAbrirComparador");
+    if (btnComparar && !btnComparar.hidden) btnComparar.focus();
+  }
+  modal.hidden = true;
+  modal.setAttribute("aria-hidden", "true");
+  document.body.style.overflow = "";
+  cerrarModalCompDetalle();
+}
+
+// Calcula estadísticas agregadas de un equipo a partir de sus partidos
+// finalizados: generales, de ataque/defensa, por condición (local o
+// visitante) y forma reciente (últimos 5, el más reciente primero).
+// Cada partido usado queda anotado en cada bloque de stats para poder
+// abrir el detalle clickeable sin recalcular nada.
+function calcularStatsComparador(equipo, partidos) {
+  const stats = {
+    jugados: 0, victorias: 0, empates: 0, derrotas: 0,
+    golesFavor: 0, golesContra: 0, forma: [],
+    porteriaCero: 0, sinMarcar: 0, mayorGoleada: null, partidoEncajaMas: null,
+    local: { jugados: 0, victorias: 0, empates: 0, derrotas: 0, golesFavor: 0, golesContra: 0 },
+    visitante: { jugados: 0, victorias: 0, empates: 0, derrotas: 0, golesFavor: 0, golesContra: 0 },
+    partidosPorFila: {},
+  };
+  const anota = (clave, partido) => {
+    if (!stats.partidosPorFila[clave]) stats.partidosPorFila[clave] = [];
+    stats.partidosPorFila[clave].push(partido);
+  };
+
+  const ordenados = [...partidos].sort((x, y) => (y.fecha_partido || "").localeCompare(x.fecha_partido || ""));
+  for (const p of ordenados) {
+    const esLocal = p.equipo_local === equipo;
+    const golesPropios = esLocal ? p.goles_local : p.goles_visitante;
+    const golesRival = esLocal ? p.goles_visitante : p.goles_local;
+    if (golesPropios === null || golesRival === null) continue;
+
+    stats.jugados++;
+    stats.golesFavor += golesPropios;
+    stats.golesContra += golesRival;
+    anota("jugados", p);
+    anota("goles-favor", p);
+    anota("goles-contra", p);
+
+    const bloque = esLocal ? stats.local : stats.visitante;
+    bloque.jugados++;
+    bloque.golesFavor += golesPropios;
+    bloque.golesContra += golesRival;
+    anota(esLocal ? "local-jugados" : "visitante-jugados", p);
+
+    if (golesPropios > golesRival) {
+      stats.victorias++; bloque.victorias++;
+      anota("victorias", p);
+      anota(esLocal ? "local-victorias" : "visitante-victorias", p);
+      if (stats.forma.length < 5) stats.forma.push("g");
+    } else if (golesPropios < golesRival) {
+      stats.derrotas++; bloque.derrotas++;
+      anota("derrotas", p);
+      anota(esLocal ? "local-derrotas" : "visitante-derrotas", p);
+      if (stats.forma.length < 5) stats.forma.push("p");
+    } else {
+      stats.empates++; bloque.empates++;
+      anota("empates", p);
+      anota(esLocal ? "local-empates" : "visitante-empates", p);
+      if (stats.forma.length < 5) stats.forma.push("e");
+    }
+
+    if (golesRival === 0) { stats.porteriaCero++; anota("porteria-cero", p); }
+    if (golesPropios === 0) { stats.sinMarcar++; anota("sin-marcar", p); }
+    if (!stats.mayorGoleada || golesPropios > stats.mayorGoleada.goles) {
+      stats.mayorGoleada = { goles: golesPropios, partido: p };
+    }
+    if (!stats.partidoEncajaMas || golesRival > stats.partidoEncajaMas.goles) {
+      stats.partidoEncajaMas = { goles: golesRival, partido: p };
+    }
+  }
+
+  stats.diferencia = stats.golesFavor - stats.golesContra;
+  stats.promedioFavor = stats.jugados ? (stats.golesFavor / stats.jugados).toFixed(1) : "0.0";
+  stats.promedioContra = stats.jugados ? (stats.golesContra / stats.jugados).toFixed(1) : "0.0";
+  stats.puntos = stats.victorias * 3 + stats.empates;
+  stats.porcentajeVictorias = stats.jugados ? Math.round((stats.victorias / stats.jugados) * 100) : 0;
+  return stats;
+}
+
+// Definición de cada fila de la tabla comparativa: a qué pestaña
+// pertenece, cómo se lee el valor de las stats calculadas, y qué clave
+// de "partidosPorFila" abrir al hacer click (null = fila no clickeable,
+// como la de forma que ya tiene su propio bloque visual).
+const COMP_FILAS = [
+  { tab: "general", etiqueta: "Partidos jugados", valor: s => s.jugados, clave: "jugados" },
+  { tab: "general", etiqueta: "Puntos (3V-1E)", valor: s => s.puntos, clave: null },
+  { tab: "general", etiqueta: "Victorias", valor: s => s.victorias, clave: "victorias" },
+  { tab: "general", etiqueta: "Empates", valor: s => s.empates, clave: "empates" },
+  { tab: "general", etiqueta: "Derrotas", valor: s => s.derrotas, clave: "derrotas" },
+  { tab: "general", etiqueta: "% de victorias", valor: s => s.porcentajeVictorias + "%", claveOrden: s => s.porcentajeVictorias, clave: null },
+  { tab: "general", etiqueta: "Diferencia de goles", valor: s => (s.diferencia > 0 ? "+" : "") + s.diferencia, claveOrden: s => s.diferencia, clave: null },
+
+  { tab: "ataque", etiqueta: "Goles a favor", valor: s => s.golesFavor, clave: "goles-favor" },
+  { tab: "ataque", etiqueta: "Media de goles a favor", valor: s => s.promedioFavor, claveOrden: s => Number(s.promedioFavor), clave: "goles-favor" },
+  { tab: "ataque", etiqueta: "Partidos sin marcar", valor: s => s.sinMarcar, claveOrden: s => -s.sinMarcar, clave: "sin-marcar" },
+  { tab: "ataque", etiqueta: "Mayor goleada a favor", valor: s => s.mayorGoleada ? s.mayorGoleada.goles : "—", claveOrden: s => s.mayorGoleada ? s.mayorGoleada.goles : -1, clave: null },
+
+  { tab: "defensa", etiqueta: "Goles en contra", valor: s => s.golesContra, claveOrden: s => -s.golesContra, clave: "goles-contra" },
+  { tab: "defensa", etiqueta: "Media de goles en contra", valor: s => s.promedioContra, claveOrden: s => -Number(s.promedioContra), clave: "goles-contra" },
+  { tab: "defensa", etiqueta: "Porterías a cero", valor: s => s.porteriaCero, clave: "porteria-cero" },
+  { tab: "defensa", etiqueta: "Peor partido encajando", valor: s => s.partidoEncajaMas ? s.partidoEncajaMas.goles : "—", claveOrden: s => s.partidoEncajaMas ? -s.partidoEncajaMas.goles : 1, clave: null },
+
+  { tab: "local-visitante", etiqueta: "Jugados como local", valor: s => s.local.jugados, clave: "local-jugados" },
+  { tab: "local-visitante", etiqueta: "Victorias como local", valor: s => s.local.victorias, clave: "local-victorias" },
+  { tab: "local-visitante", etiqueta: "Goles a favor (local)", valor: s => s.local.golesFavor, claveOrden: s => s.local.golesFavor, clave: "local-jugados" },
+  { tab: "local-visitante", etiqueta: "Jugados como visitante", valor: s => s.visitante.jugados, clave: "visitante-jugados" },
+  { tab: "local-visitante", etiqueta: "Victorias como visitante", valor: s => s.visitante.victorias, clave: "visitante-victorias" },
+  { tab: "local-visitante", etiqueta: "Goles a favor (visitante)", valor: s => s.visitante.golesFavor, claveOrden: s => s.visitante.golesFavor, clave: "visitante-jugados" },
+];
+
+function filaComparador(fila, statsA, statsB) {
+  const valorA = fila.valor(statsA);
+  const valorB = fila.valor(statsB);
+  const ordenA = fila.claveOrden ? fila.claveOrden(statsA) : Number(valorA);
+  const ordenB = fila.claveOrden ? fila.claveOrden(statsB) : Number(valorB);
+  const aGana = ordenA > ordenB;
+  const bGana = ordenB > ordenA;
+  const clickeable = !!fila.clave;
+  const attrs = clickeable
+    ? `class="comp-fila-clickeable" tabindex="0" role="button" data-clave="${fila.clave}" data-etiqueta="${fila.etiqueta}"`
+    : "";
+  return `<tr ${attrs}>
+    <td class="${aGana ? "comp-mejor" : ""}">${valorA}</td>
+    <td>${fila.etiqueta}${clickeable ? '<svg class="comp-icono-detalle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>' : ""}</td>
+    <td class="${bGana ? "comp-mejor" : ""}">${valorB}</td>
+  </tr>`;
+}
+
+function pintarFormaComparador(forma) {
+  if (!forma.length) return "—";
+  const iconos = { g: "V", e: "E", p: "D" };
+  return forma.map(r => `<span class="${r}">${iconos[r]}</span>`).join("");
+}
+
+function renderTablaComparador() {
+  const filasTab = COMP_FILAS.filter(f => f.tab === COMP_TAB_ACTIVA);
+  const statsA = COMP_STATS_A, statsB = COMP_STATS_B;
+  document.getElementById("compCuerpoTabla").innerHTML = filasTab
+    .map(fila => filaComparador(fila, statsA, statsB)).join("");
+
+  document.querySelectorAll(".comp-fila-clickeable").forEach(fila => {
+    const abrir = () => abrirModalCompDetalle(fila.dataset.clave, fila.dataset.etiqueta);
+    fila.addEventListener("click", abrir);
+    fila.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); abrir(); }
+    });
+  });
+}
+
+document.querySelectorAll(".comp-tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    COMP_TAB_ACTIVA = tab.dataset.tab;
+    document.querySelectorAll(".comp-tab").forEach(t => {
+      const activa = t === tab;
+      t.classList.toggle("activa", activa);
+      t.setAttribute("aria-selected", activa ? "true" : "false");
+    });
+    renderTablaComparador();
+  });
+});
+
+let COMP_STATS_A = null, COMP_STATS_B = null;
+
+async function compararEquipos(nombreA, nombreB) {
+  const errorBox = document.getElementById("compComparadorError");
+  const resultadoBox = document.getElementById("compComparadorResultado");
+  const estadoCarga = document.getElementById("compEstadoCarga");
+  errorBox.hidden = true;
+  resultadoBox.classList.remove("visible");
+  estadoCarga.hidden = false;
+
+  try {
+    const [resA, resB] = await Promise.all([
+      apiFetch(`/api/results?club=${encodeURIComponent(nombreA)}&estado=finalizado&limit=200`),
+      apiFetch(`/api/results?club=${encodeURIComponent(nombreB)}&estado=finalizado&limit=200`),
+    ]);
+    if (!resA.ok || !resB.ok) throw new Error("Respuesta no válida del servidor");
+    // El endpoint devuelve { results: [...] }, no un array directo (igual
+    // que lo consume cargaPartidosClub más arriba en este mismo archivo).
+    const { results: resultsA } = await resA.json();
+    const { results: resultsB } = await resB.json();
+
+    // Los amistosos no cuentan para el comparador: ni en las
+    // estadísticas generales/ataque/defensa/local-visitante ni en el
+    // historial de enfrentamientos directos, solo competición oficial.
+    const partidosA = resultsA.filter(p => p.competicion !== "amistoso");
+    const partidosB = resultsB.filter(p => p.competicion !== "amistoso");
+
+    COMP_NOMBRE_A = nombreA;
+    COMP_NOMBRE_B = nombreB;
+    COMP_PARTIDOS_A = partidosA;
+    COMP_PARTIDOS_B = partidosB;
+
+    const statsA = calcularStatsComparador(nombreA, partidosA);
+    const statsB = calcularStatsComparador(nombreB, partidosB);
+    COMP_STATS_A = statsA;
+    COMP_STATS_B = statsB;
+
+    document.getElementById("compColA").textContent = nombreA;
+    document.getElementById("compColB").textContent = nombreB;
+    renderTablaComparador();
+
+    document.getElementById("compFormaA").innerHTML = pintarFormaComparador(statsA.forma);
+    document.getElementById("compFormaB").innerHTML = pintarFormaComparador(statsB.forma);
+
+    const mapaPartidos = new Map();
+    [...partidosA, ...partidosB].forEach(p => mapaPartidos.set(p.id, p));
+    const directos = Array.from(mapaPartidos.values())
+      .filter(p =>
+        (p.equipo_local === nombreA && p.equipo_visitante === nombreB) ||
+        (p.equipo_local === nombreB && p.equipo_visitante === nombreA))
+      .filter(p => p.goles_local !== null && p.goles_visitante !== null)
+      .sort((x, y) => (y.fecha_partido || "").localeCompare(x.fecha_partido || ""));
+
+    // Resumen rápido del historial: victorias de cada uno + empates,
+    // sobre el total de enfrentamientos directos ya registrados.
+    let victoriasA = 0, victoriasB = 0, empatesDirectos = 0;
+    directos.forEach(p => {
+      const esALocal = p.equipo_local === nombreA;
+      const golesA = esALocal ? p.goles_local : p.goles_visitante;
+      const golesB = esALocal ? p.goles_visitante : p.goles_local;
+      if (golesA > golesB) victoriasA++;
+      else if (golesB > golesA) victoriasB++;
+      else empatesDirectos++;
+    });
+    document.getElementById("compResumenH2h").innerHTML = directos.length
+      ? `<span class="comp-h2h-mini comp-h2h-mini--a">${victoriasA}</span><span class="comp-h2h-mini-e">${empatesDirectos}</span><span class="comp-h2h-mini comp-h2h-mini--b">${victoriasB}</span>`
+      : `<span class="comp-h2h-mini-vacio">Sin datos</span>`;
+
+    const h2hCont = document.getElementById("compH2hLista");
+    h2hCont.innerHTML = directos.length
+      ? directos.slice(0, 6).map(p => {
+          const fecha = p.fecha_partido ? p.fecha_partido.slice(0, 10).split("-").reverse().join("/") : "";
+          return `<div class="comp-h2h-item">
+            <span>${escapeHtml(p.equipo_local)}</span>
+            <span class="comp-h2h-marcador">${p.goles_local} - ${p.goles_visitante}</span>
+            <span>${escapeHtml(p.equipo_visitante)}</span>
+            <span class="comp-h2h-fecha">${fecha}</span>
+          </div>`;
+        }).join("")
+      : `<div class="comp-vacio">No hay enfrentamientos directos registrados todavía.</div>`;
+
+    resultadoBox.classList.add("visible");
+  } catch (err) {
+    console.error("Error al comparar equipos:", err);
+    errorBox.textContent = "No se ha podido cargar la comparación. Inténtalo de nuevo en unos segundos.";
+    errorBox.hidden = false;
+  } finally {
+    estadoCarga.hidden = true;
+  }
+}
+
+/*
+ * ---------- Sub-modal de detalle de una estadística ----------
+ * Lista, uno a uno, los partidos que componen la fila pulsada en la
+ * tabla comparativa (p.ej. "Victorias": todos los partidos ganados por
+ * cada equipo). Se pintan dos columnas, una por equipo, reutilizando
+ * los partidos ya descargados por compararEquipos (sin más peticiones).
+ */
+function partidoComoTexto(p, equipo) {
+  const esLocal = p.equipo_local === equipo;
+  const rival = esLocal ? p.equipo_visitante : p.equipo_local;
+  const golesPropios = esLocal ? p.goles_local : p.goles_visitante;
+  const golesRival = esLocal ? p.goles_visitante : p.goles_local;
+  const fecha = p.fecha_partido ? p.fecha_partido.slice(0, 10).split("-").reverse().join("/") : "";
+  const resultado = golesPropios > golesRival ? "victoria" : golesPropios < golesRival ? "derrota" : "empate";
+  return { esLocal, rival, golesPropios, golesRival, fecha, resultado, jornada: p.jornada, competicion: p.competicion };
+}
+
+function abrirModalCompDetalle(clave, etiqueta) {
+  const modal = document.getElementById("modalCompDetalle");
+  document.getElementById("compDetalleTitulo").textContent = etiqueta;
+  document.getElementById("compDetalleSubtitulo").textContent = `${COMP_NOMBRE_A} vs ${COMP_NOMBRE_B}`;
+
+  const partidosA = (COMP_STATS_A.partidosPorFila[clave] || []);
+  const partidosB = (COMP_STATS_B.partidosPorFila[clave] || []);
+
+  const columna = (nombre, partidos) => {
+    if (!partidos.length) {
+      return `<div class="comp-detalle-col">
+        <h5>${nombre}</h5>
+        <div class="comp-vacio">Sin partidos en esta estadística.</div>
+      </div>`;
+    }
+    const items = partidos.map(p => {
+      const t = partidoComoTexto(p, nombre);
+      return `<div class="comp-detalle-item comp-detalle-item--${t.resultado}">
+        <span class="comp-detalle-rival">${t.esLocal ? "vs" : "@"} ${t.rival}</span>
+        <span class="comp-detalle-marcador">${t.golesPropios} - ${t.golesRival}</span>
+        <span class="comp-detalle-meta">${t.fecha || ""}${t.jornada ? ` · J${t.jornada}` : ""}</span>
+      </div>`;
+    }).join("");
+    return `<div class="comp-detalle-col"><h5>${nombre}</h5>${items}</div>`;
+  };
+
+  document.getElementById("compDetalleLista").innerHTML =
+    columna(COMP_NOMBRE_A, partidosA) + columna(COMP_NOMBRE_B, partidosB);
+
+  modal.hidden = false;
+  modal.setAttribute("aria-hidden", "false");
+  const btnCerrar = modal.querySelector(".modal-partido-cerrar");
+  if (btnCerrar) btnCerrar.focus();
+}
+
+function cerrarModalCompDetalle() {
+  const modal = document.getElementById("modalCompDetalle");
+  if (modal.contains(document.activeElement)) document.activeElement.blur();
+  modal.hidden = true;
+  modal.setAttribute("aria-hidden", "true");
+}
+
+document.addEventListener("keydown", (ev) => {
+  if (ev.key !== "Escape") return;
+  const detalle = document.getElementById("modalCompDetalle");
+  if (detalle && !detalle.hidden) { cerrarModalCompDetalle(); return; }
+  cerrarModalComparador();
+});
+
+document.addEventListener("DOMContentLoaded", cargaCategoria);
+</script>
+<style>
+  /* El logo de LaLiga Hypermotion es un PNG con trazos oscuros pensado
+     para fondo claro: en modo oscuro queda casi invisible sobre el
+     fondo oscuro de la cabecera. brightness(0) invert(1) lo vuelve
+     blanco sin necesidad de generar una versión aparte del archivo,
+     conservando la transparencia original. Solo se aplica a este logo
+     (no a Primera/Segunda Federación ni al escudo de un club), ver
+     cargaCategoria en el script de arriba. */
+  [data-theme="dark"] .logo-competicion-cabecera{filter:invert(1) hue-rotate(180deg);}
+  /* Copa del Rey / Copa Federación: invierte el brillo pero no los colores
+     (invert + hue-rotate 180º): trofeo oscuro -> claro, rojo/azul se
+     mantienen reconocibles, a diferencia del blanco plano de Hypermotion. */
+  [data-theme="dark"] .logo-competicion-invertir{filter:invert(1) hue-rotate(180deg);}
+
+  .info-club{
+    background:var(--tarjeta); border:1px solid var(--borde); border-radius:var(--radio);
+    box-shadow:var(--sombra); padding:18px 22px; margin-bottom:26px;
+  }
+  .info-club-titulo{
+    font-family:var(--font-tit); text-transform:uppercase; font-size:.78rem;
+    letter-spacing:.5px; color:var(--rojo); font-weight:700; margin:0 0 14px;
+  }
+  .info-club-datos{
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:16px 24px;
+  }
+  .info-club-dato{display:flex; align-items:center; gap:12px;}
+  .info-club-icono{
+    flex-shrink:0; width:38px; height:38px; border-radius:50%;
+    background:var(--gris-claro); color:var(--celeste); display:flex;
+    align-items:center; justify-content:center;
+  }
+  .info-club-icono svg{width:19px; height:19px;}
+  .info-club-texto{display:flex; flex-direction:column; gap:1px; min-width:0;}
+  .info-club-etiqueta{font-size:.7rem; text-transform:uppercase; letter-spacing:.4px; color:#9aa0ab; font-weight:600;}
+  .info-club-valor{font-size:.94rem; color:var(--marino-texto); font-weight:700; line-height:1.3; overflow-wrap:break-word;}
+  .info-club-enlace{color:inherit; text-decoration:none; border-bottom:1px dashed currentColor;}
+  .info-club-enlace:hover{border-bottom-style:solid;}
+  @media(max-width:600px){
+    .info-club{padding:16px 18px; margin-bottom:20px;}
+    .info-club-datos{grid-template-columns:1fr 1fr; gap:14px 16px;}
+  }
+  @media(max-width:400px){
+    .info-club-datos{grid-template-columns:1fr;}
+  }
+
+  .partidos-club{
+    display:grid; grid-template-columns:1fr 1fr; gap:22px; margin-bottom:30px;
+  }
+  .partidos-club-titulo{
+    font-family:var(--font-tit); text-transform:uppercase; font-size:.85rem;
+    letter-spacing:.5px; color:var(--marino-texto); font-weight:700; margin:0 0 12px;
+  }
+  .partidos-club-vacio{
+    color:#9aa0ab; font-size:.88rem; background:var(--tarjeta); border:1px solid var(--borde);
+    border-radius:var(--radio); padding:14px 16px; margin:0;
+  }
+  @media(max-width:700px){
+    .partidos-club{grid-template-columns:1fr;}
+  }
+
+  /* ---------- Cabecera del club (escudo + botón comparar) ---------- */
+  .cabecera-club{
+    display:flex; align-items:center; justify-content:space-between; gap:16px;
+    flex-wrap:wrap; margin-bottom:14px;
+  }
+  .cabecera-club-escudo-wrap{
+    display:flex; align-items:center; justify-content:center;
+    width:64px; height:64px; flex-shrink:0;
+  }
+  .cabecera-club-escudo{
+    max-width:100%; max-height:100%; width:auto; height:auto; object-fit:contain;
+  }
+  .btn-comparar-equipo{
+    display:inline-flex; align-items:center; gap:8px;
+    padding:9px 18px;
+    background:transparent; color:var(--rojo); border:1.5px solid var(--rojo); border-radius:24px;
+    font-family:var(--font-tit); font-weight:600; font-size:.82rem;
+    letter-spacing:.02em; cursor:pointer; white-space:nowrap;
+    transition:background-color .15s ease, color .15s ease;
+  }
+  /* El atributo hidden lo anulaba el display:flex/inline-flex de arriba, y el
+     botón "Comparar con otro equipo" salía en TODAS las categorías (también
+     Arbitraje y Jurisdicción deportiva). Se fuerza el ocultado. */
+  .cabecera-club[hidden], .btn-comparar-equipo[hidden]{display:none !important;}
+  .btn-comparar-equipo:hover{background:var(--rojo); color:#fff;}
+  .btn-comparar-equipo svg{width:15px; height:15px; flex-shrink:0;}
+  @media(max-width:480px){
+    .btn-comparar-equipo{font-size:.76rem; padding:8px 14px;}
+  }
+
+  /* ============================================================
+     MODAL COMPARADOR — rediseño profesional
+     ============================================================ */
+  .modal-comparador{position:fixed; inset:0; z-index:1000; display:flex; align-items:center; justify-content:center; padding:16px;}
+  .modal-comparador[hidden]{display:none !important;}
+  .modal-comparador-fondo{
+    position:absolute; inset:0;
+    background:radial-gradient(circle at 50% 20%, rgba(12,27,46,.72), rgba(6,14,26,.86));
+    backdrop-filter:blur(3px);
+  }
+  .modal-comparador-caja{
+    position:relative; background:var(--tarjeta); border-radius:18px;
+    box-shadow:0 24px 60px -12px rgba(0,0,0,.45), 0 0 0 1px var(--borde);
+    padding:0; max-width:720px; width:94%;
+    max-height:92vh; overflow-y:auto;
+    animation:compEntrada .22s cubic-bezier(.2,.8,.3,1);
+  }
+  @keyframes compEntrada{from{opacity:0; transform:translateY(10px) scale(.98);} to{opacity:1; transform:translateY(0) scale(1);}}
+  .comp-cerrar{position:absolute; top:14px; right:14px; z-index:2;}
+
+  .comp-cabecera{
+    background:linear-gradient(135deg, var(--marino) 0%, #142c4c 100%);
+    padding:26px 28px 20px; text-align:center; border-radius:18px 18px 0 0;
+  }
+  .modal-comparador-titulo{
+    font-family:var(--font-tit); font-weight:800; margin:0; text-align:center;
+    color:#fff; font-size:1.3rem; letter-spacing:.01em;
+  }
+  .comp-subtitulo{
+    margin:6px 0 0; text-align:center; color:rgba(255,255,255,.65);
+    font-size:.82rem; font-family:var(--font-text);
+  }
+
+  .comp-cara-a-cara{
+    display:grid;
+    grid-template-columns:1fr auto 1fr;
+    align-items:center;
+    gap:16px;
+    padding:22px 26px 6px;
+  }
+  .comp-equipo-tarjeta{
+    display:flex; flex-direction:column; align-items:center; gap:9px;
+    background:var(--fondo-alt); border:1px solid var(--borde); border-radius:16px;
+    padding:20px 14px 16px;
+    transition:border-color .15s ease, transform .15s ease;
+  }
+  .comp-equipo-tarjeta:hover{border-color:var(--rojo);}
+  .comp-equipo-escudo-wrap{
+    width:72px; height:72px; display:flex; align-items:center; justify-content:center;
+    flex-shrink:0; filter:drop-shadow(0 3px 6px rgba(0,0,0,.18));
+  }
+  .comp-equipo-escudo{max-width:100%; max-height:100%; width:auto; height:auto; object-fit:contain;}
+  .comp-equipo-escudo-wrap--vacio{color:var(--borde);}
+  .comp-equipo-escudo-wrap--vacio svg{width:40px; height:40px;}
+  .comp-equipo-nombre{
+    font-family:var(--font-tit); font-weight:700; font-size:.88rem; text-align:center;
+    color:var(--marino-texto); line-height:1.25; min-height:1.1em;
+  }
+  .comp-equipo-categoria{
+    font-family:var(--font-text); font-size:.68rem; font-weight:600; letter-spacing:.03em;
+    text-transform:uppercase; color:var(--rojo); background:rgba(199,43,43,.08);
+    border-radius:20px; padding:3px 10px;
+  }
+  .comp-selector-rival-select{
+    width:100%; padding:8px 10px; border-radius:8px; border:1px solid var(--borde);
+    background:var(--fondo); color:var(--texto); font-family:var(--font-text); font-size:.85rem;
+    text-align:center; cursor:pointer;
+  }
+  .comp-vs-col{display:flex; flex-direction:column; align-items:center; gap:6px;}
+  .comp-vs-grande{
+    font-family:var(--font-tit); font-weight:800; font-size:1.02rem;
+    color:#fff; background:linear-gradient(135deg, var(--rojo), #a51f1f);
+    border-radius:50%; width:44px; height:44px;
+    display:flex; align-items:center; justify-content:center;
+    letter-spacing:.02em; box-shadow:0 4px 12px rgba(199,43,43,.35);
+  }
+  .comp-estado-carga{
+    font-size:.68rem; color:var(--texto-suave); font-family:var(--font-text);
+    white-space:nowrap;
+  }
+  @media(max-width:480px){
+    .comp-cara-a-cara{grid-template-columns:1fr; justify-items:center;}
+    .comp-vs-col{order:2; flex-direction:row;}
+    .comp-equipo-tarjeta{width:100%; max-width:240px;}
+  }
+
+  .comp-resultado{display:none; padding:20px 26px 28px;}
+  .comp-resultado.visible{display:block;}
+
+  /* ---- Resumen rápido: forma + mini historial directo ---- */
+  .comp-resumen-rapido{
+    display:grid; grid-template-columns:1fr auto 1fr; align-items:center;
+    gap:12px; background:var(--fondo-alt); border:1px solid var(--borde);
+    border-radius:14px; padding:14px 18px; margin-bottom:20px;
+  }
+  .comp-resumen-col{display:flex; flex-direction:column; align-items:center; gap:8px;}
+  .comp-resumen-label{
+    font-family:var(--font-text); font-size:.66rem; font-weight:700; letter-spacing:.04em;
+    text-transform:uppercase; color:var(--texto-suave);
+  }
+  .comp-resumen-h2h{display:flex; align-items:center; gap:8px;}
+  .comp-h2h-mini{
+    font-family:var(--font-tit); font-weight:800; font-size:1.2rem;
+    width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    color:#fff;
+  }
+  .comp-h2h-mini--a{background:var(--marino);}
+  .comp-h2h-mini--b{background:var(--rojo);}
+  .comp-h2h-mini-e{font-family:var(--font-text); font-size:.78rem; color:var(--texto-suave); font-weight:600;}
+  .comp-h2h-mini-vacio{font-size:.76rem; color:var(--texto-suave);}
+
+  /* ---- Pestañas de categorías de estadísticas ---- */
+  .comp-tabs{
+    display:flex; gap:6px; overflow-x:auto; margin-bottom:6px; padding-bottom:2px;
+    scrollbar-width:none;
+  }
+  .comp-tabs::-webkit-scrollbar{display:none;}
+  .comp-tab{
+    flex-shrink:0; font-family:var(--font-tit); font-weight:600; font-size:.78rem;
+    letter-spacing:.02em; color:var(--texto-suave); background:transparent;
+    border:1px solid var(--borde); border-radius:20px; padding:7px 16px; cursor:pointer;
+    transition:all .15s ease; white-space:nowrap;
+  }
+  .comp-tab:hover{border-color:var(--rojo); color:var(--rojo);}
+  .comp-tab.activa{background:var(--rojo); border-color:var(--rojo); color:#fff;}
+  .comp-tabla-ayuda{
+    font-size:.72rem; color:var(--texto-suave); text-align:center; margin:8px 0 12px;
+    font-style:italic;
+  }
+
+  .comp-tabla-wrap{border-radius:10px; overflow:hidden; border:1px solid var(--borde); margin-bottom:22px;}
+  .comp-tabla{width:100%; border-collapse:collapse;}
+  .comp-tabla th, .comp-tabla td{
+    padding:10px 12px; text-align:center; border-bottom:1px solid var(--borde);
+    font-family:var(--font-text); font-size:.86rem;
+  }
+  .comp-tabla th{background:var(--marino); color:#fff; font-family:var(--font-tit); font-weight:500; font-size:.8rem;}
+  .comp-tabla td:nth-child(2){color:var(--texto-suave); text-align:left; display:flex; align-items:center; justify-content:space-between; gap:6px;}
+  .comp-tabla td.comp-mejor{font-weight:800; color:var(--rojo);}
+  .comp-tabla tbody tr:nth-child(even){background:var(--fondo-alt);}
+  .comp-tabla tr:last-child td{border-bottom:none;}
+  .comp-icono-detalle{width:13px; height:13px; opacity:.4; flex-shrink:0;}
+  .comp-fila-clickeable{cursor:pointer; transition:background-color .12s ease;}
+  .comp-fila-clickeable:hover{background:rgba(199,43,43,.07) !important;}
+  .comp-fila-clickeable:hover .comp-icono-detalle{opacity:1; color:var(--rojo);}
+  .comp-fila-clickeable:focus-visible{outline:2px solid var(--rojo); outline-offset:-2px;}
+
+  .comp-racha{display:flex; gap:4px; justify-content:center;}
+  .comp-racha span{
+    width:20px; height:20px; border-radius:50%; display:inline-flex;
+    align-items:center; justify-content:center; font-size:.68rem; font-weight:700; color:#fff;
+  }
+  .comp-racha--grande span{width:26px; height:26px; font-size:.74rem;}
+  .comp-racha .g{background:#2e9e4c;}
+  .comp-racha .e{background:#9aa4b8;}
+  .comp-racha .p{background:var(--rojo);}
+
+  .comp-h2h-titulo{font-family:var(--font-tit); font-weight:700; margin:0 0 10px; color:var(--marino-texto); font-size:.92rem;}
+  .comp-h2h-lista{display:flex; flex-direction:column; gap:6px;}
+  .comp-h2h-item{
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    background:var(--fondo-alt); border:1px solid var(--borde); border-radius:8px;
+    padding:9px 14px; font-size:.82rem; transition:border-color .15s ease;
+  }
+  .comp-h2h-item:hover{border-color:var(--rojo);}
+  .comp-h2h-marcador{font-family:var(--font-tit); font-weight:800; color:var(--rojo);}
+  .comp-h2h-fecha{color:var(--texto-suave); font-size:.75rem;}
+  .comp-vacio{text-align:center; color:var(--texto-suave); padding:16px; font-size:.88rem;}
+  .comp-error{text-align:center; color:var(--rojo); padding:12px 26px; font-size:.86rem;}
+  @media(max-width:500px){
+    .comp-tabla th, .comp-tabla td{padding:8px 6px; font-size:.75rem;}
+    .comp-resultado{padding:16px 16px 22px;}
+    .comp-resumen-rapido{padding:12px;}
+  }
+
+  /* ============================================================
+     SUB-MODAL: detalle de una estadística (lista de partidos)
+     ============================================================ */
+  .modal-comp-detalle{position:fixed; inset:0; z-index:1100; display:flex; align-items:center; justify-content:center; padding:16px;}
+  .modal-comp-detalle[hidden]{display:none !important;}
+  .modal-comp-detalle-fondo{position:absolute; inset:0; background:rgba(6,14,26,.72);}
+  .modal-comp-detalle-caja{
+    position:relative; background:var(--tarjeta); border-radius:16px;
+    box-shadow:0 20px 50px -10px rgba(0,0,0,.5); padding:26px 22px 22px; max-width:560px; width:92%;
+    max-height:80vh; overflow-y:auto;
+    animation:compEntrada .18s cubic-bezier(.2,.8,.3,1);
+  }
+  .modal-comp-detalle-titulo{
+    font-family:var(--font-tit); font-weight:800; margin:0 0 4px; text-align:center;
+    color:var(--marino-texto); font-size:1.05rem;
+  }
+  .modal-comp-detalle-subtitulo{
+    text-align:center; color:var(--texto-suave); font-size:.78rem; margin:0 0 18px;
+  }
+  .modal-comp-detalle-lista{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media(max-width:520px){.modal-comp-detalle-lista{grid-template-columns:1fr;}}
+  .comp-detalle-col h5{
+    font-family:var(--font-tit); font-weight:700; font-size:.82rem; color:var(--rojo);
+    margin:0 0 10px; text-align:center; text-transform:uppercase; letter-spacing:.02em;
+  }
+  .comp-detalle-item{
+    display:flex; flex-direction:column; gap:2px; align-items:center;
+    background:var(--fondo-alt); border-radius:8px; padding:8px 10px; margin-bottom:6px;
+    border-left:3px solid var(--borde); font-size:.78rem;
+  }
+  .comp-detalle-item--victoria{border-left-color:#2e9e4c;}
+  .comp-detalle-item--empate{border-left-color:#9aa4b8;}
+  .comp-detalle-item--derrota{border-left-color:var(--rojo);}
+  .comp-detalle-rival{font-weight:600; color:var(--marino-texto);}
+  .comp-detalle-marcador{font-family:var(--font-tit); font-weight:800; font-size:.92rem;}
+  .comp-detalle-meta{color:var(--texto-suave); font-size:.7rem;}
+</style>
+<script src="js/proteccion-copia.js?v=3a8bf3dd" defer></script>
+<script src="js/animaciones-web.js?v=e24adf73" defer></script>
+</body>
+</html>

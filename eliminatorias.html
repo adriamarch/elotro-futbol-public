@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Eliminatorias — ELOTROFÚTBOLTV</title>
+<meta name="robots" content="noindex, follow">
+<link rel="canonical" href="https://elotrofutbol.media/clasificacion">
+<meta http-equiv="refresh" content="0;url=/clasificacion">
+<script>
+// Las eliminatorias ya no tienen página propia: salen junto a la clasificación de cada competición.
+// Esta página solo existe para que los enlaces antiguos no den error.
+(function () {
+  var q = new URLSearchParams(location.search);
+  var comp = q.get("c");
+  var destino = "/clasificacion" + (comp ? "?cat=" + encodeURIComponent(comp) : "");
+  location.replace(destino);
+})();
+</script>
+</head>
+<body>
+<p>Las eliminatorias están ahora junto a la <a href="/clasificacion">clasificación</a>.</p>
+<script src="js/offline.js?v=c9fa79be" defer></script>
+</body>
+</html>

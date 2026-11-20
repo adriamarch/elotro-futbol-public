@@ -160,7 +160,7 @@
     // Aviso de privacidad en una línea (solo mientras se puede votar)
     const aviso = (abierta && !preview)
       ? (secreta
-        ? `<div class="vot-privacidad vot-privacidad-secreta" role="note">${ICONO.escudo}<p><strong>Nadie sabrá qué votas</strong>, ni los administradores. Es definitivo.</p></div>`
+        ? `<div class="vot-privacidad vot-privacidad-secreta" role="note">${ICONO.escudo}<p><strong>Nadie sabrá qué votas</strong>, ni los Responsables. Es definitivo.</p></div>`
         : `<div class="vot-privacidad" role="note">${ICONO.persona}<p><strong>Tu nombre se verá</strong> junto a tu opción. Puedes cambiar el voto mientras siga abierta.</p></div>`)
       : "";
 
@@ -484,7 +484,7 @@
     if (ayuda) {
       ayuda.textContent = secreta
         ? "En voto secreto los resultados se abren para todos a la vez al cerrar; si no, el contador delataría a quien acaba de votar."
-        : "Los administradores ven siempre los resultados, salvo en «Al cerrar».";
+        : "Los Responsables ven siempre los resultados, salvo en «Al cerrar».";
     }
     const aviso = $("votAvisoSecreto");
     if (aviso) aviso.hidden = !secreta;
@@ -681,7 +681,7 @@
     el.querySelector("#votBloqTexto").textContent = (n === 1
       ? "Tienes que votar para poder seguir usando el panel."
       : "Tienes que votar en todas para poder seguir usando el panel.")
-      + (puedeCrear ? " Como administrador puedes cerrar o borrar una votación si se creó por error." : "");
+      + (puedeCrear ? " Como Responsable puedes cerrar o borrar una votación si se creó por error." : "");
 
     const caja = el.querySelector(".vot-bloq-caja");
     const scroll = el.scrollTop;

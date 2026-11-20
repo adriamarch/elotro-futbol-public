@@ -4,7 +4,7 @@
 //  - Cabecera de día: selecciona el día y muestra su agenda.
 //  - Tarea: muestra el detalle, QUIÉN LA HACE y en qué otros días toca ese tipo.
 //  - Marca "Ahora" en la franja actual del día de hoy (hora de Madrid).
-//  - Administradores: botón "Editar calendario" para añadir, cambiar, mover o
+//  - Responsables: botón "Editar calendario" para añadir, cambiar, mover o
 //    borrar tareas y asignarles personas. Nada se guarda hasta pulsar
 //    "Guardar cambios".
 //

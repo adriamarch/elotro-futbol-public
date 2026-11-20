@@ -1,0 +1,2682 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta name="google-adsense-account" content="ca-pub-7347856722927942">
+<!-- <base href="/"> tiene que ir aquí, antes que cualquier recurso con
+     ruta relativa (incluido el <script> de justo debajo). Es necesario
+     porque public/_worker.js puede servir este mismo archivo bajo una
+     URL "profunda" tipo /futbol/categoria/mi-noticia (dos niveles bajo
+     la raíz): sin esto, "js/tema.js?v=65626bb2", "css/style.css", etc. se
+     resolverían contra /futbol/categoria/ en vez de contra la raíz del
+     sitio, y todo el CSS/JS de la página daría 404. Con <base href="/">
+     toda ruta relativa de esta página (aquí y en el resto del HTML) se
+     resuelve siempre contra la raíz, se sirva la página desde donde se
+     sirva. -->
+<base href="/">
+<script src="js/tema.js?v=65626bb2"></script>
+<script src="js/preferencias.js?v=6e49f5b3"></script>
+<meta charset="UTF-8">
+<script>/* splash.js: bloquea el parseo solo si la web se abre como app (o ?splash=1); en navegador carga en async, sin frenar el pintado. */
+(function(){var a=false;try{a=matchMedia("(display-mode: standalone)").matches||matchMedia("(display-mode: fullscreen)").matches||matchMedia("(display-mode: minimal-ui)").matches||navigator.standalone===true;}catch(e){}
+if(a||/[?&]splash=1(&|$)/.test(location.search)){document.write('<script src="/js/splash.js?v=b5004788"><\/script>');}
+else{var s=document.createElement("script");s.src="/js/splash.js?v=b5004788";s.async=true;document.head.appendChild(s);}})();
+</script>
+<script src="/js/cargando.js?v=4a5cb1bc"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://api.elotrofutbol.media" crossorigin>
+<link rel="preconnect" href="https://res.cloudinary.com">
+<link rel="dns-prefetch" href="https://platform.twitter.com">
+<link rel="dns-prefetch" href="https://syndication.twitter.com">
+<link rel="dns-prefetch" href="https://pbs.twimg.com">
+<title id="pageTitle">Noticia — ELOTROFÚTBOLTV</title>
+<meta name="description" content="Noticias, crónicas y resultados del fútbol no profesional en ELOTROFÚTBOLTV.">
+<!-- RED DE SEGURIDAD de la vista previa: si el worker no pudo inyectar el SEO real de la noticia
+     (API caída, cabecera tocada...), el enlace sale al menos con logo y marca en vez de sin imagen.
+     Esto vive entre la etiqueta title (id pageTitle) y el enlace al CSS principal, el tramo que inyectarSeoEnHtml sustituye:
+     cuando la inyección funciona, estas etiquetas se reemplazan por las reales de la noticia.
+     NO mover ni borrar esas dos marcas (tests-preview/test-og-imagen.mjs lo vigila). -->
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="ELOTROFÚTBOLTV">
+<meta property="og:title" content="Noticia — ELOTROFÚTBOLTV">
+<meta property="og:description" content="Noticias, crónicas y resultados del fútbol no profesional en ELOTROFÚTBOLTV.">
+<meta property="og:image" content="https://elotrofutbol.media/img/og-default.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Noticia — ELOTROFÚTBOLTV">
+<meta name="twitter:image" content="https://elotrofutbol.media/img/og-default.png">
+<link rel="icon" href="/favicon.ico?v=39af2432" sizes="any">
+<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=39af2432">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png?v=3f854c49">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;0,700;0,800;1,500;1,700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&display=swap" onload="this.onload=null;this.rel='stylesheet'"><noscript><link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;0,700;0,800;1,500;1,700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&display=swap" rel="stylesheet"></noscript>
+<link rel="stylesheet" href="css/style.css?v=6cd42e49">
+<link rel="stylesheet" href="css/modales-mejoras.css?v=982413bb">
+<link rel="stylesheet" href="css/proteccion-copia.css?v=5d439156">
+<link rel="stylesheet" href="css/accesibilidad.css?v=191b9263">
+<script src="js/accesibilidad.js?v=59fdae75" defer></script>
+<link rel="stylesheet" href="css/foco.css?v=c8652610">
+<link rel="stylesheet" href="css/partido-articulo-mejoras.css?v=88b35855">
+<link rel="stylesheet" href="css/noticia-mejoras.css?v=460bceaf">
+<link rel="stylesheet" href="css/google-noticias.css?v=6c845653">
+<link rel="stylesheet" href="css/noticia-programada.css?v=31c8223a">
+<link rel="stylesheet" href="css/aviso-actualizacion.css?v=2b363770">
+<link rel="stylesheet" href="css/noticia-lateral.css?v=c2c9e47d">
+<link rel="stylesheet" href="css/encuestas.css?v=e8f09cab">
+<link rel="stylesheet" href="css/visor-media.css?v=db0d997d">
+<link rel="stylesheet" href="css/credito-copyright.css?v=3ff9b8cf">
+<link rel="stylesheet" href="css/app-movil.css?v=b6df23d4">
+<script src="js/app-movil.js?v=3b122790" defer></script>
+<link rel="manifest" href="/manifest.webmanifest">
+<style>
+/* Columnas de publicidad laterales: ocultas por defecto y solo en pantallas anchas.
+   Van aquí además de en style.css para que, aunque el navegador tenga esa hoja en
+   caché, nunca aparezcan en mitad de la página. */
+.eof-con-rails{position:relative;}
+.eof-rail{display:none;}
+@media (min-width:1260px){
+  .eof-rail{display:block;position:absolute;top:0;bottom:0;width:160px;}
+  .eof-rail-izq{left:0;}
+  .eof-rail-der{right:0;}
+  .eof-rail > [data-eof-ad]{position:sticky;top:110px;}
+}
+</style>
+</head>
+<body>
+
+<div id="site-header"></div>
+
+<div id="barraProgresoLectura" class="barra-progreso-lectura" aria-hidden="true">
+  <div id="barraProgresoLecturaRelleno" class="barra-progreso-lectura-relleno"></div>
+</div>
+
+<main class="wrap" id="contenidoArticulo">
+  <p>Cargando...</p>
+</main>
+
+<div id="site-footer"></div>
+
+<script src="js/ui-alertas.js?v=4339c846"></script>
+<script src="js/foco.js?v=133ef790"></script>
+<script src="js/vendor/purify.min.js?v=fc42f9bf"></script>
+<script src="js/config.js?v=f440593b"></script>
+<script src="js/en-vivo.js?v=3e8f8994"></script>
+<script src="js/seo.js?v=51678a88"></script>
+<script src="js/clubs.js?v=cdbd504a"></script>
+<script src="js/lector-auth.js?v=9a1c7f1f"></script>
+<script src="js/lecturas.js?v=de5c36f5"></script>
+<script src="js/escuchar.js?v=04a4445e"></script>
+<script src="js/aviso-actualizacion.js?v=a1c549cd"></script>
+<script src="js/noticia-lateral.js?v=0cf07c34"></script>
+<script src="js/google-noticias.js?v=96f7264c"></script>
+<script src="js/turnstile.js?v=c9b660c4"></script>
+<script src="js/encuestas.js?v=c585e64f"></script>
+<script src="js/layout.js?v=e8597b26"></script>
+<script src="js/cookies.js?v=845d8f5c"></script>
+<script src="js/proteccion-copia.js?v=3a8bf3dd" defer></script>
+<script src="js/ads.js?v=a41f4506"></script>
+<script src="js/visor-media.js?v=1ba00c78"></script>
+<script src="js/analiticas-tracking.js?v=9ebd17e7"></script>
+<script>
+const ES_PREVIEW = new URLSearchParams(location.search).get("preview") === "1";
+
+async function cargaArticulo() {
+  const cont = document.getElementById("contenidoArticulo");
+
+  // Modo previsualizacion. El panel puede abrir esta pagina en otra
+  // pestaña/ventana, y sessionStorage no siempre se conserva según cómo
+  // se haya abierto la pestaña o las políticas del navegador. Por eso
+  // intentamos primero sessionStorage y después localStorage.
+  if (ES_PREVIEW) {
+    _seoMeta("name", "robots", "noindex, nofollow");
+
+    // Cada previsualización lleva su propio id (?pid=...) y su propia clave,
+    // para que otra noticia previsualizada en otra pestaña no la sustituya.
+    const PID_PREVIEW = new URLSearchParams(location.search).get("pid") || "";
+    const CLAVE_PREVIEW = "eof_preview_articulo:" + PID_PREVIEW;
+    const leerPreview = () => {
+      const almacenes = [sessionStorage, localStorage];
+      for (const almacenamiento of almacenes) {
+        try {
+          const bruto = almacenamiento.getItem(CLAVE_PREVIEW);
+          if (!bruto) continue;
+          const articulo = JSON.parse(bruto);
+          if (articulo && typeof articulo === "object") return articulo;
+        } catch (_) {}
+      }
+      return null;
+    };
+
+    let article = leerPreview();
+
+    if (!article) {
+      cont.innerHTML = estadoHTML({
+        titulo: "Vista previa no disponible",
+        texto: "No se ha encontrado ningún contenido para previsualizar. Vuelve al panel e inténtalo de nuevo.",
+        tipo: "error",
+        cta: `<a href="/" class="btn-volver">Ir a portada</a>`,
+      });
+      return;
+    }
+
+    mostrarAvisoPreview();
+    renderizaArticulo(article);
+
+    // Actualizacion en vivo desde el panel. Ademas de BroadcastChannel,
+    // escuchamos el evento "storage" para que funcione incluso cuando el
+    // navegador no permite/soporta BroadcastChannel.
+    if ("BroadcastChannel" in window) {
+      const canalPreview = new BroadcastChannel("eof_preview_articulo");
+      canalPreview.onmessage = (ev) => {
+        if (!ev.data || typeof ev.data !== "object") return;
+        // Solo se aceptan mensajes de la sesión de edición que abrió esta pestaña.
+        if (ev.data.id !== PID_PREVIEW || !ev.data.article || typeof ev.data.article !== "object") return;
+        try {
+          sessionStorage.setItem(CLAVE_PREVIEW, JSON.stringify(ev.data.article));
+        } catch (_) {}
+        try {
+          localStorage.setItem(CLAVE_PREVIEW, JSON.stringify(ev.data.article));
+        } catch (_) {}
+        mostrarAvisoPreview();
+        renderizaArticulo(ev.data.article);
+      };
+    }
+
+    window.addEventListener("storage", (ev) => {
+      if (ev.key !== CLAVE_PREVIEW || !ev.newValue) return;
+      try {
+        const actualizado = JSON.parse(ev.newValue);
+        if (!actualizado || typeof actualizado !== "object") return;
+        try { sessionStorage.setItem(CLAVE_PREVIEW, ev.newValue); } catch (_) {}
+        mostrarAvisoPreview();
+        renderizaArticulo(actualizado);
+      } catch (_) {}
+    });
+
+    return;
+  }
+
+  // El slug llega por query string en el formato antiguo (?slug=...) o,
+  // con la URL bonita /futbol/categoria/slug, directamente en el
+  // pathname: el navegador nunca ve el ?slug= interno que usa
+  // _worker.js para pedir este mismo archivo a env.ASSETS.fetch(), así
+  // que aquí hay que extraerlo también del pathname como alternativa.
+  const matchPathBonito = location.pathname.match(/^\/futbol\/[^/]+\/([^/]+)\/?$/);
+  const slug = new URLSearchParams(location.search).get("slug") || (matchPathBonito && decodeURIComponent(matchPathBonito[1]));
+  if (!slug) {
+    _seoMeta("name", "robots", "noindex");
+    cont.innerHTML = estadoHTML({
+      titulo: "Noticia no especificada",
+      texto: "El enlace al que has accedido no incluye ninguna noticia. Vuelve a la portada para seguir navegando.",
+      tipo: "error",
+      cta: `<a href="/" class="btn-volver">Ir a portada</a>`,
+    });
+    return;
+  }
+  try {
+    const { res, data } = await conReintento(async () => {
+      const res = await apiFetch(`/api/articles/${encodeURIComponent(slug)}`);
+      const data = await res.json().catch(() => null);
+      return { res, data };
+    });
+
+    // El slug ha cambiado desde que se compartió este enlace (el título
+    // se editó mientras la noticia todavía estaba en borrador/programada):
+    // se redirige de forma transparente al slug actual, conservando el
+    // resto de la query (p. ej. ?lang=eu) por si la llevaba.
+    if (data && data.redirect) {
+      const params = new URLSearchParams(location.search);
+      params.set("slug", data.redirect);
+      // IMPORTANTE: ruta ABSOLUTA (empieza por "/"). Si esta página se
+      // cargó desde la URL bonita /futbol/{categoria}/{slug}, una ruta
+      // relativa "noticia.html?..." se resolvería contra ese path (p.ej.
+      // /futbol/categoria/noticia.html?slug=... o peor aún con barra
+      // final /futbol/categoria/slug/noticia.html?...), que no es una
+      // ruta que el worker ni los estáticos reconozcan, y en combinación
+      // con las reglas de trailing-slash de Pages puede acabar en un
+      // bucle de redirecciones (ERR_TOO_MANY_REDIRECTS).
+      // Si la API trae la categoría (noticia fusionada con otra del mismo
+      // partido) se va a su URL bonita, que es la que conviene compartir.
+      if (data.categoria && typeof urlNoticia === "function") {
+        params.delete("slug");
+        const resto = params.toString();
+        location.replace(urlNoticia(data.categoria, data.redirect) + (resto ? `?${resto}` : ""));
+        return;
+      }
+      location.replace(`/noticia.html?${params.toString()}`);
+      return;
+    }
+
+    // La noticia existe y está programada, pero todavía no ha llegado su
+    // hora de publicación: se muestra una cuenta atrás en vez del error
+    // genérico, para quien haya recibido el enlace con antelación.
+    if (data && data.programado) {
+      _seoMeta("name", "robots", "noindex, nofollow");
+      pintarCuentaAtrasProgramada(data.programado);
+      return;
+    }
+
+    if (!res.ok || !data || !data.article) {
+      const errNoEncontrada = new Error("No encontrada");
+      // Solo un 404/410 de la API significa de verdad "esta noticia no
+      // existe". Un 5xx, un 429 (cuota agotada), un timeout o un corte de
+      // red son fallos TRANSITORIOS: marcar noindex ahí hacía que un
+      // Googlebot que renderizara justo en ese momento sacara del índice
+      // una noticia perfectamente válida.
+      errNoEncontrada.noticiaNoExiste = res.status === 404 || res.status === 410;
+      throw errNoEncontrada;
+    }
+    await precalentarHashesFotos(data.article);
+    renderizaArticulo(data.article);
+    // Tracking propio de vistas y tiempo de lectura (ver
+    // js/analiticas-tracking.js y public/panel-analiticas.html). Solo se
+    // dispara si la noticia se ha renderizado con éxito, para no contar
+    // vistas de errores/noticias no encontradas.
+    if (typeof window.iniciarTrackingLectura === "function") {
+      window.iniciarTrackingLectura(data.article.slug || slug, window.IDIOMA_NOTICIA_MOSTRADO || "es");
+    }
+    // Aviso «noticia actualizada»: si la redacción edita la noticia mientras se lee, se avisa al lector.
+    if (window.EOFAvisoActualizacion) {
+      window.EOFAvisoActualizacion.vigilar(data.article, { alActualizar: () => refrescarArticuloEnVivo(data.article.slug || slug) });
+    }
+  } catch (err) {
+    if (err && err.noticiaNoExiste) {
+      _seoMeta("name", "robots", "noindex");
+    } else if (cont.dataset && cont.dataset.prepintado === "1") {
+      // Fallo transitorio y el servidor ya entregó el cuerpo de la noticia
+      // (versión para bots): se conserva en vez de taparlo con un error.
+      return;
+    }
+    cont.innerHTML = estadoHTML({
+      titulo: "No se ha podido cargar la noticia",
+      texto: "Puede que la noticia ya no exista o que haya un problema de conexión. Vuelve a la portada e inténtalo de nuevo.",
+      tipo: "error",
+      cta: `<a href="/" class="btn-volver">Ir a portada</a>`,
+    });
+  }
+}
+
+// ---------- Aviso «noticia actualizada»: refresco en caliente ----------
+// Lo llama el botón «Actualizar» de js/aviso-actualizacion.js. Se pide la noticia con un parámetro
+// único para saltarse la caché de 15 s de la API (si no, podría devolver la versión anterior) y se
+// repinta en el mismo sitio, conservando la posición de lectura. Si algo falla, el aviso recarga la página.
+async function refrescarArticuloEnVivo(slug) {
+  const res = await apiFetch(`/api/articles/${encodeURIComponent(slug)}?r=${Date.now()}`);
+  const data = await res.json().catch(() => null);
+  if (!res.ok || !data || !data.article) throw new Error("No se pudo recargar la noticia");
+  const y = window.scrollY;
+  // Si se estaba escuchando la noticia en voz alta, el texto ha cambiado: se detiene la lectura.
+  try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch (_) {}
+  await precalentarHashesFotos(data.article);
+  renderizaArticulo(data.article);
+  window.scrollTo(0, y);
+}
+
+// ---------- Noticia programada: cuenta atrás y "publicándose ahora mismo" ----------
+// Se llega aquí cuando alguien abre el enlace de una noticia que aún no está
+// publicada (la API responde { programado }). Estados de la caja (.pg, estilos en
+// css/noticia-programada.css):
+//   espera -> queda tiempo | pronto -> menos de 1 min | ahora -> ha llegado la hora y se
+//   está publicando | lento -> más de 2 min sin publicarse | listo -> ya publicada.
+// Al llegar la hora NO se recarga la página a ciegas: se consulta la API cada pocos
+// segundos y, en cuanto la noticia existe de verdad, se pinta en el mismo sitio.
+// (El disparador del Worker publica cada minuto, así que entre la hora y la publicación
+// pueden pasar hasta ~60 s, y la API sigue respondiendo "programada" para que
+// X/Facebook vean la tarjeta.)
+let _timerCuentaAtras = null;      // setInterval del contador
+let _timerSondeo = null;           // setTimeout del sondeo de la API
+let _alVolverAPestana = null;      // listener visibilitychange
+let _tituloAntesCuentaAtras = null;
+
+function detenerCuentaAtrasProgramada() {
+  clearInterval(_timerCuentaAtras); _timerCuentaAtras = null;
+  clearTimeout(_timerSondeo); _timerSondeo = null;
+  if (_alVolverAPestana) { document.removeEventListener("visibilitychange", _alVolverAPestana); _alVolverAPestana = null; }
+  if (_tituloAntesCuentaAtras !== null) { document.title = _tituloAntesCuentaAtras; _tituloAntesCuentaAtras = null; }
+}
+
+// programado_para llega de la base de datos como "YYYY-MM-DD HH:MM:SS" en UTC pero SIN
+// zona. Hay que decirle a Date que es UTC, o el contador se desfasa el huso del lector.
+function fechaSqlUtcAMs(raw) {
+  let r = String(raw || "").trim();
+  if (!/[zZ]|[+-]\d\d:?\d\d$/.test(r)) r = r.includes("T") ? r + "Z" : r.replace(" ", "T") + "Z";
+  return new Date(r).getTime();
+}
+
+// "hoy a las 18:30h", "mañana a las 09:00h" o "el sábado 21 de noviembre a las 18:30h" (hora de Madrid).
+function textoCuandoProgramada(objetivoMs, ahoraMs) {
+  const tz = "Europe/Madrid";
+  const aDia = (ms) => { const [y, m, d] = new Date(ms).toLocaleDateString("en-CA", { timeZone: tz }).split("-").map(Number); return Date.UTC(y, m - 1, d) / 86400000; };
+  const dif = aDia(objetivoMs) - aDia(ahoraMs);
+  const hora = new Date(objetivoMs).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit", timeZone: tz });
+  let dia;
+  if (dif <= 0) dia = "hoy";
+  else if (dif === 1) dia = "mañana";
+  else dia = "el " + new Date(objetivoMs).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long", timeZone: tz });
+  return `Se publica <b>${escapeHtml(dia)}</b> a las <b>${hora}h</b>`;
+}
+
+// Archivo .ics con un aviso 5 minutos antes, para añadirlo al calendario del móvil/ordenador.
+function descargarIcsProgramada(programado, objetivoMs, tipoLabel, url) {
+  const f = (ms) => new Date(ms).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+  const esc = (t) => String(t || "").replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+  const plegar = (linea) => { const partes = []; let r = linea; while (r.length > 60) { partes.push(r.slice(0, 60)); r = " " + r.slice(60); } partes.push(r); return partes.join("\r\n"); };
+  const lineas = [
+    "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//ELOTROFUTBOLTV//Noticia programada//ES", "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
+    "BEGIN:VEVENT",
+    `UID:${programado.slug}-${objetivoMs}@elotrofutbol.media`,
+    `DTSTAMP:${f(Date.now())}`, `DTSTART:${f(objetivoMs)}`, `DTEND:${f(objetivoMs + 15 * 60000)}`,
+    `SUMMARY:${esc("Se publica: " + programado.titulo)}`,
+    `DESCRIPTION:${esc(tipoLabel + " de ELOTROFÚTBOLTV. Ábrela aquí: " + url)}`,
+    `URL:${url}`,
+    "BEGIN:VALARM", "TRIGGER:-PT5M", "ACTION:DISPLAY", `DESCRIPTION:${esc("Se publica en 5 minutos: " + programado.titulo)}`, "END:VALARM",
+    "END:VEVENT", "END:VCALENDAR",
+  ].map(plegar);
+  const blob = new Blob([lineas.join("\r\n") + "\r\n"], { type: "text/calendar;charset=utf-8" });
+  const enlace = document.createElement("a");
+  enlace.href = URL.createObjectURL(blob);
+  enlace.download = "noticia-programada.ics";
+  document.body.appendChild(enlace);
+  enlace.click();
+  enlace.remove();
+  setTimeout(() => URL.revokeObjectURL(enlace.href), 4000);
+}
+
+function pintarCuentaAtrasProgramada(programado) {
+  detenerCuentaAtrasProgramada();
+  const cont = document.getElementById("contenidoArticulo");
+  const objetivo = fechaSqlUtcAMs(programado.programado_para);
+  // Reloj del servidor (si la API lo manda): un móvil con la hora mal puesta ya no desfasa el contador.
+  const srv = Date.parse(programado.ahora || "");
+  const desfase = isFinite(srv) ? srv - Date.now() : 0;
+  const ahora = () => Date.now() + desfase;
+  const sinMovimiento = !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
+  const urlPagina = location.href.split("#")[0];
+
+  const tipoLabel = { noticia: "Noticia", previa: "Previa", cronica: "Crónica", analisis: "Análisis", opinion: "Opinión", entrevista: "Entrevista", uno_por_uno: "1x1 de jugadores", rdp_previa: "Rueda de prensa previa", rdp_post: "Rueda de prensa posterior" }[programado.tipo] || "Artículo";
+  const categoriaTxt = (typeof CATEGORIES !== "undefined" && CATEGORIES[programado.categoria]) || "";
+
+  const ICO_RADIO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.9 19.1a10 10 0 0 1 0-14.2M19.1 4.9a10 10 0 0 1 0 14.2M8.1 15.9a5.5 5.5 0 0 1 0-7.8M15.9 8.1a5.5 5.5 0 0 1 0 7.8"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/></svg>';
+  const ICO_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>';
+  const ICO_CAL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4M12 13v4.5M9.8 15.2h4.4"/></svg>';
+  const ICO_SHARE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 10.5 6.8-3.9M8.6 13.5l6.8 3.9"/></svg>';
+  const ICO_RECARGAR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.6-5.9M20 4v5h-5"/></svg>';
+
+  cont.innerHTML = `
+    <section class="pg" data-estado="espera" aria-labelledby="pg_titulo">
+      <div class="pg-fondo" aria-hidden="true"></div>
+      <div class="pg-contenido">
+        <div class="pg-cabecera">
+          <span class="pg-etiqueta"><span class="pg-punto" aria-hidden="true"></span><span id="pg_etiqueta">${tipoLabel} programada</span></span>
+          <span class="pg-cat">${escapeHtml(categoriaTxt)}</span>
+        </div>
+        <h1 class="pg-titulo" id="pg_titulo">${escapeHtml(programado.titulo)}</h1>
+        <p class="pg-subtitulo">${escapeHtml(programado.subtitulo || "")}</p>
+
+        <div class="pg-panel">
+          <div class="pg-bloque" id="pg_espera">
+            <p class="pg-cuando" id="pg_cuando"></p>
+            <div class="pg-contador" role="timer" aria-label="Tiempo que falta para que se publique">
+              <div class="pg-unidad" id="pg_u_dias"><span class="pg-num" id="pc_dias">00</span><span class="pg-lbl">Días</span></div>
+              <div class="pg-unidad" id="pg_u_horas"><span class="pg-num" id="pc_horas">00</span><span class="pg-lbl">Horas</span></div>
+              <div class="pg-unidad"><span class="pg-num" id="pc_min">00</span><span class="pg-lbl">Min</span></div>
+              <div class="pg-unidad"><span class="pg-num" id="pc_seg">00</span><span class="pg-lbl">Seg</span></div>
+            </div>
+            <p class="pg-ayuda">Esta noticia todavía se está terminando de revisar. En cuanto llegue la hora se abrirá sola aquí mismo; no hace falta que recargues.</p>
+          </div>
+
+          <div class="pg-bloque" id="pg_ahora" hidden>
+            <div class="pg-ahora-ico"><span id="pg_ahora_ico">${ICO_RADIO}</span></div>
+            <h2 class="pg-ahora-titulo" id="pg_ahora_titulo">Publicándose ahora mismo</h2>
+            <div class="pg-barra" aria-hidden="true"></div>
+            <p class="pg-ayuda" id="pg_ahora_ayuda"></p>
+          </div>
+        </div>
+
+        <div class="pg-acciones">
+          <button type="button" class="pg-btn pg-btn-primario" id="pg_cal">${ICO_CAL}<span>Añadir al calendario</span></button>
+          <button type="button" class="pg-btn pg-btn-primario" id="pg_recargar" hidden>${ICO_RECARGAR}<span>Recargar</span></button>
+          <button type="button" class="pg-btn" id="pg_compartir">${ICO_SHARE}<span>Compartir enlace</span></button>
+          <a href="/" class="pg-btn">Ir a portada</a>
+        </div>
+        <p class="pg-sr" id="pg_sr" role="status" aria-live="polite"></p>
+      </div>
+    </section>`;
+
+  const $ = (id) => document.getElementById(id);
+  const caja = cont.querySelector(".pg");
+  const pad = (n) => String(Math.max(0, n)).padStart(2, "0");
+
+  // Portada de la noticia como fondo difuminado (la misma que ya ve X/Facebook).
+  if (programado.imagen_url && /^https?:\/\//i.test(programado.imagen_url)) {
+    const urlImg = typeof cloudinaryOptimizada === "function" ? cloudinaryOptimizada(programado.imagen_url, 1100) : programado.imagen_url;
+    const img = new Image();
+    img.onload = () => {
+      const fondo = cont.querySelector(".pg-fondo");
+      if (!fondo) return;
+      fondo.style.backgroundImage = `url("${urlImg.replace(/"/g, "%22")}")`;
+      try { if (programado.imagen_foco && window.EOF_FOCO && EOF_FOCO.texto) fondo.style.backgroundPosition = EOF_FOCO.texto(programado.imagen_foco); } catch (_) {}
+      fondo.classList.add("lista");
+    };
+    img.src = urlImg;
+  }
+
+  // ---- Estados ----
+  const TEXTOS = {
+    espera: { etiqueta: `${tipoLabel} programada` },
+    pronto: { etiqueta: `${tipoLabel} programada`, sr: "Falta menos de un minuto para que se publique." },
+    ahora:  { etiqueta: "Publicándose ahora", titulo: "Publicándose ahora mismo", ayuda: "Se abrirá aquí sola en unos segundos. No hace falta que recargues.", sr: "Ha llegado la hora. Se está publicando la noticia." },
+    lento:  { etiqueta: "Publicándose", titulo: "Está tardando un poco más de lo normal", ayuda: "Seguimos comprobándolo cada pocos segundos. Puedes esperar aquí o recargar la página.", sr: "La publicación está tardando más de lo normal." },
+    listo:  { etiqueta: "Publicada", titulo: "¡Ya está publicada!", ayuda: "Abriéndola…", sr: "La noticia ya está publicada. Abriéndola." },
+  };
+  function ponerEstado(nuevo) {
+    if (caja.dataset.estado === nuevo) return;
+    caja.dataset.estado = nuevo;
+    const t = TEXTOS[nuevo];
+    const enEspera = nuevo === "espera" || nuevo === "pronto";
+    $("pg_espera").hidden = !enEspera;
+    $("pg_ahora").hidden = enEspera;
+    $("pg_cal").hidden = !enEspera;
+    $("pg_recargar").hidden = nuevo !== "lento";
+    $("pg_etiqueta").textContent = t.etiqueta;
+    if (t.titulo) $("pg_ahora_titulo").textContent = t.titulo;
+    if (t.ayuda) $("pg_ahora_ayuda").textContent = t.ayuda;
+    $("pg_ahora_ico").innerHTML = nuevo === "listo" ? ICO_CHECK : ICO_RADIO;
+    if (t.sr) $("pg_sr").textContent = t.sr;
+  }
+
+  // ---- Contador ----
+  let _ultimoMinuto = -1;
+  let _ultimosNumeros = {};
+  function poner(id, valor) {
+    const el = $(id);
+    if (!el || _ultimosNumeros[id] === valor) return;
+    _ultimosNumeros[id] = valor;
+    el.textContent = valor;
+    if (!sinMovimiento) { el.classList.remove("pg-tic"); void el.offsetWidth; el.classList.add("pg-tic"); }
+  }
+  function tick() {
+    const restante = objetivo - ahora();
+    if (!(restante > 0)) { llegoLaHora(); return; }
+    const totalSeg = Math.floor(restante / 1000);
+    const dias = Math.floor(totalSeg / 86400);
+    const horas = Math.floor((totalSeg % 86400) / 3600);
+    const min = Math.floor((totalSeg % 3600) / 60);
+    const seg = totalSeg % 60;
+    // Solo se muestran las unidades que importan: con menos de un día no hay "0 días".
+    $("pg_u_dias").hidden = dias <= 0;
+    $("pg_u_horas").hidden = dias <= 0 && horas <= 0;
+    poner("pc_dias", pad(dias)); poner("pc_horas", pad(horas)); poner("pc_min", pad(min)); poner("pc_seg", pad(seg));
+    ponerEstado(restante <= 60000 ? "pronto" : "espera");
+    const minutoActual = Math.floor(ahora() / 60000);
+    if (minutoActual !== _ultimoMinuto) { _ultimoMinuto = minutoActual; $("pg_cuando").innerHTML = textoCuandoProgramada(objetivo, ahora()); }
+    // La propia pestaña muestra el tiempo que falta.
+    const corto = dias > 0 ? `${dias}d ${pad(horas)}h` : horas > 0 ? `${horas}:${pad(min)}:${pad(seg)}` : `${pad(min)}:${pad(seg)}`;
+    document.title = `${corto} · ${programado.titulo}`;
+  }
+
+  // ---- Ha llegado la hora: se sondea la API hasta que la noticia existe de verdad ----
+  let _terminado = false;
+  function llegoLaHora() {
+    clearInterval(_timerCuentaAtras); _timerCuentaAtras = null;
+    if (_terminado) return;
+    ponerEstado(ahora() - objetivo > 120000 ? "lento" : "ahora");
+    document.title = `Publicándose… · ${programado.titulo}`;
+    sondear(0);
+  }
+  async function sondear(intento) {
+    if (_terminado) return;
+    let cambiado = false;
+    try {
+      const res = await apiFetch(`/api/articles/${encodeURIComponent(programado.slug)}`);
+      const data = await res.json().catch(() => null);
+      // Sigue "programada" -> seguimos esperando. Un 5xx/429/corte de red es transitorio: también.
+      // Cualquier otra cosa (ya publicada, slug cambiado, borrada) la resuelve cargaArticulo().
+      cambiado = !(data && data.programado) && (res.ok || res.status === 404 || res.status === 410 || !!(data && data.redirect));
+    } catch (_) { cambiado = false; }
+    if (_terminado) return;
+    if (cambiado) { terminar(); return; }
+    if (ahora() - objetivo > 120000) ponerEstado("lento");
+    _timerSondeo = setTimeout(() => sondear(intento + 1), intento < 5 ? 2500 : intento < 15 ? 4000 : 8000);
+  }
+  function terminar() {
+    _terminado = true;
+    clearTimeout(_timerSondeo);
+    ponerEstado("listo");
+    setTimeout(() => {
+      detenerCuentaAtrasProgramada();
+      // Esta página se marcó noindex mientras era una cuenta atrás: se revierte al pintar la noticia real.
+      const robots = document.head.querySelector('meta[name="robots"]');
+      if (robots && /noindex/i.test(robots.content)) robots.content = "index, follow";
+      window.scrollTo(0, 0);
+      cargaArticulo();
+    }, sinMovimiento ? 300 : 1000);
+  }
+
+  // ---- Botones ----
+  $("pg_cal").addEventListener("click", () => descargarIcsProgramada(programado, objetivo, tipoLabel, urlPagina));
+  $("pg_recargar").addEventListener("click", () => location.reload());
+  $("pg_compartir").addEventListener("click", async () => {
+    const boton = $("pg_compartir");
+    const etiqueta = boton.querySelector("span");
+    const avisar = (txt) => { etiqueta.textContent = txt; boton.classList.add("pg-ok"); setTimeout(() => { etiqueta.textContent = "Compartir enlace"; boton.classList.remove("pg-ok"); }, 2200); };
+    try {
+      if (navigator.share) { await navigator.share({ title: programado.titulo, url: urlPagina }); return; }
+    } catch (e) { if (e && e.name === "AbortError") return; }
+    try { await navigator.clipboard.writeText(urlPagina); avisar("Enlace copiado"); }
+    catch (_) {
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = urlPagina; ta.style.cssText = "position:fixed;opacity:0;";
+        document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove();
+        avisar("Enlace copiado");
+      } catch (__) { avisar("No se pudo copiar"); }
+    }
+  });
+
+  _tituloAntesCuentaAtras = document.title;
+  _alVolverAPestana = () => { if (!document.hidden && _timerCuentaAtras) tick(); };
+  document.addEventListener("visibilitychange", _alVolverAPestana);
+  tick();
+  if (!_terminado && objetivo - ahora() > 0) _timerCuentaAtras = setInterval(tick, 250);
+}
+
+function mostrarAvisoPreview() {
+  // Evita duplicar el aviso si se llama varias veces (p.ej. en cada
+  // actualización en vivo desde el panel de administración).
+  if (document.getElementById("avisoPreviewSticky")) return;
+  const aviso = document.createElement("div");
+  aviso.id = "avisoPreviewSticky";
+  aviso.textContent = "Vista previa \u00b7 esta noticia todavía no está publicada";
+  aviso.style.cssText = "position:sticky;top:0;z-index:999;background:#222;color:#fff;text-align:center;padding:10px;font:600 14px/1.4 Inter,sans-serif;";
+  document.body.prepend(aviso);
+}
+
+// ---------- Traducciones de la noticia (solo contenido, no la interfaz) ----------
+// El selector de idioma de esta página es independiente del idioma de la
+// interfaz (que siempre está en castellano). Solo cambia el título, el
+// subtítulo y el cuerpo de la noticia, y solo entre los idiomas que el
+// redactor haya traducido al subirla; si un idioma no está disponible se
+// muestra en castellano con un aviso de "Disponible en...".
+const IDIOMAS_NOTICIA = [
+  { cod: "es", nombre: "Castellano" },
+  { cod: "eu", nombre: "Euskera" },
+  { cod: "ca", nombre: "Català" },
+  { cod: "gl", nombre: "Galego" },
+  { cod: "en", nombre: "English" },
+];
+let ARTICULO_ACTUAL = null;
+let IDIOMA_NOTICIA_ACTUAL = "es";
+let FOTOS_DE_TEXTO_ACTUAL = null;
+
+// Peu de foto con el crédito/cita de la fotografía (autor, agencia...),
+// cuando se ha indicado al subirla desde el panel. Se usa en todas las
+// fotos de la noticia: portada, intercaladas en el texto y de galería.
+// Texto alternativo AUTOMÁTICO de las fotos intercaladas en el cuerpo (antes
+// llevaban alt="", invisibles para Google Imágenes y para lectores de pantalla).
+// Previa/crónica de un partido -> "Crónica Local - Visitante"; resto -> el
+// titular. La cabecera ya usa el titular, así que la cuenta arranca en 2 y cada
+// foto lleva "— foto N" para no repetir exactamente el mismo alt. Si alguna
+// foto trae su propio texto (f.alt) se respeta tal cual. renderizaArticulo()
+// y el cambio de idioma reinician la cuenta.
+// Alt de la foto de cabecera: en previa/crónica lleva los dos equipos.
+function altFotoPrincipal(a) {
+  const r = a && a.resultado;
+  if (a && (a.tipo === "previa" || a.tipo === "cronica") && r && r.equipo_local && r.equipo_visitante) {
+    return `${a.tipo === "cronica" ? "Crónica" : "Previa"} ${r.equipo_local} - ${r.equipo_visitante}: ${a.titulo || ""}`.trim();
+  }
+  return (a && a.titulo) || "";
+}
+let _altFotoContador = 1;
+function altFotoArticulo(f) {
+  const propio = f && typeof f.alt === "string" ? f.alt.trim() : "";
+  if (propio) return propio;
+  const a = ARTICULO_ACTUAL || {};
+  const r = a.resultado;
+  const base = (a.tipo === "previa" || a.tipo === "cronica") && r && r.equipo_local && r.equipo_visitante
+    ? `${a.tipo === "cronica" ? "Crónica" : "Previa"} ${r.equipo_local} - ${r.equipo_visitante}`
+    : (a.titulo || "");
+  if (!base) return "";
+  _altFotoContador += 1;
+  return `${base} — foto ${_altFotoContador}`;
+}
+function quitarCopyCredito(s) { return String(s || "").replace(/^\s*©\s*/, ""); }
+function creditoFotoHTML(f) {
+  return f && f.credito ? `<span class="credito-foto">${escapeHtml(quitarCopyCredito(f.credito))}</span>` : "";
+}
+// Reparte las fotos "de posición" (inicio/medio/final) dentro de un texto
+// del cuerpo, intercalándolas entre sus bloques de nivel superior. Se usa
+// tanto al pintar la noticia por primera vez como al cambiar de idioma,
+// para que las fotos intercaladas en el texto nunca se pierdan aunque el
+// contenido de ese idioma sea distinto del castellano.
+// Deja funcionales los enlaces que vienen dentro del HTML del cuerpo de la
+// noticia: si a alguno le falta el "https://" (enlaces antiguos creados sin
+// protocolo) el navegador lo trataría como ruta relativa dentro de la propia
+// web y rompería el enlace; y los que sí son externos se abren en pestaña
+// nueva con rel="noopener noreferrer" para no perder al lector de la noticia
+// ni exponer la página de origen a la de destino.
+function arreglarEnlacesCuerpo(cuerpoEl) {
+  if (!cuerpoEl) return;
+  cuerpoEl.querySelectorAll("a[href]").forEach((a) => {
+    const href = a.getAttribute("href").trim();
+    if (!href) return;
+    const tieneEsquema = /^[a-z][a-z0-9+.-]*:/i.test(href);
+    const esInterna = href.startsWith("/") || href.startsWith("#") || href.startsWith("?");
+    if (!tieneEsquema && !esInterna) {
+      a.setAttribute("href", `https://${href}`);
+    }
+    const esExterna = !esInterna && (tieneEsquema ? /^https?:/i.test(href) : true);
+    if (esExterna) {
+      a.setAttribute("target", "_blank");
+      a.setAttribute("rel", "noopener noreferrer");
+    }
+  });
+}
+
+// Convierte los blockquote.twitter-tweet que haya en el cuerpo de la
+// noticia (insertados desde el panel con el botón "Tweet" del editor)
+// en la tarjeta visual real del tweet -texto, foto, likes, botón de
+// seguir...-. El HTML guardado es solo un enlace de respaldo (lo que ve
+// cualquiera sin JavaScript, o mientras carga); el script oficial de X
+// (widgets.js) es quien lo "hincha" al vuelo al detectar ese blockquote
+// en la página.
+// El script solo se pide la primera vez que hace falta (se reutiliza la
+// misma promesa en llamadas posteriores): si la noticia no tiene ningún
+// tweet incrustado, ni siquiera se llega a pedir, para no gastar una
+// petición de red de más en el resto de noticias.
+let SCRIPT_TWITTER_WIDGETS_CARGANDO = null;
+let SCRIPT_INSTAGRAM_EMBED_CARGANDO = null;
+
+// Los scripts de X e Instagram se piden UNA vez, con async, y en cuanto se
+// sabe que hay algún embed (antes de que el tweet esté a la vista), así
+// cuando el lector llega a él el script ya está listo.
+function cargarScriptRed(src, onload) {
+  return new Promise((resolve) => {
+    const script = document.createElement("script");
+    script.src = src;
+    script.async = true;
+    script.charset = "utf-8";
+    script.onload = resolve;
+    script.onerror = resolve; // sin red: se queda el enlace de respaldo
+    document.body.appendChild(script);
+  });
+}
+function scriptTwitter() {
+  if (window.twttr && window.twttr.widgets) return Promise.resolve();
+  if (!SCRIPT_TWITTER_WIDGETS_CARGANDO) SCRIPT_TWITTER_WIDGETS_CARGANDO = cargarScriptRed("https://platform.twitter.com/widgets.js");
+  return SCRIPT_TWITTER_WIDGETS_CARGANDO;
+}
+function scriptInstagram() {
+  if (window.instgrm && window.instgrm.Embeds) return Promise.resolve();
+  if (!SCRIPT_INSTAGRAM_EMBED_CARGANDO) SCRIPT_INSTAGRAM_EMBED_CARGANDO = cargarScriptRed("https://www.instagram.com/embed.js");
+  return SCRIPT_INSTAGRAM_EMBED_CARGANDO;
+}
+
+// Cada embed se "hincha" solo cuando está cerca de la pantalla (900 px de
+// margen), no todos de golpe al cargar la noticia: así la página pinta
+// antes y no se descargan 5 tweets que el lector quizá no llega a ver.
+// Truco importante: widgets.js, al cargarse, procesa por su cuenta TODOS
+// los blockquote.twitter-tweet de la página; para evitarlo, el blockquote
+// se "esconde" con otra clase (tw-diferido / ig-diferido) y solo recupera
+// la clase real justo antes de pedirle al widget que lo procese.
+function cargarEmbedsRedesSiHaceFalta(cuerpoEl) {
+  if (!cuerpoEl) return;
+  const bqs = Array.from(cuerpoEl.querySelectorAll("blockquote.twitter-tweet, blockquote.instagram-media"));
+  if (!bqs.length) return;
+  const oscuro = document.documentElement.getAttribute("data-theme") === "dark";
+  const hayTw = bqs.some((b) => b.classList.contains("twitter-tweet"));
+  const hayIg = bqs.some((b) => b.classList.contains("instagram-media"));
+
+  bqs.forEach((bq) => {
+    const esTw = bq.classList.contains("twitter-tweet");
+    bq.classList.remove(esTw ? "twitter-tweet" : "instagram-media");
+    bq.classList.add(esTw ? "tw-diferido" : "ig-diferido");
+    bq.dataset.embedTipo = esTw ? "tw" : "ig";
+    if (esTw) {
+      // Menos peticiones y un tweet más ligero: sin rastreo, sin hilo de respuestas.
+      bq.setAttribute("data-dnt", "true");
+      bq.setAttribute("data-conversation", "none");
+      bq.setAttribute("data-lang", "es");
+      bq.setAttribute("data-theme", oscuro ? "dark" : "light");
+    }
+    const caja = bq.closest(".article-tweet") || bq.parentElement;
+    if (caja) caja.classList.add("tw-pendiente");
+  });
+
+  // Precarga del script desde ya (no espera a que el embed esté a la vista).
+  if (hayTw) scriptTwitter();
+  if (hayIg) scriptInstagram();
+
+  const procesar = (bq) => {
+    if (bq.dataset.embedProc) return;
+    bq.dataset.embedProc = "1";
+    const caja = bq.closest(".article-tweet") || bq.parentElement || bq;
+    const quitarEsqueleto = () => caja.classList.remove("tw-pendiente");
+    if (bq.dataset.embedTipo === "tw") {
+      scriptTwitter().then(() => {
+        bq.classList.remove("tw-diferido");
+        bq.classList.add("twitter-tweet");
+        if (window.twttr && window.twttr.widgets) {
+          window.twttr.widgets.load(caja).then(quitarEsqueleto, quitarEsqueleto);
+        } else quitarEsqueleto();
+      });
+    } else {
+      scriptInstagram().then(() => {
+        bq.classList.remove("ig-diferido");
+        bq.classList.add("instagram-media");
+        if (window.instgrm && window.instgrm.Embeds) window.instgrm.Embeds.process(caja);
+        quitarEsqueleto();
+      });
+    }
+  };
+
+  if (!("IntersectionObserver" in window)) { bqs.forEach(procesar); return; }
+  const io = new IntersectionObserver((entradas) => {
+    entradas.forEach((e) => {
+      if (e.isIntersecting) { io.unobserve(e.target); procesar(e.target); }
+    });
+  }, { rootMargin: "900px 0px" });
+  bqs.forEach((bq) => io.observe(bq));
+}
+
+// Embed oficial de un tweet o post de Instagram incrustado en el cuerpo
+// de la noticia: mismo blockquote estándar de cada plataforma que
+// inserta el editor (ver crearFilaTweet en admin.js), envuelto en
+// .article-tweet para poder centrarlo y limitarle el ancho sin pelear
+// con el CSS que inyecta cada widget. cargarEmbedsRedesSiHaceFalta() se
+// encarga luego de convertir el blockquote en la tarjeta visual real.
+function tweetEmbedHTML(t) {
+  if (t.tipo === "video") return videoEmbedHTML(t);
+  if (t.plataforma === "instagram") {
+    return `<div class="article-tweet"><blockquote class="instagram-media" data-instgrm-permalink="${escapeHtml(t.url)}" data-instgrm-version="14"></blockquote></div>`;
+  }
+  return `<div class="article-tweet"><blockquote class="twitter-tweet"><a href="${escapeHtml(t.url)}">${escapeHtml(t.url)}</a></blockquote></div>`;
+}
+
+// Vídeo incrustado en el cuerpo de la noticia (tipo:"video" en article.imagenes, ver
+// normalizarImagenes en el worker). Dos orígenes:
+//  - YouTube: no se carga nada de YouTube hasta que la persona pulsa play (miniatura +
+//    botón; al pulsar se sustituye por el iframe de youtube-nocookie con autoplay).
+//    Así la página no descarga el reproductor ni cookies de terceros por defecto.
+//  - Cloudinary: <video> nativo con controles, sin descargar el archivo hasta darle a
+//    play (preload="metadata") y con póster generado desde el primer fotograma.
+function idYoutubeDesdeUrl(url) {
+  const m = String(url || "").match(/[?&]v=([A-Za-z0-9_-]{11})(?:[&#]|$)/);
+  return m ? m[1] : "";
+}
+function videoEmbedHTML(t) {
+  const titulo = t.titulo ? escapeHtml(t.titulo) : "";
+  const pie = titulo ? `<figcaption class="article-video-pie">${titulo}</figcaption>` : "";
+  if (t.plataforma === "youtube") {
+    const id = idYoutubeDesdeUrl(t.url);
+    if (!id) return "";
+    return `<figure class="article-video article-video-youtube">
+      <button type="button" class="article-video-play" data-yt="${id}" data-titulo="${titulo}" aria-label="Reproducir vídeo${titulo ? ": " + titulo : ""}">
+        <img src="https://i.ytimg.com/vi/${id}/hqdefault.jpg" alt="" loading="lazy" decoding="async">
+        <span class="article-video-boton" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span>
+      </button>${pie}</figure>`;
+  }
+  if (t.plataforma === "cloudinary") {
+    const poster = (window.VisorMedia && VisorMedia.posterVideo) ? VisorMedia.posterVideo(t.url, 900) : "";
+    return `<figure class="article-video">
+      <video controls preload="metadata" playsinline src="${escapeHtml(t.url)}"${poster ? ` poster="${escapeHtml(poster)}"` : ""}${titulo ? ` aria-label="${titulo}"` : ""}></video>${pie}</figure>`;
+  }
+  return "";
+}
+// Un único listener para todos los vídeos de YouTube de la página (el cuerpo se vuelve a
+// pintar al cambiar de idioma, así que no se engancha uno por botón).
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest && e.target.closest(".article-video-play[data-yt]");
+  if (!btn) return;
+  const iframe = document.createElement("iframe");
+  iframe.src = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(btn.dataset.yt)}?autoplay=1&rel=0`;
+  iframe.title = btn.dataset.titulo || "Vídeo";
+  iframe.allow = "accelerometer; autoplay; encrypted-media; picture-in-picture; fullscreen";
+  iframe.referrerPolicy = "strict-origin-when-cross-origin";
+  iframe.allowFullscreen = true;
+  btn.replaceWith(iframe);
+});
+
+// Distintos números de fotos por foto en una plantilla de collage (debe
+// coincidir con las clases .collage-<plantilla> de css/style.css).
+const FOTOS_POR_PLANTILLA_COLLAGE = { "2-horizontal": 2, "2-vertical": 2, "3-una-grande": 3, "3-fila": 3, "4-cuadricula": 4 };
+
+const COLLAGE_PLANTILLA_POR_NUM = { 2: "2-horizontal", 3: "3-fila", 4: "4-cuadricula" };
+
+function collageHTML(fotos) {
+  // Antes se pintaban solo las N primeras de la plantilla (slice) y el resto de
+  // fotos del grupo DESAPARECÍA. Ahora la plantilla se ajusta al número de fotos y,
+  // si hay más de 4, se reparten en varios collages: no se pierde ninguna.
+  if (fotos.length > 4) {
+    let html = "";
+    let resto = fotos.slice();
+    while (resto.length > 0) {
+      const toma = resto.length > 4 ? (resto.length - 4 === 1 ? 3 : 4) : resto.length;
+      html += collageHTML(resto.slice(0, toma));
+      resto = resto.slice(toma);
+    }
+    return html;
+  }
+  if (fotos.length === 1) {
+    const f = fotos[0];
+    return `<div class="article-img">${EOF_FOCO.img({ src: cloudinaryOptimizada(f.url, 780, f.credito), alt: altFotoArticulo(f), foco: f.foco, fallback: "" })}${creditoFotoHTML(f)}</div>`;
+  }
+  const pedida = fotos[0].plantilla || "2-horizontal";
+  const plantilla = FOTOS_POR_PLANTILLA_COLLAGE[pedida] === fotos.length ? pedida : (COLLAGE_PLANTILLA_POR_NUM[fotos.length] || pedida);
+  return `
+    <div class="article-collage collage-${plantilla}">
+      ${fotos.map((f) => `
+        <div class="article-collage-foto">${EOF_FOCO.img({ src: cloudinaryOptimizada(f.url, 700, f.credito), alt: altFotoArticulo(f), foco: f.foco, fallback: "" })}${creditoFotoHTML(f)}</div>`).join("")}
+    </div>`;
+}
+
+// Agrupa las fotos de posición "collage" por su id de "grupo" (varias
+// fotos, mismo grupo = un único collage) y las convierte en un único
+// bloque, en el punto del texto marcado por la primera foto del grupo.
+// "resolver" (opcional) calcula ese punto contando los bloques reales del
+// cuerpo (ver construirCuerpoConFotos); sin él se usa trasParrafo tal cual.
+function agruparEnCollages(fotos, resolver) {
+  const grupos = new Map();
+  const orden = [];
+  fotos.forEach((f) => {
+    const clave = f.grupo || "collage-1";
+    if (!grupos.has(clave)) { grupos.set(clave, []); orden.push(clave); }
+    grupos.get(clave).push(f);
+  });
+  return orden.map((clave) => {
+    const fotosGrupo = grupos.get(clave);
+    return { trasParrafo: resolver ? resolver(fotosGrupo[0]) : (fotosGrupo[0].trasParrafo || 1), html: collageHTML(fotosGrupo) };
+  });
+}
+
+function construirCuerpoConFotos(deTexto, cuerpoOriginal) {
+  const personalizadas = deTexto.personalizada || [];
+  const collages = deTexto.collage || [];
+  const inicioSueltas = (deTexto.inicio || []).filter((f) => !f.grupo);
+  const inicioCollages = agruparEnCollages((deTexto.inicio || []).filter((f) => f.grupo));
+  const hayFotosEnTexto = inicioSueltas.length || inicioCollages.length || personalizadas.length || collages.length;
+  if (!hayFotosEnTexto) return cuerpoOriginal;
+
+  const fotoHTML = (f) =>
+    f.esTweet
+      ? tweetEmbedHTML(f)
+      : `<div class="article-img">${EOF_FOCO.img({ src: cloudinaryOptimizada(f.url, 780, f.credito), alt: altFotoArticulo(f), foco: f.foco, fallback: "" })}${creditoFotoHTML(f)}</div>`;
+  // Bloque a insertar al principio de todo: primero las fotos sueltas de
+  // "inicio" (comportamiento clásico), luego los collages marcados como
+  // "inicio" (un collage entero, no fotos sueltas).
+  const bloqueInicio = inicioSueltas.map(fotoHTML).join("") + inicioCollages.map((c) => c.html).join("");
+
+  const wrapTmp = document.createElement("div");
+  wrapTmp.innerHTML = cuerpoOriginal;
+  const elementos = [...wrapTmp.children];
+  const bloques = elementos.map((n) => n.outerHTML);
+
+  // PÁGINA FUSIONADA (varias previas/crónicas del mismo partido): el servidor pone
+  // un <h2 class="fusion-seccion fusion-sN"> al empezar cada sección y marca cada
+  // foto con su sección ("seccion") y su párrafo DENTRO de ella ("trasRel"). Aquí se
+  // localizan esos encabezados contando los bloques reales del HTML ya saneado y se
+  // calcula el punto exacto de cada foto. Así una foto nunca se cuela en otra
+  // sección aunque el saneado, la traducción o el editor hayan cambiado el número
+  // de bloques (antes se usaba un contador global calculado en el servidor).
+  const inicios = [];
+  elementos.forEach((el, i) => {
+    if (el.tagName !== "H2") return;
+    const m = /(?:^|\s)fusion-s(\d+)(?:\s|$)/.exec(el.getAttribute("class") || "");
+    if (m && inicios[Number(m[1])] === undefined) inicios[Number(m[1])] = i;
+  });
+  const hayMarcas = inicios.some((x) => x !== undefined);
+  const finDeSeccion = (k) => {
+    for (let j = k + 1; j < inicios.length; j++) if (inicios[j] !== undefined) return inicios[j];
+    return bloques.length;
+  };
+  const resolver = (f) => {
+    const k = f && f.seccion;
+    if (!hayMarcas || !Number.isInteger(k) || inicios[k] === undefined) return (f && f.trasParrafo) || 1;
+    const ini = inicios[k];
+    const fin = finDeSeccion(k);
+    const nb = Math.max(0, fin - ini - 1);
+    if (f.alFinalSeccion) return fin;
+    if (f.alInicioSeccion) return ini + 1;
+    if (!Number.isFinite(f.trasRel)) return f.trasParrafo || 1;
+    return ini + 1 + (nb > 0 ? Math.min(Math.max(f.trasRel, 1), nb) : 0);
+  };
+  const collagesAgrupados = agruparEnCollages(collages, resolver);
+
+  // Si el contenido no está hecho de bloques normales (caso raro: texto
+  // suelto sin párrafos), no se puede partir con garantías sin arriesgarse
+  // a perder texto; en ese caso las fotos "de texto" se colocan igualmente,
+  // pero antes/después de todo el cuerpo en vez de intercaladas, para no
+  // perder ni una palabra de la noticia.
+  if (bloques.join("").length < cuerpoOriginal.length * 0.9) {
+    const despues = personalizadas.map(fotoHTML).join("") + collagesAgrupados.map((c) => c.html).join("");
+    return bloqueInicio + cuerpoOriginal + despues;
+  }
+  // Las fotos con posición personalizada (y los collages) se insertan
+  // tras el número de párrafo elegido por quien escribe la noticia (1 =
+  // tras el primer bloque). Se agrupan por índice y se insertan de más
+  // al fondo hacia el principio para que los índices de las demás no se
+  // descuadren al ir añadiendo bloques.
+  const porIndice = new Map();
+  const anadirAIndice = (indice, html) => {
+    indice = Math.min(bloques.length, Math.max(1, indice));
+    if (!porIndice.has(indice)) porIndice.set(indice, []);
+    porIndice.get(indice).push(html);
+  };
+  personalizadas.forEach((f) => anadirAIndice(resolver(f), fotoHTML(f)));
+  collagesAgrupados.forEach((c) => anadirAIndice(c.trasParrafo, c.html));
+  [...porIndice.keys()].sort((a, b) => b - a).forEach((indice) => {
+    bloques.splice(indice, 0, porIndice.get(indice).join(""));
+  });
+  if (bloqueInicio) {
+    bloques.splice(0, 0, bloqueInicio);
+  }
+  return bloques.join("");
+}
+
+function textoArticuloEnIdioma(article, idioma) {
+  if (idioma === "es") {
+    return { titulo: article.titulo, subtitulo: article.subtitulo, contenido: article.contenido };
+  }
+  return {
+    titulo: article[`titulo_${idioma}`] || article.titulo,
+    subtitulo: article[`subtitulo_${idioma}`] || article.subtitulo,
+    contenido: article[`contenido_${idioma}`] || article.contenido,
+  };
+}
+
+// Centra el chip del idioma activo dentro de la fila de idiomas (en móvil la
+// fila hace scroll horizontal). Solo mueve el scroll de la propia fila, nunca
+// el de la página.
+function centrarIdiomaActivo() {
+  const fila = document.querySelector(".selector-idioma-noticia");
+  const activo = fila && fila.querySelector(".idioma-noticia-btn.activo");
+  if (!fila || !activo || fila.scrollWidth <= fila.clientWidth) return;
+  const izq = activo.offsetLeft - (fila.clientWidth - activo.offsetWidth) / 2;
+  fila.scrollTo({ left: Math.max(0, izq), behavior: "smooth" });
+}
+
+function selectorIdiomaHTML(article) {
+  // En previsualización no hay "idiomas_disponibles" (no viene de la API
+  // tal cual), así que se calcula igual aquí a partir de los campos.
+  const disponibles = article.idiomas_disponibles || IDIOMAS_NOTICIA
+    .map((i) => i.cod)
+    .filter((cod) => cod === "es" || (article[`titulo_${cod}`] && article[`contenido_${cod}`]));
+
+  const botones = IDIOMAS_NOTICIA.map(({ cod, nombre }) => {
+    const disponible = disponibles.includes(cod);
+    return `<button type="button" class="idioma-noticia-btn${cod === IDIOMA_NOTICIA_ACTUAL ? " activo" : ""}" data-idioma="${cod}" ${disponible ? "" : "disabled"} title="${disponible ? nombre : nombre + ": disponible solo en castellano"}" aria-label="${nombre}"><span class="nombre-idioma">${nombre}</span><span class="cod-idioma" aria-hidden="true">${cod.toUpperCase()}</span></button>`;
+  }).join("");
+
+  return `
+    <div class="selector-idioma-noticia">
+      ${botones}
+    </div>
+    <p class="aviso-idioma-noticia" style="display:none;"></p>
+  `;
+}
+
+function disponiblesDeArticulo(article) {
+  return article.idiomas_disponibles || IDIOMAS_NOTICIA
+    .map((i) => i.cod)
+    .filter((cod) => cod === "es" || (article[`titulo_${cod}`] && article[`contenido_${cod}`]));
+}
+
+// Una misma foto puede subirse dos veces a Cloudinary (p. ej. como portada y
+// otra vez dentro del texto, o una por cada redactor al fusionar previas): son
+// archivos distintos y no se detectan por URL. Aquí se comparan por contenido
+// (hash perceptual dHash 8x8 de una miniatura) y, en orden de aparición
+// (portada primero), se oculta la segunda y siguientes. Si algo falla
+// (sin CORS, no es Cloudinary...) la foto se deja visible.
+const _hashFotoCache = new Map();
+const _hashResuelto = new Map(); // url -> hash ya calculado (consulta síncrona al pintar)
+
+// Huella visual de una foto: dHash 16x16 (256 bits) + rejilla de luminosidad 8x8 +
+// proporción. Dos fotos solo se consideran la misma si coinciden las tres cosas
+// (ver fotosIguales): así se detectan las resubidas (otro archivo, otra compresión)
+// sin confundir dos fotos distintas del mismo partido. Devuelve null si no se puede.
+function hashVisualFoto(src) {
+  if (_hashFotoCache.has(src)) return _hashFotoCache.get(src);
+  const p = new Promise((resolve) => {
+    const m = String(src).match(/^(https?:\/\/res\.cloudinary\.com\/[^/]+\/image\/upload\/)(?:[^/]*,[^/]*\/|[a-z]{1,3}_[^/]+\/)*(v\d+\/.+)$/i);
+    if (!m) return resolve(null);
+    // c_fit (no c_scale) para conservar la proporción real de la foto.
+    const miniatura = m[1] + "f_jpg,q_auto,w_136,h_128,c_fit/" + m[2].replace(/\.[a-z0-9]{2,4}$/i, "") + ".jpg";
+    const im = new Image();
+    im.crossOrigin = "anonymous";
+    im.onload = () => {
+      try {
+        const c = document.createElement("canvas");
+        c.width = 17; c.height = 16;
+        const ctx = c.getContext("2d");
+        ctx.drawImage(im, 0, 0, 17, 16);
+        const d = ctx.getImageData(0, 0, 17, 16).data;
+        const g = (x, y) => { const i = (y * 17 + x) * 4; return d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114; };
+        const bits = [];
+        for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) bits.push(g(x, y) > g(x + 1, y) ? 1 : 0);
+        const unos = bits.reduce((t, v) => t + v, 0);
+        // Foto casi lisa (fondo negro, cartel de un solo color...): el hash no es
+        // fiable y todas saldrían "iguales". Se deja siempre visible.
+        if (unos < 38 || unos > 218) return resolve(null);
+        const lum = [];
+        for (let by = 0; by < 8; by++) for (let bx = 0; bx < 8; bx++) {
+          lum.push((g(bx * 2, by * 2) + g(bx * 2 + 1, by * 2) + g(bx * 2, by * 2 + 1) + g(bx * 2 + 1, by * 2 + 1)) / 4);
+        }
+        const media = lum.reduce((t, v) => t + v, 0) / 64;
+        const ratio = im.naturalWidth && im.naturalHeight ? im.naturalWidth / im.naturalHeight : 0;
+        resolve({ bits, lum: lum.map((v) => v - media), ratio });
+      } catch (e) { resolve(null); }
+    };
+    im.onerror = () => resolve(null);
+    im.src = miniatura;
+  });
+  _hashFotoCache.set(src, p);
+  p.then((v) => { _hashResuelto.set(src, v); });
+  return p;
+}
+
+// Misma foto = proporción casi igual (±8%) Y dHash casi igual (<= 20 de 256 bits)
+// Y luminosidad por zonas casi igual (diferencia media <= 14 de 255). Ante la duda
+// se MUESTRAN las dos: mejor una repetida que perder una foto distinta.
+function fotosIguales(a, b) {
+  if (!a || !b) return false;
+  if (a.ratio && b.ratio && Math.abs(a.ratio - b.ratio) / Math.max(a.ratio, b.ratio) > 0.08) return false;
+  let dif = 0;
+  for (let k = 0; k < 256; k++) { if (a.bits[k] !== b.bits[k] && ++dif > 20) return false; }
+  let suma = 0;
+  for (let k = 0; k < 64; k++) suma += Math.abs(a.lum[k] - b.lum[k]);
+  return suma / 64 <= 14;
+}
+
+// Calcula de antemano las huellas de todas las fotos de la noticia (con un tope de
+// tiempo) para poder quitar los duplicados ANTES de pintar, también los de la
+// galería, que la pasada posterior sobre el DOM no alcanzaba. Solo en páginas
+// fusionadas o con muchas fotos, que es donde se duplican.
+async function precalentarHashesFotos(article, limiteMs = 1400) {
+  try {
+    const urls = new Set();
+    const add = (u) => { if (typeof u === "string" && /res\.cloudinary\.com/i.test(u)) urls.add(u); };
+    add(article.imagen_url);
+    let imgs = article.imagenes;
+    if (typeof imgs === "string") { try { imgs = JSON.parse(imgs); } catch { imgs = []; } }
+    (Array.isArray(imgs) ? imgs : []).forEach((f) => { if (typeof f === "string") add(f); else if (f && f.tipo !== "tweet" && f.tipo !== "video") add(f.url); });
+    (Array.isArray(article.galeria_fotografo) ? article.galeria_fotografo : []).forEach((f) => add(f && f.url));
+    if (urls.size < 2 || (!article.fusion && urls.size < 4)) return;
+    await Promise.race([Promise.all([...urls].slice(0, 60).map(hashVisualFoto)), new Promise((r) => setTimeout(r, limiteMs))]);
+  } catch (e) { /* no crítico */ }
+}
+
+// Detector de repetidas por contenido sobre las huellas ya calculadas (síncrono).
+function crearDedupPorContenido() {
+  const vistas = [];
+  return {
+    registrar(url) { const h = _hashResuelto.get(url); if (h) vistas.push(h); },
+    repetida(url) {
+      const h = _hashResuelto.get(url);
+      if (!h) return false;
+      if (vistas.some((v) => fotosIguales(v, h))) return true;
+      vistas.push(h);
+      return false;
+    },
+  };
+}
+
+// Si al quitar repetidas un collage se queda con una sola foto, deja de ser collage
+// (una foto suelta en la misma posición) en vez de pintar un collage a medias.
+function repararCollagesTrasDedupe(fotos) {
+  const cuenta = new Map();
+  fotos.forEach((f) => { if (f.grupo) cuenta.set(f.grupo, (cuenta.get(f.grupo) || 0) + 1); });
+  return fotos.map((f) => {
+    if (!f.grupo || cuenta.get(f.grupo) > 1) return f;
+    const { grupo, plantilla, ...resto } = f;
+    return f.posicion === "collage" ? { ...resto, posicion: "personalizada" } : resto;
+  });
+}
+
+async function ocultarFotosRepetidas(raiz) {
+  try {
+    const imgs = [...(raiz || document).querySelectorAll(".article-img img, .article-collage-foto img")];
+    const hashes = await Promise.all(imgs.map((im) => hashVisualFoto(im.getAttribute("src") || "")));
+    const vistas = [];
+    imgs.forEach((im, i) => {
+      const h = hashes[i];
+      if (!h) return;
+      if (vistas.some((v) => fotosIguales(v, h))) {
+        const caja = im.closest(".article-img, .article-collage-foto");
+        if (caja) { caja.style.display = "none"; caja.setAttribute("data-foto-repetida", "1"); }
+      } else vistas.push(h);
+    });
+  } catch (e) { /* no crítico */ }
+}
+
+function aplicarIdiomaNoticia(idioma, { actualizarUrl = true } = {}) {
+  if (!ARTICULO_ACTUAL) return;
+  IDIOMA_NOTICIA_ACTUAL = idioma;
+  const disponibles = disponiblesDeArticulo(ARTICULO_ACTUAL);
+  const disponible = disponibles.includes(idioma);
+  const idiomaAMostrar = disponible ? idioma : "es";
+  // Idioma REALMENTE mostrado (con el fallback a "es" ya aplicado si el
+  // pedido no estaba disponible), para el tracking de "idiomas más
+  // usados al leer una noticia" del panel de analíticas -- distinto de
+  // IDIOMA_NOTICIA_ACTUAL, que guarda el pedido tal cual (para que el
+  // selector marque el botón correcto aunque muestre el aviso de "no
+  // disponible, se muestra en castellano").
+  window.IDIOMA_NOTICIA_MOSTRADO = idiomaAMostrar;
+  if (typeof window.actualizarIdiomaTrackingLectura === "function") {
+    window.actualizarIdiomaTrackingLectura(idiomaAMostrar);
+  }
+  const textos = textoArticuloEnIdioma(ARTICULO_ACTUAL, idiomaAMostrar);
+
+  const tituloEl = document.querySelector(".article-header h1");
+  if (tituloEl) tituloEl.textContent = textos.titulo;
+  const subtituloEl = document.querySelector(".article-header .subtitulo");
+  if (subtituloEl) subtituloEl.textContent = textos.subtitulo || "";
+  const cuerpoEl = document.querySelector(".article-body");
+  if (cuerpoEl) {
+    // Las fotos de posición (inicio/personalizada) son las mismas en todos
+    // los idiomas -- solo cambia el texto -- así que se recalculan aquí
+    // igual que en el pintado inicial, para que no desaparezcan al
+    // cambiar de idioma.
+    const deTexto = FOTOS_DE_TEXTO_ACTUAL || { inicio: [], personalizada: [] };
+    _altFotoContador = 1;
+    cuerpoEl.innerHTML = construirCuerpoConFotos(deTexto, sanearHtmlContenido(textos.contenido || ""));
+    arreglarEnlacesCuerpo(cuerpoEl);
+    cargarEmbedsRedesSiHaceFalta(cuerpoEl);
+    ocultarFotosRepetidas(document.getElementById("contenidoArticulo"));
+  }
+
+  document.querySelectorAll(".idioma-noticia-btn").forEach((b) => {
+    b.classList.toggle("activo", b.dataset.idioma === idioma);
+  });
+  centrarIdiomaActivo();
+
+  const aviso = document.querySelector(".aviso-idioma-noticia");
+  if (aviso) {
+    if (!disponible) {
+      const nombreIdioma = (IDIOMAS_NOTICIA.find((i) => i.cod === idioma) || {}).nombre || idioma;
+      const nombresDisponibles = disponibles
+        .map((cod) => (IDIOMAS_NOTICIA.find((i) => i.cod === cod) || {}).nombre)
+        .filter(Boolean)
+        .join(", ");
+      aviso.textContent = `Esta noticia no está disponible en ${nombreIdioma}. Se muestra en castellano. Disponible en: ${nombresDisponibles}.`;
+      aviso.style.display = "block";
+    } else {
+      aviso.textContent = "";
+      aviso.style.display = "none";
+    }
+  }
+
+  // <html lang>, title, meta description, canonical, hreflang, og:locale
+  // y JSON-LD se recalculan enteros cada vez que cambia el idioma
+  // mostrado, no solo el título como antes.
+  if (!ES_PREVIEW) {
+    fijarSeoNoticia({
+      article: ARTICULO_ACTUAL,
+      idiomaActual: idiomaAMostrar,
+      disponibles,
+      textos,
+    });
+
+    // Refleja el idioma elegido en la URL (?lang=xx) para que la etiqueta
+    // hreflang de esa variante y la URL visible coincidan, sin recargar
+    // la página ni añadir una entrada nueva al historial por cada clic.
+    if (actualizarUrl) {
+      const params = new URLSearchParams(location.search);
+      if (idioma === "es") params.delete("lang");
+      else params.set("lang", idioma);
+      const nuevaUrl = `${location.pathname}?${params.toString()}`.replace(/\?$/, "");
+      history.replaceState(null, "", nuevaUrl);
+    }
+  }
+}
+
+// Pinta "· Editado el ..." junto a la fecha de publicación cuando la
+// noticia se ha actualizado después de publicarse. Se compara contra un
+// margen de 2 minutos (no una simple desigualdad de string) porque el
+// propio guardado inicial de la noticia en el backend puede dejar
+// updated_at unos segundos por delante de fecha_publicacion sin que
+// haya habido ninguna edición real después de publicar; sin ese margen,
+// toda noticia mostraría "editado" desde el mismo momento de publicarse.
+// Firma de la noticia. Con 1-2 autores es la de siempre (autor y coautor);
+// una previa/crónica fusionada con 3 o más trae la lista completa en
+// "firmantes" (ver fusionarGrupoDePartido en el Worker).
+function firmaAutoresHTML(article) {
+  let firmantes;
+  if (Array.isArray(article.firmantes) && article.firmantes.length > 2) {
+    firmantes = article.firmantes;
+  } else {
+    if (!article.autor_nombre) return "";
+    firmantes = [
+      { id: article.autor_id, nombre: article.autor_nombre },
+      article.coautor_nombre ? { id: article.coautor_id, nombre: article.coautor_nombre } : null,
+    ].filter(Boolean);
+  }
+  if (!firmantes.length) return "";
+  const enlace = (f) => (f.id ? `<a class="autor-link" href="/autor?id=${f.id}">${escapeHtml(f.nombre)}</a>` : escapeHtml(f.nombre));
+  const partes = firmantes.map(enlace);
+  const lista = partes.length === 1 ? partes[0] : partes.slice(0, -1).join(", ") + " y " + partes[partes.length - 1];
+  return " · Por " + lista;
+}
+
+function fechaUltimaEdicionHTML(article) {
+  if (!article.updated_at || !article.fecha_publicacion) return "";
+  const publicada = new Date(String(article.fecha_publicacion).replace(" ", "T") + (/Z$|[+-]\d\d:\d\d$/.test(article.fecha_publicacion) ? "" : "Z"));
+  const editada = new Date(String(article.updated_at).replace(" ", "T") + (/Z$|[+-]\d\d:\d\d$/.test(article.updated_at) ? "" : "Z"));
+  if (isNaN(publicada) || isNaN(editada)) return "";
+  if (editada.getTime() - publicada.getTime() < 2 * 60 * 1000) return "";
+  return ` · <span class="fecha-editado">Editado el ${formatFechaConHora(article.updated_at)}</span>`;
+}
+
+// ---------- Noticias similares ----------
+// Sección al final de la noticia con otras noticias relacionadas, para
+// dar continuidad de lectura. "Relacionada" se define primero por club
+// (si la noticia tiene uno asignado, es el criterio más específico:
+// otras noticias del mismo equipo) y si no hay suficientes, se completa
+// con noticias de la misma categoría. Se piden de más (NOTICIAS_SIMILARES_POOL)
+// y se guardan en NOTICIAS_SIMILARES_POOL para poder "barajar" un
+// subconjunto distinto cada vez que el lector pulsa "Ver otras" sin
+// tener que volver a pedir nada al servidor.
+let NOTICIAS_SIMILARES_POOL = [];
+let NOTICIAS_SIMILARES_MOSTRADAS = [];
+
+async function cargarNoticiasSimilares(article) {
+  const cont = document.getElementById("noticiasSimilares");
+  if (!cont) return;
+  try {
+    const peticiones = [];
+    if (article.club) {
+      // "club" puede tener 1 o 2 nombres (ver parsearClubArticulo en
+      // config.js); se pide un lote de relacionadas por cada club para
+      // que una crónica con 2 equipos también traiga noticias del
+      // segundo, no solo del primero.
+      parsearClubArticulo(article.club).forEach((club) => {
+        peticiones.push(apiFetch(`/api/articles?club=${encodeURIComponent(club)}&limit=10`).then(r => r.json()).catch(() => ({ articles: [] })));
+      });
+    }
+    peticiones.push(apiFetch(`/api/articles?categoria=${encodeURIComponent(article.categoria)}&limit=10`).then(r => r.json()).catch(() => ({ articles: [] })));
+    const resultados = await Promise.all(peticiones);
+
+    // Se juntan ambas listas (club primero, más específica) quitando
+    // duplicados y la propia noticia que se está leyendo.
+    const vistos = new Set([article.id]);
+    const pool = [];
+    resultados.forEach((r) => {
+      (r.articles || []).forEach((a) => {
+        if (vistos.has(a.id)) return;
+        vistos.add(a.id);
+        pool.push(a);
+      });
+    });
+
+    if (!pool.length) {
+      cont.innerHTML = "";
+      document.dispatchEvent(new CustomEvent("eof:similares", { detail: { pool: [] } }));
+      return;
+    }
+    NOTICIAS_SIMILARES_POOL = pool;
+    pintarNoticiasSimilares();
+    document.dispatchEvent(new CustomEvent("eof:similares", { detail: { pool: pool } }));
+    // ItemList con las relacionadas ayuda a Google a entender el enlazado
+    // interno alrededor de esta noticia (no es tan crítico como el
+    // NewsArticle/BreadcrumbList, pero es gratis tenerlo ya con los datos
+    // que se acaban de pedir). Se limita a las primeras 6 del pool, no
+    // solo a las 3 que se ven ahora mismo, para no tener que
+    // reconstruirlo cada vez que se pulsa "Ver otras".
+    _seoInsertarJsonLd("seo-jsonld-relacionadas", {
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      "name": "Noticias relacionadas",
+      "itemListElement": pool.slice(0, 6).map((a, i) => ({
+        "@type": "ListItem",
+        "position": i + 1,
+        "url": _seoUrlAbsoluta(urlNoticia(a.categoria, a.slug)),
+      })),
+    });
+  } catch (err) {
+    cont.innerHTML = "";
+  }
+}
+
+// Elige hasta 3 noticias al azar del pool (sin repetir las que ya se
+// estén mostrando, mientras el pool dé para ello) y las pinta. Se llama
+// tanto al cargar la página como cada vez que se pulsa "Ver otras".
+function pintarNoticiasSimilares() {
+  const cont = document.getElementById("noticiasSimilares");
+  if (!cont || !NOTICIAS_SIMILARES_POOL.length) return;
+
+  const disponibles = NOTICIAS_SIMILARES_POOL.filter((a) => !NOTICIAS_SIMILARES_MOSTRADAS.includes(a.id));
+  const candidatas = disponibles.length >= 3 ? disponibles : NOTICIAS_SIMILARES_POOL;
+  const elegidas = [...candidatas].sort(() => Math.random() - 0.5).slice(0, 3);
+  NOTICIAS_SIMILARES_MOSTRADAS = elegidas.map((a) => a.id);
+
+  cont.innerHTML = `
+    <div class="similares-cabecera">
+      <span class="similares-kicker">Sigue leyendo</span>
+      <h2 class="similares-titulo">Noticias similares</h2>
+    </div>
+    <div class="grid-noticias grid-similares">
+      ${elegidas.map(cardSimilarHTML).join("")}
+    </div>`;
+}
+
+function cardSimilarHTML(a, i) {
+  // Misma lógica que las tarjetas de portada (js/foco.js): el foco es el de
+  // la foto que realmente se muestra, también cuando sale del collage.
+  const portada = EOF_FOCO.portadaDeArticulo(a);
+  const img = portada.url || "img/default.jpg";
+  return `
+    <a class="sim-card" style="--i:${i || 0}" data-art-id="${Number(a.id) || ''}" href="${urlNoticia(a.categoria, a.slug)}">
+      <span class="sim-img">
+        ${EOF_FOCO.img({ src: img, alt: a.titulo, foco: portada.foco })}
+        <span class="sim-velo" aria-hidden="true"></span>
+      </span>
+      <span class="sim-cuerpo">
+        ${contextoNoticiaHTML(a, { variante: "card" })}
+        <h3>${escapeHtml(a.titulo)}</h3>
+        <p>${escapeHtml(resumText(a.subtitulo || a.contenido, 110))}</p>
+        <span class="sim-pie">
+          <span class="sim-fecha">${formatFecha(a.fecha_publicacion)}</span>
+          <span class="sim-leer">Leer <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+        </span>
+      </span>
+    </a>`;
+}
+
+// Activa/inicializa la barra de progreso de lectura una sola vez (aunque
+// renderizaArticulo() se llame varias veces, p. ej. al recibir una
+// actualización en vivo por BroadcastChannel en modo preview). Calcula el
+// % en base al propio <main id="contenidoArticulo">, no a la página
+// entera, para que el progreso llegue a 100% justo al terminar el
+// artículo y no se quede corto por el footer/comentarios de debajo.
+function iniciarBarraProgresoLectura() {
+  const barra = document.getElementById("barraProgresoLectura");
+  const relleno = document.getElementById("barraProgresoLecturaRelleno");
+  // Solo el cuerpo de texto del artículo (".article-body"): ni la
+  // cabecera (foto/título/meta) ni lo que va después (galería final,
+  // tweets sueltos, encuesta, comentarios, "más noticias"...) cuentan
+  // para el progreso -- la barra debe llegar al 100% justo al acabar de
+  // leer el texto, no al llegar al final de toda la página.
+  const cuerpo = document.querySelector(".article-body");
+  if (!barra || !relleno || !cuerpo) return;
+  barra.classList.add("activa");
+
+  let actualizarProgramado = false;
+  function actualizar() {
+    actualizarProgramado = false;
+    // Posición real del cuerpo en el documento (getBoundingClientRect en
+    // vez de offsetTop, que depende del ancestro posicionado) y altura de
+    // ventana visible estable en móvil (clientHeight no salta cuando la
+    // barra de direcciones se oculta/muestra, a diferencia de innerHeight).
+    const scrollY = Math.max(0, window.scrollY || window.pageYOffset || 0);
+    const alturaVentana = document.documentElement.clientHeight || window.innerHeight;
+    const inicio = cuerpo.getBoundingClientRect().top + scrollY;
+    const alturaCuerpo = cuerpo.offsetHeight;
+    const finLectura = inicio + alturaCuerpo - alturaVentana;
+    const recorrido = scrollY - inicio;
+    let porcentaje = finLectura > inicio ? (recorrido / (finLectura - inicio)) * 100 : 100;
+    // Abajo del todo de la página (también con el rebote/overscroll de iOS)
+    // la barra siempre queda completa, nunca a medias.
+    const alFinalDePagina = scrollY + alturaVentana >= document.documentElement.scrollHeight - 2;
+    if (alFinalDePagina && scrollY > inicio) porcentaje = 100;
+    porcentaje = Math.max(0, Math.min(100, Math.round(porcentaje)));
+    relleno.style.width = porcentaje + "%";
+  }
+  function pedirActualizacion() {
+    if (actualizarProgramado) return;
+    actualizarProgramado = true;
+    requestAnimationFrame(actualizar);
+  }
+
+  // Evita reenganchar los listeners globales si ya se había iniciado
+  // antes (caso preview con varias actualizaciones por BroadcastChannel).
+  if (!window._barraProgresoLecturaListo) {
+    window.addEventListener("scroll", pedirActualizacion, { passive: true });
+    window.addEventListener("resize", pedirActualizacion, { passive: true });
+    window._barraProgresoLecturaListo = true;
+  }
+
+  // Las fotos DENTRO del cuerpo cargan en lazy y pueden cambiar su altura
+  // real bastante después del primer cálculo: se recalcula al ir
+  // terminando de cargar cada una para que la barra no se quede corta o
+  // llegue al 100% antes de tiempo. Las fotos de la galería final quedan
+  // fuera a propósito (no forman parte de ".article-body").
+  cuerpo.querySelectorAll("img").forEach((img) => {
+    if (img.complete) return;
+    img.addEventListener("load", pedirActualizacion, { once: true });
+  });
+
+  actualizar();
+}
+
+function renderizaArticulo(article) {
+  const cont = document.getElementById("contenidoArticulo");
+  ARTICULO_ACTUAL = article;
+  _altFotoContador = 1;
+  // El resto de páginas del sitio marcan en el <body> a qué sección del
+  // menú superior pertenecen (data-page="calendario", "inicio"...) y
+  // renderHeader() usa justo ese atributo para resaltar el ítem activo
+  // (fondo celeste + borde inferior). noticia.html es la única página
+  // que no lo llevaba fijo en el HTML porque su sección depende de la
+  // categoría del artículo, que no se conoce hasta que llega de la API:
+  // por eso el menú se veía "plano", sin nada resaltado, a diferencia
+  // del resto de la web. Se fija aquí en cuanto se conoce la categoría
+  // y se repinta el header para que el resaltado se aplique.
+  if (article.categoria) {
+    document.body.dataset.page = article.categoria;
+    const headerEl = document.getElementById("site-header");
+    if (headerEl && typeof renderHeader === "function") {
+      headerEl.innerHTML = renderHeader();
+      if (typeof pintarFechaHoy === "function") pintarFechaHoy();
+      if (typeof reengancharMenu === "function") reengancharMenu();
+      if (typeof inicializarBusquedaEnVivo === "function") inicializarBusquedaEnVivo();
+    }
+  }
+  // Si se entra con ?lang=xx (por ejemplo desde un resultado de búsqueda
+  // que apuntaba a la variante hreflang de ese idioma), se respeta como
+  // idioma inicial; si no está disponible, aplicarIdiomaNoticia hará el
+  // fallback a castellano igualmente.
+  const idiomaUrl = new URLSearchParams(location.search).get("lang");
+  // Si no hay ?lang= en la URL, se usa el idioma que el lector haya
+  // preestablecido en sus preferencias (por defecto castellano).
+  let idiomaPreferido = "es";
+  try { idiomaPreferido = (window.EOFPrefs && window.EOFPrefs.leer().idioma) || "es"; } catch { idiomaPreferido = "es"; }
+  // Si el idioma de las preferencias NO está traducido en esta noticia, se abre
+  // directamente en el idioma en que está escrita (castellano), con ese idioma
+  // marcado en el selector y sin aviso de "no disponible": el lector no ha
+  // pedido nada en esa noticia, solo tiene una preferencia general.
+  const disponiblesInicial = disponiblesDeArticulo(article);
+  IDIOMA_NOTICIA_ACTUAL = (idiomaUrl && IDIOMAS_NOTICIA.some((i) => i.cod === idiomaUrl))
+    ? idiomaUrl
+    : (disponiblesInicial.includes(idiomaPreferido) ? idiomaPreferido : "es");
+  try {
+
+    // Fotos: cada una (salvo la portada, que siempre se muestra arriba del
+    // todo) lleva guardada la posición donde debe aparecer dentro de la
+    // noticia ("inicio"/"medio"/"final" del texto, o "galeria" al final)
+    // y el punto que no se debe recortar nunca ("foco"). Se admite también
+    // el formato antiguo (solo URLs, sin posición ni foco) para las
+    // noticias guardadas antes de tener este control.
+    const normalizarImagen = (img) =>
+      typeof img === "string" ? { url: img, posicion: "galeria", foco: "50% 50%" } : img;
+    // Tras fusionar noticias el array puede llegar como texto JSON, con huecos
+    // (null) o con entradas sin URL: se sanea para que una sola entrada rara no
+    // rompa el pintado de TODA la noticia ni haga desaparecer el resto de fotos.
+    let imagenesBrutas = article.imagenes;
+    if (typeof imagenesBrutas === "string") { try { imagenesBrutas = JSON.parse(imagenesBrutas); } catch { imagenesBrutas = []; } }
+    const imagenesArticulo = (Array.isArray(imagenesBrutas) ? imagenesBrutas : [])
+      .filter((v) => v && (typeof v === "string" ? v.trim() : (v.url || v.tipo === "tweet")))
+      .map(normalizarImagen);
+    // Los tweets incrustados viven en el mismo array que las fotos (ver
+    // normalizarImagenes en el worker), marcados con tipo:"tweet"; se
+    // separan aquí para no tratarlos como una foto más (no tienen foco,
+    // no entran en collages ni en la galería visual de fotos).
+    const tweetsArticulo = imagenesArticulo.filter((v) => v && (v.tipo === "tweet" || v.tipo === "video"));
+    // Clave para saber si dos URLs son la misma foto de Cloudinary aunque
+    // cambie la transformación (w_900, f_auto...), la versión (v123) o la
+    // query string (misma lógica que claveImagenFusion del Worker).
+    const claveFoto = (url) => {
+      const u = String(url == null ? "" : url).trim();
+      if (!u) return "";
+      const limpia = u.split(/[?#]/)[0];
+      const m = limpia.match(/^https?:\/\/res\.cloudinary\.com\/([^/]+)\/(?:image|video)\/upload\/(.+)$/i);
+      if (!m) return limpia.replace(/^http:/i, "https:");
+      const partes = m[2].split("/");
+      // Se quitan solo las transformaciones (w_900, f_auto,q_auto...) y la versión
+      // (v123). Si hay versión, TODO lo anterior es transformación; si no, solo los
+      // tramos con coma o con parámetros conocidos de Cloudinary. Antes también se
+      // recortaban carpetas tipo "eof_cronicas/", y dos fotos distintas con el mismo
+      // nombre de archivo en carpetas distintas contaban como la misma y se perdía una.
+      const iVer = partes.findIndex((x) => /^v\d+$/.test(x));
+      if (iVer > -1 && iVer < partes.length - 1) partes.splice(0, iVer + 1);
+      else while (partes.length > 1 && (partes[0].includes(",") || /^(?:w|h|c|f|q|g|ar|dpr|e|a|b|bo|co|o|r|x|y|z|fl|l|t|u|e|pg)_[^/]+$/i.test(partes[0]))) partes.shift();
+      return m[1] + "/" + partes.join("/").replace(/\.[a-z0-9]{2,4}$/i, "");
+    };
+    // Una misma foto no debe salir dos veces (p. ej. al fusionar previas o
+    // crónicas del mismo partido): se queda la primera aparición.
+    const clavesVistas = new Set();
+    const galeria = imagenesArticulo.filter((v) => {
+      if (v && (v.tipo === "tweet" || v.tipo === "video")) return false;
+      const k = claveFoto(v && v.url);
+      if (!k) return true;
+      if (clavesVistas.has(k)) return false;
+      clavesVistas.add(k);
+      return true;
+    });
+    const portadaUrl = article.imagen_url || (galeria[0] && galeria[0].url) || "";
+
+    // La portada siempre existe como foto (tarjetas, hero por defecto...) y
+    // debe mostrarse siempre como la foto grande de cabecera, arriba del
+    // todo. Si no aparece ya en el array con una posición propia, se añade
+    // como "cabecera" para no perderla (fallback antiguo). Pero si SÍ
+    // aparece en el array y su posición es "galeria" (el valor por defecto
+    // al subir una foto, o el que arrastran noticias/collages antiguos),
+    // antes se dejaba tal cual: como esa foto ya "estaba en el array", no
+    // se la marcaba como cabecera, así que fotoHTML.posicion seguía siendo
+    // "galeria" y la portada acababa mezclada dentro de la galería inferior
+    // (posiblemente MÁS DE UNA vez si además de portada era la primera
+    // galeria[0]) en vez de destacada arriba, y la cabecera se quedaba
+    // vacía -aunque la noticia sí tuviera fotos guardadas, arriba no se
+    // veía ninguna-. Se reescribe aquí su posición a "cabecera" (sin
+    // moverla de sitio en el array, solo cambiar cómo se clasifica más
+    // abajo) para que la portada sea SIEMPRE la foto de cabecera, tenga la
+    // posición que tenga guardada, salvo que el redactor la haya puesto a
+    // propósito dentro del texto ("inicio"/"personalizada"), caso en el
+    // que ya tiene sentido propio ahí y no se toca.
+    // Página FUSIONADA (previa/crónica de varios redactores): la portada ya sale
+    // dentro del contenido de una de las secciones, así que NO se repite arriba del
+    // todo (debajo del selector de idioma). Solo se pone en la cabecera si no
+    // aparece en ningún otro sitio de la página.
+    const esFusion = !!article.fusion;
+    const kPortada = claveFoto(portadaUrl);
+    let fotos = galeria.map((f) => {
+      if (esFusion) return f;
+      if (f.url === portadaUrl && f.posicion !== "inicio" && f.posicion !== "personalizada") {
+        return { ...f, posicion: "cabecera" };
+      }
+      return f;
+    });
+    if (esFusion) {
+      // Una "cabecera" que ya está en otra posición de la página sobra.
+      fotos = fotos.filter((f) => !(f.posicion === "cabecera" && fotos.some((g) => g !== f && g.posicion !== "cabecera" && claveFoto(g.url) === claveFoto(f.url))));
+    } else if (portadaUrl && !fotos.some((f) => f.url === portadaUrl)) {
+      fotos = [{ url: portadaUrl, posicion: "cabecera", foco: "50% 50%" }, ...fotos];
+    }
+
+    // Repetidas por CONTENIDO (la misma foto subida dos veces por redactores
+    // distintos es otro archivo y la comparación por URL no la ve). Se conserva
+    // la de más peso en la página: portada > inicio > texto > collage > galería >
+    // galería del fotógrafo. Solo actúa con huellas ya calculadas (precalentarHashesFotos).
+    const dupContenido = crearDedupPorContenido();
+    if (!esFusion) dupContenido.registrar(portadaUrl);
+    {
+      // En páginas fusionadas la cabecera es la de MENOS peso: si la misma foto está
+      // dentro de una sección, se conserva la de la sección y se quita la de arriba.
+      const rango = { cabecera: esFusion ? 5 : 0, inicio: 1, personalizada: 2, medio: 2, final: 2, collage: 3, galeria: 4 };
+      const quitar = new Set();
+      fotos.map((f, i) => ({ f, i }))
+        .sort((a, b) => ((rango[a.f.posicion] ?? 4) - (rango[b.f.posicion] ?? 4)) || (a.i - b.i))
+        .forEach(({ f }) => { if ((esFusion || f.url !== portadaUrl) && dupContenido.repetida(f.url)) quitar.add(f); });
+      if (quitar.size) fotos = repararCollagesTrasDedupe(fotos.filter((f) => !quitar.has(f)));
+    }
+    // Fusionada y la portada no está en ninguna parte (ni por URL ni por contenido): arriba.
+    if (esFusion && portadaUrl && !fotos.some((f) => claveFoto(f.url) === kPortada) && !dupContenido.repetida(portadaUrl)) {
+      fotos = [{ url: portadaUrl, posicion: "cabecera", foco: "50% 50%" }, ...fotos];
+    }
+
+    const fotoHTML = (f) =>
+      `<div class="article-img">${EOF_FOCO.img({ src: f.url, alt: article.titulo, foco: f.foco, fallback: "" })}</div>`;
+
+    // Noticia con MARCADOR de partido (resultado vinculado): no puede haber
+    // ninguna foto antes del marcador. La(s) foto(s) de cabecera que irían
+    // arriba pasan a la galería final, al principio de ella, con su crédito.
+    // Sin marcador todo sigue igual (foto grande arriba).
+    if (article.resultado) {
+      const aGaleria = fotos
+        .filter((f) => f.posicion === "cabecera")
+        .map((f) => { const { grupo, ...resto } = f; return { ...resto, posicion: "galeria" }; });
+      if (aGaleria.length) {
+        const galeriaPrevia = fotos.filter((f) => f.posicion === "galeria");
+        const otras = fotos.filter((f) => f.posicion !== "cabecera" && f.posicion !== "galeria");
+        fotos = [...aGaleria, ...galeriaPrevia, ...otras];
+      }
+    }
+
+    const cabecera = fotos.filter((f) => f.posicion === "cabecera");
+    const deTexto = { inicio: [], personalizada: [], collage: [] };
+    fotos.forEach((f) => {
+      // Las noticias antiguas guardadas con "medio" o "final" se siguen
+      // mostrando dentro del texto, tratándolas como personalizadas.
+      const posicion = (f.posicion === "medio" || f.posicion === "final") ? "personalizada" : f.posicion;
+      if (deTexto[posicion]) deTexto[posicion].push(f);
+    });
+    const deGaleriaTodas = fotos.filter((f) => f.posicion === "galeria");
+    const deGaleriaCollages = agruparEnCollages(deGaleriaTodas.filter((f) => f.grupo));
+    // Fase 14: además de las fotos subidas junto con la noticia, se añaden
+    // aquí (al final) las fotos del fotógrafo vinculadas vía galería de
+    // partido o banco de media (article_media, ver Fase 12/13). Llevan su
+    // propio crédito (el autor real de la foto en la tabla media), así
+    // que se muestran en el mismo carrusel de galería en vez de crear un
+    // bloque visual aparte.
+    const clavesPintadas = new Set(fotos.map((f) => claveFoto(f.url)).concat([claveFoto(portadaUrl)]).filter(Boolean));
+    const galeriaFotografo = (Array.isArray(article.galeria_fotografo) ? article.galeria_fotografo : []).filter((f) => {
+      const k = claveFoto(f && f.url);
+      if (!k) return true;
+      if (clavesPintadas.has(k)) return false;
+      clavesPintadas.add(k);
+      return !(f && f.url && dupContenido.repetida(f.url));
+    });
+    const deGaleria = deGaleriaTodas.filter((f) => !f.grupo).concat(galeriaFotografo);
+
+    // Tweets: mismo esquema de posición que las fotos ("inicio"/
+    // "personalizada" se intercalan en el texto; "galeria" para un tweet
+    // no significa carrusel de fotos, sino "al final del cuerpo", justo
+    // antes de la galería de imágenes si la hay.
+    const tweetsDeTexto = { inicio: [], personalizada: [] };
+    const tweetsAlFinal = [];
+    tweetsArticulo.forEach((t) => {
+      if (tweetsDeTexto[t.posicion]) tweetsDeTexto[t.posicion].push(t);
+      else tweetsAlFinal.push(t);
+    });
+    deTexto.inicio = (deTexto.inicio || []).concat(tweetsDeTexto.inicio.map((t) => ({ ...t, esTweet: true })));
+    deTexto.personalizada = (deTexto.personalizada || []).concat(tweetsDeTexto.personalizada.map((t) => ({ ...t, esTweet: true })));
+
+    // Se guarda para poder recalcular el cuerpo al cambiar de idioma (las
+    // fotos y tweets de posición son los mismos en todos los idiomas,
+    // solo cambia el texto que se intercala entre ellos).
+    FOTOS_DE_TEXTO_ACTUAL = deTexto;
+
+    const cuerpoOriginal = sanearHtmlContenido(article.contenido || "");
+    const cuerpoConFotos = construirCuerpoConFotos(deTexto, cuerpoOriginal);
+    const tweetsAlFinalHTML = tweetsAlFinal.map(tweetEmbedHTML).join("");
+
+    cont.innerHTML = `
+      <div data-eof-ad="cabecera"></div>
+      <div class="eof-con-rails">
+      <aside class="eof-rail eof-rail-izq" aria-label="Lectura de la noticia"></aside>
+      <aside class="eof-rail eof-rail-der" aria-label="Te puede interesar y publicidad"><div data-eof-ad="lateral"></div></aside>
+      <div class="article-header">
+        ${contextoNoticiaHTML(article, { variante: "cabecera" })}
+        <h1>${escapeHtml(article.titulo)}</h1>
+        ${article.subtitulo ? `<p class="subtitulo">${escapeHtml(article.subtitulo)}</p>` : ""}
+        <p class="meta">${formatFecha(article.fecha_publicacion)}${fechaUltimaEdicionHTML(article)}${firmaAutoresHTML(article)}</p>
+        ${!ES_PREVIEW && article.id ? `<div class="lect-acciones" id="lectAccionesNoticia"></div>` : ""}
+      </div>
+      ${!ES_PREVIEW && window.EOFGoogleNoticias ? EOFGoogleNoticias.html() : ""}
+      ${selectorIdiomaHTML(article)}
+      ${cabecera.length ? `
+        <div class="article-img">
+          ${EOF_FOCO.img({ src: cloudinaryOptimizada(cabecera[0].url, 900, cabecera[0].credito), alt: altFotoPrincipal(article), foco: cabecera[0].foco, eager: true, fallback: "", extra: 'id="fotoPrincipal"' })}
+          ${creditoFotoHTML(cabecera[0])}
+        </div>` : ""}
+      ${article.resultado ? marcadorArticuloHTML({ ...article.resultado, alineaciones: article.alineaciones }) : ""}
+      <div class="article-body">${cuerpoConFotos}</div>
+      ${tweetsAlFinalHTML}
+      ${deGaleriaCollages.length ? `
+        <div class="article-galeria-collages">
+          ${deGaleriaCollages.map((c) => c.html).join("")}
+        </div>` : ""}
+      ${deGaleria.length ? `
+        <div class="article-galeria">
+          <p class="article-galeria-titulo">Galería<span class="contador-galeria" id="galeriaContadorTitulo">1 / ${deGaleria.length}</span></p>
+          <div class="article-galeria-principal">
+            ${deGaleria.length > 1 ? `<button type="button" class="article-galeria-flecha prev" id="galeriaPrev" aria-label="Foto anterior">&#10094;</button>` : ""}
+            ${EOF_FOCO.img({ src: cloudinaryOptimizada(deGaleria[0].url, 900, deGaleria[0].credito), alt: "Foto 1", foco: deGaleria[0].foco, eager: true, fallback: "", extra: 'id="fotoGaleriaPrincipal" onload="this.classList.add(\'cargada\')"' })}
+            ${deGaleria.length > 1 ? `<button type="button" class="article-galeria-flecha next" id="galeriaNext" aria-label="Foto siguiente">&#10095;</button>` : ""}
+            ${deGaleria.length > 1 ? `<span class="article-galeria-contador-flotante" id="galeriaContadorFlotante">1 / ${deGaleria.length}</span>` : ""}
+          </div>
+          <span id="galeriaCreditoActual" class="credito-foto credito-foto-galeria">${deGaleria[0].credito ? escapeHtml(quitarCopyCredito(deGaleria[0].credito)) : ""}</span>
+          <div class="miniaturas" id="miniaturasGaleria">
+            ${deGaleria.map((f, i) => `<img src="${cloudinaryOptimizada(f.url, 140)}" alt="Foto ${i + 1}" loading="lazy" class="foco-img${i === 0 ? " activa" : ""}" style="${EOF_FOCO.estilo(f.foco)}" data-src="${cloudinaryOptimizada(f.url, 900, f.credito)}" data-foco="${EOF_FOCO.texto(f.foco)}" data-credito="${f.credito ? escapeHtml(quitarCopyCredito(f.credito)) : ""}">`).join("")}
+          </div>
+        </div>` : ""}
+      ${article.tipo === "cronica" ? fichaTecnicaArticuloHTML(article.ficha_tecnica) : ""}
+      <div id="ad-final-noticia">${adSlot("noticia_final")}</div>
+      ${article.id ? `<div id="encuestaArticuloWrap"></div>` : ""}
+      ${!ES_PREVIEW && article.id ? reaccionesArticuloHTML() : ""}
+      ${compartirArticuloHTML(article)}
+      ${!ES_PREVIEW && article.id ? seccionComentariosHTML() : ""}
+      </div>
+      <section id="noticiasSimilares" class="noticias-similares"></section>
+      <div data-eof-ad="pie"></div>
+    `;
+
+    // "cont" entero, no solo ".article-body": los tweets/posts con
+    // posición "galería final" se insertan justo después del cuerpo, como
+    // hermanos de .article-body, no dentro.
+    cargarEmbedsRedesSiHaceFalta(cont);
+    ocultarFotosRepetidas(cont);
+    if (window.EOFGoogleNoticias) EOFGoogleNoticias.montar(cont);
+    cargarNoticiasSimilares(article);
+    if (window.EOFLateral) EOFLateral.montar(article);
+    if (article.id) cargarEncuestaNoticia(article.id);
+    if (article.id && !ES_PREVIEW) cargarReaccionesNoticia(article.id);
+    if (typeof insertarAdIntext === "function") insertarAdIntext(cont.querySelector(".article-body"));
+    if (typeof initAds === "function") initAds();
+    if (!ES_PREVIEW && article.id) iniciarComentarios(article.id);
+    // Guardadas e historial (js/lecturas.js): botón "Guardar para leer luego" y
+    // registro de esta lectura. Nunca en la vista previa del panel.
+    if (!ES_PREVIEW && article.id && window.EOFLecturas) {
+      EOFLecturas.montarBotonNoticia(document.getElementById("lectAccionesNoticia"), article.id);
+      EOFLecturas.registrarLectura(article.id);
+    }
+    // Escuchar la noticia en voz alta (js/escuchar.js, síntesis de voz del navegador).
+    if (window.EOFEscuchar) EOFEscuchar.montar();
+    revelarBotonCompartirNativo();
+
+    const selectorIdioma = document.querySelector(".selector-idioma-noticia");
+    if (selectorIdioma) {
+      centrarIdiomaActivo();
+      selectorIdioma.addEventListener("click", (e) => {
+        const btn = e.target.closest(".idioma-noticia-btn");
+        if (!btn || btn.disabled) return;
+        aplicarIdiomaNoticia(btn.dataset.idioma);
+      });
+    }
+
+    const fotoPrincipal = document.getElementById("fotoPrincipal");
+
+    // Galería final: foto grande con flechas prev/next, contador y tira de
+    // miniaturas sincronizada, en vez de solo un grid de miniaturas suelto.
+    const miniaturas = document.getElementById("miniaturasGaleria");
+    const fotoGaleria = document.getElementById("fotoGaleriaPrincipal");
+    if (miniaturas && fotoGaleria) {
+      const imgsMini = [...miniaturas.querySelectorAll("img[data-src]")];
+      const contadorTitulo = document.getElementById("galeriaContadorTitulo");
+      const contadorFlotante = document.getElementById("galeriaContadorFlotante");
+      let indiceGaleria = 0;
+
+      function mostrarFotoGaleria(i) {
+        indiceGaleria = (i + imgsMini.length) % imgsMini.length;
+        const img = imgsMini[indiceGaleria];
+        fotoGaleria.classList.remove("cargada");
+        fotoGaleria.src = img.dataset.src;
+        fotoGaleria.alt = img.alt;
+        EOF_FOCO.aplicar(fotoGaleria, img.dataset.foco);
+        imgsMini.forEach((m) => m.classList.remove("activa"));
+        img.classList.add("activa");
+        img.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
+        const texto = `${indiceGaleria + 1} / ${imgsMini.length}`;
+        if (contadorTitulo) contadorTitulo.textContent = texto;
+        if (contadorFlotante) contadorFlotante.textContent = texto;
+        const creditoActual = document.getElementById("galeriaCreditoActual");
+        if (creditoActual) creditoActual.textContent = quitarCopyCredito(img.dataset.credito);
+      }
+
+      miniaturas.addEventListener("click", (e) => {
+        const img = e.target.closest("img[data-src]");
+        if (!img) return;
+        mostrarFotoGaleria(imgsMini.indexOf(img));
+      });
+
+      const btnPrev = document.getElementById("galeriaPrev");
+      const btnNext = document.getElementById("galeriaNext");
+      if (btnPrev) btnPrev.addEventListener("click", () => mostrarFotoGaleria(indiceGaleria - 1));
+      if (btnNext) btnNext.addEventListener("click", () => mostrarFotoGaleria(indiceGaleria + 1));
+      // Deslizar con el dedo sobre la foto grande para pasar a la anterior/siguiente
+      // (móvil/tablet). Solo cuenta un gesto claramente horizontal; los toques
+      // normales siguen abriendo el visor.
+      const zonaGaleria = fotoGaleria.closest(".article-galeria-principal");
+      if (zonaGaleria && imgsMini.length > 1) {
+        let tx = 0, ty = 0, tt = 0, activo = false;
+        zonaGaleria.addEventListener("touchstart", (e) => {
+          if (e.touches.length !== 1) { activo = false; return; }
+          activo = true; tx = e.touches[0].clientX; ty = e.touches[0].clientY; tt = Date.now();
+        }, { passive: true });
+        zonaGaleria.addEventListener("touchend", (e) => {
+          if (!activo) return;
+          activo = false;
+          const t = e.changedTouches[0];
+          const dx = t.clientX - tx, dy = t.clientY - ty;
+          const rapido = Date.now() - tt < 350;
+          if (Math.abs(dx) > (rapido ? 28 : 55) && Math.abs(dx) > Math.abs(dy) * 1.5) {
+            mostrarFotoGaleria(indiceGaleria + (dx < 0 ? 1 : -1));
+            // Evita que el "clic" fantasma tras el gesto abra el visor
+            zonaGaleria.dataset.deslizado = "1";
+            setTimeout(() => { delete zonaGaleria.dataset.deslizado; }, 400);
+          }
+        }, { passive: true });
+        zonaGaleria.addEventListener("click", (e) => {
+          if (zonaGaleria.dataset.deslizado) { e.stopImmediatePropagation(); e.preventDefault(); }
+        }, true);
+      }
+    }
+
+    // Pinta el título/subtítulo/cuerpo en el idioma inicial (el pedido por
+    // ?lang= si estaba disponible, si no castellano) y con ello fija todo
+    // el SEO (lang, meta, hreflang, og:locale, JSON-LD). No se toca la URL
+    // aquí: si ya traía ?lang=xx se deja como está, y si no llevaba nada
+    // no hace falta añadir "?lang=es" por defecto.
+    aplicarIdiomaNoticia(IDIOMA_NOTICIA_ACTUAL, { actualizarUrl: false });
+
+    // Barra de % leído: se activa aquí, ya con el artículo pintado en el
+    // DOM (fotos/tweets incluidos), para que offsetHeight refleje la
+    // altura real del artículo y no la de "Cargando...".
+    iniciarBarraProgresoLectura();
+  } catch (err) {
+    cont.innerHTML = estadoHTML({
+      titulo: "No se ha podido cargar la noticia",
+      texto: "Puede que la noticia ya no exista o que haya un problema de conexión. Vuelve a la portada e inténtalo de nuevo.",
+      tipo: "error",
+      cta: `<a href="/" class="btn-volver">Ir a portada</a>`,
+    });
+  }
+}
+// ---------- Encuesta de la noticia (si tiene una vinculada) ----------
+async function cargarEncuestaNoticia(articleId) {
+  const wrap = document.getElementById("encuestaArticuloWrap");
+  if (!wrap) return;
+  try {
+    const res = await apiFetchLector(`/api/articles/${articleId}/poll`);
+    const { encuesta } = await res.json();
+    if (!encuesta) { wrap.remove(); return; }
+    pintarEncuesta(wrap, encuesta, "");
+    // Resultados en directo mientras el lector sigue en la noticia.
+    if (typeof iniciarEncuestasEnVivo === "function") {
+      iniciarEncuestasEnVivo({
+        nombre: "encuesta-noticia",
+        pedir: async () => {
+          const r = await apiFetchLector(`/api/articles/${articleId}/poll`);
+          if (!r.ok) throw new Error("HTTP " + r.status);
+          const { encuesta: e } = await r.json();
+          return e ? [e] : [];
+        },
+        alCambiarConjunto: () => {}, // si la encuesta desaparece, se deja como está
+      });
+    }
+  } catch (err) {
+    // Si falla, simplemente no se muestra la encuesta: no es contenido
+    // crítico de la noticia como para mostrar un aviso de error aparte.
+    wrap.remove();
+  }
+}
+
+// ---------- Reacciones a la noticia ("Útil" / "Me gusta") ----------
+// Misma idea que los votos de comentarios: sin cuenta, con el id anónimo del navegador. Los
+// contadores vienen de la API (GET cacheado 15 s); lo que ya marcó este lector se recuerda
+// en localStorage para pintarlo al instante.
+const REACCIONES_NOTICIA = [
+  { tipo: "util", etiqueta: "Útil", titulo: "Me ha resultado útil",
+    icono: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16 9.5"/></svg>' },
+  { tipo: "me_gusta", etiqueta: "Me gusta", titulo: "Me gusta esta noticia",
+    icono: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-7.5-10.1A4.4 4.4 0 0 1 12 7.6a4.4 4.4 0 0 1 7.5 2.8c0 5.5-7.5 10.1-7.5 10.1z"/></svg>' },
+];
+const CLAVE_REACCIONES_NOTICIAS = "eof_reacciones_noticias";
+
+function reaccionesArticuloHTML() {
+  return `
+    <section class="reacciones-noticia" id="reaccionesNoticia" aria-label="Valora esta noticia">
+      <p class="reacciones-noticia-titulo">¿Qué te ha parecido?</p>
+      <div class="reacciones-noticia-botones">
+        ${REACCIONES_NOTICIA.map((r) => `
+          <button type="button" class="reaccion-noticia-btn" data-reaccion="${r.tipo}" title="${r.titulo}" aria-pressed="false">
+            ${r.icono}<span class="reaccion-noticia-txt">${r.etiqueta}</span><span class="reaccion-noticia-num" hidden>0</span>
+          </button>`).join("")}
+      </div>
+    </section>`;
+}
+
+function reaccionesGuardadasNoticia(articleId) {
+  try {
+    const todas = JSON.parse(localStorage.getItem(CLAVE_REACCIONES_NOTICIAS) || "{}");
+    return Array.isArray(todas[articleId]) ? todas[articleId] : [];
+  } catch { return []; }
+}
+function guardarReaccionesNoticia(articleId, lista) {
+  try {
+    let todas = {};
+    try { todas = JSON.parse(localStorage.getItem(CLAVE_REACCIONES_NOTICIAS) || "{}"); } catch {}
+    if (lista.length) todas[articleId] = lista; else delete todas[articleId];
+    localStorage.setItem(CLAVE_REACCIONES_NOTICIAS, JSON.stringify(todas));
+  } catch { /* sin localStorage: la reacción cuenta igual, solo no se recuerda el botón marcado */ }
+}
+
+function pintarReaccionesNoticia(wrap, cuentas, marcadas) {
+  wrap.querySelectorAll(".reaccion-noticia-btn").forEach((btn) => {
+    const tipo = btn.dataset.reaccion;
+    const activa = marcadas.includes(tipo);
+    btn.classList.toggle("activo", activa);
+    btn.setAttribute("aria-pressed", activa ? "true" : "false");
+    const num = btn.querySelector(".reaccion-noticia-num");
+    const n = Number(cuentas && cuentas[tipo]) || 0;
+    num.textContent = n.toLocaleString("es-ES");
+    num.hidden = n <= 0;
+  });
+}
+
+async function cargarReaccionesNoticia(articleId) {
+  const wrap = document.getElementById("reaccionesNoticia");
+  if (!wrap) return;
+  let marcadas = reaccionesGuardadasNoticia(articleId);
+  let cuentas = { util: 0, me_gusta: 0 };
+  pintarReaccionesNoticia(wrap, cuentas, marcadas);
+  try {
+    const res = await apiFetch(`/api/articles/${articleId}/reactions`);
+    if (res.ok) {
+      const data = await res.json();
+      cuentas = { util: data.util, me_gusta: data.me_gusta };
+      pintarReaccionesNoticia(wrap, cuentas, marcadas);
+    }
+  } catch { /* sin contadores: los botones siguen funcionando */ }
+
+  wrap.addEventListener("click", async (e) => {
+    const btn = e.target.closest(".reaccion-noticia-btn");
+    if (!btn || btn.disabled) return;
+    const tipo = btn.dataset.reaccion;
+    const activar = !marcadas.includes(tipo);
+    btn.disabled = true;
+    try {
+      const res = await apiFetch(`/api/articles/${articleId}/reactions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ votanteId: idVotanteComentarios(), tipo, activo: activar }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "No se ha podido guardar");
+      marcadas = activar ? [...marcadas.filter((x) => x !== tipo), tipo] : marcadas.filter((x) => x !== tipo);
+      guardarReaccionesNoticia(articleId, marcadas);
+      cuentas = { util: data.util, me_gusta: data.me_gusta };
+      pintarReaccionesNoticia(wrap, cuentas, marcadas);
+    } catch (err) {
+      // silencioso: un fallo al reaccionar no debe interrumpir la lectura
+    } finally {
+      btn.disabled = false;
+    }
+  });
+}
+
+// ---------- Comentarios de lectores ----------
+function seccionComentariosHTML() {
+  return `
+    <section class="comentarios-seccion" id="comentariosSeccion">
+      <p class="comentarios-titulo">Comentarios<span class="comentarios-contador" id="comentariosContador"></span>
+        <select id="comentariosOrden" class="comentarios-orden" aria-label="Ordenar comentarios" hidden>
+          <option value="antiguos">Más antiguos</option>
+          <option value="recientes">Más recientes</option>
+          <option value="votados">Más votados</option>
+        </select>
+      </p>
+
+      <div id="accesoLectorWrap">${accesoLectorHTML()}</div>
+
+      <form id="formComentario" class="form-comentario">
+        <div class="form-comentario-fila" id="filaDatosComentario">
+          <div class="form-comentario-campo">
+            <label for="comentarioNombre">Nombre</label>
+            <input type="text" id="comentarioNombre" placeholder="Tu nombre" maxlength="80" required>
+          </div>
+          <div class="form-comentario-campo">
+            <label for="comentarioEmail">Email</label>
+            <input type="email" id="comentarioEmail" placeholder="No se publica" maxlength="160" required>
+          </div>
+        </div>
+        <div class="comentario-respondiendo" id="comentarioRespondiendo" hidden>
+          <span>Respondiendo a <strong id="comentarioRespondiendoNombre"></strong></span>
+          <button type="button" class="comentario-respondiendo-x" id="comentarioRespondiendoCancelar" aria-label="Cancelar respuesta" title="Cancelar respuesta">✕</button>
+        </div>
+        <div class="form-comentario-campo">
+          <label for="comentarioTexto" id="comentarioTextoEtiqueta">Comentario</label>
+          <textarea id="comentarioTexto" placeholder="Escribe tu comentario..." maxlength="2000" required></textarea>
+        </div>
+        <div class="form-comentario-pie">
+          <p class="comentario-ayuda">Se publica al momento. No se admiten enlaces ni insultos.</p>
+          <div data-eof-turnstile style="margin:0 0 .8rem"></div>
+          <button type="submit" class="btn-enviar-comentario">Enviar comentario</button>
+        </div>
+        <p id="comentarioOk" class="comentario-msg comentario-msg-ok"></p>
+        <p id="comentarioError" class="comentario-msg comentario-msg-error"></p>
+      </form>
+
+      <div id="listaComentarios" class="lista-comentarios"><div class="spinner"></div></div>
+    </section>`;
+}
+
+// Identificador anónimo del visitante para votos/denuncias: no es una
+// cuenta, solo evita votar/denunciar dos veces el mismo comentario desde
+// el mismo navegador. Se genera una vez y se guarda en localStorage.
+function idVotanteComentarios() {
+  const CLAVE = "eof_votante_id";
+  let id = localStorage.getItem(CLAVE);
+  if (!id) {
+    id = (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    localStorage.setItem(CLAVE, id);
+  }
+  return id;
+}
+
+function votoActualComentario(id) {
+  try {
+    return JSON.parse(localStorage.getItem("eof_votos_comentarios") || "{}")[id] || 0;
+  } catch { return 0; }
+}
+function guardarVotoComentario(id, valor) {
+  let votos = {};
+  try { votos = JSON.parse(localStorage.getItem("eof_votos_comentarios") || "{}"); } catch {}
+  if (valor === 0) delete votos[id]; else votos[id] = valor;
+  localStorage.setItem("eof_votos_comentarios", JSON.stringify(votos));
+}
+function comentarioYaDenunciado(id) {
+  try {
+    return (JSON.parse(localStorage.getItem("eof_denuncias_comentarios") || "[]")).includes(id);
+  } catch { return false; }
+}
+function marcarComentarioDenunciado(id) {
+  let lista = [];
+  try { lista = JSON.parse(localStorage.getItem("eof_denuncias_comentarios") || "[]"); } catch {}
+  if (!lista.includes(id)) lista.push(id);
+  localStorage.setItem("eof_denuncias_comentarios", JSON.stringify(lista));
+}
+
+function comentarioItemHTML(c) {
+  const esRespuesta = !!c.parent_id;
+  // Solo se indica a quién se contesta cuando no es el comentario raíz del hilo
+  // (en una respuesta directa ya se ve por la sangría).
+  const enRespuestaA = esRespuesta && c.responde_a_nombre && c.responde_a_id !== c.parent_id
+    ? `<span class="comentario-en-respuesta">en respuesta a ${escapeHtml(c.responde_a_nombre)}</span>` : "";
+  const inicial = (c.nombre || "?").trim().charAt(0);
+  const votoActual = votoActualComentario(c.id);
+  const denunciado = comentarioYaDenunciado(c.id);
+  // Solo quien escribió el comentario con su cuenta de lector puede editarlo o borrarlo
+  // (el servidor lo vuelve a comprobar: esto solo decide si se pintan los botones).
+  const sesionLector = typeof sesionLectorActual === "function" ? sesionLectorActual() : null;
+  const esMio = !!(c.reader_id && sesionLector && Number(sesionLector.id) === Number(c.reader_id));
+  const insigniaVerificado = c.reader_id ? `<span class="comentario-verificado" title="Cuenta verificada"><svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M12 2l2.4 2.3 3.2-.6 1 3.1 3.1 1-.6 3.2L23.4 13l-2.3 2.4.6 3.2-3.1 1-1 3.1-3.2-.6L12 24l-2.4-2.3-3.2.6-1-3.1-3.1-1 .6-3.2L.6 13l2.3-2.4-.6-3.2 3.1-1 1-3.1 3.2.6z"/><path d="M8.5 12.3l2.4 2.4 4.6-4.7" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>` : "";
+  return `
+    <div class="comentario-item${esRespuesta ? " comentario-item-respuesta" : ""}" id="comentario-${c.id}" data-comentario-id="${c.id}" data-autor="${escapeHtml(c.nombre)}">
+      <div class="comentario-avatar">${escapeHtml(inicial)}</div>
+      <div class="comentario-cuerpo">
+        <div class="comentario-cabecera">
+          <span class="comentario-autor">${escapeHtml(c.nombre)}${insigniaVerificado}</span>
+          <span class="comentario-fecha">${formatFecha(c.created_at)}</span>
+        </div>
+        ${enRespuestaA}
+        <p class="comentario-texto">${escapeHtml(c.texto)}</p>
+        <div class="comentario-acciones">
+          <button type="button" class="comentario-voto comentario-voto-like${votoActual === 1 ? " activo" : ""}" data-voto="1" title="Me gusta">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 22V11m0 11H4a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1h3m3 0h6.31a2 2 0 0 1 1.98 2.28l-.7 5a2 2 0 0 1-1.98 1.72H10m3-11V6a2 2 0 0 0-4 0v1a3 3 0 0 1-3 3"/></svg>
+            <span class="comentario-voto-num">${c.likes || 0}</span>
+          </button>
+          <button type="button" class="comentario-voto comentario-voto-dislike${votoActual === -1 ? " activo" : ""}" data-voto="-1" title="No me gusta">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 2v11m0-11h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-3m-3 0H7.69a2 2 0 0 1-1.98-2.28l.7-5a2 2 0 0 1 1.98-1.72H14v11z"/></svg>
+            <span class="comentario-voto-num">${c.dislikes || 0}</span>
+          </button>
+          <button type="button" class="comentario-responder" title="Responder a ${escapeHtml(c.nombre)}">Responder</button>
+          ${esMio ? `<button type="button" class="comentario-editar">Editar</button>
+          <button type="button" class="comentario-borrar">Borrar</button>` : `<button type="button" class="comentario-denunciar${denunciado ? " activo" : ""}" ${denunciado ? "disabled" : ""}>
+            ${denunciado ? "Denunciado" : "Denunciar"}
+          </button>`}
+        </div>
+      </div>
+    </div>`;
+}
+
+// Agrupa los comentarios en hilos: cada comentario raíz seguido de sus
+// respuestas (en orden de publicación), todas dentro de un mismo bloque.
+const ORDENES_COMENTARIOS = ["antiguos", "recientes", "votados"];
+const CLAVE_ORDEN_COMENTARIOS = "eof_orden_comentarios";
+
+function ordenComentariosGuardado() {
+  try {
+    const v = localStorage.getItem(CLAVE_ORDEN_COMENTARIOS);
+    return ORDENES_COMENTARIOS.includes(v) ? v : "antiguos";
+  } catch { return "antiguos"; }
+}
+
+// Ordena SOLO los comentarios raíz; las respuestas siguen en orden de publicación
+// dentro de su hilo. "Más votados" usa likes - dislikes del comentario raíz (a
+// igualdad, más likes y luego el más antiguo, para que el orden sea estable).
+function ordenarRaicesComentarios(raices, orden) {
+  const porFecha = (a, b) => String(a.created_at).localeCompare(String(b.created_at)) || a.id - b.id;
+  const copia = [...raices];
+  if (orden === "recientes") return copia.sort((a, b) => porFecha(b, a));
+  if (orden === "votados") {
+    const saldo = (c) => (c.likes || 0) - (c.dislikes || 0);
+    return copia.sort((a, b) => saldo(b) - saldo(a) || (b.likes || 0) - (a.likes || 0) || porFecha(a, b));
+  }
+  return copia.sort(porFecha);
+}
+
+function comentariosEnHilosHTML(comentarios, orden = "antiguos") {
+  const respuestas = new Map();
+  for (const c of comentarios) {
+    if (!c.parent_id) continue;
+    if (!respuestas.has(c.parent_id)) respuestas.set(c.parent_id, []);
+    respuestas.get(c.parent_id).push(c);
+  }
+  return ordenarRaicesComentarios(comentarios.filter((c) => !c.parent_id), orden).map((raiz) => {
+    const hijas = respuestas.get(raiz.id) || [];
+    return `<div class="comentario-hilo">${comentarioItemHTML(raiz)}${
+      hijas.length ? `<div class="comentario-respuestas">${hijas.map(comentarioItemHTML).join("")}</div>` : ""
+    }</div>`;
+  }).join("");
+}
+
+async function iniciarComentarios(articleId) {
+  const lista = document.getElementById("listaComentarios");
+  const contador = document.getElementById("comentariosContador");
+
+  iniciarBotonCerrarSesionLector();
+
+  // Si hay sesión de lector, ya no hace falta pedir nombre/email a mano
+  // en cada comentario: se ocultan esos dos campos y se rellenan solos
+  // con los datos ya verificados de la cuenta.
+  const lector = sesionLectorActual();
+  if (lector) {
+    const fila = document.getElementById("filaDatosComentario");
+    if (fila) fila.style.display = "none";
+    const campoNombre = document.getElementById("comentarioNombre");
+    const campoEmail = document.getElementById("comentarioEmail");
+    if (campoNombre) { campoNombre.value = lector.nombre; campoNombre.required = false; }
+    if (campoEmail) { campoEmail.value = lector.email; campoEmail.required = false; }
+  }
+
+  const ayudaComentario = document.querySelector("#formComentario .comentario-ayuda");
+  if (ayudaComentario) {
+    ayudaComentario.textContent = lector
+      ? "Se publica al momento. No se admiten enlaces ni insultos. Te avisaremos por correo cuando te respondan (puedes cambiarlo en Mi cuenta)."
+      : "Se publica al momento. No se admiten enlaces ni insultos. Con una cuenta de lector te avisamos por correo cuando te respondan.";
+  }
+
+  // ---- Responder a un comentario ----
+  // El formulario es único (con su captcha): al pulsar "Responder" se anota a
+  // quién se contesta, se muestra el aviso "Respondiendo a ..." y se lleva a
+  // la persona al formulario.
+  let respondiendoA = null;
+  const formRespuesta = document.getElementById("formComentario");
+  const bannerRespuesta = document.getElementById("comentarioRespondiendo");
+  function iniciarRespuesta(id, nombre) {
+    respondiendoA = { id, nombre };
+    document.getElementById("comentarioRespondiendoNombre").textContent = nombre;
+    bannerRespuesta.hidden = false;
+    document.getElementById("comentarioTextoEtiqueta").textContent = "Tu respuesta";
+    document.getElementById("comentarioTexto").placeholder = "Escribe tu respuesta...";
+    formRespuesta.querySelector(".btn-enviar-comentario").textContent = "Enviar respuesta";
+    formRespuesta.scrollIntoView({ behavior: "smooth", block: "center" });
+    document.getElementById("comentarioTexto").focus({ preventScroll: true });
+  }
+  function cancelarRespuesta() {
+    respondiendoA = null;
+    bannerRespuesta.hidden = true;
+    document.getElementById("comentarioTextoEtiqueta").textContent = "Comentario";
+    document.getElementById("comentarioTexto").placeholder = "Escribe tu comentario...";
+    formRespuesta.querySelector(".btn-enviar-comentario").textContent = "Enviar comentario";
+  }
+  document.getElementById("comentarioRespondiendoCancelar").addEventListener("click", cancelarRespuesta);
+
+  // Firma de lo que hay pintado, para que la actualización en directo
+  // (más abajo) solo toque el DOM cuando algo haya cambiado de verdad.
+  let firmaComentariosPintados = null;
+  let comentariosPintados = [];
+  const selectorOrden = document.getElementById("comentariosOrden");
+  selectorOrden.value = ordenComentariosGuardado();
+  selectorOrden.addEventListener("change", () => {
+    try { localStorage.setItem(CLAVE_ORDEN_COMENTARIOS, selectorOrden.value); } catch {}
+    pintarListaComentarios(comentariosPintados);
+  });
+  function pintarListaComentarios(comentarios) {
+    comentariosPintados = comentarios;
+    contador.textContent = comentarios.length ? ` (${comentarios.length})` : "";
+    // Con un solo hilo no hay nada que ordenar: el selector solo estorbaría.
+    selectorOrden.hidden = comentarios.filter((c) => !c.parent_id).length < 2;
+    lista.innerHTML = comentarios.length
+      ? comentariosEnHilosHTML(comentarios, selectorOrden.value)
+      : `<p class="comentarios-vacio">Sé el primero en comentar esta noticia.</p>`;
+    if (window.EOF_VIVO) firmaComentariosPintados = EOF_VIVO.firma(comentarios);
+  }
+
+  async function cargarComentarios() {
+    try {
+      const res = await apiFetch(`/api/articles/${articleId}/comments`);
+      const { comentarios = [] } = await res.json();
+      pintarListaComentarios(comentarios);
+      // Enlace de un aviso por correo (#comentario-123): se lleva a ese comentario.
+      const ancla = /^#comentario-(\d+)$/.exec(location.hash);
+      const destino = ancla && document.getElementById(`comentario-${ancla[1]}`);
+      if (destino) {
+        destino.scrollIntoView({ block: "center" });
+        destino.classList.add("comentario-destacado");
+      }
+    } catch (err) {
+      lista.innerHTML = `<p class="comentarios-vacio">No se han podido cargar los comentarios.</p>`;
+    }
+  }
+
+  lista.addEventListener("click", async (e) => {
+    const item = e.target.closest(".comentario-item");
+    if (!item) return;
+    const comentarioId = parseInt(item.dataset.comentarioId);
+
+    if (e.target.closest(".comentario-responder")) {
+      iniciarRespuesta(comentarioId, item.dataset.autor || "");
+      return;
+    }
+
+    const btnVoto = e.target.closest(".comentario-voto");
+    if (btnVoto) {
+      const valorClic = parseInt(btnVoto.dataset.voto);
+      const valorPrevio = votoActualComentario(comentarioId);
+      const nuevoValor = valorPrevio === valorClic ? 0 : valorClic;
+      btnVoto.disabled = true;
+      try {
+        const res = await apiFetch(`/api/comments/${comentarioId}/vote`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ votanteId: idVotanteComentarios(), valor: nuevoValor }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "No se ha podido votar");
+        guardarVotoComentario(comentarioId, nuevoValor);
+        item.querySelector(".comentario-voto-like .comentario-voto-num").textContent = data.likes || 0;
+        item.querySelector(".comentario-voto-dislike .comentario-voto-num").textContent = data.dislikes || 0;
+        item.querySelector(".comentario-voto-like").classList.toggle("activo", nuevoValor === 1);
+        item.querySelector(".comentario-voto-dislike").classList.toggle("activo", nuevoValor === -1);
+      } catch (err) {
+        // silencioso: un fallo al votar no debe interrumpir la lectura
+      } finally {
+        btnVoto.disabled = false;
+      }
+      return;
+    }
+
+    const cabeceraSesion = () => ({ "Content-Type": "application/json", Authorization: `Bearer ${tokenLectorActual()}` });
+
+    if (e.target.closest(".comentario-editar")) {
+      if (item.classList.contains("comentario-editando")) return;
+      const parrafo = item.querySelector(".comentario-texto");
+      const original = parrafo.textContent;
+      item.classList.add("comentario-editando");
+      parrafo.hidden = true;
+      const editor = document.createElement("div");
+      editor.className = "comentario-editor";
+      editor.innerHTML = `
+        <textarea class="comentario-editor-texto" maxlength="2000" rows="4" aria-label="Editar comentario"></textarea>
+        <p class="comentario-editor-aviso">Al guardar, tu comentario volverá a revisarse antes de publicarse.</p>
+        <p class="comentario-editor-error" role="alert" hidden></p>
+        <div class="comentario-editor-botones">
+          <button type="button" class="comentario-editor-guardar">Guardar</button>
+          <button type="button" class="comentario-editor-cancelar">Cancelar</button>
+        </div>`;
+      editor.querySelector("textarea").value = original;
+      parrafo.after(editor);
+      editor.querySelector("textarea").focus();
+      return;
+    }
+
+    if (e.target.closest(".comentario-editor-cancelar")) {
+      const editor = item.querySelector(".comentario-editor");
+      if (editor) editor.remove();
+      item.querySelector(".comentario-texto").hidden = false;
+      item.classList.remove("comentario-editando");
+      return;
+    }
+
+    const btnGuardar = e.target.closest(".comentario-editor-guardar");
+    if (btnGuardar) {
+      const editor = item.querySelector(".comentario-editor");
+      const errorEl = editor.querySelector(".comentario-editor-error");
+      const texto = editor.querySelector("textarea").value.trim();
+      errorEl.hidden = true;
+      if (!texto) { errorEl.textContent = "El comentario no puede estar vacío"; errorEl.hidden = false; return; }
+      btnGuardar.disabled = true;
+      try {
+        const res = await apiFetch(`/api/comments/${comentarioId}`, { method: "PUT", headers: cabeceraSesion(), body: JSON.stringify({ texto }) });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "No se ha podido guardar el cambio");
+        if (data.sinCambios) {
+          editor.remove();
+          item.querySelector(".comentario-texto").hidden = false;
+          item.classList.remove("comentario-editando");
+          return;
+        }
+        // El estado no cambia: si estaba publicado, sigue publicado con el texto nuevo.
+        msgOk.textContent = data.mensaje || "Comentario actualizado.";
+        msgOk.style.display = "block";
+        msgOk.scrollIntoView({ block: "center", behavior: "smooth" });
+        await cargarComentarios();
+      } catch (err) {
+        errorEl.textContent = err.message;
+        errorEl.hidden = false;
+        btnGuardar.disabled = false;
+      }
+      return;
+    }
+
+    const btnBorrar = e.target.closest(".comentario-borrar");
+    if (btnBorrar && !btnBorrar.disabled) {
+      if (!confirm("¿Borrar tu comentario? Esta acción no se puede deshacer.")) return;
+      btnBorrar.disabled = true;
+      try {
+        const res = await apiFetch(`/api/comments/${comentarioId}`, { method: "DELETE", headers: cabeceraSesion() });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "No se ha podido borrar el comentario");
+        await cargarComentarios();
+      } catch (err) {
+        btnBorrar.disabled = false;
+        alert(err.message);
+      }
+      return;
+    }
+
+    const btnDenunciar = e.target.closest(".comentario-denunciar");
+    if (btnDenunciar && !btnDenunciar.disabled) {
+      if (!confirm("¿Denunciar este comentario para que la redacción lo revise?")) return;
+      btnDenunciar.disabled = true;
+      try {
+        const res = await apiFetch(`/api/comments/${comentarioId}/report`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ votanteId: idVotanteComentarios() }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "No se ha podido denunciar");
+        marcarComentarioDenunciado(comentarioId);
+        btnDenunciar.textContent = "Denunciado";
+        btnDenunciar.classList.add("activo");
+      } catch (err) {
+        btnDenunciar.disabled = false;
+        alert(err.message);
+      }
+    }
+  });
+
+  const form = document.getElementById("formComentario");
+  const msgOk = document.getElementById("comentarioOk");
+  const msgErr = document.getElementById("comentarioError");
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    msgOk.style.display = "none";
+    msgErr.style.display = "none";
+    const nombre = document.getElementById("comentarioNombre").value.trim();
+    const email = document.getElementById("comentarioEmail").value.trim();
+    const texto = document.getElementById("comentarioTexto").value.trim();
+    const contTurnstile = form.querySelector("[data-eof-turnstile]");
+    const btn = form.querySelector(".btn-enviar-comentario");
+    const textoBtn = btn.textContent;
+    btn.disabled = true;
+    // Con sesión de lector el servidor no pide captcha: no hace falta esperar el token.
+    const turnstileToken = sesionLectorActual() ? "" : await (btn.textContent = "Verificando...", window.EOFTurnstile.esperarToken(contTurnstile));
+    btn.textContent = textoBtn;
+    try {
+      const lectorActual = sesionLectorActual();
+      const headers = { "Content-Type": "application/json" };
+      if (lectorActual) headers.Authorization = `Bearer ${tokenLectorActual()}`;
+      const res = await apiFetch(`/api/articles/${articleId}/comments`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ nombre, email, texto, turnstileToken, web: window.EOFTurnstile.trampa(contTurnstile), parent_id: respondiendoA ? respondiendoA.id : undefined }),
+      });
+      window.EOFTurnstile.reiniciar(contTurnstile);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "No se ha podido enviar el comentario");
+      msgOk.textContent = data.mensaje || "Comentario enviado. Gracias por participar.";
+      msgOk.style.display = "block";
+      form.reset();
+      cancelarRespuesta();
+      // Ya está publicado: se repinta la lista para que aparezca sin recargar la página.
+      if (data.publicado) await cargarComentarios();
+    } catch (err) {
+      msgErr.textContent = err.message;
+      msgErr.style.display = "block";
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  cargarComentarios();
+
+  // ---- Comentarios en directo ----
+  // Cada ~30 s se vuelve a pedir la lista; si hay comentarios nuevos
+  // (aprobados por la redacción), respuestas o cambios en los votos, se
+  // repinta solo la lista. El formulario no se toca, así que lo que la
+  // persona esté escribiendo no se pierde. Si hay un voto en curso, se
+  // espera al siguiente ciclo.
+  if (window.EOF_VIVO) {
+    EOF_VIVO.cada("comentarios", async () => {
+      if (firmaComentariosPintados === null) return; // aún no se ha hecho la carga inicial
+      if (lista.querySelector(".comentario-voto:disabled, .comentario-editando")) return;
+      const res = await apiFetch(`/api/articles/${articleId}/comments`);
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const { comentarios } = await res.json();
+      if (!Array.isArray(comentarios)) throw new Error("respuesta inesperada");
+      if (EOF_VIVO.firma(comentarios) === firmaComentariosPintados) return;
+      const idsAntes = new Set([...lista.querySelectorAll(".comentario-item")].map((el) => el.dataset.comentarioId));
+      pintarListaComentarios(comentarios);
+      lista.querySelectorAll(".comentario-item").forEach((el) => {
+        if (!idsAntes.has(el.dataset.comentarioId) && idsAntes.size) EOF_VIVO.resaltar(el);
+      });
+    }, 30000);
+  }
+}
+
+document.addEventListener("DOMContentLoaded", cargaArticulo);
+</script>
+<style>
+  /* ---- Barra de porcentaje leído (en vivo) ---- */
+  /* Fija bajo el header, se rellena de 0 a 100% según cuánto se ha
+     scrolleado del artículo. Solo tiene sentido mientras se lee una
+     noticia real, así que se oculta en preview, en estados de error y en
+     la cuenta atrás de una noticia programada (ver JS: solo se activa
+     dentro de renderizaArticulo). */
+  .barra-progreso-lectura{
+    position:sticky;top:0;left:0;width:100%;height:3px;
+    background:transparent;z-index:500;pointer-events:none;
+    opacity:0;transition:opacity .25s ease;
+  }
+  .barra-progreso-lectura.activa{opacity:1;}
+  .barra-progreso-lectura-relleno{
+    height:100%;width:0%;
+    background:linear-gradient(90deg, var(--rojo), var(--rojo-oscuro));
+    transition:width .12s linear;
+  }
+
+  /* Mismo ancho que el cuerpo de la noticia, para que quede alineado */
+  .comentarios-seccion{max-width:780px;margin:44px auto 0;padding-top:30px;border-top:1px solid #e4e7ec;}
+  .comentarios-titulo{
+    font-family:var(--font-tit);text-transform:uppercase;font-size:1.05rem;letter-spacing:.4px;
+    color:var(--marino-texto);border-left:5px solid var(--rojo);padding-left:12px;
+    margin:0 0 20px;display:flex;align-items:baseline;gap:6px;
+  }
+  .comentarios-orden{
+    margin-left:auto;font-family:var(--font-text);font-size:.8rem;text-transform:none;letter-spacing:0;
+    color:#5a6270;background:#fff;border:1px solid var(--borde);border-radius:20px;padding:4px 10px;cursor:pointer;
+  }
+  .comentarios-orden[hidden]{display:none;}
+  .comentarios-contador{color:#9aa0ab;font-weight:400;text-transform:none;font-family:var(--font-text);font-size:.85rem;}
+
+  /* ---- Acceso de lector (encima del formulario) ---- */
+  .acceso-lector{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
+    background:var(--gris-claro);border-radius:var(--radio);padding:12px 18px;margin-bottom:16px;
+    font-size:.85rem;color:var(--texto-suave);
+  }
+  .acceso-lector-activo{background:#eef7f0;}
+  [data-theme="dark"] .acceso-lector-activo{background:#123321;}
+  .acceso-lector-link{
+    background:none;border:none;color:var(--rojo);font-weight:700;cursor:pointer;
+    text-decoration:none;font-size:.85rem;padding:0;
+  }
+  .acceso-lector-link:hover{text-decoration:underline;}
+  .acceso-lector-avatar{width:26px;height:26px;border-radius:50%;object-fit:cover;flex-shrink:0;}
+  .comentario-verificado{
+    display:inline-flex;align-items:center;justify-content:center;
+    width:15px;height:15px;color:#1a9e4f;margin-left:4px;vertical-align:middle;
+  }
+
+  /* ---- Formulario ---- */
+  .form-comentario{
+    background:var(--gris-claro);border-radius:var(--radio);
+    padding:20px 22px;margin-bottom:28px;
+  }
+  .form-comentario-fila{display:flex;gap:12px;margin-bottom:12px;}
+  .form-comentario label{
+    display:block;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.3px;
+    color:var(--gris-texto);margin-bottom:5px;
+  }
+  .form-comentario-campo{flex:1;min-width:0;}
+  .form-comentario input, .form-comentario textarea{
+    width:100%;padding:11px 13px;border:1.5px solid var(--borde);border-radius:7px;
+    font-size:.92rem;font-family:var(--font-text);background:var(--fondo);color:var(--texto);
+    transition:border-color .15s, box-shadow .15s;
+  }
+  .form-comentario textarea{min-height:96px;resize:vertical;margin-bottom:2px;line-height:1.5;}
+  .form-comentario input::placeholder, .form-comentario textarea::placeholder{color:#aab0bb;}
+  .form-comentario input:focus, .form-comentario textarea:focus{
+    outline:none;border-color:var(--celeste);box-shadow:0 0 0 3px rgba(91,184,232,.18);
+  }
+  .form-comentario-pie{
+    display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-top:14px;
+  }
+  .comentario-ayuda{font-size:.78rem;color:#8891a0;margin:0;}
+  .btn-enviar-comentario{
+    background:linear-gradient(135deg, var(--rojo), var(--rojo-oscuro));color:#fff;border:none;
+    padding:11px 26px;border-radius:24px;font-family:var(--font-tit);text-transform:uppercase;
+    cursor:pointer;letter-spacing:.4px;font-size:.82rem;flex-shrink:0;
+    transition:transform .15s, box-shadow .15s;
+  }
+  .btn-enviar-comentario:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 4px 14px rgba(209,19,46,.28);}
+  .btn-enviar-comentario:disabled{opacity:.55;cursor:not-allowed;transform:none;box-shadow:none;}
+  .comentario-msg{display:none;padding:11px 14px;border-radius:7px;font-size:.86rem;margin-top:14px;}
+  .comentario-msg-ok{color:#166534;background:#dcfce7;}
+  .comentario-msg-error{color:#991b1b;background:#fee2e2;}
+
+  /* ---- Lista de comentarios ---- */
+  .lista-comentarios{display:flex;flex-direction:column;gap:16px;}
+  .comentario-item{display:flex;gap:12px;}
+  .comentario-avatar{
+    flex-shrink:0;width:38px;height:38px;border-radius:50%;
+    background:var(--marino);color:#fff;font-family:var(--font-tit);font-size:.95rem;
+    display:flex;align-items:center;justify-content:center;text-transform:uppercase;
+  }
+  .comentario-cuerpo{flex:1;min-width:0;background:var(--tarjeta);border:1px solid var(--borde);border-radius:10px;padding:13px 16px;}
+  .comentario-cabecera{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:5px;flex-wrap:wrap;}
+  .comentario-autor{font-weight:700;color:var(--marino-texto);font-size:.9rem;}
+  .comentario-fecha{font-size:.75rem;color:#9aa0ab;flex-shrink:0;}
+  .comentario-texto{font-size:.9rem;line-height:1.55;color:var(--texto);white-space:pre-wrap;word-break:break-word;margin:0;}
+  .comentarios-vacio{color:#9aa0ab;font-size:.88rem;padding:10px 0;}
+
+  /* ---- Hilos: respuestas con sangría bajo el comentario raíz ---- */
+  .comentario-hilo{display:flex;flex-direction:column;gap:12px;}
+  .comentario-respuestas{
+    display:flex;flex-direction:column;gap:12px;
+    margin-left:19px;padding-left:18px;border-left:2px solid var(--borde);
+  }
+  .comentario-item-respuesta .comentario-avatar{width:30px;height:30px;font-size:.8rem;}
+  .comentario-item-respuesta .comentario-cuerpo{padding:11px 14px;}
+  .comentario-en-respuesta{display:block;font-size:.76rem;color:#8891a0;margin:-2px 0 6px;}
+  .comentario-destacado .comentario-cuerpo{animation:comentarioDestacado 2.6s ease-out;}
+  @keyframes comentarioDestacado{
+    0%,40%{border-color:var(--celeste);box-shadow:0 0 0 3px rgba(91,184,232,.35);}
+    100%{border-color:var(--borde);box-shadow:none;}
+  }
+  .comentario-responder{
+    background:none;border:none;color:#8891a0;font-size:.8rem;font-weight:600;
+    font-family:var(--font-text);cursor:pointer;padding:4px 8px;border-radius:20px;transition:.15s;
+  }
+  .comentario-responder:hover{color:var(--rojo);background:rgba(209,19,46,.07);}
+  .comentario-editar, .comentario-borrar{
+    background:none;border:none;color:#8891a0;font-size:.8rem;font-weight:600;
+    font-family:var(--font-text);cursor:pointer;padding:4px 8px;border-radius:20px;transition:.15s;
+  }
+  .comentario-editar:hover{color:var(--rojo);background:rgba(209,19,46,.07);}
+  .comentario-borrar:hover:not(:disabled){color:#991b1b;background:#fef2f2;}
+  .comentario-borrar:disabled{opacity:.6;cursor:default;}
+  .comentario-editor{margin-top:6px;}
+  .comentario-editor-texto{
+    width:100%;box-sizing:border-box;border:1px solid var(--borde);border-radius:8px;padding:10px 12px;
+    font:inherit;font-size:.95rem;line-height:1.5;resize:vertical;min-height:90px;
+  }
+  .comentario-editor-aviso{margin:6px 0 0;font-size:.78rem;color:#8891a0;}
+  .comentario-editor-error{margin:6px 0 0;font-size:.82rem;color:#991b1b;}
+  .comentario-editor-error[hidden]{display:none;}
+  .comentario-editor-botones{display:flex;gap:8px;margin-top:8px;}
+  .comentario-editor-guardar, .comentario-editor-cancelar{
+    font-family:var(--font-text);font-size:.82rem;font-weight:600;border-radius:20px;padding:6px 14px;cursor:pointer;
+  }
+  .comentario-editor-guardar{background:var(--rojo);border:1px solid var(--rojo);color:#fff;}
+  .comentario-editor-guardar:disabled{opacity:.6;cursor:default;}
+  .comentario-editor-cancelar{background:none;border:1px solid var(--borde);color:#8891a0;}
+  .comentario-respondiendo{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    background:rgba(91,184,232,.14);border-left:3px solid var(--celeste);border-radius:6px;
+    padding:8px 12px;margin-bottom:12px;font-size:.85rem;color:var(--texto);
+  }
+  .comentario-respondiendo[hidden]{display:none;}
+  .comentario-respondiendo-x{background:none;border:none;color:#8891a0;cursor:pointer;font-size:.95rem;line-height:1;padding:2px 4px;}
+  .comentario-respondiendo-x:hover{color:var(--rojo);}
+
+  /* ---- Votos y denuncia de comentarios ---- */
+  .comentario-acciones{display:flex;align-items:center;gap:6px;margin-top:10px;}
+  .comentario-voto{
+    display:flex;align-items:center;gap:5px;background:none;border:1px solid var(--borde);
+    border-radius:20px;padding:4px 10px;cursor:pointer;color:#8891a0;font-size:.8rem;
+    font-family:var(--font-text);transition:.15s;
+  }
+  .comentario-voto svg{width:14px;height:14px;}
+  .comentario-voto:hover:not(:disabled){border-color:#c3c9d3;color:var(--marino-texto);}
+  .comentario-voto:disabled{opacity:.6;cursor:default;}
+  .comentario-voto-like.activo{color:#166534;border-color:#86efac;background:#f0fdf4;}
+  .comentario-voto-dislike.activo{color:#991b1b;border-color:#fca5a5;background:#fef2f2;}
+  .comentario-denunciar{
+    margin-left:auto;background:none;border:none;color:#aab0bb;font-size:.76rem;
+    font-family:var(--font-text);cursor:pointer;text-decoration:underline;padding:4px 2px;
+  }
+  .comentario-denunciar:hover:not(:disabled){color:#991b1b;}
+  .comentario-denunciar.activo, .comentario-denunciar:disabled{color:#c94b4b;text-decoration:none;cursor:default;}
+  .comentarios-seccion .spinner{margin:20px auto;}
+
+  @media(max-width:600px){
+    .comentario-respuestas{margin-left:8px;padding-left:12px;}
+    .form-comentario{padding:16px 16px;}
+    .form-comentario-fila{flex-direction:column;gap:12px;}
+    .form-comentario-pie{flex-direction:column;align-items:stretch;}
+    .btn-enviar-comentario{width:100%;text-align:center;}
+    .comentario-avatar{width:32px;height:32px;font-size:.85rem;}
+  }
+</style>
+<script>
+/* ---------- Ampliar las fotos de la noticia con el visor compartido ----------
+   Delegado sobre el contenedor del artículo (que se repinta al cambiar de
+   idioma): recoge en orden todas las fotos (cabecera, las del texto,
+   collages y la galería) y abre el visor en la pulsada. */
+(function () {
+  const SEL_FOTOS = ".article-img img, .article-body .foto-articulo img, .article-collage-foto img, #miniaturasGaleria img[data-src]";
+
+  function coleccionar() {
+    const cont = document.getElementById("contenidoArticulo");
+    const lista = [];
+    cont.querySelectorAll(SEL_FOTOS).forEach((img) => {
+      const esMini = img.matches("#miniaturasGaleria img");
+      const src = esMini ? img.dataset.src : (img.currentSrc || img.src);
+      if (!src) return;
+      const pie = esMini ? (img.dataset.credito || "") :
+        ((img.closest("figure, .article-img, .article-collage-foto") || img.parentElement).querySelector(".credito-foto, figcaption")?.textContent || "");
+      const cap = esMini ? "" : (img.closest("figure")?.querySelector("figcaption")?.textContent || "");
+      lista.push({ el: img, item: { tipo: "foto", url: src, thumb: src, titulo: cap.trim(), credito: (esMini ? pie : (cap ? "" : pie)).trim() } });
+    });
+    return lista;
+  }
+
+  function abrirDesde(img) {
+    if (typeof VisorMedia === "undefined") return;
+    const lista = coleccionar();
+    if (!lista.length) return;
+    let objetivo = img;
+    if (img.id === "fotoGaleriaPrincipal") objetivo = document.querySelector("#miniaturasGaleria img.activa") || img;
+    let i = lista.findIndex((x) => x.el === objetivo);
+    if (i < 0) i = 0;
+    const titulo = document.querySelector("h1")?.textContent?.trim() || document.title;
+    VisorMedia.abrir(lista.map((x) => x.item), i, {
+      titulo,
+      compartirUrl: () => location.href.split("#")[0],
+    });
+  }
+
+  document.addEventListener("click", (e) => {
+    const img = e.target.closest && e.target.closest(".article-img img, .article-body .foto-articulo img, .article-collage-foto img, #fotoGaleriaPrincipal");
+    if (!img || !document.getElementById("contenidoArticulo").contains(img)) return;
+    e.preventDefault();
+    abrirDesde(img);
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    const img = e.target;
+    if (img.tagName === "IMG" && img.hasAttribute("data-vm-foto")) { e.preventDefault(); abrirDesde(img); }
+  });
+
+  // Hace que las fotos sean alcanzables con teclado y lectores de pantalla.
+  function marcar() {
+    document.querySelectorAll(".article-img img, .article-body .foto-articulo img, .article-collage-foto img, #fotoGaleriaPrincipal").forEach((img) => {
+      if (img.hasAttribute("data-vm-foto")) return;
+      img.setAttribute("data-vm-foto", "");
+      img.tabIndex = 0;
+      img.setAttribute("role", "button");
+      img.setAttribute("aria-label", "Ampliar foto" + (img.alt && !/^Foto \d+$/.test(img.alt) ? ": " + img.alt : ""));
+    });
+  }
+  const cont = document.getElementById("contenidoArticulo");
+  if (cont) { new MutationObserver(marcar).observe(cont, { childList: true, subtree: true }); marcar(); }
+})();
+</script>
+</body>
+</html>

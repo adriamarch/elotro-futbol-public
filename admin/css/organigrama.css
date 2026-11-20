@@ -135,6 +135,12 @@
 .org-editando .org-nodo{cursor:grab;}
 .org-nodo.org-arrastrando{opacity:.45;}
 .org-nodo.org-drop{border-color:var(--org-azul);box-shadow:0 0 0 4px rgba(45,108,223,.3);transform:scale(1.03);}
+/* Barra azul en el lado donde caerá la casilla al arrastrarla al borde de otra (cambiar el orden) */
+.org-nodo.org-drop-antes::after,.org-nodo.org-drop-despues::after{content:"";position:absolute;background:var(--org-azul);border-radius:3px;box-shadow:0 0 0 3px rgba(45,108,223,.25);pointer-events:none;}
+.org-v .org-nodo.org-drop-antes::after{left:-11px;top:-3px;bottom:-3px;width:5px;}
+.org-v .org-nodo.org-drop-despues::after{right:-11px;top:-3px;bottom:-3px;width:5px;}
+.org-h .org-nodo.org-drop-antes::after{top:-9px;left:-3px;right:-3px;height:5px;}
+.org-h .org-nodo.org-drop-despues::after{bottom:-9px;left:-3px;right:-3px;height:5px;}
 
 /* ---- puesto vacante (casilla sin nombre) ---- */
 .org-nodo.org-vacante{border-style:dashed;border-left-style:solid;background:transparent;}
@@ -211,3 +217,104 @@
 .org-contacto-a span{overflow-wrap:anywhere;}
 .org-form input[type="tel"]{display:block;width:100%;box-sizing:border-box;margin:4px 0 0;padding:9px 11px;border:1.5px solid var(--org-borde);border-radius:10px;background:var(--org-input);font:600 .88rem var(--font-text);color:var(--org-texto);}
 .org-form input[type="tel"]:focus{outline:none;border-color:var(--org-azul);box-shadow:0 0 0 3px rgba(45,108,223,.18);}
+
+
+/* ============================================================================
+   MÓVIL (≤720px): el árbol pasa a ser un esquema con sangría (sin scroll
+   lateral ni zoom). Vale para las dos orientaciones guardadas. Las casillas
+   ocupan todo el ancho, el botón +N/− va a la derecha y los botones son más
+   fáciles de pulsar con el dedo.
+   ============================================================================ */
+@media (max-width:720px){
+  /* barra: buscador a todo el ancho, grupos y botones ajustados */
+  .org-barra{gap:6px;}
+  .org-busca{flex:1 1 100%;min-width:0;}
+  .org-busca input{font-size:16px;padding:10px 12px 10px 34px;} /* 16px: iOS no hace zoom al enfocar */
+  .org-grupo[aria-label="Zoom"],.org-grupo[aria-label="Orientación"]{display:none;}
+  .org-grupo{flex:1 1 auto;}
+  .org-grupo .org-btn{flex:1 1 auto;}
+  .org-btn{min-height:40px;padding:8px 12px;font-size:.78rem;}
+  .org-btn-edit{flex:1 1 100%;margin-left:0;}
+  .org-edit-barra{flex-direction:column;align-items:stretch;}
+  .org-edit-acciones{display:grid;grid-template-columns:1fr 1fr;}
+  .org-edit-acciones .org-btn-guardar{grid-column:1 / -1;}
+  .org-dropraiz{display:none !important;} /* arrastrar no existe en táctil: se usa el desplegable de jefes */
+
+  /* lienzo: crece con el contenido y la página es la que hace scroll */
+  .org-lienzo{max-height:none;overflow:visible;padding:10px 4px 14px;cursor:default;}
+  .org-zoom{display:block;min-width:0;zoom:1 !important;}
+
+  /* árbol como esquema con sangría */
+  .org .org-arbol,.org .org-arbol ul{display:block;margin:0;padding:0;list-style:none;}
+  .org .org-arbol ul{position:relative;margin:8px 0 0 9px;padding:0 0 0 12px;border-left:2px solid var(--org-linea);}
+  .org .org-arbol li{display:block;position:relative;padding:0;margin:8px 0 0;}
+  .org .org-arbol > li:first-child{margin-top:0;}
+  .org .org-arbol ul > li:first-child{margin-top:0;}
+  /* se anulan los conectores del árbol vertical/horizontal */
+  .org .org-arbol li::after,.org .org-arbol ul::before,.org .org-arbol li > .org-nodo::before{display:none !important;}
+  .org .org-arbol li::before{display:none;}
+  /* y se pinta una rama corta hacia cada casilla hija */
+  .org .org-arbol ul > li::before{
+    display:block;content:"";position:absolute;left:-12px;top:22px;right:auto;bottom:auto;
+    width:12px;height:0;border:0;border-top:2px solid var(--org-linea);border-radius:0;
+  }
+
+  /* casilla a todo el ancho */
+  .org .org-nodo{width:100%;min-width:0;max-width:none;padding:9px 10px 9px 8px;gap:10px;}
+  .org .org-ini{width:32px;height:32px;font-size:.74rem;}
+  .org .org-nombre{font-size:.88rem;}
+  .org .org-cargo{font-size:.74rem;}
+  .org .org-nodo:hover{transform:none;}
+  .org .org-nodo.org-drop{transform:none;}
+  .org .org-nodo.org-drop-antes::after,.org .org-nodo.org-drop-despues::after{left:-3px;right:-3px;width:auto;height:5px;}
+  .org .org-nodo.org-drop-antes::after{top:-6px;bottom:auto;}
+  .org .org-nodo.org-drop-despues::after{bottom:-6px;top:auto;}
+  .org .org-arbol .org-toggle{position:static;transform:none;margin-left:auto;flex:0 0 auto;min-width:38px;height:32px;padding:0 8px;font-size:.76rem;}
+  .org .org-enlace{top:-8px;right:-4px;width:18px;height:18px;}
+
+  /* detalle y formulario */
+  .org-detalle{margin-top:10px;scroll-margin-top:72px;}
+  .org-det{padding:12px;}
+  .org-x{width:38px;height:38px;}
+  .org-form input[type="text"],.org-form input[type="tel"],.org-form textarea,.org-form select{font-size:16px;padding:11px 12px;}
+  .org-acciones{display:grid;grid-template-columns:1fr 1fr;}
+  .org-acciones .org-peligro{grid-column:1 / -1;}
+  .org-contacto{flex-direction:column;align-items:stretch;}
+  .org-contacto-a{justify-content:flex-start;padding:10px 14px;}
+  .org-chip,.org-jefe-n,.org-jefe-x{min-height:34px;}
+  .org-sw{width:36px;height:36px;}
+  .org-vacio{margin:20px auto;}
+}
+@media (max-width:380px){
+  .org{padding:6px;}
+  .org .org-arbol ul{margin-left:6px;padding-left:9px;}
+  .org .org-arbol ul > li::before{left:-9px;width:9px;}
+  .org .org-ini{width:28px;height:28px;}
+}
+
+
+/* ---- extras visuales: resumen, avatares con degradado, entrada animada, pantalla completa ---- */
+.org-stats{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 8px;}
+.org-stats:empty{display:none;}
+.org-stat{display:inline-flex;align-items:center;gap:7px;margin:0;padding:6px 13px 6px 10px;border:1.5px solid var(--org-borde);border-radius:999px;background:linear-gradient(135deg,var(--org-card),var(--org-panel));color:var(--org-suave);font:600 .76rem var(--font-text);}
+.org-stat strong{font:800 .95rem var(--font-tit);color:var(--org-texto);font-variant-numeric:tabular-nums;}
+.org-stat-ico{font-size:.9rem;line-height:1;}
+.org-stat-btn{cursor:pointer;transition:background .15s,border-color .15s,transform .1s;}
+.org-stat-btn:hover{background:var(--org-hover);border-color:var(--org-borde-h);}
+.org-stat-btn:active{transform:translateY(1px);}
+.org-stat-btn[aria-pressed="true"]{border-color:var(--org-azul);background:rgba(45,108,223,.12);color:var(--org-texto);box-shadow:0 0 0 3px rgba(45,108,223,.18);}
+.org-stat-btn:focus-visible{outline:3px solid var(--org-azul);outline-offset:2px;}
+
+.org-nodo{background:linear-gradient(135deg,color-mix(in srgb,var(--c) 8%,var(--org-fondo)),var(--org-fondo) 70%);}
+.org-ini{background:linear-gradient(135deg,var(--c),color-mix(in srgb,var(--c) 58%,#000));box-shadow:0 4px 9px -4px var(--c);}
+.org-nodo.org-vacante{background:transparent;}
+.org-nodo.org-alias{background:transparent;}
+.org-nodo.org-vacante .org-ini{background:transparent;box-shadow:none;}
+
+@keyframes orgEntra{from{opacity:0;transform:translateY(10px) scale(.94);}to{opacity:1;transform:none;}}
+.org-anim .org-nodo{animation:orgEntra .45s cubic-bezier(.2,.7,.2,1) var(--d,0ms) backwards;}
+@media (prefers-reduced-motion:reduce){.org-anim .org-nodo{animation:none;}}
+
+.org:fullscreen{overflow:auto;border-radius:0;padding:16px 18px;border:0;}
+.org:fullscreen .org-lienzo{max-height:calc(100vh - 230px);}
+@media (max-width:720px){.org-stat{padding:5px 10px 5px 8px;font-size:.72rem;}}

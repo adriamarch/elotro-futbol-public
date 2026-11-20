@@ -1,0 +1,41 @@
+/* Histórico de incidencias de /estado (js/estado-historico.js) */
+.eh-fila{margin:0 0 18px}
+.eh-cab{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:0 0 6px;font-family:var(--font-text)}
+.eh-nombre{font-weight:700;font-size:.95rem;color:var(--marino-texto)}
+.eh-disp{font-family:var(--font-tit);font-weight:600;font-size:.95rem;font-variant-numeric:tabular-nums;color:var(--texto-suave)}
+.eh-barras{display:grid;grid-template-columns:repeat(90,minmax(0,1fr));gap:2px;height:34px}
+.eh-dia{display:block;border-radius:2px;background:var(--borde);transition:transform .12s,filter .12s}
+.eh-barras .eh-dia:hover{transform:scaleY(1.18);filter:brightness(1.08)}
+.eh-ok{background:#1b8a4a}
+.eh-warn{background:#e0a800}
+.eh-mal{background:var(--rojo)}
+.eh-mant{background:var(--celeste)}
+.eh-nd{background:var(--borde)}
+.eh-escala{display:flex;justify-content:space-between;margin:-8px 0 14px;font-size:.72rem;color:var(--texto-suave)}
+.eh-leyenda{list-style:none;display:flex;flex-wrap:wrap;gap:6px 18px;margin:0 0 6px;padding:0;font-size:.78rem;color:var(--texto-suave)}
+.eh-leyenda li{display:inline-flex;align-items:center;gap:7px}
+.eh-leyenda i.eh-dia{width:12px;height:12px;border-radius:3px;flex:none}
+.eh-subtitulo{margin:26px 0 12px;font-family:var(--font-tit);font-weight:500;font-size:1rem;letter-spacing:.3px;text-transform:uppercase;color:var(--marino-texto)}
+.eh-lista{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.eh-lista-resto{margin-top:8px}
+.eh-lista[hidden]{display:none}
+.eh-inc{display:flex;align-items:flex-start;gap:12px;padding:12px 14px;background:var(--tarjeta);border:1px solid var(--borde);border-radius:var(--radio)}
+.eh-inc .estado-punto{margin-top:5px}
+.eh-inc-curso{border-color:var(--rojo);box-shadow:inset 3px 0 0 var(--rojo)}
+.eh-inc-mant{box-shadow:inset 3px 0 0 var(--celeste)}
+.eh-punto-resuelta{background:#1b8a4a}
+.eh-punto-mant{background:var(--celeste)}
+.eh-inc-titulo{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;font-size:.92rem;color:var(--marino-texto)}
+.eh-inc-meta{margin-top:2px;font-size:.82rem;color:var(--texto-suave)}
+.eh-badge{display:inline-block;padding:2px 10px;border-radius:999px;font-size:.74rem;font-weight:700;line-height:1.5}
+.eh-badge-ok{background:#1b8a4a1f;color:#1b8a4a}
+.eh-badge-curso{background:#d1132e1f;color:var(--rojo)}
+[data-theme=dark] .eh-badge-ok{color:#5fd391}
+[data-theme=dark] .eh-badge-curso{color:#ff7a8a}
+.eh-vacio{margin:0;padding:14px 16px;border:1.5px dashed var(--borde);border-radius:var(--radio);font-size:.9rem;color:var(--texto-suave)}
+.eh-aviso{margin:14px 0 0;padding:10px 14px;border-left:3px solid #e0a800;background:#e0a80014;border-radius:0 var(--radio) var(--radio) 0;font-size:.85rem;color:var(--texto)}
+.eh-mas{margin-top:10px;padding:8px 18px;border:1px solid var(--borde);border-radius:22px;background:var(--tarjeta);color:var(--marino-texto);font-size:.85rem;font-weight:600;cursor:pointer}
+.eh-mas:hover{border-color:var(--celeste)}
+.eh-mas:focus-visible{outline:3px solid var(--celeste);outline-offset:2px}
+@media(max-width:560px){.eh-barras{gap:1px;height:28px}.eh-inc{padding:10px 12px}}
+@media(prefers-reduced-motion:reduce){.eh-dia{transition:none}.eh-barras .eh-dia:hover{transform:none}}

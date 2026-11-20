@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Reuniones — ELOTROFÚTBOLTV</title>
+<meta name="description" content="Indique su disponibilidad para las reuniones de ElOtroFútbol y consulte las reuniones convocadas.">
+<meta name="robots" content="noindex, nofollow">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ElOtroFútbol">
+<meta property="og:url" content="https://elotrofutbol.media/reuniones">
+<meta property="og:title" content="Calendario de reuniones | ElOtroFútbol">
+<meta property="og:description" content="Marca cuándo te viene bien y te convocamos a las reuniones con el equipo de ElOtroFútbol.">
+<meta property="og:image" content="https://elotrofutbol.media/img/og-reuniones.jpg?v=2">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="ElOtroFútbol: calendario de reuniones">
+<meta property="og:locale" content="es_ES">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Calendario de reuniones | ElOtroFútbol">
+<meta name="twitter:description" content="Marca cuándo te viene bien y te convocamos a las reuniones con el equipo de ElOtroFútbol.">
+<meta name="twitter:image" content="https://elotrofutbol.media/img/og-reuniones.jpg?v=2">
+<meta name="theme-color" content="#0c1b2e">
+<meta name="color-scheme" content="light dark">
+<script src="/js/tema.js"></script>
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="/css/reuniones.css?v=2d4dab89">
+</head>
+<body>
+<a class="saltar" href="#cal">Saltar al calendario</a>
+
+<!-- ===== Pantalla de acceso: solo con cuenta de colaborador ===== -->
+<main class="acceso" id="acceso" hidden>
+  <form class="acceso-tarjeta" id="frmAcceso" novalidate>
+    <div class="acceso-cab">
+      <img class="acceso-logo" src="/img/logo.png" alt="ElOtroFútbol" width="48" height="48">
+      <div>
+        <p class="acceso-org">ElOtroFútbol</p>
+        <h1>Reuniones</h1>
+      </div>
+    </div>
+    <span class="acceso-chip"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>Acceso reservado al equipo</span>
+    <div class="acceso-tema"><button type="button" class="tema-btn" aria-pressed="false" aria-label="Activar modo oscuro" title="Modo oscuro"><svg class="ico-luna" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg><svg class="ico-sol" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button></div>
+    <p class="acceso-sub">El acceso está reservado al equipo. Inicie sesión con su cuenta de colaborador para indicar su disponibilidad.</p>
+    <label class="acceso-campo">
+      <span>Usuario</span>
+      <input type="text" id="loginUsuario" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="100" aria-describedby="accesoError" autofocus>
+    </label>
+    <label class="acceso-campo">
+      <span>Contraseña</span>
+      <input type="password" id="loginClave" autocomplete="current-password" maxlength="1024">
+    </label>
+    <p class="acceso-error" id="accesoError" role="alert" aria-live="assertive"></p>
+    <button type="submit" class="btn prim grande" id="btnEntrar">Iniciar sesión</button>
+    <div class="acceso-sep"><span>o bien</span></div>
+    <a class="btn grande fantasma" id="lnkLogin" href="/acceso.html?modo=redactor">Acceso de Responsables (panel de gestión)</a>
+    <p class="acceso-pie">¿No dispone de cuenta? <a href="/contacto">Solicítela al equipo</a>.</p>
+  </form>
+</main>
+
+<!-- ===== Página ===== -->
+<div class="wrap" id="app" hidden>
+  <header class="hero">
+    <div class="hero-fila">
+      <div class="marca"><img src="/img/logo.png" alt="" width="28" height="28"><span>ElOtroFútbol</span><i class="marca-sep" aria-hidden="true"></i><span class="marca-sec">Gestión de colaboradores</span></div>
+      <div class="hero-acc"><button type="button" class="tema-btn" aria-pressed="false" aria-label="Activar modo oscuro" title="Modo oscuro"><svg class="ico-luna" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg><svg class="ico-sol" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button><button type="button" class="btn sm fantasma" id="btnSalir" hidden>Cerrar sesión</button></div>
+    </div>
+    <h1 id="titulo">Reuniones</h1>
+    <p id="descripcion"></p>
+    <div class="hero-pies">
+      <span class="vivo" id="vivo" title="El calendario se actualiza solo, sin recargar la página"><i></i><b>En vivo</b><small id="vivoTxt"></small></span>
+      <span class="tz" id="tz">Horario: hora de Madrid</span>
+      <span class="cifras" id="cifras"></span>
+    </div>
+  </header>
+
+  <!-- Solo visible para un Responsable con sesión iniciada -->
+  <section class="card eines" id="eines" hidden aria-label="Herramientas de gestión">
+    <div class="eines-fila">
+      <span class="etq">Gestión</span>
+      <div class="seg" role="group" aria-label="Vista">
+        <button type="button" id="modoEditar" aria-pressed="true">Disponibilidad</button>
+        <button type="button" id="modoResp" aria-pressed="false">Respuestas</button>
+      </div>
+      <div class="seg" role="group" aria-label="Acción sobre las franjas" id="pinceles">
+        <button type="button" data-eina="disponible" aria-pressed="true"><i class="dot ok"></i> Habilitar</button>
+        <button type="button" data-eina="no_puc" aria-pressed="false"><i class="dot no"></i> Bloquear</button>
+        <button type="button" data-eina="buit" aria-pressed="false"><i class="dot buit"></i> Borrar</button>
+      </div>
+      <button type="button" class="btn sm" id="btnPlantilla">Plantilla de horarios</button>
+    </div>
+    <div class="eines-fila">
+      <label class="interruptor"><input type="checkbox" id="chkAbierto"><span class="pista"></span> Admitir nuevas respuestas</label>
+      <span class="espacio"></span>
+      <button type="button" class="btn sm" id="btnAjustes">Título y texto</button>
+      <button type="button" class="btn sm prim" id="btnInvitar">Copiar invitación</button>
+    </div>
+  </section>
+
+  <!-- Agenda de reuniones (solo Responsable): qué reuniones hay, cuándo y cuáles son más urgentes -->
+  <section class="card agenda" id="agenda" hidden aria-label="Agenda de reuniones">
+    <div class="ag-cab">
+      <div><h2>Agenda de reuniones</h2><p class="mut" id="agSub"></p></div>
+    </div>
+    <div class="ag-kpis" id="agKpis"></div>
+    <div class="ag-cols">
+      <div class="ag-col"><h3>Próximas reuniones</h3><div class="ag-lista" id="agLista"></div></div>
+      <div class="ag-col"><h3>Por convocar · por urgencia</h3><div class="ag-lista" id="agPend"></div></div>
+    </div>
+  </section>
+
+  <section class="card quien" id="quien"></section>
+
+  <div class="fila">
+    <section class="card cal" id="cal" aria-label="Calendario">
+      <div class="cal-cap">
+        <h2 id="rango">—</h2>
+        <div class="nav">
+          <button type="button" class="btn" id="prev" aria-label="Semana anterior">‹</button>
+          <button type="button" class="btn hoy" id="hoy">Hoy</button>
+          <button type="button" class="btn" id="next" aria-label="Semana siguiente">›</button>
+        </div>
+      </div>
+      <div class="leyenda" id="leyenda"></div>
+      <div class="graella-wrap" id="graellaWrap"><div class="graella" id="graella"></div></div>
+    </section>
+
+    <aside class="lateral">
+      <section class="card" id="cardMias" hidden><div class="cap"><h2>Mis reuniones</h2></div><div class="cos"><ul class="lista" id="mias"></ul></div></section>
+      <section class="card" id="cardMejores"><div class="cap"><h2>Franjas con mayor coincidencia</h2></div><div class="cos"><ul class="lista" id="mejores"></ul></div></section>
+      <section class="card" id="cardConf"><div class="cap"><h2>Reuniones confirmadas</h2></div><div class="cos"><ul class="lista" id="confirmadas"></ul></div></section>
+      <section class="card"><div class="cap"><h2>Participantes</h2><span class="mut" id="nPersonas"></span></div><div class="cos" id="personas"></div></section>
+    </aside>
+  </div>
+
+  <footer class="pie-pagina">
+    <p>Uso interno del equipo de ElOtroFútbol. Los datos facilitados se emplean exclusivamente para organizar las reuniones y pueden eliminarse en cualquier momento desde esta página.</p>
+    <p>Para cualquier consulta, <a href="/contacto">póngase en contacto con el equipo</a>.</p>
+  </footer>
+</div>
+
+<div class="barra" id="barra"><div class="in"><span id="barraTxt"></span><button type="button" class="btn fantasma" id="btnDeshacer">Descartar cambios</button><button type="button" class="btn prim" id="btnGuardar">Guardar respuesta</button></div></div>
+<div id="tip" role="tooltip"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<!-- Confirmar reunión (Responsable) -->
+<dialog id="dlgConfirmar" aria-labelledby="tCfm"><form method="dialog" id="frmConfirmar">
+  <h3 id="tCfm">Confirmar reunión</h3>
+  <div id="cfInfo"></div>
+  <div class="dos">
+    <label>Duración<select id="cfDuracion"><option value="1">30 minutos</option><option value="2" selected>1 hora</option><option value="3">1 hora y 30 minutos</option><option value="4">2 horas</option><option value="6">3 horas</option></select></label>
+    <label>Asunto <small>(opcional)</small><input type="text" id="cfNota" maxlength="140" placeholder="Motivo de la reunión (acogida, seguimiento, formación…)"></label>
+  </div>
+  <label>Enlace de la videollamada <small>(opcional; visible únicamente para los participantes inscritos)</small><input type="url" id="cfEnlace" placeholder="https://meet.google.com/…"></label>
+  <div class="pie"><button type="button" class="btn" data-cierra>Cancelar</button><button type="submit" class="btn prim" id="cfOk">Confirmar reunión</button></div>
+</form></dialog>
+
+<!-- Plantilla de horarios (Responsable) -->
+<dialog id="dlgPlantilla" aria-labelledby="tPla"><form method="dialog" id="frmPlantilla">
+  <h3 id="tPla">Plantilla de horarios</h3>
+  <p class="mut" style="margin:0">Aplique de una sola vez unos días y un horario que se repiten durante varias semanas. Después podrá ajustar cualquier franja desde el calendario.</p>
+  <label>Días de la semana<div class="dias-sel" id="plDias"></div></label>
+  <div class="dos">
+    <label>Desde<select id="plDesde"></select></label>
+    <label>Hasta<select id="plHasta"></select></label>
+  </div>
+  <div class="dos">
+    <label>Duración de la plantilla<select id="plSemanas"></select></label>
+    <label>Aplicar como<select id="plEstado"><option value="disponible">Habilitar</option><option value="no_puc">Bloquear</option><option value="buit">Borrar</option></select></label>
+  </div>
+  <div class="pie"><button type="button" class="btn" data-cierra>Cancelar</button><button type="submit" class="btn prim">Aplicar plantilla</button></div>
+</form></dialog>
+
+<!-- Título y texto (Responsable) -->
+<dialog id="dlgAjustes" aria-labelledby="tAju"><form method="dialog" id="frmAjustes">
+  <h3 id="tAju">Título y texto de la página</h3>
+  <label>Título<input type="text" id="cgTitulo" maxlength="80"></label>
+  <label>Texto de presentación<textarea id="cgDescripcion" maxlength="600"></textarea></label>
+  <div class="pie"><button type="button" class="btn" data-cierra>Cancelar</button><button type="submit" class="btn prim">Guardar ajustes</button></div>
+</form></dialog>
+
+<!-- Confirmación genérica (sustituye a los cuadros del navegador) -->
+<dialog id="dlgSeguro" aria-labelledby="sgTitulo"><form method="dialog" id="frmSeguro">
+  <h3 id="sgTitulo"></h3>
+  <p class="mut sg-texto" id="sgTexto"></p>
+  <div class="pie"><button type="button" class="btn" data-cierra>Cancelar</button><button type="submit" class="btn prim" id="sgOk">Aceptar</button></div>
+</form></dialog>
+
+<script src="/js/config.js"></script>
+<script src="/js/reuniones.js?v=ef1c822b"></script>
+</body>
+</html>

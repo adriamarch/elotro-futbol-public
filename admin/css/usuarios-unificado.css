@@ -1,0 +1,252 @@
+/* =====================================================================
+   Panel > Usuarios · ESTILO UNIFICADO
+   Un solo lenguaje visual para todo el panel:
+     - Tarjetas: esquinas de 18px, borde fino, sombra suave y un toque de color.
+     - Controles (chips, rol, equipo, nivel, grupo, avisos): píldoras de 34-36px.
+     - Color por rol en toda la pantalla: redactor = celeste, fotógrafo = violeta,
+       Responsable = rojo (mismo código en resumen, filtros, avatar y tarjeta).
+   Solo CSS. Se carga DESPUÉS de admin.css, grupos-trabajo.css y usuarios-etiquetas-mejoras.css.
+   ===================================================================== */
+
+#subpanel-redactores,
+#subpanel-lectores{
+  --u-radio:18px;
+  --u-ctl-alto:36px;
+  --u-sombra:0 14px 30px -26px rgba(12,27,46,.6);
+  --u-rol-redactor:var(--celeste,#2d9fdb);
+  --u-rol-fotografo:#7c3aed;
+  --u-rol-admin:var(--rojo,#d1132e);
+}
+
+/* ---------- 1 · Tarjetas (resumen, PIN, contador, filtros) ---------- */
+#subpanel-redactores .usuarios-stat,
+#subpanel-redactores .usuarios-pin,
+#subpanel-redactores .contador-usuarios,
+#subpanel-redactores .usuarios-toolbar{
+  border-radius:var(--u-radio);
+  border:1px solid var(--borde);
+  box-shadow:var(--u-sombra);
+  background:linear-gradient(135deg,color-mix(in srgb,var(--acento,var(--celeste)) 8%,var(--tarjeta)),var(--tarjeta) 70%);
+}
+#subpanel-redactores .usuarios-pin,
+#subpanel-redactores .contador-usuarios{--acento:var(--celeste);position:relative;overflow:hidden;padding-left:22px;}
+#subpanel-redactores .usuarios-pin::before,
+#subpanel-redactores .contador-usuarios::before{
+  content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--acento);
+}
+#subpanel-redactores .usuarios-toolbar{--acento:var(--marino,#0b1257);padding:18px;gap:14px;}
+
+/* Resumen: número grande + etiqueta, todas iguales */
+#subpanel-redactores .usuarios-stats{gap:14px;}
+#subpanel-redactores .usuarios-stat{padding:16px 18px 16px 22px;gap:4px;}
+#subpanel-redactores .usuarios-stat::before{width:5px;}
+#subpanel-redactores .usuarios-stat-num{font-size:2.1rem;}
+#subpanel-redactores .usuarios-stat-etq{letter-spacing:.6px;font-size:.7rem;}
+#subpanel-redactores .usuarios-stat.stat-redactor{--acento:var(--u-rol-redactor);}
+#subpanel-redactores .usuarios-stat.stat-fotografo{--acento:var(--u-rol-fotografo);}
+#subpanel-redactores .usuarios-stat.stat-admin{--acento:var(--u-rol-admin);}
+#subpanel-redactores .usuarios-stat:hover{box-shadow:0 18px 30px -20px color-mix(in srgb,var(--acento) 70%,transparent);}
+
+/* Botones de las tarjetas: PIN y "Crear usuario" comparten estilo */
+#subpanel-redactores .btn-ver-pin-ultima-hora{
+  min-height:var(--u-ctl-alto);padding:6px 18px;border-radius:999px;font-weight:800;font-size:.82rem;
+  border:1.5px solid var(--borde);background:var(--tarjeta);color:var(--texto);
+}
+#subpanel-redactores .btn-ver-pin-ultima-hora:hover{border-color:var(--celeste);color:var(--celeste);}
+#subpanel-redactores .usuarios-crear > summary{
+  background:linear-gradient(135deg,var(--rojo),var(--rojo-oscuro,#a30f24));
+  box-shadow:0 10px 18px -12px rgba(209,19,46,.75);
+}
+#subpanel-redactores .usuarios-crear-card{border-radius:var(--u-radio);box-shadow:var(--u-sombra);}
+#subpanel-redactores .contador-barra i{background:linear-gradient(90deg,var(--celeste),var(--u-rol-fotografo));}
+
+/* ---------- 2 · Filtros: buscador + filas "etiqueta + chips" ---------- */
+#subpanel-redactores .usuarios-toolbar-fila{gap:12px;}
+#subpanel-redactores .usuarios-buscar,
+#subpanel-redactores .usuarios-orden{
+  min-height:44px;border-radius:999px;border:1.5px solid var(--borde);background-color:var(--tarjeta);
+  font-size:.88rem;box-shadow:none;
+}
+#subpanel-redactores .usuarios-buscar{padding-left:42px;background-position:16px center;}
+#subpanel-redactores .usuarios-buscar:focus,
+#subpanel-redactores .usuarios-orden:focus{border-color:var(--celeste);outline:none;box-shadow:0 0 0 3px color-mix(in srgb,var(--celeste) 22%,transparent);}
+
+#subpanel-redactores .usuarios-filtro,
+#subpanel-redactores .gt-barra{display:flex;align-items:center;gap:14px;min-width:0;}
+#subpanel-redactores .usuarios-filtro{padding-top:14px;border-top:1px dashed var(--borde);}
+#subpanel-redactores .gt-barra-wrap:not([hidden]){padding-top:14px;border-top:1px dashed var(--borde);}
+#subpanel-redactores .usuarios-fila-etq{
+  flex:0 0 64px;font-family:var(--font-tit);font-size:.68rem;font-weight:800;letter-spacing:.9px;
+  text-transform:uppercase;color:var(--gris-texto);
+}
+#subpanel-redactores .usuarios-filtro .usuarios-chips{flex:1;min-width:0;}
+
+/* Chips: mismo aspecto para rol, estado y grupo */
+#subpanel-redactores .usuarios-chips{gap:8px;}
+#subpanel-redactores .usuarios-chips button{
+  --acc:var(--marino,#0b1257);
+  min-height:var(--u-ctl-alto);padding:3px 5px 3px 14px;border:1.5px solid var(--borde);border-radius:999px;
+  background:var(--tarjeta);color:var(--texto);font-size:.82rem;font-weight:700;gap:8px;box-shadow:none;
+}
+#subpanel-redactores .usuarios-chips button:not(:has(b)){padding-right:14px;}
+#subpanel-redactores .usuarios-chips button b{
+  display:inline-grid;place-items:center;min-width:24px;height:24px;padding:0 7px;border-radius:999px;
+  background:rgba(91,102,114,.13);color:var(--gris-texto);font-size:.72rem;font-weight:800;
+}
+#subpanel-redactores .usuarios-chips button:hover:not(.activo){background:var(--tarjeta);border-color:var(--acc);}
+#subpanel-redactores .usuarios-chips button.activo{
+  border-color:var(--acc);color:var(--texto);
+  background:linear-gradient(120deg,color-mix(in srgb,var(--acc) 18%,var(--tarjeta)),color-mix(in srgb,var(--acc) 6%,var(--tarjeta)));
+  box-shadow:0 8px 16px -12px var(--acc);
+}
+#subpanel-redactores .usuarios-chips button.activo b{background:var(--acc);color:#fff;}
+#subpanel-redactores .usuarios-chips [data-rol="todos"],
+#subpanel-redactores .usuarios-chips [data-estado="todos"]{--acc:var(--marino,#0b1257);}
+#subpanel-redactores .usuarios-chips [data-rol="redactor"]{--acc:var(--u-rol-redactor);}
+#subpanel-redactores .usuarios-chips [data-rol="fotografo"]{--acc:var(--u-rol-fotografo);}
+#subpanel-redactores .usuarios-chips [data-rol="admin"]{--acc:var(--u-rol-admin);}
+#subpanel-redactores .usuarios-chips [data-estado="activos"]{--acc:#16a34a;}
+#subpanel-redactores .usuarios-chips [data-estado="inactivos"]{--acc:#6b7280;}
+#subpanel-redactores .usuarios-chips [data-estado="sin_acceso"]{--acc:#ea580c;}
+#subpanel-redactores .gt-fchip{min-height:var(--u-ctl-alto);}
+#subpanel-redactores .usuarios-toolbar-pie{padding-top:2px;}
+#subpanel-redactores .usuarios-limpiar{
+  padding:5px 14px;border:1.5px solid var(--borde);border-radius:999px;text-decoration:none;
+  background:var(--tarjeta);color:var(--celeste);font-weight:800;
+}
+#subpanel-redactores .usuarios-limpiar:hover{border-color:var(--celeste);}
+
+/* ---------- 3 · Tabla (escritorio): tarjeta con cabecera suave ---------- */
+#subpanel-redactores table.lista,
+#subpanel-lectores table.lista{
+  border-collapse:separate;border-spacing:0;border-radius:var(--u-radio);
+  border:1px solid var(--borde);box-shadow:var(--u-sombra);background:var(--tarjeta);
+}
+#subpanel-redactores table.lista thead th,
+#subpanel-lectores table.lista thead th{
+  background:color-mix(in srgb,var(--celeste) 9%,var(--tarjeta));background-image:none;
+  color:var(--gris-texto);font-size:.66rem;font-weight:800;letter-spacing:.9px;
+  border-bottom:1px solid var(--borde);
+}
+#subpanel-redactores table.lista tbody tr:hover,
+#subpanel-lectores table.lista tbody tr:hover{background:color-mix(in srgb,var(--celeste) 5%,var(--tarjeta));}
+#subpanel-redactores table.lista td{vertical-align:middle;border-bottom-color:color-mix(in srgb,var(--borde) 75%,transparent);}
+
+/* Color de rol de cada fila (lo usan avatar, barra lateral y tarjeta) */
+#subpanel-redactores tbody tr{--u-acc:var(--u-rol-redactor);}
+#subpanel-redactores tbody tr:has(.select-rol.rol-fotografo){--u-acc:var(--u-rol-fotografo);}
+#subpanel-redactores tbody tr:has(.select-rol.rol-admin){--u-acc:var(--u-rol-admin);}
+#subpanel-redactores table.lista tbody tr td:first-child{box-shadow:inset 4px 0 0 var(--u-acc);}
+
+/* Avatar con el color del rol */
+#subpanel-redactores .avatar-usuario{
+  width:38px;height:38px;border:2px solid var(--tarjeta);
+  box-shadow:0 0 0 2px color-mix(in srgb,var(--u-acc) 55%,transparent),0 8px 14px -10px var(--u-acc);
+}
+#subpanel-redactores .avatar-usuario-iniciales{
+  background-color:var(--u-acc);
+  background-image:linear-gradient(135deg,color-mix(in srgb,var(--u-acc) 70%,#fff),var(--u-acc));
+  font-size:.78rem;letter-spacing:.3px;
+}
+#subpanel-redactores .usuario-nombre{font-weight:800;}
+
+/* ---------- 4 · Controles de las celdas: todos en píldora ---------- */
+#subpanel-redactores .select-rol{
+  height:var(--u-ctl-alto);min-width:150px;border-radius:999px;font-size:.72rem;
+}
+#subpanel-redactores .select-rol.rol-fotografo{background-color:var(--u-rol-fotografo);}
+#subpanel-redactores .btn-equipos-usuario,
+#subpanel-redactores .nivel-badge{
+  min-height:var(--u-ctl-alto);border-radius:999px;border-width:1.5px;font-size:.78rem;box-sizing:border-box;
+}
+#subpanel-redactores .btn-equipos-usuario{
+  display:inline-flex;align-items:center;max-width:240px;padding:5px 30px 5px 14px;
+  border:1.5px solid var(--borde);border-left:5px solid var(--celeste);
+}
+#subpanel-redactores .nivel-badge{padding:5px 14px;justify-content:center;}
+#subpanel-redactores .avisos-btn{border-radius:999px;}
+#subpanel-redactores .celda-situacion{gap:8px;}
+
+/* Selector de grupo: misma píldora que equipo y nivel */
+#subpanel-redactores .gt-celda{margin-top:8px;}
+#subpanel-redactores .gt-chip{
+  min-height:var(--u-ctl-alto);padding:3px 12px 3px 4px;gap:8px;border-radius:999px;box-sizing:border-box;
+  max-width:240px;width:auto;
+}
+#subpanel-redactores .gt-chip-ins{width:28px;height:28px;border-radius:50%;font-size:.66rem;}
+#subpanel-redactores .gt-chip-ins svg{width:16px;height:16px;}
+#subpanel-redactores .gt-chip-txt small{display:none;}
+#subpanel-redactores .gt-chip-txt b{font-size:.78rem;}
+#subpanel-redactores .gt-chip-crear{justify-content:center;padding:3px 14px;font-size:.78rem;}
+#subpanel-redactores .gt-na{border-radius:999px;}
+
+/* Botones de acción: estilo fantasma uniforme */
+#subpanel-redactores table.lista td.acciones-usuario button{
+  min-height:32px;padding:5px 13px;border:1.5px solid var(--borde);border-radius:999px;
+  background:var(--tarjeta);color:var(--texto);font-size:.76rem;font-weight:700;box-shadow:none;
+  transition:border-color .15s,color .15s,background .15s,transform .15s;
+}
+#subpanel-redactores table.lista td.acciones-usuario button:hover:not(:disabled){
+  border-color:var(--celeste);color:var(--celeste);background:color-mix(in srgb,var(--celeste) 8%,var(--tarjeta));transform:translateY(-1px);box-shadow:none;
+}
+#subpanel-redactores table.lista td.acciones-usuario button.eliminar{color:var(--rojo);}
+#subpanel-redactores table.lista td.acciones-usuario button.eliminar:hover:not(:disabled){
+  border-color:var(--rojo);color:var(--rojo);background:color-mix(in srgb,var(--rojo) 9%,var(--tarjeta));
+}
+
+/* ---------- 5 · Tarjetas por usuario (portátil, tablet y móvil) ---------- */
+@media (max-width:1280px){
+  #subpanel-redactores table.lista tbody tr:nth-child(n){
+    position:relative;overflow:hidden;border-radius:var(--u-radio);padding:8px 18px 8px 22px;
+    background:linear-gradient(135deg,color-mix(in srgb,var(--u-acc) 8%,var(--tarjeta)),var(--tarjeta) 60%);
+    box-shadow:var(--u-sombra);
+  }
+  #subpanel-redactores table.lista tbody tr:nth-child(n)::before{
+    content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--u-acc);
+  }
+  #subpanel-redactores table.lista tbody tr td:first-child{box-shadow:none;}
+  #subpanel-redactores table.lista td{border-bottom:1px dashed var(--borde);}
+  #subpanel-redactores table.lista td:last-child{border-bottom:none;}
+  #subpanel-redactores table.lista td.acciones-usuario button{min-height:38px;}
+  #subpanel-redactores .btn-equipos-usuario{justify-content:center;}
+  #subpanel-redactores .gt-celda{align-items:flex-end;margin-top:0;}
+  #subpanel-redactores td[data-label="Equipo y categoría"]{flex-wrap:wrap;}
+}
+@media (max-width:640px){
+  #subpanel-redactores .usuarios-filtro{flex-direction:column;align-items:flex-start;gap:8px;}
+  #subpanel-redactores .usuarios-filtro .usuarios-chips{width:100%;}
+  #subpanel-redactores .usuarios-toolbar{padding:14px;}
+  #subpanel-redactores .usuarios-fila-etq{flex:0 0 auto;}
+  #subpanel-redactores .gt-barra{flex-wrap:wrap;gap:8px;}
+  #subpanel-redactores .gt-barra .usuarios-fila-etq{flex:1 1 auto;}
+  #subpanel-redactores .gt-barra-gestionar{order:2;}
+}
+
+/* ---------- 6 · Tema oscuro ---------- */
+[data-theme="dark"] #subpanel-redactores .usuarios-stat,
+[data-theme="dark"] #subpanel-redactores .usuarios-pin,
+[data-theme="dark"] #subpanel-redactores .contador-usuarios,
+[data-theme="dark"] #subpanel-redactores .usuarios-toolbar{
+  box-shadow:none;
+  background:linear-gradient(135deg,color-mix(in srgb,var(--acento,var(--celeste)) 14%,var(--tarjeta)),var(--tarjeta) 70%);
+}
+[data-theme="dark"] #subpanel-redactores .usuarios-chips button{background:var(--tarjeta);color:var(--texto);border-color:var(--borde);}
+[data-theme="dark"] #subpanel-redactores .usuarios-chips button.activo{
+  color:var(--texto);border-color:var(--acc);
+  background:linear-gradient(120deg,color-mix(in srgb,var(--acc) 30%,var(--tarjeta)),color-mix(in srgb,var(--acc) 12%,var(--tarjeta)));
+}
+[data-theme="dark"] #subpanel-redactores .usuarios-chips button.activo b{background:var(--acc);color:#fff;}
+[data-theme="dark"] #subpanel-redactores .usuarios-chips [data-rol="todos"],
+[data-theme="dark"] #subpanel-redactores .usuarios-chips [data-estado="todos"]{--acc:#8aa4d6;}
+[data-theme="dark"] #subpanel-redactores table.lista,
+[data-theme="dark"] #subpanel-lectores table.lista{box-shadow:none;}
+[data-theme="dark"] #subpanel-redactores table.lista thead th,
+[data-theme="dark"] #subpanel-lectores table.lista thead th{background:color-mix(in srgb,var(--celeste) 14%,var(--tarjeta));}
+[data-theme="dark"] #subpanel-redactores table.lista td.acciones-usuario button{background:var(--tarjeta);color:var(--texto);border-color:var(--borde);}
+[data-theme="dark"] #subpanel-redactores table.lista td.acciones-usuario button.eliminar{color:#fb9aa9;}
+[data-theme="dark"] #subpanel-redactores .btn-ver-pin-ultima-hora{background:var(--tarjeta);color:var(--texto);}
+
+@media (prefers-reduced-motion:reduce){
+  #subpanel-redactores .usuarios-chips button,
+  #subpanel-redactores table.lista td.acciones-usuario button{transition:none;}
+}

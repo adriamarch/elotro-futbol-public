@@ -2,10 +2,15 @@
 <html lang="es">
 <head>
 <meta name="google-adsense-account" content="ca-pub-7347856722927942">
-<script src="js/tema.js?v=2"></script>
-<script src="js/preferencias.js?v=20"></script>
+<script src="js/tema.js?v=65626bb2"></script>
+<script src="js/preferencias.js?v=6e49f5b3"></script>
 <meta charset="UTF-8">
-<script src="/js/splash.js?v=2"></script>
+<script>/* splash.js: bloquea el parseo solo si la web se abre como app (o ?splash=1); en navegador carga en async, sin frenar el pintado. */
+(function(){var a=false;try{a=matchMedia("(display-mode: standalone)").matches||matchMedia("(display-mode: fullscreen)").matches||matchMedia("(display-mode: minimal-ui)").matches||navigator.standalone===true;}catch(e){}
+if(a||/[?&]splash=1(&|$)/.test(location.search)){document.write('<script src="/js/splash.js?v=b5004788"><\/script>');}
+else{var s=document.createElement("script");s.src="/js/splash.js?v=b5004788";s.async=true;document.head.appendChild(s);}})();
+</script>
+<script src="/js/cargando.js?v=4a5cb1bc"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,15 +22,15 @@
 <meta name="twitter:image" content="https://elotrofutbol.media/img/og-default.png">
 <meta name="robots" content="noindex, follow">
 <link rel="canonical" href="https://elotrofutbol.media/acceso">
-<link rel="icon" href="/favicon.ico?v=3" sizes="any">
-<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=3">
-<link rel="apple-touch-icon" href="/img/apple-touch-icon.png?v=2">
-<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&display=swap" onload="this.onload=null;this.rel='stylesheet'"><noscript><link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet"></noscript>
-<link rel="stylesheet" href="css/style.css?v=35">
-<link rel="stylesheet" href="css/modales-mejoras.css?v=1">
-<link rel="stylesheet" href="css/accesibilidad.css?v=2">
-<script src="js/accesibilidad.js?v=1" defer></script>
-<link rel="stylesheet" href="css/foco.css?v=1">
+<link rel="icon" href="/favicon.ico?v=39af2432" sizes="any">
+<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=39af2432">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png?v=3f854c49">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;0,700;0,800;1,500;1,700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&display=swap" onload="this.onload=null;this.rel='stylesheet'"><noscript><link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;0,700;0,800;1,500;1,700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&display=swap" rel="stylesheet"></noscript>
+<link rel="stylesheet" href="css/style.css?v=6cd42e49">
+<link rel="stylesheet" href="css/modales-mejoras.css?v=982413bb">
+<link rel="stylesheet" href="css/accesibilidad.css?v=191b9263">
+<script src="js/accesibilidad.js?v=59fdae75" defer></script>
+<link rel="stylesheet" href="css/foco.css?v=c8652610">
 <style>
 
   /* =====================================================================
@@ -398,8 +403,8 @@
     *{transition-duration:.01ms !important;}
   }
 </style>
-<link rel="stylesheet" href="css/app-movil.css?v=8">
-<script src="js/app-movil.js?v=5" defer></script>
+<link rel="stylesheet" href="css/app-movil.css?v=b6df23d4">
+<script src="js/app-movil.js?v=3b122790" defer></script>
 </head>
 <body data-page="acceso">
 
@@ -493,6 +498,13 @@
               <label for="loginPassword">Contraseña</label>
               <input type="password" id="loginPassword" required autocomplete="current-password">
               <button type="submit" id="btnLogin">Entrar</button>
+            </form>
+            <form id="formLogin2faLector" novalidate style="display:none">
+              <p class="sub">Verificación en dos pasos: escribe el código de 6 cifras de tu app de autenticación. Si no tienes el móvil, usa un código de recuperación.</p>
+              <label for="login2faCodigo">Código de verificación</label>
+              <input type="text" id="login2faCodigo" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" maxlength="20" required>
+              <button type="submit" id="btnLogin2fa">Verificar y entrar</button>
+              <button type="button" class="enlace-olvido" id="btnLogin2faVolver">Volver</button>
             </form>
             <p id="loginMsg" class="acceso-msg"></p>
             <button type="button" class="enlace-olvido" id="btnIrOlvido">He olvidado mi contraseña</button>
@@ -646,7 +658,7 @@
         <!-- VERIFICACIÓN EN DOS PASOS (admins): configurarla por primera vez -->
         <div class="pantalla" id="cajaConfigurar2fa">
           <h2>Activa la verificación en dos pasos</h2>
-          <p class="ayuda-form">Para los administradores es obligatoria: además de la contraseña, se pide un código de tu móvil.</p>
+          <p class="ayuda-form">Para los Responsables es obligatoria: además de la contraseña, se pide un código de tu móvil.</p>
           <ol class="pasos-2fa">
             <li>Instala una app de autenticación (Google Authenticator, Microsoft Authenticator, Authy…).</li>
             <li>Escanea este código QR con la app.</li>
@@ -719,18 +731,18 @@
 
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="js/vendor/msal-browser.min.js" defer></script>
-<script src="js/ui-alertas.js?v=5"></script>
-<script src="js/foco.js?v=1"></script>
+<script src="js/ui-alertas.js?v=4339c846"></script>
+<script src="js/foco.js?v=133ef790"></script>
 <script src="js/vendor/qrcode.js"></script>
-<script src="js/config.js?v=36"></script>
-<script src="js/seo.js?v=5"></script>
-<script src="js/lector-auth.js?v=13"></script>
-<script src="js/lecturas.js?v=8"></script>
-<script src="js/turnstile.js?v=2"></script>
-<script src="js/layout.js?v=30"></script>
-<script src="js/cookies.js?v=2"></script>
-<script src="js/ads.js?v=3"></script>
-<script src="js/main.js?v=33"></script>
+<script src="js/config.js?v=8002da47"></script>
+<script src="js/seo.js?v=51678a88"></script>
+<script src="js/lector-auth.js?v=9a1c7f1f"></script>
+<script src="js/lecturas.js?v=de5c36f5"></script>
+<script src="js/turnstile.js?v=c9b660c4"></script>
+<script src="js/layout.js?v=7e7c9eae"></script>
+<script src="js/cookies.js?v=845d8f5c"></script>
+<script src="js/ads.js?v=a41f4506"></script>
+<script src="js/main.js?v=858efe67"></script>
 <script>
 fijarSeoBasico({
   titulo: "Acceso — ELOTROFÚTBOLTV",
@@ -857,6 +869,55 @@ document.getElementById("formLogin").addEventListener("submit", async (e) => {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "No se ha podido iniciar sesión");
+    if (data.requiere_2fa) { mostrarPaso2faLector(data.desafio); return; }
+    guardarSesionLector(data.token, data.reader);
+    const volver = new URLSearchParams(location.search).get("volver");
+    location.href = urlVolverSegura(volver, "index.html");
+  } catch (err) {
+    mostrarMsg("loginMsg", err.message, false);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ---------- Login de lector: paso de verificación en dos pasos ----------
+let desafio2faLector = "";
+function mostrarPaso2faLector(desafio) {
+  desafio2faLector = desafio || "";
+  document.getElementById("formLogin").style.display = "none";
+  document.getElementById("btnIrOlvido").style.display = "none";
+  document.getElementById("loginMsg").style.display = "none";
+  document.getElementById("formLogin2faLector").style.display = "";
+  document.getElementById("login2faCodigo").value = "";
+  document.getElementById("login2faCodigo").focus();
+}
+function volverAlLoginLector(texto) {
+  desafio2faLector = "";
+  document.getElementById("formLogin2faLector").style.display = "none";
+  document.getElementById("formLogin").style.display = "";
+  document.getElementById("btnIrOlvido").style.display = "";
+  document.getElementById("loginPassword").value = "";
+  if (texto) mostrarMsg("loginMsg", texto, false); else document.getElementById("loginMsg").style.display = "none";
+}
+document.getElementById("btnLogin2faVolver").addEventListener("click", () => volverAlLoginLector());
+document.getElementById("formLogin2faLector").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById("btnLogin2fa");
+  const codigo = document.getElementById("login2faCodigo").value.trim();
+  if (!codigo) { mostrarMsg("loginMsg", "Escribe el código.", false); return; }
+  btn.disabled = true;
+  document.getElementById("loginMsg").style.display = "none";
+  try {
+    const res = await apiFetch("/api/readers/login/2fa", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ desafio: desafio2faLector, codigo }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      if (data.caducado) { volverAlLoginLector(data.error); return; }
+      throw new Error(data.error || "No se ha podido verificar el código");
+    }
     guardarSesionLector(data.token, data.reader);
     const volver = new URLSearchParams(location.search).get("volver");
     location.href = urlVolverSegura(volver, "index.html");
@@ -991,7 +1052,7 @@ document.getElementById("loginFormRedactor").addEventListener("submit", async (e
     if (!res.ok) { err.textContent = data.error || "Error de acceso"; err.style.display = "block"; return; }
     // Si se envió un token de dispositivo y aun así se pide el código, ya no es válido.
     if (dispositivo && (data.requiere_2fa || data.requiere_configurar_2fa)) olvidarDispositivo2fa(username);
-    // Administradores: la contraseña sola no da sesión, hace falta el 2FA.
+    // Responsables: la contraseña sola no da sesión, hace falta el 2FA.
     if (data.requiere_2fa) { desafio2fa = data.desafio; abrirPantallaCodigo2fa(); return; }
     if (data.requiere_configurar_2fa) { desafio2fa = data.desafio; await abrirConfiguracion2fa(); return; }
     await completarLoginRedactor(data);
@@ -1105,7 +1166,7 @@ document.getElementById("formDosPasos").addEventListener("submit", async (e) => 
       return;
     }
     if (typeof data.codigos_recuperacion_restantes === "number" && data.codigos_recuperacion_restantes <= 2) {
-      alert("Has entrado con un código de recuperación. Te quedan " + data.codigos_recuperacion_restantes + ". " + (data.user && data.user.rol === "admin" ? "Pídele a otro administrador que restablezca tu verificación para generar códigos nuevos." : "Para generar códigos nuevos, desactiva la verificación en Ajustes de cuenta > Seguridad y vuelve a activarla."));
+      alert("Has entrado con un código de recuperación. Te quedan " + data.codigos_recuperacion_restantes + ". " + (data.user && data.user.rol === "admin" ? "Pídele a otro Responsable que restablezca tu verificación para generar códigos nuevos." : "Para generar códigos nuevos, desactiva la verificación en Ajustes de cuenta > Seguridad y vuelve a activarla."));
     }
     await completarLoginRedactor(data);
   } catch {

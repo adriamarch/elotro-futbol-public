@@ -28,7 +28,7 @@
     try { return JSON.parse(localStorage.getItem("eof_user") || "null"); } catch (e) { return null; }
   }
   const u = usuario();
-  // Los administradores no necesitan encargo de bienvenida.
+  // Los Responsables no necesitan encargo de bienvenida.
   if (!u || u.rol === "admin") return;
 
   const esFotografo = u.rol === "fotografo";
@@ -68,6 +68,27 @@
     return /^00:00/.test(hora) ? cap : cap + " · " + hora;
   }
 
+  // Nombre legible de la competición (nunca el identificador interno, p. ej. «segunda_federacion»).
+  function compTexto(c) {
+    if (!c) return "";
+    try { if (typeof categoriaLabel === "function") { const t = categoriaLabel(c); if (t) return t; } } catch (e) {}
+    const t = String(c).replace(/[_-]+/g, " ").trim();
+    return t ? t.charAt(0).toUpperCase() + t.slice(1) : "";
+  }
+  function subDe(p, jugado) {
+    const c = compTexto(p.competicion);
+    return (jugado ? "Se jugó · " : "") + cuandoTexto(p) + (c ? " · " + c : "");
+  }
+  // «Ya jugado»: marcado como finalizado, o la hora de inicio + duración del partido ya pasó
+  // (aunque nadie haya puesto aún el resultado). En juego / retrasado / anulado no cuentan.
+  const DURACION_PARTIDO_MS = 135 * 60000;
+  function yaJugado(estadoPartido, fecha) {
+    if (estadoPartido === "finalizado") return true;
+    if (["anulado", "en_juego", "retrasado", "aplazado", "suspendido"].indexOf(estadoPartido) !== -1) return false;
+    const f = aFecha(fecha);
+    return !!f && f.getTime() + DURACION_PARTIDO_MS < Date.now();
+  }
+
   // ---------- Buscar el partido ----------
   async function buscarPartido() {
     const clubes = Array.isArray(u.equipo) ? u.equipo.filter(Boolean).slice(0, 3) : [];
@@ -87,9 +108,13 @@
         });
       } catch (e) { /* sin red: se cae a la tarea alternativa */ }
     }
-    candidatos.sort(function (a, b) { return a.ms - b.ms; });
-    // Primero lo que aún no ha terminado; si no hay, lo más reciente ya jugado.
-    return candidatos.find(function (c) { return c.estado !== "finalizado"; }) || candidatos[0] || null;
+    // Si el equipo YA ha jugado (últimos días), se pide la crónica de ese partido, no una previa.
+    // Si no hay ninguno recién jugado, el próximo partido.
+    const jugados = candidatos.filter(function (c) { return yaJugado(c.estado, c.fecha); })
+      .sort(function (a, b) { return b.ms - a.ms; });
+    const proximos = candidatos.filter(function (c) { return !yaJugado(c.estado, c.fecha); })
+      .sort(function (a, b) { return a.ms - b.ms; });
+    return jugados[0] || proximos[0] || null;
   }
 
   // ---------- Progreso (datos reales del panel) ----------
@@ -130,7 +155,7 @@
       const empezado = (aFecha(p.fecha) || new Date(8.64e15)).getTime() <= Date.now();
       return {
         titulo: "Sube " + OBJETIVO_FOTOS + " fotos de " + p.local + " – " + p.visitante,
-        sub: cuandoTexto(p) + (p.competicion ? " · " + p.competicion : ""),
+        sub: subDe(p, false),
         progreso: { n: Math.min(n, OBJETIVO_FOTOS), total: OBJETIVO_FOTOS, unidad: "fotos" },
         pasos: [
           { texto: "Haz las fotos durante el partido", hecho: empezado || n > 0, detalle: empezado ? "" : "Aún falta para el partido." },
@@ -155,17 +180,19 @@
       return arts.some(function (a) { return Number(a.resultado_id) === Number(p.id) && a.tipo === tipo; });
     };
     const cur = await partidoActual(p);
-    const terminado = (cur ? cur.estado : p.estado) === "finalizado";
+    const estadoP = cur ? cur.estado : p.estado;
+    const terminado = estadoP === "finalizado";
+    const jugado = yaJugado(estadoP, cur ? cur.fecha_partido : p.fecha);
     const pasos = [];
-    if (!terminado) pasos.push({ texto: "Escribe la previa", hecho: delPartido("previa"), accion: "nueva-noticia", boton: "Escribir la previa",
+    if (!jugado) pasos.push({ texto: "Escribe la previa", hecho: delPartido("previa"), accion: "nueva-noticia", boton: "Escribir la previa",
       detalle: "Elige este partido y el tipo «Previa»." });
-    pasos.push({ texto: "Pon el resultado cuando acabe", hecho: terminado, accion: "resultados", boton: "Abrir Resultados",
-      detalle: terminado ? "" : "Lo verás aquí en cuanto termine el partido." });
-    pasos.push({ texto: "Publica la crónica", hecho: delPartido("cronica"), accion: "nueva-noticia", boton: "Escribir la crónica",
-      detalle: "Elige este partido y el tipo «Crónica»." });
+    pasos.push({ texto: "Pon el resultado" + (jugado ? "" : " cuando acabe"), hecho: terminado, accion: "resultados", boton: "Abrir Resultados",
+      detalle: terminado ? "" : (jugado ? "El partido ya se jugó: apunta el marcador final." : "Lo verás aquí en cuanto termine el partido.") });
+    pasos.push({ texto: jugado ? "Escribe la crónica" : "Publica la crónica", hecho: delPartido("cronica"), accion: "nueva-noticia", boton: "Escribir la crónica",
+      detalle: "Elige este partido y el tipo «Crónica».", principal: jugado });
     return {
-      titulo: "Cubre " + p.local + " – " + p.visitante,
-      sub: cuandoTexto(p) + (p.competicion ? " · " + p.competicion : ""),
+      titulo: (jugado ? "Escribe la crónica de " : "Cubre ") + p.local + " – " + p.visitante,
+      sub: subDe(p, jugado),
       pasos: pasos,
       hecha: pasos.every(function (s) { return s.hecho; })
     };
@@ -242,7 +269,8 @@
     }
 
     // Siguiente paso pendiente = el que lleva el botón principal.
-    const pendiente = r.pasos.find(function (s) { return !s.hecho && s.accion; });
+    const pendiente = r.pasos.find(function (s) { return !s.hecho && s.accion && s.principal; }) ||
+      r.pasos.find(function (s) { return !s.hecho && s.accion; });
     let html =
       '<div class="pt-cab"><span class="pt-etq">🎯 Tu primera tarea</span>' +
       '<button type="button" class="pt-x" data-pt="min" aria-label="Plegar">–</button></div>' +

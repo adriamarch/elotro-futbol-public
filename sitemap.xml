@@ -39,6 +39,12 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://elotrofutbol.media/resumenes</loc>
+    <lastmod>2026-11-05</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://elotrofutbol.media/galeria-general</loc>
     <lastmod>2026-11-03</lastmod>
     <changefreq>daily</changefreq>
@@ -104,6 +110,12 @@
     <priority>0.3</priority>
   </url>
   <url>
+    <loc>https://elotrofutbol.media/instalar</loc>
+    <lastmod>2026-11-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
     <loc>https://elotrofutbol.media/quienes-somos</loc>
     <lastmod>2026-10-25</lastmod>
     <changefreq>monthly</changefreq>
@@ -125,5 +137,29 @@
     <loc>https://elotrofutbol.media/widgets</loc>
     <changefreq>monthly</changefreq>
     <priority>0.4</priority>
+  </url>
+  <url>
+    <loc>https://elotrofutbol.media/mapa-del-sitio</loc>
+    <lastmod>2026-11-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://elotrofutbol.media/aviso-legal</loc>
+    <lastmod>2026-11-04</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  <url>
+    <loc>https://elotrofutbol.media/politica-privacidad</loc>
+    <lastmod>2026-11-04</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  <url>
+    <loc>https://elotrofutbol.media/politica-cookies</loc>
+    <lastmod>2026-11-04</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.2</priority>
   </url>
 </urlset>

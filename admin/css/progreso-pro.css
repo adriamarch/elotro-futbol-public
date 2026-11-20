@@ -1,0 +1,597 @@
+/* =====================================================================
+   Mi progreso · rediseño "pro" + los DOS pases (redacción / fotografía)
+   + menú de cuenta con todas las secciones de Ajustes.
+   Se carga DESPUÉS de admin.css, niveles-fotografia.css, rachas-semanales.css e insignias-hitos.css
+   y solo retoca lo que ya existe (mismas clases), sin tocar la lógica.
+   ===================================================================== */
+
+#progresoNivelCont{
+  --pp-radio:22px;
+  --pp-sombra:0 1px 2px rgba(12,27,46,.05),0 14px 34px -16px rgba(12,27,46,.22);
+  --pp-borde:color-mix(in srgb,var(--marino,#0c1b2e) 9%,var(--borde,#e2e6ee));
+  display:flex;flex-direction:column;gap:0;
+}
+#progresoNivelCont > .nivel-titulo-principal{
+  display:flex;align-items:center;gap:10px;margin:0 0 16px;
+  font-size:1.2rem;font-weight:800;letter-spacing:-.2px;color:var(--marino-texto,var(--marino));
+}
+#progresoNivelCont > .nivel-titulo-principal::after{
+  content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--pp-borde),transparent);
+}
+#progresoNivelCont .titulo-subseccion{
+  font-size:.78rem;font-weight:800;letter-spacing:.9px;text-transform:uppercase;
+  color:var(--texto-suave,#667085);margin:26px 0 12px;
+}
+#progresoNivelCont .pase-cab .titulo-subseccion,
+#progresoNivelCont .hitos-cab .titulo-subseccion,
+#progresoNivelCont .pases-cab .titulo-subseccion{margin:0;}
+
+/* ---------- Insignia del nivel actual (la "hero") ---------- */
+#progresoNivelCont .nivel-insignia{
+  align-items:center;gap:22px;padding:26px 28px;margin-bottom:22px;
+  border-radius:var(--pp-radio);
+  background:
+    radial-gradient(120% 160% at 0% 0%,color-mix(in srgb,var(--nivel-color,var(--celeste)) 20%,var(--tarjeta)) 0%,var(--tarjeta) 64%);
+  border:1px solid color-mix(in srgb,var(--nivel-color,var(--celeste)) 30%,var(--borde));
+  box-shadow:0 1px 2px rgba(12,27,46,.05),0 22px 44px -22px color-mix(in srgb,var(--nivel-color,var(--celeste)) 60%,transparent);
+}
+#progresoNivelCont .nivel-insignia::before{
+  inset:0 0 auto 0;width:auto;height:4px;
+  background:linear-gradient(90deg,var(--nivel-color,var(--celeste)),color-mix(in srgb,var(--nivel-color,var(--celeste)) 40%,#fff));
+}
+#progresoNivelCont .nivel-insignia::after{
+  content:"";position:absolute;right:-70px;top:-70px;width:240px;height:240px;border-radius:50%;pointer-events:none;
+  background:radial-gradient(circle,color-mix(in srgb,var(--nivel-color,var(--celeste)) 24%,transparent),transparent 68%);
+}
+#progresoNivelCont .nivel-insignia-icono{
+  position:relative;width:68px;height:68px;
+  background:linear-gradient(145deg,color-mix(in srgb,var(--nivel-color,var(--celeste)) 82%,#fff),var(--nivel-color,var(--celeste)) 55%,color-mix(in srgb,var(--nivel-color,var(--celeste)) 78%,#000));
+  box-shadow:0 0 0 7px color-mix(in srgb,var(--nivel-color,var(--celeste)) 16%,transparent),0 14px 26px -8px var(--nivel-color,var(--celeste));
+}
+#progresoNivelCont .nivel-insignia-icono svg{width:32px;height:32px;}
+#progresoNivelCont .nivel-insignia-eyebrow{
+  padding:3px 10px;border-radius:999px;font-size:.68rem;font-weight:800;letter-spacing:1.1px;margin-bottom:6px;
+  background:color-mix(in srgb,var(--nivel-color,var(--celeste)) 14%,transparent);
+}
+#progresoNivelCont .nivel-insignia-texto strong{font-size:1.45rem;font-weight:800;letter-spacing:-.3px;color:var(--marino-texto,var(--marino));}
+#progresoNivelCont .nivel-insignia-texto p{font-size:.9rem;max-width:62ch;}
+#progresoNivelCont .nivel-nota{
+  background:color-mix(in srgb,var(--tarjeta) 78%,transparent);backdrop-filter:blur(4px);
+  border:1px dashed color-mix(in srgb,var(--nivel-color,var(--celeste)) 40%,var(--borde));border-radius:12px;
+}
+/* mini (junto a «Progreso hacia el siguiente nivel»): sin decoración */
+#progresoNivelCont .nivel-insignia-mini{padding:12px 16px;gap:12px;border-radius:14px;box-shadow:none;}
+#progresoNivelCont .nivel-insignia-mini::after{display:none;}
+#progresoNivelCont .nivel-insignia-mini .nivel-insignia-icono{width:38px;height:38px;box-shadow:0 6px 12px -4px var(--nivel-color,var(--celeste));}
+#progresoNivelCont .nivel-insignia-mini .nivel-insignia-icono svg{width:20px;height:20px;}
+
+/* ---------- Insignias por hitos ---------- */
+#progresoNivelCont .hitos{
+  padding:20px 22px;border-radius:var(--pp-radio);border-color:var(--pp-borde);box-shadow:var(--pp-sombra);
+}
+#progresoNivelCont .hitos-resumen{background:color-mix(in srgb,var(--celeste) 14%,transparent);color:var(--marino-texto,var(--marino));font-weight:800;}
+#progresoNivelCont .hito{border-radius:16px;padding:14px;background:color-mix(in srgb,var(--marino,#0c1b2e) 3%,var(--tarjeta));}
+#progresoNivelCont .hito-icono{width:46px;height:46px;font-size:1.5rem;}
+#progresoNivelCont .hito-conseguida{
+  background:linear-gradient(135deg,color-mix(in srgb,#f59e0b 13%,var(--tarjeta)),var(--tarjeta) 75%);
+  border-color:color-mix(in srgb,#f59e0b 42%,var(--borde));
+}
+#progresoNivelCont .hito-conseguida .hito-icono{box-shadow:0 0 0 4px color-mix(in srgb,#f59e0b 20%,transparent),0 8px 16px -4px rgba(245,158,11,.5);}
+#progresoNivelCont .hito-conseguida:hover{transform:translateY(-3px);box-shadow:0 14px 28px -14px rgba(245,158,11,.55);}
+#progresoNivelCont .hito-bloqueada{border-style:dashed;background:transparent;}
+#progresoNivelCont .hito-barra{height:7px;}
+
+/* ---------- Racha ---------- */
+#progresoNivelCont .racha{border-radius:var(--pp-radio);box-shadow:var(--pp-sombra);}
+#progresoNivelCont .racha-stats div{border-radius:14px;}
+
+/* ---------- Publicaciones (stats) ---------- */
+#progresoNivelCont .nivel-stats-grid{gap:14px;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));}
+#progresoNivelCont .nivel-stat{
+  position:relative;overflow:hidden;gap:8px;padding:20px 12px 16px;border-radius:18px;border-color:var(--pp-borde);
+  background:linear-gradient(180deg,color-mix(in srgb,var(--celeste) 7%,var(--tarjeta)),var(--tarjeta) 70%);
+}
+#progresoNivelCont .nivel-stat::before{
+  content:"";position:absolute;inset:0 0 auto 0;height:3px;background:linear-gradient(90deg,var(--celeste),color-mix(in srgb,var(--celeste) 40%,#fff));opacity:.7;
+}
+#progresoNivelCont .nivel-stat-icono{width:38px;height:38px;border-radius:12px;background:color-mix(in srgb,var(--celeste) 14%,transparent);}
+#progresoNivelCont .nivel-stat-num{font-size:1.85rem;font-weight:800;letter-spacing:-.5px;font-variant-numeric:tabular-nums;}
+#progresoNivelCont .nivel-stat-label{font-size:.74rem;font-weight:600;}
+
+/* Escritorio: tarjetas horizontales (icono | cifra + nombre) en columnas amplias → 3×3 con las 9 publicaciones */
+@media (min-width:721px){
+  #progresoNivelCont .nivel-stats-grid{grid-template-columns:repeat(auto-fit,minmax(280px,1fr));}
+  #progresoNivelCont .nivel-stat{
+    display:grid;grid-template-columns:auto 1fr;grid-template-areas:"ico num" "ico lab";
+    align-items:center;justify-items:start;text-align:left;column-gap:16px;row-gap:2px;padding:16px 20px;
+  }
+  #progresoNivelCont .nivel-stat-icono{grid-area:ico;width:46px;height:46px;}
+  #progresoNivelCont .nivel-stat-icono svg{width:24px;height:24px;}
+  #progresoNivelCont .nivel-stat-num{grid-area:num;align-self:end;font-size:1.7rem;}
+  #progresoNivelCont .nivel-stat-label{grid-area:lab;align-self:start;font-size:.8rem;}
+}
+
+/* ---------- Barras hacia el siguiente nivel ---------- */
+#progresoNivelCont .nivel-barra-fila{border-radius:16px;padding:14px 16px;border-color:var(--pp-borde);}
+#progresoNivelCont .nivel-barra-pista{height:10px;background:color-mix(in srgb,var(--marino,#0c1b2e) 8%,transparent);}
+#progresoNivelCont .nivel-barra-relleno{
+  position:relative;
+  background:linear-gradient(90deg,var(--celeste),color-mix(in srgb,var(--celeste) 55%,#6366f1));
+}
+#progresoNivelCont .nivel-barra-relleno::after{
+  content:"";position:absolute;inset:0;border-radius:inherit;
+  background:linear-gradient(180deg,rgba(255,255,255,.35),transparent 60%);
+}
+#progresoNivelCont .nivel-ayuda{border-radius:14px;}
+#progresoNivelCont .nivel-maximo-aviso{border-radius:18px;padding:18px 20px;}
+
+/* =====================================================================
+   LOS DOS PASES: cabecera + pestañas
+   ===================================================================== */
+.pases{margin:6px 0 26px;}
+.pases-cab{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:14px 20px;margin-bottom:14px;}
+.pases-cab-txt{min-width:0;flex:1 1 320px;}
+.pases-sub{margin:6px 0 0;font-size:.84rem;line-height:1.5;color:var(--texto-suave,#667085);max-width:70ch;}
+.pases-sub strong{color:var(--marino-texto,var(--marino));}
+.pases-tabs{
+  display:inline-flex;gap:4px;padding:4px;border-radius:999px;flex:none;
+  background:color-mix(in srgb,var(--marino,#0c1b2e) 6%,var(--tarjeta));
+  border:1px solid var(--pp-borde,var(--borde));
+}
+.pases-tab{
+  display:inline-flex;align-items:center;gap:8px;padding:9px 16px;border:0;border-radius:999px;cursor:pointer;
+  font:inherit;font-size:.84rem;font-weight:700;color:var(--texto-suave,#667085);background:transparent;white-space:nowrap;
+  transition:background .18s,color .18s,box-shadow .18s,transform .12s;-webkit-tap-highlight-color:transparent;
+}
+.pases-tab:hover:not(.sel){color:var(--marino-texto,var(--marino));background:color-mix(in srgb,var(--marino,#0c1b2e) 5%,transparent);}
+.pases-tab:active{transform:scale(.97);}
+.pases-tab:focus-visible{outline:3px solid color-mix(in srgb,var(--celeste) 70%,transparent);outline-offset:2px;}
+.pases-tab.sel{
+  color:#fff;background:linear-gradient(135deg,var(--marino2,#152b46),var(--marino,#0c1b2e));
+  box-shadow:0 6px 16px -6px rgba(12,27,46,.55);
+}
+.pases-tab-ico{display:inline-flex;width:17px;height:17px;}
+.pases-tab-ico svg{width:100%;height:100%;}
+.pases-tuyo{
+  font-style:normal;font-size:.6rem;font-weight:800;letter-spacing:.7px;text-transform:uppercase;padding:2px 7px;border-radius:999px;
+  background:color-mix(in srgb,#16a34a 16%,transparent);color:#15803d;
+}
+.pases-tab.sel .pases-tuyo{background:rgba(255,255,255,.2);color:#fff;}
+.pases-panel[hidden]{display:none;}
+.pases-panel{animation:pasesEntra .28s ease;}
+@keyframes pasesEntra{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+
+/* El pase de dentro ya no necesita su propio margen ni cabecera tan grande */
+.pases .pase{margin:0;}
+.pases .pase-cab{margin-bottom:6px;}
+.pases .pase-cab .titulo-subseccion{font-size:.74rem;}
+
+/* =====================================================================
+   TARJETAS DEL PASE (más cuidadas)
+   ===================================================================== */
+.pase-nivel{
+  border-radius:22px;border-color:var(--pp-borde,var(--borde));
+  box-shadow:0 1px 2px rgba(12,27,46,.04),0 10px 26px -16px rgba(12,27,46,.25);
+  overflow:visible;
+}
+.pase-nivel::before{
+  content:"";position:absolute;inset:0 18px auto 18px;height:3px;border-radius:0 0 6px 6px;
+  background:linear-gradient(90deg,transparent,var(--nc),transparent);opacity:.55;
+}
+.pase-nivel:hover{transform:translateY(-4px);box-shadow:0 20px 36px -18px color-mix(in srgb,var(--nc) 55%,transparent);}
+.pase-nombre{font-size:1.2rem;letter-spacing:-.2px;}
+.pase-desc{font-size:.8rem;opacity:.8;}
+.pase-actual{box-shadow:0 22px 44px -20px color-mix(in srgb,var(--nc) 65%,transparent);}
+.pase-actual::before{opacity:1;height:4px;}
+.pase-etiqueta{box-shadow:0 4px 10px -3px color-mix(in srgb,var(--nc) 70%,transparent);}
+.pase-pie{border-radius:14px;padding:10px 12px;font-size:.78rem;line-height:1.35;}
+.pase-req-ico{border-radius:10px;}
+.pase-req-pista{height:7px;}
+.pase-resumen{background:color-mix(in srgb,var(--celeste) 14%,transparent);}
+
+/* --- Pase en modo CONSULTA (el de la otra especialidad): neutro, sin "estás aquí" ni candados --- */
+.pase-nivel.pase-vista{opacity:1;}
+.pase-nivel.pase-vista .pase-nodo{
+  background:linear-gradient(135deg,var(--nc),color-mix(in srgb,var(--nc) 62%,#fff));
+  border-color:var(--tarjeta);color:#fff;box-shadow:0 8px 18px -6px color-mix(in srgb,var(--nc) 70%,transparent);
+}
+.pase-nivel.pase-vista::before{opacity:.8;}
+.pase-nivel.pase-vista:hover{box-shadow:0 20px 36px -18px color-mix(in srgb,var(--nc) 55%,transparent);}
+/* el botón del paso (móvil) no hereda fondo/borde de la tarjeta */
+.pase-paso.pase-vista{background:none;border:0;box-shadow:none;opacity:1;}
+.pase-paso.pase-vista .pase-paso-nodo{border-color:var(--nc);color:var(--nc);}
+.pase-paso.pase-vista.sel .pase-paso-nodo{background:var(--nc);color:#fff;}
+.pase-vista .pase-pasos::after{display:none;}
+section.pase.pase-vista .pase-resumen{background:color-mix(in srgb,var(--marino,#0c1b2e) 7%,transparent);}
+.pase-req-simple .pase-req-cifra{
+  min-width:34px;justify-content:center;padding:2px 9px;border-radius:999px;font-size:.74rem;
+  background:color-mix(in srgb,var(--nc) 13%,transparent);color:var(--nc);
+}
+
+/* Funciones (fotografía) con más aire */
+.pase-funciones li{font-size:.78rem;}
+.pase-ventajas{border-radius:14px;}
+
+/* Criterios de valoración (fotografía) */
+.foto-criterio{border-radius:14px;border-color:var(--pp-borde,var(--borde));transition:transform .15s,box-shadow .15s;}
+.foto-criterio:hover{transform:translateY(-2px);box-shadow:0 10px 22px -14px rgba(12,27,46,.3);}
+
+/* =====================================================================
+   MENÚ DE CUENTA: todas las secciones de Ajustes
+   ===================================================================== */
+.user-dropdown{max-height:calc(100dvh - 96px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;}
+.user-dropdown .ud-grupo{
+  padding:8px 12px 4px;font-size:.64rem;font-weight:800;letter-spacing:.9px;text-transform:uppercase;color:var(--texto-suave,#667085);
+}
+.user-dropdown .ud-secciones{display:flex;flex-direction:column;gap:1px;}
+.user-dropdown a.ud-seccion.ud-activa{
+  background:color-mix(in srgb,var(--celeste) 16%,transparent);font-weight:700;
+}
+.user-dropdown a.ud-seccion.ud-activa .ud-ico{background:rgba(91,184,232,.3);color:#17719e;}
+[data-theme="dark"] .user-dropdown a.ud-seccion.ud-activa .ud-ico{color:var(--celeste-claro);}
+
+/* ---------- Móvil ---------- */
+@media (max-width:720px){
+  #progresoNivelCont .nivel-insignia{padding:20px 18px;gap:16px;}
+  #progresoNivelCont .nivel-insignia-icono{width:56px;height:56px;}
+  #progresoNivelCont .nivel-insignia-icono svg{width:26px;height:26px;}
+  #progresoNivelCont .nivel-insignia-texto strong{font-size:1.2rem;}
+  #progresoNivelCont .nivel-stats-grid{grid-template-columns:repeat(2,1fr);gap:10px;}
+  #progresoNivelCont .nivel-stat-num{font-size:1.5rem;}
+  .pases-tabs{width:100%;}
+  .pases-tab{flex:1;justify-content:center;padding:10px 10px;}
+}
+@media (max-width:420px){
+  #progresoNivelCont .nivel-insignia{flex-direction:column;align-items:flex-start;}
+  .pases-tab{flex-direction:column;gap:2px;padding:8px 6px;font-size:.78rem;}
+  .pases-tuyo{font-size:.55rem;}
+}
+
+/* ---------- Modo oscuro ---------- */
+[data-theme="dark"] #progresoNivelCont{--pp-borde:rgba(255,255,255,.12);--pp-sombra:0 14px 34px -16px rgba(0,0,0,.6);}
+[data-theme="dark"] #progresoNivelCont .nivel-insignia{
+  background:radial-gradient(120% 160% at 0% 0%,color-mix(in srgb,var(--nivel-color,var(--celeste)) 26%,var(--tarjeta)) 0%,var(--tarjeta) 66%);
+}
+[data-theme="dark"] #progresoNivelCont .nivel-insignia-texto strong{color:#f1f4f9;}
+[data-theme="dark"] #progresoNivelCont .nivel-insignia-eyebrow{color:color-mix(in srgb,var(--nivel-color,var(--celeste)) 55%,#fff);background:color-mix(in srgb,var(--nivel-color,var(--celeste)) 24%,transparent);}
+[data-theme="dark"] .pase-eyebrow{color:color-mix(in srgb,var(--nc) 60%,#fff);}
+[data-theme="dark"] #progresoNivelCont .nivel-nota{background:rgba(255,255,255,.06);color:#e6ebf3;}
+[data-theme="dark"] #progresoNivelCont .hito{background:rgba(255,255,255,.04);}
+[data-theme="dark"] #progresoNivelCont .hito-nombre{color:#f1f4f9;}
+[data-theme="dark"] #progresoNivelCont .nivel-stat{background:linear-gradient(180deg,rgba(91,184,232,.1),rgba(255,255,255,.02) 70%);}
+[data-theme="dark"] #progresoNivelCont .nivel-barra-pista{background:rgba(255,255,255,.1);}
+[data-theme="dark"] .pases-tabs{background:rgba(255,255,255,.06);}
+[data-theme="dark"] .pases-tab.sel{background:linear-gradient(135deg,var(--celeste),#3a8fc2);color:#06121f;box-shadow:0 6px 16px -6px rgba(91,184,232,.6);}
+[data-theme="dark"] .pases-tab.sel .pases-tuyo{background:rgba(6,18,31,.22);color:#06121f;}
+[data-theme="dark"] .pases-tuyo{color:#4ade80;}
+[data-theme="dark"] .pases-sub strong{color:#f1f4f9;}
+[data-theme="dark"] .pase-nivel{box-shadow:0 10px 26px -16px rgba(0,0,0,.7);}
+[data-theme="dark"] .pase-nivel.pase-vista .pase-nodo{border-color:var(--tarjeta);}
+
+@media (prefers-reduced-motion:reduce){
+  .pases-panel,.pases-tab,.pase-nivel,.hito,.foto-criterio{animation:none !important;transition:none !important;}
+}
+
+/* =====================================================================
+   MI PROGRESO · refinado v2
+   Solo CSS sobre las clases que ya existen (no cambia la lógica ni el HTML).
+   Objetivos: jerarquía más clara, estados del pase inconfundibles (hecho / actual /
+   siguiente / bloqueado), barras más legibles, mejor tacto en móvil y paridad en oscuro.
+   ===================================================================== */
+#progresoNivelCont{
+  --pp-verde:#16a34a;
+  --pp-verde-txt:#15803d;
+  --pp-verde-suave:color-mix(in srgb,#16a34a 12%,transparent);
+  --pp-ambar:#f59e0b;
+  --pp-ease:cubic-bezier(.2,.8,.2,1);
+  --pp-pista:color-mix(in srgb,var(--marino,#0c1b2e) 9%,transparent);
+}
+.pases,.pase{--pp-ease:cubic-bezier(.2,.8,.2,1);}
+
+/* ---------- Ritmo y títulos de sección ---------- */
+#progresoNivelCont .titulo-subseccion{
+  display:flex;align-items:center;gap:10px;margin:30px 0 14px;
+}
+#progresoNivelCont .titulo-subseccion::after{
+  content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--pp-borde),transparent);
+}
+#progresoNivelCont .pase-cab .titulo-subseccion::after,
+#progresoNivelCont .hitos-cab .titulo-subseccion::after,
+#progresoNivelCont .pases-cab .titulo-subseccion::after{display:none;}
+
+/* ---------- Hero del nivel actual ---------- */
+#progresoNivelCont .nivel-insignia{
+  isolation:isolate;
+  animation:ppEntra .45s var(--pp-ease) both;
+}
+#progresoNivelCont .nivel-insignia-icono::before{
+  content:"";position:absolute;inset:-12px;border-radius:50%;pointer-events:none;
+  border:2px dashed color-mix(in srgb,var(--nivel-color,var(--celeste)) 50%,transparent);
+  animation:ppGira 28s linear infinite;
+}
+#progresoNivelCont .nivel-insignia-icono::after{
+  content:"";position:absolute;inset:0;border-radius:50%;pointer-events:none;
+  background:linear-gradient(150deg,rgba(255,255,255,.45),transparent 48%);
+}
+#progresoNivelCont .nivel-insignia-eyebrow{
+  display:inline-flex;align-items:center;gap:6px;
+}
+#progresoNivelCont .nivel-insignia-eyebrow::before{
+  content:"";width:6px;height:6px;border-radius:50%;background:var(--nivel-color,var(--celeste));
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--nivel-color,var(--celeste)) 25%,transparent);
+}
+#progresoNivelCont .nivel-insignia-texto p{color:var(--texto-suave,#667085);line-height:1.55;}
+#progresoNivelCont .nivel-insignia-mini .nivel-insignia-icono::before{display:none;}
+#progresoNivelCont .nivel-insignia-mini{animation:none;}
+
+/* ---------- Insignias por hitos ---------- */
+#progresoNivelCont .hitos-lista{grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;}
+#progresoNivelCont .hito{
+  align-items:center;transition:transform .2s var(--pp-ease),box-shadow .2s var(--pp-ease),border-color .2s;
+}
+#progresoNivelCont .hito:not(.hito-conseguida):hover{
+  transform:translateY(-2px);box-shadow:0 12px 24px -16px rgba(12,27,46,.35);
+  border-color:color-mix(in srgb,var(--celeste) 45%,var(--borde));
+}
+#progresoNivelCont .hito-nombre{font-weight:800;letter-spacing:-.1px;}
+#progresoNivelCont .hito-bloqueada .hito-icono{filter:grayscale(1);opacity:.55;}
+#progresoNivelCont .hito-bloqueada .hito-nombre{color:var(--texto-suave,#667085);}
+#progresoNivelCont .hito-estado-ok{
+  display:inline-flex;align-items:center;gap:5px;width:fit-content;padding:1px 9px;border-radius:999px;
+  background:var(--pp-verde-suave);color:var(--pp-verde-txt);
+}
+#progresoNivelCont .hito-barra-relleno{
+  background:linear-gradient(90deg,var(--celeste),color-mix(in srgb,var(--celeste) 50%,#6366f1));
+}
+
+/* ---------- Barras hacia el siguiente nivel ---------- */
+#progresoNivelCont .nivel-barra-fila{
+  transition:border-color .2s,box-shadow .2s,background .2s;
+}
+#progresoNivelCont .nivel-barra-fila:hover{box-shadow:0 10px 22px -16px rgba(12,27,46,.35);}
+#progresoNivelCont .nivel-barra-cifra{font-variant-numeric:tabular-nums;font-weight:800;}
+#progresoNivelCont .nivel-barra-pista{height:11px;overflow:hidden;box-shadow:inset 0 1px 2px rgba(12,27,46,.1);}
+#progresoNivelCont .nivel-barra-relleno{
+  min-width:6px;transition:width .7s var(--pp-ease);
+  background-image:
+    linear-gradient(90deg,var(--celeste),color-mix(in srgb,var(--celeste) 55%,#6366f1)),
+    repeating-linear-gradient(135deg,rgba(255,255,255,.18) 0 8px,transparent 8px 16px);
+  background-blend-mode:normal;
+}
+#progresoNivelCont .nivel-barra-fila.cumple{
+  background:linear-gradient(135deg,var(--pp-verde-suave),transparent 70%);
+  border-color:color-mix(in srgb,var(--pp-verde) 38%,var(--borde));
+}
+#progresoNivelCont .nivel-barra-fila.cumple .nivel-barra-relleno{
+  background:linear-gradient(90deg,#22c55e,#16a34a);
+}
+#progresoNivelCont .nivel-ayuda{line-height:1.5;}
+
+/* ---------- Racha ---------- */
+#progresoNivelCont .racha-stats div{transition:transform .2s var(--pp-ease);}
+#progresoNivelCont .racha-stats div:hover{transform:translateY(-2px);}
+
+/* ---------- Pase: cabecera y pestañas ---------- */
+.pases-tab{min-height:40px;}
+.pases-tab.sel{transform:none;}
+.pases-tab.sel .pases-tab-ico{animation:ppPop .35s var(--pp-ease);}
+.pase-resumen{font-variant-numeric:tabular-nums;font-weight:800;}
+
+/* ---------- Pase: línea que une los niveles (escritorio) ---------- */
+@container (min-width:880px){
+  .pase-pista{padding-top:78px;}
+  .pase-nivel:not(:last-child)::after{
+    height:8px;top:-34px;border-radius:8px;
+    background:color-mix(in srgb,var(--borde) 85%,transparent);
+    box-shadow:inset 0 1px 2px rgba(12,27,46,.08);
+  }
+  .pase-nivel.pase-hecho:not(:last-child)::after{
+    background:linear-gradient(90deg,var(--nc),color-mix(in srgb,var(--nc) 55%,#fff));
+    box-shadow:none;
+  }
+  .pase-nivel.pase-actual:not(:last-child)::after{
+    background:linear-gradient(90deg,var(--nc) 0 22%,color-mix(in srgb,var(--borde) 85%,transparent) 22% 100%);
+  }
+}
+
+/* ---------- Pase: tarjetas con estado claro ---------- */
+.pase-nivel{
+  transition:transform .25s var(--pp-ease),box-shadow .25s var(--pp-ease),border-color .25s;
+}
+.pase-nombre{color:var(--marino-texto,var(--marino));}
+.pase-desc{opacity:1;color:var(--texto-suave,#667085);line-height:1.5;}
+.pase-nodo{box-shadow:0 8px 18px -8px color-mix(in srgb,var(--nc) 70%,transparent);}
+
+/* hecho: tinte suave + check */
+.pase-hecho{
+  background:linear-gradient(180deg,color-mix(in srgb,var(--nc) 7%,var(--tarjeta)),var(--tarjeta) 55%);
+}
+.pase-hecho .pase-etiqueta{background:var(--pp-verde);}
+
+/* actual: halo y cinta superior */
+.pase-actual{position:relative;}
+.pase-actual::before{
+  inset:0 0 auto 0;height:5px;border-radius:18px 18px 0 0;
+  background:linear-gradient(90deg,var(--nc),color-mix(in srgb,var(--nc) 45%,#fff),var(--nc));
+  background-size:200% 100%;animation:ppBrillo 5s linear infinite;
+}
+.pase-actual .pase-nodo{
+  box-shadow:0 0 0 6px color-mix(in srgb,var(--nc) 18%,transparent),0 14px 26px -8px var(--nc);
+}
+
+/* siguiente: meta a la vista */
+.pase-siguiente{
+  background:repeating-linear-gradient(135deg,color-mix(in srgb,var(--nc) 5%,transparent) 0 10px,transparent 10px 20px),var(--tarjeta);
+}
+.pase-siguiente .pase-etiqueta{background:var(--tarjeta);}
+
+/* bloqueado: sigue siendo legible (antes bajaba la opacidad de todo) */
+.pase-bloqueado{opacity:1;}
+.pase-bloqueado .pase-nombre,
+.pase-bloqueado .pase-desc{color:var(--texto-suave,#667085);}
+.pase-bloqueado .pase-nodo{color:var(--texto-suave,#8a93a3);box-shadow:none;}
+.pase-bloqueado .pase-req-ico{background:var(--pp-pista);color:var(--texto-suave,#8a93a3);}
+.pase-bloqueado .pase-req-relleno{background:linear-gradient(90deg,#94a3b8,#cbd5e1);}
+
+/* requisitos */
+.pase-req{padding:2px 0;}
+.pase-req-fila{align-items:baseline;}
+.pase-req-cifra{font-variant-numeric:tabular-nums;}
+.pase-req-pista{height:8px;background:var(--pp-pista);}
+.pase-req-relleno{min-width:5px;transition:width .7s var(--pp-ease);}
+.pase-req.cumple .pase-req-ico{background:var(--pp-verde-suave);color:var(--pp-verde-txt);}
+.pase-req.cumple .pase-req-relleno{background:linear-gradient(90deg,#22c55e,#16a34a);}
+.pase-pie-ok{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--pp-verde) 30%,transparent);}
+
+/* ---------- Pase: pasos (móvil / contenedor estrecho) ---------- */
+.pase-pasos{margin:4px 0 22px;}
+.pase-paso{min-height:44px;padding-top:2px;transition:transform .15s;}
+.pase-paso:active{transform:scale(.96);}
+.pase-paso-nodo{width:54px;height:54px;}
+.pase-pasos::before{background:var(--pp-pista);}
+.pase-pasos::after{background:linear-gradient(90deg,var(--pc,var(--nivel-1)),color-mix(in srgb,var(--pc,var(--nivel-1)) 55%,#fff));}
+.pase-paso-txt{opacity:.7;}
+.pase-nivel.pase-sel{animation:ppEntra .3s var(--pp-ease) both;}
+
+/* ---------- Pase en consulta ---------- */
+.pase-nivel.pase-vista{background:var(--tarjeta);}
+.pase-nivel.pase-vista .pase-nombre{color:var(--marino-texto,var(--marino));}
+
+/* ---------- Foco visible en todo lo interactivo ---------- */
+#progresoNivelCont button:focus-visible,
+#progresoNivelCont [tabindex]:focus-visible,
+.pase-paso:focus-visible{outline:3px solid color-mix(in srgb,var(--celeste) 75%,transparent);outline-offset:3px;border-radius:12px;}
+
+/* ---------- Animaciones ---------- */
+@keyframes ppEntra{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+@keyframes ppGira{to{transform:rotate(360deg);}}
+@keyframes ppBrillo{from{background-position:0 0;}to{background-position:200% 0;}}
+@keyframes ppPop{0%{transform:scale(.6);}70%{transform:scale(1.15);}100%{transform:scale(1);}}
+
+/* ---------- Móvil ---------- */
+@media (max-width:720px){
+  #progresoNivelCont .titulo-subseccion{margin:24px 0 12px;}
+  #progresoNivelCont .hitos{padding:16px;}
+  #progresoNivelCont .hitos-lista{grid-template-columns:1fr;}
+  #progresoNivelCont .nivel-barra-fila{padding:12px 14px;}
+  .pase-paso-nodo{width:50px;height:50px;}
+}
+@media (max-width:420px){
+  #progresoNivelCont .nivel-insignia-icono::before{inset:-9px;}
+}
+
+/* ---------- Modo oscuro ---------- */
+[data-theme="dark"] #progresoNivelCont{
+  --pp-verde-txt:#4ade80;
+  --pp-verde-suave:rgba(74,222,128,.14);
+  --pp-pista:rgba(255,255,255,.1);
+}
+[data-theme="dark"] #progresoNivelCont .nivel-insignia-texto p,
+[data-theme="dark"] .pase-desc,
+[data-theme="dark"] .pase-bloqueado .pase-nombre,
+[data-theme="dark"] .pase-bloqueado .pase-desc{color:#aab4c5;}
+[data-theme="dark"] .pase-nombre{color:#f1f4f9;}
+[data-theme="dark"] .pase-hecho{background:linear-gradient(180deg,color-mix(in srgb,var(--nc) 14%,var(--tarjeta)),var(--tarjeta) 60%);}
+[data-theme="dark"] .pase-siguiente{
+  background:repeating-linear-gradient(135deg,color-mix(in srgb,var(--nc) 10%,transparent) 0 10px,transparent 10px 20px),var(--tarjeta);
+}
+[data-theme="dark"] .pase-nivel:not(:last-child)::after{box-shadow:none;}
+[data-theme="dark"] #progresoNivelCont .nivel-barra-pista{box-shadow:none;}
+[data-theme="dark"] #progresoNivelCont .nivel-barra-fila.cumple{
+  background:linear-gradient(135deg,rgba(74,222,128,.12),transparent 70%);
+  border-color:rgba(74,222,128,.35);
+}
+[data-theme="dark"] #progresoNivelCont .hito:not(.hito-conseguida):hover{box-shadow:0 12px 24px -16px rgba(0,0,0,.7);}
+[data-theme="dark"] .pase-bloqueado .pase-req-relleno{background:linear-gradient(90deg,#64748b,#94a3b8);}
+
+@media (prefers-reduced-motion:reduce){
+  #progresoNivelCont .nivel-insignia,
+  #progresoNivelCont .nivel-insignia-icono::before,
+  .pase-actual::before,.pase-nivel.pase-sel,.pases-tab.sel .pases-tab-ico{animation:none !important;}
+  .pase-req-relleno,.nivel-barra-relleno,.hito,.pase-paso{transition:none !important;}
+}
+
+/* =====================================================================
+   MI PROGRESO · cabecera de la tarjeta del pase (nodo + conector + cinta + etiqueta)
+   Corrige el desfase del conector respecto al centro del nodo y unifica el aspecto en claro/oscuro.
+   ===================================================================== */
+
+/* --- Nodo (icono redondo que cuelga del borde superior) --- */
+.pase-nodo{
+  border:4px solid var(--tarjeta);               /* "recorte" del color de la tarjeta, no blanco fijo */
+  background-image:linear-gradient(145deg,color-mix(in srgb,var(--nc) 70%,#fff),var(--nc) 55%,color-mix(in srgb,var(--nc) 80%,#000));
+  box-shadow:0 0 0 2px color-mix(in srgb,var(--nc) 45%,transparent),0 12px 22px -8px color-mix(in srgb,var(--nc) 75%,transparent);
+}
+.pase-nodo::before{                               /* brillo superior */
+  content:"";position:absolute;inset:3px;border-radius:50%;pointer-events:none;
+  background:linear-gradient(160deg,rgba(255,255,255,.38),transparent 52%);
+}
+.pase-nodo svg{position:relative;filter:drop-shadow(0 1px 1px rgba(0,0,0,.25));}
+.pase-actual .pase-nodo{
+  border-color:var(--tarjeta);
+  background-image:linear-gradient(145deg,color-mix(in srgb,var(--nc) 70%,#fff),var(--nc) 55%,color-mix(in srgb,var(--nc) 80%,#000));
+  box-shadow:0 0 0 2px var(--nc),0 0 0 8px color-mix(in srgb,var(--nc) 20%,transparent),0 16px 28px -8px var(--nc);
+}
+.pase-actual .pase-nodo::after{                   /* onda que sale del nodo actual */
+  content:"";position:absolute;inset:-4px;border-radius:50%;pointer-events:none;
+  border:2px solid var(--nc);opacity:0;animation:ppOnda 2.6s ease-out infinite;
+}
+/* Los niveles aún por alcanzar: nodo vacío con borde del color del nivel */
+.pase-siguiente .pase-nodo,
+.pase-bloqueado .pase-nodo{background-image:none;background-color:var(--tarjeta);box-shadow:0 0 0 2px color-mix(in srgb,var(--nc) 55%,transparent);}
+.pase-siguiente .pase-nodo::before,
+.pase-bloqueado .pase-nodo::before{display:none;}
+.pase-siguiente .pase-nodo svg,
+.pase-bloqueado .pase-nodo svg{filter:none;}
+.pase-bloqueado .pase-nodo{box-shadow:0 0 0 2px var(--borde);}
+.pase-nodo-check{border-color:var(--tarjeta);box-shadow:0 3px 8px -2px rgba(22,163,74,.6);}
+
+/* --- Conector entre niveles: centrado EXACTO con el nodo (top = centro del nodo) --- */
+@container (min-width:880px){
+  .pase-nivel:not(:last-child)::after{top:-27px;transform:translateY(-50%);height:8px;}
+  /* termina en el color del nivel siguiente, no en blanco */
+  .pase-nivel-1{--fin:var(--nivel-2);} .pase-nivel-2{--fin:var(--nivel-3);} .pase-nivel-3{--fin:var(--nivel-4);}
+  .pase-nivel.pase-hecho:not(:last-child)::after{background:linear-gradient(90deg,var(--nc),var(--fin,var(--nc)));}
+  .pase-nivel.pase-actual:not(:last-child)::after{
+    background:linear-gradient(90deg,var(--nc) 0 22%,color-mix(in srgb,var(--borde) 85%,transparent) 22% 100%);
+  }
+}
+
+/* --- Cinta superior de la tarjeta actual: acompaña la esquina redondeada --- */
+.pase-actual::before{
+  inset:0 0 auto 0;height:5px;border-radius:20px 20px 0 0;
+}
+
+/* --- Etiqueta «Estás aquí» / «Siguiente» / «Conseguido» --- */
+.pase-etiqueta{
+  display:inline-flex;align-items:center;gap:6px;top:14px;right:14px;
+  padding:4px 11px 4px 9px;font-size:.62rem;letter-spacing:.9px;line-height:1.2;
+  box-shadow:0 6px 14px -6px color-mix(in srgb,var(--nc) 80%,transparent);
+}
+.pase-actual .pase-etiqueta::before{
+  content:"";flex:none;width:6px;height:6px;border-radius:50%;background:#fff;
+  box-shadow:0 0 0 0 rgba(255,255,255,.7);animation:ppPunto 1.8s ease-out infinite;
+}
+
+@keyframes ppOnda{0%{transform:scale(.92);opacity:.7;}100%{transform:scale(1.55);opacity:0;}}
+@keyframes ppPunto{0%{box-shadow:0 0 0 0 rgba(255,255,255,.75);}100%{box-shadow:0 0 0 7px rgba(255,255,255,0);}}
+
+/* Oscuro: el recorte del nodo y el conector pierden el borde claro */
+[data-theme="dark"] .pase-nodo{border-color:var(--tarjeta);}
+[data-theme="dark"] .pase-bloqueado .pase-nodo{box-shadow:0 0 0 2px rgba(255,255,255,.14);}
+[data-theme="dark"] .pase-siguiente .pase-nodo,
+[data-theme="dark"] .pase-bloqueado .pase-nodo{background-color:var(--tarjeta);}
+
+@media (prefers-reduced-motion:reduce){
+  .pase-actual .pase-nodo::after,.pase-actual .pase-etiqueta::before{animation:none !important;}
+  .pase-actual .pase-nodo::after{display:none;}
+}
+
+/* Etiqueta «Estás aquí»: separada de la cinta superior y siempre por encima de ella */
+.pase-actual::before{height:4px;z-index:0;pointer-events:none;}
+.pase-etiqueta{top:22px;right:16px;z-index:3;}
+.pase-nivel{padding-top:50px;}
+@container (max-width:519px){
+  .pase-nivel{padding-top:24px;}
+  .pase-etiqueta{top:18px;}
+}

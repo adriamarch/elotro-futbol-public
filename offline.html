@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0c1b2e">
+<title>Sin conexión · ElOtroFútbol</title>
+<style>
+  :root{--marino:#0c1b2e;--marino2:#1b3a5f;--celeste:#5bb8e8;--rojo:#d1132e;--txt:#eaf2fb;--suave:#9fb3c8}
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--txt);
+    background:radial-gradient(90% 60% at 50% 0%,rgba(91,184,232,.18),transparent 60%),linear-gradient(180deg,var(--marino),#08121f);
+    display:grid;place-items:center;padding:max(24px,env(safe-area-inset-top)) 20px max(24px,env(safe-area-inset-bottom));
+  }
+  main{width:100%;max-width:460px;text-align:center}
+  .logo{width:132px;height:auto;margin:0 auto 22px;display:block;opacity:.95}
+  .ico{
+    width:84px;height:84px;margin:0 auto 18px;border-radius:26px;display:grid;place-items:center;
+    background:linear-gradient(145deg,#e5233f,#a50d22);box-shadow:0 18px 36px -14px rgba(209,19,46,.8),inset 0 1px 0 rgba(255,255,255,.3);
+  }
+  .ico svg{width:44px;height:44px;color:#fff}
+  h1{margin:0 0 8px;font-size:1.55rem;letter-spacing:.2px}
+  p{margin:0 auto 20px;color:var(--suave);line-height:1.55;font-size:.98rem;max-width:36ch}
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:0 26px;border:0;border-radius:999px;cursor:pointer;
+    font:700 .95rem inherit;font-family:inherit;color:#fff;background:linear-gradient(135deg,#e5233f,#b00f26);box-shadow:0 12px 24px -10px rgba(209,19,46,.9);
+    transition:transform .18s ease,box-shadow .18s ease;
+  }
+  .btn:hover{transform:translateY(-2px)}
+  .btn:focus-visible,a:focus-visible{outline:2px solid var(--celeste);outline-offset:3px}
+  .estado{margin:16px 0 0;font-size:.84rem;color:var(--suave);min-height:1.2em}
+  #guardadas{margin-top:30px;text-align:left}
+  #guardadas h2{margin:0 0 10px;font-size:.74rem;letter-spacing:1.1px;text-transform:uppercase;color:var(--suave);display:flex;align-items:center;gap:10px}
+  #guardadas h2::after{content:"";flex:1;height:1px;background:rgba(255,255,255,.12)}
+  #guardadas ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+  #guardadas a{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;border-radius:14px;text-decoration:none;color:var(--txt);
+    background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);font-weight:600;font-size:.92rem;transition:background-color .18s,border-color .18s;
+  }
+  #guardadas a:hover{background:rgba(91,184,232,.14);border-color:rgba(91,184,232,.5)}
+  #guardadas a span{color:var(--celeste)}
+  @media (prefers-reduced-motion:reduce){.btn{transition:none}.btn:hover{transform:none}}
+</style>
+</head>
+<body>
+<main>
+  <img class="logo" src="/img/logo-blanco.png" alt="ElOtroFútbol" onerror="this.remove()">
+  <div class="ico" aria-hidden="true">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8.8a15 15 0 0 1 20 0M5.2 12.3a10.5 10.5 0 0 1 13.6 0M8.5 15.8a6 6 0 0 1 7 0"/><circle cx="12" cy="19.4" r="1" fill="currentColor"/><path d="M3 3l18 18"/></svg>
+  </div>
+  <h1>Estás sin conexión</h1>
+  <p>No hemos podido cargar esta página. En cuanto vuelva la conexión se abrirá sola.</p>
+  <button class="btn" id="reintentar" type="button">Reintentar</button>
+  <p class="estado" id="estado" role="status" aria-live="polite"></p>
+  <section id="guardadas" hidden>
+    <h2>Disponible sin conexión</h2>
+    <ul id="listaGuardadas"></ul>
+  </section>
+</main>
+<script>
+(function () {
+  var estado = document.getElementById("estado");
+  function reintentar() {
+    estado.textContent = "Comprobando la conexión…";
+    // Se intenta cargar de verdad la página: si hay red, el navegador la muestra.
+    fetch(location.href, { cache: "no-store" }).then(function (r) {
+      if (r.ok) location.reload(); else estado.textContent = "Todavía sin conexión.";
+    }).catch(function () { estado.textContent = "Todavía sin conexión."; });
+  }
+  document.getElementById("reintentar").addEventListener("click", reintentar);
+  window.addEventListener("online", function () { location.reload(); });
+
+  // Páginas que el lector ya había visitado y están guardadas.
+  var NOMBRES = { "/": "Portada", "/index.html": "Portada", "/calendario": "Calendario", "/clasificacion": "Clasificaciones", "/estadisticas": "Estadísticas",
+    "/podcast": "Podcast", "/noticias-rapidas": "Noticias rápidas", "/guardadas": "Guardadas", "/resumenes": "Resúmenes", "/categoria": "Categoría", "/galerias": "Galerías" };
+  if (!("caches" in window)) return;
+  caches.open("eof-paginas-v1").then(function (c) { return c.keys(); }).then(function (claves) {
+    var vistos = {}, items = [];
+    claves.reverse().forEach(function (k) {
+      var u = new URL(k.url);
+      if (u.pathname === location.pathname && u.search === location.search) return;
+      var clave = u.pathname + u.search;
+      if (vistos[clave]) return; vistos[clave] = 1;
+      var nombre = NOMBRES[u.pathname];
+      if (!nombre && /^\/futbol\//.test(u.pathname)) nombre = "Noticia: " + decodeURIComponent(u.pathname.split("/").pop()).replace(/-/g, " ");
+      if (!nombre && u.pathname === "/noticia.html") nombre = "Noticia guardada";
+      if (!nombre) nombre = decodeURIComponent(u.pathname.replace(/^\//, "").replace(/\.html$/, "").replace(/-/g, " ")) || "Página";
+      items.push({ href: u.pathname + u.search, nombre: nombre.charAt(0).toUpperCase() + nombre.slice(1) });
+    });
+    if (!items.length) return;
+    var ul = document.getElementById("listaGuardadas");
+    items.slice(0, 8).forEach(function (it) {
+      var li = document.createElement("li"), a = document.createElement("a"), s = document.createElement("span");
+      a.href = it.href; a.textContent = it.nombre; s.textContent = "→"; s.setAttribute("aria-hidden", "true");
+      a.appendChild(s); li.appendChild(a); ul.appendChild(li);
+    });
+    document.getElementById("guardadas").hidden = false;
+  }).catch(function () {});
+})();
+</script>
+</body>
+</html>

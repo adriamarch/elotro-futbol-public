@@ -1,4 +1,4 @@
-/* Funcionalidades > Responsabilidades (solo administradores)
+/* Funcionalidades > Responsabilidades (solo Responsables)
    Relaciones institucionales · Recursos humanos
    Reutiliza las cabeceras .info-cab de organigrama.css. */
 
@@ -443,3 +443,6 @@ button.resp-cm-kpi:hover{transform:translateY(-2px);border-color:var(--r-borde-h
 @media (prefers-reduced-motion:reduce){
   .resp-cm-card,.resp-cm-det,.resp-cm-ciclo i{animation:none !important;transition:none !important;}
 }
+
+/* Aviso en vivo en la tarjeta de contacto: desaparece en cuanto se añade el correo. */
+.resp-cont-pendiente{margin:0;padding:6px 10px;border-radius:10px;background:rgba(245,158,11,.14);color:#b45309;font:700 .76rem var(--font-text);}

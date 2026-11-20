@@ -572,6 +572,7 @@ function fechaCompactaISO(dia, mes, anio, hoy) {
   const d = parseInt(dia, 10);
   const m = parseInt(mes, 10);
   if (!d || !m || m < 1 || m > 12) return null;
+  anio = anioSegunTemporada(m - 1, anio); // enero–junio -> año siguiente (ver anioSegunTemporada)
   let candidato = new Date(Date.UTC(anio, m - 1, d));
   const MARGEN_FUTURO_MS = 200 * 24 * 3600 * 1000;
   if (hoy && candidato.getTime() - hoy.getTime() > MARGEN_FUTURO_MS) {
@@ -816,13 +817,25 @@ function normalizarNombreMesEs(mes) {
     .toLowerCase();
 }
 
+// Las temporadas van de julio a junio: un partido de enero–junio es del año SIGUIENTE al
+// de inicio de temporada. El campo "Año" del importador trae por defecto el año en curso, así
+// que pegando en octubre de 2026 un partido del "24 de enero", salía 2026-01-24 (una fecha ya
+// pasada): el cron lo arrancaba solo y lo cerraba como "Jugado · sin cubrir" aunque no se
+// hubiera jugado. Si el año del formulario es el año en curso y estamos en julio–diciembre,
+// los meses de enero a junio pasan al año siguiente. Un año distinto del actual se respeta tal cual.
+function anioSegunTemporada(mesIdx, anio) {
+  const hoy = new Date();
+  if (anio === hoy.getFullYear() && hoy.getMonth() >= 6 && mesIdx >= 0 && mesIdx < 6) return anio + 1;
+  return anio;
+}
+
 // Convierte "28" + "Agosto" + año en "YYYY-MM-DD".
 function fechaImportISO(dia, mesTexto, anio) {
   const mesIdx = MESES_ES[normalizarNombreMesEs(mesTexto)];
   if (mesIdx === undefined) return null;
   const d = String(parseInt(dia, 10)).padStart(2, "0");
   const m = String(mesIdx + 1).padStart(2, "0");
-  return `${anio}-${m}-${d}`;
+  return `${anioSegunTemporada(mesIdx, anio)}-${m}-${d}`;
 }
 
 // Alias de nombres de equipo: cubre apodos o formas habituales con las
@@ -1654,7 +1667,8 @@ const ESTADOS_LABEL_IMPORT = {
 };
 const COMPETICION_LABEL_IMPORT = {
   hypermotion: "LaLiga Hypermotion", primera_federacion: "Primera Federación",
-  segunda_federacion: "Segunda Federación", amistoso: "Amistoso",
+  segunda_federacion: "Segunda Federación", tercera_federacion: "Tercera Federación",
+  copa_del_rey: "Copa del Rey", copa_federacion: "Copa Federación", amistoso: "Amistoso",
 };
 
 function pintarAnalisisImportacionRapida(partidos, avisos) {
@@ -1747,7 +1761,7 @@ function pintarAnalisisImportacionRapida(partidos, avisos) {
           <span class="import-rapida-fila-equipo">${escaparHtmlImportRapida(p.equipo_visitante)}</span>
         </div>
         <div class="import-rapida-fila-meta">
-          <span class="import-rapida-chip">${p.competicion ? (COMPETICION_LABEL_IMPORT[p.competicion] || p.competicion) : "competición no reconocida"}</span>
+          <span class="import-rapida-chip">${p.competicion ? (COMPETICION_LABEL_IMPORT[p.competicion] || String(p.competicion).replace(/[_-]+/g, " ").replace(/^./, (x) => x.toUpperCase())) : "competición no reconocida"}</span>
           <span class="import-rapida-chip">Jornada ${p.jornada ?? "—"}</span>
           <span class="import-rapida-chip import-rapida-chip-estado-${estadoClave}">${ESTADOS_LABEL_IMPORT[p.estado] || p.estado}</span>
         </div>

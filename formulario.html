@@ -3,14 +3,19 @@
 <head>
 <meta name="google-adsense-account" content="ca-pub-7347856722927942">
 <meta charset="UTF-8">
-<script src="/js/splash.js?v=2"></script>
+<script>/* splash.js: bloquea el parseo solo si la web se abre como app (o ?splash=1); en navegador carga en async, sin frenar el pintado. */
+(function(){var a=false;try{a=matchMedia("(display-mode: standalone)").matches||matchMedia("(display-mode: fullscreen)").matches||matchMedia("(display-mode: minimal-ui)").matches||navigator.standalone===true;}catch(e){}
+if(a||/[?&]splash=1(&|$)/.test(location.search)){document.write('<script src="/js/splash.js?v=b5004788"><\/script>');}
+else{var s=document.createElement("script");s.src="/js/splash.js?v=b5004788";s.async=true;document.head.appendChild(s);}})();
+</script>
+<script src="/js/cargando.js?v=4a5cb1bc"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
 <title>Formulario | ElOtroFútbol</title>
 <meta name="description" content="Formulario de ElOtroFútbol.">
-<link rel="icon" href="/favicon.ico?v=3" sizes="any">
-<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=3">
-<link rel="apple-touch-icon" href="/img/apple-touch-icon.png?v=2">
+<link rel="icon" href="/favicon.ico?v=39af2432" sizes="any">
+<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=39af2432">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png?v=3f854c49">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://api.elotrofutbol.media" crossorigin>
@@ -18,6 +23,7 @@
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600;700&family=Montserrat:wght@400;500;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'"><noscript><link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600;700&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>
 <style>
   :root{
+    --font-tit:'Lexend',sans-serif; --font-text:'Montserrat',system-ui,sans-serif;
     --acento:#1d3bff; --acento2:#5a73ff; --acento-suave:#eef1ff; --fondo:#e8eaff; --tarjeta:#fff;
     --texto:#1d1d24; --suave:#6b6f80; --borde:#dcdfee; --error:#d32f2f; --ok:#1b7f3b;
     --sombra:0 1px 2px rgba(20,20,60,.05),0 6px 18px rgba(20,20,60,.05);
@@ -26,7 +32,7 @@
   }
   *{box-sizing:border-box;}
   html{-webkit-text-size-adjust:100%;scroll-behavior:smooth;}
-  body{margin:0;color:var(--texto);font-family:'Montserrat',system-ui,sans-serif;font-size:16px;line-height:1.5;
+  body{margin:0;color:var(--texto);font-family:var(--font-text);font-size:16px;line-height:1.5;
     background:radial-gradient(1200px 500px at 50% -120px,#d6dcff 0%,rgba(214,220,255,0) 70%),var(--fondo);min-height:100vh;}
   .pagina{max-width:760px;margin:0 auto;padding:22px 14px 64px;}
 
@@ -45,11 +51,18 @@
   .tarjeta.campo.completo::before{content:"✓";position:absolute;right:14px;top:12px;width:22px;height:22px;border-radius:50%;
     background:#e4f5ea;color:var(--ok);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;animation:pop .45s var(--curva);}
 
-  h1{font-family:'Lexend',sans-serif;font-size:1.9rem;line-height:1.2;margin:0 0 14px;padding-bottom:14px;border-bottom:1px solid var(--borde);}
-  h2{font-family:'Montserrat',sans-serif;font-size:.95rem;letter-spacing:.8px;margin:0;text-transform:uppercase;}
+  h1{font-family:var(--font-tit);font-size:1.9rem;line-height:1.2;margin:0 0 14px;padding-bottom:14px;border-bottom:1px solid var(--borde);}
+  h2{font-family:var(--font-text);font-size:.95rem;letter-spacing:.8px;margin:0;text-transform:uppercase;}
   .intro{margin:0 0 12px;}
+  /* Cargador (mismo anillo celeste -> rojo que el resto de la web) */
+  .cg-cargador{display:flex;justify-content:center;padding:26px 0;}
+  .cg-anillo{position:relative;box-sizing:border-box;width:42px;height:42px;border-radius:50%;border:4px solid rgba(12,27,46,.09);}
+  .cg-anillo::after{content:"";position:absolute;inset:-4px;border-radius:50%;background:conic-gradient(from 0deg,rgba(91,184,232,0) 0deg,#5bb8e8 140deg,#d1132e 300deg,rgba(209,19,46,0) 360deg);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px));mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px));animation:cgGiro .9s linear infinite;}
+  .cg-txt{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
+  @keyframes cgGiro{to{transform:rotate(360deg);}}
+  @media (prefers-reduced-motion:reduce){.cg-anillo::after{animation-duration:2.4s;}}
   .aviso{margin:0;font-style:italic;color:#34364a;}
-  .campo > label,.campo > .etiqueta{display:block;font-family:'Lexend',sans-serif;font-size:1.05rem;margin-bottom:12px;padding-right:26px;}
+  .campo > label,.campo > .etiqueta{display:block;font-family:var(--font-tit);font-size:1.05rem;margin-bottom:12px;padding-right:26px;}
   .req{color:var(--error);margin-left:3px;}
 
   /* Campos de texto: subrayado animado */
@@ -102,7 +115,7 @@
   /* Botón */
   .acciones{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:6px;}
   button.enviar{position:relative;overflow:hidden;background:linear-gradient(135deg,var(--acento),var(--acento2));color:#fff;border:0;border-radius:12px;
-    padding:14px 32px;font:600 1rem 'Montserrat',sans-serif;cursor:pointer;box-shadow:0 6px 18px rgba(29,59,255,.35);
+    padding:14px 32px;font:600 1rem var(--font-text);cursor:pointer;box-shadow:0 6px 18px rgba(29,59,255,.35);
     transition:transform .2s var(--curva),box-shadow .25s,filter .2s;}
   button.enviar:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(29,59,255,.42);}
   button.enviar:active{transform:translateY(0) scale(.97);}
@@ -135,7 +148,7 @@
     box-shadow:0 12px 30px rgba(4,8,70,.35),0 0 0 6px rgba(255,255,255,.28);animation:pop .7s .15s var(--curva) both;}
   .pin-logo img{display:block;width:100%;height:100%;object-fit:contain;border-radius:50%;}
   .pin-etiqueta{display:inline-flex;align-items:center;gap:7px;padding:6px 13px 6px 11px;border-radius:999px;background:var(--acento-suave);color:var(--acento);
-    font:700 .68rem 'Montserrat',sans-serif;letter-spacing:.14em;text-transform:uppercase;transition:background-color .3s,color .3s;}
+    font:700 .68rem var(--font-text);letter-spacing:.14em;text-transform:uppercase;transition:background-color .3s,color .3s;}
   .pin-etiqueta svg{display:block;overflow:visible;}
   .pin-etiqueta .grillete{transform-origin:8px 11px;transition:transform .5s var(--curva);}
   .pin-tarjeta.abierto .pin-etiqueta{background:#e4f5ea;color:var(--ok);}
@@ -146,7 +159,7 @@
   .pin-celdas{position:relative;margin:26px 0 6px;cursor:text;}
   .pin-vista{display:flex;justify-content:center;gap:clamp(6px,2.4vw,11px);}
   .pin-celda{flex:1 1 0;min-width:0;max-width:52px;height:62px;display:flex;align-items:center;justify-content:center;position:relative;
-    border:2px solid var(--borde);border-radius:15px;background:#f6f7ff;font:700 1.75rem 'Lexend',sans-serif;color:var(--texto);
+    border:2px solid var(--borde);border-radius:15px;background:#f6f7ff;font:700 1.75rem var(--font-tit);color:var(--texto);
     transition:border-color .2s,background-color .2s,box-shadow .25s,transform .25s var(--curva);}
   .pin-celda.llena{background:#fff;border-color:var(--acento2);}
   .pin-celda.pop{animation:pulsar .3s var(--curva);}
@@ -194,7 +207,7 @@
 
   /* ===== Pantalla final: gracias + credenciales ===== */
   .gracias.final{padding:44px 24px 30px;}
-  .gracias.final h2{font-family:'Lexend',sans-serif;font-size:1.6rem;margin:6px 0 8px;}
+  .gracias.final h2{font-family:var(--font-tit);font-size:1.6rem;margin:6px 0 8px;}
   .gracias.final .intro{max-width:460px;margin:0 auto;color:var(--suave);}
   .confeti{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0;}
   .confeti i{position:absolute;top:-14px;left:var(--x);width:var(--w);height:var(--h);background:var(--c);border-radius:2px;opacity:0;
@@ -213,15 +226,15 @@
   .carnet-logo{flex:none;width:54px;height:54px;border-radius:50%;background:rgba(255,255,255,.16);padding:7px;box-shadow:0 0 0 2px rgba(255,255,255,.3);}
   .carnet-logo img{display:block;width:100%;height:100%;object-fit:contain;}
   .carnet-etiqueta{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.18);
-    font:700 .64rem 'Montserrat',sans-serif;letter-spacing:.14em;text-transform:uppercase;}
-  .carnet-cab h3{font-family:'Lexend',sans-serif;font-size:1.2rem;line-height:1.25;margin:6px 0 0;}
+    font:700 .64rem var(--font-text);letter-spacing:.14em;text-transform:uppercase;}
+  .carnet-cab h3{font-family:var(--font-tit);font-size:1.2rem;line-height:1.25;margin:6px 0 0;}
   .carnet-texto{margin:0 0 16px;font-size:.88rem;line-height:1.45;color:rgba(255,255,255,.88);display:flex;gap:8px;align-items:flex-start;}
   .carnet-texto svg{flex:none;margin-top:2px;}
   .carnet-fila{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.96);color:var(--texto);border-radius:14px;padding:10px 10px 10px 14px;margin:0 0 10px;
     box-shadow:0 6px 16px rgba(4,8,70,.25);}
   .carnet-dato{flex:1;min-width:0;}
-  .carnet-et{display:block;font:700 .62rem 'Montserrat',sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--suave);margin:0 0 2px;}
-  .carnet-fila code{display:block;font:600 1.12rem 'Lexend',monospace;letter-spacing:.04em;color:var(--texto);overflow-wrap:anywhere;user-select:all;}
+  .carnet-et{display:block;font:700 .62rem var(--font-text);letter-spacing:.14em;text-transform:uppercase;color:var(--suave);margin:0 0 2px;}
+  .carnet-fila code{display:block;font:600 1.12rem var(--font-tit);letter-spacing:.04em;color:var(--texto);overflow-wrap:anywhere;user-select:all;}
   .carnet-btn{flex:none;width:40px;height:40px;display:grid;place-content:center;border:0;border-radius:11px;background:var(--acento-suave);color:var(--acento);cursor:pointer;
     transition:background-color .2s,color .2s,transform .2s var(--curva);}
   .carnet-btn:hover{background:#dde3ff;transform:translateY(-1px);}
@@ -231,12 +244,12 @@
   .carnet-btn svg{display:block;}
   .carnet-acciones{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0 0;}
   .carnet-entrar{flex:1 1 200px;display:inline-flex;align-items:center;justify-content:center;gap:8px;background:#fff;color:var(--acento) !important;text-decoration:none;
-    font:700 .95rem 'Montserrat',sans-serif;border-radius:12px;padding:13px 18px;box-shadow:0 8px 20px rgba(4,8,70,.3);transition:transform .2s var(--curva),box-shadow .25s;}
+    font:700 .95rem var(--font-text);border-radius:12px;padding:13px 18px;box-shadow:0 8px 20px rgba(4,8,70,.3);transition:transform .2s var(--curva),box-shadow .25s;}
   .carnet-entrar:hover{transform:translateY(-2px);box-shadow:0 12px 26px rgba(4,8,70,.38);}
   .carnet-entrar svg{transition:transform .25s var(--curva);}
   .carnet-entrar:hover svg{transform:translateX(4px);}
   .carnet-sec{flex:1 1 130px;display:inline-flex;align-items:center;justify-content:center;gap:8px;background:rgba(255,255,255,.14);color:#fff;border:1.5px solid rgba(255,255,255,.55);
-    border-radius:12px;padding:12px 16px;font:600 .88rem 'Montserrat',sans-serif;cursor:pointer;transition:background-color .2s,transform .2s var(--curva);}
+    border-radius:12px;padding:12px 16px;font:600 .88rem var(--font-text);cursor:pointer;transition:background-color .2s,transform .2s var(--curva);}
   .carnet-sec:hover{background:rgba(255,255,255,.24);}
   .carnet-sec:active{transform:scale(.97);}
   .carnet-aviso{display:flex;gap:10px;align-items:flex-start;margin:16px 0 0;padding:11px 13px;border-radius:12px;background:rgba(255,196,0,.18);border:1px solid rgba(255,214,64,.55);
@@ -274,12 +287,12 @@
   .gracias a{color:var(--acento);}
 
   /* Secciones (páginas) */
-  .sec-badge{display:inline-block;background:var(--acento);color:#fff;font:700 .75rem 'Montserrat',sans-serif;padding:7px 16px;border-radius:10px 10px 0 0;margin:0 0 -1px;position:relative;z-index:1;letter-spacing:.2px;}
+  .sec-badge{display:inline-block;background:var(--acento);color:#fff;font:700 .75rem var(--font-text);padding:7px 16px;border-radius:10px 10px 0 0;margin:0 0 -1px;position:relative;z-index:1;letter-spacing:.2px;}
   .sec-badge + .tarjeta{border-top-left-radius:0;}
   .pag-form{display:none;}
   .pag-form.activa{display:block;}
   .tarjeta.sec-cabecera{border-top:10px solid var(--acento);padding-top:26px;}
-  .sec-titulo{font-family:'Lexend',sans-serif;font-size:1.4rem;line-height:1.25;margin:0 0 10px;}
+  .sec-titulo{font-family:var(--font-tit);font-size:1.4rem;line-height:1.25;margin:0 0 10px;}
   .sec-cabecera .intro{margin:0;}
   .tarjeta.sec-cabecera.con-badge{border-top-left-radius:0;}
 
@@ -295,10 +308,10 @@
   button.nav-sec:hover{background:var(--acento-suave);box-shadow:none;}
   button.enviar.siguiente{display:inline-flex;align-items:center;gap:8px;}
 </style>
-<link rel="stylesheet" href="css/accesibilidad.css?v=2">
-<script src="js/accesibilidad.js?v=1" defer></script>
-<link rel="stylesheet" href="css/app-movil.css?v=8">
-<script src="js/app-movil.js?v=5" defer></script>
+<link rel="stylesheet" href="css/accesibilidad.css?v=191b9263">
+<script src="js/accesibilidad.js?v=59fdae75" defer></script>
+<link rel="stylesheet" href="css/app-movil.css?v=b6df23d4">
+<script src="js/app-movil.js?v=3b122790" defer></script>
 </head>
 <body>
 <div id="vistaPin" class="pin-escena" role="dialog" aria-modal="true" aria-labelledby="pinTitulo" style="display:none;">
@@ -330,7 +343,7 @@
 <div class="progreso" aria-hidden="true" style="display:none;"><div class="progreso-barra" id="progresoBarra"></div></div>
 <main class="pagina">
 
-  <div id="vistaCarga" class="tarjeta cabecera"><p class="intro" style="margin:0;">Cargando formulario…</p></div>
+  <div id="vistaCarga" class="tarjeta cabecera"><div class="cg-cargador" role="status"><span class="cg-anillo" aria-hidden="true"></span><span class="cg-txt">Cargando formulario…</span></div></div>
 
   <div id="vistaNoDisponible" style="display:none;">
     <div class="tarjeta cabecera gracias">
@@ -418,8 +431,8 @@
 
 </main>
 
-<script src="js/config.js?v=36"></script>
-<script src="js/turnstile.js?v=2"></script>
+<script src="js/config.js?v=8002da47"></script>
+<script src="js/turnstile.js?v=c9b660c4"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 const SLUG = (new URLSearchParams(location.search).get("f") || "").toLowerCase().trim();
@@ -843,5 +856,6 @@ function lanzarConfeti() {
   else { pintarFormulario(); entrarAlFormulario(""); }
 })();
 </script>
+<script src="js/cookies.js?v=845d8f5c"></script>
 </body>
 </html>

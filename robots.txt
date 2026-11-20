@@ -14,4 +14,6 @@ Sitemap: https://elotrofutbol.media/sitemap.xml
 Sitemap: https://elotrofutbol.media/sitemap-noticias.xml
 Sitemap: https://elotrofutbol.media/sitemap-clubes.xml
 Sitemap: https://elotrofutbol.media/sitemap-jugadores.xml
+Sitemap: https://elotrofutbol.media/sitemap-partidos.xml
 Sitemap: https://elotrofutbol.media/sitemap-news.xml
+Sitemap: https://elotrofutbol.media/sitemap-etiquetas.xml

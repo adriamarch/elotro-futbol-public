@@ -159,3 +159,38 @@ html[data-theme="dark"] #btnHistorialSiguiente:disabled{opacity:.5;}
   /* Tablas del panel con scroll lateral y sombra que indica que se desliza */
   .panel .tabla-scroll,.panel .tabla-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;}
 }
+
+/* ============================================================================
+   FIX iPhone · cajón del menú: la zona de abajo (junto a «Ver la web» / «Cerrar
+   sesión» y la barra de inicio) era transparente y se veían los elementos del
+   menú ("Analíticas"...) asomando por debajo de los botones. El padding inferior
+   del cajón dejaba un hueco por debajo del pie fijo; ahora el pie ocupa hasta el
+   borde inferior (incluida la zona segura del iPhone) y lleva fondo sólido.
+   ============================================================================ */
+@media (max-width:899px){
+  html body #menuLateral{
+    padding-bottom:0;
+    height:auto;
+    bottom:0;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain;
+  }
+  html body #menuLateral .mlp-pie{
+    position:sticky;bottom:0;z-index:3;isolation:isolate;
+    margin-bottom:0;
+    padding:20px 0 max(14px,env(safe-area-inset-bottom,0px));
+    background:none;
+  }
+  /* Fondo sólido a todo el ancho del cajón (por debajo del degradado superior) */
+  html body #menuLateral .mlp-pie::before{
+    content:"";position:absolute;z-index:-1;left:-12px;right:-12px;top:0;bottom:0;
+    background:linear-gradient(180deg,rgba(255,255,255,0),var(--blanco,#fff) 18px,var(--blanco,#fff));
+  }
+  [data-theme="dark"] body #menuLateral .mlp-pie{background:none;}
+  html[data-theme="dark"] body #menuLateral .mlp-pie::before{
+    background:linear-gradient(180deg,rgba(15,26,43,0),#0f1a2b 18px,#0f1a2b);
+  }
+  /* Que el último elemento del menú no quede tapado por el pie */
+  html body #menuLateral .ml-grupo:last-of-type{margin-bottom:8px;}
+}
+  .mlp-avatar.mlp-avatar-foto{background-color:rgba(255,255,255,.16);overflow:hidden;}

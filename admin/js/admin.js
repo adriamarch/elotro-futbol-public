@@ -55,6 +55,8 @@ const rGrupoLabel = document.getElementById("r_grupo_label");
 const rJornada = document.getElementById("r_jornada");
 const rJornadaLabel = document.getElementById("r_jornada_label");
 const COMPETICIONES_CON_FLASHSCORE = ["hypermotion", "primera_federacion", "segunda_federacion"];
+// Competiciones de copa: sin lista cerrada de clubes (ver poblarSelectsEquipo).
+const COMPETICIONES_COPA_RESULTADO = ["copa_del_rey", "copa_federacion"];
 // Movidas aquí arriba (antes estaban junto a su uso, más abajo en el
 // archivo) para evitar errores de "Cannot access before initialization"
 // cuando alguna función que las usa se invoca antes de que el resto del
@@ -184,6 +186,8 @@ const USER = JSON.parse(localStorage.getItem("eof_user") || "null");
 // Estado de la campanita de avisos push (se declara aquí arriba porque
 // inicializarNotificaciones() se llama durante la carga, antes del bloque de funciones).
 const STAFF_PUSH_NIVEL_MINIMO = 4;
+// Mismos umbrales que el Worker (NIVEL_PUBLICACION_DIRECTA / NIVEL_REDES_MINIMO): Nivel 3 = publicar sin revisión (web y redes).
+const NIVEL_PUBLICACION_DIRECTA = 3;
 const STAFF_PUSH = {
   categorias: [],          // [{ id, etiqueta }] tal como las manda el servidor
   activas: new Set(),      // categorías marcadas
@@ -250,7 +254,7 @@ if (!TOKEN_ACTUAL() || !USER) {
 // nada con permisos que ya no tiene (o para que aproveche los nuevos sin
 // tener que volver a entrar).
 // El toggle "Publicada" del formulario de noticias solo se muestra a los
-// administradores y a los redactores de Nivel 2+. A un redactor de Nivel 1
+// Responsables y a los redactores de Nivel 3+. A un redactor de Nivel 1
 // se le oculta: sus noticias nuevas se guardan siempre como borrador (para
 // revisión). Solo se oculta el control, NO se toca su valor: si un Nivel 1
 // edita una noticia suya que ya estaba publicada, el checkbox sigue marcado
@@ -264,13 +268,13 @@ function aplicarVisibilidadPublicada() {
   const opcion = document.getElementById("opcionPublicada");
   const bloque = document.getElementById("bloqueDesbloqueoPublicar");
   if (!USER) return;
-  const esNivel1 = USER.rol !== "admin" && (USER.nivel || 1) < 2;
+  const esNivel1 = USER.rol !== "admin" && (USER.nivel || 1) < NIVEL_PUBLICACION_DIRECTA;
   if (!esNivel1) pinUltimaHoraDesbloqueado = null;
   const yaPublicada = document.getElementById("articlePublicadoOriginal")?.value === "1";
   if (opcion) opcion.style.display = (esNivel1 && !pinUltimaHoraDesbloqueado) ? "none" : "";
   // Nivel 1: el interruptor "Marcar como última hora" (con candado) está siempre a la
   // vista mientras la noticia no esté publicada; queda marcado una vez validado el PIN y
-  // al desmarcarlo se vuelve a bloquear. Nivel 2+ y admin usan directamente el interruptor
+  // al desmarcarlo se vuelve a bloquear. Nivel 3+ y admin usan directamente el interruptor
   // del banner (ver más abajo, junto a puedeProgramarNoticia).
   if (bloque) bloque.style.display = (esNivel1 && !yaPublicada) ? "" : "none";
   const chkUhPin = document.getElementById("ultimaHoraPin");
@@ -302,6 +306,7 @@ async function refrescarNivelUsuario() {
       // mostrar el bloque de "Programar publicación" (ver más abajo).
       if (typeof aplicarFechaPreferenciaObligatoria === "function") aplicarFechaPreferenciaObligatoria();
       aplicarVisibilidadPublicada();
+      aplicarVisibilidadPropuestasEquipos();
       if (typeof bloqueProgramarNoticia !== "undefined" && bloqueProgramarNoticia) {
         bloqueProgramarNoticia.style.display = puedeProgramarNoticia() ? "" : "none";
       }
@@ -331,8 +336,8 @@ async function vigilarCambioNivelORol() {
   // cualquier acción que se pudiera seguir haciendo con el rol/nivel
   // antiguo (formularios ya abiertos, botones ya pintados, etc.).
   const mensaje = cambio === "rol"
-    ? "Un administrador te ha cambiado el rol. La página se va a recargar para aplicar el cambio…"
-    : "Un administrador te ha cambiado de nivel. La página se va a recargar para aplicar el cambio…";
+    ? "Un Responsable te ha cambiado el rol. La página se va a recargar para aplicar el cambio…"
+    : "Un Responsable te ha cambiado de nivel. La página se va a recargar para aplicar el cambio…";
   try { EOF.toast(mensaje, "info", 3000); } catch {}
   setTimeout(() => location.reload(), 2500);
 }
@@ -397,15 +402,15 @@ if (USER) {
   // borrador de todos modos.
   const checkPublicadoInicial = document.getElementById("publicado");
   if (checkPublicadoInicial) {
-    checkPublicadoInicial.checked = USER.rol === "admin" || (USER.nivel || 1) >= 2;
+    checkPublicadoInicial.checked = USER.rol === "admin" || (USER.nivel || 1) >= NIVEL_PUBLICACION_DIRECTA;
   }
   aplicarVisibilidadPublicada();
   document.getElementById("userNombre").textContent = USER.nombre;
   document.getElementById("cuentaNombreCompleto").textContent = USER.nombre;
   document.getElementById("cuentaRolEtiqueta").textContent =
-    USER.rol === "admin" ? "Administrador" : (USER.rol === "fotografo" ? "Fotógrafo" : "Redactor");
+    USER.rol === "admin" ? "Responsable" : (USER.rol === "fotografo" ? "Fotógrafo" : "Redactor");
   // La pestaña Analíticas (admin/js/analiticas-panel.js) solo admite
-  // administradores en el Worker (ver /api/admin/analiticas/*), así que
+  // Responsables en el Worker (ver /api/admin/analiticas/*), así que
   // solo se muestra a ellos (viene oculta en panel.html).
   const tabAnaliticas = document.getElementById("tabAnaliticas");
   if (tabAnaliticas) tabAnaliticas.style.display = USER.rol === "admin" ? "" : "none";
@@ -428,13 +433,13 @@ if (USER) {
     cargarMiPerfilCompleto();
   }
   // Las redes sociales del medio y la gestión de usuarios solo las puede
-  // tocar un administrador. La pestaña "Contenido" la ve todo el mundo
+  // tocar un Responsable. La pestaña "Contenido" la ve todo el mundo
   // (para poder subir fotos/vídeos), pero la galería de gestión de dentro
-  // solo la ve un administrador (se oculta más abajo).
+  // solo la ve un Responsable (se oculta más abajo).
   if (USER.rol !== "admin") {
     // Un redactor sí puede entrar en "Ajustes del medio", pero solo para
     // gestionar las fichas de equipo: las redes sociales del medio siguen
-    // siendo cosa exclusiva de un administrador.
+    // siendo cosa exclusiva de un Responsable.
     const subtabRedesSociales = document.getElementById("subtabRedesSociales_btn");
     if (subtabRedesSociales) subtabRedesSociales.style.display = "none";
     const tabUsuarios = document.getElementById("tabUsuarios");
@@ -446,12 +451,16 @@ if (USER) {
     // Los formularios (acreditaciones incluidas, dentro de "Solicitudes") solo los gestiona un admin.
     const subtabSolFormularios = document.getElementById("subtabSolFormularios_btn");
     if (subtabSolFormularios) subtabSolFormularios.style.display = "none";
+    // Las propuestas de fichas de equipo solo las ven quienes pueden resolverlas.
+    aplicarVisibilidadPropuestasEquipos();
     const subtabFuncJugadores = document.getElementById("subtabFuncJugadores_btn");
     if (subtabFuncJugadores) subtabFuncJugadores.style.display = "none";
     const subtabFuncResponsabilidades = document.getElementById("subtabFuncResponsabilidades_btn");
     if (subtabFuncResponsabilidades) subtabFuncResponsabilidades.style.display = "none";
     const subtabFuncHistorial = document.getElementById("subtabFuncHistorial_btn");
     if (subtabFuncHistorial) subtabFuncHistorial.style.display = "none";
+    const subtabFuncReuniones = document.getElementById("subtabFuncReuniones_btn");
+    if (subtabFuncReuniones) subtabFuncReuniones.style.display = "none";
     const subtabFuncComentarios = document.getElementById("subtabFuncComentarios_btn");
     if (subtabFuncComentarios) subtabFuncComentarios.style.display = "none";
     // Fase 11: gestionar la galería de un partido (vincular/reordenar/
@@ -469,7 +478,7 @@ if (USER) {
     if (subtabVerContenido) subtabVerContenido.textContent = "Mi contenido subido";
     // Le recordamos que publicar directamente le va a pedir el PIN de
     // "Última hora" (si no, se le guarda como borrador) — solo aplica a
-    // Nivel 1. A partir de Nivel 2 el redactor ya publica sin revisión
+    // Nivel 1. A partir de Nivel 3 el redactor ya publica sin revisión
     // administrativa, así que se le muestra un aviso distinto con su
     // nivel actual.
     const nivelActualRedactor = USER.nivel || 1;
@@ -481,14 +490,14 @@ if (USER) {
     // función, pero no todos los caminos hasta el formulario pasan por
     // ahí — p. ej. el primer click en la subtab "nueva").
     // El calendario de jornadas (fechas de inicio/fin de cada jornada
-    // para el resto del sitio) es solo de administradores (el Worker lo
+    // para el resto del sitio) es solo de Responsables (el Worker lo
     // exige en /api/jornadas-calendario). Ningún redactor lo ve, sea del
     // nivel que sea: antes se mostraba a partir de Nivel 3, pero ahí solo
     // le devolvía un 403.
     const subtabCalendarioJornadas = document.getElementById("subtabCalendarioJornadas_btn");
     if (subtabCalendarioJornadas) subtabCalendarioJornadas.style.display = "none";
     const avisoPublicadoRedactorNivel2 = document.getElementById("avisoPublicadoRedactorNivel2");
-    if (nivelActualRedactor >= 2) {
+    if (nivelActualRedactor >= NIVEL_PUBLICACION_DIRECTA) {
       if (avisoPublicadoRedactorNivel2) {
         avisoPublicadoRedactorNivel2.textContent = `Como redactor de nivel ${nivelActualRedactor}, tienes la capacidad de publicar sin necesidad de revisión administrativa.`;
         avisoPublicadoRedactorNivel2.style.display = "block";
@@ -506,6 +515,10 @@ if (USER) {
   // Se le deja visible únicamente "Contenido" (subir/ver galería),
   // "Tienda" y "Ajustes de cuenta". Un redactor sigue viendo todo lo
   // que veía hasta ahora (ninguno de estos "if" le afecta).
+  // Un redactor Sub-Responsable de un área con permiso (p. ej. acreditaciones) recupera lo que el bloque de
+  // arriba le ocultó (ver activarCargosSubResponsable en 16-importar.js). Se pregunta al servidor: el cargo
+  // puede cambiar sin que cambie la sesión.
+  setTimeout(activarCargosSubResponsable, 0);
   if (USER.rol === "fotografo") {
     const tabNoticias = document.querySelector('.tabs button[data-tab="noticias"]');
     if (tabNoticias) tabNoticias.style.display = "none";
@@ -521,44 +534,38 @@ if (USER) {
     // tampoco le hace falta esto, así que se oculta entera.
     const tabFuncionalidades = document.getElementById("tabFuncionalidades");
     if (tabFuncionalidades) tabFuncionalidades.style.display = "none";
-    // "Noticias" viene marcada como pestaña activa por defecto en el
-    // HTML (ver panel.html): como se acaba de ocultar, se activa en su
-    // lugar "Contenido", que es donde el fotógrafo va a trabajar.
-    document.querySelector('.tabs button[data-tab="noticias"]').classList.remove("activo");
-    document.getElementById("panel-noticias").classList.remove("activo");
-    const tabContenidoInicial = document.getElementById("tabContenido");
-    if (tabContenidoInicial) tabContenidoInicial.click();
-    // "Subir contenido" es la pantalla de bienvenida real para un
-    // fotógrafo (así lo ve en el HTML por defecto, panel.html), pero si
-    // ya hay una subtab distinta marcada como activa en el DOM en el
-    // momento de este click (p. ej. porque el tutorial guiado se cerró a
-    // mitad del paso de "Galería de partido", que navega hasta ahí antes
-    // de pintar su tarjeta — ver tutorial.js, mostrarPaso/irASubtab), el
-    // fotógrafo aterrizaba en esa pantalla intermedia, sin partido
-    // elegido y mostrando de entrada el error de la galería. Se fuerza
-    // aquí, siempre, a "Subir contenido" para que la entrada al panel
-    // sea consistente pase lo que pase antes.
-    document.querySelectorAll("#subtabsContenido button").forEach((b) => b.classList.remove("activo"));
-    document.querySelectorAll("#panel-contenido > .subpanel").forEach((p) => p.classList.remove("activo"));
-    document.getElementById("subtabsContenido")?.querySelector('[data-subtab="subir"]')?.classList.add("activo");
-    document.getElementById("subpanel-subir")?.classList.add("activo");
+    // La pestaña activa de entrada es «Inicio» para TODOS los roles (ver panel.html e
+    // inicio-resumen.js): ya no se fuerza «Contenido» > «Subir contenido» al fotógrafo. Desde el
+    // resumen tiene el botón «Subir fotos» y su acceso a la galería de partido.
     // "Mi progreso" (Ajustes de cuenta) SÍ se le deja a un fotógrafo: en vez del
     // sistema de redactor (N1–N4, con cifras de publicaciones) ve el suyo, F1–F2,
     // con sus funciones y criterios de valoración (ver pintarProgresoFotografo).
   }
 
-  // ---------- Cierre de sesión por inactividad (15 minutos) ----------
-  // A los 13 minutos sin actividad sale un aviso con cuenta atrás de 2:00 y,
+  // ---------- Cierre de sesión por inactividad (30 minutos) ----------
+  // A los 28 minutos sin actividad sale un aviso con cuenta atrás de 2:00 y,
   // además, el título de la pestaña cambia ("⏳ 1:59 · ¿Sigues ahí?") para que se
-  // vea aunque el panel esté en otra pestaña. Si no se hace nada, a los 15 min se
+  // vea aunque el panel esté en otra pestaña. Si no se hace nada, a los 30 min se
   // cierra la sesión. Se calcula con la hora real (no con un temporizador
   // largo) porque los navegadores frenan los temporizadores de pestañas ocultas.
-  const INACTIVIDAD_LIMITE_MS = 15 * 60 * 1000;
+  // Cada persona puede desactivarlo en Ajustes de cuenta > Seguridad (aceptando el
+  // riesgo): se guarda solo en ESE dispositivo (localStorage, ver inactividad-sesion.js).
+  // La sesión sigue caducando a las 12 h por el lado del servidor.
+  const INACTIVIDAD_LIMITE_MS = 30 * 60 * 1000;
   const INACTIVIDAD_AVISO_MS = 2 * 60 * 1000;
   const TITULO_PANEL_ORIGINAL = document.title;
   let inactividadVence = Date.now() + INACTIVIDAD_LIMITE_MS;
   let avisoInactividadEl = null;
   let cerrandoPorInactividad = false;
+
+  function inactividadDesactivada() {
+    try { return !!localStorage.getItem(`eof_inact_off_${USER.username}`); } catch (_) { return false; }
+  }
+  // Al activar o desactivar el ajuste: temporizador a cero y fuera el aviso si estaba en pantalla.
+  window.addEventListener("eof:inactividad-cambio", () => {
+    inactividadVence = Date.now() + INACTIVIDAD_LIMITE_MS;
+    if (typeof ocultarAvisoInactividad === "function") ocultarAvisoInactividad();
+  });
 
   function formatoCuentaAtras(ms) {
     const total = Math.max(0, Math.ceil(ms / 1000));
@@ -630,6 +637,8 @@ if (USER) {
     inactividadVence = Date.now() + INACTIVIDAD_LIMITE_MS;
     if (avisoVisible) ocultarAvisoInactividad();
   }
+  // Lo usa el selector de fotos del móvil: al volver de la cámara/galería cuenta como actividad.
+  window.eofReiniciarInactividad = () => reiniciarTemporizadorInactividad({ type: "click" });
 
   function cerrarSesionPorInactividad() {
     cerrandoPorInactividad = true;
@@ -670,7 +679,7 @@ if (USER) {
             </svg>
           </div>
           <h2 id="sesionCerradaTitulo">Sesión cerrada</h2>
-          <p class="sesion-cerrada-sub">Llevabas <strong>15 minutos</strong> sin actividad en el panel, así que hemos cerrado tu sesión.</p>
+          <p class="sesion-cerrada-sub">Llevabas <strong>${Math.round(INACTIVIDAD_LIMITE_MS / 60000)} minutos</strong> sin actividad en el panel, así que hemos cerrado tu sesión.</p>
           <ul class="sesion-cerrada-lista">
             <li>
               <span class="sesion-cerrada-chip" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4.5 6v5.5c0 4.6 3.1 8.2 7.5 9.5 4.4-1.3 7.5-4.9 7.5-9.5V6z"/><path d="m9 12 2 2 4-4"/></svg></span>
@@ -706,6 +715,13 @@ if (USER) {
 
   function comprobarInactividad() {
     if (cerrandoPorInactividad) return;
+    if (inactividadDesactivada()) {
+      // Ajuste desactivado por la persona (con riesgo aceptado): no se cierra nada,
+      // pero el reloj se mantiene al día por si lo vuelve a activar.
+      inactividadVence = Date.now() + INACTIVIDAD_LIMITE_MS;
+      if (avisoInactividadEl && avisoInactividadEl.classList.contains("visible")) ocultarAvisoInactividad();
+      return;
+    }
     const restante = inactividadVence - Date.now();
     if (restante <= 0) return cerrarSesionPorInactividad();
     if (restante <= INACTIVIDAD_AVISO_MS) mostrarAvisoInactividad(restante);
@@ -742,8 +758,10 @@ if (USER) {
   const cuentaBtn = document.getElementById("cuentaBtn");
   const cuentaMenu = document.getElementById("cuentaMenu");
   if (cuentaWrap && cuentaBtn && cuentaMenu) {
+    pintarMenuCuenta();
     cuentaBtn.addEventListener("click", (e) => {
       e.stopPropagation();
+      if (!cuentaMenu.classList.contains("abierto")) pintarMenuCuenta(); // al abrir, siempre al día
       cuentaMenu.classList.toggle("abierto");
       cuentaBtn.setAttribute("aria-expanded", String(cuentaMenu.classList.contains("abierto")));
     });
@@ -763,13 +781,45 @@ if (USER) {
   }
 }
 
+// El menú de la cuenta lista TODAS las secciones de «Ajustes de cuenta». No tiene lista propia: se
+// construye a partir de las pestañas de #subtabsAjustes (una sola fuente), así que lo que aparezca allí
+// aparece aquí, con su mismo texto y en su mismo orden, y nunca vuelven a quedar secciones sueltas.
+// Una sección que la pestaña oculte (p. ej. por rol) tampoco sale en el menú.
+function pintarMenuCuenta() {
+  const cont = document.getElementById("cuentaMenuSecciones");
+  if (!cont) return;
+  const ico = (d) => `<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+  const ICONOS = {
+    perfil: ico('<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'),
+    seguridad: ico('<path d="M12 2 4 6v6c0 5 3.4 8.4 8 10 4.6-1.6 8-5 8-10V6l-8-4Z"/><path d="m9 12 2 2 4-4"/>'),
+    progreso: ico('<circle cx="12" cy="8" r="6"/><path d="M15.5 13.5 17 22l-5-3-5 3 1.5-8.5"/>'),
+    estadisticas: ico('<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>'),
+    resumenMes: ico('<path d="M3 3v18h18"/><path d="M7 15v3"/><path d="M12 9v9"/><path d="M17 5v13"/>'),
+    sesiones: ico('<rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>'),
+    preferencias: ico('<line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>'),
+  };
+  const botones = Array.from(document.querySelectorAll("#subtabsAjustes button[data-subtab]"))
+    .filter((b) => !b.hidden && getComputedStyle(b).display !== "none");
+  if (!botones.length) return; // sin pestañas (no debería pasar): se queda el menú de respaldo del HTML
+  const enAjustes = !!document.getElementById("panel-ajustes")?.classList.contains("activo");
+  cont.innerHTML = botones.map((b) => {
+    const id = b.dataset.subtab;
+    const texto = Array.from(b.childNodes).filter((n) => n.nodeType === 3).map((n) => n.textContent).join("").trim() || id;
+    const activa = enAjustes && b.classList.contains("activo");
+    const punto = id === "resumenMes"
+      ? `<span class="rm-punto" ${b.querySelector(".rm-punto") && !b.querySelector(".rm-punto").hidden ? "" : "hidden"} role="img" aria-label="Resumen nuevo disponible"></span>`
+      : "";
+    return `<a href="javascript:void(0)" class="ud-seccion${id === "resumenMes" ? " rm-enlace" : ""}${activa ? " ud-activa" : ""}"${activa ? ' aria-current="page"' : ""} data-ud-seccion="${escapeHtml(id)}" onclick="irAAjustesCuenta('${escapeHtml(id)}')"><span class="ud-ico" aria-hidden="true">${ICONOS[id] || ICONOS.perfil}</span>${escapeHtml(texto)}${punto}</a>`;
+  }).join("");
+}
+
 function irAAjustesCuenta(seccion) {
   const menu = document.getElementById("cuentaMenu");
   if (menu) menu.classList.remove("abierto");
   document.getElementById("tabAjustesOculto").click();
   // "password" ya no es una pestaña: cambiar la contraseña vive dentro de Seguridad (los enlaces antiguos siguen funcionando).
   if (seccion === "password") seccion = "seguridad";
-  const subtab = ["sesiones", "seguridad", "progreso", "resumenMes", "preferencias"].includes(seccion) ? seccion : "perfil";
+  const subtab = ["sesiones", "seguridad", "progreso", "estadisticas", "resumenMes", "preferencias"].includes(seccion) ? seccion : "perfil";
   const btnSubtab = document.querySelector(`#subtabsAjustes button[data-subtab="${subtab}"]`);
   if (btnSubtab) btnSubtab.click();
 }
@@ -792,6 +842,7 @@ const STAFF_PUSH_CAT_INFO = {
   ediciones: { ico: "✏️", ayuda: "Alguien quiere editar algo tuyo" },
   comentarios: { ico: "💬", ayuda: "Comentarios nuevos en la web" },
   anuncios: { ico: "📣", ayuda: "Anuncios dirigidos a ti" },
+  reuniones: { ico: "📅", ayuda: "Avisos antes de cada reunión (los minutos se eligen en Funcionalidades > Reuniones)" },
 };
 
 function staffPushElegible() {
@@ -1393,7 +1444,7 @@ function eofAbrirAnaliticas() {
   if (!ANALITICAS_SCRIPT) {
     ANALITICAS_SCRIPT = new Promise((resolve, reject) => {
       const s = document.createElement("script");
-      s.src = "/admin/js/analiticas-panel.js?v=1";
+      s.src = "/admin/js/analiticas-panel.js?v=3";
       s.onload = resolve;
       s.onerror = () => {
         ANALITICAS_SCRIPT = null; // permite reintentar al volver a abrir la pestaña
@@ -1425,7 +1476,7 @@ document.querySelectorAll(".tabs button").forEach(btn => {
       const subtabActivo = document.querySelector("#subtabsFuncionalidades button.activo");
       if (subtabActivo) cargaSubtabFuncionalidades(subtabActivo.dataset.subtab);
     }
-    if (btn.dataset.tab === "contenido" && document.getElementById("subpanel-ver").classList.contains("activo")) cargaContenido();
+    if (btn.dataset.tab === "contenido" && document.getElementById("subpanel-ver").classList.contains("activo")) cargaContenido({ suave: true });
     if (btn.dataset.tab === "usuarios") cargaUsuarios();
     if (btn.dataset.tab === "solicitudes") {
       const subtabSolActivo = document.querySelector("#subtabsSolicitudes button.activo");
@@ -1436,12 +1487,13 @@ document.querySelectorAll(".tabs button").forEach(btn => {
       if (subtabActivo) cargaSubtabTienda(subtabActivo.dataset.subtab);
     }
     if (btn.dataset.tab === "analiticas") eofAbrirAnaliticas();
+    if (btn.dataset.tab === "inicio" && window.EOFInicio) window.EOFInicio.abrir();
     // "Funcionalidades" y "Usuarios" son exclusivas (o casi) de
-    // administrador, así que la cabecera pasa a decir "Administración".
+    // Responsable, así que la cabecera pasa a decir "Administración".
     // Para un colaborador (redactor o fotógrafo), "Funcionalidades" solo
     // da acceso a Equipos, así que se queda como "Colaboración".
     const esFuncionalidadesSoloAdmin = btn.dataset.tab === "funcionalidades" && USER.rol === "admin";
-    if (tituloSeccion) tituloSeccion.textContent = (esFuncionalidadesSoloAdmin || btn.dataset.tab === "usuarios") ? "Administración" : (btn.dataset.tab === "ajustes" ? "Ajustes de cuenta" : (btn.dataset.tab === "analiticas" ? "Analíticas" : "Colaboración"));
+    if (tituloSeccion) tituloSeccion.textContent = (esFuncionalidadesSoloAdmin || btn.dataset.tab === "usuarios") ? "Administración" : (btn.dataset.tab === "ajustes" ? "Ajustes de cuenta" : (btn.dataset.tab === "analiticas" ? "Analíticas" : (btn.dataset.tab === "inicio" ? "Resumen" : "Colaboración")));
   });
 });
 
@@ -1462,10 +1514,13 @@ function cargaSubtabFuncionalidades(subtab) {
   if (subtab === "newsletter") cargaNewsletter();
   if (subtab === "anuncios") cargaAnuncios();
   if (subtab === "historial") cargaHistorial();
+  if (subtab === "reuniones") cargaReunionesAjustes();
   if (subtab === "redesSociales") cargaRedesSociales();
   if (subtab === "equipos") cargaEquiposInfo();
   if (subtab === "jugadores" && window.EOFJugadores) window.EOFJugadores.cargar();
   if (subtab === "informacion" && window.EOFOrganigrama) window.EOFOrganigrama.cargar();
+  if (subtab === "informacion" && window.EOFGruposTrabajo) window.EOFGruposTrabajo.cargar(true);
+  if (subtab === "informacion" && window.EOFAreasSub) window.EOFAreasSub.cargar();
   if (subtab === "responsabilidades" && window.EOFResponsabilidades) window.EOFResponsabilidades.cargar();
 }
 
@@ -1497,7 +1552,7 @@ document.querySelectorAll(".subtabs button").forEach(btn => {
     contenedor.querySelectorAll(":scope > .subpanel").forEach(p => p.classList.remove("activo"));
     btn.classList.add("activo");
     document.getElementById("subpanel-" + btn.dataset.subtab).classList.add("activo");
-    if (btn.dataset.subtab === "ver") cargaContenido();
+    if (btn.dataset.subtab === "ver") cargaContenido({ suave: true });
     if (btn.dataset.subtab === "galeriaPartido") cargaSubtabGaleriaPartido();
     if (btn.dataset.subtab === "lista") cargaListaArticulos();
     if (btn.dataset.subtab === "noticiasRapidas") cargaNoticiasRapidas();
@@ -1738,9 +1793,9 @@ function sincronizarDestacadoConPublicado() {
 checkPublicado.addEventListener("change", sincronizarDestacadoConPublicado);
 sincronizarDestacadoConPublicado();
 
-// ---------- PROGRAMAR PUBLICACIÓN (admin o redactor Nivel 2+) ----------
-// Un administrador siempre puede dejar una noticia programada. A partir
-// de Nivel 2 un redactor ya publica directo sin PIN de "Última hora", así
+// ---------- PROGRAMAR PUBLICACIÓN (admin o redactor Nivel 3+) ----------
+// Un Responsable siempre puede dejar una noticia programada. A partir
+// de Nivel 3 un redactor ya publica directo sin PIN de "Última hora", así
 // que también tiene sentido que pueda programar (a Nivel 1 no: como ni
 // siquiera puede publicar directo, tampoco tiene sentido que programe).
 const bloqueProgramarNoticia = document.getElementById("bloqueProgramarNoticia");
@@ -1751,7 +1806,7 @@ const ayudaProgramarNoticia = document.getElementById("ayudaProgramarNoticia");
 // USER.nivel se refresca al arrancar el panel (ver refrescarNivelUsuario),
 // así que un ascenso reciente ya se refleja aquí sin volver a iniciar sesión.
 function puedeProgramarNoticia() {
-  return USER.rol === "admin" || (USER.nivel || 1) >= 2;
+  return USER.rol === "admin" || (USER.nivel || 1) >= NIVEL_PUBLICACION_DIRECTA;
 }
 
 if (puedeProgramarNoticia() && bloqueProgramarNoticia) {
@@ -1759,7 +1814,7 @@ if (puedeProgramarNoticia() && bloqueProgramarNoticia) {
 }
 
 // Mismo umbral de permiso que activarBanner en el backend (admin o
-// Nivel 2+, ver worker/src/index.js): si el redactor no llega, ni
+// Nivel 3+, ver worker/src/index.js): si el redactor no llega, ni
 // siquiera se le muestra el checkbox, en vez de dejarle marcarlo y que
 // el servidor lo ignore en silencio.
 const bloqueBannerUrgente = document.getElementById("bloqueBannerUrgente");
@@ -1871,10 +1926,10 @@ checkPublicado?.addEventListener("change", sincronizarFechaPreferenciaConPublica
 checkProgramarNoticia?.addEventListener("change", sincronizarFechaPreferenciaConPublicado);
 sincronizarFechaPreferenciaConPublicado();
 
-// Nivel 1 (redactor sin permiso de publicar directo): la fecha de
+// Nivel 1 y 2 (redactor sin permiso de publicar directo): la fecha de
 // preferencia es obligatoria al mandar la noticia a revisión.
 function esRedactorNivel1() {
-  return Boolean(USER) && USER.rol !== "admin" && (USER.nivel || 1) < 2;
+  return Boolean(USER) && USER.rol !== "admin" && (USER.nivel || 1) < NIVEL_PUBLICACION_DIRECTA;
 }
 function aplicarFechaPreferenciaObligatoria() {
   const obligatoria = esRedactorNivel1();
@@ -2061,6 +2116,30 @@ function iniciarEquiposPicker({ contadorEl, buscadorEl, listaEl, ayudaEl }, equi
     // Válido mientras no se pasen de 3.
     esValido: () => seleccionados.size <= 3,
   };
+}
+
+// ---------- ARTÍCULOS: etiquetas (tags) reales ----------
+// Campo de texto "Ascenso 2026, Fichajes" (separadas por comas). El servidor valida (máx. 8,
+// 40 caracteres, sin repetidas por slug; worker/src/etiquetas.js) y cada etiqueta tiene su
+// página /etiqueta/<slug>. Si la noticia se cargó SIN el campo (p. ej. se cayó la petición
+// de la noticia completa y se editó desde el listado), no se manda "etiquetas": mandar []
+// borraría las que tenía.
+let ETIQUETAS_EDITABLES = true;
+function leerEtiquetasPanel() {
+  const el = document.getElementById("etiquetas");
+  if (!el) return [];
+  return el.value.split(/[,;\n]/).map((t) => t.replace(/^[#\s]+/, "").replace(/\s+/g, " ").trim()).filter(Boolean);
+}
+function etiquetasParaEnviar() {
+  return ETIQUETAS_EDITABLES && document.getElementById("etiquetas") ? { etiquetas: leerEtiquetasPanel() } : {};
+}
+function ponerEtiquetasPanel(lista) {
+  const el = document.getElementById("etiquetas");
+  if (!el) return;
+  ETIQUETAS_EDITABLES = lista === null ? true : Array.isArray(lista);
+  el.disabled = !ETIQUETAS_EDITABLES;
+  el.value = Array.isArray(lista) ? lista.join(", ") : "";
+  el.placeholder = ETIQUETAS_EDITABLES ? "Ej.: Ascenso 2026, Fichajes" : "No disponible: vuelve a abrir la noticia para editarlas";
 }
 
 // ---------- ARTÍCULOS: categoría(s) adicional(es) ----------
@@ -2640,11 +2719,94 @@ function crearFilaTweet(url = "", posicion = "galeria", trasParrafo = 1) {
   return fila;
 }
 
+// ---------- Vídeos incrustados (YouTube o vídeo de la mediateca/Cloudinary) ----------
+// Comparten lista (#tweetsLista), selector de posición y guardado con los tweets: en el
+// array "imagenes" viajan como { tipo:"video", url, plataforma, posicion, titulo? }.
+// Espejo de datosVideoDesdeUrlServidor del worker (que es quien valida de verdad).
+function datosVideoDesdeUrl(url) {
+  const limpia = String(url || "").trim().replace(/^http:/i, "https:");
+  const yt = limpia.match(/^https:\/\/(?:www\.|m\.)?(?:youtube\.com\/(?:watch\?(?:[^#]*&)?v=|shorts\/|embed\/|live\/)|youtu\.be\/)([A-Za-z0-9_-]{11})(?:[?&#/]|$)/i);
+  if (yt) return { plataforma: "youtube", url: `https://www.youtube.com/watch?v=${yt[1]}`, id: yt[1] };
+  if (/^https:\/\/res\.cloudinary\.com\/[^/\s]+\/video\/upload\/\S+$/i.test(limpia)) return { plataforma: "cloudinary", url: limpia };
+  return null;
+}
+
+function crearFilaVideo(url = "", posicion = "galeria", trasParrafo = 1, titulo = "") {
+  const datos = datosVideoDesdeUrl(url);
+  if (!datos) return null;
+  const grupo = document.createElement("div");
+  grupo.className = "fila-imagen-grupo";
+  const fila = document.createElement("div");
+  fila.className = "fila-imagen fila-video";
+  fila.dataset.posicion = posicion;
+  fila.dataset.trasParrafo = trasParrafo || 1;
+  fila.dataset.url = datos.url;
+  fila.dataset.plataforma = datos.plataforma;
+  // Vista previa sin iframes (la CSP del panel no admite YouTube): miniatura para YouTube y
+  // <video> nativo con los controles para un archivo de Cloudinary.
+  const vistaPrevia = datos.plataforma === "youtube"
+    ? `<img class="fila-video-miniatura" src="https://i.ytimg.com/vi/${escapeHtml(datos.id)}/hqdefault.jpg" alt="Miniatura del vídeo de YouTube" loading="lazy">`
+    : `<video class="fila-video-miniatura" src="${escapeHtml(datos.url)}#t=0.1" controls preload="metadata" playsinline></video>`;
+  fila.innerHTML = `
+    <div class="fila-tweet-preview fila-video-preview">
+      ${vistaPrevia}
+      <p class="fila-video-origen">${datos.plataforma === "youtube" ? "Vídeo de YouTube" : "Vídeo de la mediateca"}</p>
+    </div>
+    <div class="fila-imagen-controles">
+      <input type="text" class="fila-video-titulo" maxlength="120" placeholder="Pie del vídeo (opcional)" value="${escapeHtml(titulo)}" aria-label="Pie del vídeo (opcional)">
+      <div class="fila-imagen-controles-fila">
+        <div class="imagen-posicion-chips" role="group" aria-label="Dónde aparece este vídeo dentro de la noticia">
+          ${POSICIONES_TWEET.map((p) => `<button type="button" class="imagen-posicion-chip ${p.value === posicion ? "activo" : ""}" data-posicion="${p.value}" title="${p.label}">${p.corta}</button>`).join("")}
+        </div>
+      </div>
+      <button type="button" class="btn-elegir-parrafo" ${posicion === "personalizada" ? "" : "hidden"} title="Elegir en el texto dónde va este vídeo">
+        <span class="btn-elegir-parrafo-marca">✕</span>
+        <span class="btn-elegir-parrafo-texto">tras párrafo ${trasParrafo || 1}</span>
+      </button>
+      <div class="fila-imagen-controles-fila fila-acciones">
+        <button type="button" class="quitar-imagen" title="Quitar este vídeo">✕ Quitar</button>
+      </div>
+    </div>
+  `;
+  const chipsPosicion = [...fila.querySelectorAll(".imagen-posicion-chip")];
+  const btnElegirParrafo = fila.querySelector(".btn-elegir-parrafo");
+  chipsPosicion.forEach((chip) => {
+    chip.addEventListener("click", () => {
+      chipsPosicion.forEach((c) => c.classList.remove("activo"));
+      chip.classList.add("activo");
+      fila.dataset.posicion = chip.dataset.posicion;
+      btnElegirParrafo.hidden = chip.dataset.posicion !== "personalizada";
+      if (chip.dataset.posicion === "personalizada") abrirSelectorParrafo(fila);
+    });
+  });
+  btnElegirParrafo.addEventListener("click", () => abrirSelectorParrafo(fila));
+  fila.querySelector(".quitar-imagen").addEventListener("click", () => grupo.remove());
+  grupo.appendChild(fila);
+  tweetsLista.appendChild(grupo);
+  return fila;
+}
+
+const btnAddVideo = document.getElementById("btnAddVideo");
+if (btnAddVideo) {
+  btnAddVideo.addEventListener("click", async () => {
+    const url = await EOF.preguntar(
+      "Pega la URL del vídeo a incrustar (YouTube o un vídeo ya subido a la mediateca)",
+      "",
+      { placeholder: "https://www.youtube.com/watch?v=... o https://res.cloudinary.com/.../video/upload/..." }
+    );
+    if (url === null || !url) return;
+    if (!crearFilaVideo(url.trim(), "galeria")) {
+      EOF.toast("Esa URL no es válida: solo se admiten vídeos de YouTube (youtube.com, youtu.be) o de la mediateca (res.cloudinary.com/.../video/upload/...).", "error");
+    }
+  });
+}
+
 function resetTweets(valores = []) {
   tweetsLista.innerHTML = "";
   valores.forEach((v) => {
     const posicion = POSICIONES_TWEET.some((p) => p.value === v.posicion) ? v.posicion : "galeria";
-    crearFilaTweet(v.url, posicion, v.trasParrafo || 1);
+    if (v.tipo === "video") crearFilaVideo(v.url, posicion, v.trasParrafo || 1, v.titulo || "");
+    else crearFilaTweet(v.url, posicion, v.trasParrafo || 1);
   });
 }
 
@@ -2653,17 +2815,26 @@ function resetTweets(valores = []) {
 // diferencia del de X/Twitter) para poder leerla de vuelta sin volver a
 // depender del marcado interno de cada plataforma.
 function obtenerTweetsFormulario() {
-  return [...tweetsLista.querySelectorAll(".fila-tweet")]
+  return [...tweetsLista.querySelectorAll(".fila-tweet, .fila-video")]
     .map((fila) => {
       const posicion = fila.dataset.posicion || "galeria";
       const url = fila.dataset.url || "";
+      if (fila.classList.contains("fila-video")) {
+        const datos = datosVideoDesdeUrl(url);
+        if (!datos) return null;
+        const video = { tipo: "video", url: datos.url, plataforma: datos.plataforma, posicion };
+        const titulo = (fila.querySelector(".fila-video-titulo")?.value || "").trim().slice(0, 120);
+        if (titulo) video.titulo = titulo;
+        if (posicion === "personalizada") video.trasParrafo = Math.max(1, parseInt(fila.dataset.trasParrafo, 10) || 1);
+        return video;
+      }
       const tweet = { tipo: "tweet", url, plataforma: fila.dataset.plataforma || "twitter", posicion };
       if (posicion === "personalizada") {
         tweet.trasParrafo = Math.max(1, parseInt(fila.dataset.trasParrafo, 10) || 1);
       }
       return tweet;
     })
-    .filter((t) => t.url && plataformaEmbedDesdeUrl(t.url));
+    .filter((t) => t && t.url && (t.tipo === "video" || plataformaEmbedDesdeUrl(t.url)));
 }
 
 btnAddTweet.addEventListener("click", async () => {
@@ -3804,9 +3975,117 @@ function guardarBorradorLocalDeEmergencia() {
 setInterval(guardarBorradorLocalDeEmergencia, 8000);
 window.addEventListener("beforeunload", guardarBorradorLocalDeEmergencia);
 
+// ---------- Móvil: abrir la cámara / galería para poner una foto ----------
+// En muchos móviles (sobre todo Android con poca memoria) el sistema descarta la página mientras está
+// abierta la cámara o la galería: al volver, el navegador la RECARGA y la persona acaba en el panel
+// de inicio, "fuera" de la noticia y sin lo que llevaba escrito. «beforeunload» no se dispara en ese
+// caso, así que aquí: (1) se guarda el borrador justo al pulsar la foto y cada vez que la página se
+// oculta, y (2) se deja una marca para que, si la página se recarga, se devuelva a la persona a su
+// noticia con el borrador ya recuperado (sin preguntar nada).
+const CLAVE_VOLVER_SELECTOR_FOTOS = "eof_volver_selector_fotos";
+const VOLVER_SELECTOR_FOTOS_MAX_MS = 30 * 60 * 1000;
+const CLAVE_BORRADOR_NOTICIA_RAPIDA = "eof_nr_borrador_selector_fotos";
+
+function eofVolviendoDeSelectorFotos() {
+  try {
+    const bruto = localStorage.getItem(CLAVE_VOLVER_SELECTOR_FOTOS);
+    if (!bruto) return null;
+    localStorage.removeItem(CLAVE_VOLVER_SELECTOR_FOTOS);
+    const marca = JSON.parse(bruto);
+    const t = Number(marca && marca.t);
+    if (!Number.isFinite(t) || Date.now() - t > VOLVER_SELECTOR_FOTOS_MAX_MS) return null;
+    return { destino: marca.destino === "rapida" ? "rapida" : "noticia" };
+  } catch { return null; }
+}
+
+function eofGuardarBorradorNoticiaRapida() {
+  try {
+    const val = (id) => (document.getElementById(id) || {}).value || "";
+    localStorage.setItem(CLAVE_BORRADOR_NOTICIA_RAPIDA, JSON.stringify({
+      id: val("nrId"), titulo: val("nrTitulo"), subtitulo: val("nrSubtitulo"),
+      imagen: val("nrImagenUrl"), foco: val("nrImagenFoco"),
+    }));
+  } catch { /* sin espacio: no pasa nada */ }
+}
+
+// Si se volvió de la cámara/galería en la noticia rápida, se reabre y se rellena lo que había.
+function eofRestaurarNoticiaRapidaTrasSelectorFotos() {
+  let b = null;
+  try { b = JSON.parse(localStorage.getItem(CLAVE_BORRADOR_NOTICIA_RAPIDA) || "null"); } catch {}
+  try { localStorage.removeItem(CLAVE_BORRADOR_NOTICIA_RAPIDA); } catch {}
+  const btnTab = document.querySelector('.tabs button[data-tab="noticias"]');
+  if (btnTab) btnTab.click();
+  const btnSub = document.querySelector('#panel-noticias .subtabs button[data-subtab="noticiasRapidas"]');
+  if (btnSub) btnSub.click();
+  setTimeout(() => {
+    if (b) {
+      const poner = (id, v) => { const el = document.getElementById(id); if (el && v != null) { el.value = v; el.dispatchEvent(new Event("input", { bubbles: true })); } };
+      poner("nrId", b.id); poner("nrTitulo", b.titulo); poner("nrSubtitulo", b.subtitulo);
+      poner("nrImagenFoco", b.foco);
+      if (b.imagen) { poner("nrImagenUrl", b.imagen); try { nrPintarFoto(b.imagen); } catch {} }
+    }
+    try { EOF.toast("Tu móvil recargó la página al abrir la cámara/galería. Te hemos devuelto a tu noticia: vuelve a elegir la foto.", "info", 7000); } catch {}
+  }, 700);
+}
+
+(function vigilarSelectorDeFotos() {
+  const marcar = (destino) => {
+    try { localStorage.setItem(CLAVE_VOLVER_SELECTOR_FOTOS, JSON.stringify({ t: Date.now(), destino })); } catch {}
+  };
+  const desmarcar = () => {
+    try { localStorage.removeItem(CLAVE_VOLVER_SELECTOR_FOTOS); } catch {}
+  };
+  const actividad = () => { if (typeof window.eofReiniciarInactividad === "function") window.eofReiniciarInactividad(); };
+
+  document.addEventListener("click", (e) => {
+    const el = e.target && e.target.closest ? e.target.closest('.btn-subir-imagen, #btnNrSubirFoto, #nrFotoPreview, #nrDropzone, input[type="file"]') : null;
+    if (!el) return;
+    const formNoticia = document.getElementById("formArticle");
+    if (formNoticia && formNoticia.style.display !== "none" && formNoticia.contains(el)) {
+      guardarBorradorLocalDeEmergencia();
+      marcar("noticia");
+      return;
+    }
+    const formRapida = document.getElementById("formNoticiaRapida");
+    if (formRapida && formRapida.contains(el)) {
+      eofGuardarBorradorNoticiaRapida();
+      marcar("rapida");
+    }
+  }, true);
+
+  // Se eligió foto (o se canceló): la página sigue viva, ya no hace falta la marca.
+  document.addEventListener("change", (e) => {
+    if (e.target && e.target.matches && e.target.matches('input[type="file"]')) { desmarcar(); actividad(); }
+  }, true);
+  document.addEventListener("cancel", (e) => {
+    if (e.target && e.target.matches && e.target.matches('input[type="file"]')) { desmarcar(); actividad(); }
+  }, true);
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      guardarBorradorLocalDeEmergencia();
+      const formRapida = document.getElementById("formNoticiaRapida");
+      if (localStorage.getItem(CLAVE_VOLVER_SELECTOR_FOTOS) && formRapida) eofGuardarBorradorNoticiaRapida();
+    } else {
+      actividad();
+      // Si la página sigue viva al volver, no hubo recarga: se quita la marca un instante después.
+      setTimeout(desmarcar, 2500);
+    }
+  });
+  window.addEventListener("pagehide", guardarBorradorLocalDeEmergencia);
+})();
+
 // Al entrar en el formulario de noticias, si hay un borrador de emergencia
 // guardado, se avisa y se ofrece recuperarlo (o descartarlo).
 function comprobarBorradorLocalDeEmergencia() {
+  // Recarga al volver de la cámara/galería estando en una noticia rápida (que no tiene borrador de emergencia).
+  try {
+    const marca = JSON.parse(localStorage.getItem(CLAVE_VOLVER_SELECTOR_FOTOS) || "null");
+    if (marca && marca.destino === "rapida") {
+      localStorage.removeItem(CLAVE_VOLVER_SELECTOR_FOTOS);
+      if (Date.now() - Number(marca.t) < VOLVER_SELECTOR_FOTOS_MAX_MS) { eofRestaurarNoticiaRapidaTrasSelectorFotos(); return; }
+    }
+  } catch {}
   let borrador;
   try {
     const bruto = localStorage.getItem(CLAVE_BORRADOR_EMERGENCIA);
@@ -3819,11 +4098,18 @@ function comprobarBorradorLocalDeEmergencia() {
   if (!borrador) return;
   const fecha = borrador.guardado_en ? new Date(borrador.guardado_en) : null;
   const fechaTexto = fecha ? fecha.toLocaleString("es-ES", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
-  EOF.confirmar(
+  const volviendoDeFoto = eofVolviendoDeSelectorFotos();
+  (volviendoDeFoto && volviendoDeFoto.destino === "noticia" ? Promise.resolve(true) : EOF.confirmar(
     `Se cerró tu sesión por inactividad mientras escribías "${borrador.titulo || "(sin título)"}" (${fechaTexto}). ¿Quieres recuperar ese borrador?`,
     { textoConfirmar: "Recuperar", textoCancelar: "Descartar" }
-  ).then(async (recuperar) => {
+  )).then(async (recuperar) => {
     if (recuperar) {
+      if (volviendoDeFoto && volviendoDeFoto.destino === "noticia") {
+        // El móvil recargó la página al abrir la cámara/galería: se vuelve a la pestaña de noticias.
+        const btnTabNoticias = document.querySelector('.tabs button[data-tab="noticias"]');
+        if (btnTabNoticias) btnTabNoticias.click();
+        setTimeout(() => { try { EOF.toast("Tu móvil recargó la página al abrir la cámara/galería. Te hemos devuelto a tu noticia: vuelve a elegir la foto.", "info", 7000); } catch {} }, 1200);
+      }
       try {
         if (borrador.articleId) {
           // Era una noticia que ya existía en el servidor (se estaba
@@ -3914,7 +4200,7 @@ function comprobarBorradorLocalDeEmergencia() {
 // etiquetas HTML del editor), igual que valida el worker al guardar.
 const CONTENIDO_MIN = 1500;
 const CONTENIDO_MAX_BASE = 8000;
-const CONTENIDO_MAX_OPINION = 8500; // los artículos de opinión admiten más texto
+const CONTENIDO_MAX_OPINION = 10000; // los artículos de opinión admiten más texto
 // Máximo según el tipo elegido en el formulario (se lee en cada uso).
 function contenidoMaxActual() {
   return document.getElementById("tipo")?.value === "opinion" ? CONTENIDO_MAX_OPINION : CONTENIDO_MAX_BASE;
@@ -4594,6 +4880,7 @@ function snapshotFormularioArticulo() {
       ? CATEGORIA_AUTOMATICA_ACTUAL
       : document.getElementById("categoria").value,
     categorias_adicionales: categoriasAdicionalesPicker ? categoriasAdicionalesPicker.obtenerSeleccion().slice().sort() : [],
+    ...etiquetasParaEnviar(),
     club: usaClubAutomatico()
       ? CLUB_AUTOMATICO_ACTUAL
       : document.getElementById("club").value,
@@ -4739,6 +5026,7 @@ async function guardarArticulo(ultimaHoraPin, estadoBorrador, preferenciaFechas)
       ? CATEGORIA_AUTOMATICA_ACTUAL
       : document.getElementById("categoria").value,
     categorias_adicionales: categoriasAdicionalesPicker ? categoriasAdicionalesPicker.obtenerSeleccion() : [],
+    ...etiquetasParaEnviar(),
     // Para previa/crónica se manda el array de los dos clubes calculado
     // en CLUB_AUTOMATICO_ACTUAL (ver actualizarClubAutomatico); para el
     // resto de tipos, el club que haya elegido el redactor en el
@@ -4802,6 +5090,7 @@ async function guardarArticulo(ultimaHoraPin, estadoBorrador, preferenciaFechas)
     let publicadoFinal = body.publicado;
     let fueraCalendario = false;
     if (id) {
+      if (typeof idSesionEdicionNoticia === "function") body.sesion_edicion = idSesionEdicionNoticia();
       const resp = await apiFetch(`/api/articles/${id}`, { method: "PUT", body: JSON.stringify(body) }).catch((err) => {
         err.message = `${err.message} (editando noticia id=${id})`;
         throw err;
@@ -4859,6 +5148,7 @@ async function guardarArticulo(ultimaHoraPin, estadoBorrador, preferenciaFechas)
     }
     return true;
   } catch (err) {
+    if (err && err.status === 423 && typeof perderBloqueoNoticia === "function") perderBloqueoNoticia(err.data && err.data.bloqueo);
     EOF.toast("Error: " + err.message, "error");
     return false;
   }
@@ -4883,7 +5173,7 @@ formArticle.addEventListener("submit", async (e) => {
   e.preventDefault();
   // Un redactor de Nivel 1 no puede publicar directamente: si ha dejado
   // marcada "Publicada", primero hay que pedirle el PIN de "Última
-  // hora" (o que elija guardar como borrador). A partir de Nivel 2 ya
+  // hora" (o que elija guardar como borrador). A partir de Nivel 3 ya
   // publica directo sin PIN, igual que un admin (que siempre está al
   // nivel máximo). USER.nivel se refresca al arrancar el panel (ver
   // refrescarNivelUsuario) para que un ascenso reciente tenga efecto
@@ -4894,7 +5184,7 @@ formArticle.addEventListener("submit", async (e) => {
   const quierePublicar = document.getElementById("publicado").checked;
   const yaEstabaPublicada = document.getElementById("articlePublicadoOriginal").value === "1";
   const nivelUsuarioActual = USER.rol === "admin" ? 4 : (USER.nivel || 1);
-  if (USER.rol !== "admin" && nivelUsuarioActual < 2 && quierePublicar && !yaEstabaPublicada) {
+  if (USER.rol !== "admin" && nivelUsuarioActual < NIVEL_PUBLICACION_DIRECTA && quierePublicar && !yaEstabaPublicada) {
     // PIN ya validado al desbloquear el interruptor: se manda tal cual.
     if (pinUltimaHoraDesbloqueado) {
       const okPin = await guardarArticulo(pinUltimaHoraDesbloqueado);
@@ -5199,20 +5489,16 @@ document.getElementById("formArticle")?.addEventListener("input", enviarPreviewE
 document.getElementById("formArticle")?.addEventListener("change", enviarPreviewEnVivo);
 contenidoEditor?.addEventListener("input", enviarPreviewEnVivo);
 
-document.getElementById("btnPrevisualizar").addEventListener("click", async () => {
-  // Si la noticia que se está editando ya está publicada Y no se ha
-  // tocado nada desde que se cargó en el formulario, se abre la noticia
-  // pública directamente.
-  const slugExistente = document.getElementById("articleSlug").value;
-  const categoriaExistente = document.getElementById("categoria").value;
-  const publicadoOriginal = document.getElementById("articlePublicadoOriginal").value === "1";
-  const hayCambiosSinGuardar = snapshotFormularioArticulo() !== SNAPSHOT_ARTICULO_ORIGINAL;
+// ---- Previsualización con selector de dispositivo ----
+// "Previsualizar" abre /admin/previsualizar.html, un visor con marcos de iPhone, iPad
+// y portátil (el dispositivo se elige ahí dentro y se recuerda). El visor incrusta
+// noticia.html?preview=1&pid=... con el tamaño real de cada pantalla, y los cambios
+// del formulario siguen llegando en vivo por el mismo BroadcastChannel de siempre.
+// Se reutiliza SIEMPRE la misma pestaña (nombre fijo): al previsualizar otra noticia
+// se sustituye en lugar de apilar pestañas.
+const VENTANA_PREVIEW = "eof_previsualizacion";
 
-  if (slugExistente && publicadoOriginal && !hayCambiosSinGuardar) {
-    window.open(urlNoticia(categoriaExistente, slugExistente), "_blank");
-    return;
-  }
-
+async function previsualizarNoticia() {
   if (contenidoEditor.innerText.trim() === "") {
     EOF.toast("Escribe algo de contenido antes de previsualizar.", "error");
     return;
@@ -5221,7 +5507,7 @@ document.getElementById("btnPrevisualizar").addEventListener("click", async () =
   // IMPORTANTE: abrir la pestaña ANTES del await. Si se hace después,
   // Chrome puede considerar que ya no procede de la pulsación del botón
   // y bloquear la ventana emergente.
-  const ventanaPreview = window.open("about:blank", "_blank");
+  const ventanaPreview = window.open("about:blank", VENTANA_PREVIEW);
   if (!ventanaPreview) {
     EOF.toast("El navegador ha bloqueado la ventana de previsualización. Permite las ventanas emergentes para este sitio.", "error");
     return;
@@ -5236,13 +5522,15 @@ document.getElementById("btnPrevisualizar").addEventListener("click", async () =
     guardarDatosPreview(article, pid);
     previewAbierta = true;
 
-    ventanaPreview.location.href = "../noticia.html?preview=1&pid=" + encodeURIComponent(pid);
+    ventanaPreview.location.href = "/admin/previsualizar.html?pid=" + encodeURIComponent(pid);
   } catch (err) {
     try { ventanaPreview.close(); } catch {}
     EOF.toast("No se ha podido preparar la previsualización.", "error");
     console.error("Error preparando la previsualización:", err);
   }
-});
+}
+
+document.getElementById("btnPrevisualizar").addEventListener("click", () => previsualizarNoticia());
 
 // ---------- Modal PIN "Última hora" ----------
 function limpiarPinUltimaHoraInputs() {
@@ -5390,6 +5678,7 @@ document.getElementById("btnGuardarComoBorradorPin")?.addEventListener("click", 
 });
 
 function cancelarEdicion() {
+  if (typeof liberarBloqueoEdicionNoticia === "function") liberarBloqueoEdicionNoticia();
   formArticle.reset();
   document.getElementById("articleId").value = "";
   document.getElementById("articleSlug").value = "";
@@ -5413,10 +5702,10 @@ function cancelarEdicion() {
   // guardaría como borrador salvo que use el PIN de "Última hora"): se le
   // deja el checkbox "Publicada" desmarcado por defecto al abrir una
   // noticia nueva, en vez de marcado, para que el formulario no sugiera
-  // algo que en realidad no va a pasar sin ese PIN. A partir de Nivel 2 y
+  // algo que en realidad no va a pasar sin ese PIN. A partir de Nivel 3 y
   // para un admin, se mantiene marcado como hasta ahora.
   const nivelParaPublicadoPorDefecto = USER.rol === "admin" ? 4 : (USER.nivel || 1);
-  document.getElementById("publicado").checked = nivelParaPublicadoPorDefecto >= 2;
+  document.getElementById("publicado").checked = nivelParaPublicadoPorDefecto >= NIVEL_PUBLICACION_DIRECTA;
   sincronizarDestacadoConPublicado();
   sincronizarProgramarConPublicado();
   sincronizarFechaPreferenciaConPublicado();
@@ -5426,7 +5715,9 @@ function cancelarEdicion() {
   actualizarTextoBotonGuardar();
   document.getElementById("btnCancelar").style.display = "none";
   poblarCategoriaSegunAutor(USER.id, "");
+  if (typeof actualizarBotonHistorialVersiones === "function") actualizarBotonHistorialVersiones();
   if (categoriasAdicionalesPicker) categoriasAdicionalesPicker.establecerSeleccion([]);
+  ponerEtiquetasPanel([]);
   cargarAutoresSelect(USER.id, "");
   resetImagenes([]);
   resetTweets([]);
@@ -5540,7 +5831,7 @@ function articuloEnRevision(a) {
 function articuloBorradorEnProceso(a) {
   return !a.publicado && !a.programado_para && a.estado_borrador !== "terminado";
 }
-// Publicada SIN revisión por un redactor de Nivel 2 (el servidor manda
+// Publicada SIN revisión por un redactor que aún no puede subir a redes (el servidor manda
 // sin_revision_redes: últimas 48 h, sin etiqueta de redes y sin anotar como subida).
 // Nadie de Nivel 4 pasa por estas noticias antes de que salgan, así que se les
 // señala aquí para que las suban a redes (basta con etiquetarlas o compartirlas).
@@ -5554,9 +5845,9 @@ function articuloPorSubirARedes(a) {
 // noticia PROGRAMADA o ya PUBLICADA se puede etiquetar como Carrusel 1,
 // Carrusel 2 o Individual (redes_destino). Al publicarse conserva la etiqueta
 // (el servidor deja de verla pasadas 48 h) para poder seguir seleccionándola y
-// abrir el modal de compartir. Solo admin y redactores Nivel 4+ (el Worker
+// abrir el modal de compartir. Solo admin y redactores Nivel 3+ (el Worker
 // lo vuelve a comprobar).
-const REDES_NIVEL_MINIMO = 4;
+const REDES_NIVEL_MINIMO = 3;
 const REDES_DESTINOS = {
   carousel_1: { etiqueta: "Carrusel 1 · mañana", corta: "Carrusel 1", sub: "Mañana" },
   carousel_2: { etiqueta: "Carrusel 2 · tarde", corta: "Carrusel 2", sub: "Tarde" },
@@ -5641,7 +5932,7 @@ function planSubidaGrupo(arts) {
 }
 function badgePorSubirARedes(a) {
   if (!puedeOrganizarRedes() || !articuloPorSubirARedes(a)) return "";
-  return ` <span class="badge-por-subir-redes" title="Publicada sin revisión (autor de Nivel 2). Nadie la ha marcado ni subido a redes todavía: márcala como carrusel o individual, o pulsa Compartir.">📣 Sin subir a redes</span>`;
+  return ` <span class="badge-por-subir-redes" title="Publicada sin revisión (autor de Nivel 3). Nadie la ha marcado ni subido a redes todavía: márcala como carrusel o individual, o pulsa Compartir.">📣 Sin subir a redes</span>`;
 }
 function badgeRedesDestino(a) {
   if (!puedeOrganizarRedes()) return "";
@@ -5997,7 +6288,7 @@ function pintarListaArticulos() {
            ${puedeDevolverAEnProceso ? `<button class="editar" data-accion="devolver-en-proceso" data-id="${a.id}" title="Devuelve el borrador a &quot;en proceso&quot; para que el redactor lo siga trabajando">Devolver a borrador</button>` : ""}
            ${puedeBorrarArticulo(a) ? `<button class="eliminar" data-accion="eliminar" data-id="${a.id}">Eliminar</button>` : ""}`;
       } else if (bloqueadoPorTerminado && USER.rol !== "admin") {
-        botonesAccion = `<span class="aviso-bloqueado" title="Terminada y en espera de que un administrador la publique">🔒 En espera de publicación</span>`;
+        botonesAccion = `<span class="aviso-bloqueado" title="Terminada y en espera de que un Responsable la publique">🔒 En espera de publicación</span>`;
       } else {
         botonesAccion = `<button class="solicitar" data-accion="solicitar" data-id="${a.id}">Solicitar edición</button>`;
       }
@@ -6340,7 +6631,49 @@ async function devolverArticuloAEnProceso(a) {
   }
 }
 
+// Botón "Ver mi pieza" / "Ver pieza" de la pestaña Feedback: abre DIRECTAMENTE la
+// pieza en el editor (antes solo se cambiaba a la pestaña Noticias y el panel
+// restauraba el último sitio donde se había quedado el usuario, ver ubicacion-panel.js).
+// Si la pieza no se puede editar con este usuario (p. ej. una pieza ajena vista desde
+// "Enviados"), se lleva al listado de Noticias y se resalta su fila.
+async function irANoticiaDelPanel(id) {
+  id = Number(id);
+  if (!id) return;
+  let articulo = null;
+  try {
+    const r = await apiFetch(`/api/articles/${id}`);
+    articulo = r && r.article;
+  } catch (err) {
+    console.error("No se pudo cargar la pieza desde el feedback:", err);
+  }
+  if (!articulo) {
+    EOF.toast("No se ha podido abrir la pieza: puede que ya no exista.", "error");
+    return;
+  }
+  if (puedeGestionarArticulo(articulo)) {
+    await editarArticulo(articulo);
+    const form = document.getElementById("articleId");
+    if (form) form.scrollIntoView({ block: "start", behavior: "smooth" });
+    return;
+  }
+  document.querySelector('.tabs button[data-tab="noticias"]').click();
+  document.querySelector('#panel-noticias .subtabs button[data-subtab="lista"]').click();
+  EOF.toast("Esta pieza no la puedes editar directamente. Desde el listado puedes solicitar la edición.", "info");
+  setTimeout(() => {
+    const fila = document.querySelector(`#tablaArticulos [data-id="${id}"]`);
+    const tr = fila && (fila.closest("tr") || fila);
+    if (tr) {
+      tr.scrollIntoView({ block: "center", behavior: "smooth" });
+      tr.classList.add("fbk-resaltada");
+      setTimeout(() => tr.classList.remove("fbk-resaltada"), 2500);
+    }
+  }, 350);
+}
+window.irANoticiaDelPanel = irANoticiaDelPanel;
+
 async function editarArticulo(a) {
+  // Bloqueo de edición simultánea: si otra persona la tiene abierta, no se abre (ver módulo 26).
+  if (typeof gestionarBloqueoAlAbrirNoticia === "function" && !(await gestionarBloqueoAlAbrirNoticia(a.id))) return;
   // "a" viene normalmente de ARTICULOS_CACHE, que se rellena con el listado
   // optimizado (/api/articles?admin=1): esa consulta, para no cargar el
   // HTML entero de las 4 traducciones en cada noticia del listado, NO trae
@@ -6420,6 +6753,7 @@ async function editarArticulo(a) {
   if (categoriasAdicionalesPicker) {
     categoriasAdicionalesPicker.establecerSeleccion(a.categorias_adicionales || []);
   }
+  ponerEtiquetasPanel(Array.isArray(a.etiquetas) ? a.etiquetas : undefined); // sin el campo: no se toca
   let imagenesGuardadas = [];
   try {
     // "a.imagenes" puede llegar en dos formatos distintos según de dónde
@@ -6450,9 +6784,9 @@ async function editarArticulo(a) {
   // duplicarlas como filas sueltas.
   COLLAGES_ARTICULO = collagesDesdeImagenes(imagenesGuardadas);
   pintarListaCollages();
-  const tweetsGuardados = imagenesGuardadas.filter((v) => v && typeof v === "object" && v.tipo === "tweet");
+  const tweetsGuardados = imagenesGuardadas.filter((v) => v && typeof v === "object" && (v.tipo === "tweet" || v.tipo === "video"));
   resetTweets(tweetsGuardados);
-  const imagenesSinCollage = imagenesGuardadas.filter((v) => !(v && typeof v === "object" && (v.tipo === "tweet" || (v.grupo && ["collage", "inicio", "galeria"].includes(v.posicion)))));
+  const imagenesSinCollage = imagenesGuardadas.filter((v) => !(v && typeof v === "object" && (v.tipo === "tweet" || v.tipo === "video" || (v.grupo && ["collage", "inicio", "galeria"].includes(v.posicion)))));
   resetImagenes(imagenesSinCollage, a.imagen_url || "");
   resetGaleriaArticulo(a.id);
   cargarResultadosSelect(a.resultado_id || "");
@@ -6495,6 +6829,7 @@ async function editarArticulo(a) {
   sincronizarCampoFechaProgramada();
   actualizarTextoBotonGuardar();
   document.getElementById("btnCancelar").style.display = "inline-block";
+  if (typeof actualizarBotonHistorialVersiones === "function") actualizarBotonHistorialVersiones();
   window.scrollTo(0, 0);
   SNAPSHOT_ARTICULO_ORIGINAL = snapshotFormularioArticulo();
   actualizarBloqueAlineacionesArticulo(a.id);
@@ -6505,15 +6840,16 @@ async function eliminarArticulo(id) {
   const aEliminar = (typeof ARTICULOS_CACHE !== "undefined" && ARTICULOS_CACHE[id]) || null;
   const eliminar = window.EOFModalesPartido && aEliminar
     ? await EOFModalesPartido.confirmarAccion({
-        icono: "papelera", titulo: "Eliminar noticia", sub: "Esta acción es definitiva.",
+        icono: "papelera", titulo: "Eliminar noticia", sub: "Irá a la papelera durante 30 días.",
         cabecera: { etiqueta: aEliminar.publicado ? "Noticia publicada" : "Borrador", texto: aEliminar.titulo },
-        items: [aEliminar.publicado ? "Dejará de verse en la web <b>al momento</b>." : "Se borra el borrador y todo su contenido.", "Se pierden también sus <b>comentarios y estadísticas de lectura</b>.", "<b>No se puede deshacer.</b>"],
-        confirmar: "Sí, eliminar noticia", peligroso: true,
+        items: [aEliminar.publicado ? "Dejará de verse en la web <b>al momento</b>." : "El borrador sale de tu lista.", "Podrás <b>restaurarla</b> desde la pestaña <b>Papelera</b> (volverá como borrador, con sus comentarios).", "Sus <b>estadísticas de lectura</b> no se recuperan."],
+        confirmar: "Sí, mover a la papelera", peligroso: true,
       })
-    : await EOF.confirmar("¿Seguro que quieres eliminar esta noticia?", { peligroso: true, textoConfirmar: "Eliminar" });
+    : await EOF.confirmar("¿Mover esta noticia a la papelera? Podrás restaurarla durante 30 días.", { peligroso: true, textoConfirmar: "Mover a la papelera" });
   if (!eliminar) return;
   try {
     await apiFetch(`/api/articles/${id}`, { method: "DELETE" });
+    EOF.toast("Noticia movida a la papelera. Puedes restaurarla desde Papelera.", "exito");
     cargaListaArticulos();
   } catch (err) {
     EOF.toast("Error: " + err.message, "error");
@@ -6768,6 +7104,57 @@ function crearTeamPicker(contenedor, { onChange } = {}) {
 
 // Autorellena "Ubicación del partido" con el estadio habitual del
 // equipo local elegido (base de datos ESTADIO_POR_CLUB en clubs.js).
+// ---------- Datos del encuentro y estadísticas (Centro de partido) ----------
+const DP_ESTADISTICAS = [["posesion", "Posesión (%)"], ["tiros", "Tiros"], ["tiros_puerta", "Tiros a puerta"], ["corners", "Córners"], ["faltas", "Faltas"], ["fueras_juego", "Fueras de juego"], ["paradas", "Paradas"]];
+const DP_TEXTOS = ["arbitro", "asistencia", "tv", "clima"];
+(function dpPintarCamposEstadisticas() {
+  const cont = document.getElementById("r_dp_estadisticas");
+  if (!cont) return;
+  cont.innerHTML = DP_ESTADISTICAS.map(([k, l]) =>
+    `<span>${l}</span><input type="number" min="0" max="${k === "posesion" ? 100 : 999}" inputmode="numeric" id="r_dp_${k}_l" aria-label="${l} local"><input type="number" min="0" max="${k === "posesion" ? 100 : 999}" inputmode="numeric" id="r_dp_${k}_v" aria-label="${l} visitante">`).join("");
+})();
+function dpLimpiar() {
+  for (const k of DP_TEXTOS) { const el = document.getElementById("r_dp_" + k); if (el) el.value = ""; }
+  for (const [k] of DP_ESTADISTICAS) for (const lado of ["l", "v"]) { const el = document.getElementById(`r_dp_${k}_${lado}`); if (el) el.value = ""; }
+  const w = document.getElementById("r_datos_partido_wrap"); if (w) w.open = false;
+}
+function dpRellenar(r) {
+  dpLimpiar();
+  let d = r && r.datos_partido;
+  if (typeof d === "string") { try { d = JSON.parse(d); } catch { d = null; } }
+  if (!d || typeof d !== "object") return;
+  for (const k of DP_TEXTOS) { const el = document.getElementById("r_dp_" + k); if (el) el.value = d[k] || ""; }
+  const est = d.estadisticas || {};
+  for (const [k] of DP_ESTADISTICAS) {
+    if (!Array.isArray(est[k])) continue;
+    document.getElementById(`r_dp_${k}_l`).value = est[k][0] ?? "";
+    document.getElementById(`r_dp_${k}_v`).value = est[k][1] ?? "";
+  }
+  const w = document.getElementById("r_datos_partido_wrap"); if (w) w.open = true;
+}
+function dpLeerFormulario() {
+  const d = {};
+  for (const k of DP_TEXTOS) { const v = (document.getElementById("r_dp_" + k)?.value || "").trim(); if (v) d[k] = v; }
+  const est = {};
+  for (const [k] of DP_ESTADISTICAS) {
+    const l = document.getElementById(`r_dp_${k}_l`)?.value, v = document.getElementById(`r_dp_${k}_v`)?.value;
+    if (l === "" && v === "") continue;
+    est[k] = [l === "" ? 0 : Number(l), v === "" ? 0 : Number(v)];
+  }
+  if (Object.keys(est).length) d.estadisticas = est;
+  return Object.keys(d).length ? d : null;
+}
+// Se guarda aparte del partido (ruta propia): un fallo aquí no debe tirar el guardado del resultado.
+async function dpGuardar(resultadoId, esEdicion) {
+  const datos = dpLeerFormulario();
+  if (!datos && !esEdicion) return;
+  try {
+    await apiFetch(`/api/results/${resultadoId}/datos-partido`, { method: "PUT", body: JSON.stringify({ datos_partido: datos }) });
+  } catch (err) {
+    EOF.toast("El partido se guardó, pero no los datos del encuentro: " + (err.message || "error"), "error");
+  }
+}
+
 // Siempre sobrescribe lo que hubiera en el campo, incluso si se había
 // escrito algo a mano: cada cambio de equipo local fija de nuevo la
 // ubicación al estadio de ese equipo (o la vacía si no hay estadio
@@ -6786,9 +7173,20 @@ function poblarSelectsEquipo(valorLocalPrevio, valorVisitantePrevio) {
   // concreta, así que se ofrecen los clubes de todas las categorías
   // (los 69) en vez de limitar a los de una sola liga.
   const esAmistoso = rCompeticion.value === "amistoso";
+  // Copa del Rey y Copa Federación reúnen equipos de varias categorías (y
+  // de regionales que no están en ninguna lista), así que se ofrecen los
+  // clubes de todas las categorías (más los de la propia lista de la copa y
+  // los personalizados que ya se hayan guardado para ella) y, como en los
+  // amistosos, se permite "Otro equipo". Antes getClubsForCategoria()
+  // devolvía una lista vacía para Copa Federación, y estas competiciones ni
+  // siquiera estaban en el desplegable, por lo que no se podía crear el
+  // partido de copa ni vincularlo a una previa/crónica.
+  const esCopa = COMPETICIONES_COPA_RESULTADO.includes(rCompeticion.value);
   let clubes = esAmistoso
     ? listaTodosLosClubesFederativos().sort((a, b) => a.localeCompare(b))
-    : getClubsForCategoria(rCompeticion.value);
+    : esCopa
+      ? [...new Set([...getClubsForCategoria(rCompeticion.value), ...listaTodosLosClubesFederativos()])].sort((a, b) => a.localeCompare(b))
+      : getClubsForCategoria(rCompeticion.value);
   // Si la competición tiene grupos (Primera/Segunda Federación) y ya hay
   // uno elegido en "Grupo", se acota la lista de equipos a los de ese
   // grupo (usando GRUPO_POR_CLUB, clubs.js): así, por ejemplo, al crear
@@ -6805,7 +7203,7 @@ function poblarSelectsEquipo(valorLocalPrevio, valorVisitantePrevio) {
   // Tercera Federación solo tiene en clubs.js los clubes que cubrimos
   // editorialmente (2), así que, como en los amistosos, hay que poder
   // elegir "Otro equipo" para el rival (nombre + escudo opcional).
-  const permiteOtroEquipo = esAmistoso || rCompeticion.value === "tercera_federacion";
+  const permiteOtroEquipo = esAmistoso || esCopa || rCompeticion.value === "tercera_federacion";
   rLocalPicker.poblar(clubes, valorLocalPrevio, permiteOtroEquipo);
   rVisitantePicker.poblar(clubes, valorVisitantePrevio, permiteOtroEquipo);
   actualizarVisibilidadOtro(rLocalPicker, rLocalOtroWrap);
@@ -7073,7 +7471,7 @@ function leerEquipoDelFormulario(picker, nombreOtroInput, escudoOtroUrl) {
 // Competiciones que tienen su propia lista de clubes en clubs.js (y por
 // tanto tiene sentido guardarles ahí un club "personalizado" nuevo). Un
 // amistoso no pertenece a ninguna de ellas, así que no aparece aquí.
-const CATEGORIAS_CON_LISTA_CLUBES = ["hypermotion", "primera_federacion", "segunda_federacion", "tercera_federacion"];
+const CATEGORIAS_CON_LISTA_CLUBES = ["hypermotion", "primera_federacion", "segunda_federacion", "tercera_federacion", "copa_del_rey", "copa_federacion"];
 
 // Si el equipo se ha introducido mediante "Otro equipo (no está en la
 // lista)", lo guarda en el servidor (tabla custom_clubs) para que a
@@ -7470,6 +7868,7 @@ formResultado.addEventListener("submit", async (e) => {
       await guardarClubPersonalizadoSiAplica(rLocalPicker, local, body.competicion);
       await guardarClubPersonalizadoSiAplica(rVisitantePicker, visitante, body.competicion);
     }
+    if (resultadoId) await dpGuardar(resultadoId, !!id);
     const msg = document.getElementById("msgOkResultado");
     msg.style.display = "block";
     setTimeout(() => (msg.style.display = "none"), 2500);
@@ -7511,6 +7910,7 @@ formResultado.addEventListener("submit", async (e) => {
 function cancelarEdicionResultado() {
   formResultado.reset();
   document.getElementById("resultadoId").value = "";
+  dpLimpiar();
   fechaOriginalSinHora = false;
   document.getElementById("btnCancelarResultado").style.display = "none";
   actualizarCampoGrupo();
@@ -8029,6 +8429,25 @@ function pintarListaResultados() {
   }
 
   try {
+    // Si hay 2 o más anulados a la vista, se juntan bajo una sola fila de
+    // encabezado (ya van contiguos por el orden de prioridad).
+    // La lista está paginada: el total se cuenta sobre todos los resultados
+    // filtrados, no solo los de esta página. El encabezado sale en la primera
+    // fila anulada de la página; si en ella hay menos, se indica cuántos.
+    const totalAnuladosVista = resultadosFiltrados.filter((x) => x.estado === "anulado").length;
+    const anuladosEnPagina = resultsOrdenados.filter((x) => x.estado === "anulado");
+    const primerAnuladoId = totalAnuladosVista >= 2 && anuladosEnPagina.length ? anuladosEnPagina[0].id : null;
+    const notaPaginaAnulados = anuladosEnPagina.length < totalAnuladosVista
+      ? `${anuladosEnPagina.length} en esta página`
+      : "";
+    const cabeceraAnuladosHTML = `<div class="ga-cab">
+        <span class="ga-icono" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16.5" rx="3"/><path d="M8 2.8v3.4M16 2.8v3.4M3 10h18"/><path d="M12 13.4v2.6l1.9 1.1"/></svg></span>
+        <span class="ga-textos">
+          <span class="ga-titulo"><b class="ga-num">${totalAnuladosVista}</b> partidos pendientes de reprogramar</span>
+          <span class="ga-sub">Anulados a la espera de nueva fecha y hora${notaPaginaAnulados ? ` · ${notaPaginaAnulados}` : ""}</span>
+        </span>
+        <span class="ga-pista" aria-hidden="true">Usa <b>Reprogramar</b> en cada fila</span>
+      </div>`;
     cos.innerHTML = resultsOrdenados.map(r => {
       const esMio = r.autor_id === USER.id;
       const puedeGestionar = puedeGestionarResultado(r);
@@ -8067,8 +8486,11 @@ function pintarListaResultados() {
       const botonReprogramar = puedeGestionar && (r.estado === "anulado" || r.estado === "retrasado")
         ? `<button class="btn-reprogramar-partido" data-accion="reprogramar-partido" data-id="${r.id}" title="Ponerle nueva fecha: vuelve a Por jugar"><i class="ico-res ico-res-reprogramar" aria-hidden="true"></i>Reprogramar</button>`
         : "";
-      return `
-      <tr class="${!esMio && USER.rol !== "admin" ? "fila-de-otro" : ""}${Number(r.partidazo) === 1 && r.estado !== "anulado" ? " fila-partidazo" : ""}" data-resultado-id="${r.id}">
+      const cabeceraAnulados = (primerAnuladoId !== null && r.id === primerAnuladoId)
+        ? `<tr class="fila-grupo-anulados"><td colspan="6">${cabeceraAnuladosHTML}</td></tr>`
+        : "";
+      return `${cabeceraAnulados}
+      <tr class="${!esMio && USER.rol !== "admin" ? "fila-de-otro" : ""}${Number(r.partidazo) === 1 && r.estado !== "anulado" ? " fila-partidazo" : ""}${r.estado === "anulado" ? " fila-anulada" : ""}" data-resultado-id="${r.id}">
         <td data-label="Competición"><span class="competicion-celda">${categoriaLogo(r.competicion) ? `<img class="competicion-celda-logo${r.competicion === "hypermotion" ? " competicion-celda-logo-hypermotion" : ""}" src="../${categoriaLogo(r.competicion)}" alt="" loading="lazy">` : ""}${categoriaLabel(r.competicion)}</span> ${badgeAutoria}</td>
         <td data-label="Jornada">${r.jornada}</td>
         <td data-label="Partido">${celdaPartidoResultadoHTML(r)}</td>
@@ -8526,6 +8948,7 @@ function editarResultado(r) {
   document.getElementById("r_estado").value = r.estado;
   document.getElementById("r_fecha_retrasado").value = r.fecha_partido_retrasado || "";
   rUbicacion.value = r.ubicacion || "";
+  dpRellenar(r);
   rFlashscore.value = r.flashscore_url || "";
   actualizarCampoFlashscoreYUbicacion();
   actualizarCampoRetrasado();
@@ -9609,6 +10032,39 @@ async function poblarSelectEquiposInfo() {
   select.dataset.poblado = "1";
 }
 
+// Permisos de las fichas: cada una solo la edita quien la creó (el servidor lo exige igualmente).
+let EQUIPOS_INFO_FICHAS = {};
+
+// Las propuestas de fichas solo las ven y resuelven un Responsable o un redactor de Nivel 4.
+function puedeVerPropuestasEquipos() {
+  return !!USER && (USER.rol === "admin" || (Number(USER.nivel) || 1) >= 4);
+}
+function aplicarVisibilidadPropuestasEquipos() {
+  const btn = document.getElementById("subtabSolPropuestasEquipos_btn");
+  const ver = puedeVerPropuestasEquipos();
+  if (btn) btn.style.display = ver ? "" : "none";
+  if (!ver) actualizarBadgePropuestasEquipos(0);
+}
+
+function aplicarPermisoFormularioEquipoInfo(club) {
+  const form = document.getElementById("formEquipoInfo");
+  if (!form) return;
+  const ficha = club ? EQUIPOS_INFO_FICHAS[club] : null;
+  const bloqueado = !!(ficha && ficha.editable === false);
+  form.querySelectorAll("input, button[type=\"submit\"]").forEach((el) => { el.disabled = bloqueado; });
+  let aviso = document.getElementById("avisoEquipoInfoAjena");
+  if (!aviso) {
+    aviso = document.createElement("p");
+    aviso.id = "avisoEquipoInfoAjena";
+    aviso.className = "ayuda-editor";
+    form.insertAdjacentElement("afterbegin", aviso);
+  }
+  aviso.style.display = bloqueado ? "" : "none";
+  aviso.textContent = bloqueado
+    ? `Esta ficha solo puede editarla quien la creó${ficha.autor_nombre ? " (" + ficha.autor_nombre + ")" : ""}.`
+    : "";
+}
+
 function pintarFormularioEquipoInfo(info) {
   EQUIPO_INFO_SELECCIONADO = info ? info.club : document.getElementById("equipoInfoClub").value;
   document.getElementById("equipoInfoEntrenador").value = info?.entrenador || "";
@@ -9616,6 +10072,7 @@ function pintarFormularioEquipoInfo(info) {
   document.getElementById("equipoInfoFundacion").value = info?.fundacion || "";
   document.getElementById("equipoInfoCiudad").value = info?.ciudad || "";
   document.getElementById("btnBorrarEquipoInfo").style.display = info ? "inline-block" : "none";
+  aplicarPermisoFormularioEquipoInfo(EQUIPO_INFO_SELECCIONADO);
 }
 
 async function cargaEquiposInfo() {
@@ -9623,6 +10080,8 @@ async function cargaEquiposInfo() {
   const lista = document.getElementById("listaEquiposInfo");
   try {
     const { fichas = [] } = await apiFetch(`/api/admin/club-info`);
+    EQUIPOS_INFO_FICHAS = {};
+    fichas.forEach((f) => { EQUIPOS_INFO_FICHAS[f.club] = f; });
     lista.innerHTML = fichas.length
       ? `<div class="func-grid-equipos">${fichas.map(f => `
           <article class="func-equipo">
@@ -9633,13 +10092,16 @@ async function cargaEquiposInfo() {
               <div><dt>Fundación</dt><dd class="${f.fundacion ? "" : "vacio"}">${f.fundacion || "—"}</dd></div>
               <div><dt>Ciudad</dt><dd class="${f.ciudad ? "" : "vacio"}">${f.ciudad ? escapeHtml(f.ciudad) : "—"}</dd></div>
             </dl>
-            <button class="func-btn editar" data-editar-equipo="${f.club.replace(/"/g, "&quot;")}">Editar ficha</button>
+            ${f.editable
+              ? `<button class="func-btn editar" data-editar-equipo="${f.club.replace(/"/g, "&quot;")}">Editar ficha</button>`
+              : `<p class="ayuda-editor" style="margin:0;">Solo la edita quien la creó${f.autor_nombre ? ` (${escapeHtml(f.autor_nombre)})` : ""}.</p>`}
           </article>`).join("")}</div>`
       : `<p class="solicitudes-vacio">Todavía no hay ninguna ficha de equipo guardada.</p>`;
   } catch (err) {
     lista.innerHTML = `<p class="solicitudes-vacio">No se han podido cargar los equipos.</p>`;
   }
-  cargaEquiposInfoPendientes();
+  aplicarPermisoFormularioEquipoInfo(document.getElementById("equipoInfoClub")?.value);
+  if (puedeVerPropuestasEquipos()) cargaEquiposInfoPendientes();
 }
 
 // ---------- EQUIPOS: propuestas pendientes de aprobación (Nivel 1) ----------
@@ -9714,7 +10176,7 @@ function pintarTarjetaEquipoInfoPendiente(s, { conBotones }) {
          <button type="button" class="acred-btn acred-btn-ok" data-accion-equipo-info="aprobar" data-id="${s.id}">${PROP_ICONOS.ok}Aprobar</button>
          <button type="button" class="acred-btn acred-btn-no" data-accion-equipo-info="rechazar" data-id="${s.id}">${PROP_ICONOS.no}Rechazar</button>
        </div>`
-    : `<div class="prop-espera">${PROP_ICONOS.reloj}<span>Esperando a que un administrador la apruebe</span></div>`;
+    : `<div class="prop-espera">${PROP_ICONOS.reloj}<span>Esperando a que un Responsable la apruebe</span></div>`;
   return `
     <article class="prop-card" data-id="${s.id}">
       <header class="prop-cab">
@@ -9814,7 +10276,7 @@ if (formEquipoInfo) {
       // guarda como propuesta pendiente de aprobación, así que se lo
       // avisamos con un mensaje distinto al de "Guardado correctamente".
       msgOk.textContent = resultado.pendiente
-        ? "Enviado para revisión. Se aplicará cuando un administrador o un redactor de Nivel 4 lo apruebe."
+        ? "Enviado para revisión. Se aplicará cuando un Responsable o un redactor de Nivel 4 lo apruebe."
         : "Guardado correctamente.";
       msgOk.style.display = "block";
       setTimeout(() => (msgOk.style.display = "none"), 4000);
@@ -10072,7 +10534,7 @@ document.getElementById("subpanel-comentariosDenunciados")?.addEventListener("cl
 // Comprobamos si hay comentarios pendientes o denunciados/ocultos al
 // cargar el panel, para que el aviso (badge) del subtab "Comentarios" y el
 // del tab padre "Funcionalidades" aparezcan aunque no se haya abierto esa
-// pestaña todavía. Solo aplica a administradores: un redactor no tiene
+// pestaña todavía. Solo aplica a Responsables: un redactor no tiene
 // acceso a la moderación de comentarios.
 if (USER.rol === "admin" && document.getElementById("badgeFuncComentarios")) {
   cargaComentarios("pendiente");
@@ -10145,7 +10607,7 @@ function formatearFechaSesion(iso) {
 // ---------- MI PROGRESO (sistema de niveles) ----------
 // Nombres de cada tipo de contenido tal y como se muestran en el
 // desglose de progreso (coinciden con articles.tipo en el Worker).
-const NIVELES_TIPO_LABEL = { noticia: "Noticias", previa: "Previas", cronica: "Crónicas", analisis: "Análisis", opinion: "Artículos de opinión", entrevista: "Entrevistas", uno_por_uno: "1x1 de jugadores", rdp_previa: "Rueda de prensa previa", rdp_post: "Rueda de prensa posterior" };
+const NIVELES_TIPO_LABEL = { noticia: "Noticias", previa: "Previas", cronica: "Crónicas", analisis: "Análisis", opinion: "Artículos de opinión", entrevista: "Entrevistas", uno_por_uno: "1x1 de jugadores", rdp_previa: "Rueda de prensa previa", rdp_post: "Rueda de prensa posterior", partidos: "Partidos con galería", fotos: "Fotos en galerías" };
 
 // Iconos (SVG, en vez de emoji de tipo de contenido) para el desglose
 // de publicaciones de "Mi progreso".
@@ -10162,6 +10624,9 @@ const NIVELES_TIPO_ICONO = {
   rdp_previa: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/></svg>',
   rdp_post: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/></svg>',
   uno_por_uno: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3 20v-1a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v1"/><path d="M17 11l2 2 3-3"/></svg>',
+  // Fotografía (iconos literales: FOTO_ICONO_CAMARA se declara más abajo, no se puede usar aquí).
+  partidos: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13" r="3.5"/></svg>',
+  fotos: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="m21 16-5-5-9 9"/></svg>',
 };
 
 // Construye el bloque de la insignia de nivel (icono + número + nombre
@@ -10193,10 +10658,10 @@ const NIVEL_ICONO_SVG = {
 // antigua del backend tras un failover) no devuelve la lista "niveles".
 // La fuente buena son NIVELES_REQUISITOS/NIVELES_INFO del Worker.
 const PASE_NIVELES_RESPALDO = [
-  { nivel: 1, nombre: "Principiante", descripcion: "Todo el contenido pasa por revisión de un administrador antes de publicarse.", requisitos: null },
-  { nivel: 2, nombre: "Aprendiz", descripcion: "Publica noticias, crónicas y artículos de opinión sin revisión previa.", requisitos: { noticia: 20, cronica: 10, opinion: 2, entrevista: 1 } },
-  { nivel: 3, nombre: "Maestro", descripcion: "Publicación sin revisión + puede publicar contenido del medio en Instagram y TikTok.", requisitos: { noticia: 30, cronica: 15, opinion: 3, entrevista: 1 } },
-  { nivel: 4, nombre: "Experto", descripcion: "Puede revisar y corregir noticias de otros, optar al consejo de administración y a coordinaciones.", requisitos: { noticia: 40, cronica: 20, opinion: 4, entrevista: 2 } },
+  { nivel: 1, nombre: "Principiante", descripcion: "Todo el contenido pasa por revisión de un Responsable antes de publicarse.", requisitos: null },
+  { nivel: 2, nombre: "Aprendiz", descripcion: "Nivel 1 + poder pedir acreditaciones.", requisitos: { noticia: 6, cronica: 3, opinion: 1 } },
+  { nivel: 3, nombre: "Maestro", descripcion: "Niveles 1 y 2 + publicación sin revisión en redes y en web.", requisitos: { noticia: 15, cronica: 8, opinion: 2, entrevista: 1 } },
+  { nivel: 4, nombre: "Experto", descripcion: "Niveles 1, 2 y 3 + revisar y corregir noticias de otros compañeros y optar al consejo de administración.", requisitos: { noticia: 24, cronica: 12, opinion: 3, entrevista: 1 } },
 ];
 const PASE_ICONO_CANDADO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
 const PASE_ICONO_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg>';
@@ -10208,27 +10673,42 @@ const PASE_ICONO_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentCo
 // Nivel que la persona ha elegido ver en la vista compacta (móvil). Se
 // guarda aparte porque "Mi progreso" se vuelve a pintar solo cada 30 s y,
 // si no, la selección volvería a la de por defecto.
-let PASE_NIVEL_SELECCIONADO = null;
+// Un nivel elegido por pase (redacción / fotografía) y el pase visible (null = el propio de la persona).
+const PASE_SEL = { redaccion: null, fotografia: null };
+let PASES_VER = null;
 
-function pasePasoNivelesHTML(data) {
-  const { nivel_actual, publicaciones = {}, niveles, es_admin } = data;
+// opts.vista = true: se enseña como CONSULTA (la persona es de fotografía): sin «estás aquí», sin barras
+// de progreso ni candados, solo qué se pide y qué se consigue en cada nivel.
+function pasePasoNivelesHTML(data, opts = {}) {
+  const vista = !!opts.vista;
+  const { publicaciones = {}, es_admin } = data;
+  const nivel_actual = vista ? 0 : data.nivel_actual;
+  const niveles = vista ? (data.pases && data.pases.redaccion) : data.niveles;
   const lista = (Array.isArray(niveles) && niveles.length ? niveles : PASE_NIVELES_RESPALDO)
     .slice().sort((x, y) => x.nivel - y.nivel);
   const maximo = lista[lista.length - 1]?.nivel || 4;
   // Por defecto, en móvil se enseña el siguiente nivel (lo que falta); si ya
   // está en el máximo, el actual.
-  const porDefecto = Math.min(maximo, nivel_actual + 1);
-  const sel = lista.some((n) => n.nivel === PASE_NIVEL_SELECCIONADO) ? PASE_NIVEL_SELECCIONADO : porDefecto;
-  const estadoDe = (nv) => nv < nivel_actual ? "hecho" : (nv === nivel_actual ? "actual" : (nv === nivel_actual + 1 ? "siguiente" : "bloqueado"));
+  const porDefecto = vista ? lista[0].nivel : Math.min(maximo, nivel_actual + 1);
+  const sel = lista.some((n) => n.nivel === PASE_SEL.redaccion) ? PASE_SEL.redaccion : porDefecto;
+  const estadoDe = (nv) => vista ? "vista" : (nv < nivel_actual ? "hecho" : (nv === nivel_actual ? "actual" : (nv === nivel_actual + 1 ? "siguiente" : "bloqueado")));
 
   const tarjetas = lista.map((n) => {
     const estado = estadoDe(n.nivel);
-    // Un admin no tiene que demostrar nada con cifras: no se le muestran
-    // barras de requisitos (saldrían incompletas en niveles que ya cuentan
-    // como superados), solo dónde está en el pase.
-    const reqs = !es_admin && n.requisitos ? Object.entries(n.requisitos) : [];
+    // Los requisitos se enseñan SIEMPRE. Un admin no tiene que demostrar nada con cifras, así que
+    // para él (y en la vista de consulta) van como cifras mínimas, sin barras de progreso (saldrían
+    // incompletas en niveles que ya cuentan como superados). Si la API no los manda (backend antiguo
+    // tras un failover), se usan los de respaldo.
+    const reqsNivel = n.requisitos || (PASE_NIVELES_RESPALDO.find((r) => r.nivel === n.nivel) || {}).requisitos || null;
+    const reqs = reqsNivel ? Object.entries(reqsNivel) : [];
+    const soloCifras = vista || es_admin;
     let faltan = 0;
     const filas = reqs.map(([tipo, necesarios]) => {
+      if (soloCifras) return `
+        <li class="pase-req pase-req-simple">
+          <span class="pase-req-ico">${NIVELES_TIPO_ICONO[tipo] || ""}</span>
+          <span class="pase-req-cuerpo"><span class="pase-req-fila"><span class="pase-req-tipo">${NIVELES_TIPO_LABEL[tipo] || tipo}</span><span class="pase-req-cifra">${necesarios}</span></span></span>
+        </li>`;
       const actual = publicaciones[tipo] || 0;
       const cumple = actual >= necesarios;
       faltan += Math.max(0, necesarios - actual);
@@ -10244,13 +10724,16 @@ function pasePasoNivelesHTML(data) {
     }).join("");
 
     let pie;
-    if (es_admin) pie = estado === "actual"
-      ? `<div class="pase-pie pase-pie-ok">👑 Tu nivel · fijo por ser administrador</div>`
+    if (vista) pie = !n.requisitos
+      ? `<div class="pase-pie">🌱 Nivel inicial: se empieza aquí</div>`
+      : `<div class="pase-pie">Cifras mínimas para optar · el ascenso lo decide un Responsable</div>`;
+    else if (es_admin) pie = estado === "actual"
+      ? `<div class="pase-pie pase-pie-ok">👑 Tu nivel · fijo por ser Responsable</div>`
       : `<div class="pase-pie pase-pie-ok">✅ Superado</div>`;
     else if (!n.requisitos) pie = `<div class="pase-pie pase-pie-ok">🌱 Nivel inicial: se empieza aquí</div>`;
     else if (estado === "hecho") pie = `<div class="pase-pie pase-pie-ok">✅ Superado</div>`;
     else if (estado === "actual") pie = `<div class="pase-pie pase-pie-ok">⭐ Tu nivel actual</div>`;
-    else if (faltan === 0) pie = `<div class="pase-pie pase-pie-ok">🎯 Ya cumples las cifras · lo decide un administrador</div>`;
+    else if (faltan === 0) pie = `<div class="pase-pie pase-pie-ok">🎯 Ya cumples las cifras · lo decide un Responsable</div>`;
     else pie = `<div class="pase-pie">Te faltan <strong>${faltan}</strong> publicaci${faltan === 1 ? "ón" : "ones"} en total</div>`;
 
     const etiqueta = estado === "actual" ? "ESTÁS AQUÍ" : (estado === "siguiente" ? "SIGUIENTE" : "");
@@ -10262,7 +10745,8 @@ function pasePasoNivelesHTML(data) {
         <span class="pase-eyebrow">Nivel ${n.nivel}</span>
         <h4 class="pase-nombre">${escapeHtml(n.nombre)}</h4>
         <p class="pase-desc">${escapeHtml(n.descripcion)}</p>
-        ${reqs.length ? `<span class="pase-req-titulo">Requisitos para optar</span><ul class="pase-reqs">${filas}</ul>` : ""}
+        <span class="pase-req-titulo">${soloCifras ? "Se pide" : "Requisitos para optar"}</span>
+        ${reqs.length ? `<ul class="pase-reqs">${filas}</ul>` : `<ul class="pase-reqs"><li class="pase-req pase-req-simple pase-req-libre"><span class="pase-req-ico">${PASE_ICONO_CHECK}</span><span class="pase-req-cuerpo"><span class="pase-req-fila"><span class="pase-req-tipo">Sin requisitos: todo el mundo empieza aquí</span></span></span></li></ul>`}
         ${pie}
       </article>`;
   }).join("");
@@ -10278,13 +10762,13 @@ function pasePasoNivelesHTML(data) {
         <span class="pase-paso-txt">Nivel ${n.nivel}</span>
       </button>`;
   }).join("");
-  const avance = lista.length > 1 ? Math.max(0, Math.min(1, (nivel_actual - lista[0].nivel) / (lista.length - 1))) : 0;
+  const avance = !vista && lista.length > 1 ? Math.max(0, Math.min(1, (nivel_actual - lista[0].nivel) / (lista.length - 1))) : 0;
 
   return `
-    <section class="pase">
+    <section class="pase pase-redaccion${vista ? " pase-vista" : ""}" data-pase="redaccion">
       <div class="pase-cab">
-        <h3 class="titulo-subseccion" style="margin:0;">Pase de niveles</h3>
-        <span class="pase-resumen">Nivel ${nivel_actual} de ${maximo}</span>
+        <h3 class="titulo-subseccion" style="margin:0;">Pase de redacción</h3>
+        <span class="pase-resumen">${vista ? `${lista.length} niveles · solo consulta` : `Nivel ${nivel_actual} de ${maximo}`}</span>
       </div>
       <div class="pase-pasos" role="tablist" style="--p:${avance};--pc:var(--nivel-${Math.min(4, Math.max(1, nivel_actual))});">${pasos}</div>
       <div class="pase-pista">${tarjetas}</div>
@@ -10297,6 +10781,25 @@ function pasePasoNivelesHTML(data) {
 // niveles-fotografia.css para la versión de 2 niveles).
 const FOTO_ICONO_CAMARA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13" r="3.5"/></svg>';
 
+// Versión resumida de los textos de cada nivel (el Worker manda la versión larga): en el pase se ve igual
+// de compacto que el de redacción: una frase, tres filas cortas y una línea de lo que se consigue.
+const FOTO_PASE_CORTO = {
+  1: {
+    descripcion: "Coberturas según tu disponibilidad, con calidad técnica adecuada.",
+    funciones: ["Cubrir partidos según disponibilidad", "Entregar fotos con buena calidad técnica", "Identificar bien partido, equipos y autoría"],
+    ventajas: "Recibes feedback y puedes usar material autorizado en tu portfolio.",
+  },
+  2: {
+    descripcion: "Calidad, autonomía y responsabilidad demostradas de forma constante.",
+    funciones: ["Todo lo de F1", "Coberturas autónomas y plazos cumplidos", "Proponer reportajes y orientar a nuevos"],
+    ventajas: "Prioridad en coberturas especiales y posible coordinación (por designación).",
+  },
+};
+// Cifras para optar a F2 de respaldo (la fuente buena es NIVELES_FOTO_REQUISITOS del Worker).
+const FOTO_REQUISITOS_RESPALDO = { 2: { partidos: 5, fotos: 100 } };
+const fotoPlural = (k, uno, varios) => (k === 1 ? uno : varios);
+const fotoCorto = (n) => FOTO_PASE_CORTO[n.nivel] || { descripcion: n.descripcion || "", funciones: n.funciones || [], ventajas: n.ventajas || "" };
+
 function nivelInsigniaFotoHTML(nivel, info, extra = "") {
   return `
     <div class="nivel-insignia nivel-insignia-${nivel} nivel-insignia-foto">
@@ -10304,30 +10807,74 @@ function nivelInsigniaFotoHTML(nivel, info, extra = "") {
       <div class="nivel-insignia-texto">
         <span class="nivel-insignia-eyebrow">${escapeHtml(info.etiqueta || `F${nivel}`)}</span>
         <strong>${escapeHtml(info.nombre)}</strong>
-        <p>${escapeHtml(info.descripcion || "")}</p>
+        <p>${escapeHtml((FOTO_PASE_CORTO[nivel] || info).descripcion || "")}</p>
         ${extra}
       </div>
     </div>`;
 }
 
-function paseFotografoHTML(data) {
-  const { nivel_actual, niveles } = data;
+function paseFotografoHTML(data, opts = {}) {
+  const vista = !!opts.vista;
+  const nivel_actual = vista ? 0 : data.nivel_actual;
+  const niveles = vista ? (data.pases && data.pases.fotografia) : data.niveles;
   const lista = (Array.isArray(niveles) && niveles.length ? niveles : [
     { nivel: 1, ...NIVELES_FOTO_ETIQUETA[1], descripcion: "", funciones: [] },
     { nivel: 2, ...NIVELES_FOTO_ETIQUETA[2], descripcion: "", funciones: [] },
   ]).slice().sort((x, y) => x.nivel - y.nivel);
   const maximo = lista[lista.length - 1]?.nivel || 2;
-  const porDefecto = Math.min(maximo, nivel_actual + 1);
-  const sel = lista.some((n) => n.nivel === PASE_NIVEL_SELECCIONADO) ? PASE_NIVEL_SELECCIONADO : porDefecto;
-  const estadoDe = (nv) => nv < nivel_actual ? "hecho" : (nv === nivel_actual ? "actual" : (nv === nivel_actual + 1 ? "siguiente" : "bloqueado"));
+  const porDefecto = vista ? lista[0].nivel : Math.min(maximo, nivel_actual + 1);
+  const sel = lista.some((n) => n.nivel === PASE_SEL.fotografia) ? PASE_SEL.fotografia : porDefecto;
+  const estadoDe = (nv) => vista ? "vista" : (nv < nivel_actual ? "hecho" : (nv === nivel_actual ? "actual" : (nv === nivel_actual + 1 ? "siguiente" : "bloqueado")));
 
   const tarjetas = lista.map((n) => {
     const estado = estadoDe(n.nivel);
-    const funciones = (n.funciones || []).map((f) => `<li>${escapeHtml(f)}</li>`).join("");
+    const corto = fotoCorto(n);
+    // Requisitos para optar: SIEMPRE visibles (F1 = sin requisitos). Con progreso propio llevan barra
+    // (datos de "actividad"); en consulta, solo la cifra mínima.
+    const reqsNivel = n.requisitos || FOTO_REQUISITOS_RESPALDO[n.nivel] || null;
+    const reqs = reqsNivel ? Object.entries(reqsNivel) : [];
+    const act = data.actividad || {};
+    const falta = {};
+    const filasReq = reqs.map(([tipo, necesarios]) => {
+      if (vista) return `
+        <li class="pase-req pase-req-simple">
+          <span class="pase-req-ico">${NIVELES_TIPO_ICONO[tipo] || ""}</span>
+          <span class="pase-req-cuerpo"><span class="pase-req-fila"><span class="pase-req-tipo">${NIVELES_TIPO_LABEL[tipo] || tipo}</span><span class="pase-req-cifra">${necesarios}</span></span></span>
+        </li>`;
+      const actual = Number(act[tipo]) || 0;
+      const cumple = actual >= necesarios;
+      falta[tipo] = Math.max(0, necesarios - actual);
+      const pct = Math.min(100, Math.round((actual / necesarios) * 100));
+      return `
+        <li class="pase-req ${cumple ? "cumple" : ""}">
+          <span class="pase-req-ico">${NIVELES_TIPO_ICONO[tipo] || ""}</span>
+          <span class="pase-req-cuerpo">
+            <span class="pase-req-fila"><span class="pase-req-tipo">${NIVELES_TIPO_LABEL[tipo] || tipo}</span><span class="pase-req-cifra">${cumple ? PASE_ICONO_CHECK : `${Math.min(actual, necesarios)} / ${necesarios}`}</span></span>
+            <span class="pase-req-pista"><span class="pase-req-relleno" style="width:${pct}%"></span></span>
+          </span>
+        </li>`;
+    }).join("");
+    const bloqueReqs = `<span class="pase-req-titulo">${vista ? "Se pide" : "Requisitos para optar"}</span>` + (reqs.length
+      ? `<ul class="pase-reqs">${filasReq}</ul>`
+      : `<ul class="pase-reqs"><li class="pase-req pase-req-simple pase-req-libre"><span class="pase-req-ico">${PASE_ICONO_CHECK}</span><span class="pase-req-cuerpo"><span class="pase-req-fila"><span class="pase-req-tipo">Sin requisitos: todo fotógrafo empieza aquí</span></span></span></li></ul>`);
+    const faltaTxt = [
+      falta.partidos > 0 ? `<strong>${falta.partidos}</strong> ${fotoPlural(falta.partidos, "partido", "partidos")}` : "",
+      falta.fotos > 0 ? `<strong>${falta.fotos}</strong> ${fotoPlural(falta.fotos, "foto", "fotos")}` : "",
+    ].filter(Boolean).join(" y ");
+    const funciones = (corto.funciones || []).map((f) => `
+      <li class="pase-req pase-req-simple pase-req-foto">
+        <span class="pase-req-ico">${PASE_ICONO_CHECK}</span>
+        <span class="pase-req-cuerpo"><span class="pase-req-fila"><span class="pase-req-tipo">${escapeHtml(f)}</span></span></span>
+      </li>`).join("");
     let pie;
-    if (estado === "hecho") pie = `<div class="pase-pie pase-pie-ok">✅ Superado</div>`;
+    if (vista) pie = n.nivel === lista[0].nivel
+      ? `<div class="pase-pie">📷 Nivel inicial de todo fotógrafo</div>`
+      : `<div class="pase-pie">Cifras mínimas para optar · el ascenso lo decide la dirección</div>`;
+    else if (estado === "hecho") pie = `<div class="pase-pie pase-pie-ok">✅ Superado</div>`;
     else if (estado === "actual") pie = `<div class="pase-pie pase-pie-ok">⭐ Tu nivel actual</div>`;
-    else pie = `<div class="pase-pie">🎯 Lo decide la dirección tras una valoración global de tu trabajo</div>`;
+    else if (reqs.length && !faltaTxt) pie = `<div class="pase-pie pase-pie-ok">🎯 Ya cumples las cifras · lo decide la dirección</div>`;
+    else if (reqs.length) pie = `<div class="pase-pie">Te faltan ${faltaTxt}</div>`;
+    else pie = `<div class="pase-pie">🎯 Lo decide la dirección</div>`;
     const etiqueta = estado === "actual" ? "ESTÁS AQUÍ" : (estado === "siguiente" ? "SIGUIENTE" : "");
     const iconoNodo = estado === "bloqueado" ? PASE_ICONO_CANDADO : FOTO_ICONO_CAMARA;
     return `
@@ -10336,9 +10883,10 @@ function paseFotografoHTML(data) {
         ${etiqueta ? `<span class="pase-etiqueta">${etiqueta}</span>` : ""}
         <span class="pase-eyebrow">${escapeHtml(n.etiqueta || `F${n.nivel}`)}</span>
         <h4 class="pase-nombre">${escapeHtml(n.nombre)}</h4>
-        <p class="pase-desc">${escapeHtml(n.descripcion || "")}</p>
-        ${funciones ? `<span class="pase-req-titulo">Funciones</span><ul class="pase-funciones">${funciones}</ul>` : ""}
-        ${n.ventajas ? `<p class="pase-ventajas">${escapeHtml(n.ventajas)}</p>` : ""}
+        <p class="pase-desc">${escapeHtml(corto.descripcion || "")}</p>
+        ${bloqueReqs}
+        ${funciones ? `<span class="pase-req-titulo">Funciones</span><ul class="pase-reqs">${funciones}</ul>` : ""}
+        ${corto.ventajas ? `<p class="pase-ventajas">✨ ${escapeHtml(corto.ventajas)}</p>` : ""}
         ${pie}
       </article>`;
   }).join("");
@@ -10352,16 +10900,44 @@ function paseFotografoHTML(data) {
         <span class="pase-paso-txt">${escapeHtml(n.etiqueta || `F${n.nivel}`)}</span>
       </button>`;
   }).join("");
-  const avance = lista.length > 1 ? Math.max(0, Math.min(1, (nivel_actual - lista[0].nivel) / (lista.length - 1))) : 0;
+  const avance = !vista && lista.length > 1 ? Math.max(0, Math.min(1, (nivel_actual - lista[0].nivel) / (lista.length - 1))) : 0;
 
   return `
-    <section class="pase pase-foto">
+    <section class="pase pase-foto${vista ? " pase-vista" : ""}" data-pase="fotografia">
       <div class="pase-cab">
-        <h3 class="titulo-subseccion" style="margin:0;">Niveles de fotografía</h3>
-        <span class="pase-resumen">F${nivel_actual} de F${maximo}</span>
+        <h3 class="titulo-subseccion" style="margin:0;">Pase de fotografía</h3>
+        <span class="pase-resumen">${vista ? `${lista.length} niveles · solo consulta` : `F${nivel_actual} de F${maximo}`}</span>
       </div>
       <div class="pase-pasos" role="tablist" style="--p:${avance};--pc:var(--nivel-${Math.min(4, Math.max(1, nivel_actual))});">${pasos}</div>
       <div class="pase-pista">${tarjetas}</div>
+    </section>`;
+}
+
+// Los DOS pases a la vista, sea cual sea el de la persona: pestañas «Redacción» / «Fotografía». El propio
+// sale primero, con todo su detalle y marcado como «Tu pase»; el otro se enseña como consulta (sin progreso).
+function pasesSelectorHTML(data) {
+  const propio = data.es_fotografo ? "fotografia" : "redaccion";
+  const ver = PASES_VER === "redaccion" || PASES_VER === "fotografia" ? PASES_VER : propio;
+  const panelRed = pasePasoNivelesHTML(data, { vista: propio !== "redaccion" });
+  const panelFoto = paseFotografoHTML(data, { vista: propio !== "fotografia" });
+  const tab = (id, texto, icono) => `
+    <button type="button" class="pases-tab${ver === id ? " sel" : ""}" role="tab" id="pases-tab-${id}" aria-selected="${ver === id}" aria-controls="pases-panel-${id}" data-pases-ver="${id}">
+      <span class="pases-tab-ico" aria-hidden="true">${icono}</span><span class="pases-tab-txt">${texto}</span>${propio === id ? `<em class="pases-tuyo">Tu pase</em>` : ""}
+    </button>`;
+  const ordenados = propio === "fotografia"
+    ? [["fotografia", "Fotografía", FOTO_ICONO_CAMARA], ["redaccion", "Redacción", NIVEL_ICONO_SVG[2]]]
+    : [["redaccion", "Redacción", NIVEL_ICONO_SVG[2]], ["fotografia", "Fotografía", FOTO_ICONO_CAMARA]];
+  return `
+    <section class="pases" data-propio="${propio}">
+      <div class="pases-cab">
+        <div class="pases-cab-txt">
+          <h3 class="titulo-subseccion" style="margin:0;">Pases de niveles</h3>
+          <p class="pases-sub">Así se progresa en cada equipo de ElOtroFútbol. Estás en el pase de <strong>${propio === "fotografia" ? "fotografía" : "redacción"}</strong>; el otro lo puedes consultar para saber cómo funciona.</p>
+        </div>
+        <div class="pases-tabs" role="tablist" aria-label="Elegir pase">${ordenados.map((o) => tab(...o)).join("")}</div>
+      </div>
+      <div class="pases-panel" id="pases-panel-redaccion" role="tabpanel" aria-labelledby="pases-tab-redaccion"${ver === "redaccion" ? "" : " hidden"}>${panelRed}</div>
+      <div class="pases-panel" id="pases-panel-fotografia" role="tabpanel" aria-labelledby="pases-tab-fotografia"${ver === "fotografia" ? "" : " hidden"}>${panelFoto}</div>
     </section>`;
 }
 
@@ -10375,32 +10951,32 @@ function pintarProgresoFotografo(cont, data) {
       <div class="nivel-stat"><div class="nivel-stat-icono">${FOTO_ICONO_CAMARA}</div><div class="nivel-stat-num">${actividad.partidos || 0}</div><div class="nivel-stat-label">Partidos con galería</div></div>
       <div class="nivel-stat"><div class="nivel-stat-icono">${FOTO_ICONO_CAMARA}</div><div class="nivel-stat-num">${actividad.fotos || 0}</div><div class="nivel-stat-label">Fotos en galerías</div></div>
     </div>
-    <p class="ayuda-editor nivel-ayuda">Son datos orientativos, no requisitos: en fotografía no hay un número mínimo de partidos ni de fotografías para ascender, porque la disponibilidad y las oportunidades de cobertura varían de una persona a otra.</p>` : "";
+    <p class="ayuda-editor nivel-ayuda">Estas cifras cuentan para los requisitos de F2 (partidos con galería y fotos); cumplirlas te permite optar, pero el ascenso lo decide la dirección.</p>` : "";
 
   const filasCriterios = lista.map((c) => `
-    <li class="foto-criterio"><strong>${escapeHtml(c.nombre)}</strong><span>${escapeHtml(c.descripcion || "")}</span></li>`).join("");
+    <li class="foto-criterio" title="${escapeHtml(c.descripcion || "")}"><strong>${escapeHtml(c.nombre)}</strong></li>`).join("");
 
   const aviso = nivel_maximo
     ? `<div class="nivel-maximo-aviso">
          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 6v6c0 5 3.4 8.4 8 10 4.6-1.6 8-5 8-10V6l-8-4Z"/><path d="m9 12 2 2 4-4"/></svg>
          <div>
            <strong>Eres fotógrafo de referencia (F2)</strong>
-           <p>Es el nivel más alto de fotografía. Ser F2 no garantiza cargos de coordinación, acreditaciones ni asignaciones concretas de partidos: los cargos dependen de una designación específica de la dirección.</p>
+           <p>Es el nivel más alto. No garantiza cargos, acreditaciones ni partidos concretos.</p>
          </div>
        </div>`
-    : `<p class="ayuda-editor nivel-ayuda">Para pasar a ${escapeHtml((siguiente_nivel_info && siguiente_nivel_info.etiqueta) || "F2")} se hace una valoración global de tu trabajo con estos criterios. La propone el responsable de fotografía (si lo hay) y la autoriza la dirección. El nivel no garantiza coordinación, acreditaciones, partidos concretos ni la publicación de todo el material entregado.</p>`;
+    : `<p class="ayuda-editor nivel-ayuda">Para pasar a ${escapeHtml((siguiente_nivel_info && siguiente_nivel_info.etiqueta) || "F2")}, además de las cifras, la dirección hace una valoración global de tu trabajo con estos criterios.</p>`;
 
   cont.innerHTML = `
     <h3 class="titulo-subseccion nivel-titulo-principal" style="margin-top:0;">Mi progreso</h3>
     ${nivelInsigniaFotoHTML(nivel_actual, nivel_info, nivel_nota ? `<div class="nivel-nota">📝 Nota de la dirección: ${escapeHtml(nivel_nota)}</div>` : "")}
     ${insigniasHitosHTML(data.insignias)}
-    ${paseFotografoHTML(data)}
+    ${pasesSelectorHTML(data)}
     ${rachaSemanalHTML(data.racha)}
     ${bloqueActividad}
     <h3 class="titulo-subseccion">Cómo se valora el ascenso</h3>
-    <ul class="foto-criterios">${filasCriterios}</ul>
+    <ul class="foto-criterios foto-criterios-compacta">${filasCriterios}</ul>
     ${aviso}
-    <p class="ayuda-editor nivel-ayuda">La pérdida de nivel solo se valora ante problemas reiterados o circunstancias relevantes, de forma proporcional: un error puntual no supone bajar de nivel.</p>
+    <p class="ayuda-editor nivel-ayuda">Solo se baja de nivel ante problemas reiterados y de forma proporcional.</p>
   `;
 }
 
@@ -10499,23 +11075,31 @@ function rachaSemanalHTML(racha) {
 function insigniasHitosHTML(insignias) {
   if (!Array.isArray(insignias) || !insignias.length) return "";
   const conseguidas = insignias.filter((i) => i.conseguida).length;
+  // La pendiente más cercana (mayor % de avance; a igualdad, la primera) se destaca como siguiente paso.
+  const siguiente = insignias.filter((i) => !i.conseguida)
+    .sort((a, b) => ((Number(b.actual) || 0) / (Number(b.objetivo) || 1)) - ((Number(a.actual) || 0) / (Number(a.objetivo) || 1)))[0] || null;
   const items = insignias.map((i) => {
     const objetivo = Math.max(1, Number(i.objetivo) || 1);
     const actual = Math.max(0, Math.min(objetivo, Number(i.actual) || 0));
     const pct = Math.round((actual / objetivo) * 100);
     let pie;
-    if (i.conseguida) pie = `<span class="hito-estado hito-estado-ok">✅ Conseguida</span>`;
+    const accion = !i.conseguida && i.ir
+      ? `<button type="button" class="hito-ir" data-hito-ir="${escapeHtml(i.ir)}">${escapeHtml(i.accion || "Ir")} →</button>`
+      : "";
+    if (i.conseguida) pie = `<span class="hito-estado hito-estado-ok">✅ Conseguida${i.fecha ? ` · ${escapeHtml(i.fecha.split("-").reverse().join("/"))}` : ""}</span>`;
     else if (objetivo > 1) pie = `
         <div class="hito-barra" role="progressbar" aria-valuemin="0" aria-valuemax="${objetivo}" aria-valuenow="${actual}"><div class="hito-barra-relleno" style="width:${pct}%"></div></div>
         <span class="hito-estado">${actual} / ${objetivo}</span>`;
     else pie = `<span class="hito-estado">🔒 Por conseguir</span>`;
     return `
-      <li class="hito ${i.conseguida ? "hito-conseguida" : "hito-bloqueada"}" aria-label="${escapeHtml(i.nombre)}: ${i.conseguida ? "conseguida" : "por conseguir"}">
+      <li class="hito ${i.conseguida ? "hito-conseguida" : "hito-bloqueada"}${i === siguiente ? " hito-siguiente" : ""}" aria-label="${escapeHtml(i.nombre)}: ${i.conseguida ? "conseguida" : "por conseguir"}">
         <span class="hito-icono" aria-hidden="true">${escapeHtml(i.emoji || "🏅")}</span>
         <div class="hito-texto">
           <strong class="hito-nombre">${escapeHtml(i.nombre)}</strong>
           <span class="hito-desc">${escapeHtml(i.descripcion || "")}</span>
           ${pie}
+          ${i === siguiente ? `<span class="hito-siguiente-tag">Tu siguiente insignia</span>` : ""}
+          ${accion}
         </div>
       </li>`;
   }).join("");
@@ -10544,8 +11128,8 @@ function pintarProgresoNivel(cont, data) {
       <div class="nivel-maximo-aviso">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 6v6c0 5 3.4 8.4 8 10 4.6-1.6 8-5 8-10V6l-8-4Z"/><path d="m9 12 2 2 4-4"/></svg>
         <div>
-          <strong>Nivel fijo de administrador</strong>
-          <p>Como administrador siempre estás al nivel máximo y no hace falta que lo demuestres con cifras: publicas directamente y revisas el contenido de todo el equipo.</p>
+          <strong>Nivel fijo de Responsable</strong>
+          <p>Como Responsable siempre estás al nivel máximo y no hace falta que lo demuestres con cifras: publicas directamente y revisas el contenido de todo el equipo.</p>
         </div>
       </div>`;
   } else {
@@ -10589,17 +11173,17 @@ function pintarProgresoNivel(cont, data) {
         <div class="nivel-barras">${barras}</div>
         <p class="ayuda-editor nivel-ayuda">
           ${progreso.cumple_requisitos
-            ? "✅ Ya cumples las cifras mínimas para este nivel. El ascenso lo decide un administrador evaluando también la calidad y el cumplimiento de las normas, no es automático."
-            : "Estas cifras son solo el mínimo para poder optar al ascenso: subir de nivel no es automático, lo decide un administrador evaluando también la calidad del trabajo y el cumplimiento de las normas."}
+            ? "✅ Ya cumples las cifras mínimas para este nivel. El ascenso lo decide un Responsable evaluando también la calidad y el cumplimiento de las normas, no es automático."
+            : "Estas cifras son solo el mínimo para poder optar al ascenso: subir de nivel no es automático, lo decide un Responsable evaluando también la calidad del trabajo y el cumplimiento de las normas."}
         </p>`;
     }
   }
 
   cont.innerHTML = `
     <h3 class="titulo-subseccion nivel-titulo-principal" style="margin-top:0;">Mi progreso</h3>
-    ${nivelInsigniaHTML(nivel_actual, nivel_info, nivel_nota ? `<div class="nivel-nota">📝 Nota del administrador: ${escapeHtml(nivel_nota)}</div>` : "")}
+    ${nivelInsigniaHTML(nivel_actual, nivel_info, nivel_nota ? `<div class="nivel-nota">📝 Nota del Responsable: ${escapeHtml(nivel_nota)}</div>` : "")}
     ${insigniasHitosHTML(data.insignias)}
-    ${pasePasoNivelesHTML(data)}
+    ${pasesSelectorHTML(data)}
     ${rachaSemanalHTML(data.racha)}
     ${bloquePublicaciones}
     ${bloqueSiguiente}
@@ -10609,17 +11193,35 @@ function pintarProgresoNivel(cont, data) {
 // Elegir qué nivel ver en la vista compacta (móvil): se cambia la tarjeta
 // visible sin volver a pintar todo ni pedir nada al servidor.
 document.addEventListener("click", (ev) => {
+  // Botón de una insignia pendiente: lleva a la sección del panel donde se consigue.
+  const hitoIr = ev.target.closest("[data-hito-ir]");
+  if (hitoIr && typeof eofIrASeccion === "function") { eofIrASeccion(hitoIr.dataset.hitoIr, new URLSearchParams()); return; }
+  // Pestañas «Redacción» / «Fotografía»: se muestra un pase y se oculta el otro, sin volver a pintar.
+  const pestana = ev.target.closest("[data-pases-ver]");
+  if (pestana) {
+    PASES_VER = pestana.dataset.pasesVer;
+    const conj = pestana.closest(".pases");
+    if (!conj) return;
+    conj.querySelectorAll("[data-pases-ver]").forEach((b) => {
+      const activo = b === pestana;
+      b.classList.toggle("sel", activo);
+      b.setAttribute("aria-selected", activo ? "true" : "false");
+    });
+    conj.querySelectorAll(".pases-panel").forEach((p) => { p.hidden = p.id !== `pases-panel-${PASES_VER}`; });
+    return;
+  }
   const btn = ev.target.closest("[data-pase-sel]");
   if (!btn) return;
-  PASE_NIVEL_SELECCIONADO = Number(btn.dataset.paseSel);
   const pase = btn.closest(".pase");
   if (!pase) return;
+  const clave = pase.dataset.pase === "fotografia" ? "fotografia" : "redaccion";
+  PASE_SEL[clave] = Number(btn.dataset.paseSel);
   pase.querySelectorAll("[data-pase-sel]").forEach((b) => {
     const activo = b === btn;
     b.classList.toggle("sel", activo);
     b.setAttribute("aria-selected", activo ? "true" : "false");
   });
-  pase.querySelectorAll(".pase-nivel").forEach((c) => c.classList.toggle("pase-sel", Number(c.dataset.nivel) === PASE_NIVEL_SELECCIONADO));
+  pase.querySelectorAll(".pase-nivel").forEach((c) => c.classList.toggle("pase-sel", Number(c.dataset.nivel) === PASE_SEL[clave]));
 });
 
 let progresoNivelCargando = false;
@@ -10715,7 +11317,7 @@ if (btnCerrarOtrasSesiones) {
 }
 
 // ---------- SEGURIDAD: VERIFICACIÓN EN DOS PASOS ----------
-// Obligatoria para administradores (se configura al iniciar sesión; aquí solo se
+// Obligatoria para Responsables (se configura al iniciar sesión; aquí solo se
 // consulta su estado). OPCIONAL para todos los colaboradores (redactores y
 // fotógrafos): la activan o la quitan desde esta pestaña.
 // API: GET /api/me/2fa · POST /api/me/2fa/setup | activar | desactivar
@@ -10771,13 +11373,13 @@ function pintarSeguridad2fa() {
   let html = `<h3 class="titulo-subseccion" style="margin-top:0;">Verificación en dos pasos ${insignia}</h3>`;
   const restantes = Number(e.codigos_restantes) || 0;
   const avisoCodigos = restantes <= 2
-    ? `<p class="seg2fa-aviso">Te quedan pocos códigos de recuperación.${e.obligatorio ? " Pídele a otro administrador que restablezca tu verificación para generar códigos nuevos." : " Para generar códigos nuevos, desactiva la verificación y vuelve a activarla."}</p>`
+    ? `<p class="seg2fa-aviso">Te quedan pocos códigos de recuperación.${e.obligatorio ? " Pídele a otro Responsable que restablezca tu verificación para generar códigos nuevos." : " Para generar códigos nuevos, desactiva la verificación y vuelve a activarla."}</p>`
     : "";
 
   if (e.obligatorio) {
     html += `
       <p class="ayuda-editor seg2fa-txt">En tu rol es <b>obligatoria</b>: además de la contraseña, al iniciar sesión se te pide el código de 6 dígitos de tu app de autenticación.</p>
-      <p class="ayuda-editor seg2fa-txt">Códigos de recuperación sin usar: <b>${restantes}</b>. Si pierdes el móvil y los códigos, otro administrador puede restablecerla desde <b>Usuarios</b>.</p>
+      <p class="ayuda-editor seg2fa-txt">Códigos de recuperación sin usar: <b>${restantes}</b>. Si pierdes el móvil y los códigos, otro Responsable puede restablecerla desde <b>Usuarios</b>.</p>
       ${avisoCodigos}`;
   } else if (seg2fa.flujo === "password") {
     html += `
@@ -10961,8 +11563,25 @@ iniciarSeguridad2fa();
 // piden aparte).
 async function cargarMiPerfilCompleto() {
   try {
-    const { user } = await apiFetch(`/api/me/perfil`);
+    const { user, articulos_propios } = await apiFetch(`/api/me/perfil`);
     if (!user) return;
+    document.getElementById("perfil_cargo").value = user.cargo || "";
+    document.getElementById("perfil_ciudad").value = user.ciudad || "";
+    // Noticia destacada: opciones = sus noticias publicadas más recientes (textContent, nunca HTML).
+    const selDestacado = document.getElementById("perfil_destacado");
+    if (selDestacado) {
+      selDestacado.length = 1;
+      const lista = Array.isArray(articulos_propios) ? articulos_propios.slice() : [];
+      const actual = user.articulo_destacado_id ? Number(user.articulo_destacado_id) : null;
+      if (actual && !lista.some((a) => Number(a.id) === actual)) lista.unshift({ id: actual, titulo: "(noticia destacada actual)" });
+      for (const a of lista) {
+        const op = document.createElement("option");
+        op.value = String(a.id);
+        op.textContent = a.titulo || `Noticia ${a.id}`;
+        selDestacado.appendChild(op);
+      }
+      selDestacado.value = actual ? String(actual) : "";
+    }
     document.getElementById("perfil_avatar").value = user.avatar_url || "";
     document.getElementById("perfil_avatar_foco").value = EOF_FOCO.texto(user.avatar_foco);
     actualizarPreviewAvatar(user.avatar_url || "");
@@ -10976,6 +11595,10 @@ async function cargarMiPerfilCompleto() {
     document.getElementById("perfil_instagram").value = redes.instagram || "";
     document.getElementById("perfil_tiktok").value = redes.tiktok || "";
     document.getElementById("perfil_youtube").value = redes.youtube || "";
+    document.getElementById("perfil_linkedin").value = redes.linkedin || "";
+    document.getElementById("perfil_threads").value = redes.threads || "";
+    document.getElementById("perfil_facebook").value = redes.facebook || "";
+    document.getElementById("perfil_web").value = redes.web || "";
   } catch (err) {
     // Si falla, el formulario se queda con nombre/correo del inicio de
     // sesión y el resto de campos en blanco; la persona puede rellenarlos
@@ -11073,7 +11696,7 @@ function pintarEquipoBloqueado(contenedor, equipos) {
   const candado = `
     <span class="equipo-candado">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
-      Solo un administrador puede cambiarlo
+      Solo un Responsable puede cambiarlo
     </span>`;
   if (!lista.length) {
     contenedor.innerHTML = `<span class="equipo-vacio">— Sin especificar —</span>${candado}`;
@@ -11099,18 +11722,25 @@ const nombre = document.getElementById("perfil_nombre").value.trim();
     const experiencia = document.getElementById("perfil_experiencia").value.trim();
     // El equipo NO se envía desde aquí: es de solo lectura en "Mis datos"
     // (se muestra en un bloque bloqueado, sin control editable) y solo
-    // un administrador puede cambiarlo, desde "Usuarios".
+    // un Responsable puede cambiarlo, desde "Usuarios".
     const redes = {
       twitter: document.getElementById("perfil_twitter").value.trim(),
       instagram: document.getElementById("perfil_instagram").value.trim(),
       tiktok: document.getElementById("perfil_tiktok").value.trim(),
       youtube: document.getElementById("perfil_youtube").value.trim(),
+      linkedin: document.getElementById("perfil_linkedin").value.trim(),
+      threads: document.getElementById("perfil_threads").value.trim(),
+      facebook: document.getElementById("perfil_facebook").value.trim(),
+      web: document.getElementById("perfil_web").value.trim(),
     };
+    const cargo = document.getElementById("perfil_cargo").value.trim();
+    const ciudad = document.getElementById("perfil_ciudad").value.trim();
+    const articulo_destacado_id = document.getElementById("perfil_destacado").value || null;
 
     try {
 const data = await apiFetch(`/api/me/perfil`, {
         method: "PUT",
-        body: JSON.stringify({ nombre, email, avatar_url, avatar_foco, bio, experiencia, redes }),
+        body: JSON.stringify({ nombre, email, avatar_url, avatar_foco, bio, experiencia, redes, cargo, ciudad, articulo_destacado_id }),
       });
       // Se actualiza la sesión guardada (nombre/correo/token) para que el
       // cambio se refleje al momento en toda la página sin tener que
@@ -11843,7 +12473,90 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
     return { url: URL.createObjectURL(file) };
   }
 
-  function agregarArchivos(fileList) {
+  // ---------- Fotos RAW (.raw, .dng, .cr2, .nef, .arw...) ----------
+  // Ningún navegador ni Cloudinary decodifica un RAW, pero casi todos llevan dentro un JPEG de vista previa
+  // (en muchas cámaras, a tamaño completo). Se extrae ese JPEG en el navegador y la foto sigue el camino
+  // normal (encuadre, ajuste de tamaño y subida) con el mismo nombre y extensión .jpg. El RAW original NO se sube.
+  const EXTENSIONES_RAW_CLIENTE = ["raw", "dng", "cr2", "cr3", "nef", "nrw", "arw", "srf", "sr2", "orf", "rw2", "raf", "pef", "srw", "3fr", "erf", "mrw", "kdc", "dcr"];
+  const esRawArchivo = (file) => EXTENSIONES_RAW_CLIENTE.includes(extensionDe(file.name || ""));
+
+  // Si en `b` empieza un JPEG, devuelve la posición donde acaba (EOI incluido) o -1.
+  // Recorre los segmentos en vez de buscar el primer FFD9: las miniaturas EXIF incrustadas
+  // llevan su propio FFD9 y cortarían el JPEG antes de tiempo.
+  function finJpegEn(b, ini) {
+    const n = b.length;
+    let i = ini + 2;
+    while (i + 3 < n) {
+      if (b[i] !== 0xFF) return -1;
+      const m = b[i + 1];
+      if (m === 0xFF) { i++; continue; }
+      if (m === 0xD9) return i + 2;
+      if (m === 0x01 || (m >= 0xD0 && m <= 0xD7)) { i += 2; continue; }
+      const len = (b[i + 2] << 8) | b[i + 3];
+      if (len < 2) return -1;
+      i += 2 + len;
+      if (m === 0xDA) {
+        // Datos entropy-codificados: hasta el siguiente marcador "de verdad".
+        while (i + 1 < n) {
+          if (b[i] === 0xFF && b[i + 1] !== 0x00 && !(b[i + 1] >= 0xD0 && b[i + 1] <= 0xD7) && b[i + 1] !== 0xFF) break;
+          i++;
+        }
+        if (i + 1 >= n) return -1;
+      }
+    }
+    return -1;
+  }
+  async function extraerJpegDeRaw(file) {
+    const b = new Uint8Array(await file.arrayBuffer());
+    const trozos = [];
+    for (let i = 0; i + 3 < b.length; i++) {
+      if (b[i] === 0xFF && b[i + 1] === 0xD8 && b[i + 2] === 0xFF) {
+        const fin = finJpegEn(b, i);
+        if (fin > i) { if (fin - i > 20000) trozos.push([i, fin]); i = fin - 1; }
+      }
+    }
+    // Del más grande al más pequeño: el primero que el navegador sepa abrir es la vista previa buena.
+    trozos.sort((x, y) => (y[1] - y[0]) - (x[1] - x[0]));
+    for (const [ini, fin] of trozos.slice(0, 4)) {
+      const blob = new Blob([b.subarray(ini, fin)], { type: "image/jpeg" });
+      try {
+        const bmp = await createImageBitmap(blob);
+        const lado = Math.max(bmp.width, bmp.height);
+        if (bmp.close) bmp.close();
+        if (lado < 600) continue; // miniatura
+        const nombre = (file.name || "foto").replace(/\.[^.]+$/, "") + ".jpg";
+        return new File([blob], nombre, { type: "image/jpeg", lastModified: file.lastModified });
+      } catch { /* no es un JPEG válido: se prueba el siguiente */ }
+    }
+    throw new Error("El RAW no contiene una vista previa JPG que se pueda leer");
+  }
+
+  // Punto de entrada: convierte primero los RAW y después sigue el camino de siempre.
+  async function agregarArchivos(fileList) {
+    const lista = Array.from(fileList || []); // copia ya: quien llama vacía el input justo después
+    if (!lista.some(esRawArchivo)) { agregarArchivosListos(lista); return; }
+    errMsg.style.display = "none";
+    const convertidos = [], fallos = [];
+    let hechos = 0;
+    for (const f of lista) {
+      if (!esRawArchivo(f)) { convertidos.push(f); continue; }
+      errMsg.textContent = `Leyendo fotos RAW… (${++hechos}/${lista.filter(esRawArchivo).length})`;
+      errMsg.style.display = "block";
+      try { convertidos.push(await extraerJpegDeRaw(f)); }
+      catch (err) { console.warn("No se pudo leer el RAW:", f.name, err); fallos.push(f.name); }
+    }
+    errMsg.style.display = "none";
+    agregarArchivosListos(convertidos);
+    if (fallos.length) {
+      const previo = errMsg.style.display === "block" ? errMsg.textContent + " " : "";
+      errMsg.textContent = previo + (fallos.length === 1
+        ? `No se ha podido leer "${fallos[0]}": este RAW no lleva una vista previa JPG utilizable. Expórtalo a JPG desde tu programa de edición.`
+        : `No se han podido leer estos RAW (sin vista previa JPG utilizable): ${fallos.join(", ")}. Expórtalos a JPG desde tu programa de edición.`);
+      errMsg.style.display = "block";
+    }
+  }
+
+  function agregarArchivosListos(fileList) {
     errMsg.style.display = "none";
     const duplicadosEnCola = [];
     const formatoNoAdmitido = [];
@@ -11908,8 +12621,8 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
     if (formatoNoAdmitido.length) {
       partesAviso.push(
         formatoNoAdmitido.length === 1
-          ? `Formato no admitido: ${formatoNoAdmitido[0]}. Solo se admiten fotos (JPG, JFIF, PNG, WEBP, GIF, AVIF, HEIC/HEIF, BMP, TIFF) o vídeos (MP4, MOV, WEBM, MKV, MPEG).`
-          : `Formato no admitido en estos archivos: ${formatoNoAdmitido.join(", ")}. Solo se admiten fotos (JPG, JFIF, PNG, WEBP, GIF, AVIF, HEIC/HEIF, BMP, TIFF) o vídeos (MP4, MOV, WEBM, MKV, MPEG).`
+          ? `Formato no admitido: ${formatoNoAdmitido[0]}. Solo se admiten fotos (JPG, JFIF, PNG, WEBP, GIF, AVIF, HEIC/HEIF, BMP, TIFF, RAW) o vídeos (MP4, MOV, WEBM, MKV, MPEG).`
+          : `Formato no admitido en estos archivos: ${formatoNoAdmitido.join(", ")}. Solo se admiten fotos (JPG, JFIF, PNG, WEBP, GIF, AVIF, HEIC/HEIF, BMP, TIFF, RAW) o vídeos (MP4, MOV, WEBM, MKV, MPEG).`
       );
     }
     if (vacios.length) {
@@ -11950,8 +12663,60 @@ function activarSelectorVisibilidad(contenedor, inputOculto, valorInicial) {
       dropzone.classList.remove("arrastrando");
     });
   });
+  // Lee una carpeta soltada entera. readEntries() devuelve los resultados POR TROZOS
+  // (en Chrome ~100 por llamada): hay que repetirlo hasta que venga vacío o se pierden archivos.
+  function leerEntradaSoltada(entrada) {
+    return new Promise((resolver) => {
+      if (!entrada) { resolver([]); return; }
+      if (entrada.isFile) {
+        entrada.file((f) => resolver([f]), () => resolver([]));
+        return;
+      }
+      if (!entrada.isDirectory) { resolver([]); return; }
+      const lector = entrada.createReader();
+      const hijos = [];
+      const leerTrozo = () => {
+        lector.readEntries(async (trozo) => {
+          if (!trozo.length) {
+            const sueltos = await Promise.all(hijos.map(leerEntradaSoltada));
+            resolver(sueltos.flat());
+            return;
+          }
+          hijos.push(...trozo);
+          leerTrozo();
+        }, () => resolver([]));
+      };
+      leerTrozo();
+    });
+  }
+
   dropzone.addEventListener("drop", (e) => {
-    if (e.dataTransfer.files.length) agregarArchivos(e.dataTransfer.files);
+    const dt = e.dataTransfer;
+    if (!dt) return;
+    // Todo lo que depende del evento se copia AHORA, de forma síncrona: pasado el
+    // evento el navegador vacía dataTransfer y se perdería parte de la selección.
+    const items = dt.items ? Array.from(dt.items).filter((it) => it.kind === "file") : [];
+    const entradas = items.map((it) => (typeof it.webkitGetAsEntry === "function" ? it.webkitGetAsEntry() : null));
+    const deItems = items.map((it) => it.getAsFile()).filter(Boolean);
+    const deFiles = Array.from(dt.files || []);
+    const hayCarpeta = entradas.some((en) => en && en.isDirectory);
+    const avisarCantidad = (n) => {
+      if (n > 1 && window.EOF && EOF.toast) EOF.toast(`Se han recibido ${n} archivos.`, "info");
+    };
+    if (!hayCarpeta) {
+      // Si el navegador entrega menos en .files que en .items, se usa la lista más completa.
+      const lista = deItems.length > deFiles.length ? deItems : deFiles;
+      if (!lista.length) return;
+      avisarCantidad(lista.length);
+      agregarArchivos(lista);
+      return;
+    }
+    Promise.all(entradas.map(leerEntradaSoltada)).then((grupos) => {
+      const lista = grupos.flat();
+      if (!lista.length) return;
+      avisarCantidad(lista.length);
+      agregarArchivos(lista);
+    });
   });
 
   listaArchivos.addEventListener("click", (e) => {
@@ -13013,7 +13778,7 @@ function miniaturaCloudinary(url, tipo, portadaSegundo, portadaFoco, opciones) {
 // 320-1000 px según el tamaño real de la tarjeta y la densidad de pantalla, así
 // que en retina se ve nítida y en móvil/pantallas normales pesa poco.
 const MINIATURA_TARJETA_BASE = 480;
-const MINIATURA_TARJETA_ANCHOS = [320, 480, 640, 800, 1000];
+const MINIATURA_TARJETA_ANCHOS = [320, 480, 720];
 function miniaturaTarjetaCloudinary(url, tipo, portadaSegundo, portadaFoco) {
   return miniaturaCloudinary(url, tipo, portadaSegundo, portadaFoco, { ancho: MINIATURA_TARJETA_BASE });
 }
@@ -13034,9 +13799,28 @@ function formatoTamanoAdmin(bytes) {
   return (bytes / (1024 * 1024 * 1024)).toFixed(2) + " GB";
 }
 
-async function cargaContenido() {
+// Rendimiento de "Ver contenido subido":
+//  - Cambiar de pestaña/subpestaña llama con {suave:true}: si hace menos de MEDIA_FRESCO_MS que se
+//    cargó, no se vuelve a pedir nada; si hay una petición en curso, se reutiliza la misma; y si lo
+//    recibido es idéntico a lo ya pintado, no se rehace el DOM (antes: petición + repintado de TODAS
+//    las tarjetas en cada cambio de pestaña).
+//  - Las llamadas tras una acción (subir, editar, borrar, mover...) van sin opciones: siempre piden
+//    datos nuevos y repintan.
+//  - secuenciaCargaMedia descarta respuestas viejas que lleguen después de otra más reciente.
+const MEDIA_FRESCO_MS = 20000;
+let mediaCargadaEn = 0;
+let mediaFirma = "";
+let cargaContenidoEnCurso = null;
+let secuenciaCargaMedia = 0;
+async function cargaContenido(opciones) {
+  const suave = !!(opciones && opciones.suave);
   const cont = document.getElementById("galeriaContenido");
   if (!cont) return;
+  if (suave) {
+    if (cargaContenidoEnCurso) return cargaContenidoEnCurso;
+    if (mediaCargadaEn && Date.now() - mediaCargadaEn < MEDIA_FRESCO_MS) return;
+  }
+  const mia = ++secuenciaCargaMedia;
   // Igual que en cargaListaArticulos(): no vaciar la galería si ya había
   // contenido pintado de una visita anterior a esta subpestaña, para no
   // provocar el parpadeo de vaciar+rellenar en cada cambio de subpestaña.
@@ -13049,25 +13833,35 @@ async function cargaContenido() {
       ? "Fotos y vídeos subidos por el equipo de redacción. Se guardan en su calidad original: al descargarlos obtienes el archivo exacto que se subió, sin ninguna compresión. Cada persona solo puede editar lo que ha subido ella misma."
       : "Aquí ves las fotos y vídeos que has subido tú. Puedes editar el título, el club y la descripción cuando quieras.";
   }
-  try {
-    // Las carpetas se piden aparte y toleran fallos: sin ellas (o sin la
-    // migración) todo el contenido privado cae en "Sin carpeta".
-    const [{ media = [] }, resCarpetas] = await Promise.all([
-      apiFetch(`/api/media`),
-      apiFetch(`/api/media/carpetas`).catch(() => ({ carpetas: [] })),
-    ]);
-    mediaActual = media;
-    carpetasMedia = (resCarpetas && resCarpetas.carpetas) || [];
-    // Si otra persona borró la carpeta que tenías abierta, vuelves al inicio.
-    if (typeof vistaMedia === "number" && !carpetasMedia.some((c) => c.id === vistaMedia)) {
-      vistaMedia = null;
-      modoSeleccionMedia = false;
+  const carga = (async () => {
+    try {
+      // Las carpetas se piden aparte y toleran fallos: sin ellas (o sin la
+      // migración) todo el contenido privado cae en "Sin carpeta".
+      const [{ media = [] }, resCarpetas] = await Promise.all([
+        apiFetch(`/api/media`),
+        apiFetch(`/api/media/carpetas`).catch(() => ({ carpetas: [] })),
+      ]);
+      if (mia !== secuenciaCargaMedia) return; // ya hay una carga más reciente: esta respuesta no vale
+      const carpetas = (resCarpetas && resCarpetas.carpetas) || [];
+      const firma = suave ? JSON.stringify([media, carpetas]) : "";
+      mediaCargadaEn = Date.now();
+      if (suave && firma === mediaFirma && cont.querySelector(".tarjeta-media, .carpetas-grid")) return;
+      mediaFirma = firma;
+      mediaActual = media;
+      carpetasMedia = carpetas;
+      // Si otra persona borró la carpeta que tenías abierta, vuelves al inicio.
+      if (typeof vistaMedia === "number" && !carpetasMedia.some((c) => c.id === vistaMedia)) {
+        vistaMedia = null;
+        modoSeleccionMedia = false;
+      }
+      for (const idSel of [...seleccionMedia]) if (!mediaActual.some((m) => m.id === idSel)) seleccionMedia.delete(idSel);
+      pintarGaleriaContenido();
+    } catch (err) {
+      if (mia === secuenciaCargaMedia) cont.innerHTML = `<p>Error cargando el contenido: ${err.message}</p>`;
     }
-    for (const idSel of [...seleccionMedia]) if (!mediaActual.some((m) => m.id === idSel)) seleccionMedia.delete(idSel);
-    pintarGaleriaContenido();
-  } catch (err) {
-    cont.innerHTML = `<p>Error cargando el contenido: ${err.message}</p>`;
-  }
+  })();
+  cargaContenidoEnCurso = carga;
+  try { await carga; } finally { if (cargaContenidoEnCurso === carga) cargaContenidoEnCurso = null; }
 }
 
 // Al pasar el ratón por la preview de un vídeo, se inserta un <video> que
@@ -13111,7 +13905,9 @@ function desactivarPreviewVideoMedia(previewEl) {
 // dentro de cada carpeta). En modo selección las tarjetas que puedes mover
 // llevan un check; el resto se atenúan.
 function tarjetaMediaHtml(m) {
-    const seleccionable = m.visibilidad === "privado" && (USER.rol === "admin" || m.autor_id === USER.id);
+    // Se puede seleccionar todo lo que puedas editar (público o privado): sirve tanto para
+    // "Editar seleccionados" como para "Mover a" (esto último solo afecta al privado).
+    const seleccionable = USER.rol === "admin" || m.autor_id === USER.id;
     const esFoto = m.tipo === "foto";
     const urlDescarga = m.content_type === "enlace/externo" ? (m.cloudinary_url || "#") : `${eofBaseApiParaSubida()}/api/media/${m.id}/descargar?token=${encodeURIComponent(TOKEN_ACTUAL())}`;
     const urlMiniatura = miniaturaTarjetaCloudinary(m.cloudinary_url, esFoto ? "image" : "video", m.portada_segundo, m.portada_foco);
@@ -13212,7 +14008,11 @@ function pintarCabeceraCarpetasMedia() {
     tarjetas.push(`<button type="button" class="tarjeta-carpeta tarjeta-carpeta-nueva" data-accion="nueva">
       <span class="tarjeta-carpeta-icono">${iconoCarpetaMasAdmin}</span>
       <span class="tarjeta-carpeta-texto"><b>Nueva carpeta</b><small>Para contenido privado</small></span></button>`);
-    cab.innerHTML = `<div class="carpetas-grid">${tarjetas.join("")}</div>`;
+    const hayEditable = mediaActual.some((m) => esAdmin || m.autor_id === USER.id);
+    const accionesInicio = hayEditable && !modoSeleccionMedia
+      ? `<div class="carpetas-inicio-acciones"><div class="carpeta-acciones"><button type="button" data-accion="seleccionar">Seleccionar varios</button></div></div>`
+      : "";
+    cab.innerHTML = `${accionesInicio}<div class="carpetas-grid">${tarjetas.join("")}</div>`;
     if (subtitulo) {
       const nPublico = mediaActual.filter((m) => !esMediaPrivado(m)).length;
       subtitulo.innerHTML = `Contenido público <span>· ${textoArchivos(nPublico)}</span>`;
@@ -13242,6 +14042,7 @@ function pintarGaleriaContenido() {
   const cont = document.getElementById("galeriaContenido");
   if (!cont) return;
   const lista = mediaDeLaVista();
+  if (galeriaObservadorMedia) { galeriaObservadorMedia.disconnect(); galeriaObservadorMedia = null; }
 
   pintarCabeceraCarpetasMedia();
   cont.classList.toggle("galeria-contenido-seleccionable", modoSeleccionMedia);
@@ -13263,10 +14064,57 @@ function pintarGaleriaContenido() {
         : "Todavía no has subido ningún contenido.";
     }
     cont.innerHTML = `<p>${msg}</p>`;
+    galeriaPintarRestoMedia = null;
     return;
   }
 
-  cont.innerHTML = lista.map((m) => tarjetaMediaHtml(m)).join("");
+  pintarTarjetasMediaEnLotes(cont, lista);
+}
+
+// Pinta la galería por LOTES: las primeras tarjetas al instante y el resto según se hace scroll
+// (un IntersectionObserver vigila un centinela al final de la rejilla). Cada tarjeta lleva decenas de
+// nodos (hasta ~70 en la plantilla: iconos SVG, botones, metadatos): con cientos de archivos, pintarlas todas de golpe
+// bloqueaba el panel varios segundos. Si el navegador no tiene IntersectionObserver, se pinta todo.
+// Al repintar la MISMA vista (p. ej. al seleccionar) se conservan las tarjetas ya mostradas, para no
+// perder el sitio en una lista larga.
+const GALERIA_LOTE_MEDIA = 36;
+let galeriaObservadorMedia = null;
+let galeriaPintarRestoMedia = null; // pinta de golpe las tarjetas que faltan (la usa el rectángulo de selección)
+let galeriaClaveMedia = "";
+let galeriaPintadasMedia = 0;
+function pintarTarjetasMediaEnLotes(cont, lista) {
+  const clave = `${vistaMedia}|${filtroMediaActivo}`;
+  let objetivo = clave === galeriaClaveMedia ? Math.max(GALERIA_LOTE_MEDIA, galeriaPintadasMedia) : GALERIA_LOTE_MEDIA;
+  if (!("IntersectionObserver" in window)) objetivo = lista.length;
+  galeriaClaveMedia = clave;
+  let pintadas = 0;
+  cont.innerHTML = "";
+  const siguiente = (hasta) => {
+    const previo = cont.querySelector(":scope > .galeria-centinela");
+    if (previo) previo.remove();
+    const trozo = lista.slice(pintadas, hasta);
+    pintadas += trozo.length;
+    galeriaPintadasMedia = pintadas;
+    if (trozo.length) cont.insertAdjacentHTML("beforeend", trozo.map((m) => tarjetaMediaHtml(m)).join(""));
+    if (pintadas >= lista.length) return;
+    const centinela = document.createElement("div");
+    centinela.className = "galeria-centinela";
+    centinela.setAttribute("aria-hidden", "true");
+    cont.appendChild(centinela);
+    galeriaObservadorMedia = new IntersectionObserver((entradas) => {
+      if (!entradas.some((e) => e.isIntersecting)) return;
+      galeriaObservadorMedia.disconnect();
+      galeriaObservadorMedia = null;
+      siguiente(pintadas + GALERIA_LOTE_MEDIA);
+    }, { rootMargin: "900px 0px" });
+    galeriaObservadorMedia.observe(centinela);
+  };
+  galeriaPintarRestoMedia = () => {
+    if (pintadas >= lista.length) return;
+    if (galeriaObservadorMedia) { galeriaObservadorMedia.disconnect(); galeriaObservadorMedia = null; }
+    siguiente(lista.length);
+  };
+  siguiente(objetivo);
 }
 
 function abrirVistaMedia(vista) {
@@ -13302,10 +14150,13 @@ function actualizarBarraSeleccionMedia() {
   const n = seleccionMedia.size;
   document.getElementById("textoSeleccionMedia").textContent = n === 1 ? "1 seleccionado" : `${n} seleccionados`;
   document.getElementById("btnMoverSeleccionMedia").disabled = n === 0;
+  const btnEditar = document.getElementById("btnEditarSeleccionMedia");
+  if (btnEditar) btnEditar.disabled = n === 0;
 }
 
 function iniciarSeleccionMedia() {
   modoSeleccionMedia = true;
+  ultimaSeleccionMedia = null;
   seleccionMedia.clear();
   poblarDestinoMoverMedia();
   pintarGaleriaContenido();
@@ -13313,22 +14164,54 @@ function iniciarSeleccionMedia() {
 
 function salirSeleccionMedia() {
   modoSeleccionMedia = false;
+  ultimaSeleccionMedia = null;
   seleccionMedia.clear();
   pintarGaleriaContenido();
 }
 
-function alternarSeleccionMedia(id) {
+// Última tarjeta marcada con un clic normal: punto de partida de la selección por rango (Mayús + clic).
+let ultimaSeleccionMedia = null;
+const esMediaSeleccionable = (m) => USER.rol === "admin" || m.autor_id === USER.id;
+
+function alternarSeleccionMedia(id, enRango) {
+  if (enRango && ultimaSeleccionMedia !== null && ultimaSeleccionMedia !== id) {
+    // Mayús + clic: marca todas las seleccionables entre la última y esta, en el orden visible.
+    const lista = mediaDeLaVista().filter(esMediaSeleccionable).map((m) => m.id);
+    const a = lista.indexOf(ultimaSeleccionMedia);
+    const b = lista.indexOf(id);
+    if (a !== -1 && b !== -1) {
+      lista.slice(Math.min(a, b), Math.max(a, b) + 1).forEach((x) => seleccionMedia.add(x));
+      ultimaSeleccionMedia = id;
+      sincronizarMarcasSeleccionMedia();
+      actualizarBarraSeleccionMedia();
+      return;
+    }
+  }
   if (seleccionMedia.has(id)) seleccionMedia.delete(id); else seleccionMedia.add(id);
+  ultimaSeleccionMedia = id;
   const tarjeta = document.querySelector(`#galeriaContenido .tarjeta-media[data-media-id="${id}"]`);
   if (tarjeta) tarjeta.classList.toggle("seleccionada", seleccionMedia.has(id));
   actualizarBarraSeleccionMedia();
 }
 
 function seleccionarTodoMedia() {
-  const seleccionables = mediaDeLaVista().filter((m) => esMediaPrivado(m) && (USER.rol === "admin" || m.autor_id === USER.id));
+  const seleccionables = mediaDeLaVista().filter(esMediaSeleccionable);
   const todos = seleccionables.length > 0 && seleccionables.every((m) => seleccionMedia.has(m.id));
   seleccionables.forEach((m) => { if (todos) seleccionMedia.delete(m.id); else seleccionMedia.add(m.id); });
-  pintarGaleriaContenido();
+  sincronizarMarcasSeleccionMedia();
+  actualizarBarraSeleccionMedia();
+}
+
+// Pone/quita la marca «seleccionada» solo en las tarjetas que ya están pintadas y solo si cambia
+// (antes "Seleccionar todo" y Mayús+clic repintaban la galería entera: cientos de tarjetas).
+// Las que aún no se han pintado nacen ya marcadas (tarjetaMediaHtml mira seleccionMedia).
+function sincronizarMarcasSeleccionMedia() {
+  const cont = document.getElementById("galeriaContenido");
+  if (!cont) return;
+  for (const el of cont.querySelectorAll(".tarjeta-media[data-seleccionable]")) {
+    const sel = seleccionMedia.has(Number(el.dataset.mediaId));
+    if (el.classList.contains("seleccionada") !== sel) el.classList.toggle("seleccionada", sel);
+  }
 }
 
 async function enviarMoverMedia(ids, carpetaId) {
@@ -13512,13 +14395,181 @@ function cerrarModalNombreCarpeta() {
       if (!tarjeta) return;
       ev.preventDefault();
       ev.stopPropagation();
-      if (tarjeta.dataset.seleccionable) alternarSeleccionMedia(Number(tarjeta.dataset.mediaId));
+      if (tarjeta.dataset.seleccionable) alternarSeleccionMedia(Number(tarjeta.dataset.mediaId), ev.shiftKey);
     }, true);
   }
   const on = (id, fn) => { const el = document.getElementById(id); if (el) el.addEventListener("click", fn); };
   on("btnSeleccionarTodoMedia", seleccionarTodoMedia);
   on("btnCancelarSeleccionMedia", salirSeleccionMedia);
   on("btnMoverSeleccionMedia", moverSeleccionMedia);
+})();
+
+// ---- Selección arrastrando con el ratón (rectángulo de selección) ----
+// En modo selección: mantén pulsado el botón izquierdo y arrastra para marcar de golpe todas las
+// tarjetas que toque el rectángulo. Sin tecla reemplaza la selección; con Ctrl/Cmd o Mayús la suma.
+// Se puede empezar en CUALQUIER punto del panel Contenido (huecos, márgenes, encima de una tarjeta);
+// si no se arrastra, el clic funciona como siempre. Cerca del borde de la ventana se desplaza solo.
+// Esc cancela el arrastre.
+// Rendimiento: las posiciones se miden UNA vez por fotograma (y solo se vuelven a medir si cambia el
+// tamaño de la página), el trabajo va en requestAnimationFrame y solo se tocan las tarjetas que
+// cambian de estado (leer y escribir en el DOM dentro del mismo bucle forzaba un recálculo por tarjeta).
+(function iniciarSeleccionArrastreMedia() {
+  const panel = document.getElementById("panel-contenido");
+  const cont = document.getElementById("galeriaContenido");
+  if (!panel || !cont) return;
+  const UMBRAL = 6;          // px que hay que mover antes de considerarlo un arrastre
+  const BORDE_SCROLL = 70;   // px al borde de la ventana donde empieza el auto-scroll
+  const EXCLUIDOS_INICIO = [
+    "button", "a", "select", "input", "textarea", "label", "summary", "[contenteditable]", "[role=button]",
+    "#barraSeleccionMedia", "#carpetasContenido", ".acciones-media",
+    "#menuLateral", "#menuLateralReserva", ".admin-header", ".modal-overlay", "[role=dialog]", "[aria-modal=true]",
+    ".eof-modal-fondo", ".eof-toast", "[class*=toast]",
+  ].join(",");
+  let est = null;
+
+  function iniciar(ev) {
+    if (!modoSeleccionMedia || ev.button !== 0 || ev.pointerType === "touch") return;
+    if (!cont.offsetParent) return; // la galería no se está viendo
+    // Se puede empezar en CUALQUIER punto de la página (también en los márgenes de fuera del panel),
+    // salvo en controles y en la interfaz fija: menú lateral, cabecera, ventanas modales, avisos…
+    if (ev.target.closest(EXCLUIDOS_INICIO)) return;
+    // Ni desde la barra de desplazamiento (de la ventana o de un contenedor).
+    if (ev.clientX >= document.documentElement.clientWidth) return;
+    if (ev.target.clientWidth && ev.offsetX > ev.target.clientWidth) return;
+    est = {
+      x0: ev.clientX, y0: ev.clientY, sx0: window.scrollX, sy0: window.scrollY,
+      x: ev.clientX, y: ev.clientY, activo: false, raf: 0,
+      aditivo: ev.ctrlKey || ev.metaKey || ev.shiftKey,
+      base: new Set(seleccionMedia), caja: null, items: [], alto: 0, ancho: 0,
+    };
+    // Sin esto el navegador arrastra la imagen o selecciona texto en vez de dibujar el rectángulo.
+    ev.preventDefault();
+    document.addEventListener("mousemove", mover, true);
+    document.addEventListener("mouseup", terminar, true);
+    document.addEventListener("keydown", tecla, true);
+  }
+
+  // Posiciones en coordenadas de documento (siguen valiendo aunque la página se desplace).
+  function medir() {
+    est.items = [...cont.querySelectorAll(".tarjeta-media[data-seleccionable]")].map((el) => {
+      const r = el.getBoundingClientRect();
+      const id = Number(el.dataset.mediaId);
+      return {
+        el, id, l: r.left + window.scrollX, t: r.top + window.scrollY, r: r.right + window.scrollX, b: r.bottom + window.scrollY,
+        sel: seleccionMedia.has(id), enCaja: el.classList.contains("sel-en-caja"),
+      };
+    });
+    est.alto = document.documentElement.scrollHeight;
+    est.ancho = cont.clientWidth;
+  }
+
+  function activar() {
+    est.activo = true;
+    // La galería pinta las tarjetas por lotes según se hace scroll: se pinta solo el RESTO (sin
+    // repintar las que ya hay) para poder marcar todas de una pasada.
+    if (typeof galeriaPintarRestoMedia === "function") galeriaPintarRestoMedia();
+    est.caja = document.createElement("div");
+    est.caja.className = "sel-marquee";
+    document.body.appendChild(est.caja);
+    document.body.classList.add("seleccionando-arrastre");
+    medir();
+  }
+
+  function actualizar() {
+    const dx0 = est.x0 + est.sx0, dy0 = est.y0 + est.sy0;
+    const dx1 = est.x + window.scrollX, dy1 = est.y + window.scrollY;
+    const L = Math.min(dx0, dx1), R = Math.max(dx0, dx1), T = Math.min(dy0, dy1), B = Math.max(dy0, dy1);
+    // Rectángulo dibujado en pantalla (viewport).
+    const c = est.caja.style;
+    c.left = (L - window.scrollX) + "px"; c.top = (T - window.scrollY) + "px";
+    c.width = (R - L) + "px"; c.height = (B - T) + "px";
+    let cambios = false;
+    for (const it of est.items) {
+      const dentro = it.l < R && it.r > L && it.t < B && it.b > T;
+      const sel = dentro || (est.aditivo && est.base.has(it.id));
+      if (sel !== it.sel) {
+        it.sel = sel;
+        it.el.classList.toggle("seleccionada", sel);
+        if (sel) seleccionMedia.add(it.id); else seleccionMedia.delete(it.id);
+        cambios = true;
+      }
+      if (dentro !== it.enCaja) { it.enCaja = dentro; it.el.classList.toggle("sel-en-caja", dentro); }
+    }
+    if (cambios) actualizarBarraSeleccionMedia();
+  }
+
+  function fotograma() {
+    if (!est) return;
+    est.raf = 0;
+    if (!est.activo) return;
+    // Auto-scroll cerca del borde de la ventana.
+    let v = 0;
+    if (est.y < BORDE_SCROLL) v = -Math.ceil((BORDE_SCROLL - est.y) / 4);
+    else if (est.y > window.innerHeight - BORDE_SCROLL) v = Math.ceil((est.y - (window.innerHeight - BORDE_SCROLL)) / 4);
+    if (v) {
+      const antes = window.scrollY;
+      window.scrollBy(0, v);
+      if (window.scrollY === antes) v = 0; // ya no hay más recorrido: se deja de animar
+    }
+    // Solo se vuelve a medir si la página cambió de tamaño (imágenes que cargan, ventana…).
+    if (document.documentElement.scrollHeight !== est.alto || cont.clientWidth !== est.ancho) medir();
+    actualizar();
+    if (v) est.raf = requestAnimationFrame(fotograma);
+  }
+
+  function pedir() { if (est && !est.raf) est.raf = requestAnimationFrame(fotograma); }
+
+  function mover(ev) {
+    if (!est) return;
+    est.x = ev.clientX; est.y = ev.clientY;
+    if (!est.activo) {
+      if (Math.hypot(est.x - est.x0, est.y - est.y0) < UMBRAL) return;
+      activar();
+    }
+    ev.preventDefault();
+    pedir();
+  }
+
+  function limpiar(restaurar) {
+    if (!est) return;
+    const e = est;
+    est = null;
+    document.removeEventListener("mousemove", mover, true);
+    document.removeEventListener("mouseup", terminar, true);
+    document.removeEventListener("keydown", tecla, true);
+    if (e.raf) cancelAnimationFrame(e.raf);
+    if (e.caja) e.caja.remove();
+    document.body.classList.remove("seleccionando-arrastre");
+    for (const it of e.items) if (it.enCaja) it.el.classList.remove("sel-en-caja");
+    if (restaurar) {
+      seleccionMedia.clear();
+      e.base.forEach((id) => seleccionMedia.add(id));
+      for (const it of e.items) it.el.classList.toggle("seleccionada", seleccionMedia.has(it.id));
+      actualizarBarraSeleccionMedia();
+    }
+    return e;
+  }
+
+  function terminar(ev) {
+    if (est && est.activo) {
+      if (ev && Number.isFinite(ev.clientX)) { est.x = ev.clientX; est.y = ev.clientY; }
+      actualizar(); // el último movimiento puede no haberse pintado aún
+    }
+    const e = limpiar(false);
+    if (!e || !e.activo) return;
+    // El clic que sigue al soltar no debe abrir ni marcar la tarjeta sobre la que se soltó.
+    const tragar = (evento) => { evento.stopPropagation(); evento.preventDefault(); };
+    window.addEventListener("click", tragar, true);
+    setTimeout(() => window.removeEventListener("click", tragar, true), 60);
+    ultimaSeleccionMedia = null;
+  }
+
+  function tecla(ev) {
+    if (ev.key === "Escape" && est) { ev.preventDefault(); ev.stopPropagation(); limpiar(true); }
+  }
+
+  // En captura: aunque otro manejador de la página pare el evento, el arrastre arranca igual.
+  document.addEventListener("mousedown", iniciar, true);
 })();
 
 // Contenido muy pesado: se abre el enlace externo (MediaFire, Drive...) en otra pestaña.
@@ -14512,9 +15563,10 @@ async function compartirMedia(id) {
 }
 
 async function eliminarMedia(id) {
-  if (!(await EOF.confirmar("¿Eliminar este archivo? Esta acción no se puede deshacer.", { peligroso: true, textoConfirmar: "Eliminar" }))) return;
+  if (!(await EOF.confirmar("¿Eliminar este archivo? Irá a la papelera 30 días; después se borra definitivamente.", { peligroso: true, textoConfirmar: "Eliminar" }))) return;
   try {
     await apiFetch(`/api/media/${id}`, { method: "DELETE" });
+    EOF.toast("Archivo movido a la papelera.", "exito");
     cargaContenido();
   } catch (err) {
     EOF.toast("Error al eliminar: " + err.message, "error");
@@ -14523,7 +15575,7 @@ async function eliminarMedia(id) {
 
 // ---------- USUARIOS (solo admins) ----------
 
-// Avisos de inactividad (correos automáticos a redactores que llevan 30 días
+// Avisos de inactividad (correos automáticos a redactores que llevan 35 días
 // sin subir nada). Los datos vienen de GET /api/users en u.inactividad y solo
 // aplican a redactores. Se muestran como un botón bajo el nivel, en la columna
 // "Situación" de la tabla de Usuarios; al pulsarlo se abre una ventana con una
@@ -14532,7 +15584,8 @@ async function eliminarMedia(id) {
 const USUARIOS_INACTIVIDAD = new Map(); // id -> usuario (lo rellena cargaUsuarios)
 let AVISOS_MODAL = null; // { u, pasos, max, n, i } del modal abierto
 const AVISOS_DIA_MS = 24 * 60 * 60 * 1000;
-const AVISOS_INTERVALO_DIAS = 5;
+const AVISOS_INTERVALO_DIAS = 30; // entre avisos (uno al mes)
+const AVISOS_ADMINS_DIAS = 5;      // tras el último aviso, antes de avisar a los Responsables
 
 const AVISOS_ICONOS = {
   sobre: `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m4 7.5 8 6 8-6"/></svg>`,
@@ -14556,25 +15609,27 @@ function sumarDiasISO(iso, dias) {
   return new Date(d.getTime() + dias * AVISOS_DIA_MS).toISOString();
 }
 
-// Resumen del estado de un usuario, o null si no aplica (admins y fotógrafos
-// no entran en el ciclo de avisos). clase: ok | aviso | grave | neutro.
+// Resumen del estado de un usuario, o null si no aplica (los admins no entran
+// en el ciclo de avisos; los fotógrafos sí, según las galerías de partido que cuelgan). clase: ok | aviso | grave | neutro.
 function estadoInactividadUsuario(u) {
-  if (u.rol !== "redactor" || !u.inactividad) return null;
+  if ((u.rol !== "redactor" && u.rol !== "fotografo") || !u.inactividad) return null;
   const i = u.inactividad;
   const max = i.avisos_maximo || 5;
   const n = i.avisos_enviados || 0;
   if (!u.activo) return { clase: "neutro", texto: "Cuenta inactiva", titulo: "No se avisa a cuentas desactivadas", puntos: false };
+  // Excepcionalidad de actividad en vigor: el servidor no le manda avisos ni avisa a los admins mientras dure.
+  if (i.excepcion_en_vigor) return { clase: "neutro", texto: "Excepcionalidad en vigor", titulo: "Tiene una excepcionalidad de actividad: no recibe avisos de inactividad mientras dure", puntos: false };
   if (!u.email || !String(u.email).trim()) return { clase: "aviso", texto: "Sin correo para avisos", titulo: "No ha puesto correo: no se le pueden mandar avisos de inactividad", puntos: false };
   if (i.admins_avisados_at) return { clase: "grave", texto: "Valorar expulsión", titulo: `Ha recibido los ${max} avisos y los admins ya han sido avisados: un admin debe decidir si procede la expulsión`, puntos: true };
   if (n >= max) return { clase: "grave", texto: `${n} de ${max} avisos`, titulo: "Ha recibido todos los avisos", puntos: true };
   if (n > 0) return { clase: "aviso", texto: `${n} de ${max} avisos`, titulo: "Avisos de inactividad enviados en el ciclo actual", puntos: true };
-  if (i.dias_sin_subir !== null && i.dias_sin_subir !== undefined && i.dias_sin_subir >= (i.dias_hasta_primer_aviso || 30)) {
+  if (i.dias_sin_subir !== null && i.dias_sin_subir !== undefined && i.dias_sin_subir >= (i.dias_hasta_primer_aviso || 35)) {
     return { clase: "aviso", texto: "Primer aviso próximo", titulo: "Ya cumple los días de inactividad: el primer aviso saldrá en la próxima pasada diaria", puntos: true };
   }
   return { clase: "ok", texto: "Sin avisos", titulo: "No ha recibido avisos de inactividad", puntos: true };
 }
 
-function botonAvisosUsuario(u) {
+function botonAvisosUsuario(u, soloInfo) {
   const est = estadoInactividadUsuario(u);
   if (!est) return "";
   const max = u.inactividad.avisos_maximo || 5;
@@ -14582,6 +15637,11 @@ function botonAvisosUsuario(u) {
   const puntos = est.puntos
     ? `<span class="avisos-btn-puntos" aria-hidden="true">${Array.from({ length: max }, (_, k) => `<i class="${k < n ? "on" : ""}"></i>`).join("")}</span>`
     : "";
+  if (soloInfo) {
+    return `<span class="avisos-btn avisos-btn-info av-${est.clase}" title="${escapeHtml(est.titulo)} · el detalle está en Gestionar > Cuenta">` +
+      `<span class="avisos-btn-icono">${AVISOS_ICONOS.sobre}</span>` +
+      `<span class="avisos-btn-texto">${escapeHtml(est.texto)}</span>${puntos}</span>`;
+  }
   return `<button type="button" class="avisos-btn av-${est.clase}" title="${escapeHtml(est.titulo)} · clic para ver el detalle" onclick="abrirModalAvisosUsuario(${u.id})">` +
     `<span class="avisos-btn-icono">${AVISOS_ICONOS.sobre}</span>` +
     `<span class="avisos-btn-texto">${escapeHtml(est.texto)}</span>${puntos}` +
@@ -14592,7 +15652,7 @@ function botonAvisosUsuario(u) {
 function metaAvisoInactividad(k, max, nombre) {
   if (k > max) {
     return {
-      tipo: "Aviso a los administradores",
+      tipo: "Aviso a los Responsables",
       asunto: `Se debe expulsar a ${nombre} por inactividad`,
       resumen: "Correo a todos los admins: el redactor ha recibido los avisos y sigue sin subir nada. La expulsión no es automática: la decide un admin desde esta tabla.",
     };
@@ -14626,7 +15686,7 @@ function pasosInactividadUsuario(u) {
   const i = u.inactividad;
   const max = i.avisos_maximo || 5;
   const n = i.avisos_enviados || 0;
-  const diasPrimer = i.dias_hasta_primer_aviso || 30;
+  const diasPrimer = i.dias_hasta_primer_aviso || 35;
   const registrados = new Map((i.avisos || []).map((a) => [Number(a.numero), a]));
   const tieneCorreo = !!(u.email && String(u.email).trim());
   let bloqueo = null;
@@ -14662,7 +15722,13 @@ function pasosInactividadUsuario(u) {
     } else {
       const siguiente = esAdmins ? n >= max : k === n + 1;
       paso.estado = siguiente ? "siguiente" : "pendiente";
-      paso.fecha = sumarDiasISO(baseSiguiente, AVISOS_INTERVALO_DIAS * (k - (n + 1)));
+      if (esAdmins) {
+        paso.fecha = n >= max
+          ? sumarDiasISO(i.ultimo_aviso_at, AVISOS_ADMINS_DIAS)
+          : sumarDiasISO(sumarDiasISO(baseSiguiente, AVISOS_INTERVALO_DIAS * (max - (n + 1))), AVISOS_ADMINS_DIAS);
+      } else {
+        paso.fecha = sumarDiasISO(baseSiguiente, AVISOS_INTERVALO_DIAS * (k - (n + 1)));
+      }
       paso.bloqueo = bloqueo;
       paso.yaToca = !!paso.fecha && new Date(paso.fecha).getTime() <= ahora;
     }
@@ -14686,7 +15752,7 @@ function htmlDetalleAviso(paso, ctx) {
   if (paso.estado === "enviado") {
     const f = fechaAvisoInactividad(paso.fecha, paso.conHora);
     filas += filaAviso(paso.esAdmins ? "Admins avisados el" : "Enviado el", paso.estimada ? `≈ ${f || "—"} <span class="avisos-etiqueta-est">fecha estimada</span>` : (f || "—"));
-    filas += filaAviso("Enviado a", paso.esAdmins ? "Todos los administradores activos" : correo);
+    filas += filaAviso("Enviado a", paso.esAdmins ? "Todos los Responsables activos" : correo);
     filas += filaAviso("Asunto", escapeHtml(paso.meta.asunto));
     if (!paso.esAdmins && paso.dias !== null && paso.dias !== undefined) filas += filaAviso("Sin subir nada ese día", `${paso.dias} día${paso.dias === 1 ? "" : "s"}`);
   } else {
@@ -14699,9 +15765,9 @@ function htmlDetalleAviso(paso, ctx) {
     if (paso.bloqueo) filas += filaAviso("Estado", `<span class="avisos-pausa-txt">En pausa:</span> ${escapeHtml(paso.bloqueo)}`);
     filas += filaAviso(paso.esAdmins ? "Se avisará" : "Se enviará", cuando);
     filas += filaAviso("Condición", paso.esAdmins
-      ? `Que pasen ${AVISOS_INTERVALO_DIAS} días desde el aviso ${ctx.max} sin que suba ninguna noticia`
-      : (paso.k === 1 ? "Que cumpla 30 días sin subir ninguna noticia" : `Que pasen ${AVISOS_INTERVALO_DIAS} días desde el aviso ${paso.k - 1} sin que suba nada`));
-    filas += filaAviso(paso.esAdmins ? "Destinatarios" : "Se enviará a", paso.esAdmins ? "Todos los administradores activos" : correo);
+      ? `Que pasen ${AVISOS_ADMINS_DIAS} días desde el aviso ${ctx.max} sin que suba ${u.rol === "fotografo" ? "ninguna galería de partido" : "ninguna noticia"}`
+      : (paso.k === 1 ? `Que cumpla ${(ctx.i && ctx.i.dias_hasta_primer_aviso) || 35} días sin ${u.rol === "fotografo" ? "colgar ninguna galería de partido" : "subir ninguna noticia"}` : `Que pasen ${AVISOS_INTERVALO_DIAS} días desde el aviso ${paso.k - 1} sin que suba nada`));
+    filas += filaAviso(paso.esAdmins ? "Destinatarios" : "Se enviará a", paso.esAdmins ? "Todos los Responsables activos" : correo);
     filas += filaAviso("Asunto", escapeHtml(paso.meta.asunto));
   }
 
@@ -14742,7 +15808,7 @@ function abrirModalAvisosUsuario(id) {
   const dias = i.dias_sin_subir;
   const tarjetas = `<div class="avisos-stats">
       <div class="avisos-stat avisos-stat-principal"><span class="avisos-stat-num">${dias === null || dias === undefined ? "—" : dias}</span><span class="avisos-stat-lbl">${dias === 1 ? "día sin subir" : "días sin subir"}</span></div>
-      <div class="avisos-stat"><span class="avisos-stat-val">${i.ultima_noticia ? fechaAvisoInactividad(i.ultima_noticia) : "Nunca"}</span><span class="avisos-stat-lbl">Última noticia</span></div>
+      <div class="avisos-stat"><span class="avisos-stat-val">${i.ultima_noticia ? fechaAvisoInactividad(i.ultima_noticia) : "Nunca"}</span><span class="avisos-stat-lbl">${u.rol === "fotografo" ? "Última galería de partido" : "Última noticia"}</span></div>
       <div class="avisos-stat"><span class="avisos-stat-val">${fechaAvisoInactividad(u.created_at) || "—"}</span><span class="avisos-stat-lbl">Cuenta creada</span></div>
     </div>`;
 
@@ -14763,7 +15829,7 @@ function abrirModalAvisosUsuario(id) {
     </div>`;
 
   const ayuda = `<details class="avisos-ayuda"><summary>Cómo funciona el ciclo de avisos</summary>
-      <p>El primer aviso sale a los ${i.dias_hasta_primer_aviso || 30} días sin subir nada; después, uno cada ${AVISOS_INTERVALO_DIAS} días hasta ${max}. El último cita el apartado 3.6 (Compromiso) de la guía del medio. Cinco días después, si sigue sin subir nada, se avisa a los admins. Si sube una noticia, el contador vuelve a cero. Los correos salen en una pasada diaria, a partir de las 10:00 (hora de Madrid).</p>
+      <p>El primer aviso sale a los ${i.dias_hasta_primer_aviso || 35} días sin subir nada; después, uno cada ${AVISOS_INTERVALO_DIAS} días hasta ${max}. El último cita el apartado 3.6 (Compromiso) de la guía del medio. Cinco días después, si sigue sin subir nada, se avisa a los admins. Si sube una noticia, el contador vuelve a cero. Los correos salen en una pasada diaria, a partir de las 10:00 (hora de Madrid).</p>
     </details>`;
 
   document.getElementById("avisosUsuarioContenido").innerHTML =
@@ -14827,7 +15893,7 @@ function cerrarModalAvisosUsuario() {
 //   - se reintenta solo cada 20 s mientras esté en respaldo o sin datos;
 //   - bloquea crear/editar/borrar mientras el failover esté abierto.
 // ---------------------------------------------------------------------
-const USUARIOS_FILTRO = { texto: "", rol: "todos", estado: "todos", orden: "nombre" };
+const USUARIOS_FILTRO = { texto: "", rol: "todos", estado: "todos", grupo: "todos", orden: "nombre" };
 const USUARIOS_CACHE_KEY = "eof_usuarios_cache_v1";
 const USUARIOS_REINTENTO_MS = 20000;
 const USUARIOS_TIMEOUT_MS = 20000;
@@ -14919,7 +15985,8 @@ function usuarioCoincideBusqueda(u, q) {
   const equipos = Array.isArray(u.equipo) ? u.equipo : (u.equipo ? [u.equipo] : []);
   let cats = [];
   try { cats = (u.categorias_fijas || []).map(categoriaLabel); } catch {}
-  const pajar = usuarioNormalizar([u.username, u.nombre, u.email, "#" + u.id, ...equipos, ...cats].join(" "));
+  const grupo = window.EOFGruposTrabajo ? EOFGruposTrabajo.nombreDe(u.grupo_trabajo) : "";
+  const pajar = usuarioNormalizar([u.username, u.nombre, u.email, "#" + u.id, ...equipos, ...cats, grupo, u.cargo || "", ...(u.funciones || [])].join(" "));
   return q.split(/\s+/).filter(Boolean).every(t => pajar.includes(t));
 }
 
@@ -14928,14 +15995,15 @@ function usuarioCoincideBusqueda(u, q) {
 // solo contaba lo primero y casi nunca salía nadie; así el filtro sirve para
 // ver de un vistazo a quién hay que mover. Usa u.inactividad (GET /api/users).
 function usuarioDiasSinPublicar(u) {
-  if (u.rol !== "redactor" || !u.activo || !u.inactividad) return null;
+  if ((u.rol !== "redactor" && u.rol !== "fotografo") || !u.activo || !u.inactividad) return null;
   const d = u.inactividad.dias_sin_subir;
   return (d === null || d === undefined) ? null : Number(d);
 }
 
 function usuarioInactivoPorActividad(u) {
+  if (u.inactividad && u.inactividad.excepcion_en_vigor) return false; // con excepcionalidad no cuenta como inactivo
   const d = usuarioDiasSinPublicar(u);
-  return d !== null && d >= ((u.inactividad && u.inactividad.dias_hasta_primer_aviso) || 30);
+  return d !== null && d >= ((u.inactividad && u.inactividad.dias_hasta_primer_aviso) || 35);
 }
 
 function usuarioEsInactivo(u) {
@@ -14949,6 +16017,9 @@ function usuariosFiltrados() {
     if (USUARIOS_FILTRO.estado === "activos" && !u.activo) return false;
     if (USUARIOS_FILTRO.estado === "inactivos" && !usuarioEsInactivo(u)) return false;
     if (USUARIOS_FILTRO.estado === "sin_acceso" && !usuarioSinPrimerAcceso(u)) return false;
+    // Los grupos de trabajo son solo de redactores y admins: "Sin grupo" no incluye a los fotógrafos.
+    if (USUARIOS_FILTRO.grupo === "ninguno" && (u.grupo_trabajo || u.rol === "fotografo")) return false;
+    if (USUARIOS_FILTRO.grupo !== "todos" && USUARIOS_FILTRO.grupo !== "ninguno" && u.grupo_trabajo !== USUARIOS_FILTRO.grupo) return false;
     return usuarioCoincideBusqueda(u, q);
   });
   const cmpNombre = (x, y) => String(x.nombre || "").localeCompare(String(y.nombre || ""), "es", { sensitivity: "base" });
@@ -14979,6 +16050,8 @@ function montarToolbarUsuarios() {
     USUARIOS_FILTRO.orden = e.target.value;
     renderTablaUsuarios();
   });
+  // El filtro por grupo de trabajo y el botón de gestionarlos viven en la barra de grupos
+  // (#usuariosGruposBarra), que pinta y gestiona grupos-trabajo.js.
   document.getElementById("usuariosChipsRol")?.addEventListener("click", (e) => {
     const b = e.target.closest("button[data-rol]");
     if (!b) return;
@@ -15004,9 +16077,10 @@ function montarToolbarUsuarios() {
 }
 
 function limpiarFiltrosUsuarios() {
-  USUARIOS_FILTRO.texto = ""; USUARIOS_FILTRO.rol = "todos"; USUARIOS_FILTRO.estado = "todos";
+  USUARIOS_FILTRO.texto = ""; USUARIOS_FILTRO.rol = "todos"; USUARIOS_FILTRO.estado = "todos"; USUARIOS_FILTRO.grupo = "todos";
   const buscador = document.getElementById("usuariosBuscar");
   if (buscador) buscador.value = "";
+  if (window.EOFGruposTrabajo) EOFGruposTrabajo.rellenarFiltro();
   renderTablaUsuarios();
 }
 
@@ -15065,32 +16139,28 @@ function filaUsuarioHTML(u) {
       return `
       <tr class="${u.activo ? "" : "fila-usuario-inactiva"}">
         <td data-label="Usuario"><span class="celda-usuario">${avatarHTML}<span class="usuario-datos"><span class="usuario-nombre">${escapeHtml(u.username)}</span> <span class="id-usuario-panel" title="ID de usuario (para la ficha de cuentas de X)">#${u.id}</span></span></span></td>
-        <td data-label="Nombre">${escapeHtml(u.nombre)}${Number(u.sin_apellidos) === 1 ? `<span class="usuario-alta" title="Firma solo con su nombre: no se le piden apellidos">Firma solo con nombre</span>` : ""}${altaTxt ? `<span class="usuario-alta">Alta: ${altaTxt}</span>` : ""}</td>
+        <td data-label="Nombre">${escapeHtml(u.nombre)}${window.EOFGruposTrabajo ? EOFGruposTrabajo.cargoHTML(u) : ""}${Number(u.sin_apellidos) === 1 ? `<span class="usuario-alta" title="Firma solo con su nombre: no se le piden apellidos">Firma solo con nombre</span>` : ""}${Number(u.anonimo) === 1 ? `<span class="usuario-alta" title="Colaborador anónimo: lo que publica sale sin su nombre">Anónimo</span>` : ""}${altaTxt ? `<span class="usuario-alta">Alta: ${altaTxt}</span>` : ""}</td>
         <td data-label="Rol">
-          <select class="select-rol rol-${u.rol}" aria-label="Rol de ${escapeHtml(u.username)}" onchange="this.className='select-rol rol-'+this.value; cambiarRolUsuario(${u.id}, this.value)" ${u.id === USER.id ? "disabled title='No puedes cambiar tu propio rol'" : ""}>
-            <option value="redactor" ${u.rol === "redactor" ? "selected" : ""}>Redactor</option>
-            <option value="fotografo" ${u.rol === "fotografo" ? "selected" : ""}>Fotógrafo</option>
-            <option value="admin" ${u.rol === "admin" ? "selected" : ""}>Administrador</option>
-          </select>
+          ${window.EOFGruposTrabajo && EOFGruposTrabajo.rolHTML
+            ? EOFGruposTrabajo.rolHTML(u)
+            : `<span class="gc-rol-etq gc-rol-${escapeHtml(u.rol)}">${u.rol === "admin" ? "Responsable" : (u.rol === "fotografo" ? "Fotógrafo" : "Redactor")}</span>`}
           ${insignia2faUsuario(u)}
         </td>
         <td data-label="Correo">${u.email ? escapeHtml(u.email) : `<span class="usuario-sin-correo">Sin correo</span>`}${sinAcceso ? `<span class="usuario-sin-acceso" title="Todavía no ha iniciado sesión nunca">Aún no ha entrado</span>` : ""}</td>
         <td data-label="Equipo y categoría">
-          <button type="button" class="editar btn-equipos-usuario" onclick='abrirModalEquiposUsuario(${u.id}, ${argJs(u.nombre)}, ${argJs(equipos)}, ${argJs(u.categorias_fijas || [])})'>${etiquetaBoton}</button>
+          <span class="usuario-equipo-txt${partesEtiqueta.length ? "" : " usuario-equipo-vacio"}${nivelEsAdmin ? " usuario-equipo-bloqueado" : ""}"${nivelEsAdmin ? ' aria-disabled="true" title="Los Responsables se dedican solo a serlo: no se les asigna equipo ni categoría"' : ""}>${etiquetaBoton}</span>
+          ${window.EOFGruposTrabajo && EOFGruposTrabajo.grupoInfoHTML ? EOFGruposTrabajo.grupoInfoHTML(u) : ""}
         </td>
         <td data-label="Nivel y avisos">
           <div class="celda-situacion">
-            <button type="button" class="editar btn-nivel-usuario nivel-badge nivel-badge-${nivelMostrado}${esFotografoFila ? " nivel-badge-foto" : ""}" ${nivelEsAdmin ? `disabled title="Los administradores están siempre en el nivel máximo y no se puede editar"` : `onclick='abrirModalNivelUsuario(${u.id}, ${argJs(u.nombre)})'`}>${nivelTextoBoton}</button>
-            ${botonAvisosUsuario(u)}
+            <span class="nivel-badge nivel-badge-${nivelMostrado}${esFotografoFila ? " nivel-badge-foto" : ""}" title="${nivelEsAdmin ? "Los Responsables están siempre en el nivel máximo" : "Se cambia en Gestionar > Equipo y nivel"}">${nivelTextoBoton}</span>
+            ${botonAvisosUsuario(u, true)}
           </div>
         </td>
         <td data-label="Estado"><span class="badge-estado usuario-estado ${u.activo ? "publicado" : "borrador"}">${u.activo ? "Activo" : "Inactivo"}</span>${usuarioInactivoPorActividad(u) ? `<span class="usuario-sin-publicar" title="Lleva ${usuarioDiasSinPublicar(u)} días sin publicar ninguna noticia (su última referencia es ${u.inactividad.ultima_noticia ? "la última noticia" : "el alta de la cuenta"})">${usuarioDiasSinPublicar(u)} días sin publicar</span>` : ""}</td>
         <td class="acciones acciones-usuario" data-label="">
+          <button type="button" class="editar btn-gestionar-usuario" data-ce="cargos" data-ce-user="${u.id}" title="Rol, cargos, equipo, nivel y cuenta de ${escapeHtml(u.username)}" aria-label="Gestionar a ${escapeHtml(u.username)}">Gestionar</button>
           <button class="editar" onclick="window.open('../autor.html?id=${u.id}', '_blank')" title="Previsualizar el perfil público" aria-label="Ver perfil público de ${escapeHtml(u.username)}">Ver perfil</button>
-          <button class="editar" onclick='restablecerPasswordUsuario(${u.id}, ${argJs(u.username)}, ${argJs(u.nombre)})' title="Generar una contraseña nueva" aria-label="Generar contraseña nueva para ${escapeHtml(u.username)}">Nueva contraseña</button>
-          ${u.rol === "admin" ? "" : `<button class="editar" onclick="alternarSinApellidosUsuario(${u.id}, ${Number(u.sin_apellidos) === 1 ? 0 : 1})" title="${Number(u.sin_apellidos) === 1 ? "Volver a exigirle nombre y apellidos" : "Permitir que firme solo con su nombre (no se le pedirán apellidos)"}" aria-label="${Number(u.sin_apellidos) === 1 ? "Exigir apellidos a" : "Permitir firmar sin apellidos a"} ${escapeHtml(u.username)}">${Number(u.sin_apellidos) === 1 ? "Exigir apellidos" : "Sin apellidos"}</button>`}
-          <button aria-label="${u.activo ? 'Desactivar' : 'Activar'} a ${escapeHtml(u.username)}" onclick="alternarActivoUsuario(${u.id}, ${u.activo ? 0 : 1})" ${u.id === USER.id ? "disabled title='No puedes desactivar tu propia cuenta'" : ""}>${u.activo ? "Desactivar" : "Activar"}</button>
-          <button class="eliminar" aria-label="Eliminar a ${escapeHtml(u.username)}" onclick="eliminarUsuario(${u.id}, ${argJs(u.username)})" ${u.id === USER.id ? "disabled title='No puedes eliminar tu propia cuenta'" : ""}>Eliminar</button>
         </td>
       </tr>`;
 }
@@ -15106,15 +16176,10 @@ function insignia2faUsuario(u) {
   if (!u.totp_activo) {
     return `<span class="badge-2fa badge-2fa-pend" title="Todavía no ha configurado la verificación en dos pasos: la configurará en su próximo acceso">2FA pendiente</span>`;
   }
-  const esAdminFila = u.rol === "admin";
-  if (u.id === USER.id) {
-    const ayudaPropia = "Es tu cuenta: por seguridad no puedes restablecer tu propio 2FA desde aquí. Pulsa para abrir Ajustes de cuenta > Seguridad";
-    return `<button type="button" class="badge-2fa badge-2fa-ok badge-2fa-btn badge-2fa-btn-propio" onclick="irAAjustesCuenta('seguridad')" title="${escapeHtml(ayudaPropia)}" aria-label="${escapeHtml("2FA activo. " + ayudaPropia)}">2FA activo <span aria-hidden="true">›</span></button>`;
-  }
-  const ayuda = esAdminFila
-    ? "Pulsa para restablecer su 2FA (si ha perdido el móvil y los códigos): lo configurará de nuevo en su próximo acceso"
-    : "Pulsa para desactivar su 2FA (si ha perdido el móvil y los códigos): volverá a entrar solo con contraseña";
-  return `<button type="button" class="badge-2fa badge-2fa-ok badge-2fa-btn" onclick='restablecerDosPasosUsuario(${u.id}, ${argJs(u.username)}, ${argJs(u.rol)})' title="${escapeHtml(ayuda)}" aria-label="${escapeHtml("2FA activo de " + u.username + ". " + ayuda)}">2FA activo <span aria-hidden="true">✕</span></button>`;
+  const ayuda = u.id === USER.id
+    ? "Es tu cuenta: gestiónala en Ajustes de cuenta > Seguridad"
+    : "Verificación en dos pasos activa. Para restablecerla: Gestionar > Cuenta";
+  return `<span class="badge-2fa badge-2fa-ok" title="${escapeHtml(ayuda)}">2FA activo</span>`;
 }
 
 function filaUsuarioFallbackHTML(u) {
@@ -15155,7 +16220,7 @@ function renderTablaUsuarios() {
   setStat("statUsuSinAcceso", cuenta.sin_acceso);
 
   const users = usuariosFiltrados();
-  const hayFiltro = USUARIOS_FILTRO.texto.trim() || USUARIOS_FILTRO.rol !== "todos" || USUARIOS_FILTRO.estado !== "todos";
+  const hayFiltro = USUARIOS_FILTRO.texto.trim() || USUARIOS_FILTRO.rol !== "todos" || USUARIOS_FILTRO.estado !== "todos" || USUARIOS_FILTRO.grupo !== "todos";
   const resEl = document.getElementById("usuariosResultado");
   if (resEl) resEl.textContent = hayFiltro ? `Mostrando ${users.length} de ${todos.length} usuarios` : `${todos.length} ${todos.length === 1 ? "usuario" : "usuarios"}`;
   const limpiarEl = document.getElementById("usuariosLimpiar");
@@ -15223,6 +16288,7 @@ async function cargaUsuarios(opts = {}) {
         contadorEl.style.display = lista.length ? "flex" : "none";
       }
       renderTablaUsuarios();
+      if (window.EOFGruposTrabajo) { EOFGruposTrabajo.cargar(); EOFGruposTrabajo.rellenarFiltro(); }
       programarReintentoUsuarios();
       return;
     }
@@ -15782,8 +16848,22 @@ async function eliminarUsuario(id, username) {
   if (!usuariosPuedeEscribir()) return;
   if (!(await EOF.confirmar(`¿Seguro que quieres eliminar al usuario "${username}"? Esta acción no se puede deshacer.`, { peligroso: true, textoConfirmar: "Eliminar" }))) return;
   try {
-    await apiFetch(`/api/users/${id}`, { method: "DELETE" });
+    const r = await apiFetch(`/api/users/${id}`, { method: "DELETE" });
     cargaUsuarios();
+    // Si tenía respuesta / nombre en un formulario con alta de usuario (incorporación), el servidor los quita:
+    // se avisa y se recarga lo que el panel tuviera abierto para que no siga mostrando el nombre.
+    if (r && (r.respuestas_formulario_borradas || r.nombres_formulario_quitados)) {
+      const partes = [];
+      if (r.respuestas_formulario_borradas) partes.push(`${r.respuestas_formulario_borradas} respuesta${r.respuestas_formulario_borradas === 1 ? "" : "s"}`);
+      if (r.nombres_formulario_quitados) partes.push(`su nombre de la lista del formulario`);
+      EOF.toast(`Usuario eliminado. También se ha quitado: ${partes.join(" y ")}`, "exito");
+      try {
+        if (typeof FORM_ACTUAL !== "undefined" && FORM_ACTUAL) {
+          if (typeof cargarRespuestasFormulario === "function") cargarRespuestasFormulario();
+          if (typeof cargarInvitadosFormulario === "function") cargarInvitadosFormulario();
+        }
+      } catch (e) { /* el panel de formularios aún no se había abierto */ }
+    }
   } catch (err) {
     EOF.toast("Error: " + err.message, "error");
   }
@@ -15902,9 +16982,26 @@ function urlFormularioAcreditacion() {
   return location.origin + "/acreditacion";
 }
 
+// Un Sub-Responsable de las acreditaciones (rol no admin) solo gestiona las SOLICITUDES: no ve ni toca el
+// PIN, el modo de acceso, el enlace, la personalización del formulario ni la importación (el servidor
+// también lo impide: esos endpoints siguen siendo solo de un Responsable).
+function acredSoloGestion() { return !!USER && USER.rol !== "admin"; }
+function acredAplicarModoSoloGestion() {
+  const solo = acredSoloGestion();
+  ["acredModo", "acredAccesoCajas", "acredBtnImportar", "acredBtnPersonalizar"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.hidden = solo;
+  });
+  const aviso = document.getElementById("acredAvisoSub");
+  if (aviso) aviso.hidden = !solo;
+}
+
 async function cargaAcreditaciones() {
-  cargarPinAcreditacionPanel();
-  cargarAccesoAcreditacionPanel();
+  acredAplicarModoSoloGestion();
+  if (!acredSoloGestion()) {
+    cargarPinAcreditacionPanel();
+    cargarAccesoAcreditacionPanel();
+  }
   const enlace = document.getElementById("acredEnlace");
   if (enlace) enlace.value = urlFormularioAcreditacion();
   const cos = document.getElementById("tablaAcreditaciones");
@@ -15917,6 +17014,8 @@ async function cargaAcreditaciones() {
     ACRED_DATOS = resp.acreditaciones || [];
     ACRED_V2 = resp.v2 !== false;
     pintarAcreditaciones();
+    // Correos de prensa de los clubes (para «INFO CORREO»): en segundo plano; al llegar se repintan los botones.
+    acredCargarPrensa(true).then((p) => { if (p && p.length) pintarAcreditaciones(); });
     acredIniciarEnVivo();
     acredPintarEnVivo();
   } catch (err) {
@@ -16133,10 +17232,11 @@ function acredDiferencias(antes, despues) {
   const nombreEstado = (e) => (ACRED_ESTADOS[e] || e || "").toLowerCase();
   for (const a of despues) {
     const p = previas.get(a.id);
-    if (!p) { nuevas++; continue; }
+    const oculta = acredEsLejana(a) && !ACRED_VER_LEJANAS; // partido a más de 7 días: no se avisa
+    if (!p) { if (!oculta) nuevas++; continue; }
     if (p.estado !== a.estado) {
       cambiados.add(a.id);
-      msgs.push(`${a.revisado_por || "Alguien"} ha pasado a ${a.nombre} a ${nombreEstado(a.estado)}`);
+      if (!oculta) msgs.push(`${a.revisado_por || "Alguien"} ha pasado a ${a.nombre} a ${nombreEstado(a.estado)}`);
     } else if ((p.nota_admin || "") !== (a.nota_admin || "") || (p.revisado_at || "") !== (a.revisado_at || "") || (p.solicitada_at || "") !== (a.solicitada_at || "")) {
       cambiados.add(a.id);
     }
@@ -16245,6 +17345,124 @@ function acredEsDuplicada(a, idx) {
   return a.estado !== "cancelada" && !!a.email && !!a.jornada_partido && (idx.grupos[idx.clave(a)] || []).length > 1;
 }
 
+// ---------- Control de pedidos al club (doble check automático) ----------
+// «Pendiente» = nadie ha pedido todavía esa acreditación al club. Para que no se escape ninguna aunque se
+// vaya con prisa, el panel vigila solo, partido a partido (equipo + jornada), qué solicitudes siguen sin
+// pedir y las enseña arriba, las más urgentes primero. Además, al marcar «Solicitada» avisa si del mismo
+// partido quedan otras sin pedir. Todo se calcula en el navegador a partir de la lista: no guarda nada.
+const ACRED_URGENTE_DIAS = 2;   // partido a este número de días o menos = urgente
+const ACRED_CONTROL_MAX = 5;    // partidos que se ven de entrada (el resto, tras «Ver todos»)
+let ACRED_CONTROL_TODOS = false;
+const ACRED_YA_AVISADOS = new Set(); // avisos de «quedan sin pedir» que ya se descartaron (solo esta sesión)
+const acredClaveGrupo = (a) => acredNorm(a.equipo) + "|" + acredNorm(a.jornada_partido);
+const acredYaPedida = (a) => a.estado === "solicitada" || a.estado === "aprobada" || a.estado === "rechazada";
+const acredEnBandeja = (a) => ACRED_VER_LEJANAS || !acredEsLejana(a);
+function acredCuandoPartido(dias) {
+  if (dias === null) return { txt: "Sin fecha", cls: "" };
+  if (dias < 0) return { txt: dias === -1 ? "Jugado ayer" : `Jugado hace ${-dias} d`, cls: "pasado" };
+  if (dias === 0) return { txt: "Hoy", cls: "urgente" };
+  if (dias === 1) return { txt: "Mañana", cls: "urgente" };
+  return { txt: `En ${dias} días`, cls: dias <= ACRED_URGENTE_DIAS ? "urgente" : "pronto" };
+}
+// Partidos con solicitudes todavía «Pendiente», del más urgente al menos (los ya jugados, los primeros).
+function acredGruposSinPedir() {
+  const grupos = new Map();
+  ACRED_DATOS.forEach((a) => {
+    if (a.estado === "cancelada" || !acredEnBandeja(a)) return;
+    const k = acredClaveGrupo(a);
+    let g = grupos.get(k);
+    if (!g) { g = { clave: k, equipo: a.equipo || "", partido: a.jornada_partido || "", sinPedir: [], pedidas: 0, dias: null }; grupos.set(k, g); }
+    if (a.estado === "pendiente") g.sinPedir.push(a);
+    else if (acredYaPedida(a)) g.pedidas++;
+    const d = acredDiasParaPartido(a);
+    if (d !== null && (g.dias === null || d < g.dias)) g.dias = d;
+  });
+  return [...grupos.values()].filter((g) => g.sinPedir.length).sort((x, y) =>
+    ((x.dias === null) - (y.dias === null)) || ((x.dias || 0) - (y.dias || 0)) || x.equipo.localeCompare(y.equipo, "es", { sensitivity: "base" }));
+}
+function acredPintarControl() {
+  const el = document.getElementById("acredControl");
+  if (!el) return;
+  if (!ACRED_DATOS.length) { el.hidden = true; el.innerHTML = ""; return; }
+  el.hidden = false;
+  const grupos = acredGruposSinPedir();
+  const I = {
+    ok: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+    alerta: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4l9 16H3L12 4z"/><path d="M12 10v4M12 17.2v.01"/></svg>',
+  };
+  if (!grupos.length) {
+    el.className = "acred-control ok";
+    el.innerHTML = `<div class="acred-control-cab"><span class="acred-control-ico">${I.ok}</span><div><b>Todo pedido</b><small>No queda ninguna solicitud sin pedir al club.</small></div></div>`;
+    return;
+  }
+  const nPersonas = grupos.reduce((s, g) => s + g.sinPedir.length, 0);
+  const hayUrgentes = grupos.some((g) => g.dias !== null && g.dias <= ACRED_URGENTE_DIAS);
+  el.className = "acred-control " + (hayUrgentes ? "urgente" : "alerta");
+  const visibles = ACRED_CONTROL_TODOS ? grupos : grupos.slice(0, ACRED_CONTROL_MAX);
+  const filas = visibles.map((g) => {
+    const cu = acredCuandoPartido(g.dias);
+    const n = g.sinPedir.length;
+    const quien = g.sinPedir.slice(0, 3).map((a) => escapeHtml(a.nombre || "Sin nombre")).join(", ") + (n > 3 ? ` y ${n - 3} más` : "");
+    return `<li class="acred-control-fila">
+      <span class="acred-ctx ${cu.cls}">${escapeHtml(cu.txt)}</span>
+      <div class="acred-control-txt"><b>${escapeHtml(g.equipo || "Sin equipo")}</b><small>${escapeHtml(g.partido || "Partido sin indicar")}</small><small class="quien">${quien}</small></div>
+      <span class="acred-control-n"><b>${n}</b> sin pedir${g.pedidas ? ` · ${g.pedidas} ya pedida${g.pedidas === 1 ? "" : "s"}` : ""}</span>
+      <button type="button" class="acred-btn acred-btn-sol acred-btn-mini" data-acc="revisar" data-clave="${escapeHtml(g.clave)}" title="Filtra y selecciona estas solicitudes para pedirlas al club">Revisar</button>
+    </li>`;
+  }).join("");
+  const mas = grupos.length > ACRED_CONTROL_MAX
+    ? `<button type="button" class="acred-control-mas" data-acc="todos">${ACRED_CONTROL_TODOS ? "Ver menos" : `Ver los ${grupos.length} partidos`}</button>` : "";
+  el.innerHTML = `<div class="acred-control-cab"><span class="acred-control-ico">${I.alerta}</span><div><b>${nPersonas === 1 ? "Queda 1 solicitud sin pedir al club" : `Quedan ${nPersonas} solicitudes sin pedir al club`}</b><small>${grupos.length === 1 ? "De 1 partido" : `De ${grupos.length} partidos`}${hayUrgentes ? " · hay partidos muy cercanos o ya jugados" : ""}. Se actualiza solo al pasarlas a «Solicitada».</small></div></div><ul class="acred-control-lista">${filas}</ul>${mas}`;
+  el.onclick = (e) => {
+    const b = e.target.closest("[data-acc]");
+    if (!b) return;
+    if (b.dataset.acc === "todos") { ACRED_CONTROL_TODOS = !ACRED_CONTROL_TODOS; acredPintarControl(); }
+    else if (b.dataset.acc === "revisar") acredControlRevisar(b.dataset.clave);
+  };
+}
+// Deja a la vista solo estas solicitudes (filtro «Pendiente» + búsqueda del partido) y las selecciona: la barra de
+// abajo ofrece copiar el correo para el club y marcarlas como «Solicitada».
+function acredSeleccionarParaPedir(ids, partido) {
+  const b = document.getElementById("acredBuscador");
+  if (b) b.value = partido || "";
+  ACRED_FILTRO = "pendiente";
+  ACRED_VISTA = "";
+  ACRED_SEL.clear();
+  ids.forEach((id) => ACRED_SEL.add(id));
+  pintarAcreditaciones();
+  const lista = document.getElementById("tablaAcreditaciones");
+  if (lista) lista.scrollIntoView({ behavior: "smooth", block: "start" });
+  EOF.toast(`${ids.length} seleccionada${ids.length === 1 ? "" : "s"}: copia el correo para el club y márcalas como «Solicitada»`, "info", 6000);
+}
+function acredControlRevisar(clave) {
+  const ids = ACRED_DATOS.filter((a) => a.estado === "pendiente" && acredEnBandeja(a) && acredClaveGrupo(a) === clave).map((a) => a.id);
+  if (!ids.length) { pintarAcreditaciones(); return; }
+  const a0 = ACRED_DATOS.find((a) => a.id === ids[0]);
+  acredSeleccionarParaPedir(ids, a0 ? a0.jornada_partido : "");
+}
+// Segundo control, en el momento justo: tras marcar solicitadas unas cuantas, avisa si del mismo partido (mismo
+// equipo y jornada) siguen otras en «Pendiente». Si se descarta, no se repite para esas mismas personas.
+async function acredComprobarRestantes(ids) {
+  const movidas = ids.map((id) => ACRED_DATOS.find((x) => x.id === id)).filter(Boolean);
+  if (!movidas.length) return;
+  const claves = new Set(movidas.map(acredClaveGrupo));
+  const restantes = ACRED_DATOS.filter((a) => a.estado === "pendiente" && acredEnBandeja(a) && claves.has(acredClaveGrupo(a)));
+  if (!restantes.length) return;
+  const firma = restantes.map((a) => a.id).sort((x, y) => x - y).join(",");
+  if (ACRED_YA_AVISADOS.has(firma)) return;
+  const n = restantes.length;
+  const r = await acredConfirmar({
+    tono: "pend", icono: "pendiente",
+    titulo: n === 1 ? "Queda 1 solicitud sin pedir de este partido" : `Quedan ${n} solicitudes sin pedir de este partido`,
+    texto: `Acabas de marcar como solicitada${movidas.length === 1 ? ` a ${movidas[0].nombre || "una persona"}` : `s ${movidas.length} solicitudes`}, pero ${n === 1 ? "esta sigue" : "estas siguen"} en «Pendiente». ¿Se te ha pasado ${n === 1 ? "pedirla" : "pedirlas"}?`,
+    personas: restantes,
+    cancelar: "Ya las miraré",
+    botones: [{ id: "ver", texto: n === 1 ? "Seleccionarla ahora" : "Seleccionarlas ahora", clase: "acred-btn-sol" }],
+  });
+  if (r === "ver") acredSeleccionarParaPedir(restantes.map((a) => a.id), restantes[0].jornada_partido);
+  else ACRED_YA_AVISADOS.add(firma);
+}
+
 function acredVista(v) {
   ACRED_VISTA = ACRED_VISTA === v ? "" : (v || "");
   pintarAcreditaciones();
@@ -16257,6 +17475,31 @@ function acredBuscar(q) {
   pintarAcreditaciones();
 }
 
+// ---------- Solicitudes lejanas ocultas ----------
+// Una solicitud no aparece en la bandeja hasta que faltan 7 días (o menos) para el partido: antes no hay
+// nada que revisar. Las demás quedan ocultas (con un botón para verlas). La fecha sale de fecha_partido
+// (AAAA-MM-DD) o, si no está, del final del texto de la jornada que rellena el formulario: «... (dd/mm/aaaa hh:mm)».
+// Si no se puede saber la fecha (partido escrito a mano), la solicitud se ve siempre.
+const ACRED_DIAS_VISIBLES = 7;
+let ACRED_VER_LEJANAS = false;
+function acredFechaDelPartido(a) {
+  const iso = String(a.fecha_partido || "").match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return Date.UTC(+iso[1], +iso[2] - 1, +iso[3]);
+  const j = String(a.jornada_partido || "").match(/\((\d{2})\/(\d{2})\/(\d{4})(?:\s+\d{2}:\d{2})?\)\s*$/);
+  return j ? Date.UTC(+j[3], +j[2] - 1, +j[1]) : null;
+}
+function acredDiasParaPartido(a) {
+  const f = acredFechaDelPartido(a);
+  if (f === null) return null;
+  const hoy = new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Madrid" }).split("-").map(Number); // AAAA-MM-DD, hora de Madrid
+  return Math.round((f - Date.UTC(hoy[0], hoy[1] - 1, hoy[2])) / 86400000);
+}
+const acredEsLejana = (a) => { const d = acredDiasParaPartido(a); return d !== null && d > ACRED_DIAS_VISIBLES; };
+function acredAlternarLejanas() {
+  ACRED_VER_LEJANAS = !ACRED_VER_LEJANAS;
+  pintarAcreditaciones();
+}
+
 function pintarAcreditaciones() {
   const cos = document.getElementById("tablaAcreditaciones");
   if (!cos) return;
@@ -16266,17 +17509,22 @@ function pintarAcreditaciones() {
   const orden = (document.getElementById("acredOrden") || {}).value || "prioridad";
   if (buscador && buscador.parentNode) buscador.parentNode.classList.toggle("con-texto", !!qRaw);
   const idx = acredIndices();
+  // Base de trabajo: todas las solicitudes menos las lejanas (salvo que se pidan verlas).
+  const TODAS = ACRED_DATOS;
+  const nLejanas = TODAS.filter(acredEsLejana).length;
+  const BASE = ACRED_VER_LEJANAS ? TODAS : TODAS.filter((a) => !acredEsLejana(a));
 
   // Contadores (siempre sobre el total) y filtro de estado activo.
   const cuenta = { pendiente: 0, solicitada: 0, aprobada: 0, rechazada: 0, cancelada: 0 };
-  ACRED_DATOS.forEach((a) => { if (cuenta[a.estado] !== undefined) cuenta[a.estado]++; });
+  BASE.forEach((a) => { if (cuenta[a.estado] !== undefined) cuenta[a.estado]++; });
   const poner = (id, n) => { const e = document.getElementById(id); if (e) e.textContent = n; };
-  poner("acredNumTodas", ACRED_DATOS.length);
+  poner("acredNumTodas", BASE.length);
   poner("acredNumPendiente", cuenta.pendiente);
   poner("acredNumSolicitada", cuenta.solicitada);
   poner("acredNumAprobada", cuenta.aprobada);
   poner("acredNumRechazada", cuenta.rechazada);
   poner("acredNumCancelada", cuenta.cancelada);
+  acredPintarControl();
   document.querySelectorAll("#acredStats .acred-stat").forEach((b) => b.classList.toggle("activo", (b.dataset.filtro || "") === ACRED_FILTRO));
   const aviso = document.getElementById("acredAviso");
   if (aviso) aviso.hidden = ACRED_V2;
@@ -16288,8 +17536,8 @@ function pintarAcreditaciones() {
   };
   const defVistas = [
     ["", "Todas", null, ""],
-    ["atascadas", "Atascadas", ACRED_DATOS.filter(vistas.atascadas).length, `Pendientes sin revisar ${ACRED_DIAS_PENDIENTE}+ días o pedidas al club sin respuesta ${ACRED_DIAS_CLUB}+ días`],
-    ["duplicadas", "Duplicadas", ACRED_DATOS.filter(vistas.duplicadas).length, "Misma persona, equipo y partido repetidos"],
+    ["atascadas", "Atascadas", BASE.filter(vistas.atascadas).length, `Pendientes sin revisar ${ACRED_DIAS_PENDIENTE}+ días o pedidas al club sin respuesta ${ACRED_DIAS_CLUB}+ días`],
+    ["duplicadas", "Duplicadas", BASE.filter(vistas.duplicadas).length, "Misma persona, equipo y partido repetidos"],
   ];
   const contVistas = document.getElementById("acredVistas");
   if (contVistas) {
@@ -16298,7 +17546,7 @@ function pintarAcreditaciones() {
     ).join("");
   }
 
-  let lista = ACRED_DATOS.filter((a) => {
+  let lista = BASE.filter((a) => {
     if (ACRED_FILTRO && a.estado !== ACRED_FILTRO) return false;
     if (ACRED_VISTA && vistas[ACRED_VISTA] && !vistas[ACRED_VISTA](a)) return false;
     if (!q) return true;
@@ -16307,11 +17555,13 @@ function pintarAcreditaciones() {
   });
   const porCreada = (x, y) => String(y.created_at || "").localeCompare(String(x.created_at || "")) || y.id - x.id;
   const cmp = {
-    // Abiertas primero y, entre ellas, las que llevan más tiempo esperando.
+    // Primero las PENDIENTES (las que nadie ha tocado), después las solicitadas al club y al final las ya
+    // resueltas. Dentro de pendientes y solicitadas, las que llevan más tiempo esperando; en las resueltas, las más recientes.
     prioridad: (x, y) => {
-      const ax = ACRED_ABIERTO.includes(x.estado) ? 0 : 1, ay = ACRED_ABIERTO.includes(y.estado) ? 0 : 1;
-      if (ax !== ay) return ax - ay;
-      if (ax === 1) return porCreada(x, y);
+      const rango = (a) => (a.estado === "pendiente" ? 0 : a.estado === "solicitada" ? 1 : 2);
+      const rx = rango(x), ry = rango(y);
+      if (rx !== ry) return rx - ry;
+      if (rx === 2) return porCreada(x, y);
       return -porCreada(x, y);
     },
     recientes: porCreada,
@@ -16327,9 +17577,17 @@ function pintarAcreditaciones() {
 
   const resumen = document.getElementById("acredResumen");
   if (resumen) {
-    resumen.textContent = ACRED_DATOS.length
-      ? `Mostrando ${lista.length} de ${ACRED_DATOS.length} solicitudes` + (qRaw ? ` para “${qRaw}”` : "")
+    resumen.textContent = BASE.length
+      ? `Mostrando ${lista.length} de ${BASE.length} solicitudes` + (qRaw ? ` para “${qRaw}”` : "")
       : "";
+    if (nLejanas) {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "acred-lejanas-btn"; b.onclick = acredAlternarLejanas;
+      b.setAttribute("aria-pressed", ACRED_VER_LEJANAS ? "true" : "false");
+      b.title = `Solicitudes de partidos que quedan a más de ${ACRED_DIAS_VISIBLES} días: se muestran cuando falten ${ACRED_DIAS_VISIBLES} o menos`;
+      b.textContent = ACRED_VER_LEJANAS ? `Ocultar las ${nLejanas} lejanas` : `${nLejanas} ocultas (partido a más de ${ACRED_DIAS_VISIBLES} días) · Ver`;
+      resumen.append(" ", b);
+    }
   }
   const selTodos = document.getElementById("acredSelTodos");
   if (selTodos) {
@@ -16338,8 +17596,8 @@ function pintarAcreditaciones() {
   }
 
   if (!lista.length) {
-    cos.innerHTML = `<div class="acred-vacio">${ACRED_ICO.vacio}<strong>${ACRED_DATOS.length ? "Ninguna solicitud coincide" : "Todavía no hay solicitudes"}</strong>${
-      ACRED_DATOS.length ? "Prueba con otra búsqueda o cambia el filtro." : "Cuando alguien rellene el formulario aparecerá aquí. También puedes importar solicitudes desde un CSV."}</div>`;
+    cos.innerHTML = `<div class="acred-vacio">${ACRED_ICO.vacio}<strong>${BASE.length ? "Ninguna solicitud coincide" : (TODAS.length ? "No hay solicitudes por revisar todavía" : "Todavía no hay solicitudes")}</strong>${
+      BASE.length ? "Prueba con otra búsqueda o cambia el filtro." : TODAS.length ? `Las ${nLejanas} solicitudes que hay son de partidos que quedan a más de ${ACRED_DIAS_VISIBLES} días y se mostrarán cuando falten ${ACRED_DIAS_VISIBLES} o menos.` : "Cuando alguien rellene el formulario aparecerá aquí. También puedes importar solicitudes desde un CSV."}</div>`;
     acredPintarBarra();
     return;
   }
@@ -16408,7 +17666,7 @@ function acredPintarBarra() {
   barra.innerHTML = `
     <span class="acred-barra-n"><b>${n}</b> seleccionada${n === 1 ? "" : "s"}</span>
     <div class="acred-barra-acc">
-      <button type="button" class="acred-btn acred-btn-copiar" onclick="acredCopiarCorreoGrupo()" title="Copia un solo correo ya redactado para el club con todas las personas seleccionadas (no cambia ningún estado)">Copiar correo</button>
+      ${acredBotonCorreoGrupo()}
       <button type="button" class="acred-btn acred-btn-ok" onclick="acredLote('aprobada')">Aprobar</button>
       <button type="button" class="acred-btn acred-btn-sol" onclick="acredLote('solicitada')" title="Marca las seleccionadas como pedidas al club (y puedes avisar por correo a cada persona)">Solicitada</button>
       <button type="button" class="acred-btn acred-btn-no" onclick="acredLote('rechazada')">Rechazar</button>
@@ -16508,6 +17766,7 @@ async function acredLote(estado, idsPropios) {
     if (avisar) extra = r.correos_fallidos ? ` · ${r.correos_enviados} correos enviados, ${r.correos_fallidos} fallidos` : ` · ${r.correos_enviados} correos enviados`;
     const enConflicto = conflictos.size ? ` · ${conflictos.size} ya ${conflictos.size === 1 ? "la había" : "las habían"} cambiado otras personas` : "";
     EOF.toast(`${r.cambiadas} solicitud${r.cambiadas === 1 ? "" : "es"} → ${ACRED_ESTADOS[estado].toLowerCase()}${extra}${enConflicto}`, (r.correos_fallidos || (conflictos.size && !r.cambiadas)) ? "error" : "exito");
+    if (estado === "solicitada") acredComprobarRestantes(ids.filter((id) => !conflictos.has(id))).catch(() => {});
     if (conflictos.size) acredSincronizar().catch(() => {});
   } catch (err) {
     EOF.toast("Error: " + err.message, "error");
@@ -16526,7 +17785,8 @@ async function acredCopiarCorreoGrupo() {
 function acredStepper(a) {
   const est = a.estado;
   if (est === "cancelada") {
-    return `<div class="acred-pasos cancelada"><span class="acred-cancelada-et">Solicitud cancelada${a.revisado_at ? " · " + escapeHtml(acredHace(a.revisado_at)) : ""}</span></div>`;
+    const baja = acredEsBaja(a) ? acredMotivoDeBaja(a) : null;
+    return `<div class="acred-pasos cancelada"><span class="acred-cancelada-et">${acredEsBaja(a) ? acredTxtNoAsiste(a) + (baja ? " · " + escapeHtml(baja.et) : "") : "Solicitud cancelada"}${a.revisado_at ? " · " + escapeHtml(acredHace(a.revisado_at)) : ""}</span></div>`;
   }
   const resuelta = est === "aprobada" || est === "rechazada";
   const hechoSol = !!a.solicitada_at || est === "solicitada";
@@ -16618,7 +17878,7 @@ function acredCuerpoVista(a, q, idx) {
       </div>
       <div class="acred-bloque"><h4>Funciones durante la cobertura</h4><p class="acred-funciones">${a.funciones ? acredHl(a.funciones, q) : "—"}</p></div>
       <label for="acredNota-${a.id}">Nota interna (opcional)</label>
-      <textarea id="acredNota-${a.id}" maxlength="1000" rows="2" placeholder="Solo la ven los administradores" oninput="ACRED_NOTAS[${a.id}] = this.value">${escapeHtml(nota)}</textarea>
+      <textarea id="acredNota-${a.id}" maxlength="1000" rows="2" placeholder="Solo la ven los Responsables" oninput="ACRED_NOTAS[${a.id}] = this.value">${escapeHtml(nota)}</textarea>
       <div class="acred-correo-bloque">
         ${!resuelta ? `<label class="acred-correo-chk"><input type="checkbox" id="acredCorreo-${a.id}" ${ACRED_TXT["c" + a.id] === false ? "" : "checked"} onchange="ACRED_TXT['c${a.id}'] = this.checked"> Avisar por correo a <b>${escapeHtml(a.email || "la persona")}</b> al aprobar o rechazar</label>` : ""}
         <label for="acredRecogida-${a.id}">Dónde y cuándo recogerla (se envía al aprobar o con «Enviar indicaciones»)</label>
@@ -16631,12 +17891,14 @@ function acredCuerpoVista(a, q, idx) {
         ${principal}
         <span class="espacio"></span>
         <button type="button" class="acred-btn acred-btn-sec" onclick="resolverAcreditacion(${a.id}, '${est}')" title="Guarda la nota interna sin cambiar el estado">Guardar nota</button>
-        <button type="button" class="acred-btn acred-btn-copiar" onclick="copiarCorreoClubAcreditacion(${a.id})" title="Copia el correo ya redactado para pegarlo y enviarlo al club (no cambia el estado)">Copiar correo</button>
+        ${acredBotonCorreo(a)}
         ${est === "aprobada" && acredEsFotografo(a) ? `<button type="button" class="acred-btn acred-btn-copiar" onclick="copiarCorreoGaleriaAcreditacion(${a.id})" title="Copia el correo para preguntar al fotógrafo si ya ha subido la galería del partido (no cambia el estado)">Correo de galería</button>
         <button type="button" class="acred-btn acred-btn-sec" onclick="abrirCorreoGaleriaAcreditacion(${a.id})" title="Abre tu programa de correo con el mensaje de la galería ya escrito, dirigido al fotógrafo">Abrir en mi correo</button>` : ""}
         ${abierta ? `<button type="button" class="acred-btn acred-btn-sec" onclick="cambiarEstadoAcreditacion(${a.id}, 'cancelada')">Cancelar</button>` : ""}
+        ${est === "solicitada" || est === "aprobada" ? `<button type="button" class="acred-btn acred-btn-sec" onclick="acredBajaAbrir(${a.id})" title="${acredPartidoPasado(a) ? 'La persona no pudo asistir' : 'La persona ya no podrá asistir'}: la cancela y te prepara un correo formal de disculpas para el club">${acredTxtNoAsiste(a)}</button>` : ""}
+        ${acredEsBaja(a) ? `<button type="button" class="acred-btn acred-btn-info" onclick="acredAbrirDisculpas(${a.id})" title="Abre el correo formal de disculpas para el club, listo para copiar o enviar">Disculpas al club</button>` : ""}
         <button type="button" class="acred-btn acred-btn-sec" onclick="editarAcreditacion(${a.id})">Editar datos</button>
-        <button type="button" class="acred-btn acred-btn-peligro" onclick="eliminarAcreditacion(${a.id})">Eliminar</button>
+        ${acredSoloGestion() ? "" : `<button type="button" class="acred-btn acred-btn-peligro" onclick="eliminarAcreditacion(${a.id})">Eliminar</button>`}
       </div>
       <div class="acred-bloque acred-hist-bloque"><h4>Historial</h4><ol class="acred-hist" id="acredHist-${a.id}"><li class="acred-hist-cargando">Cargando…</li></ol></div>
     </div>`;
@@ -16966,6 +18228,439 @@ function acredConstruirCorreoClubGrupo(lista, idiomaForzado) {
   ].map((b) => b.join("\n")).join("\n\n");
 }
 
+// ----- Info: correo de prensa del club LOCAL (Relaciones institucionales) -----
+// Si el club que juega en casa (el que gestiona las acreditaciones) tiene un correo de prensa guardado en
+// Relaciones institucionales, el botón «Copiar correo» pasa a ser «Info» y abre un cuadro con el
+// destinatario, el asunto y el texto completo, listos para copiar. Si no lo tiene, todo sigue como siempre.
+let ACRED_PRENSA = null;       // null = sin cargar; [] = cargado y vacío
+let ACRED_PRENSA_PROM = null;
+function acredCargarPrensa(forzar) {
+  if (forzar) ACRED_PRENSA_PROM = null;
+  if (ACRED_PRENSA_PROM) return ACRED_PRENSA_PROM;
+  ACRED_PRENSA_PROM = apiFetch("/api/acreditaciones/contactos-prensa")
+    .then((r) => { ACRED_PRENSA = Array.isArray(r && r.contactos) ? r.contactos : []; return ACRED_PRENSA; })
+    .catch(() => { ACRED_PRENSA_PROM = null; return null; });
+  return ACRED_PRENSA_PROM;
+}
+const ACRED_CLUB_GENERICOS = new Set(["cd", "cf", "fc", "ud", "sd", "ad", "cp", "ce", "ue", "ae", "rcd", "rc", "sc", "scr", "club", "de", "del", "la", "el"]);
+function acredClaveClub(t) { return acredNorm(t).replace(/[^a-z0-9]+/g, " ").trim(); }
+function acredClaveClubFlexible(t) { return acredClaveClub(t).split(" ").filter((w) => w && !ACRED_CLUB_GENERICOS.has(w)).join(" "); }
+// Local y visitante a partir de «Jornada 5: Local - Visitante». null si no se pueden separar con seguridad.
+function acredLocalVisitante(jornadaPartido) {
+  let txt = String(jornadaPartido || "").replace(/\s+/g, " ").trim();
+  txt = txt.replace(/^(jornada|j\.?)\s*\d+\s*[:\-–—.,]?\s*/i, "").replace(/\(.*?\)/g, " ").trim();
+  const partes = txt.split(/\s+(?:-|–|—|vs\.?|v|contra)\s+|\s*\bvs\.?\s*/i).map((x) => x.trim()).filter(Boolean);
+  return partes.length === 2 ? { local: partes[0], visitante: partes[1] } : null;
+}
+// Contactos de prensa del club (los de «prensa» antes que los de «comunicación»). Primero coincidencia exacta del
+// nombre; si no, ignorando prefijos genéricos (CD, FC, UD…). Nunca por «contiene»: «Real Madrid» no es «Real Madrid Castilla».
+function acredContactosPrensaDe(club) {
+  if (!club || !ACRED_PRENSA || !ACRED_PRENSA.length) return [];
+  const k = acredClaveClub(club), kf = acredClaveClubFlexible(club);
+  let lista = ACRED_PRENSA.filter((c) => acredClaveClub(c.entidad) === k);
+  if (!lista.length && kf) lista = ACRED_PRENSA.filter((c) => acredClaveClubFlexible(c.entidad) === kf);
+  const prensa = lista.filter((c) => c.area === "prensa");
+  return prensa.length ? prensa : lista;
+}
+const ACRED_ASUNTO = {
+  es: (n, p) => `${n === 1 ? "Solicitud de acreditación de prensa" : "Solicitud de acreditaciones de prensa"} · ${p} · El Otro Fútbol`,
+  ca: (n, p) => `${n === 1 ? "Sol·licitud d'acreditació de premsa" : "Sol·licitud d'acreditacions de premsa"} · ${p} · El Otro Fútbol`,
+  eu: (n, p) => `${n === 1 ? "Prentsa-akreditazioaren eskaera" : "Prentsa-akreditazioen eskaera"} · ${p} · El Otro Fútbol`,
+  gl: (n, p) => `${n === 1 ? "Solicitude de acreditación de prensa" : "Solicitude de acreditacións de prensa"} · ${p} · El Otro Fútbol`,
+};
+// Comprobación barata (se usa al pintar cada tarjeta): ¿todas juegan en casa del mismo club y ese club tiene correo de prensa?
+function acredDestinoCorreo(lista) {
+  if (!lista || !lista.length) return null;
+  const lv = acredLocalVisitante(lista[0].jornada_partido);
+  if (!lv) return null;
+  const kLocal = acredClaveClub(lv.local);
+  for (const a of lista) {
+    const x = acredLocalVisitante(a.jornada_partido);
+    if (!x || acredClaveClub(x.local) !== kLocal) return null;
+  }
+  const contactos = acredContactosPrensaDe(lv.local);
+  return contactos.length ? { lv, contactos } : null;
+}
+// Todo lo que enseña el cuadro, o null si no aplica.
+function acredInfoCorreo(lista) {
+  const d = acredDestinoCorreo(lista);
+  if (!d) return null;
+  const { lv, contactos } = d;
+  const idioma = acredIdiomaCorreo(lv.local);
+  const comoLocal = lista.map((a) => ({ ...a, equipo: lv.local }));
+  const cuerpo = lista.length === 1 ? acredConstruirCorreoClub(comoLocal[0], idioma) : acredConstruirCorreoClubGrupo(comoLocal, idioma);
+  const asunto = (ACRED_ASUNTO[idioma] || ACRED_ASUNTO.es)(lista.length, `${lv.local} - ${lv.visitante}`);
+  const emails = [...new Set(contactos.map((c) => c.email))];
+  return { local: lv.local, visitante: lv.visitante, contactos, emails, idioma, asunto, cuerpo, n: lista.length };
+}
+function acredBotonCorreo(a) {
+  if (acredDestinoCorreo([a])) {
+    return `<button type="button" class="acred-btn acred-btn-info" onclick="acredAbrirInfoCorreo(${a.id})" title="Correo de prensa del club local, asunto y mensaje listos para copiar"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.6v.01"/></svg>Info</button>`;
+  }
+  return `<button type="button" class="acred-btn acred-btn-copiar" onclick="copiarCorreoClubAcreditacion(${a.id})" title="Copia el correo ya redactado para pegarlo y enviarlo al club (no cambia el estado)">Copiar correo</button>`;
+}
+function acredBotonCorreoGrupo() {
+  if (acredDestinoCorreo(acredSeleccionadas())) {
+    return `<button type="button" class="acred-btn acred-btn-info" onclick="acredAbrirInfoCorreoGrupo()" title="Correo de prensa del club local, asunto y un solo mensaje con todas las personas seleccionadas"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.6v.01"/></svg>Info</button>`;
+  }
+  return `<button type="button" class="acred-btn acred-btn-copiar" onclick="acredCopiarCorreoGrupo()" title="Copia un solo correo ya redactado para el club con todas las personas seleccionadas (no cambia ningún estado)">Copiar correo</button>`;
+}
+function acredAbrirInfoCorreo(id) {
+  const a = ACRED_DATOS.find((x) => x.id === id);
+  if (a) acredMostrarInfoCorreo(acredInfoCorreo([a]));
+}
+function acredAbrirInfoCorreoGrupo() {
+  const lista = acredSeleccionadas();
+  acredMostrarInfoCorreo(acredInfoCorreo(lista));
+}
+function acredMostrarInfoCorreo(info) {
+  if (!info) { EOF.toast("Este club no tiene correo de prensa en Relaciones institucionales", "error"); return; }
+  const I = {
+    copiar: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2.5"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>',
+    ok: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+    correo: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3.5 7.5l8.5 6 8.5-6"/></svg>',
+    abrir: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>',
+    asunto: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg>',
+    mensaje: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4V5z"/></svg>',
+    casa: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11l8-7 8 7M6 10v10h12V10"/></svg>',
+  };
+  const esc = escapeHtml;
+  const escudo = (nombre) => {
+    let url = "";
+    try { url = typeof escudoUrlAdmin === "function" ? escudoUrlAdmin(nombre) : ""; } catch { url = ""; }
+    const ini = esc(acredIniciales(nombre));
+    return `<span class="acred-info-escudo"><b>${ini}</b>${url ? `<img src="${esc(url)}" alt="" loading="lazy" onerror="this.remove()">` : ""}</span>`;
+  };
+  const idiomaChip = info.idioma !== "es" ? `<span class="acred-info-chip idioma">Correo en ${esc(ACRED_CORREO_TXT[info.idioma].nombreIdioma)}</span>` : "";
+  const destinos = info.contactos.map((c) => {
+    const quien = [c.nombre, c.cargo].filter(Boolean).join(" · ") || (c.area === "prensa" ? "Departamento de prensa" : "Comunicación");
+    return `<div class="acred-info-dest">
+      <span class="acred-info-avatar">${I.correo}</span>
+      <div class="acred-info-dest-txt"><b>${esc(c.email)}</b><small>${esc(quien)}</small></div>
+      <button type="button" class="acred-info-copiar" data-acc="email" data-v="${esc(c.email)}" aria-label="Copiar ${esc(c.email)}">${I.copiar}<em>Copiar</em></button>
+    </div>`;
+  }).join("");
+  const mini = (acc, txt) => `<button type="button" class="acred-info-copiar" data-acc="${acc}">${I.copiar}<em>${txt}</em></button>`;
+  const { ov, cerrar } = acredModal(`
+    <div class="acred-modal acred-info" role="dialog" aria-modal="true" aria-labelledby="acredInfoTit">
+      <div class="acred-info-hero">
+        <button type="button" class="acred-cerrar acred-info-x" data-cerrar aria-label="Cerrar">×</button>
+        <div class="acred-info-vs">
+          <div class="acred-info-eq local">${escudo(info.local)}<small>${I.casa} Local</small></div>
+          <span class="acred-info-vs-et">VS</span>
+          <div class="acred-info-eq">${escudo(info.visitante)}<small>Visitante</small></div>
+        </div>
+        <h3 id="acredInfoTit">${esc(info.local)}</h3>
+        <p>gestiona las acreditaciones de este partido · ${info.n === 1 ? "1 persona" : info.n + " personas"}</p>
+        <div class="acred-info-chips"><span class="acred-info-chip">${esc(info.local)} - ${esc(info.visitante)}</span>${idiomaChip}</div>
+      </div>
+      <div class="acred-info-cuerpo">
+        <section class="acred-info-card" style="--i:0">
+          <header><span class="acred-info-num">1</span><h4>Destinatario${info.contactos.length > 1 ? "s" : ""}</h4>${info.emails.length > 1 ? mini("emails", "Copiar todos") : ""}</header>
+          ${destinos}
+        </section>
+        <section class="acred-info-card" style="--i:1">
+          <header><span class="acred-info-num">2</span><h4>Asunto</h4>${mini("asunto", "Copiar")}</header>
+          <div class="acred-info-asunto">${I.asunto}<span>${esc(info.asunto)}</span></div>
+        </section>
+        <section class="acred-info-card" style="--i:2">
+          <header><span class="acred-info-num">3</span><h4>Mensaje</h4>${mini("cuerpo", "Copiar")}</header>
+          <div class="acred-info-papel"><pre class="acred-info-texto">${esc(info.cuerpo)}</pre></div>
+        </section>
+      </div>
+      <div class="acred-modal-pie acred-info-pie">
+        <button type="button" class="acred-btn acred-btn-sec" data-cerrar>Cerrar</button>
+        <span class="espacio"></span>
+        <button type="button" class="acred-btn acred-btn-sec" data-acc="abrir" title="Abre tu programa de correo con destinatario, asunto y mensaje ya puestos">${I.abrir} Abrir en mi correo</button>
+        <button type="button" class="acred-btn acred-btn-info" data-acc="todo" data-foco>${I.copiar} Copiar todo</button>
+      </div>
+    </div>`);
+  // Copia y confirma en el propio botón (vuelve a su aspecto a los 1,8 s).
+  const copiar = async (boton, texto, mensaje) => {
+    const ok = await acredCopiarTexto(texto, mensaje);
+    if (!ok || !boton) return;
+    const antes = boton.innerHTML;
+    boton.classList.add("hecho");
+    boton.innerHTML = I.ok + "<em>¡Copiado!</em>";
+    clearTimeout(boton._t);
+    boton._t = setTimeout(() => { boton.classList.remove("hecho"); boton.innerHTML = antes; }, 1800);
+  };
+  const acciones = {
+    email: (b) => copiar(b, b.dataset.v, "Correo copiado"),
+    emails: (b) => copiar(b, info.emails.join("; "), "Correos copiados"),
+    asunto: (b) => copiar(b, info.asunto, "Asunto copiado"),
+    cuerpo: (b) => copiar(b, info.cuerpo, "Mensaje copiado"),
+    todo: (b) => copiar(b, `Para: ${info.emails.join("; ")}\nAsunto: ${info.asunto}\n\n${info.cuerpo}`, "Correo completo copiado"),
+    abrir: () => {
+      window.location.href = `mailto:${info.emails.map(encodeURIComponent).join(",")}?subject=${encodeURIComponent(info.asunto)}&body=${encodeURIComponent(info.cuerpo)}`;
+    },
+  };
+  ov.querySelectorAll("[data-acc]").forEach((b) => b.addEventListener("click", () => { const fn = acciones[b.dataset.acc]; if (fn) fn(b); }));
+  const foco = ov.querySelector("[data-foco]");
+  if (foco) foco.focus();
+}
+
+// ----- «No podrá asistir»: baja de una acreditación pedida + correo formal de disculpas al club -----
+// No hay estado nuevo ni migración: la baja es una solicitud «cancelada» cuya nota interna empieza por
+// «No podrá asistir · Motivo: …» (así se distingue de un partido suspendido). Desde ahí se puede abrir en
+// cualquier momento el correo de disculpas para el club local (el que gestiona las acreditaciones), en su idioma.
+const ACRED_BAJA_PREFIJO = "No podrá asistir";
+const ACRED_BAJA_MOTIVOS = [
+  { id: "imprevisto", et: "Imprevisto de última hora", es: "por un imprevisto de última hora", ca: "per un imprevist d'última hora", eu: "azken orduko ezusteko batengatik", gl: "por un imprevisto de última hora" },
+  { id: "salud", et: "Motivos de salud", es: "por motivos de salud", ca: "per motius de salut", eu: "osasun-arrazoiengatik", gl: "por motivos de saúde" },
+  { id: "laboral", et: "Motivos laborales o académicos", es: "por motivos laborales o académicos", ca: "per motius laborals o acadèmics", eu: "lan edo ikasketa arrazoiengatik", gl: "por motivos laborais ou académicos" },
+  { id: "transporte", et: "Problemas de desplazamiento", es: "por problemas de desplazamiento", ca: "per problemes de desplaçament", eu: "joan-etorriko arazoengatik", gl: "por problemas de desprazamento" },
+  { id: "organizacion", et: "Cambio en nuestra organización", es: "por un cambio en la organización de nuestra redacción", ca: "per un canvi en l'organització de la nostra redacció", eu: "gure erredakzioaren antolaketan izandako aldaketa batengatik", gl: "por un cambio na organización da nosa redacción" },
+  { id: "otro", et: "Otro motivo", es: "por causas ajenas a nuestra voluntad", ca: "per causes alienes a la nostra voluntat", eu: "gure borondatetik kanpoko arrazoiengatik", gl: "por causas alleas á nosa vontade" },
+];
+const ACRED_DISCULPAS_TXT = {
+  es: {
+    saludo: (club) => `Estimado departamento de comunicación de ${club}:`,
+    asunto: (p) => `Cancelación de acreditación de prensa y disculpas · ${p} · El Otro Fútbol`,
+    enc: (club, rival, partido) => rival ? `para el encuentro entre ${club} y ${rival}` : (partido ? `para el encuentro: ${partido}` : "para el encuentro"),
+    intro: (enc) => `Nos ponemos en contacto con ustedes en relación con la acreditación de prensa que solicitamos ${enc}.`,
+    baja: (quien, m, pasado) => `Lamentablemente, debemos comunicarles que ${quien} ${pasado ? "no pudo" : "no podrá"} asistir finalmente a cubrir el encuentro ${m}.`,
+    disculpas: "Les presentamos nuestras más sinceras disculpas por las molestias que esta cancelación de última hora pueda ocasionarles, así como por la gestión que ya hubieran realizado.",
+    ruego: (aprobada) => aprobada ? "Les rogamos que dejen sin efecto la acreditación concedida, de modo que pueda quedar disponible para otros medios." : "Les rogamos que den de baja la solicitud, de modo que no se tramite la acreditación.",
+    cierre: "Agradecemos de antemano su comprensión y su amabilidad, y quedamos a su entera disposición. Esperamos poder contar con su colaboración en futuras ocasiones.",
+    dni: "DNI",
+  },
+  ca: {
+    saludo: (club) => `Benvolgut departament de comunicació de ${club}:`,
+    asunto: (p) => `Cancel·lació d'acreditació de premsa i disculpes · ${p} · El Otro Fútbol`,
+    enc: (club, rival, partido) => rival ? `per al partit entre ${club} i ${rival}` : (partido ? `per al partit: ${partido}` : "per al partit"),
+    intro: (enc) => `Ens posem en contacte amb vostès en relació amb l'acreditació de premsa que vam sol·licitar ${enc}.`,
+    baja: (quien, m, pasado) => `Malauradament, hem de comunicar-los que ${quien} finalment ${pasado ? "no va poder" : "no podrà"} assistir a cobrir el partit ${m}.`,
+    disculpas: "Els presentem les nostres més sinceres disculpes per les molèsties que aquesta cancel·lació d'última hora pugui ocasionar-los, així com per la gestió que ja haguessin fet.",
+    ruego: (aprobada) => aprobada ? "Els preguem que deixin sense efecte l'acreditació concedida, de manera que pugui quedar disponible per a altres mitjans." : "Els preguem que donin de baixa la sol·licitud, de manera que no es tramiti l'acreditació.",
+    cierre: "Agraïm per endavant la seva comprensió i amabilitat, i quedem a la seva disposició. Esperem poder comptar amb la seva col·laboració en properes ocasions.",
+    dni: "DNI",
+  },
+  eu: {
+    saludo: (club) => `${club} klubeko komunikazio sailari:`,
+    asunto: (p) => `Prentsa-akreditazioa bertan behera uztea eta barkamena · ${p} · El Otro Fútbol`,
+    enc: (club, rival, partido) => rival ? `${club} eta ${rival} taldeen arteko partidarako` : (partido ? `${partido} partidarako` : "partidarako"),
+    intro: (enc) => `Zuekin harremanetan jartzen gara ${enc} eskatu genuen prentsa-akreditazioari buruz.`,
+    baja: (quien, m, pasado) => `Zoritxarrez, jakinarazi behar dizuegu ${quien} ez ${pasado ? "zela azkenean partida estaltzera joan ahal izan" : "dela azkenean partida estaltzera joango"}, ${m}.`,
+    disculpas: "Azken orduko bertan behera uzte honek eragin ditzakeen eragozpenengatik, eta egindako kudeaketagatik, barkamen zintzoenak eskatzen dizkizuegu.",
+    ruego: (aprobada) => aprobada ? "Mesedez, utzi indarrik gabe emandako akreditazioa, beste hedabideren batek erabili ahal izan dezan." : "Mesedez, eman baja eskaerari, akreditazioa izapidetu ez dadin.",
+    cierre: "Aldez aurretik eskerrik asko zuen ulermenagatik eta adeitasunagatik; zuen esanetara geratzen gara. Etorkizunean ere zuen laguntza izatea espero dugu.",
+    dni: "NAN",
+  },
+  gl: {
+    saludo: (club) => `Estimado departamento de comunicación de ${club}:`,
+    asunto: (p) => `Cancelación de acreditación de prensa e desculpas · ${p} · El Otro Fútbol`,
+    enc: (club, rival, partido) => rival ? `para o encontro entre ${club} e ${rival}` : (partido ? `para o encontro: ${partido}` : "para o encontro"),
+    intro: (enc) => `Poñémonos en contacto con vostedes en relación coa acreditación de prensa que solicitamos ${enc}.`,
+    baja: (quien, m, pasado) => `Lamentablemente, debemos comunicarlles que ${quien} finalmente ${pasado ? "non puido" : "non poderá"} asistir a cubrir o encontro ${m}.`,
+    disculpas: "Presentámoslles as nosas máis sinceras desculpas polas molestias que esta cancelación de última hora poida ocasionarlles, así como pola xestión que xa tivesen realizado.",
+    ruego: (aprobada) => aprobada ? "Rogámoslles que deixen sen efecto a acreditación concedida, de modo que poida quedar dispoñible para outros medios." : "Rogámoslles que dean de baixa a solicitude, de modo que non se tramite a acreditación.",
+    cierre: "Agradecemos de antemán a súa comprensión e amabilidade, e quedamos á súa disposición. Esperamos poder contar coa súa colaboración en futuras ocasións.",
+    dni: "DNI",
+  },
+};
+// ¿Ya pasó el partido? Se mira la fecha (fecha_partido, o la que va entre paréntesis en la jornada) en hora de
+// Madrid: un día anterior a hoy es pasado; si es hoy y la jornada trae hora, es pasado cuando ya ha empezado.
+// Si no se puede saber la fecha (partido escrito a mano), se asume que no ha pasado.
+function acredPartidoPasado(a) {
+  const d = acredDiasParaPartido(a);
+  if (d === null) return false;
+  if (d < 0) return true;
+  if (d > 0) return false;
+  const h = String((a && a.jornada_partido) || "").match(/\(\d{2}\/\d{2}\/\d{4}\s+(\d{2}):(\d{2})\)\s*$/);
+  if (!h) return false;
+  const ahora = new Date().toLocaleTimeString("en-GB", { timeZone: "Europe/Madrid", hour: "2-digit", minute: "2-digit", hour12: false });
+  return ahora >= `${h[1]}:${h[2]}`;
+}
+// Etiqueta visible de la baja: «No podrá asistir» (partido por venir) o «No pudo asistir» (ya pasó).
+// Solo es presentación: lo que se guarda en la nota sigue siendo ACRED_BAJA_PREFIJO, para no romper las bajas ya hechas.
+function acredTxtNoAsiste(a) {
+  return acredPartidoPasado(a) ? "No pudo asistir" : ACRED_BAJA_PREFIJO;
+}
+// ¿Es una solicitud dada de baja porque la persona no podrá asistir?
+function acredEsBaja(a) {
+  return !!a && a.estado === "cancelada" && String(a.nota_admin || "").indexOf(ACRED_BAJA_PREFIJO) === 0;
+}
+// Motivo guardado en la nota («No podrá asistir · Motivo: X · detalle»).
+function acredMotivoDeBaja(a) {
+  const nota = String((a && a.nota_admin) || "");
+  return ACRED_BAJA_MOTIVOS.find((m) => nota.indexOf("Motivo: " + m.et) !== -1) || null;
+}
+// Texto del correo de disculpas. opciones: { motivoId, mencionarMotivo, aprobada }. Devuelve { asunto, cuerpo, idioma, local, visitante, contactos, emails }.
+function acredConstruirDisculpas(a, opciones) {
+  const o = opciones || {};
+  const lv = acredLocalVisitante(a.jornada_partido);
+  const local = (lv && lv.local) || String(a.equipo || "").trim();
+  const idioma = acredIdiomaCorreo(local);
+  const T = ACRED_DISCULPAS_TXT[idioma] || ACRED_DISCULPAS_TXT.es;
+  const club = local || ACRED_CORREO_TXT[idioma].clubDefecto;
+  const parsed = acredParsearPartido(a.jornada_partido, a.equipo);
+  const rival = lv ? lv.visitante : parsed.rival;
+  const partido = lv ? `${lv.local} - ${lv.visitante}` : parsed.partido;
+  const motivo = ACRED_BAJA_MOTIVOS.find((m) => m.id === o.motivoId) || ACRED_BAJA_MOTIVOS[ACRED_BAJA_MOTIVOS.length - 1];
+  const frase = o.mencionarMotivo ? motivo[idioma] : ACRED_BAJA_MOTIVOS[ACRED_BAJA_MOTIVOS.length - 1][idioma];
+  const dni = String(a.dni || "").trim();
+  const quien = `${String(a.nombre || "").trim()}${dni ? ` (${T.dni} ${dni})` : ""}`;
+  const firma = acredMiNombre();
+  const firmaLineas = [ACRED_CORREO_TXT[idioma].atentamente];
+  if (firma) firmaLineas.push(firma);
+  firmaLineas.push(ACRED_CORREO_TXT[idioma].acreditaciones, "El Otro Fútbol");
+  const cuerpo = [
+    [T.saludo(club)],
+    [T.intro(T.enc(club, rival, partido))],
+    [T.baja(quien, frase, acredPartidoPasado(a))],
+    [T.disculpas],
+    [T.ruego(!!o.aprobada)],
+    [T.cierre],
+    firmaLineas,
+  ].map((b) => b.join("\n")).join("\n\n");
+  const contactos = local ? acredContactosPrensaDe(local) : [];
+  return { asunto: T.asunto(partido || club), cuerpo, idioma, local, visitante: rival || "", contactos, emails: [...new Set(contactos.map((c) => c.email))] };
+}
+
+// Paso 1: motivo y confirmación. Marca la solicitud como cancelada (sin correo a la persona) y abre el correo al club.
+function acredBajaAbrir(id) {
+  const a = ACRED_DATOS.find((x) => x.id === id);
+  if (!a) return;
+  const esc = escapeHtml;
+  const chips = ACRED_BAJA_MOTIVOS.map((m, i) => `<label class="acred-baja-chip"><input type="radio" name="acredBajaMotivo" value="${m.id}"${i === 0 ? " checked" : ""}><span>${esc(m.et)}</span></label>`).join("");
+  const { ov, cerrar } = acredModal(`
+    <div class="acred-modal acred-baja" role="dialog" aria-modal="true" aria-labelledby="acredBajaTit">
+      <div class="acred-modal-cab">
+        <div><h3 id="acredBajaTit">${esc(a.nombre || "Esta persona")} ${acredPartidoPasado(a) ? "no pudo" : "no podrá"} asistir</h3><p>${esc(a.jornada_partido || a.equipo || "")}</p></div>
+        <button type="button" class="acred-cerrar" data-cerrar aria-label="Cerrar">×</button>
+      </div>
+      <div class="acred-modal-cuerpo">
+        <p class="acred-baja-ayuda">La solicitud quedará como <b>cancelada</b> (sin enviar nada a la persona) y te prepararé un correo formal de disculpas para el club${a.estado === "aprobada" ? ", pidiéndole que deje sin efecto la acreditación ya concedida" : ""}.</p>
+        <h4 class="acred-baja-sub">Motivo</h4>
+        <div class="acred-baja-motivos" role="radiogroup" aria-label="Motivo">${chips}</div>
+        <label for="acredBajaDetalle" class="acred-baja-sub">Detalle interno (opcional)</label>
+        <textarea id="acredBajaDetalle" rows="2" maxlength="400" placeholder="Solo lo ven los Responsables"></textarea>
+        <label class="acred-correo-chk"><input type="checkbox" id="acredBajaMencionar"> Mencionar el motivo en el correo al club <small>(si no, el correo dice «por causas ajenas a nuestra voluntad»)</small></label>
+      </div>
+      <div class="acred-modal-pie">
+        <button type="button" class="acred-btn acred-btn-sec" data-cerrar>Volver</button>
+        <button type="button" class="acred-btn acred-btn-no" id="acredBajaOk">Marcar y preparar disculpas</button>
+      </div>
+    </div>`);
+  const btn = ov.querySelector("#acredBajaOk");
+  btn.addEventListener("click", async () => {
+    const motivoId = (ov.querySelector('input[name="acredBajaMotivo"]:checked') || {}).value || "otro";
+    const motivo = ACRED_BAJA_MOTIVOS.find((m) => m.id === motivoId) || ACRED_BAJA_MOTIVOS[ACRED_BAJA_MOTIVOS.length - 1];
+    const detalle = ((ov.querySelector("#acredBajaDetalle") || {}).value || "").replace(/\s+/g, " ").trim();
+    const mencionar = !!(ov.querySelector("#acredBajaMencionar") || {}).checked;
+    const aprobada = a.estado === "aprobada";
+    const nota = `${ACRED_BAJA_PREFIJO} · Motivo: ${motivo.et}${aprobada ? " · Estaba aprobada" : ""}${detalle ? " · " + detalle : ""}`.slice(0, 1000);
+    btn.disabled = true;
+    try {
+      await apiFetch(`/api/acreditaciones/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ estado: "cancelada", nota_admin: nota, enviar_correo: false, estado_esperado: a.estado }),
+      });
+    } catch (err) {
+      btn.disabled = false;
+      if (err && err.status === 409) { cerrar(); acredTrasConflicto(err); return; }
+      EOF.toast("Error: " + err.message, "error");
+      return;
+    }
+    const antes = a.estado;
+    a.estado = "cancelada";
+    a.nota_admin = nota;
+    a.revisado_por = (typeof USER !== "undefined" && USER.nombre) || a.revisado_por;
+    a.revisado_at = new Date().toISOString().slice(0, 19).replace("T", " ");
+    delete ACRED_NOTAS[id];
+    delete ACRED_HIST[id];
+    acredTrasEscrituraPropia();
+    pintarAcreditaciones();
+    cerrar();
+    EOF.toast(`Marcada como «${acredTxtNoAsiste(a).toLowerCase()}»`, "exito");
+    acredAbrirDisculpas(id, { motivoId, mencionarMotivo: mencionar, aprobada: antes === "aprobada" });
+  });
+}
+
+// Paso 2: correo de disculpas editable (destinatarios del club local, asunto y mensaje).
+async function acredAbrirDisculpas(id, opciones) {
+  const a = ACRED_DATOS.find((x) => x.id === id);
+  if (!a) return;
+  await acredCargarPrensa();
+  const mot = acredMotivoDeBaja(a);
+  const o = Object.assign({ motivoId: mot ? mot.id : "otro", mencionarMotivo: false, aprobada: /Estaba aprobada/.test(String(a.nota_admin || "")) }, opciones || {});
+  let info = acredConstruirDisculpas(a, o);
+  const esc = escapeHtml;
+  const I = {
+    copiar: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2.5"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>',
+    ok: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+    correo: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3.5 7.5l8.5 6 8.5-6"/></svg>',
+    abrir: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>',
+  };
+  const mini = (acc, txt) => `<button type="button" class="acred-info-copiar" data-acc="${acc}">${I.copiar}<em>${txt}</em></button>`;
+  const destinos = info.contactos.length
+    ? info.contactos.map((c) => {
+      const quien = [c.nombre, c.cargo].filter(Boolean).join(" · ") || (c.area === "prensa" ? "Departamento de prensa" : "Comunicación");
+      return `<div class="acred-info-dest"><span class="acred-info-avatar">${I.correo}</span><div class="acred-info-dest-txt"><b>${esc(c.email)}</b><small>${esc(quien)}</small></div><button type="button" class="acred-info-copiar" data-acc="email" data-v="${esc(c.email)}" aria-label="Copiar ${esc(c.email)}">${I.copiar}<em>Copiar</em></button></div>`;
+    }).join("")
+    : `<p class="acred-disc-aviso">No hay correo de prensa guardado para ${esc(info.local || "este club")} en Relaciones institucionales. Copia el texto y envíalo a su contacto habitual.</p>`;
+  const idiomaChip = info.idioma !== "es" ? `<p class="acred-disc-aviso">Correo en ${esc(ACRED_CORREO_TXT[info.idioma].nombreIdioma)}, la lengua propia del club.</p>` : "";
+  const { ov } = acredModal(`
+    <div class="acred-modal acred-info acred-disc" role="dialog" aria-modal="true" aria-labelledby="acredDiscTit">
+      <div class="acred-modal-cab">
+        <div><h3 id="acredDiscTit">Disculpas formales al club</h3><p>${esc(a.nombre || "")} · ${esc(a.jornada_partido || "")}</p></div>
+        <button type="button" class="acred-cerrar" data-cerrar aria-label="Cerrar">×</button>
+      </div>
+      <div class="acred-info-cuerpo">
+        <section class="acred-info-card"><header><span class="acred-info-num">1</span><h4>Destinatario${info.contactos.length > 1 ? "s" : ""}</h4>${info.emails.length > 1 ? mini("emails", "Copiar todos") : ""}</header>${destinos}${idiomaChip}</section>
+        <section class="acred-info-card"><header><span class="acred-info-num">2</span><h4>Asunto</h4>${mini("asunto", "Copiar")}</header><input type="text" class="acred-disc-asunto" id="acredDiscAsunto" value="${esc(info.asunto)}" aria-label="Asunto"></section>
+        <section class="acred-info-card"><header><span class="acred-info-num">3</span><h4>Mensaje</h4>${mini("cuerpo", "Copiar")}</header>
+          <textarea class="acred-disc-texto" id="acredDiscCuerpo" rows="15" aria-label="Mensaje">${esc(info.cuerpo)}</textarea>
+          <label class="acred-correo-chk"><input type="checkbox" id="acredDiscMotivo"${o.mencionarMotivo ? " checked" : ""}> Mencionar el motivo en el correo</label>
+          <label class="acred-correo-chk"><input type="checkbox" id="acredDiscAprobada"${o.aprobada ? " checked" : ""}> La acreditación ya estaba concedida (pedir que se deje sin efecto)</label>
+        </section>
+      </div>
+      <div class="acred-modal-pie acred-info-pie">
+        <button type="button" class="acred-btn acred-btn-sec" data-cerrar>Cerrar</button>
+        <span class="espacio"></span>
+        <button type="button" class="acred-btn acred-btn-sec" data-acc="abrir" title="Abre tu programa de correo con destinatario, asunto y mensaje ya puestos">${I.abrir} Abrir en mi correo</button>
+        <button type="button" class="acred-btn acred-btn-info" data-acc="todo" data-foco>${I.copiar} Copiar todo</button>
+      </div>
+    </div>`);
+  const asuntoEl = ov.querySelector("#acredDiscAsunto"), cuerpoEl = ov.querySelector("#acredDiscCuerpo");
+  const chkMotivo = ov.querySelector("#acredDiscMotivo"), chkAprobada = ov.querySelector("#acredDiscAprobada");
+  let editado = false;
+  cuerpoEl.addEventListener("input", () => { editado = true; });
+  // Al cambiar una casilla se regenera el texto; si ya lo has retocado a mano, no se pisa.
+  const regenerar = () => {
+    if (editado && !window.confirm("Has editado el mensaje a mano. ¿Volver a generarlo con este cambio? Perderás tus retoques.")) {
+      chkMotivo.checked = o.mencionarMotivo; chkAprobada.checked = o.aprobada; return;
+    }
+    o.mencionarMotivo = chkMotivo.checked; o.aprobada = chkAprobada.checked;
+    info = acredConstruirDisculpas(a, o);
+    cuerpoEl.value = info.cuerpo; asuntoEl.value = info.asunto; editado = false;
+  };
+  chkMotivo.addEventListener("change", regenerar);
+  chkAprobada.addEventListener("change", regenerar);
+  const copiar = async (boton, texto, mensaje) => {
+    const ok = await acredCopiarTexto(texto, mensaje);
+    if (!ok || !boton || !boton.classList.contains("acred-info-copiar")) return;
+    const antes = boton.innerHTML;
+    boton.classList.add("hecho");
+    boton.innerHTML = I.ok + "<em>¡Copiado!</em>";
+    clearTimeout(boton._t);
+    boton._t = setTimeout(() => { boton.classList.remove("hecho"); boton.innerHTML = antes; }, 1800);
+  };
+  const acciones = {
+    email: (b) => copiar(b, b.dataset.v, "Correo copiado"),
+    emails: (b) => copiar(b, info.emails.join("; "), "Correos copiados"),
+    asunto: (b) => copiar(b, asuntoEl.value, "Asunto copiado"),
+    cuerpo: (b) => copiar(b, cuerpoEl.value, "Mensaje copiado"),
+    todo: (b) => copiar(b, `Para: ${info.emails.join("; ")}\nAsunto: ${asuntoEl.value}\n\n${cuerpoEl.value}`, "Correo completo copiado"),
+    abrir: () => { window.location.href = `mailto:${info.emails.map(encodeURIComponent).join(",")}?subject=${encodeURIComponent(asuntoEl.value)}&body=${encodeURIComponent(cuerpoEl.value)}`; },
+  };
+  ov.querySelectorAll("[data-acc]").forEach((b) => b.addEventListener("click", () => { const fn = acciones[b.dataset.acc]; if (fn) fn(b); }));
+  const foco = ov.querySelector("[data-foco]");
+  if (foco) foco.focus();
+}
+
 function editarAcreditacion(id) { ACRED_EDITANDO = id; pintarAcreditaciones(); }
 function cancelarEdicionAcreditacion() { ACRED_EDITANDO = null; pintarAcreditaciones(); }
 
@@ -17155,6 +18850,7 @@ async function resolverAcreditacion(id, estado, opciones) {
     const cor = resp && resp.correo;
     const extra = cor === "enviado" ? " · correo enviado a la persona" : cor === "no_enviado" ? " · ⚠ no se pudo enviar el correo" : "";
     EOF.toast(`Solicitud marcada como ${ACRED_ESTADOS[estado].toLowerCase()}${extra}`, cor === "no_enviado" ? "error" : "exito");
+    if (estado === "solicitada") acredComprobarRestantes([id]).catch(() => {});
   } catch (err) {
     if (err && err.status === 409) { acredTrasConflicto(err); return; }
     EOF.toast("Error: " + err.message, "error");
@@ -17738,6 +19434,21 @@ async function copiarTextoFormulario(texto, mensaje) {
   catch { window.prompt("Copia el texto:", texto); }
 }
 
+// Cargos de área de quien tiene sesión (GET /api/mis-cargos). Si es Sub-Responsable de un área con permiso
+// de acreditaciones, se le vuelve a mostrar «Solicitudes > Formularios» (que solo ve el formulario de
+// acreditaciones, sin PIN, acceso, edición ni importación).
+async function activarCargosSubResponsable() {
+  if (!USER || USER.rol !== "redactor") return;
+  try {
+    const c = await apiFetch("/api/mis-cargos");
+    window.EOF_CARGOS = c || null;
+    if (c && c.puede_gestionar_acreditaciones) {
+      const b = document.getElementById("subtabSolFormularios_btn");
+      if (b) b.style.display = "";
+    }
+  } catch { /* sin cargos: el panel queda como siempre */ }
+}
+
 async function cargaFormularios() {
   formMostrarVista("lista");
   const cont = document.getElementById("formGrid");
@@ -17746,14 +19457,21 @@ async function cargaFormularios() {
   let acred = null;
   try {
     const { acreditaciones = [] } = await apiFetch("/api/acreditaciones");
-    acred = { total: acreditaciones.length, pendientes: acreditaciones.filter((a) => a.estado === "pendiente").length };
+    const visibles = acreditaciones.filter((a) => !acredEsLejana(a)); // sin las de partidos a más de 7 días
+    acred = { total: visibles.length, pendientes: visibles.filter((a) => a.estado === "pendiente").length };
   } catch { /* si falla se muestra la tarjeta sin cifras */ }
-  try {
-    const { formularios = [] } = await apiFetch("/api/formularios");
-    FORM_LISTA = formularios;
-  } catch (err) {
+  if (acredSoloGestion()) {
+    // Un Sub-Responsable de las acreditaciones solo ve el formulario de acreditaciones: los formularios
+    // personalizados (/api/formularios) son solo de un Responsable.
     FORM_LISTA = [];
-    EOF.toast("No se han podido cargar los formularios: " + err.message, "error");
+  } else {
+    try {
+      const { formularios = [] } = await apiFetch("/api/formularios");
+      FORM_LISTA = formularios;
+    } catch (err) {
+      FORM_LISTA = [];
+      EOF.toast("No se han podido cargar los formularios: " + err.message, "error");
+    }
   }
   const nAcredPend = acred ? acred.pendientes : 0;
   const tarjetaAcred = `
@@ -18104,10 +19822,12 @@ function pintarRespuestasFormulario() {
   const filt = document.getElementById("formRespFiltros");
   if (!cont || !FORM_ACTUAL) return;
   if (typeof pintarResumenFormulario === "function") pintarResumenFormulario(); // gráficos y lectura (formularios-resumen.js)
-  const nuevas = FORM_RESP.filter((r) => r.estado === "nueva").length;
+  // Explorador de personas (formularios-resumen.js): si hay filtros activos, solo se listan quienes los cumplen
+  const base = typeof frsFiltrar === "function" ? frsFiltrar(FORM_RESP) : FORM_RESP;
+  const nuevas = base.filter((r) => r.estado === "nueva").length;
   const btn = (est, txt, n) => `<button type="button" class="acred-stat ${FORM_RESP_FILTRO === est ? "activo" : ""}" onclick="filtrarRespuestasFormulario('${est}')"><span class="acred-stat-num">${n}</span><span class="acred-stat-et">${txt}</span></button>`;
-  filt.innerHTML = btn("", "Total", FORM_RESP.length) + btn("nueva", "Nuevas", nuevas) + btn("revisada", "Revisadas", FORM_RESP.length - nuevas);
-  const lista = FORM_RESP.filter((r) => !FORM_RESP_FILTRO || r.estado === FORM_RESP_FILTRO);
+  filt.innerHTML = btn("", "Total", base.length) + btn("nueva", "Nuevas", nuevas) + btn("revisada", "Revisadas", base.length - nuevas);
+  const lista = base.filter((r) => !FORM_RESP_FILTRO || r.estado === FORM_RESP_FILTRO);
   if (!lista.length) {
     cont.innerHTML = `<p class="solicitudes-vacio">${FORM_RESP.length ? "No hay respuestas con este filtro." : "Todavía no ha respondido nadie."}</p>`;
     return;
@@ -18122,7 +19842,7 @@ function pintarRespuestasFormulario() {
     const extra = Object.keys(r.datos).filter((k) => !k.startsWith("_") && !campos.some((c) => c.id === k))
       .map((k) => `<div class="fmz-resp-dato"><span>Campo eliminado</span><b>${escapeHtml(formValorTexto(r.datos[k]))}</b></div>`).join("");
     return `
-    <div class="fmz-resp ${r.estado === "nueva" ? "fmz-resp-nueva" : ""}">
+    <div class="fmz-resp ${r.estado === "nueva" ? "fmz-resp-nueva" : ""}" id="formResp${r.id}">
       <button type="button" class="fmz-resp-cab" onclick="alternarRespuestaFormulario(${r.id})" aria-expanded="${abierta}">
         <span class="fmz-resp-fecha">${escapeHtml(String(r.created_at || "").slice(0, 16).replace("T", " "))}</span>
         <span class="fmz-resp-resumen">${formResumenRespuesta(r, campos)}</span>
@@ -19139,6 +20859,8 @@ const ETIQUETAS_ACCION = {
   mover_media: "Contenido movido de carpeta",
   editar_media: "Contenido editado",
   eliminar_media: "Contenido eliminado",
+  restaurar_papelera: "Restaurado de la papelera",
+  vaciar_papelera: "Borrado definitivo de la papelera",
   descargar_media: "Contenido descargado",
   vincular_galeria_partido: "Galería vinculada a un partido",
   desvincular_galeria_partido: "Galería desvinculada de un partido",
@@ -19395,7 +21117,7 @@ async function pintarImagenesCompartir(a) {
     if (!Array.isArray(lista)) return;
     lista.forEach((it) => {
       if (typeof it === "string") anadir(it);
-      else if (it && typeof it === "object" && it.tipo !== "tweet") anadir(it.url);
+      else if (it && typeof it === "object" && it.tipo !== "tweet" && it.tipo !== "video") anadir(it.url);
     });
   };
 
@@ -19904,7 +21626,7 @@ function versionVistaPreviaX(a) {
   if (!foto && a && a.imagenes) {
     try {
       const lista = typeof a.imagenes === "string" ? JSON.parse(a.imagenes) : a.imagenes;
-      const primera = Array.isArray(lista) && lista.find((x) => x && x.tipo !== "tweet" && x.url);
+      const primera = Array.isArray(lista) && lista.find((x) => x && x.tipo !== "tweet" && x.tipo !== "video" && x.url);
       if (primera) foto = primera.url;
     } catch (e) { /* imagenes mal formadas: solo cuentan titular y subtítulo */ }
   }
@@ -20287,8 +22009,8 @@ async function cargarUltimasAlineacionesEquipo() {
   }
 }
 
-// Vuelca en el editor visual (campo + suplentes) el once de una de las
-// últimas alineaciones del equipo, tal cual devuelve el backend
+// Vuelca en el editor (lista de titulares, campo y suplentes) el once de
+// una de las últimas alineaciones del equipo, tal cual devuelve el backend
 // (mismo formato {x,y,dorsal,nombre,titular} que ya usa
 // abrirEditorAlineacion al cargar una alineación existente).
 function aplicarAlineacionCopiada(alineacionCopiada) {
@@ -20298,17 +22020,199 @@ function aplicarAlineacionCopiada(alineacionCopiada) {
     .map((j) => ({ x: j.x ?? 50, y: j.y ?? 50, dorsal: j.dorsal ?? null, nombre: j.nombre || "", capitan: j.capitan === true }));
   ALINEACION_EDITOR.suplentes = jugadoresGuardados.filter((j) => j.titular === false)
     .map((j) => ({ dorsal: j.dorsal ?? null, nombre: j.nombre || "", capitan: j.capitan === true }));
-  if (!ALINEACION_EDITOR.jugadores.length) {
-    const formacion = document.getElementById("al_formacion").value;
-    ALINEACION_EDITOR.jugadores = generarPosicionesFormacion(formacion).map(([x, y]) => ({ x, y, dorsal: null, nombre: "", capitan: false }));
-  }
+  const formacionCopiada = document.getElementById("al_formacion").value;
+  ALINEACION_EDITOR.jugadores = ALINEACION_EDITOR.jugadores.length
+    ? completarHuecosAlineacion(ALINEACION_EDITOR.jugadores, formacionCopiada)
+    : generarPosicionesFormacion(formacionCopiada).map(([x, y]) => ({ x, y, dorsal: null, nombre: "", capitan: false }));
   ALINEACION_EDITOR.jugadorSeleccionado = null;
-  document.getElementById("alineacionEditorDatos").style.display = "none";
-  pintarCampoAlineacion();
-  pintarSuplentesAlineacion();
+  refrescarEditorAlineacion();
   EOF.toast(`Alineación copiada del partido vs ${alineacionCopiada.rival}.`);
 }
 
+// Repinta todo el editor de una vez: botones de formación, lista de
+// titulares, campo en vivo y suplentes. Se usa al abrir el modal, al
+// copiar una alineación, al cambiar de formación o al pegar una lista;
+// mientras se teclea se repinta solo el campo (ver pintarCampoAlineacion)
+// para no perder el foco del input.
+function refrescarEditorAlineacion() {
+  pintarChipsFormacionAlineacion();
+  pintarTitularesAlineacion();
+  pintarCampoAlineacion();
+  pintarSuplentesAlineacion();
+}
+
+// ---------- Formación: botones en vez de desplegable ----------
+function pintarChipsFormacionAlineacion() {
+  const cont = document.getElementById("alFormaciones");
+  const actual = document.getElementById("al_formacion").value;
+  cont.innerHTML = Object.keys(LINEAS_FORMACION).map((f) =>
+    `<button type="button" class="al-chip-formacion${f === actual ? " activo" : ""}" data-f="${f}" aria-pressed="${f === actual}">${f}</button>`
+  ).join("");
+  cont.querySelectorAll(".al-chip-formacion").forEach((btn) => {
+    btn.addEventListener("click", () => cambiarFormacionAlineacion(btn.dataset.f));
+  });
+}
+
+function cambiarFormacionAlineacion(formacion) {
+  if (!LINEAS_FORMACION[formacion]) return;
+  document.getElementById("al_formacion").value = formacion;
+  const posiciones = generarPosicionesFormacion(formacion);
+  // Se conservan dorsal/nombre ya escritos, emparejando por índice; si la
+  // nueva formación tiene menos huecos que jugadores ya rellenados, los
+  // sobrantes pasan a suplentes en vez de perderse.
+  const anteriores = ALINEACION_EDITOR.jugadores;
+  ALINEACION_EDITOR.jugadores = posiciones.map(([x, y], i) => ({
+    x, y,
+    dorsal: anteriores[i]?.dorsal ?? null,
+    nombre: anteriores[i]?.nombre ?? "",
+    capitan: anteriores[i]?.capitan === true,
+  }));
+  if (anteriores.length > posiciones.length) {
+    anteriores.slice(posiciones.length).forEach((j) => {
+      if (j.nombre) ALINEACION_EDITOR.suplentes.push({ dorsal: j.dorsal, nombre: j.nombre, capitan: j.capitan === true });
+    });
+  }
+  ALINEACION_EDITOR.jugadorSeleccionado = null;
+  refrescarEditorAlineacion();
+}
+
+// Etiqueta de puesto de un jugador según DÓNDE está en el campo (la línea
+// de la formación más cercana a su altura), no según su posición en la
+// lista: así sigue siendo correcta si se reabre una alineación guardada a
+// medias o si se arrastra a un jugador a otra línea.
+function etiquetaPuestoPorY(y, formacion) {
+  const lineas = LINEAS_FORMACION[formacion] || LINEAS_FORMACION["4-3-3"];
+  const nombresLinea = lineas.length === 3 ? ["DEF", "MED", "DEL"]
+    : lineas.length === 4 ? ["DEF", "MED", "MED", "DEL"]
+    : lineas.map((_, i) => (i === 0 ? "DEF" : i === lineas.length - 1 ? "DEL" : "MED"));
+  const alturas = [6, ...alturasDeLineas(lineas.length)];
+  const etiquetas = ["POR", ...nombresLinea];
+  let mejor = 0;
+  alturas.forEach((h, i) => { if (Math.abs(h - y) < Math.abs(alturas[mejor] - y)) mejor = i; });
+  return etiquetas[mejor];
+}
+
+// Si una alineación guardada tiene menos titulares que huecos tiene la
+// formación (al guardar se descartan los jugadores sin nombre), añade
+// huecos vacíos en las posiciones que quedan libres, para poder
+// completar el once sin tener que rehacerlo. Devuelve la lista ordenada
+// de portería a ataque.
+function completarHuecosAlineacion(jugadores, formacion) {
+  const posiciones = generarPosicionesFormacion(formacion);
+  const lista = jugadores.slice();
+  posiciones.forEach(([x, y]) => {
+    if (lista.length >= posiciones.length) return;
+    const ocupado = lista.some((j) => Math.hypot(j.x - x, j.y - y) < 14);
+    if (!ocupado) lista.push({ x, y, dorsal: null, nombre: "", capitan: false });
+  });
+  return lista.sort((p, q) => (p.y - q.y) || (p.x - q.x));
+}
+
+// ---------- Lista de titulares: una fila por jugador ----------
+function pintarTitularesAlineacion() {
+  const cont = document.getElementById("alTitularesLista");
+  const formacion = document.getElementById("al_formacion").value;
+  cont.innerHTML = ALINEACION_EDITOR.jugadores.map((j, i) => {
+    const puesto = etiquetaPuestoPorY(j.y, formacion);
+    return `
+    <div class="al-fila${ALINEACION_EDITOR.jugadorSeleccionado === i ? " seleccionada" : ""}" data-i="${i}">
+      <span class="al-puesto al-puesto-${puesto.toLowerCase()}">${puesto}</span>
+      <input type="text" class="al-dorsal-input" placeholder="Nº" inputmode="numeric" maxlength="2" aria-label="Dorsal" value="${j.dorsal ?? ""}">
+      <input type="text" class="al-nombre-input" placeholder="Nombre del jugador" aria-label="Nombre" value="${j.nombre ? escapeHtml(j.nombre) : ""}">
+      <button type="button" class="al-cap${j.capitan ? " activo" : ""}" title="Capitán" aria-pressed="${j.capitan === true}">C</button>
+    </div>`;
+  }).join("");
+  cont.querySelectorAll(".al-fila").forEach((fila) => {
+    const i = parseInt(fila.dataset.i, 10);
+    const inputNombre = fila.querySelector(".al-nombre-input");
+    fila.querySelector(".al-dorsal-input").addEventListener("input", (e) => {
+      const n = parseInt(e.target.value, 10);
+      ALINEACION_EDITOR.jugadores[i].dorsal = Number.isFinite(n) ? n : null;
+      pintarCampoAlineacion();
+    });
+    inputNombre.addEventListener("input", (e) => {
+      ALINEACION_EDITOR.jugadores[i].nombre = e.target.value;
+      pintarCampoAlineacion();
+    });
+    // Enter pasa al nombre del siguiente jugador: se puede teclear el once
+    // entero sin tocar el ratón.
+    inputNombre.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter") return;
+      e.preventDefault();
+      const siguiente = cont.querySelector(`.al-fila[data-i="${i + 1}"] .al-nombre-input`);
+      if (siguiente) siguiente.focus();
+      else document.getElementById("btnAnadirSuplenteAlineacion").click();
+    });
+    fila.addEventListener("focusin", () => {
+      if (ALINEACION_EDITOR.jugadorSeleccionado === i) return;
+      ALINEACION_EDITOR.jugadorSeleccionado = i;
+      cont.querySelectorAll(".al-fila").forEach((f) => f.classList.toggle("seleccionada", f === fila));
+      pintarCampoAlineacion();
+    });
+    fila.querySelector(".al-cap").addEventListener("click", () => {
+      marcarCapitanAlineacion(ALINEACION_EDITOR.jugadores, i, !ALINEACION_EDITOR.jugadores[i].capitan);
+      pintarTitularesAlineacion();
+      pintarCampoAlineacion();
+      pintarSuplentesAlineacion();
+    });
+  });
+}
+
+// ---------- Pegar una lista de jugadores ----------
+// Acepta líneas tipo "9 Nombre", "9. Nombre", "9 - Nombre" o solo "Nombre",
+// con "(C)" para el capitán y una línea "Suplentes" para empezar el banquillo.
+function parsearListaAlineacion(texto) {
+  const jugadores = [];
+  let enBanquillo = false;
+  String(texto || "").split(/\r?\n/).forEach((crudo) => {
+    let linea = crudo.trim();
+    if (!linea) return;
+    if (/^(suplentes?|banquillo|reservas?)\s*:?$/i.test(linea)) { enBanquillo = true; return; }
+    if (/^(titulares?|once( inicial)?)\s*:?$/i.test(linea)) { enBanquillo = false; return; }
+    let capitan = false;
+    linea = linea.replace(/\s*\((?:c|cap\.?|capit[aá]n)\)\s*/i, () => { capitan = true; return " "; }).trim();
+    const m = linea.match(/^(\d{1,2})(?:\s*[.\-–—:)]\s*|\s+)(.+)$/);
+    const dorsal = m ? parseInt(m[1], 10) : null;
+    const nombre = (m ? m[2] : linea).trim();
+    if (nombre) jugadores.push({ dorsal, nombre, capitan, banquillo: enBanquillo });
+  });
+  return jugadores;
+}
+
+function aplicarListaPegadaAlineacion() {
+  const lista = parsearListaAlineacion(document.getElementById("alPegarTexto").value);
+  if (!lista.length) { EOF.toast("No he encontrado ningún jugador en el texto.", "error"); return; }
+  const huecos = ALINEACION_EDITOR.jugadores;
+  const delOnce = lista.filter((j) => !j.banquillo);
+  const titulares = delOnce.slice(0, huecos.length);
+  const banquillo = [...delOnce.slice(huecos.length), ...lista.filter((j) => j.banquillo)];
+  let capitanPuesto = false;
+  const sinDuplicarCapitan = (j) => { const c = j.capitan && !capitanPuesto; if (c) capitanPuesto = true; return c; };
+  ALINEACION_EDITOR.jugadores = huecos.map((h, i) => {
+    const t = titulares[i];
+    return t ? { x: h.x, y: h.y, dorsal: t.dorsal, nombre: t.nombre, capitan: sinDuplicarCapitan(t) }
+             : { x: h.x, y: h.y, dorsal: null, nombre: "", capitan: false };
+  });
+  ALINEACION_EDITOR.suplentes = banquillo.map((j) => ({ dorsal: j.dorsal, nombre: j.nombre, capitan: sinDuplicarCapitan(j) }));
+  ALINEACION_EDITOR.jugadorSeleccionado = null;
+  document.getElementById("alPegarWrap").style.display = "none";
+  document.getElementById("alPegarTexto").value = "";
+  refrescarEditorAlineacion();
+  EOF.toast(`Lista aplicada: ${titulares.length} titulares y ${banquillo.length} suplentes.`);
+}
+
+document.getElementById("btnPegarListaAlineacion").addEventListener("click", () => {
+  const wrap = document.getElementById("alPegarWrap");
+  const abrir = wrap.style.display === "none";
+  wrap.style.display = abrir ? "block" : "none";
+  if (abrir) document.getElementById("alPegarTexto").focus();
+});
+document.getElementById("btnCancelarListaAlineacion").addEventListener("click", () => {
+  document.getElementById("alPegarWrap").style.display = "none";
+});
+document.getElementById("btnAplicarListaAlineacion").addEventListener("click", aplicarListaPegadaAlineacion);
+
+// ---------- Campo en vivo ----------
 function pintarCampoAlineacion() {
   const campo = document.getElementById("alineacionEditorCampo");
   // Se conserva el div de líneas del campo y se repintan solo los
@@ -20321,9 +22225,9 @@ function pintarCampoAlineacion() {
     el.style.top = `${j.y}%`;
     el.innerHTML = `<span class="alineacion-dorsal">${j.dorsal ?? (i + 1)}</span><span class="alineacion-nombre">${j.nombre ? escapeHtml(j.nombre) : "Sin nombre"}${j.capitan ? ' <span class="alineacion-capitan-marca" title="Capitán">(C)</span>' : ""}</span>`;
     el.addEventListener("pointerdown", (e) => iniciarArrastreJugador(e, i));
-    el.addEventListener("click", (e) => {
-      // El click se dispara también tras un arrastre corto; solo abre el
-      // panel de datos si no se ha movido apenas el puntero.
+    el.addEventListener("click", () => {
+      // El click se dispara también tras un arrastre corto; solo
+      // selecciona la fila si no se ha movido apenas el puntero.
       if (el.dataset.arrastrado === "1") { el.dataset.arrastrado = "0"; return; }
       seleccionarJugadorAlineacion(i);
     });
@@ -20331,39 +22235,16 @@ function pintarCampoAlineacion() {
   });
 }
 
+// Clic en un jugador del campo: se resalta su fila y el cursor salta a su
+// nombre para escribirlo directamente.
 function seleccionarJugadorAlineacion(i) {
   ALINEACION_EDITOR.jugadorSeleccionado = i;
-  const datosWrap = document.getElementById("alineacionEditorDatos");
-  const j = ALINEACION_EDITOR.jugadores[i];
-  datosWrap.style.display = "block";
-  document.getElementById("alineacionEditorDatosTitulo").textContent = `Jugador (posición ${i + 1})`;
-  document.getElementById("al_jug_dorsal").value = j.dorsal ?? "";
-  document.getElementById("al_jug_nombre").value = j.nombre || "";
-  const capitanCheck = document.getElementById("al_jug_capitan");
-  if (capitanCheck) capitanCheck.checked = j.capitan === true;
   pintarCampoAlineacion();
+  const fila = document.querySelector(`#alTitularesLista .al-fila[data-i="${i}"]`);
+  if (!fila) return;
+  document.querySelectorAll("#alTitularesLista .al-fila").forEach((f) => f.classList.toggle("seleccionada", f === fila));
+  fila.querySelector(".al-nombre-input").focus();
 }
-
-document.getElementById("al_jug_dorsal").addEventListener("input", (e) => {
-  const j = ALINEACION_EDITOR.jugadores[ALINEACION_EDITOR.jugadorSeleccionado];
-  if (!j) return;
-  const n = parseInt(e.target.value, 10);
-  j.dorsal = Number.isFinite(n) ? n : null;
-  pintarCampoAlineacion();
-});
-document.getElementById("al_jug_nombre").addEventListener("input", (e) => {
-  const j = ALINEACION_EDITOR.jugadores[ALINEACION_EDITOR.jugadorSeleccionado];
-  if (!j) return;
-  j.nombre = e.target.value;
-  pintarCampoAlineacion();
-});
-document.getElementById("al_jug_capitan")?.addEventListener("change", (e) => {
-  const i = ALINEACION_EDITOR.jugadorSeleccionado;
-  if (i === null || i === undefined || !ALINEACION_EDITOR.jugadores[i]) return;
-  marcarCapitanAlineacion(ALINEACION_EDITOR.jugadores, i, e.target.checked);
-  pintarCampoAlineacion();
-  pintarSuplentesAlineacion();
-});
 
 // Arrastrar un jugador con el ratón/dedo para ajustar su posición exacta
 // sobre el campo (además de la posición automática que da la formación).
@@ -20385,34 +22266,20 @@ function iniciarArrastreJugador(e, indice) {
   function soltar() {
     document.removeEventListener("pointermove", mover);
     document.removeEventListener("pointerup", soltar);
-    if (movido) el.dataset.arrastrado = "1";
+    if (movido) {
+      el.dataset.arrastrado = "1";
+      const etiq = document.querySelector(`#alTitularesLista .al-fila[data-i="${indice}"] .al-puesto`);
+      if (etiq) {
+        const puesto = etiquetaPuestoPorY(ALINEACION_EDITOR.jugadores[indice].y, document.getElementById("al_formacion").value);
+        etiq.textContent = puesto;
+        etiq.className = `al-puesto al-puesto-${puesto.toLowerCase()}`;
+      }
+    }
   }
   document.addEventListener("pointermove", mover);
   document.addEventListener("pointerup", soltar);
 }
 
-document.getElementById("al_formacion").addEventListener("change", (e) => {
-  const posiciones = generarPosicionesFormacion(e.target.value);
-  // Se conservan dorsal/nombre ya escritos, emparejando por índice; si la
-  // nueva formación tiene menos huecos que jugadores ya rellenados, los
-  // sobrantes pasan a suplentes en vez de perderse.
-  const anteriores = ALINEACION_EDITOR.jugadores;
-  ALINEACION_EDITOR.jugadores = posiciones.map(([x, y], i) => ({
-    x, y,
-    dorsal: anteriores[i]?.dorsal ?? null,
-    nombre: anteriores[i]?.nombre ?? "",
-    capitan: anteriores[i]?.capitan === true,
-  }));
-  if (anteriores.length > posiciones.length) {
-    anteriores.slice(posiciones.length).forEach((j) => {
-      if (j.nombre) ALINEACION_EDITOR.suplentes.push({ dorsal: j.dorsal, nombre: j.nombre, capitan: j.capitan === true });
-    });
-    pintarSuplentesAlineacion();
-  }
-  ALINEACION_EDITOR.jugadorSeleccionado = null;
-  document.getElementById("alineacionEditorDatos").style.display = "none";
-  pintarCampoAlineacion();
-});
 
 // ---------- Suplentes ----------
 function pintarSuplentesAlineacion() {
@@ -20435,8 +22302,18 @@ function pintarSuplentesAlineacion() {
     fila.querySelector(".sup-nombre").addEventListener("input", (e) => {
       ALINEACION_EDITOR.suplentes[i].nombre = e.target.value;
     });
+    // Enter pasa al siguiente suplente; en el último, con nombre escrito,
+    // crea una fila nueva para seguir tecleando sin tocar el ratón.
+    fila.querySelector(".sup-nombre").addEventListener("keydown", (e) => {
+      if (e.key !== "Enter") return;
+      e.preventDefault();
+      const siguiente = cont.querySelector(`.fila-suplente-alineacion[data-i="${i + 1}"] .sup-nombre`);
+      if (siguiente) siguiente.focus();
+      else if (ALINEACION_EDITOR.suplentes[i].nombre.trim()) document.getElementById("btnAnadirSuplenteAlineacion").click();
+    });
     fila.querySelector(".sup-capitan").addEventListener("change", (e) => {
       marcarCapitanAlineacion(ALINEACION_EDITOR.suplentes, i, e.target.checked);
+      pintarTitularesAlineacion();
       pintarCampoAlineacion();
       pintarSuplentesAlineacion();
     });
@@ -20449,26 +22326,33 @@ function pintarSuplentesAlineacion() {
 document.getElementById("btnAnadirSuplenteAlineacion").addEventListener("click", () => {
   ALINEACION_EDITOR.suplentes.push({ dorsal: null, nombre: "", capitan: false });
   pintarSuplentesAlineacion();
+  const nombres = document.querySelectorAll("#alineacionEditorSuplentesLista .sup-nombre");
+  if (nombres.length) nombres[nombres.length - 1].focus();
 });
 
 // ---------- Abrir/cerrar el modal ----------
 // contexto: { articleId } o { resultId }. alineacionExistente: fila de
 // la tabla "alineaciones" tal cual la devuelve la API, o null para crear
 // una nueva.
-function abrirEditorAlineacion(contexto, alineacionExistente) {
+// equipoInicial (opcional): equipo ya elegido al crear una nueva desde la
+// tarjeta «Local»/«Visitante» de un partido.
+function abrirEditorAlineacion(contexto, alineacionExistente, equipoInicial) {
   const modal = document.getElementById("modalAlineacion");
   document.getElementById("al_id").value = alineacionExistente?.id || "";
   document.getElementById("al_article_id").value = contexto.articleId || "";
   document.getElementById("al_result_id").value = contexto.resultId || "";
-  document.getElementById("alineacionModalTitulo").textContent = alineacionExistente ? "Editar alineación" : "Nueva alineación";
+  document.getElementById("alineacionModalTitulo").textContent = alineacionExistente
+    ? `Editar alineación · ${alineacionExistente.equipo}`
+    : (equipoInicial ? `Nueva alineación · ${equipoInicial}` : "Nueva alineación");
   document.getElementById("msgErrorAlineacion").style.display = "none";
   document.getElementById("btnEliminarAlineacion").style.display = alineacionExistente ? "inline-block" : "none";
 
   const todosLosClubes = listaTodosLosClubesFederativos().sort((a, b) => a.localeCompare(b));
-  alTeamPicker.poblar(todosLosClubes, alineacionExistente?.equipo || "", true);
+  const equipoPre = alineacionExistente?.equipo || equipoInicial || "";
+  alTeamPicker.poblar(todosLosClubes, equipoPre, true);
   document.getElementById("al_equipo_otro_wrap").style.display = alTeamPicker.obtenerValor() === VALOR_OTRO_EQUIPO ? "flex" : "none";
   document.getElementById("al_equipo_otro_nombre").value =
-    (alTeamPicker.obtenerValor() === VALOR_OTRO_EQUIPO && alineacionExistente) ? alineacionExistente.equipo : "";
+    (alTeamPicker.obtenerValor() === VALOR_OTRO_EQUIPO && equipoPre) ? equipoPre : "";
 
   const formacion = alineacionExistente?.formacion || "4-3-3";
   document.getElementById("al_formacion").value = formacion;
@@ -20481,20 +22365,24 @@ function abrirEditorAlineacion(contexto, alineacionExistente) {
       .map((j) => ({ dorsal: j.dorsal ?? null, nombre: j.nombre || "", capitan: j.capitan === true }));
     // Si por lo que sea no hay titulares guardados, se genera la
     // formación por defecto para no dejar el campo vacío.
-    if (!ALINEACION_EDITOR.jugadores.length) {
-      ALINEACION_EDITOR.jugadores = generarPosicionesFormacion(formacion).map(([x, y]) => ({ x, y, dorsal: null, nombre: "", capitan: false }));
-    }
+    ALINEACION_EDITOR.jugadores = ALINEACION_EDITOR.jugadores.length
+      ? completarHuecosAlineacion(ALINEACION_EDITOR.jugadores, formacion)
+      : generarPosicionesFormacion(formacion).map(([x, y]) => ({ x, y, dorsal: null, nombre: "", capitan: false }));
   } else {
     ALINEACION_EDITOR.jugadores = generarPosicionesFormacion(formacion).map(([x, y]) => ({ x, y, dorsal: null, nombre: "", capitan: false }));
     ALINEACION_EDITOR.suplentes = [];
   }
   ALINEACION_EDITOR.jugadorSeleccionado = null;
-  document.getElementById("alineacionEditorDatos").style.display = "none";
-  pintarCampoAlineacion();
-  pintarSuplentesAlineacion();
+  document.getElementById("alPegarWrap").style.display = "none";
+  document.getElementById("alPegarTexto").value = "";
+  refrescarEditorAlineacion();
   cargarUltimasAlineacionesEquipo();
 
   modal.classList.add("abierto");
+  // Una alineación nueva se empieza a escribir ya: cursor en el portero.
+  if (!alineacionExistente) {
+    setTimeout(() => document.querySelector("#alTitularesLista .al-fila .al-nombre-input")?.focus(), 60);
+  }
 }
 
 function cerrarModalAlineacion() {
@@ -20553,8 +22441,8 @@ document.getElementById("btnGuardarAlineacion").addEventListener("click", async 
     // partido, la alineación cuelga de result_id pero el bloque que hay
     // que refrescar es el de la noticia (ver cargarAlineacionesArticulo).
     const articleIdAbierto = document.getElementById("articleId").value;
-    if (body.result_id && articleIdAbierto && String(ARTICULO_ALINEACION_RESULTADO_ID) === String(body.result_id)) {
-      cargarAlineacionesArticulo(articleIdAbierto);
+    if (body.result_id && String(ARTICULO_ALINEACION_RESULTADO_ID) === String(body.result_id)) {
+      cargarAlineacionesArticulo(articleIdAbierto || null);
     }
     EOF.toast("Alineación guardada correctamente.");
   } catch (err) {
@@ -20577,8 +22465,8 @@ document.getElementById("btnEliminarAlineacion").addEventListener("click", async
     if (articleId) cargarAlineacionesArticulo(articleId);
     if (resultId) cargarAlineacionesResultado(resultId);
     const articleIdAbiertoDel = document.getElementById("articleId").value;
-    if (resultId && articleIdAbiertoDel && String(ARTICULO_ALINEACION_RESULTADO_ID) === String(resultId)) {
-      cargarAlineacionesArticulo(articleIdAbiertoDel);
+    if (resultId && String(ARTICULO_ALINEACION_RESULTADO_ID) === String(resultId)) {
+      cargarAlineacionesArticulo(articleIdAbiertoDel || null);
     }
     EOF.toast("Alineación eliminada.");
   } catch (err) {
@@ -20599,39 +22487,88 @@ function tarjetaAlineacionHTML(a) {
 }
 
 // Guarda si la noticia cargada actualmente está vinculada a un partido,
-// para que el botón "+ Añadir alineación" sepa si debe colgar la nueva
-// alineación de la noticia o del partido (ver más abajo). Se actualiza
-// cada vez que se recarga la lista.
+// para que la nueva alineación cuelgue de la noticia o del partido (ver
+// más abajo). Se actualiza cada vez que se recarga la lista.
 let ARTICULO_ALINEACION_RESULTADO_ID = null;
+
+function normalizarEquipoAlineacion(n) { return String(n || "").trim().toLowerCase(); }
+
+// Pinta las alineaciones de un partido o de una noticia.
+// - Con partido conocido (local y visitante): dos tarjetas fijas, una por
+//   equipo, con «+ Añadir» o «Editar»; toda la tarjeta es clicable y el
+//   equipo ya viene elegido al abrir el editor.
+// - Sin partido: la lista de siempre y el botón genérico «+ Añadir».
+// ctx = { resultId } o { articleId }: de dónde cuelga lo que se cree.
+function pintarAlineacionesPanel(cont, alineaciones, resultado, ctx, btnGenerico) {
+  const slots = (resultado && resultado.equipo_local && resultado.equipo_visitante) ? [
+    { rol: "Local", equipo: resultado.equipo_local, escudo: resultado.escudo_local_url },
+    { rol: "Visitante", equipo: resultado.equipo_visitante, escudo: resultado.escudo_visitante_url },
+  ] : [];
+  if (btnGenerico) btnGenerico.style.display = slots.length ? "none" : "";
+  const usadas = new Set();
+  const htmlSlots = slots.map((sl) => {
+    const a = alineaciones.find((x) => !usadas.has(x.id) && normalizarEquipoAlineacion(x.equipo) === normalizarEquipoAlineacion(sl.equipo));
+    if (a) usadas.add(a.id);
+    const titulares = a ? (a.jugadores || []).filter((j) => j.titular !== false).length : 0;
+    return `
+      <div class="tarjeta-alineacion al-slot${a ? " completa" : ""}" data-id="${a ? a.id : ""}" data-equipo="${escapeHtml(sl.equipo)}">
+        <img class="escudo-mini" src="${escudoUrlAdmin(sl.equipo, sl.escudo)}" alt="" loading="lazy" onerror="this.src='${ESCUDO_GENERICO_ADMIN}'">
+        <span class="al-slot-textos">
+          <span class="tarjeta-alineacion-equipo">${escapeHtml(sl.equipo)}</span>
+          <span class="tarjeta-alineacion-info">${sl.rol} · ${a ? `${escapeHtml(a.formacion || "")} · ${titulares} titulares` : "Sin alineación"}</span>
+        </span>
+        <button type="button" class="${a ? "btn-secundari" : "btn-primari"} btn-editar-alineacion al-slot-accion">${a ? "Editar" : "+ Añadir"}</button>
+      </div>`;
+  });
+  const extras = alineaciones.filter((x) => !usadas.has(x.id));
+  const htmlExtras = extras.map(tarjetaAlineacionHTML);
+  const todo = [...htmlSlots, ...htmlExtras];
+  cont.innerHTML = todo.length
+    ? todo.join("")
+    : `<p class="ayuda-editor" style="margin:0;">Todavía no hay ninguna alineación añadida.</p>`;
+  // Toda la tarjeta abre el editor (no solo el botoncito).
+  cont.querySelectorAll(".tarjeta-alineacion").forEach((card) => {
+    card.addEventListener("click", () => {
+      const id = parseInt(card.dataset.id, 10);
+      const existente = Number.isFinite(id) ? alineaciones.find((x) => x.id === id) : null;
+      if (existente) abrirEditorAlineacion(ctx, existente);
+      else if (card.dataset.equipo) abrirEditorAlineacion(ctx, null, card.dataset.equipo);
+    });
+  });
+}
 
 async function cargarAlineacionesArticulo(articleId) {
   const cont = document.getElementById("listaAlineacionesArticulo");
   const btnAnadir = document.getElementById("btnAnadirAlineacionArticulo");
   const ayudaVinculo = document.getElementById("ayudaAlineacionArticuloVinculada");
-  if (!articleId) { cont.innerHTML = ""; ARTICULO_ALINEACION_RESULTADO_ID = null; return; }
+  // Una noticia aún sin guardar ya puede llevar alineaciones si tiene un
+  // partido vinculado: cuelgan del partido, no hace falta su id.
+  const resultadoElegido = document.getElementById("resultado_id")?.value || "";
+  if (!articleId && !resultadoElegido) { cont.innerHTML = ""; ARTICULO_ALINEACION_RESULTADO_ID = null; if (btnAnadir) btnAnadir.style.display = ""; return; }
   try {
-    const { article } = await apiFetch(`/api/articles/${articleId}`);
-    // Si la noticia está vinculada a un partido, la(s) alineación(es) que
-    // devuelve la API ya son las del partido (result_id), compartidas y
-    // sincronizadas entre ambos: no existe una versión "propia" de la
-    // noticia en ese caso (ver GET /api/articles/:slug en el worker).
-    ARTICULO_ALINEACION_RESULTADO_ID = article?.resultado_id || null;
+    let alineaciones = [];
+    if (articleId) {
+      const { article } = await apiFetch(`/api/articles/${articleId}`);
+      // Si la noticia está vinculada a un partido, la(s) alineación(es) que
+      // devuelve la API ya son las del partido (result_id), compartidas y
+      // sincronizadas entre ambos (ver GET /api/articles/:slug en el worker).
+      ARTICULO_ALINEACION_RESULTADO_ID = article?.resultado_id || null;
+      alineaciones = (article && article.alineaciones) || [];
+    } else {
+      ARTICULO_ALINEACION_RESULTADO_ID = resultadoElegido;
+    }
+    let resultado = null;
+    if (ARTICULO_ALINEACION_RESULTADO_ID) {
+      try {
+        resultado = (await apiFetch(`/api/results/${ARTICULO_ALINEACION_RESULTADO_ID}`)).resultado || null;
+        if (resultado && Array.isArray(resultado.alineaciones)) alineaciones = resultado.alineaciones;
+      } catch (e) { /* sin datos del partido: se pinta la lista simple */ }
+    }
     if (ayudaVinculo) ayudaVinculo.style.display = ARTICULO_ALINEACION_RESULTADO_ID ? "block" : "none";
-    const alineaciones = (article && article.alineaciones) || [];
-    cont.innerHTML = alineaciones.length
-      ? alineaciones.map(tarjetaAlineacionHTML).join("")
-      : `<p class="ayuda-editor" style="margin:0;">Todavía no hay ninguna alineación añadida.</p>`;
-    cont.querySelectorAll(".btn-editar-alineacion").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const id = parseInt(btn.closest(".tarjeta-alineacion").dataset.id, 10);
-        const a = alineaciones.find((x) => x.id === id);
-        if (!a) return;
-        // Al editar, cuelga del mismo sitio del que ya cuelga realmente
-        // la fila (del partido si hay vínculo, de la noticia si no).
-        if (ARTICULO_ALINEACION_RESULTADO_ID) abrirEditorAlineacion({ resultId: ARTICULO_ALINEACION_RESULTADO_ID }, a);
-        else abrirEditorAlineacion({ articleId }, a);
-      });
-    });
+    // Al editar, cuelga del mismo sitio del que ya cuelga realmente la fila
+    // (del partido si hay vínculo, de la noticia si no).
+    const ctx = ARTICULO_ALINEACION_RESULTADO_ID ? { resultId: ARTICULO_ALINEACION_RESULTADO_ID } : { articleId };
+    pintarAlineacionesPanel(cont, alineaciones, resultado, ctx, btnAnadir);
   } catch (err) {
     cont.innerHTML = `<p class="ayuda-editor" style="margin:0;">No se han podido cargar las alineaciones.</p>`;
   }
@@ -20639,20 +22576,11 @@ async function cargarAlineacionesArticulo(articleId) {
 
 async function cargarAlineacionesResultado(resultId) {
   const cont = document.getElementById("listaAlineacionesResultado");
+  const btnAnadir = document.getElementById("btnAnadirAlineacionResultado");
   if (!resultId) { cont.innerHTML = ""; return; }
   try {
     const { resultado } = await apiFetch(`/api/results/${resultId}`);
-    const alineaciones = (resultado && resultado.alineaciones) || [];
-    cont.innerHTML = alineaciones.length
-      ? alineaciones.map(tarjetaAlineacionHTML).join("")
-      : `<p class="ayuda-editor" style="margin:0;">Todavía no hay ninguna alineación añadida.</p>`;
-    cont.querySelectorAll(".btn-editar-alineacion").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const id = parseInt(btn.closest(".tarjeta-alineacion").dataset.id, 10);
-        const a = alineaciones.find((x) => x.id === id);
-        if (a) abrirEditorAlineacion({ resultId }, a);
-      });
-    });
+    pintarAlineacionesPanel(cont, (resultado && resultado.alineaciones) || [], resultado, { resultId }, btnAnadir);
   } catch (err) {
     cont.innerHTML = `<p class="ayuda-editor" style="margin:0;">No se han podido cargar las alineaciones.</p>`;
   }
@@ -20706,7 +22634,7 @@ document.getElementById("btnQuitarMvpResultado").addEventListener("click", async
 
 document.getElementById("btnAnadirAlineacionArticulo").addEventListener("click", () => {
   const articleId = document.getElementById("articleId").value;
-  if (!articleId) return;
+  if (!articleId && !ARTICULO_ALINEACION_RESULTADO_ID) return;
   // Si la noticia está vinculada a un partido, la nueva alineación
   // cuelga directamente del partido (result_id) para que quede
   // compartida y sincronizada desde el primer momento, en vez de
@@ -20729,10 +22657,16 @@ document.getElementById("btnAnadirAlineacionResultado").addEventListener("click"
 function actualizarBloqueAlineacionesArticulo(articleId) {
   const btn = document.getElementById("btnAnadirAlineacionArticulo");
   const ayuda = document.getElementById("ayudaAlineacionArticulo");
-  btn.disabled = !articleId;
-  ayuda.style.display = articleId ? "none" : "block";
+  // Sin id basta con tener un partido vinculado elegido.
+  const hayPartido = !!document.getElementById("resultado_id")?.value;
+  btn.disabled = !articleId && !hayPartido;
+  ayuda.style.display = (articleId || hayPartido) ? "none" : "block";
   cargarAlineacionesArticulo(articleId || null);
 }
+// Al elegir o quitar el partido vinculado, el bloque se actualiza solo.
+document.getElementById("resultado_id")?.addEventListener("change", () => {
+  actualizarBloqueAlineacionesArticulo(document.getElementById("articleId").value);
+});
 
 // Se llama explícitamente desde cancelarEdicion() y editarArticulo() (ver
 // arriba), justo después de fijar/limpiar articleId, ya que asignar
@@ -21135,13 +23069,15 @@ function encuestaItemHTML(encuesta) {
     </div>
     <div class="func-encuesta-chips">${chips}</div>
     ${opciones}
-    <div class="func-encuesta-acc">
+    ${encuesta.editable === false
+      ? `<p class="ayuda-editor" style="margin:10px 0 0;">Solo ${encuesta.autor_nombre ? escapeHtml(encuesta.autor_nombre) : "su autor"} puede editarla, cerrarla o borrarla.</p>`
+      : `<div class="func-encuesta-acc">
       <button type="button" class="func-btn editar" data-encuesta-editar="${encuesta.id}">Editar</button>
       ${encuesta.estado === "abierta"
         ? `<button type="button" class="func-btn cerrar" data-encuesta-cerrar="${encuesta.id}">Cerrar</button>`
         : `<button type="button" class="func-btn reabrir" data-encuesta-reabrir="${encuesta.id}">Reabrir</button>`}
       <button type="button" class="func-btn borrar" data-encuesta-borrar="${encuesta.id}">Borrar</button>
-    </div>
+    </div>`}
   </article>`;
 }
 
@@ -21373,7 +23309,8 @@ document.getElementById("listaEncuestas")?.addEventListener("click", async (e) =
     try {
       const { encuestas = [] } = await apiFetch("/api/admin/polls");
       const encuesta = encuestas.find(p => String(p.id) === idEditar);
-      if (encuesta) abrirModalEncuesta(encuesta);
+      if (encuesta && encuesta.editable === false) alert("Solo su autor puede editar esta encuesta.");
+      else if (encuesta) abrirModalEncuesta(encuesta);
     } catch (err) {
       alert("No se ha podido cargar la encuesta: " + err.message);
     }
@@ -24728,6 +26665,9 @@ const STAFF_PUSH_IR = {
   tienda: "tienda.tiendaGestion",
   comentarios: "funcionalidades.comentarios",
   anuncios: "funcionalidades.anuncios",
+  // La subpestaña de la lista se llama listaResultados; «resultados.lista» es el nombre que usan los enlaces
+  // (avisos, correo de partidos sin cubrir, Inicio) y antes caía en «Nuevo resultado».
+  "resultados.lista": "resultados.listaResultados",
 };
 // Subpestañas que no ve todo el mundo: si están ocultas se queda en la principal.
 const STAFF_PUSH_IR_SOLO_VISIBLES = new Set(["formularios"]);
@@ -24759,6 +26699,13 @@ function eofIrASeccion(ir, params) {
       const art = (ARTICULOS_CACHE && ARTICULOS_CACHE[articuloId]) || { id: articuloId };
       editarArticulo(art).catch(() => {});
     }
+    // Enlace directo a una subsección de Responsabilidades (?ir=funcionalidades.responsabilidades&resp=respRedaccion):
+    // lo usan los avisos de «alguien cumple los requisitos de nivel».
+    const subResp = params.get("resp");
+    if (tab === "funcionalidades" && subtab === "responsabilidades" && /^resp[A-Za-z]+$/.test(subResp || "")) {
+      const btnResp = document.querySelector(`#subtabsResponsabilidades [data-subtab="${subResp}"]`);
+      if (btnResp) btnResp.click();
+    }
     // Enlace del email resumen de partidos sin cubrir
     // (?ir=resultados.lista&sin_cubrir=1): abre la lista con el filtro
     // "Solo sin cubrir" ya activado.
@@ -24785,7 +26732,10 @@ function eofIrASeccion(ir, params) {
 
 (function irSegunQuerystring() {
   const params = new URLSearchParams(location.search);
-  eofIrASeccion(params.get("ir"), params);
+  // Se difiere un instante: este módulo se ejecuta ANTES que los posteriores (p. ej. Reuniones, que declara
+  // sus `const` más abajo). Si se navegaba a la subsección en el acto, su carga fallaba en silencio al recargar
+  // la página y se quedaba en «Cargando…» hasta volver a entrar desde la pestaña.
+  setTimeout(() => eofIrASeccion(params.get("ir"), params), 0);
 })();
 
 
@@ -25251,7 +27201,13 @@ async function guardarNoticiaRapida(ev) {
 // (personas concretas). Se envía como { seleccion: { admins: "todos",
 // redactores: ["ana@x.com", ...] } }; el servidor solo filtra filas que ya
 // existen en su base de datos.
-const ANUNCIO_ESTADO = { conteos: {}, enviando: false, tanda: 20, personas: {}, sel: {}, busca: {}, cargadas: false };
+// Además de los grupos fijos (roles, suscriptores, lectores) hay un bloque «Grupos de trabajo»
+// con un grupo por cada grupo de trabajo creado en Información/Usuarios; su clave es
+// "grupo:<id>". Se resuelven en el servidor al enviar (quien esté en el grupo en ese momento).
+const ANUNCIO_ESTADO = { conteos: {}, enviando: false, tanda: 20, personas: {}, sel: {}, busca: {}, cargadas: false, gruposTrabajo: [], preseleccion: null };
+// Gancho para otros módulos (Información > «Enviar anuncio al grupo»): deja elegido ese grupo de trabajo
+// la próxima vez que se cargue la pestaña Anuncios.
+window.eofPreseleccionarAnuncio = function (clave) { ANUNCIO_ESTADO.preseleccion = clave || null; };
 const ANUNCIO_MAX_FILAS = 120; // filas pintadas por lista (el buscador filtra el resto)
 const ANUNCIO_ICONOS = {
   admins: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>',
@@ -25261,14 +27217,29 @@ const ANUNCIO_ICONOS = {
   lectores: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>',
 };
 const ANUNCIO_GRUPOS = [
-  { id: "admins", nombre: "Administradores", desc: "Gestionan el panel y la web", color: "rojo", bloque: "Equipo" },
+  { id: "admins", nombre: "Responsables", desc: "Gestionan el panel y la web", color: "rojo", bloque: "Equipo" },
   { id: "redactores", nombre: "Redactores", desc: "Escriben y publican las noticias", color: "azul", bloque: "Equipo" },
   { id: "fotografos", nombre: "Fotógrafos", desc: "Colaboradores de imagen y galerías", color: "violeta", bloque: "Equipo" },
   { id: "suscriptores", nombre: "Suscriptores del boletín", desc: "Pidieron recibir correos · llevan enlace de baja", color: "ambar", bloque: "Comunidad" },
   { id: "lectores", nombre: "Lectores con cuenta", desc: "Cuentas verificadas · solo avisos del servicio", color: "verde", bloque: "Comunidad" },
 ];
 const ANUNCIO_NOMBRES_AUD = Object.fromEntries(ANUNCIO_GRUPOS.map((g) => [g.id, g.nombre]));
+const ANUNCIO_ICONO_TRABAJO = '<circle cx="9" cy="8" r="3.2"/><circle cx="17" cy="9.5" r="2.5"/><path d="M3 19c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5M15.5 14.2c3 0 5.5 1.8 5.5 4.8"/>';
+const ANUNCIO_ROL_ETIQ = { admin: "Admin", redactor: "Redactor", fotografo: "Fotógrafo" };
+const anuncioHexSeguro = (c) => (/^#[0-9a-f]{6}$/i.test(c || "") ? c : "#5b6672");
 
+// Lista completa de destinatarios posibles: roles del equipo, grupos de trabajo (dinámicos) y comunidad.
+function anuncioTodosLosGrupos() {
+  const trabajo = (ANUNCIO_ESTADO.gruposTrabajo || []).map((g) => ({
+    id: "grupo:" + g.id, nombre: g.nombre, desc: g.descripcion || "Grupo de trabajo", color: "grupo",
+    hex: anuncioHexSeguro(g.color), bloque: "Grupos de trabajo", esTrabajo: true,
+  }));
+  return ANUNCIO_GRUPOS.slice(0, 3).concat(trabajo, ANUNCIO_GRUPOS.slice(3));
+}
+// Atributos de color de una chip/tarjeta (los grupos de trabajo traen su propio color).
+function anuncioAtribColor(g) {
+  return `data-color="${g.color}"${g.hex ? ` style="--gt:${g.hex}"` : ""}`;
+}
 function anuncioIniciales(p) {
   const base = (p.nombre || p.email || "?").trim();
   const partes = base.split(/[\s@._-]+/).filter(Boolean);
@@ -25306,7 +27277,7 @@ function anuncioExtraNoListado(id) {
 
 function anuncioSeleccionParaEnvio() {
   const sel = {};
-  for (const g of ANUNCIO_GRUPOS) {
+  for (const g of anuncioTodosLosGrupos()) {
     const st = anuncioSel(g.id);
     if (st.modo === "todos") sel[g.id] = "todos";
     else if (st.modo === "algunos" && st.emails.size) sel[g.id] = [...st.emails];
@@ -25315,7 +27286,7 @@ function anuncioSeleccionParaEnvio() {
 }
 
 function anuncioFilaPersona(p, marcada) {
-  return `<li><label class="an-persona${marcada ? " marcada" : ""}"><input type="checkbox" data-email="${escapeHtml(p.email.toLowerCase())}"${marcada ? " checked" : ""}>${anuncioAvatarHtml(p)}<span class="an-pn"><b>${escapeHtml(p.nombre || p.email)}</b>${p.nombre ? `<small>${escapeHtml(p.email)}</small>` : ""}</span><span class="an-tick" aria-hidden="true"></span></label></li>`;
+  return `<li><label class="an-persona${marcada ? " marcada" : ""}"><input type="checkbox" data-email="${escapeHtml(p.email.toLowerCase())}"${marcada ? " checked" : ""}>${anuncioAvatarHtml(p)}<span class="an-pn"><b>${escapeHtml(p.nombre || p.email)}</b>${p.nombre ? `<small>${escapeHtml(p.email)}${p.rol && ANUNCIO_ROL_ETIQ[p.rol] ? ` · ${ANUNCIO_ROL_ETIQ[p.rol]}` : ""}</small>` : ""}</span><span class="an-tick" aria-hidden="true"></span></label></li>`;
 }
 
 function anuncioPintarLista(id) {
@@ -25342,22 +27313,28 @@ function anuncioActualizarCabecera(id) {
   const n = st.modo === "todos" ? total : (st.modo === "algunos" ? st.emails.size : 0);
   cont.dataset.modo = st.modo;
   cont.querySelector("[data-cuenta]").innerHTML = st.modo === "nadie" ? `<b>${total}</b> personas` : `<b>${n}</b> de ${total}`;
-  cont.querySelectorAll("button[data-modo]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.modo === st.modo)));
+  const vacioTrabajo = cont.dataset.trabajo === "1" && total === 0;
+  cont.querySelectorAll("button[data-modo]").forEach((b) => {
+    b.setAttribute("aria-pressed", String(b.dataset.modo === st.modo));
+    const bloquear = vacioTrabajo && b.dataset.modo !== "nadie";
+    b.disabled = bloquear;
+    b.title = bloquear ? "Este grupo de trabajo no tiene personas con correo" : "";
+  });
   cont.querySelector(".an-grupo-cuerpo").hidden = st.modo !== "algunos";
 }
 
 function anuncioPintarGrupos() {
   const caja = document.getElementById("anuncioGrupos");
   let bloque = "";
-  caja.innerHTML = ANUNCIO_GRUPOS.map((g) => {
+  caja.innerHTML = anuncioTodosLosGrupos().map((g) => {
     const cab = g.bloque !== bloque ? `<div class="an-bloque">${g.bloque}</div>` : "";
     bloque = g.bloque;
-    return `${cab}<section class="an-grupo" data-g="${g.id}" data-color="${g.color}" data-modo="nadie">
+    return `${cab}<section class="an-grupo" data-g="${escapeHtml(g.id)}" ${anuncioAtribColor(g)} data-modo="nadie"${g.esTrabajo ? ' data-trabajo="1"' : ""}>
       <header class="an-grupo-cab">
-        <span class="an-grupo-ico"><svg viewBox="0 0 24 24" aria-hidden="true">${ANUNCIO_ICONOS[g.id]}</svg></span>
-        <div class="an-grupo-txt"><h5>${g.nombre}</h5><p>${g.desc}</p></div>
+        <span class="an-grupo-ico"><svg viewBox="0 0 24 24" aria-hidden="true">${ANUNCIO_ICONOS[g.id] || ANUNCIO_ICONO_TRABAJO}</svg></span>
+        <div class="an-grupo-txt"><h5>${escapeHtml(g.nombre)}</h5><p>${escapeHtml(g.desc)}</p></div>
         <span class="an-grupo-cuenta" data-cuenta></span>
-        <div class="an-seg" role="group" aria-label="Destinatarios de ${g.nombre}">
+        <div class="an-seg" role="group" aria-label="Destinatarios de ${escapeHtml(g.nombre)}">
           <button type="button" data-modo="nadie" aria-pressed="true">Nadie</button>
           <button type="button" data-modo="todos" aria-pressed="false">Todos</button>
           <button type="button" data-modo="algunos" aria-pressed="false">Elegir</button>
@@ -25374,7 +27351,7 @@ function anuncioPintarGrupos() {
       </div>
     </section>`;
   }).join("");
-  ANUNCIO_GRUPOS.forEach((g) => { anuncioActualizarCabecera(g.id); anuncioPintarLista(g.id); });
+  anuncioTodosLosGrupos().forEach((g) => { anuncioActualizarCabecera(g.id); anuncioPintarLista(g.id); });
 }
 
 // Total sin repetidos, pila de avatares y desglose por grupo.
@@ -25382,7 +27359,7 @@ function actualizarTotalAnuncio() {
   const unicos = new Map();
   let extra = 0;
   const desglose = [];
-  for (const g of ANUNCIO_GRUPOS) {
+  for (const g of anuncioTodosLosGrupos()) {
     const personas = anuncioPersonasDeGrupo(g.id);
     const ex = anuncioExtraNoListado(g.id);
     const n = personas.length + ex;
@@ -25395,7 +27372,7 @@ function actualizarTotalAnuncio() {
   document.getElementById("anuncioTotalSeleccion").textContent = String(total);
   document.getElementById("anuncioTotalNota").textContent = suma > total ? `(se quitan ${suma - total} repetidos)` : "";
   document.getElementById("anuncioDesglose").innerHTML = desglose.length
-    ? desglose.map(({ g, n }) => `<span class="an-chip" data-color="${g.color}"><i></i>${g.nombre}<b>${n}</b></span>`).join("")
+    ? desglose.map(({ g, n }) => `<span class="an-chip" ${anuncioAtribColor(g)}><i></i>${escapeHtml(g.nombre)}<b>${n}</b></span>`).join("")
     : `<span class="an-vacio">Aún no has elegido a nadie.</span>`;
   const primeros = [...unicos.values()].slice(0, 7);
   document.getElementById("anuncioPila").innerHTML = primeros.map(anuncioAvatarHtml).join("") + (total > primeros.length ? `<span class="an-av an-av-mas">+${total - primeros.length}</span>` : "");
@@ -25430,17 +27407,35 @@ async function cargaAnuncios() {
     ANUNCIO_ESTADO.conteos = r.conteos || {};
     ANUNCIO_ESTADO.tanda = r.tanda || 20;
     ANUNCIO_ESTADO.personas = pr.personas || {};
+    ANUNCIO_ESTADO.gruposTrabajo = pr.grupos_trabajo || [];
+    const btnGT = document.querySelector('#subpanel-anuncios [data-preset="grupos"]');
+    if (btnGT) btnGT.hidden = !ANUNCIO_ESTADO.gruposTrabajo.length;
+    // Grupos de trabajo borrados desde la última vez: se descarta su selección.
+    const vivos = new Set(anuncioTodosLosGrupos().map((x) => x.id));
+    for (const k of Object.keys(ANUNCIO_ESTADO.sel)) if (!vivos.has(k)) delete ANUNCIO_ESTADO.sel[k];
     document.getElementById("anuncioAvisoConfig").style.display = r.correo_configurado ? "none" : "block";
     // Si ya había selección (se vuelve a abrir la pestaña), se conserva; se descartan correos que ya no existen.
-    for (const g of ANUNCIO_GRUPOS) {
+    for (const g of anuncioTodosLosGrupos()) {
       const st = anuncioSel(g.id);
       const existentes = new Set((ANUNCIO_ESTADO.personas[g.id] || []).map((p) => p.email.toLowerCase()));
       st.emails = new Set([...st.emails].filter((e) => existentes.has(e)));
       if (st.modo === "algunos" && !st.emails.size) st.modo = "nadie";
     }
     ANUNCIO_ESTADO.cargadas = true;
+    // Llegada desde Información > «Enviar anuncio al grupo»: solo ese grupo queda elegido.
+    const pre = ANUNCIO_ESTADO.preseleccion;
+    ANUNCIO_ESTADO.preseleccion = null;
+    if (pre && vivos.has(pre)) {
+      for (const k of Object.keys(ANUNCIO_ESTADO.sel)) { ANUNCIO_ESTADO.sel[k].modo = "nadie"; ANUNCIO_ESTADO.sel[k].emails.clear(); }
+      if ((ANUNCIO_ESTADO.conteos[pre] || (ANUNCIO_ESTADO.personas[pre] || []).length) > 0) anuncioSel(pre).modo = "todos";
+    }
     anuncioPintarGrupos();
     actualizarTotalAnuncio();
+    if (pre && vivos.has(pre)) {
+      const nombre = (anuncioTodosLosGrupos().find((x) => x.id === pre) || {}).nombre || "";
+      try { EOF.toast(`Anuncio para el grupo «${nombre}»: escribe el mensaje.`, "info"); } catch { /* sin avisos */ }
+      setTimeout(() => { const a = document.getElementById("anuncioAsunto"); if (a) a.focus({ preventScroll: false }); }, 150);
+    }
   } catch (err) {
     document.getElementById("anuncioGrupos").innerHTML = `<p class="an-vacio">No se pudieron cargar las personas: ${escapeHtml(err.message)}</p>`;
     EOF.toast("No se pudieron cargar las audiencias: " + err.message, "error");
@@ -25452,8 +27447,12 @@ async function cargaAnuncios() {
     cos.innerHTML = anuncios.length ? anuncios.map((a) => {
       const aud = a.audiencias && !Array.isArray(a.audiencias) ? a.audiencias : Object.fromEntries((a.audiencias || []).map((x) => [x, "todos"]));
       const chips = Object.entries(aud).map(([k, v]) => {
-        const g = ANUNCIO_GRUPOS.find((x) => x.id === k);
-        return `<span class="an-chip" data-color="${g ? g.color : "azul"}"><i></i>${escapeHtml(ANUNCIO_NOMBRES_AUD[k] || k)}${Array.isArray(v) ? `<b>${v.length}</b>` : ""}</span>`;
+        const g = anuncioTodosLosGrupos().find((x) => x.id === k);
+        // Grupo de trabajo que ya no existe: se muestra como tal, en gris.
+        const sinGrupo = !g && /^grupo:/.test(k);
+        const atr = g ? anuncioAtribColor(g) : (sinGrupo ? 'data-color="grupo" style="--gt:#8a93a0"' : 'data-color="azul"');
+        const nombre = g ? g.nombre : (sinGrupo ? "Grupo eliminado" : (ANUNCIO_NOMBRES_AUD[k] || k));
+        return `<span class="an-chip" ${atr}><i></i>${escapeHtml(nombre)}${Array.isArray(v) ? `<b>${v.length}</b>` : ""}</span>`;
       }).join("");
       const completo = a.estado === "completado";
       const pct = Math.min(100, Math.round(((a.enviados + a.fallidos) / Math.max(1, a.total_destinatarios)) * 100));
@@ -25592,9 +27591,10 @@ async function enviarAnuncio() {
   // Atajos de selección.
   document.querySelectorAll("#subpanel-anuncios [data-preset]").forEach((b) => b.addEventListener("click", () => {
     const equipo = ["admins", "redactores", "fotografos"];
-    for (const g of ANUNCIO_GRUPOS) {
+    for (const g of anuncioTodosLosGrupos()) {
       const st = anuncioSel(g.id);
       if (b.dataset.preset === "limpiar") { st.modo = "nadie"; st.emails.clear(); }
+      else if (b.dataset.preset === "grupos") { if (g.esTrabajo && (ANUNCIO_ESTADO.conteos[g.id] || 0) > 0) st.modo = "todos"; }
       else if (equipo.includes(g.id)) st.modo = "todos";
     }
     anuncioPintarGrupos(); actualizarTotalAnuncio();
@@ -25615,4 +27615,1304 @@ async function enviarAnuncio() {
   // Al pintar tarjetas o el modal de ajustes con texto ya escrito, se ajustan al momento.
   new MutationObserver(() => document.querySelectorAll("textarea.acred-autoaltura").forEach((t) => { if (!t.dataset.aa) { t.dataset.aa = "1"; ajustar(t); } }))
     .observe(document.body, { childList: true, subtree: true });
+})();
+
+// ---------- REUNIONES: gestión completa desde el panel (Funcionalidades > Reuniones) ----------
+// Cuatro secciones: Calendario (marcar franjas y confirmar reuniones), Reuniones (editar/cancelar),
+// Participantes (ver y eliminar) y Ajustes (calendario, avisos, regla de una reunión por persona).
+// Todo va contra /api/reunions/admin/* (solo Responsables); /reuniones ya no hace falta para gestionar.
+// El Responsable configura aquí todo lo que antes solo se podía tocar en la página /reuniones o en el
+// código: si el calendario está abierto, el título y el texto, los avisos push (activarlos y a cuántos
+// minutos del inicio salen) y la regla de "una reunión por persona". Las franjas y las reuniones
+// concretas se siguen gestionando en /reuniones (hay un enlace directo). Todo se guarda con
+// PUT /api/reunions/admin/config; el servidor valida y conserva lo que no se envía.
+const REUNIONES_AJ = { cfg: null, minutos: [], enlazado: false };
+const REUNIONES_AJ_MAX_AVISOS = 4;
+const REUNIONES_AJ_MAX_MINUTOS = 180;
+const REUNIONES_AJ_PRESETS = [60, 30, 15, 10, 5, 0];
+
+function reunionesAjEtiqueta(min) {
+  return min === 0 ? "Al empezar" : `${min} min antes`;
+}
+
+function reunionesAjPintarAvisos() {
+  const lista = document.getElementById("reunAjAvisos");
+  const presets = document.getElementById("reunAjPresets");
+  if (!lista || !presets) return;
+  const mins = REUNIONES_AJ.minutos;
+  lista.innerHTML = mins.length
+    ? mins.map((m) => `<span class="an-chip" data-color="azul"><i></i>${escapeHtml(reunionesAjEtiqueta(m))}<button type="button" class="reun-aj-quitar" data-min="${m}" aria-label="Quitar el aviso ${escapeHtml(reunionesAjEtiqueta(m))}">×</button></span>`).join("")
+    : '<span class="an-vacio">Sin avisos: no se enviará ninguna notificación.</span>';
+  const lleno = mins.length >= REUNIONES_AJ_MAX_AVISOS;
+  presets.innerHTML = REUNIONES_AJ_PRESETS.filter((m) => !mins.includes(m))
+    .map((m) => `<button type="button" class="an-btn an-btn-sec reun-aj-preset" data-min="${m}"${lleno ? " disabled" : ""}>+ ${escapeHtml(reunionesAjEtiqueta(m))}</button>`).join("");
+  const nuevo = document.getElementById("reunAjMinutos");
+  const btn = document.getElementById("reunAjAnadir");
+  if (nuevo) nuevo.disabled = lleno;
+  if (btn) btn.disabled = lleno;
+  const tope = document.getElementById("reunAjTope");
+  if (tope) tope.style.display = lleno ? "block" : "none";
+}
+
+function reunionesAjAnadir(min) {
+  const n = Math.round(Number(min));
+  if (!Number.isFinite(n) || n < 0 || n > REUNIONES_AJ_MAX_MINUTOS) {
+    EOF.toast(`Indica un número de minutos entre 0 y ${REUNIONES_AJ_MAX_MINUTOS}.`, "error");
+    return;
+  }
+  if (REUNIONES_AJ.minutos.includes(n)) { EOF.toast("Ese aviso ya está en la lista.", "info"); return; }
+  if (REUNIONES_AJ.minutos.length >= REUNIONES_AJ_MAX_AVISOS) {
+    EOF.toast(`Como máximo ${REUNIONES_AJ_MAX_AVISOS} avisos por reunión.`, "error");
+    return;
+  }
+  REUNIONES_AJ.minutos = [...REUNIONES_AJ.minutos, n].sort((a, b) => b - a);
+  reunionesAjPintarAvisos();
+}
+
+function reunionesAjPintar() {
+  const c = REUNIONES_AJ.cfg || {};
+  const v = (id) => document.getElementById(id);
+  v("reunAjAbierto").checked = c.obert !== false;
+  v("reunAjTitulo").value = c.titol || "";
+  v("reunAjDescripcion").value = c.descripcio || "";
+  v("reunAjAvisosOn").checked = c.avisos !== false;
+  v("reunAjUna").checked = c.unaPorPersona !== false;
+  v("reunAjCorreos").checked = c.correos !== false;
+  REUNIONES_AJ.minutos = Array.isArray(c.avisosMinutos) ? [...c.avisosMinutos].sort((a, b) => b - a) : [30, 10, 0];
+  v("reunAjAvisosCaja").classList.toggle("reun-aj-off", !v("reunAjAvisosOn").checked);
+  reunionesAjPintarAvisos();
+}
+
+function reunionesAjEnlazar() {
+  if (REUNIONES_AJ.enlazado) return;
+  REUNIONES_AJ.enlazado = true;
+  const sub = document.getElementById("subpanel-reuniones");
+  if (!sub) return;
+  sub.addEventListener("click", (e) => {
+    const quitar = e.target.closest(".reun-aj-quitar");
+    if (quitar) {
+      REUNIONES_AJ.minutos = REUNIONES_AJ.minutos.filter((m) => m !== Number(quitar.dataset.min));
+      reunionesAjPintarAvisos();
+      return;
+    }
+    const preset = e.target.closest(".reun-aj-preset");
+    if (preset) reunionesAjAnadir(preset.dataset.min);
+  });
+  document.getElementById("reunAjAnadir").addEventListener("click", () => {
+    const inp = document.getElementById("reunAjMinutos");
+    if (!inp.value.trim()) return;
+    reunionesAjAnadir(inp.value);
+    inp.value = "";
+  });
+  document.getElementById("reunAjMinutos").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); document.getElementById("reunAjAnadir").click(); }
+  });
+  document.getElementById("reunAjAvisosOn").addEventListener("change", (e) => {
+    document.getElementById("reunAjAvisosCaja").classList.toggle("reun-aj-off", !e.target.checked);
+  });
+  document.getElementById("reunAjRestablecer").addEventListener("click", () => {
+    REUNIONES_AJ.minutos = [30, 10, 0];
+    document.getElementById("reunAjAvisosOn").checked = true;
+    document.getElementById("reunAjAvisosCaja").classList.remove("reun-aj-off");
+    document.getElementById("reunAjUna").checked = true;
+    document.getElementById("reunAjCorreos").checked = true;
+    reunionesAjPintarAvisos();
+    EOF.toast("Valores habituales puestos. Pulsa «Guardar ajustes» para aplicarlos.", "info");
+  });
+  document.getElementById("reunAjGuardar").addEventListener("click", async (e) => {
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    try {
+      const r = await apiFetch("/api/reunions/admin/config", {
+        method: "PUT",
+        body: JSON.stringify({
+          obert: document.getElementById("reunAjAbierto").checked,
+          titol: document.getElementById("reunAjTitulo").value,
+          descripcio: document.getElementById("reunAjDescripcion").value,
+          avisos: document.getElementById("reunAjAvisosOn").checked,
+          avisosMinutos: REUNIONES_AJ.minutos,
+          unaPorPersona: document.getElementById("reunAjUna").checked,
+          correos: document.getElementById("reunAjCorreos").checked,
+        }),
+      });
+      REUNIONES_AJ.cfg = r.config || REUNIONES_AJ.cfg;
+      reunionesAjPintar();
+      EOF.toast("Ajustes de reuniones guardados.", "success");
+    } catch (err) {
+      EOF.toast("No se pudieron guardar los ajustes: " + err.message, "error");
+    } finally {
+      btn.disabled = false;
+    }
+  });
+}
+
+
+// ---- Gestión: calendario semanal, reuniones y participantes ----
+const REUN_G = { datos: null, inicio: null, herr: "disponible", enlazado: false, sel: null, abajo: false, armado: null };
+const REUN_MIN_INI = 7 * 60;   // filas desde las 07:00
+const REUN_MIN_FIN = 24 * 60;  // hasta las 23:30
+const REUN_DIAS3 = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+const REUN_MESES3 = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+const REUN_AYUDA = {
+  disponible: "Habilitar: pinta las franjas en las que puedes reunirte (los participantes solo pueden marcar las habilitadas). Haz clic o arrastra.",
+  no_puc: "Bloquear: marca las franjas en las que NO puedes. Se quitan las respuestas que hubiera en ellas.",
+  buit: "Borrar: deja las franjas vacías (también se quitan las respuestas). Las reuniones confirmadas no se tocan.",
+  respuestas: "Respuestas: haz clic en una franja para ver quién la ha marcado.",
+  confirmar: "Confirmar reunión: haz clic en la franja de inicio y elige duración, enlace y nota. Clic en una reunión confirmada para editarla, aplazarla, finalizarla o cancelarla.",
+};
+const reunP = (n) => String(n).padStart(2, "0");
+const reunYmd = (d) => `${d.getUTCFullYear()}-${reunP(d.getUTCMonth() + 1)}-${reunP(d.getUTCDate())}`;
+const reunLee = (ds) => { const [y, m, d] = ds.split("-").map(Number); return new Date(Date.UTC(y, m - 1, d)); };
+const reunSuma = (ds, n) => { const d = reunLee(ds); d.setUTCDate(d.getUTCDate() + n); return reunYmd(d); };
+const reunLunes = (ds) => reunSuma(ds, -((reunLee(ds).getUTCDay() + 6) % 7));
+const reunClave = (ds, min) => `${ds}T${reunP(Math.floor(min / 60))}:${reunP(min % 60)}`;
+const reunMin = (k) => +k.slice(11, 13) * 60 + +k.slice(14, 16);
+function reunSiguiente(k) {
+  let m = reunMin(k) + 30, d = k.slice(0, 10);
+  if (m >= 1440) { m -= 1440; d = reunSuma(d, 1); }
+  return reunClave(d, m);
+}
+function reunFechaLarga(ds) {
+  const d = reunLee(ds), i = (d.getUTCDay() + 6) % 7;
+  return `${REUN_DIAS3[i]} ${d.getUTCDate()} ${REUN_MESES3[d.getUTCMonth()]}`;
+}
+function reunDuracion(n) { const m = n * 30; return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h${m % 60 ? " " + (m % 60) + " min" : ""}`; }
+
+// Estructuras derivadas del estado del servidor.
+function reunIndice() {
+  const d = REUN_G.datos || { franges: [], persones: [], vots: [], suspesos: [] };
+  const franja = new Map(d.franges.map((f) => [f.clau, f]));
+  const nombre = new Map(d.persones.map((p) => [p.pid, p.nom]));
+  const votos = new Map();
+  for (const v of d.vots) { if (!votos.has(v.clau)) votos.set(v.clau, []); votos.get(v.clau).push(v.pid); }
+  const pausa = new Set((d.suspesos || []).map((x) => x.pid + "|" + x.grup));
+  const grupos = new Map();
+  for (const f of d.franges) {
+    if ((f.estat !== "confirmada" && f.estat !== "finalizada") || !f.grup) continue;
+    const g = grupos.get(f.grup) || { grup: f.grup, ini: f.clau, fin: f.clau, nota: f.nota || "", enllac: f.enllac || "", n: 0, hecha: f.estat === "finalizada" };
+    if (f.clau < g.ini) g.ini = f.clau;
+    if (f.clau > g.fin) g.fin = f.clau;
+    g.n++;
+    grupos.set(f.grup, g);
+  }
+  const todas = [...grupos.values()].sort((a, b) => (a.ini < b.ini ? -1 : 1));
+  const lista = todas.filter((g) => !g.hecha);          // reuniones vigentes (las finalizadas van aparte)
+  const finalizadas = todas.filter((g) => g.hecha);
+  return { franja, nombre, votos, pausa, grupos, lista, finalizadas };
+}
+const reunNombres = (idx, clave) => (idx.votos.get(clave) || []).map((pid) => idx.nombre.get(pid) || "?");
+
+function reunPintarGrid() {
+  const grid = document.getElementById("reunGrid");
+  if (!grid || !REUN_G.datos) return;
+  const idx = reunIndice();
+  const ara = REUN_G.datos.ara || "";
+  const hoy = ara.slice(0, 10);
+  const dias = Array.from({ length: 7 }, (_, i) => reunSuma(REUN_G.inicio, i));
+  document.getElementById("reunSemana").textContent = `${reunFechaLarga(dias[0])} – ${reunFechaLarga(dias[6])}`;
+  let h = '<div class="reun-gh"></div>' + dias.map((d) => `<div class="reun-gh${d === hoy ? " hoy" : ""}">${escapeHtml(reunFechaLarga(d))}</div>`).join("");
+  for (let m = REUN_MIN_INI; m < REUN_MIN_FIN; m += 30) {
+    h += `<div class="reun-hora">${m % 60 === 0 ? reunP(m / 60) + ":00" : ""}</div>`;
+    for (const d of dias) {
+      const k = reunClave(d, m);
+      const f = idx.franja.get(k);
+      const pasado = k < ara.slice(0, 10) + "T00:00" || (d === hoy && k < ara);
+      const estado = f ? f.estat : "";
+      const quien = reunNombres(idx, k);
+      let txt = "", tit = "";
+      if (estado === "confirmada" || estado === "finalizada") {
+        const g = idx.grupos.get(f.grup);
+        if (g && g.ini === k) txt = (estado === "finalizada" ? "✓ " : "") + (g.nota || "Reunión");
+        tit = `${g && g.nota ? g.nota + " · " : ""}Reunión ${estado === "finalizada" ? "finalizada" : "confirmada"}`;
+      } else if (estado === "disponible") {
+        if (quien.length) txt = String(quien.length);
+        tit = quien.length ? "Han marcado: " + quien.join(", ") : "Habilitada, sin respuestas";
+      } else if (estado === "no_puc") tit = "Bloqueada";
+      h += `<div class="reun-c${estado ? " reun-c-" + estado : ""}${pasado ? " pasado" : ""}${d === hoy ? " hoy" : ""}${m % 60 === 0 ? " entera" : ""}" data-k="${k}"${f && f.grup ? ` data-g="${f.grup}"` : ""} title="${escapeHtml(tit)}">${escapeHtml(txt)}</div>`;
+    }
+  }
+  grid.innerHTML = h;
+}
+
+function reunPintarListas() {
+  const idx = reunIndice();
+  const d = REUN_G.datos || { persones: [], vots: [] };
+  document.getElementById("reunNReuniones").textContent = idx.lista.length;
+  document.getElementById("reunNPersonas").textContent = d.persones.length;
+
+  const lr = document.getElementById("reunListaReuniones");
+  lr.innerHTML = idx.lista.length ? idx.lista.map((g) => {
+    const quien = (idx.votos.get(g.ini) || []).map((pid) => `${escapeHtml(idx.nombre.get(pid) || "?")}${idx.pausa.has(pid + "|" + g.grup) ? '<span class="reun-pausa">en pausa</span>' : ""}`);
+    const hasta = reunSiguiente(g.fin);
+    return `<div class="reun-card"><div>
+      <h5>${escapeHtml(reunFechaLarga(g.ini.slice(0, 10)))} · ${g.ini.slice(11, 16)}–${hasta.slice(11, 16)} <span class="mut">(${reunDuracion(g.n)})</span></h5>
+      <p>${g.nota ? escapeHtml(g.nota) : '<span class="mut">Sin nota</span>'}</p>
+      <p>${g.enllac ? `<a href="${escapeHtml(g.enllac)}" target="_blank" rel="noopener noreferrer">${escapeHtml(g.enllac)}</a>` : '<span class="mut">Sin enlace de videollamada</span>'}</p>
+      <p><span class="mut">Convocados:</span> ${quien.length ? quien.join(", ") : '<span class="mut">nadie ha marcado esta franja</span>'}</p>
+    </div><div class="reun-btns">
+      <button type="button" class="an-btn an-btn-sec" data-reun-copiar="${g.grup}">Copiar convocatoria</button>
+      <button type="button" class="an-btn an-btn-sec" data-reun-aplazar="${g.grup}" title="Cambia la fecha y la hora y avisa a los convocados">Aplazar</button>
+      <button type="button" class="an-btn an-btn-sec" data-reun-finalizar="${g.grup}" title="La reunión ya se ha hecho: deja de avisar y de ocupar a los convocados">Finalizar</button>
+      <button type="button" class="an-btn an-btn-sec" data-reun-det="${g.grup}">Editar</button>
+      <button type="button" class="an-btn an-btn-sec reun-peligro" data-reun-cancelar="${g.grup}">Cancelar</button>
+    </div></div>`;
+  }).join("") : '<p class="reun-vacio">No hay reuniones confirmadas. Confírmalas desde la pestaña Calendario con la herramienta «Confirmar reunión».</p>';
+  if (idx.finalizadas.length) {
+    lr.innerHTML += `<h5 class="reun-sub-fin">Finalizadas (${idx.finalizadas.length})</h5>` + idx.finalizadas.map((g) => {
+      const quien = (idx.votos.get(g.ini) || []).map((pid) => escapeHtml(idx.nombre.get(pid) || "?"));
+      return `<div class="reun-card reun-card-fin"><div>
+      <h5>✓ ${escapeHtml(reunFechaLarga(g.ini.slice(0, 10)))} · ${g.ini.slice(11, 16)}–${reunSiguiente(g.fin).slice(11, 16)} <span class="mut">(${reunDuracion(g.n)})</span></h5>
+      <p>${g.nota ? escapeHtml(g.nota) : '<span class="mut">Sin nota</span>'}</p>
+      <p><span class="mut">Participaron:</span> ${quien.length ? quien.join(", ") : '<span class="mut">sin registro</span>'}</p>
+    </div><div class="reun-btns">
+      <button type="button" class="an-btn an-btn-sec" data-reun-reabrir="${g.grup}">Reabrir</button>
+    </div></div>`;
+    }).join("");
+  }
+
+  const cuenta = new Map();
+  for (const v of d.vots) cuenta.set(v.pid, (cuenta.get(v.pid) || 0) + 1);
+  const activa = new Set((d.ocupats || []).map((x) => x.pid));
+  const lp = document.getElementById("reunListaPersonas");
+  lp.innerHTML = d.persones.length ? d.persones.map((p) => `<div class="reun-card"><div>
+      <h5><button type="button" class="reun-nombre-act" data-reun-act="${p.pid}" title="Ver su actividad">${escapeHtml(p.nom)}</button>${activa.has(p.pid) ? '<span class="reun-pausa" title="Tiene una reunión programada">Con reunión</span>' : ""}</h5>
+      <p class="mut">${cuenta.get(p.pid) || 0} franja(s) marcada(s) desde hoy</p>
+    </div><div class="reun-btns"><button type="button" class="an-btn an-btn-sec" data-reun-act="${p.pid}">Ver actividad</button><button type="button" class="an-btn an-btn-sec reun-peligro" data-reun-borrar="${p.pid}">Eliminar</button></div></div>`).join("")
+    : '<p class="reun-vacio">Todavía no ha entrado nadie en el calendario.</p>';
+}
+
+function reunPintarTodo() {
+  reunPintarGrid();
+  reunPintarListas();
+  if (typeof reunAgPintar === "function") reunAgPintar();
+}
+
+async function reunRecargar() {
+  const r = await apiFetch("/api/reunions/admin");
+  REUN_G.datos = r;
+  REUNIONES_AJ.cfg = r.config || {};
+  if (!REUN_G.inicio) REUN_G.inicio = reunLunes((r.ara || reunYmd(new Date())).slice(0, 10));
+  reunPintarTodo();
+  reunionesAjPintar();
+}
+
+// Texto del toast tras confirmar / editar / cancelar: añade lo que ha pasado con los correos a los convocados.
+function reunMsgCorreo(base, r) {
+  const c = r && r.correo;
+  if (!c) return { texto: base, tipo: "success" };
+  if (c.activado === false) return { texto: base + " Los correos automáticos están desactivados en Ajustes.", tipo: "info" };
+  if (c.configurado === false) return { texto: base + " No se ha enviado ningún correo: el servicio de correo no está configurado.", tipo: "info" };
+  if (c.error) return { texto: base + " No se pudieron enviar los correos; puedes reintentarlo con «Enviar por correo».", tipo: "info" };
+  const partes = [];
+  if (c.enviados) partes.push(`Correo enviado a ${reunPlural(c.enviados, "persona", "personas")}.`);
+  if (c.reactivadas) partes.push(`${reunPlural(c.reactivadas, "persona recibe", "personas reciben")} además la convocatoria de otra reunión que vuelve a estar activa.`);
+  if (c.fallidos && c.fallidos.length) partes.push(`No se pudo enviar a: ${c.fallidos.join(", ")}.`);
+  if (c.sinCorreo && c.sinCorreo.length) partes.push(`Sin cuenta o correo (avísales por otra vía): ${c.sinCorreo.join(", ")}.`);
+  if (c.enPausa && c.enPausa.length) partes.push(`En pausa por tener otra reunión: ${c.enPausa.join(", ")}.`);
+  const aviso = (c.fallidos && c.fallidos.length) || (c.sinCorreo && c.sinCorreo.length);
+  return { texto: [base, ...partes].join(" "), tipo: aviso ? "info" : "success" };
+}
+async function reunAccion(fn, okMsg) {
+  try {
+    const r = await fn();
+    await reunRecargar();
+    if (okMsg) {
+      const m = typeof okMsg === "function" ? okMsg(r) : { texto: okMsg, tipo: "success" };
+      EOF.toast(m.texto, m.tipo, m.tipo === "info" ? 9000 : undefined);
+    }
+    return true;
+  } catch (err) {
+    EOF.toast(err.message || "No se pudo completar la acción", "error");
+    try { await reunRecargar(); } catch { /* se mantiene lo que había */ }
+    return false;
+  }
+}
+
+// ---- Pintar franjas (clic o arrastre) ----
+function reunCeldaDe(el) { return el && el.closest ? el.closest(".reun-c") : null; }
+function reunMarcarSel(celda) {
+  if (!REUN_G.sel || !celda || celda.classList.contains("pasado") || celda.classList.contains("reun-c-confirmada") || celda.classList.contains("reun-c-finalizada")) return;
+  REUN_G.sel.add(celda.dataset.k);
+  celda.classList.add("sel");
+}
+async function reunAplicarSel() {
+  const claves = REUN_G.sel ? [...REUN_G.sel] : [];
+  REUN_G.sel = null; REUN_G.abajo = false;
+  document.querySelectorAll("#reunGrid .reun-c.sel").forEach((c) => c.classList.remove("sel"));
+  if (!claves.length) return;
+  const estat = REUN_G.herr;
+  await reunAccion(() => apiFetch("/api/reunions/admin/franges", { method: "PUT", body: JSON.stringify({ claus: claves, estat }) }));
+}
+
+// ---- Diálogos (confirmar y editar) ----
+function reunAbrirDlg(html) {
+  const dlg = document.getElementById("reunDlg");
+  document.getElementById("reunDlgForm").innerHTML = html;
+  if (!dlg.open) dlg.showModal();
+  return dlg;
+}
+function reunCerrarDlg() { const d = document.getElementById("reunDlg"); if (d.open) d.close(); }
+
+function reunDlgConfirmar(clave, nSugerido) {
+  const sugerido = [1, 2, 3, 4, 6, 8].includes(nSugerido) ? nSugerido : 2;
+  const idx = reunIndice();
+  const quien = reunNombres(idx, clave);
+  reunAbrirDlg(`<h4>Confirmar reunión</h4>
+    <p>${escapeHtml(reunFechaLarga(clave.slice(0, 10)))} · ${clave.slice(11, 16)}</p>
+    <p class="mut">${quien.length ? "Han marcado esta franja: " + escapeHtml(quien.join(", ")) : "Nadie ha marcado esta franja todavía."}</p>
+    <label class="an-label" for="reunDlgDur">Duración</label>
+    <select id="reunDlgDur" class="an-input">${[1, 2, 3, 4, 6, 8].map((n) => `<option value="${n}"${n === sugerido ? " selected" : ""}>${reunDuracion(n)}</option>`).join("")}</select>
+    <label class="an-label" for="reunDlgEnlace">Enlace de la videollamada <em>(opcional, https://)</em></label>
+    <input type="url" id="reunDlgEnlace" class="an-input" maxlength="400" placeholder="https://meet.google.com/...">
+    <label class="an-label" for="reunDlgNota">Nota <em>(opcional)</em></label>
+    <input type="text" id="reunDlgNota" class="an-input" maxlength="140" placeholder="Motivo (acogida, seguimiento, formación…)">
+    <div class="reun-dlg-acc"><button type="button" class="an-btn an-btn-sec" data-reun-cerrar>Cancelar</button><button type="button" class="an-btn an-btn-pri" id="reunDlgOk">Confirmar</button></div>`);
+  document.getElementById("reunDlgOk").onclick = async (e) => {
+    e.currentTarget.disabled = true;
+    const ok = await reunAccion(() => apiFetch("/api/reunions/admin/confirmar", { method: "POST", body: JSON.stringify({
+      clau: clave, franges: +document.getElementById("reunDlgDur").value,
+      enllac: document.getElementById("reunDlgEnlace").value.trim(), nota: document.getElementById("reunDlgNota").value.trim(),
+    }) }), (r) => reunMsgCorreo("Reunión confirmada.", r));
+    if (ok) reunCerrarDlg(); else e.currentTarget.disabled = false;
+  };
+}
+
+function reunDlgDetalle(grup) {
+  const idx = reunIndice();
+  const g = idx.grupos.get(grup);
+  if (!g) { EOF.toast("Esa reunión ya no existe.", "info"); return; }
+  const quien = (idx.votos.get(g.ini) || []).map((pid) => `${escapeHtml(idx.nombre.get(pid) || "?")}${idx.pausa.has(pid + "|" + g.grup) ? " (en pausa)" : ""}`);
+  reunAbrirDlg(`<h4>Reunión del ${escapeHtml(reunFechaLarga(g.ini.slice(0, 10)))}</h4>
+    <p>${g.ini.slice(11, 16)}–${reunSiguiente(g.fin).slice(11, 16)} <span class="mut">(${reunDuracion(g.n)})</span></p>
+    <p class="mut">Convocados: ${quien.length ? quien.join(", ") : "nadie ha marcado esta franja"}</p>
+    <label class="an-label" for="reunDlgEnlace">Enlace de la videollamada <em>(https://)</em></label>
+    <input type="url" id="reunDlgEnlace" class="an-input" maxlength="400" value="${escapeHtml(g.enllac)}">
+    <label class="an-label" for="reunDlgNota">Nota</label>
+    <input type="text" id="reunDlgNota" class="an-input" maxlength="140" value="${escapeHtml(g.nota)}">
+    <div class="reun-dlg-acc">
+      <button type="button" class="an-btn an-btn-sec reun-peligro" id="reunDlgCancelar">Cancelar reunión</button>
+      ${g.hecha
+        ? '<button type="button" class="an-btn an-btn-sec" id="reunDlgReabrir">Reabrir</button>'
+        : '<button type="button" class="an-btn an-btn-sec" id="reunDlgAplazar">Aplazar…</button><button type="button" class="an-btn an-btn-sec" id="reunDlgFinalizar">Finalizar</button>'}
+      <button type="button" class="an-btn an-btn-sec" data-reun-cerrar>Cerrar</button>
+      <button type="button" class="an-btn an-btn-pri" id="reunDlgOk">Guardar cambios</button>
+    </div>`);
+  const bAp = document.getElementById("reunDlgAplazar"); if (bAp) bAp.onclick = () => reunDlgAplazar(grup);
+  const bFi = document.getElementById("reunDlgFinalizar"); if (bFi) bFi.onclick = async () => { if (await reunFinalizar(grup, true)) reunCerrarDlg(); };
+  const bRe = document.getElementById("reunDlgReabrir"); if (bRe) bRe.onclick = async () => { if (await reunFinalizar(grup, false)) reunCerrarDlg(); };
+  document.getElementById("reunDlgOk").onclick = async (e) => {
+    e.currentTarget.disabled = true;
+    const ok = await reunAccion(() => apiFetch("/api/reunions/admin/editar", { method: "POST", body: JSON.stringify({
+      grup, enllac: document.getElementById("reunDlgEnlace").value.trim(), nota: document.getElementById("reunDlgNota").value.trim(),
+    }) }), (r) => reunMsgCorreo("Reunión actualizada.", r));
+    if (ok) reunCerrarDlg(); else e.currentTarget.disabled = false;
+  };
+  document.getElementById("reunDlgCancelar").onclick = (e) => reunDosPasos(e.currentTarget, "cancelar:" + grup, async () => {
+    if (await reunAccion(() => apiFetch("/api/reunions/admin/cancelar", { method: "POST", body: JSON.stringify({ grup }) }), (r) => reunMsgCorreo("Reunión cancelada. Las franjas vuelven a estar habilitadas.", r))) reunCerrarDlg();
+  });
+}
+
+// Actividad de una persona: reuniones (hechas, en curso, próximas, en pausa), franjas marcadas y cuenta.
+const REUN_ACT_ESTADO = {
+  hecha: ["Hecha", "hecha"], celebrada: ["Celebrada", "hecha"], en_curso: ["En curso", "curso"],
+  proxima: ["Próxima", "proxima"], en_pausa: ["En pausa", "pausa"],
+};
+async function reunDlgActividad(pid) {
+  reunAbrirDlg('<h4>Actividad</h4><p class="mut">Cargando…</p><div class="reun-dlg-acc"><button type="button" class="an-btn an-btn-sec" data-reun-cerrar>Cerrar</button></div>');
+  let d;
+  try { d = await apiFetch("/api/reunions/admin/persona/" + encodeURIComponent(pid) + "/actividad"); }
+  catch (err) { reunCerrarDlg(); EOF.toast(err.message || "No se pudo cargar la actividad", "error"); return; }
+  const p = d.persona, r = d.resumen;
+  const fecha = (k) => `${escapeHtml(reunFechaLarga(k.slice(0, 10)))} · ${k.slice(11, 16)}`;
+  const dia = (iso) => (iso ? escapeHtml(String(iso).slice(0, 10).split("-").reverse().join("/")) : "—");
+  const reuniones = d.reuniones.length ? d.reuniones.map((x) => {
+    const [txt, cls] = REUN_ACT_ESTADO[x.estado] || [x.estado, ""];
+    return `<li class="reun-act-it"><span class="reun-act-est reun-act-${cls}">${txt}</span>
+      <span>${fecha(x.ini)}–${x.fin.slice(11, 16)}${x.nota ? ` · ${escapeHtml(x.nota)}` : ""}</span>
+      ${x.enllac ? `<a href="${escapeHtml(x.enllac)}" target="_blank" rel="noopener noreferrer">Videollamada</a>` : ""}</li>`;
+  }).join("") : '<li class="mut">Todavía no figura en ninguna reunión.</li>';
+  const franjas = d.franjas.length ? d.franjas.slice(0, 40).map((k) => `<li>${fecha(k)}</li>`).join("") + (d.franjas.length > 40 ? `<li class="mut">…y ${d.franjas.length - 40} más</li>` : "") : '<li class="mut">No tiene franjas marcadas pendientes.</li>';
+  reunAbrirDlg(`<h4>${escapeHtml(p.nom)}</h4>
+    <p class="mut">Alta: ${dia(p.alta)} · Última actividad: ${dia(p.ultima)}${p.cuenta ? ` · Cuenta: ${escapeHtml(p.cuenta.nombre)}${p.cuenta.email ? " (" + escapeHtml(p.cuenta.email) + ")" : ""}${p.cuenta.activo ? "" : " (desactivada)"}` : " · Sin cuenta de colaborador enlazada"}</p>
+    <div class="reun-act-res"><span><b>${r.hechas}</b> hechas</span><span><b>${r.proximas}</b> próximas</span><span><b>${r.enPausa}</b> en pausa</span><span><b>${r.franjas}</b> franjas marcadas</span></div>
+    <h5 class="reun-act-h">Reuniones</h5><ul class="reun-act-lista">${reuniones}</ul>
+    <h5 class="reun-act-h">Franjas marcadas (disponibilidad)</h5><ul class="reun-act-lista">${franjas}</ul>
+    <div class="reun-dlg-acc"><button type="button" class="an-btn an-btn-sec" data-reun-cerrar>Cerrar</button></div>`);
+}
+
+// Da por finalizada una reunión (finalizada=true) o la reabre (false).
+function reunFinalizar(grup, finalizada) {
+  return reunAccion(() => apiFetch("/api/reunions/admin/finalizar", { method: "POST", body: JSON.stringify({ grup, finalizada }) }),
+    (r) => reunMsgCorreo(finalizada ? "Reunión dada por finalizada." : "Reunión reabierta.", r));
+}
+
+// Aplazar: nueva fecha y hora de inicio; se mantiene la duración, el enlace, la nota y los convocados.
+function reunDlgAplazar(grup) {
+  const idx = reunIndice();
+  const g = idx.grupos.get(grup);
+  if (!g) { EOF.toast("Esa reunión ya no existe.", "info"); return; }
+  const hoy = ((REUN_G.datos && REUN_G.datos.ara) || reunYmd(new Date())).slice(0, 10);
+  const opciones = [];
+  for (let m = REUN_MIN_INI; m < REUN_MIN_FIN; m += 30) {
+    const h = `${reunP(Math.floor(m / 60))}:${reunP(m % 60)}`;
+    opciones.push(`<option value="${h}"${h === g.ini.slice(11, 16) ? " selected" : ""}>${h}</option>`);
+  }
+  const quien = (idx.votos.get(g.ini) || []).map((pid) => escapeHtml(idx.nombre.get(pid) || "?"));
+  reunAbrirDlg(`<h4>Aplazar reunión</h4>
+    <p class="mut">Ahora: ${escapeHtml(reunFechaLarga(g.ini.slice(0, 10)))} · ${g.ini.slice(11, 16)}–${reunSiguiente(g.fin).slice(11, 16)} (${reunDuracion(g.n)})${g.nota ? " · " + escapeHtml(g.nota) : ""}</p>
+    <label class="an-label" for="reunApDia">Nueva fecha</label>
+    <input type="date" id="reunApDia" class="an-input" min="${hoy}" value="${hoy}">
+    <label class="an-label" for="reunApHora">Nueva hora de inicio</label>
+    <select id="reunApHora" class="an-input">${opciones.join("")}</select>
+    <p class="mut">Siguen convocados: ${quien.length ? quien.join(", ") : "nadie había marcado la franja"}. Si alguien más tiene marcada la nueva franja de inicio, también quedará convocado. Se les avisa por correo si los correos automáticos están activados.</p>
+    <div class="reun-dlg-acc"><button type="button" class="an-btn an-btn-sec" data-reun-cerrar>Cancelar</button><button type="button" class="an-btn an-btn-pri" id="reunApOk">Aplazar</button></div>`);
+  document.getElementById("reunApOk").onclick = async (e) => {
+    const dia = document.getElementById("reunApDia").value;
+    const hora = document.getElementById("reunApHora").value;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dia) || !hora) { EOF.toast("Elige la nueva fecha y hora.", "error"); return; }
+    e.currentTarget.disabled = true;
+    const ok = await reunAccion(() => apiFetch("/api/reunions/admin/aplazar", { method: "POST", body: JSON.stringify({ grup, clau: `${dia}T${hora}` }) }),
+      (r) => reunMsgCorreo(`Reunión aplazada al ${reunFechaLarga(dia)} a las ${hora}.`, r));
+    if (ok) reunCerrarDlg(); else e.currentTarget.disabled = false;
+  };
+}
+
+// Confirmación de dos pasos sin confirm(): el primer clic arma el botón, el segundo ejecuta.
+function reunDosPasos(btn, clave, ejecutar) {
+  if (REUN_G.armado && REUN_G.armado.clave === clave) {
+    clearTimeout(REUN_G.armado.t);
+    REUN_G.armado = null;
+    ejecutar();
+    return;
+  }
+  if (REUN_G.armado) { clearTimeout(REUN_G.armado.t); REUN_G.armado.restaurar(); }
+  const texto = btn.textContent;
+  btn.textContent = "¿Seguro? Pulsa otra vez";
+  btn.classList.add("armado");
+  REUN_G.armado = {
+    clave,
+    restaurar: () => { btn.textContent = texto; btn.classList.remove("armado"); },
+    t: setTimeout(() => { if (REUN_G.armado && REUN_G.armado.clave === clave) { REUN_G.armado.restaurar(); REUN_G.armado = null; } }, 4000),
+  };
+}
+
+function reunEnlazarGestion() {
+  const sub = document.getElementById("subpanel-reuniones");
+  if (!sub || sub.dataset.gestion) return;
+  sub.dataset.gestion = "1";
+
+  // Pestañas internas
+  document.getElementById("reunTabs").addEventListener("click", (e) => {
+    const t = e.target.closest(".reun-tab");
+    if (!t) return;
+    sub.querySelectorAll(".reun-tab").forEach((b) => b.classList.toggle("activo", b === t));
+    sub.querySelectorAll(".reun-sec").forEach((s) => { s.hidden = s.dataset.sec !== t.dataset.sec; });
+  });
+  document.getElementById("reunActualizar").addEventListener("click", () => reunAccion(async () => {}, "Datos actualizados."));
+
+  // Semana
+  document.getElementById("reunPrev").addEventListener("click", () => { REUN_G.inicio = reunSuma(REUN_G.inicio, -7); reunPintarGrid(); });
+  document.getElementById("reunNext").addEventListener("click", () => { REUN_G.inicio = reunSuma(REUN_G.inicio, 7); reunPintarGrid(); });
+  document.getElementById("reunHoy").addEventListener("click", () => {
+    const ara = (REUN_G.datos && REUN_G.datos.ara) || reunYmd(new Date());
+    REUN_G.inicio = reunLunes(ara.slice(0, 10)); reunPintarGrid();
+  });
+
+  // Herramientas
+  const ayuda = document.getElementById("reunAyudaHerr");
+  ayuda.textContent = REUN_AYUDA[REUN_G.herr];
+  sub.querySelector(".reun-herr").addEventListener("click", (e) => {
+    const b = e.target.closest(".reun-h");
+    if (!b) return;
+    REUN_G.herr = b.dataset.herr;
+    sub.querySelectorAll(".reun-h").forEach((x) => { x.classList.toggle("activo", x === b); x.setAttribute("aria-checked", x === b ? "true" : "false"); });
+    ayuda.textContent = REUN_AYUDA[REUN_G.herr];
+  });
+
+  // Rejilla: clic o arrastre (ratón). En táctil, un toque marca una franja.
+  const grid = document.getElementById("reunGrid");
+  grid.addEventListener("pointerdown", (e) => {
+    const c = reunCeldaDe(e.target);
+    if (!c || c.classList.contains("pasado") || (e.pointerType === "mouse" && e.button !== 0)) return;
+    if (c.classList.contains("reun-c-confirmada") || c.classList.contains("reun-c-finalizada")) { reunDlgDetalle(c.dataset.g); return; }
+    if (REUN_G.herr === "confirmar") { reunDlgConfirmar(c.dataset.k); return; }
+    if (REUN_G.herr === "respuestas") { reunDlgFranja(c.dataset.k); return; }
+    REUN_G.sel = new Set(); REUN_G.abajo = true;
+    reunMarcarSel(c);
+  });
+  grid.addEventListener("pointermove", (e) => {
+    if (!REUN_G.abajo || e.pointerType !== "mouse") return;
+    reunMarcarSel(reunCeldaDe(document.elementFromPoint(e.clientX, e.clientY)));
+  });
+  document.addEventListener("pointerup", () => { if (REUN_G.abajo) reunAplicarSel(); });
+  document.addEventListener("pointercancel", () => {
+    if (!REUN_G.abajo) return;
+    REUN_G.sel = null; REUN_G.abajo = false;
+    document.querySelectorAll("#reunGrid .reun-c.sel").forEach((c) => c.classList.remove("sel"));
+  });
+
+  // Listas y diálogo
+  sub.addEventListener("click", (e) => {
+    const det = e.target.closest("[data-reun-det]");
+    if (det) { reunDlgDetalle(det.dataset.reunDet); return; }
+    const apl = e.target.closest("[data-reun-aplazar]");
+    if (apl) { reunDlgAplazar(apl.dataset.reunAplazar); return; }
+    const fin = e.target.closest("[data-reun-finalizar]");
+    if (fin) { reunFinalizar(fin.dataset.reunFinalizar, true); return; }
+    const reab = e.target.closest("[data-reun-reabrir]");
+    if (reab) { reunFinalizar(reab.dataset.reunReabrir, false); return; }
+    const can = e.target.closest("[data-reun-cancelar]");
+    if (can) {
+      reunDosPasos(can, "cancelar:" + can.dataset.reunCancelar, () => reunAccion(() => apiFetch("/api/reunions/admin/cancelar", { method: "POST", body: JSON.stringify({ grup: can.dataset.reunCancelar }) }), (r) => reunMsgCorreo("Reunión cancelada. Las franjas vuelven a estar habilitadas.", r)));
+      return;
+    }
+    const act = e.target.closest("[data-reun-act]");
+    if (act) { reunDlgActividad(act.dataset.reunAct); return; }
+    const bor = e.target.closest("[data-reun-borrar]");
+    if (bor) {
+      reunDosPasos(bor, "borrar:" + bor.dataset.reunBorrar, () => reunAccion(() => apiFetch("/api/reunions/admin/persona/" + encodeURIComponent(bor.dataset.reunBorrar), { method: "DELETE" }), "Participante eliminado."));
+      return;
+    }
+    if (e.target.closest("[data-reun-cerrar]")) reunCerrarDlg();
+  });
+  document.getElementById("reunDlg").addEventListener("click", (e) => { if (e.target === e.currentTarget) reunCerrarDlg(); });
+}
+
+async function cargaReunionesAjustes() {
+  const estado = document.getElementById("reunAjEstado");
+  if (estado) { estado.style.display = "block"; estado.textContent = "Cargando reuniones…"; }
+  try {
+    reunionesAjEnlazar();
+    reunEnlazarGestion();
+    if (typeof reunEnlazarAgenda === "function") reunEnlazarAgenda();
+    await reunRecargar();
+    if (estado) estado.style.display = "none";
+  } catch (err) {
+    if (estado) { estado.style.display = "block"; estado.textContent = "No se pudieron cargar las reuniones: " + err.message; }
+  }
+}
+
+
+// ---------- REUNIONES: agenda, plantilla, coincidencias, convocatoria e invitación ----------
+// Lo que antes solo existía en la página pública /reuniones (vista de Responsable) y ahora se gestiona
+// desde Funcionalidades > Reuniones: pestaña «Agenda» (KPIs, próximas reuniones con cuenta atrás, franjas
+// por convocar ordenadas por urgencia y franjas con mayor coincidencia), «Plantilla de horarios»,
+// «Copiar convocatoria», «Copiar invitación» y la herramienta «Respuestas» del calendario.
+// Usa REUN_G.datos (GET /api/reunions/admin) y las funciones de 24-reuniones-ajustes-desde-el-panel.js.
+const REUN_AG = { runs: [], pend: [], pausa: [], timer: null };
+const REUN_RUTA_PUBLICA = "/reuniones";
+const REUN_ETQ_GRUPO = ["En curso ahora", "Hoy", "Mañana", "Esta semana", "Más adelante", "Celebradas hoy", "En pausa"];
+
+const reunPlural = (n, uno, varios) => `${n} ${n === 1 ? uno : varios}`;
+const reunAbs = (k) => reunLee(k.slice(0, 10)).getTime() / 60000 + reunMin(k);
+const reunAhora = () => ((REUN_G.datos && REUN_G.datos.ara) || "").slice(0, 16);
+function reunDurTxt(m) {
+  m = Math.max(1, Math.round(m));
+  if (m < 60) return `${m} min`;
+  if (m < 1440) { const h = Math.floor(m / 60), r = m % 60; return r ? `${h} h ${r} min` : `${h} h`; }
+  const d = Math.floor(m / 1440), h = Math.round((m % 1440) / 60);
+  return d >= 3 || !h ? reunPlural(d, "día", "días") : `${reunPlural(d, "día", "días")} y ${h} h`;
+}
+function reunRango(ini, fin) { return `${ini.slice(11, 16)}–${reunSiguiente(fin).slice(11, 16)}`; }
+// n: 0 en curso · 1 hoy · 2 mañana · 3 esta semana · 4 más adelante · 5 celebrada
+function reunUrgencia(iniK, finK, pendiente) {
+  const ahoraK = reunAhora();
+  const ahora = reunAbs(ahoraK), ini = reunAbs(iniK) - ahora, fin = reunAbs(finK) + 30 - ahora;
+  const dias = Math.round((reunLee(iniK.slice(0, 10)) - reunLee(ahoraK.slice(0, 10))) / 86400000);
+  if (!pendiente && fin <= 0) return { n: 5, cls: "u5", etq: "Celebrada", cuenta: "ya ha terminado" };
+  if (ini <= 0) return pendiente ? { n: 1, cls: "u1", etq: "Inminente", cuenta: "empieza ya" } : { n: 0, cls: "u0", etq: "En curso", cuenta: `termina en ${reunDurTxt(fin)}` };
+  if (dias <= 0) return { n: 1, cls: "u1", etq: ini < 180 ? "Inminente" : "Hoy", cuenta: `empieza en ${reunDurTxt(ini)}` };
+  if (dias === 1) return { n: 2, cls: "u2", etq: "Mañana", cuenta: `en ${reunDurTxt(ini)}` };
+  if (dias <= 6) return { n: 3, cls: "u3", etq: `En ${dias} días`, cuenta: `en ${reunDurTxt(ini)}` };
+  return { n: 4, cls: "u4", etq: `En ${dias} días`, cuenta: `dentro de ${reunPlural(dias, "día", "días")}` };
+}
+
+// Tramos consecutivos de franjas habilitadas con las mismas personas.
+function reunConstruirRuns() {
+  const d = REUN_G.datos; if (!d) return [];
+  const idx = reunIndice(), ahora = reunAhora();
+  const claves = d.franges.filter((f) => f.estat === "disponible" && f.clau >= ahora).map((f) => f.clau).sort();
+  const out = []; let cur = null;
+  for (const k of claves) {
+    const v = [...(idx.votos.get(k) || [])], sig = [...v].sort().join(",");
+    if (cur && reunSiguiente(cur.fin) === k && cur.sig === sig) { cur.fin = k; cur.n++; }
+    else { if (cur) out.push(cur); cur = { ini: k, fin: k, n: 1, sig, v }; }
+  }
+  if (cur) out.push(cur);
+  return out;
+}
+const reunNombresPids = (idx, pids) => pids.map((p) => idx.nombre.get(p) || "?");
+function reunChips(idx, pids, max) {
+  const ver = pids.slice(0, max || 6);
+  return `<span class="reun-ag-chips">${ver.map((p) => `<span class="reun-ag-chip">${escapeHtml(idx.nombre.get(p) || "?")}</span>`).join("")}${pids.length > ver.length ? `<span class="reun-ag-chip">+${pids.length - ver.length}</span>` : ""}</span>`;
+}
+
+function reunMensajeConvocatoria(g) {
+  const idx = reunIndice();
+  const v = reunNombresPids(idx, idx.votos.get(g.ini) || []);
+  return [
+    "CONVOCATORIA · Reunión de ElOtroFútbol", "",
+    `Fecha: ${reunFechaLarga(g.ini.slice(0, 10))}`,
+    `Horario: de ${reunRango(g.ini, g.fin)} (hora de Madrid)`,
+    ...(g.nota ? [`Asunto: ${g.nota}`] : []),
+    ...(g.enllac ? [`Acceso a la videollamada: ${g.enllac}`] : []),
+    ...(v.length ? [`Convocados: ${v.join(", ")}`] : []), "",
+    "Se ruega puntualidad. En caso de no poder asistir, se ruega comunicarlo con antelación.",
+  ].join("\n");
+}
+function reunMensajeInvitacion() {
+  return `Estimado/a colaborador/a:\n\nLe invitamos a indicar su disponibilidad para la reunión de ElOtroFútbol.\n\nAcceso (con su cuenta de colaborador): ${location.origin + REUN_RUTA_PUBLICA}\n\nSeleccione las franjas en las que puede asistir y pulse «Guardar respuesta». Todas las horas corresponden a la hora de Madrid.\n\nAtentamente,\nEl equipo de ElOtroFútbol`;
+}
+async function reunCopiar(texto, ok) {
+  try { await navigator.clipboard.writeText(texto); EOF.toast(ok || "Copiado al portapapeles.", "success"); }
+  catch { window.prompt("Copia el texto:", texto); }
+}
+
+// Tarjeta de una reunión confirmada con urgencia, cuenta atrás y acciones.
+function reunTarjetaAgenda(g, activa) {
+  const idx = reunIndice();
+  const u = reunUrgencia(g.ini, g.fin);
+  const pids = idx.votos.get(g.ini) || [];
+  const act = pids.filter((p) => !idx.pausa.has(p + "|" + g.grup));
+  const pau = pids.filter((p) => idx.pausa.has(p + "|" + g.grup));
+  const pausada = !act.length && pau.length > 0;
+  const cls = pausada ? "u6" : u.cls, etq = pausada ? "En pausa" : u.etq;
+  const d = reunLee(g.ini.slice(0, 10));
+  const aviso = pausada
+    ? `<p class="reun-ag-pausa">Todas las personas convocadas tienen ya otra reunión. Se reactivará si se cancela alguna de ellas.</p>`
+    : (pau.length ? `<p class="reun-ag-pausa">${reunPlural(pau.length, "persona en pausa", "personas en pausa")} (ya ${pau.length === 1 ? "tiene" : "tienen"} otra reunión): ${escapeHtml(reunNombresPids(idx, pau).join(", "))}.</p>` : "");
+  return `<article class="reun-ag-reu ${cls}">
+    <div class="reun-ag-fecha"><b>${d.getUTCDate()}</b><span>${REUN_MESES3[d.getUTCMonth()]}</span><em>${REUN_DIAS3[(d.getUTCDay() + 6) % 7]}</em></div>
+    <div class="reun-ag-cuerpo">
+      <div class="reun-ag-top"><span class="reun-ag-badge ${cls}">${escapeHtml(etq)}</span>${pausada || u.n === 5 ? "" : `<span class="reun-ag-cuenta">${escapeHtml(u.cuenta)}</span>`}</div>
+      <h5>${escapeHtml(g.nota || "Reunión")}</h5>
+      <p class="reun-ag-hora">${reunRango(g.ini, g.fin)} · ${reunDuracion(g.n)}</p>
+      ${act.length ? reunChips(idx, act, 8) : '<span class="mut">Sin participantes inscritos</span>'}${aviso}
+      <div class="reun-btns reun-ag-acc">
+        <button type="button" class="an-btn an-btn-sec" data-reun-copiar="${escapeHtml(g.grup)}">Copiar convocatoria</button>
+        ${pausada || u.n === 5 ? "" : `<button type="button" class="an-btn an-btn-sec" data-reun-correo="${escapeHtml(g.grup)}" title="Envía la convocatoria por correo a las personas convocadas">Enviar por correo</button>`}
+        ${g.enllac ? `<a class="an-btn an-btn-sec" href="${escapeHtml(g.enllac)}" target="_blank" rel="noopener noreferrer">Abrir videollamada</a>` : ""}
+        <button type="button" class="an-btn an-btn-sec" data-reun-aplazar="${escapeHtml(g.grup)}" title="Cambia la fecha y la hora y avisa a los convocados">Aplazar</button>
+        <button type="button" class="an-btn an-btn-sec" data-reun-finalizar="${escapeHtml(g.grup)}" title="La reunión ya se ha hecho">Finalizar</button>
+        <button type="button" class="an-btn an-btn-sec" data-reun-det="${escapeHtml(g.grup)}">Editar</button>
+        <button type="button" class="an-btn an-btn-sec reun-peligro" data-reun-cancelar="${escapeHtml(g.grup)}">Cancelar</button>
+      </div></div></article>`;
+}
+
+function reunAgPintar() {
+  const cont = document.getElementById("reunAgenda");
+  if (!cont || !REUN_G.datos) return;
+  const d = REUN_G.datos, idx = reunIndice(), ahora = reunAhora();
+  const activa = new Map((d.ocupats || []).map((x) => [x.pid, x.grup]));
+  const items = idx.lista.map((g) => {
+    const u = reunUrgencia(g.ini, g.fin);
+    const pids = idx.votos.get(g.ini) || [];
+    const pausa = !pids.filter((p) => !idx.pausa.has(p + "|" + g.grup)).length && pids.some((p) => idx.pausa.has(p + "|" + g.grup));
+    return { g, u, n: pausa ? 6 : u.n };
+  }).sort((a, b) => a.n - b.n || (a.g.ini < b.g.ini ? -1 : 1));
+  const vivas = items.filter((x) => x.n < 5);
+  // Regla «una reunión por persona»: quien ya está convocado a una reunión vigente no cuenta en las
+  // demás franjas. Si todas las personas de una franja ya tienen reunión, la franja queda EN PAUSA
+  // (no se borra nada: se reactiva sola si se cancela la otra reunión).
+  const unaPorPersona = !d.config || d.config.unaPorPersona !== false;
+  const todas = reunConstruirRuns().map((r) => {
+    const ocupadas = unaPorPersona ? r.v.filter((p) => activa.has(p)) : [];
+    return { ...r, ocupadas, v: r.v.filter((p) => !ocupadas.includes(p)), total: r.v.length };
+  });
+  const enPausa = todas.filter((r) => r.total >= 1 && r.v.length === 0);
+  const runs = todas.filter((r) => r.v.length >= 1);
+  REUN_AG.pausa = enPausa;
+  const pend = runs.filter((r) => r.v.length >= 1).sort((a, b) => (a.ini < b.ini ? -1 : 1)).slice(0, 8);
+  const mejores = runs.filter((r) => r.v.length >= 1).sort((a, b) => b.v.length - a.v.length || (a.ini < b.ini ? -1 : 1)).slice(0, 6);
+  REUN_AG.pend = pend; REUN_AG.runs = mejores;
+  const urgentes = pend.filter((r) => reunUrgencia(r.ini, r.fin, true).n <= 2).length;
+  const conVoto = new Set();
+  for (const r of runs) for (const p of r.v) conVoto.add(p);
+  const sin = [...conVoto].filter((p) => !activa.has(p)).length;
+  const hoyN = vivas.filter((x) => x.n <= 1).length, semN = vivas.filter((x) => x.n <= 3).length;
+  const prox = vivas[0];
+  const sub = prox ? `Próxima: ${reunFechaLarga(prox.g.ini.slice(0, 10))} · ${prox.g.ini.slice(11, 16)} (${prox.u.cuenta})` : "No hay reuniones confirmadas por ahora.";
+  const kpis = [
+    [hoyN, "Hoy", hoyN === 1 ? "reunión en curso o por empezar" : "reuniones en curso o por empezar", hoyN > 0],
+    [semN, "Esta semana", "reuniones confirmadas", false],
+    [pend.length, "Por convocar", urgentes ? `${urgentes} ${urgentes === 1 ? "urgente" : "urgentes"} (hoy o mañana)` : "franjas con respuestas", urgentes > 0],
+    [sin, "Sin reunión", sin === 1 ? "participante por asignar" : "participantes por asignar", false],
+  ].map(([n, t, s, alerta]) => `<div class="reun-ag-kpi${alerta ? " alerta" : ""}"><b>${n}</b><strong>${t}</strong><span>${s}</span></div>`).join("");
+
+  let ult = -1, html = "";
+  for (const it of items) {
+    if (it.n !== ult) { html += `<h5 class="reun-ag-grupo ${it.n === 6 ? "u6" : "u" + it.n}">${REUN_ETQ_GRUPO[it.n]}</h5>`; ult = it.n; }
+    html += reunTarjetaAgenda(it.g, activa);
+  }
+  const bloqueRun = (r, i, tipo, u) => {
+    const pids = r.v;
+    return `<article class="reun-ag-pen ${u ? u.cls : ""}"><div class="reun-ag-pen-top"><b>${escapeHtml(reunFechaLarga(r.ini.slice(0, 10)))} · ${reunRango(r.ini, r.fin)}</b>${u ? `<span class="reun-ag-badge ${u.cls}">${escapeHtml(u.etq)}</span>` : `<em>${reunPlural(pids.length, "participante", "participantes")}</em>`}</div>
+      ${u ? `<div class="mut">${escapeHtml(u.cuenta)} · ${reunPlural(pids.length, "participante", "participantes")}</div>` : ""}${reunChips(idx, pids, 5)}
+      ${r.ocupadas && r.ocupadas.length ? `<p class="reun-ag-pausa">${reunPlural(r.ocupadas.length, "persona en pausa", "personas en pausa")} (ya ${r.ocupadas.length === 1 ? "tiene" : "tienen"} otra reunión): ${escapeHtml(reunNombresPids(idx, r.ocupadas).join(", "))}.</p>` : ""}
+      <div class="reun-btns reun-ag-acc"><button type="button" class="an-btn an-btn-pri" data-reun-run="${tipo}:${i}" data-acc="confirma">${tipo === "pend" ? "Convocar" : "Confirmar reunión"}</button><button type="button" class="an-btn an-btn-sec" data-reun-run="${tipo}:${i}" data-acc="ver">Ver en calendario</button></div></article>`;
+  };
+  cont.innerHTML = `<div class="reun-ag-sub">${escapeHtml(sub)}</div>
+    <div class="reun-ag-kpis">${kpis}</div>
+    <div class="reun-ag-cols">
+      <div class="reun-ag-col"><h4>Próximas reuniones</h4>${html || '<p class="reun-vacio">Todavía no hay reuniones confirmadas. Cuando confirmes una, aparecerá aquí con su cuenta atrás.</p>'}</div>
+      <div class="reun-ag-col"><h4>Por convocar · por urgencia</h4>${pend.length ? pend.map((r, i) => bloqueRun(r, i, "pend", reunUrgencia(r.ini, r.fin, true))).join("") : '<p class="reun-vacio">Cuando los participantes marquen franjas, aparecerán aquí ordenadas por urgencia.</p>'}
+      <h4 class="reun-ag-h2">Franjas con mayor coincidencia</h4>${mejores.length ? mejores.map((r, i) => bloqueRun(r, i, "mej", null)).join("") : '<p class="reun-vacio">Cuando los participantes seleccionen franjas, aquí se mostrarán las de mayor coincidencia.</p>'}
+      ${enPausa.length ? `<h4 class="reun-ag-h2">Franjas en pausa</h4><p class="mut">Todas las personas que las marcaron ya tienen otra reunión. Vuelven solas si esa se cancela.</p>${enPausa.slice(0, 8).map((r) => `<article class="reun-ag-pen u6"><div class="reun-ag-pen-top"><b>${escapeHtml(reunFechaLarga(r.ini.slice(0, 10)))} · ${reunRango(r.ini, r.fin)}</b><span class="reun-ag-badge u6">En pausa</span></div>${reunChips(idx, r.ocupadas, 5)}<div class="reun-btns reun-ag-acc"><button type="button" class="an-btn an-btn-sec" data-reun-run="pausa:${enPausa.indexOf(r)}" data-acc="ver">Ver en calendario</button></div></article>`).join("")}` : ""}</div>
+    </div>`;
+}
+
+// ---- Convocar / ver en calendario ----
+function reunIrACalendario(clave) {
+  const sub = document.getElementById("subpanel-reuniones");
+  const tab = sub && sub.querySelector('.reun-tab[data-sec="calendario"]');
+  if (tab) tab.click();
+  REUN_G.inicio = reunLunes(clave.slice(0, 10));
+  reunPintarGrid();
+}
+function reunAccionRun(ref, acc) {
+  const [tipo, i] = ref.split(":");
+  const r = (tipo === "pend" ? REUN_AG.pend : tipo === "pausa" ? REUN_AG.pausa : REUN_AG.runs)[Number(i)];
+  if (!r) return;
+  if (acc === "ver") { reunIrACalendario(r.ini); return; }
+  reunDlgConfirmar(r.ini, r.n);
+}
+
+// ---- Franja: quién la ha marcado (herramienta «Respuestas») ----
+function reunDlgFranja(k) {
+  const idx = reunIndice();
+  const f = idx.franja.get(k);
+  const pids = idx.votos.get(k) || [];
+  const estado = !f ? "Sin habilitar" : (f.estat === "disponible" ? "Habilitada" : (f.estat === "no_puc" ? "Bloqueada" : (f.estat === "finalizada" ? "Reunión finalizada" : "Reunión confirmada")));
+  reunAbrirDlg(`<h4>${escapeHtml(reunFechaLarga(k.slice(0, 10)))} · ${k.slice(11, 16)}</h4>
+    <p class="mut">${estado}</p>
+    ${pids.length ? `<ul class="reun-ag-lista">${pids.map((p) => `<li>${escapeHtml(idx.nombre.get(p) || "?")}</li>`).join("")}</ul>` : '<p class="mut">Nadie ha marcado esta franja.</p>'}
+    <div class="reun-dlg-acc"><button type="button" class="an-btn an-btn-sec" data-reun-cerrar>Cerrar</button>${f && f.estat === "disponible" ? '<button type="button" class="an-btn an-btn-pri" id="reunDlgConv">Confirmar reunión aquí</button>' : ""}</div>`);
+  const b = document.getElementById("reunDlgConv");
+  if (b) b.onclick = () => reunDlgConfirmar(k);
+}
+
+// ---- Plantilla de horarios ----
+function reunDlgPlantilla() {
+  const horas = []; for (let m = 6 * 60; m <= 24 * 60; m += 30) horas.push(m);
+  const hh = (m) => (m === 1440 ? "24:00" : `${reunP(Math.floor(m / 60))}:${reunP(m % 60)}`);
+  reunAbrirDlg(`<h4>Plantilla de horarios</h4>
+    <p class="mut">Aplica de una sola vez unos días y un horario que se repiten durante varias semanas. Después puedes ajustar cualquier franja desde el calendario.</p>
+    <label class="an-label">Días de la semana</label>
+    <div class="reun-pl-dias" id="reunPlDias">${REUN_DIAS3.map((x, i) => `<label><input type="checkbox" value="${i}"${i < 5 ? " checked" : ""}><span>${x}</span></label>`).join("")}</div>
+    <div class="reun-pl-dos">
+      <div><label class="an-label" for="reunPlDesde">Desde</label><select id="reunPlDesde" class="an-input">${horas.slice(0, -1).map((m) => `<option value="${m}"${m === 17 * 60 ? " selected" : ""}>${hh(m)}</option>`).join("")}</select></div>
+      <div><label class="an-label" for="reunPlHasta">Hasta</label><select id="reunPlHasta" class="an-input">${horas.slice(1).map((m) => `<option value="${m}"${m === 20 * 60 ? " selected" : ""}>${hh(m)}</option>`).join("")}</select></div>
+      <div><label class="an-label" for="reunPlSemanas">Duración</label><select id="reunPlSemanas" class="an-input">${Array.from({ length: 12 }, (_, i) => `<option value="${i + 1}"${i === 3 ? " selected" : ""}>${reunPlural(i + 1, "semana", "semanas")}</option>`).join("")}</select></div>
+      <div><label class="an-label" for="reunPlEstado">Aplicar como</label><select id="reunPlEstado" class="an-input"><option value="disponible">Habilitar</option><option value="no_puc">Bloquear</option><option value="buit">Borrar</option></select></div>
+    </div>
+    <div class="reun-dlg-acc"><button type="button" class="an-btn an-btn-sec" data-reun-cerrar>Cancelar</button><button type="button" class="an-btn an-btn-pri" id="reunPlOk">Aplicar plantilla</button></div>`);
+  document.getElementById("reunPlOk").onclick = async (e) => {
+    const dias = [...document.querySelectorAll("#reunPlDias input:checked")].map((i) => +i.value);
+    const desde = +document.getElementById("reunPlDesde").value, hasta = +document.getElementById("reunPlHasta").value;
+    const semanas = +document.getElementById("reunPlSemanas").value, estat = document.getElementById("reunPlEstado").value;
+    if (!dias.length || hasta <= desde) { EOF.toast("Revisa los días y el horario seleccionados.", "error"); return; }
+    const ahora = reunAhora(), hoy = ahora.slice(0, 10), idx = reunIndice(), claves = [];
+    for (let i = 0; i < semanas * 7; i++) {
+      const dia = reunSuma(hoy, i);
+      if (!dias.includes((reunLee(dia).getUTCDay() + 6) % 7)) continue;
+      for (let m = desde; m < hasta; m += 30) {
+        const k = reunClave(dia, m), f = idx.franja.get(k);
+        if (k >= ahora && !(f && (f.estat === "confirmada" || f.estat === "finalizada"))) claves.push(k);
+      }
+    }
+    if (!claves.length) { EOF.toast("No hay franjas a las que aplicar la plantilla.", "error"); return; }
+    e.currentTarget.disabled = true;
+    const ok = await reunAccion(async () => {
+      for (let i = 0; i < claves.length; i += 650) await apiFetch("/api/reunions/admin/franges", { method: "PUT", body: JSON.stringify({ estat, claus: claves.slice(i, i + 650) }) });
+    }, `Plantilla aplicada correctamente (${reunPlural(claves.length, "franja", "franjas")}).`);
+    if (ok) reunCerrarDlg(); else e.currentTarget.disabled = false;
+  };
+}
+
+// ---- Eventos (se enganchan una sola vez) ----
+function reunEnlazarAgenda() {
+  const sub = document.getElementById("subpanel-reuniones");
+  if (!sub || sub.dataset.agenda) return;
+  sub.dataset.agenda = "1";
+  sub.addEventListener("click", (e) => {
+    const copiar = e.target.closest("[data-reun-copiar]");
+    if (copiar) {
+      const g = reunIndice().grupos.get(copiar.dataset.reunCopiar);
+      if (g) reunCopiar(reunMensajeConvocatoria(g), "Convocatoria copiada al portapapeles.");
+      return;
+    }
+    const correo = e.target.closest("[data-reun-correo]");
+    if (correo) {
+      const grup = correo.dataset.reunCorreo;
+      reunDosPasos(correo, "correo:" + grup, async () => {
+        correo.disabled = true;
+        try {
+          const r = await apiFetch("/api/reunions/admin/correo", { method: "POST", body: JSON.stringify({ grup }) });
+          const m = reunMsgCorreo("Convocatoria reenviada.", r);
+          const c = r.correo || {};
+          if (c.configurado === false || (!c.enviados && !c.total)) {
+            EOF.toast(c.configurado === false ? m.texto : "No hay a quién enviarla: ninguna persona convocada tiene cuenta con correo." + (c.sinCorreo && c.sinCorreo.length ? " Sin correo: " + c.sinCorreo.join(", ") + "." : ""), "info", 9000);
+          } else EOF.toast(m.texto, m.tipo, 9000);
+        } catch (err) { EOF.toast(err.message || "No se pudo enviar el correo", "error"); }
+        finally { correo.disabled = false; }
+      });
+      return;
+    }
+    const run = e.target.closest("[data-reun-run]");
+    if (run) { reunAccionRun(run.dataset.reunRun, run.dataset.acc); return; }
+    if (e.target.closest("#reunPlantilla")) { reunDlgPlantilla(); return; }
+    if (e.target.closest("#reunInvitar")) reunCopiar(reunMensajeInvitacion(), "Invitación copiada al portapapeles.");
+  });
+  // Cuenta atrás y datos al día sin recargar: cada 30 s mientras la sección está a la vista.
+  REUN_AG.timer = setInterval(() => {
+    const visible = sub.classList.contains("activo") && !document.hidden;
+    const dlg = document.getElementById("reunDlg");
+    if (!visible || (dlg && dlg.open) || REUN_G.abajo) return;
+    reunRecargar().catch(() => { /* se mantiene lo que había */ });
+  }, 30000);
+}
+// ---------- BLOQUEO DE EDICIÓN SIMULTÁNEA DE NOTICIAS ----------
+// Al abrir una noticia existente para editarla se reserva en el servidor
+// (POST /api/articles/:id/bloqueo) y se renueva cada 25 s mientras el
+// formulario sigue abierto. Si otra persona (u otra pestaña) la tiene, no se
+// abre; un Responsable puede "tomar el control". Si perdemos el bloqueo a
+// mitad de edición, se avisa y se deshabilita Guardar (el servidor además
+// rechaza el guardado con un 423), para no pisar el trabajo de la otra persona.
+// El estado vive en window (y no en let/const) porque cancelarEdicion() puede
+// ejecutarse durante el arranque, antes de que este módulo llegue a ejecutarse.
+const BLOQUEO_NOTICIA_LATIDO_MS = 25 * 1000;
+
+function estadoBloqueoNoticia() {
+  if (!window.__eofBloqueoNoticia) {
+    const alea = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).slice(2));
+    // Una sesión por pestaña: la misma persona en dos pestañas también es edición simultánea.
+    window.__eofBloqueoNoticia = { sesion: ("t" + alea).replace(/[^A-Za-z0-9_-]/g, "").slice(0, 48), articleId: null, timer: null, perdido: false };
+  }
+  return window.__eofBloqueoNoticia;
+}
+
+function idSesionEdicionNoticia() { return estadoBloqueoNoticia().sesion; }
+
+function rutaBloqueoNoticia(id, extra) {
+  return `/api/articles/${id}/bloqueo?sesion=${encodeURIComponent(idSesionEdicionNoticia())}${extra || ""}`;
+}
+
+function ocultarAvisoBloqueoNoticia() {
+  const aviso = document.getElementById("avisoBloqueoNoticia");
+  if (aviso) aviso.remove();
+  const btn = document.getElementById("btnGuardar");
+  if (btn) { btn.disabled = false; btn.removeAttribute("title"); }
+}
+
+function mostrarAvisoBloqueoNoticia(texto, idNoticia) {
+  let aviso = document.getElementById("avisoBloqueoNoticia");
+  if (!aviso) {
+    aviso = document.createElement("div");
+    aviso.id = "avisoBloqueoNoticia";
+    aviso.className = "aviso-bloqueo-noticia";
+    aviso.setAttribute("role", "alert");
+    formArticle.insertBefore(aviso, formArticle.firstChild);
+  }
+  aviso.innerHTML = "";
+  const msg = document.createElement("span");
+  msg.textContent = texto;
+  aviso.appendChild(msg);
+  if (idNoticia) {
+    const boton = document.createElement("button");
+    boton.type = "button";
+    boton.textContent = "Volver a cargar la noticia";
+    boton.addEventListener("click", async () => {
+      // El aviso solo desaparece si se consigue volver a reservar (ver iniciarLatidoBloqueoNoticia).
+      const a = ARTICULOS_CACHE[idNoticia] || { id: idNoticia };
+      await editarArticulo(a);
+    });
+    aviso.appendChild(boton);
+  }
+  const btn = document.getElementById("btnGuardar");
+  if (btn) { btn.disabled = true; btn.title = "Otra persona tiene abierta esta noticia"; }
+}
+
+// Se perdió el bloqueo (alguien tomó el control o caducó y otra persona la abrió).
+function perderBloqueoNoticia(bloqueo) {
+  const st = estadoBloqueoNoticia();
+  const id = st.articleId;
+  if (st.timer) { clearInterval(st.timer); st.timer = null; }
+  st.perdido = true;
+  const quien = bloqueo && bloqueo.usuario_nombre ? bloqueo.usuario_nombre : "Otra persona";
+  mostrarAvisoBloqueoNoticia(`${quien} ha abierto esta noticia y ya no puedes guardar para no pisar su trabajo. Copia lo que necesites de tu texto y vuelve a cargarla.`, id);
+}
+
+async function latidoBloqueoNoticia() {
+  const st = estadoBloqueoNoticia();
+  if (!st.articleId || st.perdido) return;
+  const id = st.articleId;
+  try {
+    await apiFetch(rutaBloqueoNoticia(id), { method: "POST" });
+  } catch (err) {
+    if (err && err.status === 423 && st.articleId === id) perderBloqueoNoticia(err.data && err.data.bloqueo);
+    // Cualquier otro fallo (red, caída momentánea): se reintenta en el siguiente latido (hay margen de 90 s).
+  }
+}
+
+function iniciarLatidoBloqueoNoticia(id) {
+  const st = estadoBloqueoNoticia();
+  if (st.timer) clearInterval(st.timer);
+  st.articleId = id;
+  st.perdido = false;
+  st.timer = setInterval(latidoBloqueoNoticia, BLOQUEO_NOTICIA_LATIDO_MS);
+  ocultarAvisoBloqueoNoticia();
+}
+
+// Suelta el bloqueo de la noticia abierta (si la hay). No espera respuesta: si falla, caduca solo.
+function liberarBloqueoEdicionNoticia() {
+  const st = estadoBloqueoNoticia();
+  const id = st.articleId;
+  if (st.timer) { clearInterval(st.timer); st.timer = null; }
+  const habiaPerdido = st.perdido;
+  st.articleId = null;
+  st.perdido = false;
+  ocultarAvisoBloqueoNoticia();
+  if (!id || habiaPerdido) return; // si lo habíamos perdido, ese bloqueo ya es de otra persona
+  apiFetch(rutaBloqueoNoticia(id), { method: "DELETE" }).catch(() => {});
+}
+
+// Al cerrar o recargar la pestaña: liberación "de despedida" que sobrevive a la descarga de la página.
+function liberarBloqueoNoticiaAlSalir() {
+  const st = estadoBloqueoNoticia();
+  if (!st.articleId || st.perdido) return;
+  try {
+    fetch(`${PRIMARY_API}${rutaBloqueoNoticia(st.articleId)}`, { method: "DELETE", headers: authHeaders(), keepalive: true }).catch(() => {});
+  } catch { /* caducará solo en 90 s */ }
+}
+window.addEventListener("pagehide", liberarBloqueoNoticiaAlSalir);
+
+// Se llama al abrir una noticia existente. Devuelve true si se puede editar.
+async function gestionarBloqueoAlAbrirNoticia(id) {
+  const st = estadoBloqueoNoticia();
+  const idPrevio = st.articleId;
+  if (idPrevio && String(idPrevio) !== String(id)) liberarBloqueoEdicionNoticia();
+  try {
+    await apiFetch(rutaBloqueoNoticia(id), { method: "POST" });
+  } catch (err) {
+    if (!err || err.status !== 423) {
+      // El bloqueo es cooperativo: si el servicio falla (red, tabla...), no se impide editar.
+      console.warn("No se pudo reservar el bloqueo de edición:", err && err.message);
+      return true;
+    }
+    const bloqueo = err.data && err.data.bloqueo;
+    const quien = bloqueo && bloqueo.usuario_nombre ? bloqueo.usuario_nombre : "Otra persona";
+    const puedeForzar = USER && (USER.rol === "admin" || USER.gestor_contenido);
+    if (!puedeForzar) {
+      EOF.toast(`${quien} está editando esta noticia ahora mismo. Inténtalo de nuevo cuando termine.`, "info");
+      return false;
+    }
+    const tomar = await EOF.confirmar(
+      `${quien} está editando esta noticia ahora mismo. Si tomas el control, esa persona no podrá guardar y perderá los cambios que no haya guardado.`,
+      { textoConfirmar: "Tomar el control", textoCancelar: "Cancelar" }
+    );
+    if (!tomar) return false;
+    try {
+      await apiFetch(rutaBloqueoNoticia(id, "&forzar=1"), { method: "POST" });
+    } catch (err2) {
+      EOF.toast("No se pudo tomar el control: " + (err2 && err2.message ? err2.message : "error"), "error");
+      return false;
+    }
+  }
+  iniciarLatidoBloqueoNoticia(id);
+  return true;
+}
+
+
+// ---------- CONTENIDO: Editar varios archivos a la vez ----------
+// "Ver contenido subido" > Seleccionar (o Mayús + clic para un rango) > "Editar seleccionados".
+// Cada campo lleva su casilla: solo se manda al servidor lo marcado (POST /api/media/editar-lote);
+// lo demás se queda como está en cada archivo. Las funciones son declaraciones (hoisting) porque
+// admin.js es un único ámbito global, igual que el resto de módulos.
+const modalEditarLoteMedia = document.getElementById("modalEditarLoteMedia");
+const formEditarLoteMedia = document.getElementById("formEditarLoteMedia");
+let autocompletarPartidoLote = null;
+let elCarpetaPrevia = "";
+let elEnviando = false;
+
+// Campos del modal: casilla -> bloque que se activa al marcarla.
+const EL_CAMPOS = ["titulo", "descripcion", "partido", "club", "visibilidad", "carpeta"];
+
+// Archivos seleccionados en el orden en que se ven en la galería (así se numeran los títulos).
+function mediaSeleccionadaOrdenada() {
+  return mediaDeLaVista().filter((m) => seleccionMedia.has(m.id));
+}
+
+function textoPlural(n, uno, varios) {
+  return `${n} ${n === 1 ? uno : varios}`;
+}
+
+function pintarResumenLoteMedia(lista) {
+  const cont = document.getElementById("el_resumen");
+  if (!cont) return;
+  const publicos = lista.filter((m) => !esMediaPrivado(m)).length;
+  const privados = lista.length - publicos;
+  const partes = [];
+  if (publicos) partes.push(textoPlural(publicos, "público", "públicos"));
+  if (privados) partes.push(textoPlural(privados, "privado", "privados"));
+  const miniaturas = lista.slice(0, 12).map((m) => {
+    const url = m.content_type === "enlace/externo" ? null : miniaturaCloudinary(m.cloudinary_url, m.tipo === "foto" ? "image" : "video", m.portada_segundo, m.portada_foco);
+    return url
+      ? `<img src="${escapeHtml(url)}" alt="" loading="lazy" decoding="async" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'el-mini-vacia'}))">`
+      : '<span class="el-mini-vacia"></span>';
+  }).join("");
+  const resto = lista.length > 12 ? `<span class="el-mini-mas">+${lista.length - 12}</span>` : "";
+  cont.innerHTML = `<div class="el-minis">${miniaturas}${resto}</div>
+    <p class="el-resumen-texto"><b>${textoPlural(lista.length, "archivo seleccionado", "archivos seleccionados")}</b>${partes.length ? ` · ${partes.join(" · ")}` : ""}</p>`;
+}
+
+function poblarClubLoteMedia() {
+  const sel = document.getElementById("el_club");
+  if (!sel || sel.dataset.poblado) return;
+  listaTodosLosClubesFederativos().sort((a, b) => a.localeCompare(b)).forEach((club) => {
+    const o = document.createElement("option");
+    o.value = club;
+    o.textContent = club;
+    sel.appendChild(o);
+  });
+  sel.dataset.poblado = "1";
+}
+
+function poblarCarpetaLoteMedia(seleccionarId) {
+  const sel = document.getElementById("el_carpeta");
+  if (!sel) return;
+  sel.innerHTML = "";
+  const add = (valor, texto) => { const o = document.createElement("option"); o.value = valor; o.textContent = texto; sel.appendChild(o); };
+  add("", "— Sin carpeta —");
+  carpetasMedia.forEach((c) => add(String(c.id), c.nombre));
+  add("__nueva__", "+ Nueva carpeta…");
+  const elegido = seleccionarId !== undefined ? String(seleccionarId) : "";
+  sel.value = Array.from(sel.options).some((o) => o.value === elegido) ? elegido : "";
+  elCarpetaPrevia = sel.value;
+}
+
+// Con partido elegido, el equipo se deduce del partido y "Club" no se aplica (igual que al editar uno solo).
+function actualizarEquipoLoteSegunPartido(resultId) {
+  const wrap = document.getElementById("el_equipoWrap");
+  const sel = document.getElementById("el_equipo");
+  const r = resultId ? RESULTADOS_ARTICULO_TODOS.find((x) => String(x.id) === String(resultId)) : null;
+  if (!r) {
+    if (wrap) wrap.style.display = "none";
+    if (sel) sel.value = "";
+  } else {
+    if (sel) {
+      sel.innerHTML = `
+        <option value="">— Fotos/vídeos generales del partido —</option>
+        <option value="local">${escapeHtml(r.equipo_local || "Equipo local")}</option>
+        <option value="visitante">${escapeHtml(r.equipo_visitante || "Equipo visitante")}</option>`;
+      sel.value = "";
+    }
+    if (wrap) wrap.style.display = "block";
+  }
+  sincronizarClubLoteSegunPartido();
+}
+
+function sincronizarClubLoteSegunPartido() {
+  const partidoActivo = document.getElementById("el_chk_partido").checked && !!document.getElementById("el_partido").value;
+  const chk = document.getElementById("el_chk_club");
+  const campo = document.getElementById("el_campo_club");
+  if (partidoActivo) {
+    chk.checked = false;
+    chk.disabled = true;
+    campo.disabled = true;
+  } else {
+    chk.disabled = false;
+    campo.disabled = !chk.checked;
+  }
+}
+
+async function prepararSelectorPartidoLote() {
+  if (!RESULTADOS_ARTICULO_TODOS || !RESULTADOS_ARTICULO_TODOS.length) await cargarResultadosSelect("");
+  if (!autocompletarPartidoLote) {
+    autocompletarPartidoLote = crearAutocompletarPartido({
+      wrapperEl: document.getElementById("el_partidoWrap"),
+      inputEl: document.getElementById("el_partido_buscador"),
+      sugerenciasEl: document.getElementById("el_partido_sugerencias"),
+      hiddenEl: document.getElementById("el_partido"),
+      alElegir: (resultId) => actualizarEquipoLoteSegunPartido(resultId),
+    });
+  }
+}
+
+function reiniciarFormularioLoteMedia() {
+  formEditarLoteMedia.reset();
+  EL_CAMPOS.forEach((c) => {
+    const chk = document.getElementById(`el_chk_${c}`);
+    chk.checked = false;
+    chk.disabled = false;
+    document.getElementById(`el_campo_${c}`).disabled = true;
+  });
+  document.getElementById("el_partido").value = "";
+  document.getElementById("el_partido_buscador").value = "";
+  actualizarEquipoLoteSegunPartido("");
+  const err = document.getElementById("errEditarLoteMedia");
+  err.style.display = "none";
+  err.textContent = "";
+  const cuerpo = modalEditarLoteMedia.querySelector(".el-cuerpo");
+  if (cuerpo) cuerpo.scrollTop = 0;
+}
+
+async function abrirModalEditarLoteMedia() {
+  if (!modalEditarLoteMedia) return;
+  const lista = mediaSeleccionadaOrdenada();
+  if (!lista.length) return;
+  reiniciarFormularioLoteMedia();
+  pintarResumenLoteMedia(lista);
+  poblarClubLoteMedia();
+  poblarCarpetaLoteMedia();
+  modalEditarLoteMedia.classList.add("abierto");
+  try { await prepararSelectorPartidoLote(); } catch (err) { console.error("No se pudo cargar la lista de partidos:", err); }
+}
+
+function cerrarModalEditarLoteMedia() {
+  if (modalEditarLoteMedia) modalEditarLoteMedia.classList.remove("abierto");
+}
+
+function mostrarErrorLoteMedia(texto) {
+  const err = document.getElementById("errEditarLoteMedia");
+  err.textContent = texto || "";
+  err.style.display = texto ? "block" : "none";
+  if (texto) err.scrollIntoView({ block: "nearest" });
+}
+
+// Construye "cambios" solo con los campos marcados. Devuelve { cambios, avisos } o { error }.
+function leerCambiosLoteMedia(n) {
+  const marcado = (c) => document.getElementById(`el_chk_${c}`).checked;
+  const cambios = {};
+  const avisos = [];
+
+  if (marcado("titulo")) {
+    const t = document.getElementById("el_titulo").value.replace(/\s+/g, " ").trim();
+    if (!t) return { error: "Escribe el título nuevo o desmarca «Título»." };
+    cambios.titulo = t;
+    if (document.getElementById("el_numerar").checked) cambios.numerar = true;
+  }
+  if (marcado("descripcion")) {
+    const d = document.getElementById("el_descripcion").value.trim();
+    cambios.descripcion = d;
+    if (!d) avisos.push("borrar su descripción");
+  }
+  let conPartido = false;
+  if (marcado("partido")) {
+    const idPartido = document.getElementById("el_partido").value;
+    cambios.resultId = idPartido || null;
+    if (idPartido) {
+      conPartido = true;
+      cambios.equipo = document.getElementById("el_equipo").value || "";
+    } else {
+      avisos.push("quitarlos de la galería de su partido");
+    }
+  }
+  if (marcado("club") && !conPartido) cambios.club = document.getElementById("el_club").value;
+  if (marcado("visibilidad")) {
+    const v = document.getElementById("el_visibilidad").value;
+    cambios.visibilidad = v;
+    if (v === "publico") avisos.push("hacerlos públicos (cualquiera podrá verlos en el sitio)");
+  }
+  if (marcado("carpeta")) {
+    const c = document.getElementById("el_carpeta").value;
+    if (c === "__nueva__") return { error: "Crea la carpeta nueva o elige otra antes de aplicar." };
+    cambios.carpeta_id = c;
+  }
+  if (!Object.keys(cambios).length) return { error: "No has marcado ningún cambio. Marca la casilla de lo que quieras modificar." };
+  return { cambios, avisos };
+}
+
+async function enviarEdicionLoteMedia(ev) {
+  ev.preventDefault();
+  if (elEnviando) return;
+  mostrarErrorLoteMedia("");
+  const ids = mediaSeleccionadaOrdenada().map((m) => m.id);
+  if (!ids.length) return mostrarErrorLoteMedia("No hay archivos seleccionados.");
+  const leido = leerCambiosLoteMedia(ids.length);
+  if (leido.error) return mostrarErrorLoteMedia(leido.error);
+
+  // Cambios difíciles de deshacer a mano: se pide confirmación explícita.
+  if (leido.avisos.length) {
+    const ok = await EOF.confirmar(
+      `Vas a editar ${textoPlural(ids.length, "archivo", "archivos")}: ${leido.avisos.join(" y ")}. ¿Continuar?`,
+      { peligroso: true, textoConfirmar: "Aplicar cambios" }
+    );
+    if (!ok) return;
+  }
+
+  const btn = document.getElementById("btnGuardarEditarLoteMedia");
+  elEnviando = true;
+  btn.disabled = true;
+  try {
+    const r = await apiFetch(`/api/media/editar-lote`, { method: "POST", body: JSON.stringify({ ids, cambios: leido.cambios }) });
+    const editados = r.editados || 0;
+    if (r.omitidos) EOF.toast(`${textoPlural(editados, "archivo editado", "archivos editados")}. ${r.omitidos} no se han tocado (no existen o son de otra persona).`, "info");
+    else EOF.toast(editados === 1 ? "Archivo editado." : `${editados} archivos editados.`, "exito");
+    cerrarModalEditarLoteMedia();
+    avisarCarpetasCambiadas();
+    salirSeleccionMedia();
+    await cargaContenido();
+  } catch (err) {
+    mostrarErrorLoteMedia(err.message || "No se pudieron editar los archivos.");
+  } finally {
+    elEnviando = false;
+    btn.disabled = false;
+  }
+}
+
+(function iniciarEdicionLoteMedia() {
+  if (!modalEditarLoteMedia || !formEditarLoteMedia) return;
+
+  // Cada casilla activa/desactiva su bloque (el <fieldset disabled> deshabilita todos sus controles).
+  EL_CAMPOS.forEach((c) => {
+    const chk = document.getElementById(`el_chk_${c}`);
+    chk.addEventListener("change", () => {
+      document.getElementById(`el_campo_${c}`).disabled = !chk.checked;
+      if (c === "partido") sincronizarClubLoteSegunPartido();
+      if (chk.checked) {
+        const primero = document.querySelector(`#el_campo_${c} input:not([type=checkbox]), #el_campo_${c} select, #el_campo_${c} textarea`);
+        if (primero) primero.focus();
+      }
+    });
+  });
+  // Elegir/quitar el partido también cambia si el club se aplica o no.
+  document.getElementById("el_partido").addEventListener("change", sincronizarClubLoteSegunPartido);
+
+  // "+ Nueva carpeta…" crea la carpeta y la deja elegida (si se cierra sin crear, vuelve a la anterior).
+  const selCarpeta = document.getElementById("el_carpeta");
+  selCarpeta.addEventListener("change", () => {
+    if (selCarpeta.value !== "__nueva__") { elCarpetaPrevia = selCarpeta.value; return; }
+    abrirModalNombreCarpeta({
+      titulo: "Nueva carpeta",
+      textoBoton: "Crear",
+      alCancelar: () => { selCarpeta.value = elCarpetaPrevia; },
+      alEnviar: async (nombre) => {
+        const { carpeta } = await apiFetch(`/api/media/carpetas`, { method: "POST", body: JSON.stringify({ nombre }) });
+        if (!carpeta || !carpeta.id) throw new Error("No se pudo crear la carpeta.");
+        if (!carpetasMedia.some((c) => c.id === carpeta.id)) {
+          carpetasMedia.push({ id: carpeta.id, nombre: carpeta.nombre, total: 0 });
+          carpetasMedia.sort((a, b) => a.nombre.localeCompare(b.nombre, "es", { sensitivity: "base" }));
+        }
+        poblarCarpetaLoteMedia(carpeta.id);
+        avisarCarpetasCambiadas();
+      },
+    });
+  });
+
+  formEditarLoteMedia.addEventListener("submit", enviarEdicionLoteMedia);
+  // El aviso de error se quita en cuanto la persona toca cualquier campo.
+  formEditarLoteMedia.addEventListener("input", () => mostrarErrorLoteMedia(""));
+  formEditarLoteMedia.addEventListener("change", () => mostrarErrorLoteMedia(""));
+  const on = (id, fn) => { const el = document.getElementById(id); if (el) el.addEventListener("click", fn); };
+  on("btnEditarSeleccionMedia", abrirModalEditarLoteMedia);
+  on("btnCerrarEditarLoteMedia", cerrarModalEditarLoteMedia);
+  on("btnCancelarEditarLoteMedia", cerrarModalEditarLoteMedia);
+  modalEditarLoteMedia.addEventListener("click", (e) => { if (e.target === modalEditarLoteMedia) cerrarModalEditarLoteMedia(); });
+  document.addEventListener("keydown", (e) => {
+    // El modal de nombre de carpeta (encima) se cierra con su propio Escape.
+    if (e.key === "Escape" && modalEditarLoteMedia.classList.contains("abierto")
+        && !(typeof modalNombreCarpeta !== "undefined" && modalNombreCarpeta && modalNombreCarpeta.classList.contains("abierto"))) {
+      cerrarModalEditarLoteMedia();
+    }
+  });
 })();

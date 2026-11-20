@@ -2,10 +2,15 @@
 <html lang="es">
 <head>
 <meta name="google-adsense-account" content="ca-pub-7347856722927942">
-<script src="js/tema.js?v=2"></script>
-<script src="js/preferencias.js?v=20"></script>
+<script src="js/tema.js?v=65626bb2"></script>
+<script src="js/preferencias.js?v=6e49f5b3"></script>
 <meta charset="UTF-8">
-<script src="/js/splash.js?v=2"></script>
+<script>/* splash.js: bloquea el parseo solo si la web se abre como app (o ?splash=1); en navegador carga en async, sin frenar el pintado. */
+(function(){var a=false;try{a=matchMedia("(display-mode: standalone)").matches||matchMedia("(display-mode: fullscreen)").matches||matchMedia("(display-mode: minimal-ui)").matches||navigator.standalone===true;}catch(e){}
+if(a||/[?&]splash=1(&|$)/.test(location.search)){document.write('<script src="/js/splash.js?v=b5004788"><\/script>');}
+else{var s=document.createElement("script");s.src="/js/splash.js?v=b5004788";s.async=true;document.head.appendChild(s);}})();
+</script>
+<script src="/js/cargando.js?v=4a5cb1bc"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,15 +22,15 @@
 <meta name="twitter:image" content="https://elotrofutbol.media/img/og-default.png">
 <meta name="robots" content="noindex, follow">
 <link rel="canonical" href="https://elotrofutbol.media/cuenta">
-<link rel="icon" href="/favicon.ico?v=3" sizes="any">
-<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=3">
-<link rel="apple-touch-icon" href="/img/apple-touch-icon.png?v=2">
-<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&display=swap" onload="this.onload=null;this.rel='stylesheet'"><noscript><link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet"></noscript>
-<link rel="stylesheet" href="css/style.css?v=35">
-<link rel="stylesheet" href="css/modales-mejoras.css?v=1">
-<link rel="stylesheet" href="css/accesibilidad.css?v=2">
-<script src="js/accesibilidad.js?v=1" defer></script>
-<link rel="stylesheet" href="css/foco.css?v=1">
+<link rel="icon" href="/favicon.ico?v=39af2432" sizes="any">
+<link rel="icon" type="image/x-icon" href="/img/favicon.ico?v=39af2432">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png?v=3f854c49">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;0,700;0,800;1,500;1,700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&display=swap" onload="this.onload=null;this.rel='stylesheet'"><noscript><link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;0,700;0,800;1,500;1,700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&display=swap" rel="stylesheet"></noscript>
+<link rel="stylesheet" href="css/style.css?v=6cd42e49">
+<link rel="stylesheet" href="css/modales-mejoras.css?v=982413bb">
+<link rel="stylesheet" href="css/accesibilidad.css?v=191b9263">
+<script src="js/accesibilidad.js?v=59fdae75" defer></script>
+<link rel="stylesheet" href="css/foco.css?v=c8652610">
 <style>
   /* Estilos propios de "Mi cuenta", con las mismas variables de marca que
      el resto del sitio público (ver css/style.css). Deliberadamente NO se
@@ -77,6 +82,22 @@
   #formPasswordLector input:focus,
   #formEmailPendienteX input:focus{outline:none;border-color:var(--celeste);box-shadow:0 0 0 3px rgba(91,184,232,.15);}
 
+  /* Verificación en dos pasos (Seguridad) */
+  .c2fa label{display:block;font-size:.82rem;font-weight:600;color:var(--marino-texto);margin:14px 0 6px;}
+  .c2fa input[type="password"],.c2fa input[type="text"]{
+    width:100%;padding:11px 12px;border:1.5px solid var(--borde);border-radius:8px;
+    font-size:.95rem;background:var(--fondo);color:var(--texto);
+  }
+  .c2fa input:focus{outline:none;border-color:var(--celeste);box-shadow:0 0 0 3px rgba(91,184,232,.15);}
+  .c2fa-estado{display:inline-flex;align-items:center;gap:8px;font-size:.9rem;font-weight:600;margin:0 0 6px;}
+  .c2fa-estado i{width:9px;height:9px;border-radius:50%;background:#9aa4b2;display:inline-block;}
+  .c2fa-estado.on i{background:#1b8a4a;}
+  .c2fa-botones{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;}
+  .c2fa-qr{width:200px;max-width:100%;background:#fff;padding:8px;border-radius:10px;margin:10px 0 4px;line-height:0;}
+  .c2fa-qr svg{width:100%;height:auto;display:block;}
+  .c2fa-clave{font-family:ui-monospace,Menlo,Consolas,monospace;letter-spacing:.08em;word-break:break-all;font-size:.9rem;margin:4px 0 0;}
+  .c2fa-codigos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:12px 0 0;padding:14px;border:1.5px dashed var(--borde);border-radius:10px;background:var(--fondo);}
+  .c2fa-codigos span{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.95rem;letter-spacing:.06em;text-align:center;}
   .avatar-picker{display:flex;align-items:center;gap:16px;margin-top:2px;}
   .avatar-picker-preview{
     position:relative;width:72px;height:72px;border-radius:50%;flex-shrink:0;
@@ -136,6 +157,16 @@
     cursor:pointer;transition:background .15s;
   }
   .btn-secundario-cuenta:hover{background:var(--borde);}
+  .cuenta-datos-lista{margin:8px 0 0;padding-left:20px;font-size:.88rem;line-height:1.6;}
+  .cuenta-zona-peligro{border:1px solid var(--rojo);}
+  .cuenta-zona-peligro h3{color:var(--rojo);}
+  .btn-peligro-cuenta{
+    padding:12px 22px;background:transparent;color:var(--rojo);border:1.5px solid var(--rojo);border-radius:26px;
+    font-family:var(--font-tit);text-transform:uppercase;font-size:.88rem;letter-spacing:.4px;
+    cursor:pointer;transition:background .15s,color .15s;
+  }
+  .btn-peligro-cuenta:hover:not(:disabled){background:var(--rojo);color:#fff;}
+  .btn-peligro-cuenta:disabled{opacity:.6;cursor:default;}
 
   .cuenta-msg{font-size:.86rem;margin:14px 0 0;display:none;}
   .cuenta-msg-ok{color:#1b8a4a;display:block;}
@@ -174,8 +205,8 @@
     .cuenta-tab{flex:1 1 auto;padding:9px 12px;}
   }
 </style>
-<link rel="stylesheet" href="css/app-movil.css?v=8">
-<script src="js/app-movil.js?v=5" defer></script>
+<link rel="stylesheet" href="css/app-movil.css?v=b6df23d4">
+<script src="js/app-movil.js?v=3b122790" defer></script>
 </head>
 <body data-page="cuenta">
 
@@ -298,6 +329,40 @@
         <p id="msgPasswordLector" class="cuenta-msg"></p>
       </form>
     </div>
+    <div class="cuenta-tarjeta c2fa" id="tarjeta2faLector">
+      <h3>Verificación en dos pasos</h3>
+      <p class="cuenta-ayuda">Añade una capa extra a tu cuenta: al entrar con tu correo y contraseña te pediremos también un código de una app de autenticación (Google Authenticator, Aegis, 1Password…).</p>
+      <div id="contenido2faLector"><div class="eof-cargador eof-cargador--mini" role="status"><span class="spinner" aria-hidden="true"></span><span class="eof-cargador-txt">Cargando…</span></div></div>
+    </div>
+    <div class="cuenta-tarjeta" id="tarjetaMisDatos">
+      <h3>Descargar mis datos</h3>
+      <p class="cuenta-ayuda">Te bajas un archivo JSON con lo que guardamos de tu cuenta: perfil, comentarios, porras, noticias guardadas, historial de lectura, votos en encuestas, dispositivos y suscripción al boletín. No incluye tu contraseña.</p>
+      <button type="button" class="btn-secundario-cuenta" id="btnExportarDatosLector">Descargar mis datos</button>
+      <p id="msgExportarLector" class="cuenta-msg"></p>
+    </div>
+    <div class="cuenta-tarjeta cuenta-zona-peligro" id="tarjetaBorrarCuenta">
+      <h3>Borrar mi cuenta</h3>
+      <p class="cuenta-ayuda">Se borra de forma definitiva y no se puede deshacer:</p>
+      <ul class="cuenta-datos-lista">
+        <li>Tu cuenta, tus porras, tus noticias guardadas, tu historial, tus votos en encuestas y tus dispositivos.</li>
+        <li>Tu suscripción al boletín con este correo, si la tenías.</li>
+        <li>Tus comentarios. Los que ya tienen respuestas de otras personas se quedan sin tu nombre, correo ni IP, con el texto sustituido por «Comentario eliminado por su autor», para no romper la conversación.</li>
+      </ul>
+      <form id="formBorrarCuentaLector" novalidate>
+        <div id="borrarCuentaCampoPassword">
+          <label for="borrarCuentaPassword">Tu contraseña *</label>
+          <input type="password" id="borrarCuentaPassword" autocomplete="current-password">
+        </div>
+        <div id="borrarCuentaCampoEmail" hidden>
+          <label for="borrarCuentaEmail">Escribe tu correo para confirmar *</label>
+          <input type="email" id="borrarCuentaEmail" autocomplete="off" placeholder="tu@correo.com">
+        </div>
+        <div style="margin-top:22px;">
+          <button type="submit" class="btn-peligro-cuenta" id="btnBorrarCuentaLector">Borrar mi cuenta para siempre</button>
+        </div>
+        <p id="msgBorrarCuentaLector" class="cuenta-msg"></p>
+      </form>
+    </div>
   </div>
 
   <!-- ===================== GUARDADAS E HISTORIAL DE LECTURA (punto 5) ===================== -->
@@ -323,7 +388,7 @@
       <h3>Dispositivos conectados</h3>
       <p class="cuenta-ayuda">Estos son los dispositivos y navegadores donde tu cuenta tiene la sesión iniciada actualmente. Si no reconoces alguno, ciérralo.</p>
       <div id="listaSesionesLector" class="lista-sesiones-cuenta">
-        <p class="sesiones-vacio-cuenta">Cargando dispositivos…</p>
+        <div class="sesiones-vacio-cuenta"><div class="eof-cargador eof-cargador--mini" role="status"><span class="spinner" aria-hidden="true"></span><span class="eof-cargador-txt">Cargando dispositivos…</span></div></div>
       </div>
       <div style="margin-top:16px;">
         <button type="button" class="btn-secundario-cuenta" id="btnCerrarOtrasSesionesLector">Cerrar todos los demás dispositivos</button>
@@ -337,16 +402,17 @@
 
 <div id="site-footer"></div>
 
-<script src="js/ui-alertas.js?v=5"></script>
-<script src="js/foco.js?v=1"></script>
-<script src="js/config.js?v=36"></script>
-<script src="js/seo.js?v=5"></script>
-<script src="js/lector-auth.js?v=13"></script>
-<script src="js/lecturas.js?v=8"></script>
-<script src="js/layout.js?v=30"></script>
-<script src="js/cookies.js?v=2"></script>
-<script src="js/ads.js?v=3"></script>
-<script src="js/main.js?v=33"></script>
+<script src="js/ui-alertas.js?v=4339c846"></script>
+<script src="js/foco.js?v=133ef790"></script>
+<script src="js/vendor/qrcode.js"></script>
+<script src="js/config.js?v=8002da47"></script>
+<script src="js/seo.js?v=51678a88"></script>
+<script src="js/lector-auth.js?v=9a1c7f1f"></script>
+<script src="js/lecturas.js?v=de5c36f5"></script>
+<script src="js/layout.js?v=7e7c9eae"></script>
+<script src="js/cookies.js?v=845d8f5c"></script>
+<script src="js/ads.js?v=a41f4506"></script>
+<script src="js/main.js?v=858efe67"></script>
 <script>
 fijarSeoBasico({
   titulo: "Mi cuenta — ELOTROFÚTBOLTV",
@@ -436,6 +502,7 @@ function activarPestanaCuenta(tab) {
   btnDestino.classList.add("activa");
   panelDestino.classList.add("activo");
   if (tab === "sesiones") cargaSesionesLector();
+  if (tab === "password") cargar2faLector();
   if (tab === "preferencias") montarPreferenciasLector();
   if (tab === "guardadas") montarGuardadasCuenta();
   if (tab === "historial") montarHistorialCuenta();
@@ -753,6 +820,213 @@ document.getElementById("formPerfilLector").addEventListener("submit", async (e)
   }
 });
 
+// ---------- Descargar mis datos / Borrar mi cuenta ----------
+(function () {
+  const btnExportar = document.getElementById("btnExportarDatosLector");
+  const msgExportar = document.getElementById("msgExportarLector");
+  btnExportar.addEventListener("click", async () => {
+    msgExportar.className = "cuenta-msg";
+    btnExportar.disabled = true;
+    try {
+      const res = await apiFetchLector("/api/readers/me/exportar");
+      if (res.status === 401) { await cerrarSesionLector(); location.href = "acceso.html"; return; }
+      if (!res.ok) {
+        let data = {};
+        try { data = await res.json(); } catch {}
+        throw new Error(data.error || "No se han podido descargar tus datos. Inténtalo de nuevo en unos minutos.");
+      }
+      const blob = new Blob([JSON.stringify(await res.json(), null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "mis-datos-elotrofutbol.json";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      msgExportar.textContent = "Listo: se ha descargado el archivo con tus datos.";
+      msgExportar.classList.add("cuenta-msg-ok");
+    } catch (err) {
+      msgExportar.textContent = err.message;
+      msgExportar.classList.add("cuenta-msg-error");
+    } finally {
+      btnExportar.disabled = false;
+    }
+  });
+
+  const formBorrar = document.getElementById("formBorrarCuentaLector");
+  const msgBorrar = document.getElementById("msgBorrarCuentaLector");
+  const btnBorrar = document.getElementById("btnBorrarCuentaLector");
+  let accesoExterno = false;
+  // Las cuentas creadas con Google/Microsoft/Discord/X no tienen una contraseña que conozcan:
+  // a esas se les pide el correo en lugar de la contraseña.
+  apiLector("/api/readers/me/perfil").then((d) => {
+    accesoExterno = !!(d.reader && d.reader.acceso_externo);
+    if (accesoExterno) {
+      document.getElementById("borrarCuentaCampoEmail").hidden = false;
+      document.getElementById("borrarCuentaPassword").placeholder = "Solo si has creado una";
+      document.querySelector("label[for=borrarCuentaPassword]").textContent = "Tu contraseña (si tienes una)";
+    }
+  }).catch(() => {});
+
+  formBorrar.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    msgBorrar.className = "cuenta-msg";
+    const password = document.getElementById("borrarCuentaPassword").value;
+    const confirmar_email = document.getElementById("borrarCuentaEmail").value.trim();
+    if (!password && !confirmar_email) {
+      msgBorrar.textContent = accesoExterno ? "Escribe tu correo para confirmar el borrado." : "Escribe tu contraseña para confirmar el borrado.";
+      msgBorrar.classList.add("cuenta-msg-error");
+      return;
+    }
+    if (!confirm("¿Borrar tu cuenta definitivamente? Esta acción no se puede deshacer.")) return;
+    btnBorrar.disabled = true;
+    try {
+      await apiLector("/api/readers/me", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password, confirmar_email }),
+      });
+      await cerrarSesionLector();
+      alert("Tu cuenta y tus datos se han borrado. Gracias por haber estado aquí.");
+      location.href = "/";
+    } catch (err) {
+      msgBorrar.textContent = err.message || "No se ha podido borrar la cuenta. Inténtalo de nuevo.";
+      msgBorrar.classList.add("cuenta-msg-error");
+      btnBorrar.disabled = false;
+    }
+  });
+})();
+
+
+// ---------- Verificación en dos pasos (2FA) ----------
+const c2fa = { estado: null, flujo: "inicio", secreto: "", otpauth: "", codigos: [] };
+
+async function cargar2faLector() {
+  try { c2fa.estado = await apiLector("/api/readers/me/2fa"); } catch { c2fa.estado = null; }
+  c2fa.flujo = "inicio";
+  pintar2faLector();
+}
+
+function msg2fa(texto, ok) {
+  const m = document.getElementById("c2faMsg");
+  if (!m) return;
+  m.className = "cuenta-msg" + (texto ? (ok ? " cuenta-msg-ok" : " cuenta-msg-error") : "");
+  m.textContent = texto || "";
+}
+
+function pintar2faLector() {
+  const cont = document.getElementById("contenido2faLector");
+  if (!cont) return;
+  const e = c2fa.estado;
+  let h = "";
+  if (!e) {
+    h = '<p class="cuenta-ayuda">No se ha podido cargar el estado de la verificación. Recarga la página.</p>';
+  } else if (!e.disponible) {
+    h = '<p class="cuenta-ayuda">Tu cuenta no tiene contraseña (entras con Google, Microsoft, Discord o X), así que ya está protegida por la verificación de ese proveedor.</p>';
+  } else if (c2fa.flujo === "password") {
+    h = `<form data-f="setup" novalidate>
+      <label for="c2faPassword">Escribe tu contraseña para empezar</label>
+      <input type="password" id="c2faPassword" autocomplete="current-password" required>
+      <div class="c2fa-botones"><button type="submit" class="btn-primario-cuenta">Continuar</button><button type="button" class="btn-secundario-cuenta" data-a="cancelar">Cancelar</button></div>
+    </form>`;
+  } else if (c2fa.flujo === "configurar") {
+    h = `<form data-f="activar" novalidate>
+      <p class="cuenta-ayuda" style="margin-bottom:6px;"><strong>1.</strong> Escanea este código con tu app de autenticación (o escribe la clave a mano).</p>
+      <div class="c2fa-qr" id="c2faQr"></div>
+      <p class="c2fa-clave" id="c2faClave"></p>
+      <p class="cuenta-ayuda" style="margin:16px 0 0;"><strong>2.</strong> Escribe el código de 6 cifras que muestra la app.</p>
+      <label for="c2faCodigo">Código</label>
+      <input type="text" id="c2faCodigo" inputmode="numeric" autocomplete="one-time-code" maxlength="8" required>
+      <div class="c2fa-botones"><button type="submit" class="btn-primario-cuenta">Activar</button><button type="button" class="btn-secundario-cuenta" data-a="cancelar">Cancelar</button></div>
+    </form>`;
+  } else if (c2fa.flujo === "codigos") {
+    h = `<p class="cuenta-ayuda" style="margin-bottom:0;"><strong>Verificación activada.</strong> Guarda estos códigos de recuperación en un lugar seguro: cada uno sirve una sola vez si pierdes el móvil. No volverán a mostrarse.</p>
+      <div class="c2fa-codigos" id="c2faCodigos"></div>
+      <div class="c2fa-botones"><button type="button" class="btn-secundario-cuenta" data-a="copiar">Copiar códigos</button><button type="button" class="btn-primario-cuenta" data-a="listo">Ya los he guardado</button></div>`;
+  } else if (c2fa.flujo === "desactivar") {
+    h = `<form data-f="desactivar" novalidate>
+      <label for="c2faQuitarPassword">Tu contraseña</label>
+      <input type="password" id="c2faQuitarPassword" autocomplete="current-password" required>
+      <label for="c2faQuitarCodigo">Código de tu app o de recuperación</label>
+      <input type="text" id="c2faQuitarCodigo" autocomplete="one-time-code" maxlength="20" required>
+      <div class="c2fa-botones"><button type="submit" class="btn-primario-cuenta">Desactivar</button><button type="button" class="btn-secundario-cuenta" data-a="cancelar">Cancelar</button></div>
+    </form>`;
+  } else if (e.activo) {
+    h = `<p class="c2fa-estado on"><i></i>Activada</p>
+      <p class="cuenta-ayuda" style="margin-bottom:0;">Te quedan <strong>${Number(e.codigos_restantes) || 0}</strong> códigos de recuperación sin usar.</p>
+      <div class="c2fa-botones"><button type="button" class="btn-secundario-cuenta" data-a="quitar">Desactivar</button></div>`;
+  } else {
+    h = `<p class="c2fa-estado"><i></i>Desactivada</p>
+      <div class="c2fa-botones" style="margin-top:8px;"><button type="button" class="btn-primario-cuenta" data-a="empezar">Activar verificación en dos pasos</button></div>`;
+  }
+  cont.innerHTML = h + '<p class="cuenta-msg" id="c2faMsg"></p>';
+
+  if (c2fa.flujo === "configurar") {
+    document.getElementById("c2faClave").textContent = (c2fa.secreto || "").replace(/(.{4})/g, "$1 ").trim();
+    try {
+      const qr = qrcode(0, "M");
+      qr.addData(c2fa.otpauth);
+      qr.make();
+      document.getElementById("c2faQr").innerHTML = qr.createSvgTag({ cellSize: 6, margin: 2, scalable: true });
+    } catch { /* sin QR queda la clave escrita */ }
+  }
+  if (c2fa.flujo === "codigos") {
+    const caja = document.getElementById("c2faCodigos");
+    c2fa.codigos.forEach((c) => { const sp = document.createElement("span"); sp.textContent = c; caja.appendChild(sp); });
+  }
+  const foco = { password: "c2faPassword", configurar: "c2faCodigo", desactivar: "c2faQuitarPassword" }[c2fa.flujo];
+  if (foco) document.getElementById(foco)?.focus();
+}
+
+document.getElementById("contenido2faLector").addEventListener("click", async (ev) => {
+  const b = ev.target.closest("[data-a]");
+  if (!b) return;
+  const a = b.dataset.a;
+  if (a === "empezar") { c2fa.flujo = "password"; pintar2faLector(); }
+  else if (a === "quitar") { c2fa.flujo = "desactivar"; pintar2faLector(); }
+  else if (a === "cancelar") { c2fa.flujo = "inicio"; c2fa.secreto = ""; c2fa.otpauth = ""; pintar2faLector(); }
+  else if (a === "listo") { c2fa.codigos = []; await cargar2faLector(); }
+  else if (a === "copiar") {
+    try { await navigator.clipboard.writeText(c2fa.codigos.join("\n")); msg2fa("Códigos copiados.", true); }
+    catch { msg2fa("No se han podido copiar: selecciónalos y cópialos a mano.", false); }
+  }
+});
+
+document.getElementById("contenido2faLector").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const f = ev.target.dataset.f;
+  const boton = ev.target.querySelector("button[type=submit]");
+  const post = (ruta, cuerpo) => apiLector(ruta, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cuerpo) });
+  boton.disabled = true;
+  try {
+    if (f === "setup") {
+      const password = document.getElementById("c2faPassword").value;
+      if (!password) { msg2fa("Escribe tu contraseña.", false); return; }
+      const r = await post("/api/readers/me/2fa/setup", { password });
+      c2fa.secreto = r.secreto || ""; c2fa.otpauth = r.otpauth || ""; c2fa.flujo = "configurar"; pintar2faLector();
+    } else if (f === "activar") {
+      const codigo = document.getElementById("c2faCodigo").value.trim();
+      if (!codigo) { msg2fa("Escribe el código de 6 cifras.", false); return; }
+      const r = await post("/api/readers/me/2fa/activar", { codigo });
+      c2fa.codigos = r.codigos_recuperacion || []; c2fa.secreto = ""; c2fa.otpauth = "";
+      c2fa.estado = { ...(c2fa.estado || {}), disponible: true, activo: true, codigos_restantes: c2fa.codigos.length };
+      c2fa.flujo = "codigos"; pintar2faLector();
+    } else if (f === "desactivar") {
+      const password = document.getElementById("c2faQuitarPassword").value;
+      const codigo = document.getElementById("c2faQuitarCodigo").value.trim();
+      if (!password || !codigo) { msg2fa("Rellena la contraseña y el código.", false); return; }
+      await post("/api/readers/me/2fa/desactivar", { password, codigo });
+      await cargar2faLector();
+      msg2fa("Verificación en dos pasos desactivada.", true);
+    }
+  } catch (err) {
+    msg2fa(err.message || "No se ha podido completar la operación.", false);
+  } finally {
+    boton.disabled = false;
+  }
+});
+
 // ---------- Cambiar contraseña ----------
 document.getElementById("formPasswordLector").addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -859,7 +1133,7 @@ async function cargaSesionesLector() {
   const cont = document.getElementById("listaSesionesLector");
   if (!cont || sesionesLectorCargando) return;
   sesionesLectorCargando = true;
-  cont.innerHTML = `<p class="sesiones-vacio-cuenta">Cargando dispositivos…</p>`;
+  cont.innerHTML = `<div class="sesiones-vacio-cuenta"><div class="eof-cargador eof-cargador--mini" role="status"><span class="spinner" aria-hidden="true"></span><span class="eof-cargador-txt">Cargando dispositivos…</span></div></div>`;
   try {
     const { sesiones } = await apiLector("/api/readers/me/sesiones");
     if (!sesiones || !sesiones.length) {

@@ -1,0 +1,40 @@
+/* Funcionalidades > Eliminatorias (editor de cuadros, solo admin) */
+#subpanel-eliminatorias .elim-ad-barra{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:0 0 14px;}
+#subpanel-eliminatorias .elim-ad-barra .btn-primari[disabled]{opacity:.5;cursor:not-allowed;}
+.elim-ad-ver{font-size:.88rem;text-decoration:none;color:var(--celeste);font-weight:600;}
+.elim-ad-estado{margin-left:auto;font-size:.82rem;color:var(--texto-suave);}
+.elim-ad-error{color:var(--rojo);}
+.elim-ad-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px;}
+.elim-ad-tabs button{border:1px solid var(--borde);background:var(--tarjeta);color:var(--texto);border-radius:999px;padding:7px 14px;font:600 .85rem var(--font-text);cursor:pointer;}
+.elim-ad-tabs button.activo{background:var(--marino);border-color:var(--marino);color:#fff;}
+.elim-ad-tabs small{opacity:.7;font-weight:500;}
+.elim-ad-rejilla{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px 12px;margin-bottom:10px;}
+.elim-ad-rejilla label,.elim-ad-nota{display:flex;flex-direction:column;gap:4px;font-size:.8rem;font-weight:600;color:var(--texto-suave);}
+.elim-ad-check{flex-direction:row !important;align-items:center;gap:8px !important;padding-top:20px;}
+.elim-ad-nuevo{margin-bottom:14px;}
+.elim-ad-fila-btn{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px;}
+.elim-ad-ronda{margin-top:16px;padding:12px;border:1px solid var(--borde);border-radius:12px;background:var(--fondo-alt);}
+.elim-ad-ronda-cab{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px;}
+.elim-ad-ronda-cab input{flex:1;min-width:140px;font-weight:700;}
+.elim-ad-cruce{margin-top:10px;padding:10px;border:1px solid var(--borde);border-radius:10px;background:var(--tarjeta);display:flex;flex-direction:column;gap:8px;}
+.elim-ad-equipos{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;}
+.elim-ad-vs{font-size:.8rem;color:var(--texto-suave);}
+.elim-ad-partido,.elim-ad-extra{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.elim-ad-pl{min-width:52px;font-size:.78rem;font-weight:600;color:var(--texto-suave);}
+.elim-ad-partido input[type=number],.elim-ad-extra input[type=number]{width:64px;text-align:center;}
+.elim-ad-vinc{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:-2px 0 4px 60px;}
+.elim-ad-vinc select{min-width:220px;max-width:100%;}
+.elim-ad-vinc .btn-sec{padding:4px 10px;font-size:.78rem;}
+.elim-ad-chip{padding:3px 9px;border-radius:999px;font-size:.74rem;font-weight:600;border:1px solid var(--borde);}
+.elim-ad-chip.ok{color:var(--verde,#15803d);border-color:currentColor;}
+.elim-ad-chip.aviso{color:#b45309;border-color:currentColor;}
+.elim-ad-partido.vinculado input:disabled{opacity:.85;cursor:not-allowed;}
+.elim-ad-gan{display:flex;flex-direction:row;align-items:center;gap:6px;margin-left:auto;font-size:.8rem;font-weight:600;color:var(--texto-suave);}
+.elim-ad-quitar{color:var(--rojo);}
+@media (max-width:640px){
+  .elim-ad-equipos{grid-template-columns:1fr;}
+  .elim-ad-vs{display:none;}
+  .elim-ad-gan{margin-left:0;width:100%;}
+  .elim-ad-vinc{margin-left:0;}
+  .elim-ad-estado{margin-left:0;width:100%;}
+}

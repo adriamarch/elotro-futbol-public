@@ -1,0 +1,29 @@
+/* Fase 2 · Sub-Responsables de áreas (Información) — reutiliza las piezas .gt-* de grupos-trabajo.css */
+.sa-rejilla{align-items:stretch;}
+.sa-ico{flex:0 0 auto;display:grid;place-items:center;width:40px;height:40px;border-radius:13px;background:linear-gradient(135deg,#4c8de8,#1d6fd1);color:#fff;box-shadow:0 8px 16px -10px #1d6fd1;}
+.sa-ico svg{width:20px;height:20px;fill:currentColor;stroke:currentColor;stroke-width:1.4;stroke-linejoin:round;}
+.sa-permiso{display:inline-block;margin-top:3px;padding:2px 9px;border-radius:999px;background:rgba(28,156,91,.14);color:#12724a;font-size:.68rem;font-weight:800;line-height:1.5;}
+.sa-permiso-no{background:rgba(91,102,114,.12);color:var(--texto-suave,#5b6478);}
+.sa-miembros{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px;}
+.sa-miembros li{display:flex;align-items:center;gap:10px;padding:6px 8px 6px 7px;border-radius:12px;background:rgba(91,102,114,.07);font-size:.86rem;}
+.sa-miembros li.sa-yo{background:rgba(29,111,209,.14);font-weight:700;}
+.sa-mn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.sa-mn em{font-style:normal;color:var(--texto-suave,#5b6478);font-size:.74rem;}
+.sa-quitar{flex:0 0 auto;display:grid;place-items:center;width:28px;height:28px;border:0;border-radius:50%;background:transparent;color:var(--texto-suave,#5b6478);cursor:pointer;transition:background .15s,color .15s;}
+.sa-quitar svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;}
+.sa-quitar:hover,.sa-quitar:focus-visible{background:rgba(209,19,46,.12);color:#b4112a;outline:none;}
+.sa-pie{justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;}
+.sa-anadir{flex:1 1 180px;min-width:0;}
+.sa-anadir select{width:100%;box-sizing:border-box;min-height:38px;padding:6px 10px;border:1.5px solid var(--borde,#dde3f0);border-radius:10px;background:var(--tarjeta,#fff);color:inherit;font:inherit;font-size:.85rem;font-weight:600;}
+.sa-anadir select:focus-visible{outline:none;border-color:#2d6cdf;box-shadow:0 0 0 3px rgba(45,108,223,.22);}
+.sa-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
+.sa-nota{color:var(--texto-suave,#5b6478);font-size:.78rem;font-style:italic;}
+.sa-borrar{color:#b4112a;}
+.sa-nueva{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:16px;padding:14px 16px;border:1.5px dashed var(--borde,#dde3f0);border-radius:16px;}
+.sa-nueva label{font-size:.82rem;font-weight:800;color:var(--marino,#0b1257);}
+.sa-nueva input{flex:1 1 240px;min-width:0;box-sizing:border-box;min-height:40px;padding:7px 12px;border:1.5px solid var(--borde,#dde3f0);border-radius:10px;background:var(--tarjeta,#fff);color:inherit;font:inherit;font-size:.9rem;}
+.sa-nueva input:focus-visible{outline:none;border-color:#2d6cdf;box-shadow:0 0 0 3px rgba(45,108,223,.22);}
+.sa-nueva small{flex:1 1 100%;color:var(--texto-suave,#5b6478);font-size:.76rem;}
+.gt-cargo-area{--gt:#1d6fd1;}
+/* Aviso de la bandeja de acreditaciones para un Sub-Responsable (solo gestiona solicitudes) */
+.acred-aviso-sub{margin:0 0 12px;padding:10px 14px;border-radius:12px;background:rgba(29,111,209,.1);color:#17519c;font-size:.85rem;font-weight:600;}
