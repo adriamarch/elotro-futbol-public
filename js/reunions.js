@@ -152,13 +152,13 @@
   }
   function pintaCap() {
     $("#titol").textContent = S.cfg.titol || "Reunions d'acollida";
-    document.title = (S.cfg.titol || "Reunions d'acollida") + " — ELOTROFÚTBOLTV";
+    document.title = (S.cfg.titol || "Reunions d'acollida") + " | ELOTROFÚTBOLTV";
     $("#descripcio").textContent = S.cfg.descripcio || "";
     const tz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { return ""; } })();
     const el = $("#tz");
     if (tz && tz !== "Europe/Madrid" && !/^Atlantic\/Canary$/.test(tz)) {
-      el.className = "tz avis"; el.textContent = `⚠️ El teu dispositiu està en ${tz}. Les hores d'aquí són sempre hora de Madrid.`;
-    } else { el.className = "tz"; el.textContent = "🕒 Totes les hores són hora de Madrid"; }
+      el.className = "tz avis"; el.textContent = `El teu dispositiu està en ${tz}. Les hores d'aquí són sempre hora de Madrid.`;
+    } else { el.className = "tz"; el.textContent = "Totes les hores són hora de Madrid"; }
   }
   function pintaEines() {
     $("#eines").hidden = !S.propietari;
@@ -174,7 +174,7 @@
     el.hidden = S.propietari || !S.cfg.obert;
     if (el.hidden) return;
     if (S.id && !S.editantNom) {
-      el.innerHTML = `${avatar(S.nom)}<div class="hola">Hola, ${esc(S.nom)} 👋<small>Marca o treu franges i prem «Desa». Pots tornar quan vulguis des d'aquest dispositiu.</small></div>
+      el.innerHTML = `${avatar(S.nom)}<div class="hola">Hola, ${esc(S.nom)}<small>Marca o treu franges i prem «Desa». Pots tornar quan vulguis des d'aquest dispositiu.</small></div>
         <button type="button" class="btn sm" id="btnCanviaNom">Canvia el nom</button><button type="button" class="btn sm perill" id="btnBaixa">Esborra'm</button>`;
     } else {
       el.innerHTML = `<input type="text" id="inNom" maxlength="40" autocomplete="name" placeholder="El teu nom i cognom" value="${esc(S.nom)}" aria-label="El teu nom i cognom">
@@ -198,7 +198,7 @@
     $(".fila").style.display = tancat ? "block" : "";
     $("#cardMillors").hidden = tancat; $("#cardConf").hidden = tancat;
     if (tancat) {
-      $("#graella").innerHTML = `<div class="tancat" style="grid-column:1/-1"><h2>🔒 El calendari està tancat</h2><p class="mut">Ara mateix no s'accepten noves respostes. Torna-hi més endavant.</p></div>`;
+      $("#graella").innerHTML = `<div class="tancat" style="grid-column:1/-1"><h2>El calendari està tancat</h2><p class="mut">Ara mateix no s'accepten noves respostes. Torna-hi més endavant.</p></div>`;
       $("#llegenda").innerHTML = ""; $("#rang").textContent = "—"; cal.querySelector(".nav").style.visibility = "hidden"; return;
     }
     cal.querySelector(".nav").style.visibility = "";
@@ -279,7 +279,7 @@
       const v = votants(g.ini);
       return `<li class="item conf"><div class="qt"><span>${esc(dataLlarga(clauData(g.ini)))} · ${rangTxt(g.ini, g.fi)}</span><em>Confirmada</em></div>
         ${g.nota ? `<div class="mut">${esc(g.nota)}</div>` : ""}${v.length ? xips(v, 8) : `<span class="mut">Sense persones apuntades</span>`}
-        ${S.propietari ? `<div class="acc"><button type="button" class="btn sm" data-copia="${g.grup}">📋 Copia el missatge</button><button type="button" class="btn sm perill" data-cancela="${g.grup}">Cancel·la</button></div>` : ""}</li>`;
+        ${S.propietari ? `<div class="acc"><button type="button" class="btn sm" data-copia="${g.grup}">Copia el missatge</button><button type="button" class="btn sm perill" data-cancela="${g.grup}">Cancel·la</button></div>` : ""}</li>`;
     }).join("") : `<li class="mut">Encara no hi ha cap reunió confirmada.</li>`;
 
     const nVots = new Map();
@@ -374,7 +374,7 @@
   }
   function missatge(g) {
     const v = votants(g.ini).map((x) => x.nom);
-    return `📅 Reunió confirmada: ${dataLlarga(clauData(g.ini))}, de ${rangTxt(g.ini, g.fi)} (hora de Madrid)${g.nota ? "\n📝 " + g.nota : ""}${g.enllac ? "\n🔗 " + g.enllac : ""}${v.length ? "\n👥 Convocats: " + v.join(", ") : ""}`;
+    return `Reunió confirmada: ${dataLlarga(clauData(g.ini))}, de ${rangTxt(g.ini, g.fi)} (hora de Madrid)${g.nota ? "\nNota: " + g.nota : ""}${g.enllac ? "\nEnllaç: " + g.enllac : ""}${v.length ? "\nConvocats: " + v.join(", ") : ""}`;
   }
   async function copia(text, ok) {
     try { await navigator.clipboard.writeText(text); avis(ok || "Copiat!"); }
@@ -392,7 +392,7 @@
       S.id = { pid: r.pid, secret: r.secret }; S.editantNom = false; S.nomDesat = nom; guardaId();
       S.originals = new Set(S.meus);
       await carrega(true);
-      avis("Desat! Gràcies 🙌");
+      avis("Desat! Gràcies");
     } catch (e) { avis(e.message, true); } finally { b.disabled = false; }
   }
   function desfes() { S.meus = new Set(S.originals); pintaTot(); }

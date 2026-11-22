@@ -283,7 +283,7 @@
   function pintaCabecera() {
     const titulo = S.cfg.titol || "Reuniones";
     $("#titulo").textContent = titulo;
-    document.title = titulo + " — ELOTROFÚTBOLTV";
+    document.title = titulo + " | ELOTROFÚTBOLTV";
     $("#descripcion").textContent = S.cfg.descripcio || "";
     const tz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { return ""; } })();
     const el = $("#tz");
@@ -699,7 +699,7 @@
     const limpia = (t) => String(t || "").replace(/\\/g, "\\\\").replace(/[,;]/g, (c) => "\\" + c).replace(/\r?\n/g, "\\n");
     const lineas = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//ElOtroFutbol//Reuniones//ES", "CALSCALE:GREGORIAN", "METHOD:PUBLISH", "BEGIN:VEVENT",
       `UID:${g.grupo}@elotrofutbol.media`, `DTSTAMP:${fmt(new Date())}`, `DTSTART:${fmt(ini)}`, `DTEND:${fmt(fin)}`,
-      `SUMMARY:${limpia(g.nota ? "ElOtroFútbol — " + g.nota : "ElOtroFútbol — Reunión")}`,
+      `SUMMARY:${limpia(g.nota ? "ElOtroFútbol: " + g.nota : "ElOtroFútbol: Reunión")}`,
       ...(g.enlace ? [`DESCRIPTION:${limpia("Reunión de ElOtroFútbol. Acceso a la videollamada: " + g.enlace)}`, `URL:${g.enlace}`] : []),
       "BEGIN:VALARM", "TRIGGER:-PT15M", "ACTION:DISPLAY", "DESCRIPTION:Recordatorio: reunión de ElOtroFútbol en 15 minutos", "END:VALARM", "END:VEVENT", "END:VCALENDAR"];
     const blob = new Blob([lineas.join("\r\n")], { type: "text/calendar;charset=utf-8" });

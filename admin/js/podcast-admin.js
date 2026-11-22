@@ -97,7 +97,7 @@
       return;
     }
     cont.innerHTML = lista.map((it) => {
-      const img = it.portada ? '<img src="' + esc(it.portada) + '" alt="" loading="lazy">' : '<span class="pca-sin">' + ICO.mic + "</span>";
+      const img = it.portada ? '<img src="' + esc(it.portada) + '" alt="" loading="lazy">' : (window.EOFPortadaPodcast ? window.EOFPortadaPodcast.html(it) : '<span class="pca-sin">' + ICO.mic + "</span>");
       const plat = it.embed ? PLAT[it.embed.plataforma] || "" : "";
       const meta = [
         '<span class="pca-meta">' + ICO.cal + fechaCorta(it.fecha) + "</span>",
@@ -123,6 +123,22 @@
     return '<label class="pca-campo"><span>' + etiqueta + '</span><input id="' + id + '" value="' + esc(valor) + '" ' + (extra || "") + "></label>";
   }
 
+  // Vista previa de la portada dentro del formulario: la propia (URL) o, si no hay, la automática de la marca.
+  function pintarPrevia(base) {
+    const cont = $("pcPrev"); if (!cont) return;
+    const val = (id) => ($(id) ? $(id).value.trim() : "");
+    const url = val("pcPortada");
+    const enlace = val("pcEnlace");
+    const ytOriginal = base.embed && base.embed.plataforma === "youtube" && enlace && enlace === enlaceDe(base) ? (base.portada || "") : "";
+    const propia = /^https:\/\//i.test(url) ? url : ytOriginal;
+    const datos = { id: base.id || "nuevo", tipo: val("pcTipo") || base.tipo, titulo: val("pcTitulo"), temporada: val("pcTemp"), numero: val("pcNum"), invitado: val("pcInv") };
+    cont.innerHTML = propia
+      ? '<img src="' + esc(propia) + '" alt="">'
+      : (window.EOFPortadaPodcast ? window.EOFPortadaPodcast.html(datos) : '<span class="pca-sin">' + ICO.mic + "</span>");
+    const nota = $("pcPrevNota");
+    if (nota) nota.textContent = propia ? "Portada propia (la URL que has puesto)." : "Portada automática de ELOTROFÚTBOLTV: se genera con el tipo, el número y el título. Pon una URL arriba para usar otra.";
+  }
+
   function pintarFormulario() {
     const cont = $("pcAdminForm");
     if (editando === null) { cont.innerHTML = ""; cont.hidden = true; return; }
@@ -145,12 +161,17 @@
       campo("pcTemp", "Temporada", it.temporada || "", 'type="number" min="1"') +
       campo("pcNum", "Nº de episodio", it.numero || "", 'type="number" min="1"') +
       '<div class="pca-ancho">' + campo("pcPortada", "Portada (URL https, opcional; en YouTube se usa la del vídeo)", it.embed && it.embed.plataforma === "youtube" && /ytimg\.com/.test(it.portada || "") ? "" : (it.portada || ""), 'placeholder="https://..." inputmode="url"') + "</div>" +
+      '<div class="pca-ancho pca-prev"><span class="pca-prev-etq">Así se verá la portada</span><div class="pca-thumb pca-prev-thumb" id="pcPrev"></div><small class="pca-prev-nota" id="pcPrevNota"></small></div>' +
       "</div>" +
       '<div class="pca-seccion">Visibilidad</div>' +
       '<div class="pca-checks"><label class="pca-switch"><input type="checkbox" id="pcDest"' + (it.destacado ? " checked" : "") + '><span class="pca-pista"></span><span class="pca-switch-txt"><strong>Destacado</strong><small>Sale en grande en /podcast</small></span></label>' +
       '<label class="pca-switch"><input type="checkbox" id="pcPub"' + (it.publicado !== false ? " checked" : "") + '><span class="pca-pista"></span><span class="pca-switch-txt"><strong>Publicado</strong><small>Visible para los lectores</small></span></label></div>' +
       '<div class="pca-botones"><button type="button" class="pca-btn pca-primario" data-act="guardar">Guardar</button>' +
       '<button type="button" class="pca-btn" data-act="cancelar">Cancelar</button></div>';
+    ['pcTipo', 'pcTitulo', 'pcEnlace', 'pcPortada', 'pcTemp', 'pcNum', 'pcInv'].forEach((id) => {
+      const el = $(id); if (el) { el.addEventListener('input', () => pintarPrevia(it)); el.addEventListener('change', () => pintarPrevia(it)); }
+    });
+    pintarPrevia(it);
     $("pcTitulo").focus();
     cont.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }

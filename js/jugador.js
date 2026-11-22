@@ -29,7 +29,7 @@ function rutaCanonicaFicha(slug) {
 }
 
 fijarSeoBasico({
-  titulo: "Ficha de jugador — ELOTROFÚTBOLTV",
+  titulo: "Ficha de jugador | ELOTROFÚTBOLTV",
   descripcion: "Ficha de jugador: partidos, minutos, goles, asistencias y tarjetas de la temporada.",
   urlPath: rutaCanonicaFicha(SLUG_FICHA),
   noindex: !!TEMP_FICHA,
@@ -279,7 +279,7 @@ async function cargarFichaFlashscore() {
 
     const lead = resumenTexto(p, club.club);
     fijarSeoBasico({
-      titulo: `${p.n} (${club.club}): estadísticas ${club.temporada || ""} — ELOTROFÚTBOLTV`.replace("  ", " "),
+      titulo: `${p.n} (${club.club}): estadísticas ${club.temporada || ""} | ELOTROFÚTBOLTV`.replace("  ", " "),
       descripcion: `${p.n}, ${club.club}${compNombre ? " (" + compNombre + ")" : ""}. ${lead}`,
       urlPath: rutaCanonicaFicha(),
       migas: [
@@ -450,7 +450,7 @@ function pintarFicha(d) {
   const nombre = j.sin_nombre ? `Dorsal ${j.dorsal}` : j.nombre;
   const compNombre = COMPETICIONES_FICHA[d.competicion] || "";
   fijarSeoBasico({
-    titulo: `${nombre} (${j.club}) — estadísticas y ficha — ELOTROFÚTBOLTV`,
+    titulo: `${nombre} (${j.club}) — estadísticas y ficha | ELOTROFÚTBOLTV`,
     descripcion: `${nombre}, ${j.club}: ${plural(t.goles, "gol", "goles")}, ${plural(t.asistencias, "asistencia", "asistencias")} y ${plural(t.tarjetas, "tarjeta", "tarjetas")} ${TEMP_FICHA ? "en el histórico acumulado" : "esta temporada"}${compNombre ? " en " + compNombre : ""}.`,
     urlPath: rutaCanonicaFicha(j.slug),
     noindex: !!TEMP_FICHA || !!j.sin_nombre,

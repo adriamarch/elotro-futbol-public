@@ -3,7 +3,7 @@
 <head>
 <meta name="google-adsense-account" content="ca-pub-7347856722927942">
 <script src="js/tema.js?v=65626bb2"></script>
-<script src="js/preferencias.js?v=6e49f5b3"></script>
+<script src="js/preferencias.js?v=30f61dc6"></script>
 <meta charset="UTF-8">
 <script>/* splash.js: bloquea el parseo solo si la web se abre como app (o ?splash=1); en navegador carga en async, sin frenar el pintado. */
 (function(){var a=false;try{a=matchMedia("(display-mode: standalone)").matches||matchMedia("(display-mode: fullscreen)").matches||matchMedia("(display-mode: minimal-ui)").matches||navigator.standalone===true;}catch(e){}
@@ -173,95 +173,32 @@ else{var s=document.createElement("script");s.src="/js/splash.js?v=b5004788";s.a
   .cuenta-msg-error{color:var(--rojo);display:block;}
 
   /* ---------- Dispositivos conectados ---------- */
-  .lista-sesiones-cuenta{display:flex;flex-direction:column;gap:10px;margin-top:8px;}
+  .lista-sesiones-cuenta{display:flex;flex-direction:column;gap:10px;margin-top:4px;}
   .fila-sesion-cuenta{
-    position:relative;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:6px 14px;
-    padding:14px 16px 14px 18px;overflow:hidden;
-    border:1.5px solid var(--borde);border-radius:14px;background:var(--tarjeta);box-shadow:var(--sombra-sm);
-    transition:box-shadow .18s,border-color .18s,transform .18s;
+    display:flex;align-items:center;gap:14px;padding:14px 16px;
+    border:1px solid var(--borde);border-radius:10px;background:var(--fondo);
   }
-  /* Barrita lateral: gris en las demás, verde en la actual */
-  .fila-sesion-cuenta::before{
-    content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--borde);transition:background .18s;
-  }
-  .fila-sesion-cuenta:hover{box-shadow:var(--sombra-md);transform:translateY(-1px);}
-  .fila-sesion-cuenta:hover::before{background:var(--celeste);}
-  .fila-sesion-cuenta.es-actual{
-    border-color:#4ade80;
-    background:linear-gradient(135deg,rgba(74,222,128,.10),transparent 60%),var(--tarjeta);
-  }
-  .fila-sesion-cuenta.es-actual::before,
-  .fila-sesion-cuenta.es-actual:hover::before{background:#22c55e;}
-
-  .icono-sesion-cuenta{
-    width:44px;height:44px;flex-shrink:0;display:grid;place-items:center;border-radius:50%;
-    background:color-mix(in srgb,var(--celeste) 18%,transparent);color:#17719e;
-  }
-  .icono-sesion-cuenta svg{width:22px;height:22px;}
-  .es-actual .icono-sesion-cuenta{background:rgba(34,197,94,.16);color:#15803d;}
-
-  .datos-sesion-cuenta{min-width:0;display:flex;flex-direction:column;gap:3px;}
-  .dispositivo-nombre-cuenta{
-    font-weight:700;font-size:.96rem;line-height:1.3;color:var(--marino-texto);
-    display:flex;align-items:center;gap:6px 10px;flex-wrap:wrap;overflow-wrap:anywhere;
-  }
+  .fila-sesion-cuenta.es-actual{border-color:var(--celeste);}
+  .icono-sesion-cuenta{width:26px;height:26px;flex-shrink:0;color:var(--texto-suave);}
+  .icono-sesion-cuenta svg{width:100%;height:100%;}
+  .datos-sesion-cuenta{flex:1;min-width:0;}
+  .dispositivo-nombre-cuenta{font-weight:600;font-size:.92rem;color:var(--marino-texto);display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
   .etiqueta-actual-cuenta{
-    display:inline-flex;align-items:center;gap:6px;padding:2px 10px 2px 8px;border-radius:999px;
-    font-size:.66rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
-    background:rgba(22,163,74,.14);color:#15803d;border:1px solid rgba(22,163,74,.35);
+    font-size:.68rem;text-transform:uppercase;letter-spacing:.3px;font-weight:700;
+    background:var(--celeste);color:#fff;padding:2px 8px;border-radius:10px;
   }
-  .etiqueta-actual-cuenta::before{
-    content:"";width:7px;height:7px;border-radius:50%;background:#22c55e;
-    animation:pulsoSesionCuenta 2s ease-out infinite;
-  }
-  @keyframes pulsoSesionCuenta{
-    0%{box-shadow:0 0 0 0 rgba(34,197,94,.55);}
-    70%,100%{box-shadow:0 0 0 7px rgba(34,197,94,0);}
-  }
-  .detalle-sesion-cuenta{
-    margin:0;font-size:.78rem;line-height:1.5;color:var(--texto-suave);
-    overflow-wrap:anywhere;font-variant-numeric:tabular-nums;
-  }
-
+  .detalle-sesion-cuenta{font-size:.8rem;color:var(--texto-suave);margin-top:2px;}
   .btn-cerrar-sesion-cuenta{
-    justify-self:end;padding:8px 16px;background:transparent;border:1.5px solid var(--rojo);color:var(--rojo);
-    border-radius:999px;font-size:.78rem;font-weight:600;white-space:nowrap;cursor:pointer;
-    transition:background .16s,color .16s,box-shadow .16s;
+    flex-shrink:0;padding:8px 14px;background:none;border:1px solid var(--rojo);color:var(--rojo);
+    border-radius:18px;font-size:.78rem;cursor:pointer;transition:background .15s,color .15s;
   }
-  .btn-cerrar-sesion-cuenta:hover{background:var(--rojo);color:#fff;box-shadow:0 4px 12px rgba(209,19,46,.28);}
-  .btn-cerrar-sesion-cuenta:focus-visible,
-  #btnCerrarOtrasSesionesLector:focus-visible{outline:2px solid var(--celeste);outline-offset:2px;}
-  #btnCerrarOtrasSesionesLector{border-radius:999px;padding:11px 22px;}
+  .btn-cerrar-sesion-cuenta:hover{background:var(--rojo);color:#fff;}
+  .sesiones-vacio-cuenta{color:var(--texto-suave);font-size:.88rem;margin:0;}
 
-  .sesiones-vacio-cuenta{
-    margin:0;padding:26px 12px;text-align:center;font-size:.88rem;color:var(--texto-suave);
-    border:1.5px dashed var(--borde);border-radius:14px;background:var(--fondo-alt);
-  }
-
-  /* Modo oscuro: lo que no hereda de las variables */
-  [data-theme="dark"] .icono-sesion-cuenta{color:var(--celeste-claro);}
-  [data-theme="dark"] .es-actual .icono-sesion-cuenta{background:rgba(74,222,128,.16);color:#86efac;}
-  [data-theme="dark"] .etiqueta-actual-cuenta{background:rgba(74,222,128,.16);color:#86efac;border-color:rgba(74,222,128,.4);}
-  [data-theme="dark"] .fila-sesion-cuenta.es-actual{
-    border-color:#22c55e;background:linear-gradient(135deg,rgba(74,222,128,.12),transparent 60%),var(--tarjeta);
-  }
-  [data-theme="dark"] .btn-cerrar-sesion-cuenta{color:#ff7d8d;border-color:#ff7d8d;}
-  [data-theme="dark"] .btn-cerrar-sesion-cuenta:hover{background:var(--rojo);border-color:var(--rojo);color:#fff;}
-
-  /* Móvil: icono + datos arriba, botón a todo el ancho debajo */
   @media(max-width:600px){
-    .fila-sesion-cuenta{grid-template-columns:auto minmax(0,1fr);padding:14px 14px 14px 16px;}
-    .icono-sesion-cuenta{width:38px;height:38px;}
-    .icono-sesion-cuenta svg{width:19px;height:19px;}
-    .btn-cerrar-sesion-cuenta{grid-column:1 / -1;justify-self:stretch;width:100%;margin-top:4px;padding:10px 16px;}
-    #btnCerrarOtrasSesionesLector{width:100%;}
+    .fila-sesion-cuenta{flex-wrap:wrap;}
+    .btn-cerrar-sesion-cuenta{margin-left:auto;}
   }
-  @media(prefers-reduced-motion:reduce){
-    .fila-sesion-cuenta,.btn-cerrar-sesion-cuenta{transition:none;}
-    .fila-sesion-cuenta:hover{transform:none;}
-    .etiqueta-actual-cuenta::before{animation:none;}
-  }
-
   /* Con seis pestañas ya no caben en una línea en pantallas estrechas. */
   @media(max-width:760px){
     .cuenta-tabs{flex-wrap:wrap;width:100%;}
@@ -468,14 +405,14 @@ else{var s=document.createElement("script");s.src="/js/splash.js?v=b5004788";s.a
 <script src="js/ui-alertas.js?v=4339c846"></script>
 <script src="js/foco.js?v=133ef790"></script>
 <script src="js/vendor/qrcode.js"></script>
-<script src="js/config.js?v=bf7464cc"></script>
+<script src="js/config.js?v=f440593b"></script>
 <script src="js/seo.js?v=51678a88"></script>
 <script src="js/lector-auth.js?v=9a1c7f1f"></script>
 <script src="js/lecturas.js?v=de5c36f5"></script>
-<script src="js/layout.js?v=366f34d0"></script>
+<script src="js/layout.js?v=e8597b26"></script>
 <script src="js/cookies.js?v=845d8f5c"></script>
 <script src="js/ads.js?v=a41f4506"></script>
-<script src="js/main.js?v=adbfa07c"></script>
+<script src="js/main.js?v=858efe67"></script>
 <script>
 fijarSeoBasico({
   titulo: "Mi cuenta — ELOTROFÚTBOLTV",

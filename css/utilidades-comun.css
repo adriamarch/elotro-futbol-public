@@ -1,0 +1,23 @@
+/* Aspecto común de las utilidades para lectores (Mapa, Ranking y Porras).
+   Mapa y Ranking ya usan la cabecera marino y las pestañas en píldora de mapa-desplazamientos.css;
+   aquí se aplica lo mismo a Porras (body[data-page=predicciones]) para que las tres se vean iguales. */
+
+/* Cabecera marino con enlace "← Utilidades" */
+body[data-page="predicciones"] .mapad-hero{position:relative;overflow:hidden;color:#fff;border-radius:22px;margin:10px 0 22px;padding:clamp(22px,4vw,38px) clamp(18px,4vw,40px);background:radial-gradient(700px 300px at 95% -30%,rgba(91,184,232,.45),transparent 60%),radial-gradient(520px 280px at -5% 130%,rgba(209,19,46,.55),transparent 60%),linear-gradient(135deg,#0c1b2e,#152b46);box-shadow:0 18px 40px -20px #0c1b2e99}
+body[data-page="predicciones"] .mapad-hero:after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(115deg,rgba(255,255,255,.035) 0 2px,transparent 2px 14px);pointer-events:none}
+body[data-page="predicciones"] .mapad-hero>*{position:relative;z-index:1}
+body[data-page="predicciones"] .mapad-hero .section-title{color:#fff;margin:0 0 8px;border:0;padding:0}
+body[data-page="predicciones"] .mapad-intro{color:#ffffffd6;font-size:clamp(14px,2vw,16px);max-width:620px;margin:0}
+body[data-page="predicciones"] .mapad-volver{display:inline-flex;align-items:center;margin:0 0 12px;padding:5px 13px;border-radius:99px;background:#ffffff1a;border:1px solid #ffffff33;color:#fff;font:600 12.5px var(--font-text);text-decoration:none;backdrop-filter:blur(6px);transition:background .15s}
+body[data-page="predicciones"] .mapad-volver:hover{background:#ffffff33}
+
+/* Pestañas "Mi jornada" / "Ranking": píldora como "Mi mapa" / "Ranking" */
+body[data-page="predicciones"] .porras-tabs{display:flex;width:100%;gap:4px;padding:4px;margin:0 0 20px;background:var(--fondo-alt);border:1px solid var(--borde);border-radius:999px}
+body[data-page="predicciones"] .porras-tab,body[data-page="predicciones"] .porras-tab+.porras-tab{flex:1;margin:0;padding:10px 12px;border:0;border-radius:999px;background:transparent;color:var(--texto-suave);font-family:var(--font-text);font-size:.88rem;font-weight:600;cursor:pointer;transition:background .18s,color .18s,box-shadow .18s}
+body[data-page="predicciones"] .porras-tab:hover:not(.activo){color:var(--marino-texto)}
+body[data-page="predicciones"] .porras-tab.activo{background:var(--ui-act-bg,var(--marino));color:var(--ui-act-fg,#fff);box-shadow:0 6px 14px -6px color-mix(in srgb,var(--ui-act-bg,#0c1b2e) 75%,transparent)}
+body[data-page="predicciones"] .porras-tab:focus-visible{outline:none;box-shadow:var(--ui-anillo,0 0 0 3px rgba(91,184,232,.5))}
+
+/* Ranking de desplazamientos: mismas pestañas en píldora que el resto */
+.rkd-tabs{border-radius:999px}
+.rkd-tab{border-radius:999px}

@@ -1,0 +1,61 @@
+/* Aviso "solo para lectores": el MISMO componente en Porras, Mapa y Ranking (js/aviso-lector.js). */
+@keyframes avisoLectorFlujo{to{stroke-dashoffset:-26px}}
+@keyframes avisoLectorOnda{0%{transform:scale(.7);opacity:.9}100%{transform:scale(2.6);opacity:0}}
+.aviso-lector{
+  position:relative;display:grid;grid-template-columns:minmax(200px,300px) minmax(0,1fr);align-items:center;gap:clamp(18px,4vw,40px);
+  max-width:860px;margin:0 auto 28px;padding:clamp(18px,3vw,28px);overflow:hidden;
+  border:1px solid var(--borde);border-radius:24px;
+  background:radial-gradient(520px 220px at 100% 0,rgba(91,184,232,.16),transparent 65%),var(--tarjeta);
+  box-shadow:0 24px 48px -28px rgba(12,27,46,.55);
+}
+.aviso-lector[hidden]{display:none}
+.aviso-lector::before{content:"";position:absolute;left:0;right:0;top:0;height:5px;background:linear-gradient(90deg,var(--celeste),var(--rojo))}
+.aviso-lector-visual{
+  position:relative;aspect-ratio:11/10;border-radius:18px;border:1px solid #2c4a70;overflow:hidden;
+  background:radial-gradient(120% 90% at 30% 0,#17314f,#0c1b2e 70%);box-shadow:inset 0 0 0 1px #ffffff0d,0 16px 30px -20px #0c1b2eee;
+}
+.aviso-lector-visual>svg{display:block;width:100%;height:100%}
+.aviso-lector-visual .av-ruta{fill:none;stroke:#ff7a8c;stroke-width:2;stroke-linecap:round;stroke-dasharray:7 6;animation:avisoLectorFlujo 1.2s linear infinite;filter:drop-shadow(0 0 3px rgba(255,90,112,.8))}
+.aviso-lector-visual .av-punto{fill:#7d97b8;stroke:#0c1b2e;stroke-width:1.5}
+.aviso-lector-visual .av-on{fill:#ff3b55;stroke:#fff;filter:drop-shadow(0 0 5px rgba(255,59,85,.9))}
+.aviso-lector-visual .av-halo{fill:none;stroke:var(--celeste);stroke-width:1.5;transform-box:fill-box;transform-origin:center;animation:avisoLectorOnda 2.6s ease-out infinite}
+.aviso-lector-visual .av-halo-2{animation-delay:1.3s}
+.aviso-lector-candado{
+  position:absolute;right:12px;bottom:12px;display:grid;place-items:center;width:44px;height:44px;border-radius:14px;
+  background:linear-gradient(135deg,var(--rojo),var(--rojo-oscuro));color:#fff;box-shadow:0 10px 20px -8px #d1132ecc;
+}
+.aviso-lector-candado svg{width:22px;height:22px}
+.aviso-lector-cuerpo{min-width:0}
+.aviso-lector-etq{
+  display:inline-flex;align-items:center;gap:7px;margin:0 0 10px;padding:4px 12px;border-radius:99px;
+  background:rgba(91,184,232,.16);color:var(--marino-texto);font:700 .7rem var(--font-text);letter-spacing:.12em;text-transform:uppercase;
+}
+.aviso-lector-etq::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--rojo);box-shadow:0 0 0 3px rgba(209,19,46,.2)}
+.aviso-lector h2{font-family:var(--font-tit);font-size:clamp(1.35rem,3vw,1.8rem);line-height:1.15;margin:0 0 10px;color:var(--marino-texto)}
+.aviso-lector p{margin:0 0 14px;color:var(--texto-suave);font-size:.98rem;line-height:1.5}
+.aviso-lector-ventajas{list-style:none;margin:0 0 20px;padding:0;display:grid;gap:8px}
+.aviso-lector-ventajas li{display:flex;align-items:flex-start;gap:10px;font-size:.92rem;font-weight:600;color:var(--texto);line-height:1.35}
+.aviso-lector-ventajas li::before{
+  content:"";flex:0 0 20px;height:20px;margin-top:-1px;border-radius:50%;background:rgba(22,163,74,.14)
+  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2316a34a' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 12.5l4 4 8-9'/%3E%3C/svg%3E") center/13px no-repeat;
+}
+.aviso-lector-acciones{display:flex;align-items:center;flex-wrap:wrap;gap:10px 16px}
+.aviso-lector-acciones .aviso-lector-btn{min-height:50px;padding:0 26px;font-size:1rem}
+.aviso-lector-acciones small{color:var(--texto-suave);font-size:.8rem}
+.aviso-lector-btn{display:inline-flex;align-items:center;justify-content:center;border-radius:14px;border:1px solid transparent;background:linear-gradient(135deg,var(--rojo),var(--rojo-oscuro));color:#fff;font:700 1rem var(--font-tit);text-decoration:none;cursor:pointer;box-shadow:0 14px 24px -14px #d1132ecc;transition:transform .15s,filter .15s}
+.aviso-lector-btn:hover{filter:brightness(1.08);transform:translateY(-1px)}
+.aviso-lector-btn:focus-visible{outline:none;box-shadow:var(--ui-anillo,0 0 0 3px rgba(91,184,232,.5))}
+.aviso-lector-colab{display:block;flex:1 1 100%;margin:0;padding:8px 12px;border-radius:12px;background:rgba(246,196,69,.16);border:1px solid rgba(246,196,69,.45);color:var(--texto);font-size:.82rem;line-height:1.4}
+.aviso-lector-colab b{color:var(--marino-texto)}
+/* Versión compacta (Ranking): sin dibujo ni lista de ventajas */
+.aviso-lector-compacto{grid-template-columns:minmax(0,1fr);max-width:none;margin:0 0 18px;padding:16px 20px}
+.aviso-lector-compacto .aviso-lector-visual,.aviso-lector-compacto .aviso-lector-ventajas{display:none}
+.aviso-lector-compacto h2{font-size:1.15rem;margin-bottom:6px}
+.aviso-lector-compacto p{margin-bottom:12px;font-size:.9rem}
+.aviso-lector-compacto .aviso-lector-acciones .aviso-lector-btn{min-height:44px}
+@media (max-width:860px){
+  .aviso-lector{grid-template-columns:minmax(0,1fr);max-width:560px}
+  .aviso-lector-visual{aspect-ratio:16/8;max-height:190px}
+  .aviso-lector-acciones .aviso-lector-btn{flex:1 1 100%}
+}
+@media (prefers-reduced-motion:reduce){.aviso-lector-visual .av-ruta,.aviso-lector-visual .av-halo,.aviso-lector-btn{animation:none;transition:none}}

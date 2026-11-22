@@ -4,7 +4,7 @@
 // Flashscore (workflow «Actualizar jugadores»). Los tops se calculan aquí, en el
 // navegador, con los filtros de grupo y club. Ya no se usa el minuto a minuto.
 fijarSeoBasico({
-  titulo: "Estadísticas de jugadores: goleadores y asistentes — ELOTROFÚTBOLTV",
+  titulo: "Estadísticas de jugadores: goleadores y asistentes | ELOTROFÚTBOLTV",
   descripcion: "Top 10 de máximos goleadores, asistentes y jugadores más sancionados de LaLiga Hypermotion, Primera y Segunda Federación, con datos de Flashscore.",
   urlPath: "/estadisticas",
   migas: [{ nombre: "Estadísticas" }],

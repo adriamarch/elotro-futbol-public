@@ -37,7 +37,39 @@ html:not([data-eof-menu="superior"]) body .admin-header ~ .wrap{
   display:flex;align-items:center;gap:8px;font-size:10.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;
   color:var(--gris-texto,#6b7686);padding:2px 10px 8px;
 }
-.ml-titulo::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--borde,#e3e7ee),transparent);}
+.ml-linea{flex:1;height:1px;background:linear-gradient(90deg,var(--borde,#e3e7ee),transparent);}
+
+/* ---------- Grupos desplegables ---------- */
+.ml-titulo-btn{
+  width:100%;box-sizing:border-box;margin:0;border:0;border-radius:10px;background:transparent;font-family:inherit;text-align:left;cursor:pointer;
+  transition:background .16s ease,color .16s ease;
+}
+.ml-titulo-btn:hover{background:rgba(12,27,46,.045);color:var(--marino-texto,#0c1b2e);}
+.ml-titulo-btn:focus-visible{outline:2px solid var(--rojo,#d1132e);outline-offset:1px;}
+.ml-chev{width:14px;height:14px;flex-shrink:0;transition:transform .22s ease;}
+.ml-grupo.cerrado .ml-chev{transform:rotate(-90deg);}
+/* Rojo suave en el título del grupo plegado que contiene la sección en la que estás. */
+.ml-grupo.cerrado.tiene-activo .ml-titulo-txt{color:var(--rojo,#d1132e);}
+/* La sumita de pendientes solo se ve con el grupo plegado (abierto, ya se ven los de cada entrada). */
+.ml-grupo-badge{
+  min-width:18px;padding:1px 6px;border-radius:999px;background:var(--rojo,#d1132e);color:#fff;
+  font-size:10.5px;font-weight:800;letter-spacing:0;text-align:center;line-height:1.45;
+}
+.ml-grupo:not(.cerrado) .ml-grupo-badge{display:none !important;}
+
+/* Plegado animado sin medir alturas: la fila de la rejilla pasa de 1fr a 0fr. */
+.ml-items{display:grid;grid-template-rows:1fr;transition:grid-template-rows .22s ease;}
+.ml-items-in{min-height:0;}
+.ml-grupo.cerrado .ml-items{grid-template-rows:0fr;}
+/* Se recorta solo si está plegado o animándose; abierto del todo no, para no cortar la barrita roja ni las sombras. */
+.ml-grupo.cerrado .ml-items-in,.ml-grupo.anim .ml-items-in{overflow:hidden;margin:0 -12px;padding:0 12px;}
+.ml-grupo.cerrado{margin-bottom:6px;}
+.ml-grupo.cerrado .ml-titulo{padding-bottom:4px;}
+
+/* ---------- Contadores en vivo ---------- */
+@keyframes mlPop{0%{transform:scale(1);}35%{transform:scale(1.35);}100%{transform:scale(1);}}
+.ml-pop{animation:mlPop .5s ease;}
+.ml-sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;}
 
 .ml-item{
   position:relative;display:flex;align-items:center;gap:11px;width:100%;box-sizing:border-box;margin:2px 0;padding:7px 10px 7px 8px;
@@ -74,7 +106,8 @@ html:not([data-eof-menu="superior"]) body .admin-header ~ .wrap{
 }
 [data-theme="dark"] .ml-grupo + .ml-grupo{border-top-color:rgba(255,255,255,.1);}
 [data-theme="dark"] .ml-titulo{color:#8fa0b8;}
-[data-theme="dark"] .ml-titulo::after{background:linear-gradient(90deg,rgba(255,255,255,.12),transparent);}
+[data-theme="dark"] .ml-linea{background:linear-gradient(90deg,rgba(255,255,255,.12),transparent);}
+[data-theme="dark"] .ml-titulo-btn:hover{background:rgba(255,255,255,.07);color:#e6ebf2;}
 [data-theme="dark"] .ml-item{color:#e6ebf2;}
 [data-theme="dark"] .ml-item svg{background:rgba(255,255,255,.08);color:#dfe7f2;}
 [data-theme="dark"] .ml-item:hover{background:rgba(255,255,255,.07);}
@@ -90,7 +123,7 @@ html:not([data-eof-menu="superior"]) body .admin-header ~ .wrap{
   }
   #menuLateralActual::before{content:"";display:inline-block;width:8px;height:8px;margin-right:8px;border-radius:50%;background:var(--rojo,#d1132e);}
   #menuLateralAbrir{
-    display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border:0;border-radius:12px;cursor:pointer;
+    position:relative;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border:0;border-radius:12px;cursor:pointer;
     background:linear-gradient(135deg,var(--marino,#0c1b2e),var(--marino2,#16335a));color:#fff;box-shadow:0 4px 10px rgba(12,27,46,.2);
   }
   #menuLateral{
@@ -98,11 +131,17 @@ html:not([data-eof-menu="superior"]) body .admin-header ~ .wrap{
     background:var(--blanco,#fff);box-shadow:8px 0 32px rgba(12,27,46,.25);
   }
   [data-theme="dark"] #menuLateral{background:#0f1a2b;}
+  /* Total de pendientes sobre el botón de la hamburguesa: se ve sin abrir el menú. */
+  .ml-total{
+    position:absolute;top:-6px;right:-6px;min-width:18px;padding:1px 5px;border-radius:999px;box-sizing:border-box;
+    background:var(--rojo,#d1132e);color:#fff;font-size:10.5px;font-weight:800;line-height:1.45;text-align:center;box-shadow:0 0 0 2px var(--blanco,#fff);
+  }
+  [data-theme="dark"] .ml-total{box-shadow:0 0 0 2px #0f1a2b;}
   body.ml-abierto #menuLateral{transform:none;}
   body.ml-abierto #menuLateralFondo{display:block;position:fixed;inset:0;background:rgba(12,27,46,.5);z-index:205;}
   [data-theme="dark"] #menuLateralBarra{background:rgba(15,26,43,.92);border-bottom-color:rgba(255,255,255,.1);color:#e6ebf2;}
 }
-@media (prefers-reduced-motion:reduce){#menuLateral,.ml-item,.ml-item svg{transition:none;}.ml-item:hover{transform:none;}}
+@media (prefers-reduced-motion:reduce){#menuLateral,.ml-item,.ml-item svg,.ml-items,.ml-chev,.ml-titulo-btn{transition:none;}.ml-item:hover{transform:none;}.ml-pop{animation:none;}}
 
 /* Cabecera en PC con menú lateral: el logo queda pegado a la izquierda, encima del menú,
    y el menú de cuenta a la derecha (antes la cabecera estaba centrada en un ancho máximo). */

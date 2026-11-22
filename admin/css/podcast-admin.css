@@ -204,3 +204,9 @@
   #pcAdminForm{animation:none}
   .pca-fila:hover{transform:none}
 }
+
+/* Vista previa de la portada dentro del formulario (nuevo / editar) */
+.pca-prev{display:flex;flex-direction:column;gap:8px}
+.pca-prev-etq{font-size:.74rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--pc-suave)}
+.pca-prev .pca-prev-thumb{flex:none;width:min(100%,360px);box-shadow:0 14px 28px -18px rgba(12,27,46,.7),inset 0 0 0 1px rgba(255,255,255,.08)}
+.pca-prev-nota{font-size:.76rem;line-height:1.4;color:var(--pc-suave)}

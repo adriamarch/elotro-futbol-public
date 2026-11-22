@@ -22,7 +22,7 @@ const selClubPl = document.getElementById("plantillaClub");
 document.getElementById("plantillaVolver").href = `${baseHref()}estadisticas?c=${encodeURIComponent(COMP_PL)}${clubPl ? "&club=" + encodeURIComponent(clubPl) : ""}${temporadaPl ? "&temp=todas" : ""}`;
 
 fijarSeoBasico({
-  titulo: `${clubPl || "Plantilla"} — plantilla — ELOTROFÚTBOLTV`,
+  titulo: `${clubPl || "Plantilla"} — plantilla | ELOTROFÚTBOLTV`,
   descripcion: `Plantilla completa de ${clubPl || "cada club"}: jugadores, edades, partidos, minutos, goles y tarjetas.`,
   urlPath: rutaCanonicaPl(),
 });
@@ -47,7 +47,7 @@ function pintarPlantilla() {
   if (!d) return;
   const compNombre = COMPETICIONES_PLANTILLA[d.competicion] || "";
   fijarSeoBasico({
-    titulo: `${d.club} — plantilla — ELOTROFÚTBOLTV`,
+    titulo: `${d.club} — plantilla | ELOTROFÚTBOLTV`,
     descripcion: `Plantilla completa de ${d.club}${compNombre ? " en " + compNombre : ""}: jugadores, edades, partidos, minutos, goles y tarjetas.`,
     urlPath: rutaCanonicaPl(),
   });

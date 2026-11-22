@@ -1,0 +1,37 @@
+/* Utilidades (hub para lectores con sesión). Reutiliza hero/aviso/ruta de mapa-desplazamientos.css. */
+.util-hero{margin-bottom:24px}
+.util-grid{list-style:none;margin:0 0 28px;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr));gap:18px}
+.util-grid>li{display:flex;min-width:0}
+.util-card{
+  position:relative;display:flex;flex-direction:column;width:100%;overflow:hidden;text-decoration:none;color:inherit;
+  border:1px solid var(--borde);border-radius:20px;background:var(--tarjeta);box-shadow:var(--sombra-sm);
+  transition:transform .18s,box-shadow .18s,border-color .18s;
+}
+a.util-card:hover,a.util-card:focus-visible{transform:translateY(-3px);border-color:var(--celeste);box-shadow:0 22px 40px -24px rgba(12,27,46,.6)}
+.util-card-visual{display:block;aspect-ratio:11/6;background:radial-gradient(120% 90% at 30% 0,#17314f,#0c1b2e 70%);border-bottom:1px solid #2c4a70}
+.util-card-visual svg{display:block;width:100%;height:100%}
+.util-card .av-ruta{fill:none;stroke:#ff7a8c;stroke-width:2;stroke-linecap:round;stroke-dasharray:7 6;animation:mapadFlujo 1.2s linear infinite;filter:drop-shadow(0 0 3px rgba(255,90,112,.8))}
+.util-card .av-punto{fill:#7d97b8;stroke:#0c1b2e;stroke-width:1.5}
+.util-card .av-on{fill:#ff3b55;stroke:#fff;filter:drop-shadow(0 0 5px rgba(255,59,85,.9))}
+.util-card-cuerpo{display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:16px 18px 18px;flex:1}
+.util-card-etq{padding:3px 11px;border-radius:99px;background:rgba(91,184,232,.16);color:var(--marino-texto);font:700 .66rem var(--font-text);letter-spacing:.12em;text-transform:uppercase}
+.util-card strong{font-family:var(--font-tit);font-size:1.2rem;line-height:1.2;color:var(--marino-texto)}
+.util-card-txt{color:var(--texto-suave);font-size:.9rem;line-height:1.45}
+.util-card-ir{margin-top:auto;padding-top:8px;display:inline-flex;align-items:center;gap:6px;color:var(--rojo);font:700 .9rem var(--font-tit)}
+.util-card-ir i{font-style:normal;transition:transform .18s}
+a.util-card:hover .util-card-ir i{transform:translateX(4px)}
+.util-card-pronto{align-items:center;justify-content:center;gap:8px;padding:28px 20px;text-align:center;border:2px dashed var(--borde);background:transparent;box-shadow:none}
+.util-card-mas{display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:var(--fondo-alt);color:var(--texto-suave);font:400 1.8rem/1 var(--font-text)}
+.util-card-pronto strong{font-size:1.05rem}
+@media (prefers-reduced-motion:reduce){.util-card,.util-card-ir i{transition:none}.util-card .av-ruta{animation:none}}
+
+/* Hub: tarjetas de Ranking y Porras, y aviso de cuenta */
+.util-visual-rank svg,.util-visual-porras svg{font-family:var(--font-tit)}
+.util-card .rk-b{fill:#2c4a70;stroke:#5b88bd;stroke-width:1.2}
+.util-card .rk-1{fill:#d1132e;stroke:#ff7a8c}
+.util-card .rk-2,.util-card .rk-3{fill:#31598c}
+.util-visual-rank text,.util-visual-porras text{fill:#fff;font-weight:700;font-size:20px}
+.util-card .rk-estrella{fill:#f6c445;stroke:#fff;stroke-width:1.5;filter:drop-shadow(0 0 5px rgba(246,196,69,.9))}
+.util-card .po-caja{fill:#152b46;stroke:#5bb8e8;stroke-width:1.6}
+.util-visual-porras text{font-size:30px}
+.util-card .po-guion{stroke:#fff;stroke-width:3;stroke-linecap:round}
