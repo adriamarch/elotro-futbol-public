@@ -1,1 +1,109 @@
 :root{--mod-radio:22px;--mod-velo:rgba(8,16,28,.58);--mod-sombra:0 30px 80px rgba(8,16,28,.42), 0 0 0 1px rgba(127,127,127,.14);--mod-acento:linear-gradient(90deg,var(--rojo),var(--celeste));--mod-curva:cubic-bezier(.2,.85,.25,1.08)}body:has(.modal-partido.abierto),body:has(.modal-newsletter.abierto),body:has(.eof-cookies-modal.abierto){overflow:hidden}@keyframes modMejFondo{0%{opacity:0}to{opacity:1}}@keyframes modMejSube{0%{opacity:0;transform:translateY(18px) scale(.96)}to{opacity:1;transform:none}}@keyframes modMejIcono{0%{transform:scale(.4);opacity:0}60%{transform:scale(1.12);opacity:1}to{transform:scale(1)}}html .eof-modal-overlay{background:var(--mod-velo);-webkit-backdrop-filter:blur(8px) saturate(120%);backdrop-filter:blur(8px) saturate(120%);padding:max(20px,env(safe-area-inset-top,0px)) max(20px,env(safe-area-inset-right,0px)) max(20px,env(safe-area-inset-bottom,0px)) max(20px,env(safe-area-inset-left,0px));transition:opacity .22s ease}html .eof-modal-caja{max-width:440px;padding:36px 28px 26px;border-radius:var(--mod-radio);box-shadow:var(--mod-sombra);background-image:var(--mod-acento);background-size:100% 4px;background-repeat:no-repeat;background-position:top left;transform:translateY(16px) scale(.95);transition:transform .34s var(--mod-curva);scrollbar-width:thin;scrollbar-color:var(--borde,#e2e6eb) transparent}html .eof-modal-caja:before{display:none}html .eof-modal-icono{width:64px;height:64px;margin:0 auto 20px}html .eof-modal-icono svg{width:30px;height:30px}html .eof-modal-overlay.eof-modal-visible .eof-modal-icono{animation:modMejIcono .5s var(--mod-curva) .08s both}html .eof-modal-icono-info,html .eof-modal-icono-pregunta{background:linear-gradient(145deg,#eaf6fd,#d6eefb);box-shadow:0 0 0 7px #5bb8e81f,0 8px 20px #5bb8e838}html .eof-modal-icono-error{background:linear-gradient(145deg,#fdeef0,#fad9de);box-shadow:0 0 0 7px #d1132e17,0 8px 20px #d1132e33}html .eof-modal-icono-exito{background:linear-gradient(145deg,#e9f8ef,#d3f0df);box-shadow:0 0 0 7px #1c8a4b1c,0 8px 20px #1c8a4b33}html .eof-modal-mensaje{font-size:.97rem;line-height:1.6;margin-bottom:26px;text-wrap:pretty}html .eof-modal-input{min-height:48px;padding:12px 15px;border-radius:12px;border-width:1.5px;transition:border-color .16s ease,box-shadow .16s ease,background .16s ease}html .eof-modal-input:hover{border-color:var(--gris-texto,#5a6270)}html .eof-modal-input:focus{border-color:var(--celeste,#5bb8e8);box-shadow:0 0 0 4px #5bb8e838}html .eof-modal-input::placeholder{color:var(--texto-suave,#8a93a1);opacity:.85}html .eof-modal-input-error{border-color:var(--rojo,#d1132e)!important;box-shadow:0 0 0 4px #d1132e24!important}html .eof-modal-botones{gap:12px}html .eof-btn{min-height:48px;padding:12px 16px;border-radius:12px;font-weight:700;letter-spacing:.01em;transition:background .16s ease,box-shadow .16s ease,transform .14s ease,color .16s ease}html .eof-btn:hover{transform:translateY(-1px)}html .eof-btn:active{transform:translateY(1px)}html .eof-btn-secundario{background:transparent;box-shadow:inset 0 0 0 1.5px var(--borde,#e2e6eb)}html .eof-btn-secundario:hover{background:var(--gris-claro,#eef1f5)}html .eof-btn-primario{box-shadow:0 8px 18px #0c1b2e3d}html .eof-btn-primario:hover{box-shadow:0 10px 22px #0c1b2e4d}html .eof-btn-peligro{box-shadow:0 8px 18px #d1132e47}html .eof-btn-peligro:hover{box-shadow:0 10px 22px #d1132e5c}html .eof-btn:focus-visible,html .eof-modal-input:focus-visible{outline:2px solid var(--celeste,#5bb8e8);outline-offset:2px}@media(max-width:480px){html .eof-modal-caja{padding:30px 20px 20px;border-radius:20px}}html .modal-partido-cerrar:focus-visible{outline:2px solid var(--celeste-claro);outline-offset:2px}html .modal-partido-nombre{text-wrap:balance}html .eof-cookie-categoria,html .eof-cookie-categoria:last-of-type{padding:15px 16px;margin-bottom:10px;border:1px solid var(--borde);border-radius:14px;background:var(--fondo-alt);align-items:center;transition:border-color .16s ease,box-shadow .16s ease}html .eof-cookie-categoria:hover{border-color:var(--celeste);box-shadow:0 4px 14px #0c1b2e12}html .eof-cookie-categoria-info h4,html .eof-cookie-categoria-info .t-h4{font-size:.94rem}html .eof-cookie-switch{width:48px;height:28px;margin-top:0}html .eof-cookie-switch .track{border-radius:28px;transition:background .18s ease,box-shadow .18s ease}html .eof-cookie-switch .track:before{left:4px;top:4px;width:20px;height:20px;transition:transform .22s var(--mod-curva)}html .eof-cookie-switch input:checked+.track{background:var(--rojo);box-shadow:0 0 0 4px #d1132e24}html .eof-cookie-switch input:checked+.track:before{transform:translate(20px)}html .eof-cookies-modal-acciones{gap:12px}html .eof-cookies-modal-acciones button{min-height:46px}html .eof-cookies-modal-acciones button:hover{transform:translateY(-1px)}html .eof-cookies-modal-acciones .eof-cookie-guardar{box-shadow:0 8px 18px #d1132e47}html .modal-newsletter-caja{overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:rgba(127,127,127,.4) transparent}html .modal-newsletter-cerrar:focus-visible{outline:2px solid var(--celeste-claro);outline-offset:2px}html .modal-comp-detalle-fondo{background:var(--mod-velo);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);animation:modMejFondo .2s ease}html .modal-comp-detalle-caja{padding-top:36px;box-shadow:var(--mod-sombra);background-image:var(--mod-acento);background-size:100% 4px;background-repeat:no-repeat;background-position:top left;overscroll-behavior:contain}@media(min-width:561px){html .modal-comp-detalle-caja{border-radius:var(--mod-radio);max-height:86vh;max-height:86dvh}}html .modal-comp-detalle-titulo,html .modal-comp-detalle-subtitulo{padding-left:36px;padding-right:36px;text-wrap:balance}html .modal-comp-detalle-caja .modal-partido-cerrar{top:14px;right:14px;z-index:3;background:var(--gris-claro);color:var(--marino-texto);box-shadow:inset 0 0 0 1px var(--borde);-webkit-backdrop-filter:none;backdrop-filter:none}html .modal-comp-detalle-caja .modal-partido-cerrar:hover{background:var(--rojo);color:#fff}html .modal-comp-detalle-caja .modal-partido-cerrar:focus-visible{outline:2px solid var(--celeste);outline-offset:2px}html .comp-detalle-item{transition:transform .15s ease,box-shadow .15s ease}html .comp-detalle-item:hover{transform:translateY(-1px);box-shadow:0 4px 12px #0c1b2e1a}html .modal-comparador-caja .comp-cerrar:focus-visible{outline:2px solid var(--celeste-claro);outline-offset:2px}html .mp-x{background:var(--gris-claro,#eef1f5);box-shadow:inset 0 0 0 1px var(--borde,#dde3ea);transition:background .16s ease,color .16s ease,transform .2s ease}html .mp-x:hover{background:var(--rojo,#d1132e);color:#fff;transform:rotate(90deg)}html .acred-cerrar{position:relative;transition:background .16s ease,color .16s ease,transform .2s ease}html .acred-cerrar:hover{transform:rotate(90deg)}html .acred-cerrar:focus-visible{outline:2px solid var(--celeste,#5bb8e8);outline-offset:2px}html .mp-x:after,html .acred-cerrar:after{content:"";position:absolute;inset:-5px}@media(hover:none)and (pointer:coarse){html .eof-cookies-cerrar,html .modal-comp-detalle-caja .modal-partido-cerrar{width:44px;height:44px}html .eof-btn:hover,html .eof-cookies-modal-acciones button:hover,html .comp-detalle-item:hover,html .mp-x:hover,html .acred-cerrar:hover{transform:none}html .modal-comp-detalle-fondo{animation:none}}[data-theme=dark]{--mod-velo:rgba(0,0,0,.68);--mod-sombra:0 30px 80px rgba(0,0,0,.62), 0 0 0 1px rgba(255,255,255,.08)}[data-theme=dark] .eof-modal-icono-info,[data-theme=dark] .eof-modal-icono-pregunta{background:linear-gradient(145deg,#5bb8e838,#5bb8e81f);box-shadow:0 0 0 7px #5bb8e81a,0 8px 20px #00000059}[data-theme=dark] .eof-modal-icono-error{background:linear-gradient(145deg,#d1132e47,#d1132e24);box-shadow:0 0 0 7px #d1132e1a,0 8px 20px #00000059}[data-theme=dark] .eof-modal-icono-exito{background:linear-gradient(145deg,#1c8a4b47,#1c8a4b24);box-shadow:0 0 0 7px #1c8a4b1a,0 8px 20px #00000059}[data-theme=dark] .eof-btn-primario{box-shadow:0 8px 18px #5bb8e838}[data-theme=dark] .eof-btn-secundario{box-shadow:inset 0 0 0 1.5px #ffffff29}[data-theme=dark] .eof-btn-secundario:hover{background:#ffffff12}[data-theme=dark] .modal-comp-detalle-caja .modal-partido-cerrar{background:#ffffff14;box-shadow:inset 0 0 0 1px #ffffff1a}[data-theme=dark] .modal-comp-detalle-caja .modal-partido-cerrar:hover{background:var(--rojo)}[data-theme=dark] .mp-x{background:#ffffff17;color:#c3cbda;box-shadow:inset 0 0 0 1px #ffffff1a}[data-theme=dark] .mp-x:hover{background:var(--rojo,#d1132e);color:#fff}[data-theme=dark] .comp-detalle-item:hover{box-shadow:0 4px 12px #00000059}[data-theme=dark] .eof-cookie-categoria:hover{box-shadow:0 4px 14px #00000059}@media(prefers-reduced-motion:reduce){html .eof-modal-overlay,html .eof-modal-caja,html .eof-cookie-switch .track:before{animation:none!important;transition:none!important}html .eof-modal-overlay.eof-modal-visible .eof-modal-icono{animation:none}html .eof-btn:hover,html .eof-cookies-modal-acciones button:hover,html .comp-detalle-item:hover,html .mp-x:hover,html .acred-cerrar:hover{transform:none}html .modal-comp-detalle-fondo{animation:none}}
+
+/* =====================================================================
+   MODALES DE SOLO TEXTO (EOF.alertaModal y EOF.confirmar, js/ui-alertas.js)
+   ---------------------------------------------------------------------
+   Los avisos y confirmaciones que solo llevan icono, mensaje y botones.
+   Solo CSS: no cambia el JS ni el HTML. Sigue la línea sobria de
+   sobrio.css (colores planos, sin degradados ni franjas de color): el
+   adorno son los anillos concentricos del icono, como el circulo central
+   de un campo, y la tipografia de la marca.
+     - anillos del color de cada tipo (info, pregunta, error, exito)
+     - icono mas grande y con mas contraste
+     - mensaje centrado y equilibrado
+     - botones en pildora con la tipografia de la marca
+     - en movil, hoja que sube desde abajo
+   ===================================================================== */
+html .eof-modal-caja{
+  --t:91,184,232;--t-glifo:#17719e;--anillo1:.12;--anillo2:.07;--anillo3:.035;
+  max-width:420px;padding:48px 32px 30px;border-radius:26px;
+  border:1px solid var(--borde,#e7e9ee);
+  box-shadow:0 34px 80px rgba(8,16,28,.34),0 2px 6px rgba(8,16,28,.08);
+}
+html .eof-modal-caja:has(.eof-modal-icono-error){--t:209,19,46;--t-glifo:#c0102a;}
+html .eof-modal-caja:has(.eof-modal-icono-exito){--t:28,138,75;--t-glifo:#14783f;}
+
+/* Anillos concentricos detras del icono (se recortan con el borde de la caja) */
+html .eof-modal-caja:has(.eof-modal-icono):before{
+  display:block;content:"";position:absolute;z-index:0;pointer-events:none;
+  top:48px;left:50%;width:72px;height:72px;margin-left:-36px;border-radius:50%;
+  background:transparent;
+  box-shadow:
+    0 0 0 10px rgba(var(--t),var(--anillo1)),
+    0 0 0 22px rgba(var(--t),var(--anillo2)),
+    0 0 0 34px rgba(var(--t),var(--anillo3));
+}
+html .eof-modal-icono{position:relative;z-index:1;width:72px;height:72px;margin:0 auto 34px;color:var(--t-glifo);box-shadow:none}
+html .eof-modal-icono svg{width:34px;height:34px}
+html .eof-modal-icono-info,
+html .eof-modal-icono-pregunta,
+html .eof-modal-icono-error,
+html .eof-modal-icono-exito{color:var(--t-glifo);box-shadow:0 0 0 1px rgba(var(--t),.22)}
+
+/* El tic del exito se dibuja al abrirse */
+@keyframes modTextoTic{from{stroke-dasharray:26;stroke-dashoffset:26}to{stroke-dasharray:26;stroke-dashoffset:0}}
+html .eof-modal-overlay.eof-modal-visible .eof-modal-icono-exito svg path{animation:modTextoTic .5s cubic-bezier(.3,.7,.3,1) .28s both}
+
+/* Mensaje */
+html .eof-modal-mensaje{
+  position:relative;z-index:1;max-width:34ch;margin:0 auto 32px;
+  font-size:1.04rem;line-height:1.6;font-weight:500;color:var(--texto,#1a1c22);
+  text-wrap:balance;
+}
+
+/* Botones */
+html .eof-modal-botones{gap:12px;justify-content:center}
+html .eof-btn{
+  min-height:50px;padding:12px 22px;border-radius:999px;
+  font-family:var(--font-tit,"Oswald",Arial,sans-serif);font-size:.9rem;font-weight:600;
+  letter-spacing:.6px;text-transform:uppercase;
+}
+/* Un solo boton (aviso): centrado y sin ocupar todo el ancho */
+html .eof-modal-botones:not(:has(.eof-btn:nth-child(2))) .eof-btn{flex:0 1 240px;min-width:min(100%,180px)}
+/* Dos botones (confirmar) */
+html .eof-modal-botones:has(.eof-btn:nth-child(2)) .eof-btn{flex:1 1 0}
+html .eof-btn-secundario{
+  background:transparent;color:var(--texto,#1a1c22);
+  box-shadow:inset 0 0 0 1.5px var(--borde,#d5d9e0);
+}
+html .eof-btn-secundario:hover{background:var(--gris-claro,#eef1f5);box-shadow:inset 0 0 0 1.5px var(--texto-suave,#5a6270)}
+html .eof-btn-primario{box-shadow:0 8px 18px rgba(12,27,46,.22)}
+html .eof-btn-primario:hover{box-shadow:0 12px 24px rgba(12,27,46,.28)}
+html .eof-btn-peligro{box-shadow:0 8px 18px rgba(209,19,46,.3)}
+html .eof-btn-peligro:hover{box-shadow:0 12px 24px rgba(209,19,46,.38)}
+
+/* Oscuro */
+html[data-theme="dark"] .eof-modal-caja{
+  --t-glifo:#7cc9ef;--anillo1:.2;--anillo2:.11;--anillo3:.05;
+  border-color:rgba(255,255,255,.1);
+  box-shadow:0 34px 80px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.04);
+}
+html[data-theme="dark"] .eof-modal-caja:has(.eof-modal-icono-error){--t-glifo:#ff7d8d}
+html[data-theme="dark"] .eof-modal-caja:has(.eof-modal-icono-exito){--t-glifo:#4ade80}
+/* sobrio.css pinta el disco del icono en claro tambien en oscuro: aqui se tiñe de su color */
+html[data-theme="dark"] .eof-modal-icono-info,
+html[data-theme="dark"] .eof-modal-icono-pregunta{background:rgba(91,184,232,.18)!important}
+html[data-theme="dark"] .eof-modal-icono-error{background:rgba(209,19,46,.24)!important}
+html[data-theme="dark"] .eof-modal-icono-exito{background:rgba(28,138,75,.24)!important}
+html[data-theme="dark"] .eof-btn-secundario{box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.22)}
+html[data-theme="dark"] .eof-btn-secundario:hover{background:rgba(255,255,255,.07);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.5)}
+html[data-theme="dark"] .eof-btn-primario{box-shadow:0 8px 18px rgba(0,0,0,.4)}
+
+/* Movil: hoja que sube desde abajo, botones apilados (el principal arriba) */
+@media(max-width:560px){
+  html .eof-modal-overlay{align-items:flex-end;padding:0}
+  html .eof-modal-caja{
+    max-width:none;width:100%;
+    padding:44px 22px calc(24px + env(safe-area-inset-bottom,0px));
+    border-radius:26px 26px 0 0;border-bottom-width:0;
+    transform:translateY(40px);
+  }
+  html .eof-modal-caja:has(.eof-modal-icono):before{top:44px}
+  html .eof-modal-mensaje{margin-bottom:26px}
+  html .eof-modal-botones{flex-direction:column-reverse}
+  html .eof-modal-botones .eof-btn,
+  html .eof-modal-botones:not(:has(.eof-btn:nth-child(2))) .eof-btn{flex:0 0 auto;width:100%}
+}
+@media(prefers-reduced-motion:reduce){
+  html .eof-modal-overlay.eof-modal-visible .eof-modal-icono-exito svg path{animation:none}
+}

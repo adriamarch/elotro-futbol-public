@@ -35,3 +35,15 @@ a.util-card:hover .util-card-ir i{transform:translateX(4px)}
 .util-card .po-caja{fill:#152b46;stroke:#5bb8e8;stroke-width:1.6}
 .util-visual-porras text{font-size:30px}
 .util-card .po-guion{stroke:#fff;stroke-width:3;stroke-linecap:round}
+
+/* Hub: tarjeta de la calculadora de sanciones */
+.util-card .sa-tarjeta{fill:#f5c518;stroke:#fff;stroke-width:1.5;filter:drop-shadow(0 0 5px rgba(245,197,24,.55))}
+.util-card .sa-roja{fill:#d1132e;filter:drop-shadow(0 0 5px rgba(255,59,85,.8))}
+.util-card .sa-punto{fill:#2c4a70;stroke:#5b88bd;stroke-width:1.2}
+.util-card .sa-on{fill:#fff;stroke:#fff}
+
+/* Hub: tarjeta de la calculadora de objetivos */
+.util-card .ob-aro{fill:none;stroke:#5bb8e8;stroke-width:2.4;filter:drop-shadow(0 0 4px rgba(91,184,232,.6))}
+.util-card .ob-centro{fill:#d1132e;stroke:#fff;stroke-width:1.5;filter:drop-shadow(0 0 5px rgba(255,59,85,.85))}
+.util-card .ob-flecha{stroke:#f5c518;stroke-width:3.5;stroke-linecap:round;filter:drop-shadow(0 0 4px rgba(245,197,24,.7))}
+.util-card .ob-pluma{fill:none;stroke:#fff;stroke-width:2.6;stroke-linecap:round}

@@ -34,6 +34,11 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://elotrofutbol.media/comunicados</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
     <loc>https://elotrofutbol.media/podcast</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
@@ -96,6 +101,18 @@
     <lastmod>2026-10-25</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://elotrofutbol.media/calculadora-sanciones</loc>
+    <lastmod>2026-11-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://elotrofutbol.media/calculadora-objetivos</loc>
+    <lastmod>2026-11-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
   </url>
   <url>
     <loc>https://elotrofutbol.media/predicciones</loc>

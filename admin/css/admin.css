@@ -9775,3 +9775,26 @@ table.lista th.col-sel:has(#chkTodasRedes),
 .acred-disc-aviso{margin:8px 0 0;font-size:.82rem;line-height:1.45;color:var(--ac-suave);}
 .acred-disc .acred-correo-chk{margin-top:10px;}
 
+
+
+/* ---------- Ver noticias: el título siempre recto ----------
+   En móvil cada <td> es una fila flex (etiqueta + valor). Con un autor largo
+   (badge con nowrap) el título se quedaba en una columna estrecha, palabra a
+   palabra. Ahora la celda del título apila etiqueta arriba y, debajo, el título
+   a todo el ancho con los chips (autor, fusionada…) en su propia línea. */
+#tablaArticulos td[data-label="Título"] .celda-titulo-noticia{min-width:0;}
+#tablaArticulos td[data-label="Título"] .titulo-noticia-txt{overflow-wrap:break-word;word-break:normal;hyphens:manual;}
+@media (max-width:900px){
+  #tablaArticulos td[data-label="Título"]{
+    flex-direction:column;align-items:stretch;justify-content:flex-start;gap:6px;text-align:left;
+  }
+  #tablaArticulos td[data-label="Título"] .celda-titulo-noticia{
+    display:flex;flex-direction:column;align-items:flex-start;gap:8px;width:100%;
+  }
+  #tablaArticulos td[data-label="Título"] .titulo-noticia-txt{
+    display:block;width:100%;font-weight:600;line-height:1.35;font-size:.95rem;
+  }
+  #tablaArticulos td[data-label="Título"] .badge-autoria{
+    white-space:normal;max-width:100%;
+  }
+}

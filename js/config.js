@@ -778,7 +778,8 @@ function contextoNoticiaHTML(a, { variante = "card" } = {}) {
   const esc = typeof escapeHtml === "function" ? escapeHtml : (t) => String(t == null ? "" : t);
   const compacta = variante === "compacta";
   const etiquetaCat = categoriaLabel(a.categoria);
-  const logo = compacta ? "" : categoriaLogo(a.categoria);
+  // Copa Federación no lleva logo junto a la etiqueta de la noticia: solo el texto.
+  const logo = compacta || a.categoria === "copa_federacion" ? "" : categoriaLogo(a.categoria);
   const tipo = TIPO_NOTICIA_ETIQUETA[a.tipo] || "";
 
   const cat = etiquetaCat

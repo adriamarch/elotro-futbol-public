@@ -414,6 +414,10 @@ if (USER) {
   // solo se muestra a ellos (viene oculta en panel.html).
   const tabAnaliticas = document.getElementById("tabAnaliticas");
   if (tabAnaliticas) tabAnaliticas.style.display = USER.rol === "admin" ? "" : "none";
+  // La pestaña Comunicados oficiales (admin/js/comunicados-admin.js) solo la usan los Responsables:
+  // el Worker rechaza a cualquier otro rol (ver /api/comunicados/*). Viene oculta en panel.html.
+  const tabComunicados = document.getElementById("tabComunicados");
+  if (tabComunicados) tabComunicados.style.display = USER.rol === "admin" ? "" : "none";
   if (document.getElementById("ajustesNombre")) {
     document.getElementById("ajustesNombre").textContent = USER.nombre;
     document.getElementById("ajustesUsername").textContent = USER.username;
@@ -442,6 +446,8 @@ if (USER) {
     // siendo cosa exclusiva de un Responsable.
     const subtabRedesSociales = document.getElementById("subtabRedesSociales_btn");
     if (subtabRedesSociales) subtabRedesSociales.style.display = "none";
+    const subtabFuncLuto = document.getElementById("subtabFuncLuto_btn");
+    if (subtabFuncLuto) subtabFuncLuto.style.display = "none";
     const tabUsuarios = document.getElementById("tabUsuarios");
     if (tabUsuarios) tabUsuarios.style.display = "none";
     const subtabFuncNewsletter = document.getElementById("subtabFuncNewsletter_btn");
@@ -1516,6 +1522,7 @@ function cargaSubtabFuncionalidades(subtab) {
   if (subtab === "historial") cargaHistorial();
   if (subtab === "reuniones") cargaReunionesAjustes();
   if (subtab === "redesSociales") cargaRedesSociales();
+  if (subtab === "luto") cargaLutoWeb();
   if (subtab === "equipos") cargaEquiposInfo();
   if (subtab === "jugadores" && window.EOFJugadores) window.EOFJugadores.cargar();
   if (subtab === "informacion" && window.EOFOrganigrama) window.EOFOrganigrama.cargar();
@@ -5227,7 +5234,8 @@ formArticle.addEventListener("submit", async (e) => {
   // NUNCA se devuelve a "en revisión" (ni a borrador) una noticia que ya estaba
   // publicada o programada: si se ha desmarcado "Publicada" y tampoco hay una
   // programación, se avisa y no se guarda (el servidor lo impone igualmente).
-  if (!quierePublicar && (document.getElementById("articlePublicadoOriginal").value === "1" || programadoParaOriginal)) {
+  // (Si no puede programar, no se le bloquea: el servidor conserva la fecha programada.)
+  if (!quierePublicar && (document.getElementById("articlePublicadoOriginal").value === "1" || (programadoParaOriginal && puedeProgramarNoticia()))) {
     EOF.toast("Esta noticia ya está publicada o programada: no puede volver a revisión ni a borrador. Deja marcada \"Publicada\" o programa una fecha.", "error");
     return;
   }
@@ -6328,7 +6336,7 @@ function pintarListaArticulos() {
       return `
       <tr class="${!esMio && USER.rol !== "admin" ? "fila-de-otro" : ""}${seleccionada ? " fila-sel-redes" : ""}">
         <td class="col-sel" data-label="">${etiquetable ? `<input type="checkbox" class="chk-redes" data-id="${a.id}" ${seleccionada ? "checked" : ""} aria-label="Seleccionar para organizar en redes" title="Seleccionar para marcar como carrusel, individual o abrir el modal de compartir">` : ""}</td>
-        <td data-label="Título">${escapeHtml(a.titulo)} ${badgeAutoria}${badgeFusionPartido(a)}</td>
+        <td data-label="Título"><div class="celda-titulo-noticia"><span class="titulo-noticia-txt">${escapeHtml(a.titulo)}</span> ${badgeAutoria}${badgeFusionPartido(a)}</div></td>
         <td data-label="Categoría">${categoriaLabel(a.categoria)}${(a.categorias_adicionales && a.categorias_adicionales.length) ? ` <span class="badge-cats-adicionales" title="${escapeHtml(a.categorias_adicionales.map(categoriaLabel).join(', '))}">+${a.categorias_adicionales.length}</span>` : ""}</td>
         <td data-label="Fecha">${formatFecha(a.fecha_publicacion)}</td>
         <td data-label="Estado"><div class="celda-estado-noticia">${a.programado_para
@@ -10585,8 +10593,12 @@ if (formPassword) {
 // ---------- MIS SESIONES ----------
 // Icono genérico de dispositivo (ordenador/móvil) para cada fila; no
 // distinguimos el icono por tipo de dispositivo, solo el texto.
-function iconoDispositivoSesion() {
-  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>`;
+function iconoDispositivoSesion(nombre) {
+  const n = String(nombre || "").toLowerCase();
+  const a = `viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"`;
+  if (/ipad|tablet/.test(n)) return `<svg ${a}><rect x="4.5" y="2.5" width="15" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg>`;
+  if (/iphone|android|m[oó]vil|mobile|phone/.test(n)) return `<svg ${a}><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg>`;
+  return `<svg ${a}><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>`;
 }
 
 // Convierte una fecha ISO del servidor en texto relativo/legible
@@ -11256,18 +11268,27 @@ async function cargaSesiones() {
     const { sesiones } = await apiFetch(`/api/me/sesiones`);
     if (!sesiones || !sesiones.length) {
       cont.innerHTML = `<p class="sesiones-vacio">No hay dispositivos conectados.</p>`;
+      const b0 = document.getElementById("btnCerrarOtrasSesiones"), c0 = document.getElementById("contadorSesiones");
+      if (b0) b0.style.display = "none";
+      if (c0) c0.textContent = "";
       return;
     }
+    const btnOtras = document.getElementById("btnCerrarOtrasSesiones");
+    const contador = document.getElementById("contadorSesiones");
+    if (btnOtras) btnOtras.style.display = sesiones.length > 1 ? "" : "none";
+    if (contador) contador.textContent = sesiones.length === 1 ? "1 dispositivo con la sesión iniciada" : `${sesiones.length} dispositivos con la sesión iniciada`;
     cont.innerHTML = sesiones.map((s) => `
       <div class="fila-sesion ${s.actual ? "es-actual" : ""}" data-id="${s.id}">
-        <div class="icono-dispositivo">${iconoDispositivoSesion()}</div>
+        <div class="icono-dispositivo">${iconoDispositivoSesion(s.dispositivo)}</div>
         <div class="datos-sesion">
           <div class="dispositivo-nombre">
-            ${s.dispositivo}
+            ${escapeHtml(s.dispositivo)}
             ${s.actual ? `<span class="etiqueta-actual">Este dispositivo</span>` : ""}
           </div>
           <div class="detalle-sesion">
-            ${s.ip ? `IP ${s.ip} · ` : ""}Iniciada ${formatearFechaSesion(s.created_at)} · Última actividad: ${formatearFechaSesion(s.last_seen_at)}
+            <span class="meta-sesion"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Iniciada <b>${formatearFechaSesion(s.created_at)}</b></span>
+            <span class="meta-sesion"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Última actividad <b>${formatearFechaSesion(s.last_seen_at)}</b></span>
+            ${s.ip ? `<span class="meta-sesion"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>IP <b>${escapeHtml(s.ip)}</b></span>` : ""}
           </div>
         </div>
         <button type="button" class="btn-cerrar-sesion" data-id="${s.id}" data-actual="${s.actual ? "1" : "0"}">
@@ -16315,43 +16336,190 @@ async function cargaUsuarios(opts = {}) {
 }
 
 // Cuentas públicas de lectores (registradas desde "Acceso" para poder
-// comentar con su nombre). Solo lectura desde el panel: se gestionan
-// solas desde la web pública (registro, verificación de correo,
-// contraseña), así que aquí no hay ni crear ni editar ni borrar.
+// comentar con su nombre). Se registran, verifican el correo y cambian la
+// contraseña solos desde la web pública; desde aquí un Responsable puede
+// buscarlas, filtrarlas, desactivar/reactivar su acceso y eliminarlas
+// (GET /api/readers, PATCH y DELETE /api/readers/:id).
+let LECTORES_LISTA = [];
+let LECTORES_FILTRO = "todos";
+let LECTORES_TEXTO = "";
+let lectoresUIMontada = false;
+
+// Cada lector cae en UN solo estado, así Verificados + Sin verificar + Inactivos = Lectores.
+function lectorEstado(r) {
+  if (!Number(r.activo)) return { clave: "inactivos", clase: "off", texto: "Inactivo" };
+  if (Number(r.email_verificado)) return { clave: "verificados", clase: "ok", texto: "Verificado" };
+  return { clave: "sin_verificar", clase: "aviso", texto: "Sin verificar" };
+}
+
+function lectorIniciales(nombre) {
+  const partes = String(nombre || "").trim().split(/\s+/).filter(Boolean);
+  if (!partes.length) return "?";
+  return (partes[0][0] + (partes.length > 1 ? partes[1][0] : "")).toUpperCase();
+}
+
+// Tono estable por lector (a partir del correo) para el degradado del avatar.
+function lectorTono(texto) {
+  let h = 0;
+  const t = String(texto || "");
+  for (let i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) % 360;
+  return h;
+}
+
+function lectoresNormalizar(t) {
+  return String(t || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+function pintarLectores() {
+  const cos = document.getElementById("tablaLectores");
+  if (!cos) return;
+
+  // Contadores: siempre sobre la lista completa, no sobre lo filtrado.
+  const cuenta = { verificados: 0, sin_verificar: 0, inactivos: 0 };
+  LECTORES_LISTA.forEach((r) => { cuenta[lectorEstado(r).clave]++; });
+  const fijar = (id, n) => { const el = document.getElementById(id); if (el) el.textContent = String(n); };
+  fijar("statLecTotal", LECTORES_LISTA.length);
+  fijar("statLecVerificados", cuenta.verificados);
+  fijar("statLecSinVerificar", cuenta.sin_verificar);
+  fijar("statLecInactivos", cuenta.inactivos);
+  document.querySelectorAll("#lectoresStats .lectores-stat").forEach((b) => {
+    b.classList.toggle("activo", b.dataset.filtro === LECTORES_FILTRO);
+  });
+
+  const q = lectoresNormalizar(LECTORES_TEXTO).trim();
+  const visibles = LECTORES_LISTA.filter((r) => {
+    if (LECTORES_FILTRO !== "todos" && lectorEstado(r).clave !== LECTORES_FILTRO) return false;
+    if (!q) return true;
+    return lectoresNormalizar(r.nombre).includes(q) || lectoresNormalizar(r.email).includes(q);
+  });
+
+  const resultado = document.getElementById("resultadoLectores");
+  if (resultado) {
+    resultado.textContent = (q || LECTORES_FILTRO !== "todos")
+      ? `${visibles.length} de ${LECTORES_LISTA.length}`
+      : "";
+  }
+
+  if (!visibles.length) {
+    cos.innerHTML = `<tr><td colspan="4"><div class="lectores-vacio"><strong>${LECTORES_LISTA.length ? "Ningún lector coincide" : "Todavía no hay lectores registrados"}</strong>${LECTORES_LISTA.length ? "Prueba con otra búsqueda o cambia el filtro." : "Aparecerán aquí cuando alguien cree su cuenta desde «Acceso»."}</div></td></tr>`;
+    return;
+  }
+
+  cos.innerHTML = visibles.map((r) => {
+    const est = lectorEstado(r);
+    const inactivo = est.clave === "inactivos";
+    const fecha = r.created_at
+      ? new Date(String(r.created_at).replace(" ", "T") + (String(r.created_at).includes("Z") ? "" : "Z"))
+          .toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })
+      : "—";
+    return `
+      <tr class="${inactivo ? "lector-inactivo" : ""}" data-id="${Number(r.id)}">
+        <td data-label="Lector">
+          <div class="lector-celda">
+            <span class="lector-avatar" style="--h:${lectorTono(r.email)}" aria-hidden="true">${escapeHtml(lectorIniciales(r.nombre))}</span>
+            <div class="lector-datos">
+              <span class="lector-nombre">${escapeHtml(r.nombre)}</span>
+              <span class="lector-correo">${escapeHtml(r.email)}</span>
+            </div>
+          </div>
+        </td>
+        <td data-label="Estado"><span class="lector-estado lector-estado-${est.clase}">${est.texto}</span></td>
+        <td data-label="Registro"><span class="lector-fecha">${fecha}</span></td>
+        <td class="lector-acciones">
+          <div class="lector-acciones-caja">
+            <button type="button" class="lector-btn" data-accion="alternar" data-id="${Number(r.id)}">${inactivo ? "Reactivar" : "Desactivar"}</button>
+            <button type="button" class="lector-btn lector-btn-peligro" data-accion="eliminar" data-id="${Number(r.id)}">Eliminar</button>
+          </div>
+        </td>
+      </tr>`;
+  }).join("");
+}
+
+function montarLectoresUI() {
+  if (lectoresUIMontada) return;
+  const tabla = document.getElementById("tablaLectores");
+  const stats = document.getElementById("lectoresStats");
+  const buscador = document.getElementById("buscadorLectores");
+  if (!tabla || !stats || !buscador) return;
+  lectoresUIMontada = true;
+
+  stats.addEventListener("click", (ev) => {
+    const b = ev.target.closest(".lectores-stat");
+    if (!b) return;
+    LECTORES_FILTRO = b.dataset.filtro || "todos";
+    pintarLectores();
+  });
+  buscador.addEventListener("input", () => {
+    LECTORES_TEXTO = buscador.value;
+    pintarLectores();
+  });
+  tabla.addEventListener("click", (ev) => {
+    const b = ev.target.closest("button[data-accion]");
+    if (!b || b.disabled) return;
+    const id = Number(b.dataset.id);
+    if (b.dataset.accion === "alternar") lectorAlternarActivo(id, b);
+    else if (b.dataset.accion === "eliminar") lectorEliminar(id, b);
+  });
+}
+
+async function lectorAlternarActivo(id, btn) {
+  const r = LECTORES_LISTA.find((x) => Number(x.id) === id);
+  if (!r || !usuariosPuedeEscribir()) return;
+  const activar = !Number(r.activo);
+  if (!activar) {
+    const ok = await EOF.confirmar(
+      `¿Desactivar a ${r.nombre}? Se cerrarán sus sesiones y no podrá entrar ni comentar hasta que la reactives.`,
+      { textoConfirmar: "Desactivar" }
+    );
+    if (!ok) return;
+  }
+  btn.disabled = true;
+  try {
+    await apiFetch(`/api/readers/${id}`, { method: "PATCH", body: JSON.stringify({ activo: activar }) });
+    r.activo = activar ? 1 : 0;
+    pintarLectores();
+    EOF.toast(activar ? "Lector reactivado." : "Lector desactivado.", "exito");
+  } catch (err) {
+    btn.disabled = false;
+    EOF.toast(err.message || "No se ha podido cambiar el estado del lector.", "error");
+  }
+}
+
+async function lectorEliminar(id, btn) {
+  const r = LECTORES_LISTA.find((x) => Number(x.id) === id);
+  if (!r || !usuariosPuedeEscribir()) return;
+  const ok = await EOF.confirmar(
+    `¿Eliminar la cuenta de ${r.nombre} (${r.email})? Se borrarán sus guardadas, historial, votos y porras, y sus comentarios sin respuesta. No se puede deshacer.`,
+    { peligroso: true, textoConfirmar: "Eliminar cuenta" }
+  );
+  if (!ok) return;
+  btn.disabled = true;
+  try {
+    await apiFetch(`/api/readers/${id}`, { method: "DELETE" });
+    LECTORES_LISTA = LECTORES_LISTA.filter((x) => Number(x.id) !== id);
+    pintarLectores();
+    EOF.toast("Cuenta de lector eliminada.", "exito");
+  } catch (err) {
+    btn.disabled = false;
+    EOF.toast(err.message || "No se ha podido eliminar la cuenta.", "error");
+  }
+}
+
 async function cargaLectores() {
   const cos = document.getElementById("tablaLectores");
   if (!cos) return;
-  cos.innerHTML = "<tr><td colspan='4'>Cargando...</td></tr>";
+  montarLectoresUI();
+  cos.innerHTML = `<tr><td colspan="4"><div class="lectores-cargando"><span class="lectores-spinner" aria-hidden="true"></span>Cargando lectores…</div></td></tr>`;
   try {
     const respLectores = await apiFetch(`/api/readers`);
     if (!respLectores || !Array.isArray(respLectores.readers)) {
       cos.innerHTML = "<tr><td colspan='4' class='usuarios-vacio'>No se ha podido cargar la lista de lectores (API principal sin respuesta o sesión sincronizándose). <button type='button' class='usuarios-vacio-limpiar' onclick='cargaLectores()'>Reintentar</button></td></tr>";
       return;
     }
-    const readers = respLectores.readers;
-
-    const contadorEl = document.getElementById("contadorLectores");
-    const contadorNumeroEl = document.getElementById("contadorLectoresNumero");
-    if (contadorEl && contadorNumeroEl) {
-      const verificados = readers.filter(r => r.email_verificado).length;
-      contadorNumeroEl.textContent = `${verificados} / ${readers.length}`;
-      contadorEl.style.display = readers.length ? "flex" : "none";
-    }
-
-    cos.innerHTML = readers.map(r => {
-      const fecha = r.created_at ? new Date(r.created_at).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" }) : "—";
-      const estadoTexto = !r.activo ? "Inactivo" : (r.email_verificado ? "Correo verificado" : "Correo sin verificar");
-      const estadoClase = !r.activo ? "borrador" : (r.email_verificado ? "publicado" : "borrador");
-      return `
-      <tr>
-        <td data-label="Nombre">${escapeHtml(r.nombre)}</td>
-        <td data-label="Correo">${escapeHtml(r.email)}</td>
-        <td data-label="Estado"><span class="badge-estado ${estadoClase}">${estadoTexto}</span></td>
-        <td data-label="Fecha de registro">${fecha}</td>
-      </tr>`;
-    }).join("") || "<tr><td colspan='4'>Todavía no hay lectores registrados.</td></tr>";
+    LECTORES_LISTA = respLectores.readers;
+    pintarLectores();
   } catch (err) {
-    cos.innerHTML = `<tr><td colspan="4">Error cargando: ${err.message}</td></tr>`;
+    cos.innerHTML = `<tr><td colspan="4" class="usuarios-vacio">Error cargando: ${escapeHtml(err.message)} <button type="button" class="usuarios-vacio-limpiar" onclick="cargaLectores()">Reintentar</button></td></tr>`;
   }
 }
 
@@ -24239,6 +24407,7 @@ async function rellenoCargar({ alRevisitar = false } = {}) {
     }
     await rellenoCargarAlias(); // antes que el estado: las sugerencias necesitan la lista de equipos
     rellenoPintarEstado(datos);
+    try { if (typeof faltantesAlCargarRelleno === "function") faltantesAlCargarRelleno(datos); } catch (e) { console.warn("Detector de partidos que faltan:", e); }
     if (!rellenoEjecutando) {
       if (!datos.action_configurada) rellenoActionInfo(null, false);
       else rellenoActionConsultar().then((e) => rellenoActionInfo(e.run, e.configurada)).catch(() => {});
@@ -24807,6 +24976,9 @@ window.addEventListener("beforeunload", (e) => {
 
 let TIENDA_PRODUCTOS_CACHE = {};
 let TIENDA_PRODUCTOS_LISTA = []; // para poder filtrar por el buscador sin recargar
+// Descuento de la persona ({ porcentaje, motivo } o null). Lo calcula el servidor según su nivel
+// (redactor N3+ o fotógrafo F2) y el catálogo ya llega con el precio rebajado.
+let TIENDA_DESCUENTO = null;
 let TIENDA_PRODUCTO_ELEGIDO = null;
 let TIENDA_PUEDE_GESTIONAR = null; // null = todavía no comprobado
 let TIENDA_PUEDE_GESTIONAR_CONFIRMADO = false; // true solo si la API lo ha confirmado
@@ -24852,6 +25024,28 @@ const TIENDA_PASOS_TIMELINE = ["pendiente_pago", "pagado", "enviado"];
 
 function tiendaFormatPrecio(centimos) {
   return (centimos / 100).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+}
+
+// Precio para tarjetas y ficha: si hay descuento, el precio normal tachado y la etiqueta con el %.
+function tiendaPrecioHTML(p) {
+  const actual = tiendaFormatPrecio(p.precio_centimos);
+  if (!p.precio_original_centimos || p.precio_original_centimos <= p.precio_centimos) return actual;
+  return `<span class="tienda-precio-antes">${tiendaFormatPrecio(p.precio_original_centimos)}</span> ${actual} <span class="tienda-precio-etiqueta">−${Number(p.descuento_pct) || 0}%</span>`;
+}
+
+// Aviso encima del catálogo explicando de dónde viene el descuento (solo si lo hay).
+function tiendaPintarAvisoDescuento() {
+  const grid = document.getElementById("tiendaGrid");
+  if (!grid || !grid.parentNode) return;
+  let aviso = document.getElementById("tiendaDescuentoAviso");
+  if (!TIENDA_DESCUENTO) { if (aviso) aviso.remove(); return; }
+  if (!aviso) {
+    aviso = document.createElement("div");
+    aviso.id = "tiendaDescuentoAviso";
+    aviso.className = "tienda-descuento-aviso";
+    grid.parentNode.insertBefore(aviso, grid);
+  }
+  aviso.innerHTML = `<strong>−${Number(TIENDA_DESCUENTO.porcentaje) || 0}% en toda la tienda</strong><span>${escapeHtml(TIENDA_DESCUENTO.motivo || "Descuento por nivel")}. Los precios que ves ya lo incluyen.</span>`;
 }
 
 function tiendaIconoProducto() {
@@ -25000,7 +25194,9 @@ async function cargaTiendaCatalogo() {
   if (!cont) return;
   cont.innerHTML = "<div class='tienda-skeleton'></div><div class='tienda-skeleton'></div><div class='tienda-skeleton'></div>";
   try {
-    const { productos = [] } = await apiFetch(`/api/tienda/productos`);
+    const { productos = [], descuento = null } = await apiFetch(`/api/tienda/productos`);
+    TIENDA_DESCUENTO = descuento && descuento.porcentaje ? descuento : null;
+    tiendaPintarAvisoDescuento();
     TIENDA_PRODUCTOS_CACHE = {};
     productos.forEach((p) => { TIENDA_PRODUCTOS_CACHE[p.id] = p; });
     TIENDA_PRODUCTOS_LISTA = productos;
@@ -25158,7 +25354,7 @@ function pintarTarjetaProductoTienda(p) {
         <div class="tienda-tarjeta-cuerpo">
           <p class="tienda-tarjeta-nombre">${escapeHtml(p.nombre)}</p>
           ${p.descripcion ? `<p class="tienda-tarjeta-descripcion">${escapeHtml(p.descripcion)}</p>` : ""}
-          <p class="tienda-tarjeta-precio">${tiendaFormatPrecio(p.precio_centimos)}</p>
+          <p class="tienda-tarjeta-precio">${tiendaPrecioHTML(p)}</p>
         </div>
       </div>
       <div class="tienda-tarjeta-pie">
@@ -25273,7 +25469,7 @@ function mostrarTiendaFicha(productoId) {
       </div>
       <div class="tienda-ficha-info">
         <h2 class="tienda-ficha-nombre">${escapeHtml(producto.nombre)}</h2>
-        <p class="tienda-ficha-precio">${tiendaFormatPrecio(producto.precio_centimos)}</p>
+        <p class="tienda-ficha-precio">${tiendaPrecioHTML(producto)}</p>
         ${stock.texto ? `<p class="tienda-stock ${stock.clase}">${stock.texto}</p>` : ""}
         ${producto.descripcion ? `<p class="tienda-ficha-descripcion">${escapeHtml(producto.descripcion)}</p>` : ""}
         <div class="tienda-ficha-yapedido" id="tiendaFichaYaPedido" hidden></div>
@@ -28916,3 +29112,394 @@ async function enviarEdicionLoteMedia(ev) {
     }
   });
 })();
+
+// ---------- LUTO WEB: activar / desactivar el lazo negro desde el panel ----------
+// Funcionalidades > Más > Luto web (solo Responsables). Guarda el ajuste "luto" (GET/PUT /api/luto);
+// public/js/luto.js lo lee en toda la web pública y pinta el lazo sobre el logo.
+let lutoCargadoUnaVez = false;
+
+function lutoAFechaLocal(iso) {
+  // ISO (UTC) -> "YYYY-MM-DDTHH:mm" en hora local, que es lo que entiende <input type="datetime-local">.
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+function lutoPintarEstado() {
+  const activo = document.getElementById("lutoActivo");
+  const txt = document.getElementById("lutoEstadoTxt");
+  const previa = document.getElementById("lutoPrevia");
+  const franja = document.getElementById("lutoPreviaFranja");
+  const msg = document.getElementById("lutoMensaje");
+  if (!activo || !previa) return;
+  if (txt) txt.textContent = activo.checked ? "Activado: la web muestra el lazo" : "Desactivado";
+  previa.classList.toggle("luto-previa-on", activo.checked);
+  const texto = msg ? msg.value.trim() : "";
+  if (franja) { franja.textContent = texto; franja.hidden = !(activo.checked && texto); }
+}
+
+function lutoAvisar(ok, texto) {
+  const msgOk = document.getElementById("msgOkLuto");
+  const err = document.getElementById("errLuto");
+  if (!msgOk || !err) return;
+  msgOk.style.display = "none";
+  err.style.display = "none";
+  if (ok) {
+    msgOk.textContent = texto || "Guardado correctamente.";
+    msgOk.style.display = "block";
+    setTimeout(() => (msgOk.style.display = "none"), 3500);
+  } else {
+    err.textContent = texto;
+    err.style.display = "block";
+  }
+}
+
+async function cargaLutoWeb() {
+  if (lutoCargadoUnaVez) return lutoPintarEstado();
+  try {
+    const d = await apiFetch(`/api/luto`);
+    document.getElementById("lutoActivo").checked = d.activo === true;
+    document.getElementById("lutoMensaje").value = d.mensaje || "";
+    document.getElementById("lutoDetalle").value = d.detalle || "";
+    document.getElementById("lutoHasta").value = lutoAFechaLocal(d.hasta);
+    lutoCargadoUnaVez = true;
+    lutoPintarEstado();
+  } catch (err) {
+    lutoAvisar(false, "No se ha podido cargar el estado del luto: " + err.message);
+  }
+}
+
+async function guardarLutoWeb() {
+  const activo = document.getElementById("lutoActivo").checked;
+  const hastaTxt = document.getElementById("lutoHasta").value;
+  let hasta = null;
+  if (hastaTxt) {
+    const ms = new Date(hastaTxt).getTime();
+    if (isNaN(ms)) throw new Error("La fecha de fin no es válida");
+    if (activo && ms <= Date.now()) throw new Error("La fecha de apagado ya ha pasado: elige una futura o déjala vacía");
+    hasta = new Date(ms).toISOString();
+  }
+  await apiFetch(`/api/luto`, {
+    method: "PUT",
+    body: JSON.stringify({
+      activo,
+      mensaje: document.getElementById("lutoMensaje").value.trim(),
+      detalle: document.getElementById("lutoDetalle").value.trim(),
+      grises: false,
+      hasta,
+    }),
+  });
+  return activo;
+}
+
+const formLuto = document.getElementById("formLuto");
+if (formLuto) {
+  ["lutoMensaje"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener(el.type === "checkbox" ? "change" : "input", lutoPintarEstado);
+  });
+
+  // El interruptor principal guarda al momento (activar un luto no debe depender de acordarse de pulsar Guardar).
+  const lutoSwitch = document.getElementById("lutoActivo");
+  if (lutoSwitch) {
+    lutoSwitch.addEventListener("change", async () => {
+      lutoPintarEstado();
+      lutoSwitch.disabled = true;
+      try {
+        const activo = await guardarLutoWeb();
+        lutoAvisar(true, activo ? "Luto activado: ya se ve en la web (puede tardar hasta un minuto en algunos visitantes)." : "Luto desactivado.");
+      } catch (err) {
+        lutoSwitch.checked = !lutoSwitch.checked; // no se pudo guardar: vuelve a como estaba
+        lutoPintarEstado();
+        lutoAvisar(false, err.message);
+      } finally {
+        lutoSwitch.disabled = false;
+      }
+    });
+  }
+
+  formLuto.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    try {
+      await guardarLutoWeb();
+      lutoAvisar(true, "Guardado correctamente.");
+    } catch (err) {
+      lutoAvisar(false, err.message);
+    }
+  });
+}
+
+
+// ============================================================
+// Detector de partidos que faltan por jornada (Resultados > Calendario de jornadas,
+// dentro de «Relleno automático de partidos»).
+//
+// Para cada liga configurada en el relleno revisa, jornada a jornada, si están TODOS
+// los partidos que tocan: una liga de N equipos juega N/2 partidos por jornada
+// (N = rondas / 2 + 1: 42 rondas = 22 equipos, 38 = 20, 34 = 18). Marca cada jornada:
+//   ok          → están todos y ningún equipo juega dos veces.
+//   incompleta  → hay algunos partidos pero faltan otros (y dice qué equipos no tienen partido).
+//   vacia       → ya tocaba (hay jornadas posteriores con partidos, o el calendario de jornadas
+//                 dice que ya empezó) y no hay ni uno.
+//   exceso      → hay partidos de más o un equipo aparece dos veces (típico cuando TheSportsDB
+//                 pone mal la jornada: sobra en una y falta en la siguiente).
+//   pendiente   → futura y aún sin cargar (informativo, no es un error).
+//
+// Todo se calcula en el navegador con la lista de partidos que el panel ya pide
+// (pedirResultadosCompletos) + la config del relleno: no hay endpoint nuevo, así que
+// el Worker principal y el secundario no necesitan cambios.
+// Estilos: /admin/css/partidos-faltantes.css
+// ============================================================
+const FALTANTES_INTERVALO_AUTO_MS = 60000; // los refrescos automáticos del relleno no relanzan la revisión más a menudo
+const FALTANTES_PROBLEMAS_VISIBLES = 8;    // filas de jornadas con problema antes de plegar el resto
+let faltantesEnMarcha = false;
+let faltantesUltimaRevision = 0;
+let faltantesUltimosDatos = null;          // última respuesta de /api/admin/sync-partidos (ligas y temporada)
+let faltantesUltimoSync = null;            // ultimo_sync_at visto: si cambia, hay datos nuevos y se revisa sin esperar
+
+function faltantesClaveEquipo(nombre) {
+  return String(nombre ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+// Función pura (sin DOM ni red): recibe los datos y devuelve el informe. Así se puede probar aparte.
+function faltantesAnalizar({ resultados = [], ligas = [], temporada = "", calendario = [], hoy = "" } = {}) {
+  const anio = /^(\d{4})/.exec(String(temporada || ""))?.[1];
+  const desde = anio ? `${anio}-07-01` : null; // la tabla acumula temporadas: solo cuenta la actual
+  const informe = [];
+
+  for (const liga of ligas) {
+    const comp = liga.competicion;
+    const grupo = liga.grupo || null;
+    const rondas = parseInt(liga.rondas, 10) || (typeof RELLENO_RONDAS !== "undefined" ? RELLENO_RONDAS[comp] : 0) || 0;
+    const nombre = (typeof RELLENO_NOMBRES !== "undefined" && RELLENO_NOMBRES[comp]) || comp;
+    const partidos = resultados.filter((r) =>
+      r.competicion === comp && (r.grupo || null) === grupo &&
+      (!desde || !r.fecha_partido || String(r.fecha_partido).slice(0, 10) >= desde));
+
+    // Equipos que aparecen en la liga esta temporada (se fusionan variantes de mayúsculas/tildes).
+    const equipos = new Map();
+    for (const p of partidos) {
+      for (const t of [p.equipo_local, p.equipo_visitante]) {
+        const k = faltantesClaveEquipo(t);
+        if (k && !equipos.has(k)) equipos.set(k, String(t).trim());
+      }
+    }
+    const nEquipos = rondas >= 2 && rondas % 2 === 0 ? rondas / 2 + 1 : equipos.size;
+    const porJornada = Math.floor(nEquipos / 2);
+    const notas = [];
+    if (!partidos.length) {
+      informe.push({ clave: `${comp}|${grupo || ""}`, comp, grupo, nombre, rondas, nEquipos, porJornada, equipos: 0, total: 0, jornadas: [], sinPartidos: true, faltan: 0, fuera: 0, notas, conteo: {} });
+      continue;
+    }
+    if (equipos.size > nEquipos) notas.push(`Aparecen ${equipos.size} equipos distintos y deberían ser ${nEquipos}: puede haber un mismo club con dos nombres (revisa «Equipos sin reconocer»).`);
+    if (equipos.size < nEquipos) notas.push(`Solo aparecen ${equipos.size} de los ${nEquipos} equipos esperados: faltan clubes enteros, no solo partidos sueltos.`);
+
+    const porJ = new Map();
+    let fuera = 0;
+    for (const p of partidos) {
+      const j = parseInt(p.jornada, 10);
+      if (!Number.isInteger(j) || j < 1 || (rondas && j > rondas)) { fuera++; continue; }
+      if (!porJ.has(j)) porJ.set(j, []);
+      porJ.get(j).push(p);
+    }
+    const ultimaConPartidos = porJ.size ? Math.max(...porJ.keys()) : 0;
+    const nombresCompletos = equipos.size >= nEquipos; // si faltan clubes enteros no se puede decir «cuáles» no juegan
+
+    const jornadas = [];
+    const conteo = { ok: 0, incompleta: 0, vacia: 0, exceso: 0, pendiente: 0 };
+    let faltan = 0;
+    for (let j = 1; j <= (rondas || ultimaConPartidos); j++) {
+      const lista = porJ.get(j) || [];
+      const juegan = new Map();
+      for (const p of lista) for (const t of [p.equipo_local, p.equipo_visitante]) {
+        const k = faltantesClaveEquipo(t);
+        if (k) juegan.set(k, (juegan.get(k) || 0) + 1);
+      }
+      const repetidos = [...juegan].filter(([, n]) => n > 1).map(([k]) => equipos.get(k));
+      const sinPartido = nombresCompletos ? [...equipos].filter(([k]) => !juegan.has(k)).map(([, n]) => n) : [];
+      const cal = calendario.find((c) => c.competicion === comp && (c.grupo || null) === grupo && Number(c.jornada) === j);
+      const exigible = (!!cal && !!hoy && cal.fecha_inicio <= hoy) || j <= ultimaConPartidos;
+
+      let estado;
+      if (!lista.length) estado = exigible ? "vacia" : "pendiente";
+      else if (lista.length < porJornada) estado = "incompleta";
+      else if (lista.length > porJornada || repetidos.length) estado = "exceso";
+      else estado = "ok";
+
+      const falta = Math.max(0, porJornada - lista.length);
+      if (estado === "incompleta" || estado === "vacia") faltan += falta;
+      conteo[estado]++;
+      jornadas.push({ j, estado, partidos: lista.length, esperados: porJornada, falta, sinPartido, repetidos });
+    }
+    informe.push({ clave: `${comp}|${grupo || ""}`, comp, grupo, nombre, rondas, nEquipos, porJornada, equipos: equipos.size, total: partidos.length, jornadas, sinPartidos: false, faltan, fuera, notas, conteo });
+  }
+
+  const conProblemas = informe.filter((l) => !l.sinPartidos && (l.conteo.incompleta || l.conteo.vacia || l.conteo.exceso || l.fuera));
+  return {
+    ligas: informe,
+    ligasConProblemas: conProblemas.length,
+    jornadasConProblemas: informe.reduce((s, l) => s + (l.sinPartidos ? 0 : l.conteo.incompleta + l.conteo.vacia + l.conteo.exceso), 0),
+    partidosFaltan: informe.reduce((s, l) => s + l.faltan, 0),
+    ligasSinPartidos: informe.filter((l) => l.sinPartidos).length,
+  };
+}
+
+// ---------- Pintado ----------
+const FALTANTES_ETIQUETAS = {
+  ok: "Completa", incompleta: "Incompleta", vacia: "Sin partidos", exceso: "De más / repetidos", pendiente: "Aún sin cargar",
+};
+
+function faltantesTextoJornada(jr) {
+  if (jr.estado === "vacia") return `ninguno de los ${jr.esperados} partidos`;
+  const partes = [`${jr.partidos} de ${jr.esperados} partidos`];
+  if (jr.falta) partes.push(`faltan ${jr.falta}`);
+  if (jr.estado === "exceso" && jr.partidos > jr.esperados) partes.push(`sobran ${jr.partidos - jr.esperados}`);
+  return partes.join(" · ");
+}
+
+function faltantesFilaProblema(jr) {
+  const detalles = [];
+  if (jr.sinPartido.length && jr.estado !== "ok" && jr.estado !== "vacia") detalles.push(`<span class="fal-det"><b>Sin partido:</b> ${jr.sinPartido.map(rellenoEsc).join(", ")}</span>`);
+  if (jr.repetidos.length) detalles.push(`<span class="fal-det"><b>Aparecen dos veces:</b> ${jr.repetidos.map(rellenoEsc).join(", ")}</span>`);
+  return `<li class="fal-prob fal-${jr.estado}">
+    <span class="fal-prob-cab"><strong>J${jr.j}</strong><i class="fal-etq">${FALTANTES_ETIQUETAS[jr.estado]}</i><span class="fal-cuenta">${rellenoEsc(faltantesTextoJornada(jr))}</span></span>
+    ${detalles.join("")}
+  </li>`;
+}
+
+function faltantesPintarLiga(l) {
+  const titulo = `${rellenoEsc(l.nombre)}${l.grupo ? " " + rellenoEsc(l.grupo) : ""}`;
+  if (l.sinPartidos) {
+    return `<li class="fal-liga fal-liga-vacia"><div class="fal-liga-cab"><span class="fal-liga-nombre">${titulo}</span><span class="relleno-chip aviso">Sin partidos guardados esta temporada</span></div></li>`;
+  }
+  const c = l.conteo;
+  const hayProblema = c.incompleta + c.vacia + c.exceso > 0 || l.fuera > 0;
+  const chips = [];
+  if (!hayProblema) chips.push(`<span class="relleno-chip nuevos">✔ Todos los partidos de las jornadas cargadas</span>`);
+  if (c.incompleta) chips.push(`<span class="relleno-chip aviso">${c.incompleta} incompleta${c.incompleta === 1 ? "" : "s"}</span>`);
+  if (c.vacia) chips.push(`<span class="relleno-chip fal-chip-rojo">${c.vacia} sin ningún partido</span>`);
+  if (c.exceso) chips.push(`<span class="relleno-chip fal-chip-naranja">${c.exceso} con partidos de más</span>`);
+  if (l.faltan) chips.push(`<span class="relleno-chip fal-chip-rojo" title="Suma de los partidos que faltan en jornadas incompletas o vacías">${l.faltan === 1 ? "falta 1 partido" : `faltan ${l.faltan} partidos`}</span>`);
+  if (c.pendiente) chips.push(`<span class="relleno-chip" title="Jornadas futuras que todavía no se han traído">${c.pendiente} aún sin cargar</span>`);
+  if (l.fuera) chips.push(`<span class="relleno-chip fal-chip-naranja" title="Partidos con una jornada vacía, 0 o mayor que el nº de rondas de la liga">${l.fuera} con jornada fuera de rango</span>`);
+
+  const rejilla = l.jornadas.map((jr) =>
+    `<span class="fal-j fal-${jr.estado}" title="J${jr.j} · ${rellenoEsc(FALTANTES_ETIQUETAS[jr.estado])} · ${rellenoEsc(jr.partidos + ' de ' + jr.esperados + ' partidos')}">${jr.j}</span>`).join("");
+
+  const problemas = l.jornadas.filter((jr) => jr.estado === "incompleta" || jr.estado === "vacia" || jr.estado === "exceso");
+  const visibles = problemas.slice(0, FALTANTES_PROBLEMAS_VISIBLES).map(faltantesFilaProblema).join("");
+  const resto = problemas.slice(FALTANTES_PROBLEMAS_VISIBLES);
+  const lista = problemas.length
+    ? `<ul class="fal-problemas">${visibles}</ul>${resto.length ? `<details class="fal-mas"><summary>Ver ${resto.length} jornada${resto.length === 1 ? "" : "s"} más con problemas</summary><ul class="fal-problemas">${resto.map(faltantesFilaProblema).join("")}</ul></details>` : ""}`
+    : "";
+  const notas = l.notas.map((n) => `<p class="fal-nota">⚠ ${rellenoEsc(n)}</p>`).join("");
+
+  return `<li class="fal-liga${hayProblema ? " con-problemas" : ""}">
+    <div class="fal-liga-cab"><span class="fal-liga-nombre">${titulo}</span><span class="fal-liga-datos" title="Equipos esperados y partidos por jornada">${l.nEquipos} equipos · ${l.porJornada} partidos por jornada</span></div>
+    <div class="rle-chips">${chips.join("")}</div>
+    <div class="fal-rejilla" role="img" aria-label="Estado de cada jornada de ${titulo}">${rejilla}</div>
+    ${lista}${notas}
+  </li>`;
+}
+
+function faltantesPintar(informe, { hora, error } = {}) {
+  const cont = document.getElementById("faltantesContenido");
+  if (!cont) return;
+  const pie = hora ? `<p class="relleno-ayuda fal-pie">Revisado a las ${rellenoEsc(hora)} con los partidos guardados de la temporada actual.</p>` : "";
+  if (error) {
+    cont.innerHTML = `<p class="relleno-aviso-error"><strong>No se ha podido revisar:</strong> ${rellenoEsc(error)} <button type="button" class="relleno-enlace" data-accion="faltantes-revisar">Reintentar</button></p>`;
+    return;
+  }
+  if (!informe || !informe.ligas.length) {
+    cont.innerHTML = `<p class="relleno-vacio">Añade y guarda al menos una liga arriba para poder revisar sus jornadas.</p>`;
+    return;
+  }
+  let banner;
+  if (informe.jornadasConProblemas) {
+    banner = `<div class="fal-resumen fal-resumen-mal" role="status"><strong>${informe.jornadasConProblemas} jornada${informe.jornadasConProblemas === 1 ? "" : "s"} con problemas</strong> en ${informe.ligasConProblemas} liga${informe.ligasConProblemas === 1 ? "" : "s"}${informe.partidosFaltan ? ` · ${informe.partidosFaltan === 1 ? "falta 1 partido" : `faltan ${informe.partidosFaltan} partidos`}` : ""}.
+      <span class="fal-resumen-ayuda">Prueba «Sincronizar todo (GitHub Action)». Si siguen apareciendo, mira el <em>Calendario de jornadas</em> de arriba: cuando TheSportsDB pone mal la jornada, sobra en una y falta en la siguiente.</span></div>`;
+  } else if (informe.ligasSinPartidos === informe.ligas.length) {
+    banner = `<div class="fal-resumen fal-resumen-aviso" role="status"><strong>Ninguna liga tiene partidos guardados esta temporada.</strong> Lanza una sincronización para traerlos.</div>`;
+  } else {
+    banner = `<div class="fal-resumen fal-resumen-ok" role="status"><strong>✔ No falta ningún partido</strong> en las jornadas cargadas.</div>`;
+  }
+  const leyenda = ["ok", "incompleta", "vacia", "exceso", "pendiente"].map((e) => `<span class="fal-leyenda-it"><i class="fal-j fal-${e}"></i>${FALTANTES_ETIQUETAS[e]}</span>`).join("");
+  cont.innerHTML = `${banner}<div class="fal-leyenda" aria-hidden="true">${leyenda}</div>
+    <ul class="fal-ligas">${informe.ligas.map(faltantesPintarLiga).join("")}</ul>${pie}`;
+}
+
+// ---------- Carga ----------
+const FALTANTES_CACHE_MS = 10 * 60 * 1000; // el aviso del Resumen reutiliza el último informe hasta 10 min
+let faltantesCache = null;                 // { t, informe }
+let faltantesPendiente = null;             // cálculo en vuelo (se comparte entre quien lo pida)
+
+// Calcula el informe (config del relleno + partidos de la temporada + calendario de jornadas).
+// forzar = true: vuelve a pedir los partidos al servidor (ignora la copia reciente).
+// datos: respuesta ya cargada de /api/admin/sync-partidos (si no se pasa y se fuerza, se pide).
+async function faltantesCalcularInforme({ forzar = false, datos: datosPasados = null } = {}) {
+  if (faltantesPendiente && !forzar) return faltantesPendiente;
+  const trabajo = (async () => {
+    let datos = datosPasados || faltantesUltimosDatos;
+    if (!datos || (forzar && !datosPasados)) datos = await apiFetch("/api/admin/sync-partidos");
+    faltantesUltimosDatos = datos;
+    faltantesUltimoSync = datos.sync?.ultimo_sync_at || "";
+    const resultados = await pedirResultadosCompletos({ forzar });
+    const informe = faltantesAnalizar({
+      resultados,
+      ligas: datos.config?.ligas || [],
+      temporada: datos.temporada_actual || datos.config?.temporada || "",
+      calendario: typeof cjCargado !== "undefined" && cjCargado ? calJornadasTodas : [],
+      hoy: calJornadasFechaHoyISO(),
+    });
+    faltantesCache = { t: Date.now(), informe };
+    return informe;
+  })();
+  faltantesPendiente = trabajo;
+  const limpiar = () => { if (faltantesPendiente === trabajo) faltantesPendiente = null; };
+  trabajo.then(limpiar, limpiar);
+  return trabajo;
+}
+
+// Para el aviso del Resumen de Inicio (avisos-entrada.js): informe reciente si lo hay, o uno nuevo.
+async function faltantesInformeCacheado() {
+  if (faltantesCache && Date.now() - faltantesCache.t < FALTANTES_CACHE_MS) return faltantesCache.informe;
+  return faltantesCalcularInforme();
+}
+
+async function faltantesRevisar({ forzar = false, datos = null } = {}) {
+  const cont = document.getElementById("faltantesContenido");
+  if (!cont || faltantesEnMarcha) return;
+  if (!forzar && Date.now() - faltantesUltimaRevision < FALTANTES_INTERVALO_AUTO_MS) return;
+  faltantesEnMarcha = true;
+  const btn = document.getElementById("faltantesRevisar");
+  if (btn) { btn.disabled = true; btn.classList.add("cargando"); }
+  if (!cont.querySelector(".fal-ligas")) cont.innerHTML = `<p class="relleno-vacio">Revisando las jornadas…</p>`;
+  try {
+    const informe = await faltantesCalcularInforme({ forzar, datos });
+    faltantesUltimaRevision = Date.now();
+    faltantesPintar(informe, { hora: new Date().toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }) });
+  } catch (err) {
+    faltantesPintar(null, { error: err.message });
+  } finally {
+    faltantesEnMarcha = false;
+    if (btn) { btn.disabled = false; btn.classList.remove("cargando"); }
+  }
+}
+
+// Lo llama rellenoCargar() cada vez que refresca el estado. Mientras hay un ciclo en curso (el
+// panel se refresca cada 20 s) no se relanza: se esperaría a que terminara para revisar datos estables.
+function faltantesAlCargarRelleno(datos) {
+  const hayDatosNuevos = (datos?.sync?.ultimo_sync_at || "") !== faltantesUltimoSync;
+  faltantesUltimosDatos = datos;
+  if (datos?.estado?.ciclo_en_curso || rellenoEjecutando) return;
+  faltantesRevisar({ forzar: hayDatosNuevos, datos });
+}
+
+document.getElementById("faltantesRevisar")?.addEventListener("click", () => faltantesRevisar({ forzar: true }));
+document.getElementById("faltantesContenido")?.addEventListener("click", (e) => {
+  if (e.target.closest('[data-accion="faltantes-revisar"]')) faltantesRevisar({ forzar: true });
+});
+// Al terminar una sincronización completa (GitHub Action) se revisa de nuevo con datos frescos.
+window.addEventListener("relleno-sincronizado", () => faltantesRevisar({ forzar: true }));

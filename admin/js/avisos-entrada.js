@@ -30,6 +30,7 @@
     feedback: svg('<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="m9 10 2 2 4-4"/>'),
     anulado: svg('<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M10 14l4 4M14 14l-4 4"/>'),
     sincubrir: svg('<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>'),
+    jornadas: svg('<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M12 13v3M12 19h.01"/>'),
     cerrar: svg('<path d="M18 6 6 18M6 6l12 12"/>'),
     flecha: svg('<path d="m9 6 6 6-6 6"/>'),
   };
@@ -93,6 +94,27 @@
       })());
     }
 
+    // Solo Responsables (admin): jornadas de las ligas del relleno a las que les faltan partidos
+    // (detector de «Calendario de jornadas»; ver admin-src/29-detector-partidos-faltantes.js).
+    // El informe se reutiliza hasta 10 min: no se vuelve a pedir toda la lista de partidos cada 2 min.
+    if (USER.rol === "admin" && typeof faltantesInformeCacheado === "function") {
+      tareas.push((async () => {
+        const inf = await faltantesInformeCacheado();
+        const malas = [];
+        for (const l of inf.ligas) for (const j of l.jornadas) if (j.estado === "incompleta" || j.estado === "vacia") malas.push({ l, j });
+        if (!malas.length) return;
+        const ligasN = new Set(malas.map((x) => x.l.clave)).size;
+        const { l, j } = malas[0];
+        const liga = `${l.nombre}${l.grupo ? " " + l.grupo : ""}`;
+        filas.push({
+          id: "jornadas", n: malas.length, urgente: 0, ico: ICO.jornadas,
+          titulo: plural(malas.length, "jornada con partidos que faltan", "jornadas con partidos que faltan"),
+          sub: `${plural(inf.partidosFaltan, "partido por traer", "partidos por traer")} en ${plural(ligasN, "liga", "ligas")} — revisa el calendario y vuelve a sincronizar.`,
+          detalle: `${liga} · J${j.j}: ${j.partidos} de ${j.esperados}${malas.length > 1 ? ` (y ${malas.length - 1} más)` : ""}`,
+        });
+      })());
+    }
+
     // Partidos sin cubrir y anulados: se recalculan también por separado y a menudo (ver refrescarResultados).
     tareas.push(filasResultados(false).then((fs) => { fs.forEach((f) => filas.push(f)); }));
 
@@ -114,7 +136,7 @@
     return ordenar(filas);
   }
 
-  const ORDEN = { revision: 0, redes: 1, sincubrir: 1.5, ediciones: 2, feedback: 2.5, acreditaciones: 3, anulados: 4 };
+  const ORDEN = { revision: 0, redes: 1, sincubrir: 1.5, ediciones: 2, feedback: 2.5, acreditaciones: 3, jornadas: 3.5, anulados: 4 };
   const ordenar = (filas) => filas.sort((a, b) => (b.urgente > 0) - (a.urgente > 0) || ORDEN[a.id] - ORDEN[b.id]);
 
   // Filas de Resultados: «sin cubrir» (los mismos criterios que el filtro «Solo sin cubrir»: avisoPartidoDesatendido
@@ -242,6 +264,7 @@
     else if (id === "feedback") eofIrASeccion("feedback", vacio);
     else if (id === "acreditaciones") eofIrASeccion("acreditaciones", vacio);
     else if (id === "sincubrir") { eofIrASeccion("resultados.lista", vacio); pulsarCuando("#filtroSoloSinCubrirResultados", 24); }
+    else if (id === "jornadas") { eofIrASeccion("resultados.calendarioJornadas", vacio); setTimeout(() => { const b = $("faltantesBloque"); if (b && b.scrollIntoView) b.scrollIntoView({ behavior: "smooth", block: "start" }); }, 700); }
     else if (id === "anulados") { eofIrASeccion("resultados.lista", vacio); pulsarCuando('#filtrosEstadoResultados [data-filtro-estado="anulados"]', 24); }
   }
 
@@ -328,6 +351,7 @@
     acreditaciones: ["acreditación pendiente", "acreditaciones pendientes"], ediciones: ["solicitud de edición", "solicitudes de edición"],
     feedback: ["comentario nuevo de revisión", "comentarios nuevos de revisión"], sincubrir: ["partido sin cubrir", "partidos sin cubrir"],
     anulados: ["partido anulado por reprogramar", "partidos anulados por reprogramar"],
+    jornadas: ["jornada con partidos que faltan", "jornadas con partidos que faltan"],
   };
   let refrescandoTodo = false;
   async function refrescarTodo() {

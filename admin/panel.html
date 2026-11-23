@@ -3,7 +3,7 @@
 <head>
 <meta name="color-scheme" content="light dark">
 <script src="/js/tema.js?v=65626bb2"></script>
-<script src="/js/preferencias.js?v=30f61dc6"></script>
+<script src="/js/preferencias.js?v=1217ad5e"></script>
 <script src="/admin/js/rol-inicial.js?v=547dba45"></script>
 <meta charset="UTF-8">
 <script>/* splash.js: bloquea el parseo solo si la web se abre como app (o ?splash=1); en navegador carga en async, sin frenar el pintado. */
@@ -30,7 +30,7 @@ else{var s=document.createElement("script");s.src="/js/splash.js?v=b5004788";s.a
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;0,700;0,800;1,500;1,700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/style.css?v=6cd42e49">
+<link rel="stylesheet" href="/css/style.css?v=d54e5461">
 <!-- Sistema de foco de imagen (mismo CSS que la web pública, ver js/foco.js). -->
 <link rel="stylesheet" href="/css/foco.css?v=c8652610">
 <!-- CSS específico del panel de administración: tablas, formularios,
@@ -39,10 +39,10 @@ else{var s=document.createElement("script");s.src="/js/splash.js?v=b5004788";s.a
      "mam-abierto" sí se añadía) pero sin ningún estilo aplicado: sin
      position:fixed, sin z-index, sin fondo... por eso el clic parecía
      "no hacer nada" (solo el salto del overflow:hidden del body). -->
-<link rel="stylesheet" href="/admin/css/admin.css?v=702bfb9f">
+<link rel="stylesheet" href="/admin/css/admin.css?v=a25174f4">
 <link rel="stylesheet" href="/admin/css/lectores.css?v=2bc5897b">
 <link rel="stylesheet" href="/admin/css/modales.css?v=e63221b1">
-<link rel="stylesheet" href="/css/modales-mejoras.css?v=982413bb">
+<link rel="stylesheet" href="/css/modales-mejoras.css?v=913d9851">
 <link rel="stylesheet" href="/admin/css/aviso-inactividad.css?v=205f002e">
 <link rel="stylesheet" href="/admin/css/bloqueo-edicion-noticias.css?v=72b09006">
 <link rel="stylesheet" href="/css/visor-media.css?v=db0d997d">
@@ -55,16 +55,19 @@ else{var s=document.createElement("script");s.src="/js/splash.js?v=b5004788";s.a
 <link rel="stylesheet" href="/admin/css/primera-tarea.css?v=da9f0f06">
 <!-- Votaciones internas del equipo (pestaña "Votaciones", ver js/votaciones.js). -->
 <link rel="stylesheet" href="/admin/css/votaciones.css?v=5415633e">
-<link rel="stylesheet" href="/admin/css/podcast-admin.css?v=b4c20d17">
+<link rel="stylesheet" href="/admin/css/podcast-admin.css?v=a57d1779">
+<link rel="stylesheet" href="/admin/css/comunicados-admin.css?v=3fa78495">
 <link rel="stylesheet" href="/admin/css/feedback-revision.css?v=7d2d26d0">
 <link rel="stylesheet" href="/admin/css/copiar-campos-grok.css?v=124ac43e">
 <link rel="stylesheet" href="/admin/css/historial-versiones.css?v=e91ac402">
 <link rel="stylesheet" href="/admin/css/papelera.css?v=74a12dd9">
-<link rel="stylesheet" href="/admin/css/funcionalidades.css?v=3ca0ac21">
-<link rel="stylesheet" href="/admin/css/tienda-mejoras.css?v=50731be8">
+<link rel="stylesheet" href="/admin/css/funcionalidades.css?v=32e9057c">
+<link rel="stylesheet" href="/admin/css/luto-panel.css?v=78353d1d">
+<link rel="stylesheet" href="/admin/css/tienda-mejoras.css?v=9c74d43c">
 <link rel="stylesheet" href="/admin/css/calendario-contenido.css?v=cff16e93">
 <link rel="stylesheet" href="/admin/css/calendario-jornadas.css?v=bc9c4958">
 <link rel="stylesheet" href="/admin/css/relleno-mejoras.css?v=96ecb4a7">
+<link rel="stylesheet" href="/admin/css/partidos-faltantes.css?v=35cd4072">
 <link rel="stylesheet" href="/admin/css/organigrama.css?v=92604cdb">
 <link rel="stylesheet" href="/admin/css/grupos-trabajo.css?v=c7e93ea8">
 <link rel="stylesheet" href="/admin/css/subresponsables-areas.css?v=0548298a">
@@ -76,7 +79,7 @@ else{var s=document.createElement("script");s.src="/js/splash.js?v=b5004788";s.a
 <link rel="stylesheet" href="/admin/css/formularios-resumen.css?v=0bb62084">
 <link rel="stylesheet" href="/admin/css/modales-partido.css?v=cb1d28fa">
 <link rel="stylesheet" href="/admin/css/selector-fecha-modal.css?v=aca1d060">
-<link rel="stylesheet" href="/admin/css/ajustes-cuenta-mejoras.css?v=275b4515">
+<link rel="stylesheet" href="/admin/css/ajustes-cuenta-mejoras.css?v=f30318c6">
 <link rel="stylesheet" href="/admin/css/usuarios-etiquetas-mejoras.css?v=5139f4bd">
 <link rel="stylesheet" href="/admin/css/noticias-rapidas-mejoras.css?v=f1c3e2d3">
 <link rel="stylesheet" href="/admin/css/usuarios-unificado.css?v=e4bf156d">
@@ -204,6 +207,7 @@ else{var s=document.createElement("script");s.src="/js/splash.js?v=b5004788";s.a
     <button data-grupo="comunidad" data-tab="tienda" id="tabTienda"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>Tienda<span class="tab-badge-pendientes" id="badgeTiendaPendientes" style="display:none;">0</span></button>
     <button data-grupo="comunidad" data-tab="votaciones" id="tabVotaciones"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V8l3-5 4 4v4"/><path d="m9 16 2 2 4-4"/></svg>Votaciones<span class="tab-badge-pendientes" id="badgeVotPendientes" style="display:none;">0</span></button>
     <button data-grupo="comunidad" data-tab="feedback" id="tabFeedback"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="m9 10 2 2 4-4"/></svg>Feedback<span class="tab-badge-pendientes" id="badgeFeedbackNoLeidos" style="display:none;">0</span></button>
+    <button data-grupo="comunidad" data-tab="comunicados" id="tabComunicados" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="m9 14.5 2 2 4-4.5"/></svg>Comunicados</button>
     <button data-grupo="admin" data-tab="usuarios" id="tabUsuarios"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>Usuarios</button>
     <button data-grupo="admin" data-tab="funcionalidades" id="tabFuncionalidades"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3 6.5 7 1-5 5 1.5 7-6.5-3.5L5 21.5l1.5-7-5-5 7-1z"/></svg>Funcionalidades<span class="tab-badge-pendientes" id="badgeFuncionalidadesPendientes" style="display:none;">0</span></button>
     <button data-grupo="admin" data-tab="ajustes" id="tabAjustesOculto" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>Ajustes de cuenta</button>
@@ -1413,6 +1417,21 @@ else{var s=document.createElement("script");s.src="/js/splash.js?v=b5004788";s.a
           <p id="rellenoActionInfo" class="relleno-ayuda" hidden></p>
         </section>
 
+        <!-- Detector de partidos que faltan: compara, jornada a jornada, los partidos guardados
+             con los que tocan (equipos / 2). Lógica: admin.js (faltantes*), estilos:
+             /admin/css/partidos-faltantes.css -->
+        <section class="relleno-bloque" id="faltantesBloque" aria-labelledby="faltantesTitulo">
+          <div class="relleno-bloque-cab">
+            <h4 id="faltantesTitulo">Partidos que faltan por jornada</h4>
+            <button type="button" class="relleno-btn relleno-btn-sec relleno-btn-mini" id="faltantesRevisar" title="Vuelve a comparar los partidos guardados con los que tocan en cada jornada">↻ Revisar ahora</button>
+          </div>
+          <p class="relleno-ayuda">
+            Comprueba en cada liga si en todas las jornadas están todos los partidos (equipos ÷ 2) y si
+            algún equipo no tiene partido o aparece dos veces.
+          </p>
+          <div id="faltantesContenido" class="fal-contenido" aria-live="polite"><p class="relleno-vacio">Cargando…</p></div>
+        </section>
+
         <section class="relleno-bloque" aria-labelledby="rellenoTituloAlias">
           <div class="relleno-bloque-cab"><h4 id="rellenoTituloAlias">Equipos sin reconocer</h4></div>
           <p class="relleno-ayuda">
@@ -1634,9 +1653,10 @@ else{var s=document.createElement("script");s.src="/js/splash.js?v=b5004788";s.a
         <h3 class="titulo-subseccion" style="margin-top:0;">Dispositivos conectados</h3>
         <p class="ayuda-editor" style="margin:0 0 14px;">Estos son los dispositivos y navegadores donde tu cuenta tiene la sesión iniciada actualmente. Si no reconoces alguno, ciérralo.</p>
         <div id="listaSesiones" class="lista-sesiones"></div>
-        <button type="button" class="btn-secundari" id="btnCerrarOtrasSesiones" style="margin-top:14px;">Cerrar todos los demás dispositivos</button>
-        <p id="msgOkSesiones"></p>
-        <p id="errSesiones"></p>
+        <div class="sesiones-pie">
+          <span class="sesiones-contador" id="contadorSesiones"></span>
+          <button type="button" class="btn-secundari" id="btnCerrarOtrasSesiones">Cerrar todos los demás dispositivos</button>
+        </div>
       </div>
     </div>
 
@@ -1681,6 +1701,7 @@ else{var s=document.createElement("script");s.src="/js/splash.js?v=b5004788";s.a
         <button data-subtab="informacion" id="subtabFuncInformacion_btn"><span class="func-nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.5v.01"/></svg></span><span class="func-nav-txt">Información</span></button>
         <button data-subtab="responsabilidades" id="subtabFuncResponsabilidades_btn"><span class="func-nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span><span class="func-nav-txt">Responsabilidades</span></button>
         <button data-subtab="redesSociales" id="subtabRedesSociales_btn"><span class="func-nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg></span><span class="func-nav-txt">Redes sociales</span></button>
+        <button data-subtab="luto" id="subtabFuncLuto_btn"><span class="func-nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 11C6.5 7 6 3 8.6 2c1.8-.7 3.4.7 3.4 2.6 0-1.9 1.6-3.3 3.4-2.6C18 3 17.5 7 12 11z"/><path d="M12 11l-3.6 10M12 11l3.6 10"/></svg></span><span class="func-nav-txt">Luto web</span></button>
         <button data-subtab="historial" id="subtabFuncHistorial_btn"><span class="func-nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><span class="func-nav-txt">Historial</span></button>
         <button data-subtab="reuniones" id="subtabFuncReuniones_btn"><span class="func-nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/></svg></span><span class="func-nav-txt">Reuniones</span></button>
         </div>
@@ -1962,6 +1983,52 @@ else{var s=document.createElement("script");s.src="/js/splash.js?v=b5004788";s.a
           <button type="submit" class="btn-primari">Guardar redes sociales</button>
           <p id="msgOkRedes">Guardado correctamente.</p>
           <p id="errRedes"></p>
+        </div>
+      </form>
+    </div>
+
+    <div class="subpanel" id="subpanel-luto">
+      <header class="func-head"><span class="func-head-ico negro"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 11C6.5 7 6 3 8.6 2c1.8-.7 3.4.7 3.4 2.6 0-1.9 1.6-3.3 3.4-2.6C18 3 17.5 7 12 11z"/><path d="M12 11l-3.6 10M12 11l3.6 10"/></svg></span><div class="func-head-txt"><h3>Luto web</h3><p>Pon un lazo negro sobre el logo de la web pública cuando haga falta. Se activa y se desactiva al instante desde aquí, sin tocar código.</p></div></header>
+      <form id="formLuto" class="luto-form" novalidate>
+        <div class="luto-grid">
+          <div class="luto-col">
+            <label class="luto-interruptor" for="lutoActivo">
+              <span class="luto-int-textos"><span class="luto-int-titulo">Luto en la web</span><span class="luto-int-ayuda" id="lutoEstadoTxt">Desactivado</span></span>
+              <input type="checkbox" id="lutoActivo">
+              <span class="luto-pista" aria-hidden="true"></span>
+            </label>
+            <div class="luto-campo">
+              <label for="lutoMensaje">Mensaje (opcional)</label>
+              <input type="text" id="lutoMensaje" maxlength="160" autocomplete="off" placeholder="Ej.: ELOTROFÚTBOLTV se suma al luto por…">
+              <small>Aparece en una franja fina sobre la cabecera y al pasar el ratón por el lazo. Vacío = solo el lazo.</small>
+            </div>
+            <div class="luto-campo">
+              <label for="lutoDetalle">Texto del homenaje (opcional)</label>
+              <textarea id="lutoDetalle" rows="4" maxlength="500" placeholder="Se muestra en la tarjeta que se abre al pasar el ratón o pulsar sobre el lazo."></textarea>
+              <small>Si lo dejas vacío, la tarjeta muestra un mensaje por defecto.</small>
+            </div>
+            <div class="luto-campo">
+              <label for="lutoHasta">Apagar solo el (opcional)</label>
+              <input type="datetime-local" id="lutoHasta">
+              <small>Si lo dejas vacío, el luto sigue hasta que lo desactives aquí.</small>
+            </div>
+          </div>
+          <div class="luto-col">
+            <div class="luto-previa" id="lutoPrevia" aria-hidden="true">
+              <div class="luto-previa-franja" id="lutoPreviaFranja" hidden></div>
+              <div class="luto-previa-cab">
+                <span class="luto-previa-logo"><img src="/img/logo.png" alt=""><svg class="luto-previa-lazo" viewBox="0 0 32 46" aria-hidden="true"><defs><linearGradient id="lutoPrevG" x1="0" y1="0" x2=".4" y2="1"><stop offset="0" stop-color="#4a4a52"/><stop offset=".45" stop-color="#17171b"/><stop offset="1" stop-color="#050506"/></linearGradient></defs><g fill="none" stroke-linecap="round" stroke-linejoin="round"><g stroke="#fff" stroke-width="5.6"><path d="M16 21C6 13 4.5 5 10 2.6 13.6 1.2 16 4.2 16 7.6 16 4.2 18.4 1.2 22 2.6 27.5 5 26 13 16 21Z"/><path d="M16 21C14 28 11.6 35 8.6 42.5"/><path d="M16 21C18 28 20.4 35 23.4 42.5"/></g><g stroke="url(#lutoPrevG)" stroke-width="3.5"><path d="M16 21C6 13 4.5 5 10 2.6 13.6 1.2 16 4.2 16 7.6 16 4.2 18.4 1.2 22 2.6 27.5 5 26 13 16 21Z"/><path d="M16 21C14 28 11.6 35 8.6 42.5"/><path d="M16 21C18 28 20.4 35 23.4 42.5"/></g></g><ellipse cx="16" cy="21" rx="2.2" ry="2.1" fill="url(#lutoPrevG)" stroke="#fff" stroke-width=".9"/></svg></span>
+                <span class="luto-previa-marca">EL<b>OTROFÚTBOL</b>TV</span>
+              </div>
+              <div class="luto-previa-cuerpo"><span></span><span></span><span class="corta"></span></div>
+            </div>
+            <p class="luto-previa-pie">Vista previa aproximada de cómo se verá.</p>
+          </div>
+        </div>
+        <div class="func-redes-pie">
+          <button type="submit" class="btn-primari">Guardar cambios</button>
+          <p id="msgOkLuto">Guardado correctamente.</p>
+          <p id="errLuto"></p>
         </div>
       </form>
     </div>
@@ -2771,6 +2838,19 @@ else{var s=document.createElement("script");s.src="/js/splash.js?v=b5004788";s.a
     <div id="pcAdminResumen" class="pca-resumen" hidden></div>
     <div id="pcAdminForm" hidden></div>
     <div id="pcAdminLista"><p class="pca-vacio">Cargando…</p></div>
+  </div>
+
+  <!-- COMUNICADOS OFICIALES DEL MEDIO (solo Responsables; lógica en admin/js/comunicados-admin.js) -->
+  <div class="panel" id="panel-comunicados">
+    <div class="cmo-cab">
+      <span class="cmo-cab-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="m9 14.5 2 2 4-4.5"/></svg></span>
+      <div class="cmo-cab-txt"><h2>Comunicados oficiales</h2><p>Mensajes oficiales del medio, escritos por los Responsables para los lectores.</p></div>
+      <button type="button" class="cmo-btn cmo-primario cmo-btn-nuevo" data-act="nuevo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Nuevo comunicado</button>
+    </div>
+    <p class="cmo-nota">Los comunicados <b>publicados</b> aparecen en <a href="/comunicados" target="_blank" rel="noopener">elotrofutbol.media/comunicados</a>; el <b>fijado</b> sale además como aviso en la portada. Los borradores solo los ven los Responsables. Haz clic en un comunicado para editarlo.</p>
+    <div id="cmoEstadisticas" class="cmo-resumen" hidden></div>
+    <div id="cmoForm" hidden></div>
+    <div id="cmoLista"><p class="cmo-vacio">Cargando…</p></div>
   </div>
 
   <div class="panel" id="panel-votaciones">
@@ -4533,10 +4613,10 @@ else{var s=document.createElement("script");s.src="/js/splash.js?v=b5004788";s.a
 <script src="/js/vendor/qrcode.js"></script>
 <script src="/admin/js/historial-versiones.js?v=f291777a"></script>
 <script src="/admin/js/copiar-campos-grok.js?v=4d978252"></script>
-<script src="/admin/js/admin.js?v=001197f6"></script>
+<script src="/admin/js/admin.js?v=7d1b0026"></script>
 <script src="/admin/js/formularios-resumen.js?v=1e6f6a17"></script>
 <script src="/admin/js/modales-partido.js?v=4bb2cdbd"></script>
-<script src="/admin/js/menu-lateral.js?v=31c10f4a"></script>
+<script src="/admin/js/menu-lateral.js?v=be4b8e25"></script>
 <script src="/admin/js/func-nav.js?v=8231f0fd"></script>
 <script src="/admin/js/vigilante-sesion.js?v=38d34395" defer></script>
 <script src="/admin/js/movil-app.js?v=a393d7a0" defer></script>
@@ -4551,8 +4631,9 @@ else{var s=document.createElement("script");s.src="/js/splash.js?v=b5004788";s.a
 <script src="/admin/js/primera-tarea.js?v=1f78e4e5"></script>
 <script src="/admin/js/nueva-noticia-ui.js?v=9d6da94b"></script>
 <script src="/admin/js/votaciones.js?v=20326437"></script>
-<script src="/js/portadas-podcast.js?v=644e4e3a"></script>
-<script src="/admin/js/podcast-admin.js?v=7e3a9f20"></script>
+<script src="/js/portadas-podcast.js?v=b71f9af1"></script>
+<script src="/admin/js/podcast-admin.js?v=638366d0"></script>
+<script src="/admin/js/comunicados-admin.js?v=2834feb4"></script>
 <script src="/admin/js/feedback-revision.js?v=1a3733d1"></script>
 <script src="/admin/js/papelera.js?v=5a7902ac"></script>
 <script src="/admin/js/calendario-contenido.js?v=7be7bb14"></script>
@@ -4570,7 +4651,7 @@ else{var s=document.createElement("script");s.src="/js/splash.js?v=b5004788";s.a
 <script src="/admin/js/estadisticas-cuenta.js?v=0f83d608"></script>
 <script src="/admin/js/resumen-mensual.js?v=3a78b346"></script>
 <script src="/admin/js/inactividad-sesion.js?v=1756f0e2"></script>
-<script src="/admin/js/avisos-entrada.js?v=78708a3b"></script>
+<script src="/admin/js/avisos-entrada.js?v=92e8f244"></script>
 <script src="/admin/js/inicio-personalizar.js?v=4595237b"></script>
 <script src="/admin/js/inicio-resumen.js?v=4b5757f2"></script>
 <script src="/admin/js/racha-celebracion.js?v=e621ebf8"></script>

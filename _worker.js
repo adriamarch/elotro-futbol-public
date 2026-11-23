@@ -2822,6 +2822,64 @@ function inyectarEtiquetaParaBot(html, etiqueta, indexable, articulos) {
   return salida;
 }
 
+// ---------- Comunicados oficiales: HTML real para bots (listado y detalle) ----------
+// El texto es plano: se escapa siempre y los párrafos se separan por línea en blanco.
+const COMUNICADO_TIPOS_BOT = { comunicado: "Comunicado", aviso: "Aviso", rectificacion: "Rectificación", novedad: "Novedad" };
+const COMUNICADO_RAIZ_CARGANDO = /(<div id="cmRoot"[^>]*>)[\s\S]*?(<\/div>\s*<\/main>)/;
+
+function inyectarComunicadosListadoParaBot(html, items) {
+  const e = escapeHtmlSeo;
+  const lista = (items || []).filter((c) => c && c.slug && c.titulo);
+  const canonica = seoUrlAbsolutaWorker("/comunicados");
+  const titulo = `Comunicados oficiales — ${SEO_NOMBRE_SITIO}`;
+  const descripcion = `Comunicados, avisos, rectificaciones y novedades oficiales de ${SEO_NOMBRE_SITIO}.`;
+  const jsonLd = {
+    "@context": "https://schema.org", "@type": "CollectionPage", "url": canonica, "name": titulo, "inLanguage": "es",
+    "isPartOf": { "@type": "WebSite", "@id": SEO_DOMINIO_WORKER + "/#sitio" },
+    "mainEntity": { "@type": "ItemList", "numberOfItems": lista.length,
+      "itemListElement": lista.map((c, i) => ({ "@type": "ListItem", "position": i + 1, "url": seoUrlAbsolutaWorker(`/comunicados/${encodeURIComponent(c.slug)}`), "name": c.titulo })) },
+  };
+  const migas = { "@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [
+    { "@type": "ListItem", "position": 1, "name": "Inicio", "item": seoUrlAbsolutaWorker("/") },
+    { "@type": "ListItem", "position": 2, "name": "Comunicados" } ] };
+  const extra = `<script type="application/ld+json" id="seo-jsonld-coleccion">${ldSeguroBot(jsonLd)}</script>\n<script type="application/ld+json" id="seo-jsonld-breadcrumb">${ldSeguroBot(migas)}</script>`;
+  const items_html = lista.map((c) => `<li><a href="${e(seoUrlAbsolutaWorker(`/comunicados/${encodeURIComponent(c.slug)}`))}">${e(c.titulo)}</a>${c.resumen ? ` — ${e(c.resumen)}` : ""}</li>`).join("\n");
+  const cuerpo = `<header class="cm-hero"><h1>Comunicados oficiales</h1></header>` + (items_html ? `<ul class="lista-ultimas-bot">\n${items_html}\n</ul>` : `<p>Todavía no hay comunicados.</p>`);
+  let salida = quitarMetaImagenGenerica(html);
+  salida = salida.replace(/<title id="pageTitle">[\s\S]*?<\/title>/, () =>
+    bloqueMetaPaginaBot({ titulo, descripcion, canonica, imagen: seoUrlAbsolutaWorker("img/og-default.png"), ancho: 1200, alto: 630, extra }));
+  return salida.replace(COMUNICADO_RAIZ_CARGANDO, (_m, a, b) => `${a}${cuerpo}${b}`);
+}
+
+function inyectarComunicadoParaBot(html, c) {
+  if (!c || !c.slug || !c.titulo) return html;
+  const e = escapeHtmlSeo;
+  const canonica = seoUrlAbsolutaWorker(`/comunicados/${encodeURIComponent(c.slug)}`);
+  const titulo = `${c.titulo} — Comunicados de ${SEO_NOMBRE_SITIO}`;
+  const descripcion = resumirTextoSeo(c.resumen || c.contenido || "", 160) || `Comunicado oficial de ${SEO_NOMBRE_SITIO}.`;
+  const jsonLd = {
+    "@context": "https://schema.org", "@type": "NewsArticle", "headline": String(c.titulo).slice(0, 110), "description": descripcion,
+    "datePublished": c.fecha || undefined, "dateModified": (c.actualizado || c.fecha || undefined),
+    "inLanguage": "es", "mainEntityOfPage": canonica,
+    "author": { "@type": "Organization", "@id": SEO_DOMINIO_WORKER + "/#organizacion", "name": SEO_NOMBRE_SITIO },
+    "publisher": { "@type": "Organization", "@id": SEO_DOMINIO_WORKER + "/#organizacion", "name": SEO_NOMBRE_SITIO },
+  };
+  const migas = { "@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [
+    { "@type": "ListItem", "position": 1, "name": "Inicio", "item": seoUrlAbsolutaWorker("/") },
+    { "@type": "ListItem", "position": 2, "name": "Comunicados", "item": seoUrlAbsolutaWorker("/comunicados") },
+    { "@type": "ListItem", "position": 3, "name": c.titulo } ] };
+  const extra = `<script type="application/ld+json" id="seo-jsonld-comunicado">${ldSeguroBot(jsonLd)}</script>\n<script type="application/ld+json" id="seo-jsonld-breadcrumb">${ldSeguroBot(migas)}</script>`;
+  const parrafos = String(c.contenido || "").split(/\n{2,}/).map((p) => p.trim()).filter(Boolean)
+    .map((p) => `<p>${e(p).replace(/\n/g, "<br>")}</p>`).join("\n");
+  const cuerpo = `<article class="cm-art"><p>${e(COMUNICADO_TIPOS_BOT[c.tipo] || "Comunicado")}${c.fecha ? ` · ${e(c.fecha)}` : ""}</p>`
+    + `<h1>${e(c.titulo)}</h1>` + (c.resumen ? `<p>${e(c.resumen)}</p>` : "") + parrafos
+    + `<footer><strong>${e(c.firma || "Responsable")}</strong></footer></article>`;
+  let salida = quitarMetaImagenGenerica(html);
+  salida = salida.replace(/<title id="pageTitle">[\s\S]*?<\/title>/, () =>
+    bloqueMetaPaginaBot({ titulo, descripcion, canonica, imagen: seoUrlAbsolutaWorker("img/og-default.png"), ancho: 1200, alto: 630, tipoOg: "article", extra }));
+  return salida.replace(COMUNICADO_RAIZ_CARGANDO, (_m, a, b) => `${a}${cuerpo}${b}`);
+}
+
 function primeraFotoGaleriaConFoco(grupos) {
   for (const valor of Object.values(grupos || {})) {
     const lista = Array.isArray(valor) ? valor : (valor && Array.isArray(valor.fotos) ? valor.fotos : []);
@@ -3901,6 +3959,44 @@ const manejadorPrincipal = {
         }
       }
       return respuestaEtiqueta;
+    }
+
+    // --- /comunicados y /comunicados/{slug}: comunicados oficiales -> sirve comunicados.html ---
+    // El detalle se reescribe internamente hacia "/comunicados" con el slug en ?c= (la página también
+    // lee el slug del pathname). Los bots reciben <head> y texto reales, y un 404 real si no existe o
+    // es un borrador. OJO: "/comunicados/admin" y "/comunicados/fijado" no son páginas (son de la API).
+    const matchComunicado = path.match(/^\/comunicados(?:\/([^/]+))?\/?$/);
+    if (matchComunicado && request.method === "GET") {
+      let slugCom = matchComunicado[1] || "";
+      try { slugCom = decodeURIComponent(slugCom); } catch { /* se deja tal cual */ }
+      const comUrl = new URL("/comunicados", url);
+      comUrl.search = "";
+      if (slugCom) comUrl.searchParams.set("c", slugCom);
+      const respuestaCom = await env.ASSETS.fetch(new Request(comUrl.toString(), request));
+      const esHtmlCom = respuestaCom.status === 200 && (respuestaCom.headers.get("Content-Type") || "").includes("text/html");
+      if (esUserAgentBot(request.headers.get("User-Agent")) && esHtmlCom) {
+        if (!slugCom) {
+          const listaCom = await obtenerJsonApiParaBot("/api/comunicados");
+          if (listaCom && Array.isArray(listaCom.items)) {
+            const headersLc = new Headers(respuestaCom.headers);
+            headersLc.delete("Content-Length");
+            headersLc.set("Vary", "User-Agent");
+            return new Response(inyectarComunicadosListadoParaBot(await respuestaCom.text(), listaCom.items), { status: 200, headers: headersLc });
+          }
+        } else if (/^[\w-]{1,80}$/.test(slugCom)) {
+          const datosCom = await obtenerJsonApiParaBot(`/api/comunicados/${encodeURIComponent(slugCom)}`);
+          if (datosCom && datosCom.noExiste) return servir404Real(env, url.toString());
+          if (datosCom && datosCom.item) {
+            const headersCom = new Headers(respuestaCom.headers);
+            headersCom.delete("Content-Length");
+            headersCom.set("Vary", "User-Agent");
+            return new Response(inyectarComunicadoParaBot(await respuestaCom.text(), datosCom.item), { status: 200, headers: headersCom });
+          }
+        } else {
+          return servir404Real(env, url.toString());
+        }
+      }
+      return respuestaCom;
     }
 
     // --- /autor?id=...: perfil del autor con metadatos y noticias para bots.

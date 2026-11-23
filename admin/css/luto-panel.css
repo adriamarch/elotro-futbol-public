@@ -1,0 +1,349 @@
+/* =====================================================================
+   PANEL ADMIN -- LUTO WEB (Funcionalidades > Más > Luto web)
+   ---------------------------------------------------------------------
+   Rediseño solo de CSS: no cambia ni el HTML ni el JS del panel.
+   Se carga DESPUÉS de funcionalidades.css y pisa sus reglas de luto.
+
+   Idea: es un ajuste serio, así que el panel es sobrio y silencioso.
+   Lo único que "se enciende" es la tarjeta del interruptor: pasa de
+   tarjeta clara a bloque negro cuando el luto está activo. El resto se
+   queda quieto y neutro (grafito / ceniza), sin acentos de color.
+
+   Piezas:
+     .luto-interruptor   tarjeta de estado + interruptor (ON = negro)
+     .luto-campo         cada campo opcional (mensaje, homenaje, apagado)
+     .luto-previa        maqueta de navegador con la cabecera de la web
+     .func-redes-pie     barra inferior con Guardar y los avisos
+   Se adapta al ancho REAL del bloque (container query), no al de la
+   ventana, porque el menú lateral le quita sitio al contenido.
+   ===================================================================== */
+
+#subpanel-luto{
+  --l-tinta:#0b0b0d;
+  --l-grafito:#17171b;
+  --l-ceniza:#cbd5e1;
+  --l-hilo:rgba(15,17,21,.14);
+  --l-aro:rgba(15,17,21,.07);
+
+  /* Iconos (se pintan con currentColor vía mask) */
+  --l-i-lazo:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 11C6.5 7 6 3 8.6 2c1.8-.7 3.4.7 3.4 2.6 0-1.9 1.6-3.3 3.4-2.6C18 3 17.5 7 12 11z'/%3E%3Cpath d='M12 11l-3.6 10M12 11l3.6 10'/%3E%3C/svg%3E");
+  --l-i-franja:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='5' rx='1.5'/%3E%3Cpath d='M6 14h12M6 18h8'/%3E%3C/svg%3E");
+  --l-i-tarjeta:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='4' y='4' width='16' height='16' rx='3'/%3E%3Cpath d='M8 9h8M8 13h8M8 17h5'/%3E%3C/svg%3E");
+  --l-i-reloj:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 7v5l3 2'/%3E%3C/svg%3E");
+  --l-i-ok:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E");
+  --l-i-aviso:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 6v7M12 17.5v.01'/%3E%3C/svg%3E");
+}
+[data-theme="dark"] #subpanel-luto{
+  --l-hilo:rgba(229,231,235,.2);
+  --l-aro:rgba(229,231,235,.07);
+}
+
+/* ---------------------------------------------------------------
+   1. CABECERA DE LA SUBSECCIÓN
+   La genérica lleva un halo celeste; aquí se cambia por uno grafito
+   para que la sección no parezca una más de color.
+   --------------------------------------------------------------- */
+#subpanel-luto .func-head{
+  background:
+    radial-gradient(circle at 100% 0,var(--l-aro),transparent 60%),
+    var(--tarjeta);
+}
+#subpanel-luto .func-head-ico.negro{
+  background:linear-gradient(145deg,#2a2c34,var(--l-tinta));
+  color:#fff;
+  box-shadow:0 6px 16px rgba(11,11,13,.28),inset 0 0 0 1px rgba(255,255,255,.1);
+}
+[data-theme="dark"] #subpanel-luto .func-head-ico.negro{
+  background:linear-gradient(145deg,#1e2129,#05060a);
+  box-shadow:0 0 0 1px rgba(229,231,235,.28),0 6px 16px rgba(0,0,0,.5);
+}
+
+/* ---------------------------------------------------------------
+   2. DISPOSICIÓN: formulario a la izquierda, vista previa a la derecha
+   Se reacciona al ancho del propio formulario.
+   --------------------------------------------------------------- */
+#formLuto.luto-form{container:luto / inline-size;}
+#formLuto .luto-grid{
+  display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);
+  gap:24px;margin-bottom:22px;align-items:start;
+}
+#formLuto .luto-col{display:flex;flex-direction:column;gap:12px;min-width:0;}
+/* La vista previa acompaña al scroll mientras se escribe el mensaje. */
+@container luto (min-width:721px){
+  #formLuto .luto-grid > .luto-col:last-child{position:sticky;top:16px;}
+}
+@container luto (max-width:720px){
+  #formLuto .luto-grid{grid-template-columns:1fr;gap:20px;}
+}
+
+/* ---------------------------------------------------------------
+   3. TARJETA DEL INTERRUPTOR (estado del luto)
+   Apagado: tarjeta clara. Encendido: bloque negro. Es el único gesto
+   fuerte de la pantalla.
+   --------------------------------------------------------------- */
+#formLuto .luto-interruptor{
+  position:relative;display:flex;align-items:center;gap:16px;
+  min-height:76px;padding:16px 18px;cursor:pointer;
+  border-radius:var(--f-radio);border:1px solid var(--borde);
+  background:var(--tarjeta);color:var(--texto);
+  box-shadow:var(--sombra-sm);
+  transition:background .25s,border-color .25s,color .25s,box-shadow .25s;
+}
+#formLuto .luto-interruptor:hover{border-color:var(--l-hilo);box-shadow:var(--sombra-md);}
+
+/* Medallón con el lazo: el cuadrado es ::before y el dibujo va encima en ::after */
+#formLuto .luto-interruptor::before{
+  content:"";flex:0 0 auto;width:46px;height:46px;border-radius:14px;
+  background:var(--f-suave);border:1px solid var(--borde);
+  transition:background .25s,border-color .25s;
+}
+#formLuto .luto-interruptor::after{
+  content:"";position:absolute;left:18px;top:50%;width:46px;height:46px;margin-top:-23px;
+  background:var(--texto-suave);
+  -webkit-mask:var(--l-i-lazo) center/24px 24px no-repeat;mask:var(--l-i-lazo) center/24px 24px no-repeat;
+  pointer-events:none;transition:background .25s;
+}
+
+#formLuto .luto-int-textos{flex:1 1 auto;display:flex;flex-direction:column;gap:3px;min-width:0;}
+#formLuto .luto-int-titulo{font-weight:800;font-size:1.02rem;line-height:1.2;color:inherit;}
+#formLuto .luto-int-ayuda{
+  display:flex;align-items:center;gap:8px;
+  font-size:.82rem;line-height:1.35;color:var(--texto-suave);transition:color .25s;
+}
+/* Puntito de estado: gris apagado, blanco encendido (sin parpadeos) */
+#formLuto .luto-int-ayuda::before{
+  content:"";flex:0 0 auto;width:8px;height:8px;border-radius:50%;
+  background:#94a3b8;transition:background .25s,box-shadow .25s;
+}
+
+/* Interruptor */
+#formLuto .luto-interruptor input{position:absolute;opacity:0;width:0;height:0;pointer-events:none;}
+#formLuto .luto-pista{
+  position:relative;flex:0 0 auto;width:54px;height:30px;border-radius:15px;
+  background:#cbd5e1;box-shadow:inset 0 1px 3px rgba(0,0,0,.2);
+  transition:background .25s;
+}
+#formLuto .luto-pista::after{
+  content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;
+  box-shadow:0 2px 5px rgba(0,0,0,.3);
+  transition:transform .25s cubic-bezier(.2,.8,.2,1),background .25s;
+}
+#formLuto .luto-interruptor input:checked + .luto-pista{background:#e5e7eb;}
+#formLuto .luto-interruptor input:checked + .luto-pista::after{transform:translateX(24px);background:var(--l-tinta);}
+#formLuto .luto-interruptor input:focus-visible + .luto-pista{outline:2px solid var(--celeste);outline-offset:3px;}
+#formLuto .luto-interruptor input:disabled + .luto-pista{opacity:.55;}
+#formLuto .luto-interruptor:has(input:disabled){cursor:progress;}
+
+/* Encendido: bloque negro */
+#formLuto .luto-interruptor:has(input:checked){
+  color:#fff;border-color:var(--l-tinta);
+  background:linear-gradient(135deg,var(--l-tinta) 0%,#1d1f27 100%);
+  box-shadow:0 10px 26px rgba(11,11,13,.32);
+}
+#formLuto .luto-interruptor:has(input:checked)::before{
+  background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);
+}
+#formLuto .luto-interruptor:has(input:checked)::after{background:#fff;}
+#formLuto .luto-interruptor:has(input:checked) .luto-int-ayuda{color:#d5dae3;}
+#formLuto .luto-interruptor:has(input:checked) .luto-int-ayuda::before{
+  background:#fff;box-shadow:0 0 0 3px rgba(255,255,255,.2);
+}
+#formLuto .luto-interruptor:has(input:focus-visible){outline:2px solid var(--celeste);outline-offset:2px;}
+[data-theme="dark"] #formLuto .luto-interruptor:has(input:checked){
+  border-color:rgba(229,231,235,.38);
+  background:linear-gradient(135deg,#05060a 0%,#14161d 100%);
+  box-shadow:0 10px 26px rgba(0,0,0,.55);
+}
+
+/* ---------------------------------------------------------------
+   4. CAMPOS
+   Etiquetas en minúscula normal (antes iban todo en mayúsculas) y un
+   icono pequeño que dice DÓNDE aparece cada texto en la web.
+   --------------------------------------------------------------- */
+#formLuto .luto-campo{
+  display:flex;flex-direction:column;gap:8px;padding:16px 18px;
+  border-radius:var(--f-radio);background:var(--tarjeta);
+  border:1px solid var(--borde);box-shadow:var(--sombra-sm);
+  transition:border-color .18s,box-shadow .18s;
+}
+#formLuto .luto-campo:hover{border-color:var(--l-hilo);}
+#formLuto .luto-campo:focus-within{border-color:var(--celeste);box-shadow:0 0 0 3px rgba(91,184,232,.18);}
+
+#panel-funcionalidades #formLuto .luto-campo label{
+  display:flex;align-items:center;gap:8px;margin:0;
+  font-size:.86rem;font-weight:700;letter-spacing:0;text-transform:none;color:var(--texto);
+}
+#formLuto .luto-campo label::before{
+  content:"";flex:0 0 auto;width:30px;height:30px;border-radius:9px;
+  background:var(--f-suave);border:1px solid var(--borde);
+}
+/* El icono real se pinta encima del cuadradito con un fondo-máscara */
+#formLuto .luto-campo label{position:relative;}
+#formLuto .luto-campo label::after{
+  content:"";position:absolute;left:0;top:50%;width:30px;height:30px;margin-top:-15px;
+  background:var(--texto-suave);
+  -webkit-mask:var(--l-icono,none) center/16px 16px no-repeat;mask:var(--l-icono,none) center/16px 16px no-repeat;
+  pointer-events:none;
+}
+#formLuto .luto-campo:has(#lutoMensaje){--l-icono:var(--l-i-franja);}
+#formLuto .luto-campo:has(#lutoDetalle){--l-icono:var(--l-i-tarjeta);}
+#formLuto .luto-campo:has(#lutoHasta){--l-icono:var(--l-i-reloj);}
+#formLuto .luto-campo:focus-within label::after{background:var(--texto);}
+
+#panel-funcionalidades #formLuto .luto-campo input,
+#panel-funcionalidades #formLuto .luto-campo textarea{
+  display:block;width:100%;margin:0;padding:12px 14px;min-height:46px;
+  border-radius:12px;border:1.5px solid transparent;
+  background:var(--f-suave);color:var(--texto);
+  font-size:.92rem;font-family:inherit;line-height:1.45;
+  transition:border-color .18s,background .18s;
+}
+#panel-funcionalidades #formLuto .luto-campo textarea{min-height:112px;resize:vertical;}
+#panel-funcionalidades #formLuto .luto-campo input::placeholder,
+#panel-funcionalidades #formLuto .luto-campo textarea::placeholder{color:var(--texto-suave);opacity:.75;}
+#panel-funcionalidades #formLuto .luto-campo input:hover,
+#panel-funcionalidades #formLuto .luto-campo textarea:hover{border-color:var(--borde);}
+#panel-funcionalidades #formLuto .luto-campo input:focus,
+#panel-funcionalidades #formLuto .luto-campo textarea:focus{
+  outline:none;background:var(--tarjeta);border-color:var(--celeste);
+}
+/* Selector de fecha: no ocupa todo el ancho y se ve bien en oscuro */
+#panel-funcionalidades #formLuto .luto-campo input[type="datetime-local"]{
+  width:auto;max-width:100%;min-width:min(100%,250px);cursor:pointer;
+}
+[data-theme="dark"] #formLuto .luto-campo input[type="datetime-local"]{color-scheme:dark;}
+#formLuto .luto-campo small{font-size:.78rem;color:var(--texto-suave);line-height:1.45;}
+
+/* ---------------------------------------------------------------
+   5. VISTA PREVIA: maqueta de navegador
+   La clase luto-previa-on la pone el JS cuando el interruptor está
+   activo; con ella el rótulo de la esquina cambia a "Con luto".
+   --------------------------------------------------------------- */
+#formLuto .luto-previa{
+  position:relative;padding-top:30px;
+  border-radius:var(--f-radio);overflow:hidden;
+  border:1px solid var(--borde);background:var(--tarjeta);
+  box-shadow:var(--sombra-md);
+}
+/* barra del navegador: tres puntos neutros */
+#formLuto .luto-previa::before{
+  content:"";position:absolute;left:0;right:0;top:0;height:30px;
+  background:
+    radial-gradient(circle at 16px 50%,var(--borde) 0 4px,transparent 4.5px),
+    radial-gradient(circle at 32px 50%,var(--borde) 0 4px,transparent 4.5px),
+    radial-gradient(circle at 48px 50%,var(--borde) 0 4px,transparent 4.5px),
+    var(--f-suave);
+  border-bottom:1px solid var(--borde);
+}
+/* rótulo de estado, a la derecha de la barra */
+#formLuto .luto-previa::after{
+  content:"Sin luto";position:absolute;top:6px;right:10px;z-index:2;
+  height:18px;padding:0 9px;border-radius:9px;
+  display:inline-flex;align-items:center;
+  font-size:.68rem;font-weight:700;line-height:1;letter-spacing:.2px;
+  color:var(--texto-suave);background:var(--tarjeta);border:1px solid var(--borde);
+  transition:background .25s,color .25s,border-color .25s;
+}
+#formLuto .luto-previa.luto-previa-on::after{
+  content:"Con luto";color:#fff;background:var(--l-tinta);border-color:var(--l-tinta);
+}
+[data-theme="dark"] #formLuto .luto-previa.luto-previa-on::after{border-color:rgba(229,231,235,.4);}
+
+#formLuto .luto-previa-franja{
+  background:var(--l-tinta);color:#f4f4f6;text-align:center;
+  font-size:.76rem;line-height:1.4;padding:8px 14px;
+  border-bottom:1px solid rgba(255,255,255,.14);overflow-wrap:anywhere;
+}
+#formLuto .luto-previa-cab{
+  display:flex;align-items:center;gap:14px;padding:18px 20px;
+  background:#0c1b2e;border-bottom:4px solid #d1132e;
+}
+#formLuto .luto-previa-logo{position:relative;display:inline-flex;flex:none;}
+#formLuto .luto-previa-logo img{height:52px;width:auto;display:block;}
+#formLuto .luto-previa-marca{
+  font-family:var(--font-tit);font-size:1.15rem;letter-spacing:.5px;color:#fff;font-weight:700;min-width:0;
+}
+#formLuto .luto-previa-marca b{color:#d1132e;font-weight:700;}
+
+/* Cuerpo de la maqueta: una "foto" y unas líneas de texto */
+#formLuto .luto-previa-cuerpo{padding:16px 20px 22px;display:flex;flex-direction:column;gap:10px;}
+#formLuto .luto-previa-cuerpo span{display:block;height:9px;border-radius:5px;background:var(--f-suave);}
+#formLuto .luto-previa-cuerpo span:first-child{height:76px;border-radius:12px;margin-bottom:4px;}
+#formLuto .luto-previa-cuerpo span.corta{width:55%;}
+
+#formLuto .luto-previa-pie{
+  margin:2px 4px 0;font-size:.78rem;line-height:1.45;color:var(--texto-suave);text-align:center;
+}
+
+/* ---------------------------------------------------------------
+   6. BARRA INFERIOR: Guardar + avisos
+   --------------------------------------------------------------- */
+#formLuto .func-redes-pie{
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  padding-top:20px;border-top:1px solid var(--borde);
+}
+/* Guardar en grafito (el rojo del botón genérico no pega aquí) */
+#panel-funcionalidades #formLuto .func-redes-pie .btn-primari{
+  margin:0;min-height:46px;padding:12px 28px;border-radius:26px;
+  background:linear-gradient(135deg,#2a2c34,var(--l-tinta));color:#fff;
+  box-shadow:0 4px 14px rgba(11,11,13,.3);
+}
+#panel-funcionalidades #formLuto .func-redes-pie .btn-primari:hover{
+  box-shadow:0 8px 20px rgba(11,11,13,.4);
+}
+#panel-funcionalidades #formLuto .func-redes-pie .btn-primari:focus-visible{outline:2px solid var(--celeste);outline-offset:3px;}
+[data-theme="dark"] #panel-funcionalidades #formLuto .func-redes-pie .btn-primari{
+  background:linear-gradient(135deg,#f3f4f6,#cbd5e1);color:var(--l-tinta);
+  box-shadow:0 4px 14px rgba(0,0,0,.45);
+}
+
+/* Avisos: el JS los muestra con style.display="block", así que aquí
+   solo se les da forma (icono + color) sin tocar display. */
+#msgOkLuto,#errLuto{
+  position:relative;margin:0;padding:11px 14px 11px 42px;border-radius:12px;
+  font-size:.88rem;font-weight:600;line-height:1.4;flex:1 1 260px;max-width:620px;
+}
+#msgOkLuto::before,#errLuto::before{
+  content:"";position:absolute;left:14px;top:50%;width:18px;height:18px;margin-top:-9px;
+  -webkit-mask:var(--l-i-ok) center/14px 14px no-repeat;mask:var(--l-i-ok) center/14px 14px no-repeat;
+  background:currentColor;
+}
+#errLuto::before{
+  -webkit-mask-image:var(--l-i-aviso);mask-image:var(--l-i-aviso);
+}
+
+/* ---------------------------------------------------------------
+   7. MÓVIL Y ACCESIBILIDAD
+   --------------------------------------------------------------- */
+@media(max-width:600px){
+  /* 16 px evita el zoom automático de iOS al enfocar un campo */
+  #panel-funcionalidades #formLuto .luto-campo input,
+  #panel-funcionalidades #formLuto .luto-campo textarea{font-size:16px;}
+  #formLuto .luto-interruptor{padding:14px 14px;gap:12px;}
+  #formLuto .luto-interruptor::after{left:14px;}
+  #formLuto .luto-campo{padding:14px;}
+  #formLuto .luto-previa-cab{padding:14px 16px;gap:12px;}
+  #formLuto .luto-previa-logo img{height:42px;}
+  #formLuto .luto-previa-marca{font-size:1rem;}
+  #formLuto .func-redes-pie{flex-direction:column;align-items:stretch;}
+  #panel-funcionalidades #formLuto .func-redes-pie .btn-primari{width:100%;}
+  #msgOkLuto,#errLuto{flex:1 1 auto;max-width:none;}
+}
+@media(prefers-reduced-motion:reduce){
+  #formLuto .luto-interruptor,
+  #formLuto .luto-interruptor::before,
+  #formLuto .luto-interruptor::after,
+  #formLuto .luto-int-ayuda,
+  #formLuto .luto-int-ayuda::before,
+  #formLuto .luto-pista,
+  #formLuto .luto-pista::after,
+  #formLuto .luto-campo,
+  #formLuto .luto-previa::after{transition:none;}
+}
+@media(forced-colors:active){
+  #formLuto .luto-interruptor,
+  #formLuto .luto-campo,
+  #formLuto .luto-previa{border:1px solid CanvasText;}
+  #formLuto .luto-pista{border:1px solid CanvasText;}
+  #formLuto .luto-interruptor:has(input:checked) .luto-pista{background:Highlight;}
+}

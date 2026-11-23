@@ -28,10 +28,12 @@
     tienda: '<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/>',
     comentarios: '<path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>',
     mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>',
+    comunicado: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="m9 14.5 2 2 4-4.5"/>',
     anuncio: '<path d="M3 11v2a1 1 0 001 1h2l5 4V6L6 10H4a1 1 0 00-1 1z"/><path d="M15.5 8.5a5 5 0 010 7M18.5 5.5a9 9 0 010 13"/>',
     usuarios: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
     reloj: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
     papelera: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 12.2a2 2 0 0 0 2 1.8h6a2 2 0 0 0 2-1.8L18 7M9 7V4.5h6V7"/>',
+    luto: '<path d="M12 11C6.5 7 6 3 8.6 2c1.8-.7 3.4.7 3.4 2.6 0-1.9 1.6-3.3 3.4-2.6C18 3 17.5 7 12 11z"/><path d="M12 11l-3.6 10M12 11l3.6 10"/>',
     red: '<circle cx="6" cy="12" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><path d="M8.6 10.6l6.8-3.2M8.6 13.4l6.8 3.2"/>',
     grafico: '<path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/>',
     casa: '<path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9"/>',
@@ -66,6 +68,7 @@
       { t: "Comentarios", ic: "comentarios", tab: "funcionalidades", sub: "comentarios", badge: "badgeFuncComentarios" },
       { t: "Newsletter", ic: "mail", tab: "funcionalidades", sub: "newsletter" },
       { t: "Anuncios", ic: "anuncio", tab: "funcionalidades", sub: "anuncios" },
+      { t: "Comunicados oficiales", ic: "comunicado", tab: "comunicados" },
       { t: "Lectores", ic: "usuarios", tab: "usuarios", sub: "lectores" }
     ]},
     { titulo: "Administración", items: [
@@ -74,6 +77,7 @@
       { t: "Reuniones", ic: "calendario", tab: "funcionalidades", sub: "reuniones" },
       { t: "Responsabilidades", ic: "check", tab: "funcionalidades", sub: "responsabilidades" },
       { t: "Redes sociales", ic: "red", tab: "funcionalidades", sub: "redesSociales" },
+      { t: "Luto web", ic: "luto", tab: "funcionalidades", sub: "luto" },
       { t: "Historial", ic: "reloj", tab: "funcionalidades", sub: "historial" },
       { t: "Analíticas", ic: "grafico", tab: "analiticas" }
     ]}

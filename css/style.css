@@ -211,3 +211,7 @@ footer .footer-brand .footer-brand-nombre .footer-brand-tv{margin-left:8px;paddi
 .btn-instalar-app:focus-visible{outline:3px solid var(--celeste);outline-offset:2px}
 @media(max-width:720px){.btn-instalar-app span{display:none}.btn-instalar-app{padding:9px}.btn-instalar-app svg{width:18px;height:18px}}
 @media(display-mode:standalone),(display-mode:fullscreen),(display-mode:minimal-ui){.btn-instalar-app{display:none}}
+
+/* Copa Federación: sin logo junto a la etiqueta de las noticias (solo el texto). */
+html body .ctx-noticia .ctx-fila .ctx-cat img.ctx-logo[src*="copa-federacion"]{display:none!important}
+html body .ctx-noticia .ctx-cat.ctx-cat-con-logo:has(img.ctx-logo[src*="copa-federacion"]){padding-left:0}
