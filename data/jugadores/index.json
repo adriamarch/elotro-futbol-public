@@ -1,5 +1,5 @@
 {
- "actualizado": "2026-11-03",
+ "actualizado": "2026-11-26",
  "fuente": "Flashscore.es",
  "clubes": [
   {
@@ -16,7 +16,7 @@
    "competicion": "hypermotion",
    "grupo": null,
    "temporada": "2026/2027",
-   "jugadores": 34
+   "jugadores": 35
   },
   {
    "club": "AD Mérida",
@@ -24,7 +24,7 @@
    "competicion": "primera_federacion",
    "grupo": "Grupo 1",
    "temporada": "2026/2027",
-   "jugadores": 27
+   "jugadores": 26
   },
   {
    "club": "Águilas FC",
@@ -32,7 +32,7 @@
    "competicion": "primera_federacion",
    "grupo": "Grupo 2",
    "temporada": "2026/2027",
-   "jugadores": 27
+   "jugadores": 26
   },
   {
    "club": "Albacete Balompié",
@@ -40,7 +40,7 @@
    "competicion": "hypermotion",
    "grupo": null,
    "temporada": "2026/2027",
-   "jugadores": 36
+   "jugadores": 37
   },
   {
    "club": "Algeciras CF",
@@ -56,7 +56,7 @@
    "competicion": "primera_federacion",
    "grupo": "Grupo 2",
    "temporada": "2026/2027",
-   "jugadores": 27
+   "jugadores": 28
   },
   {
    "club": "Arenas Club",
@@ -88,7 +88,7 @@
    "competicion": "primera_federacion",
    "grupo": "Grupo 2",
    "temporada": "2026/2027",
-   "jugadores": 29
+   "jugadores": 32
   },
   {
    "club": "Atlético Osasuna B",
@@ -96,7 +96,7 @@
    "competicion": "segunda_federacion",
    "grupo": "Grupo 2",
    "temporada": "2026/2027",
-   "jugadores": 34
+   "jugadores": 28
   },
   {
    "club": "Barakaldo CF",
@@ -160,7 +160,7 @@
    "competicion": "hypermotion",
    "grupo": null,
    "temporada": "2026/2027",
-   "jugadores": 33
+   "jugadores": 36
   },
   {
    "club": "CD Coria",
@@ -184,7 +184,7 @@
    "competicion": "hypermotion",
    "grupo": null,
    "temporada": "2026/2027",
-   "jugadores": 37
+   "jugadores": 36
   },
   {
    "club": "CD Extremadura",
@@ -208,7 +208,7 @@
    "competicion": "primera_federacion",
    "grupo": "Grupo 1",
    "temporada": "2026/2027",
-   "jugadores": 25
+   "jugadores": 26
   },
   {
    "club": "CD Mirandés",
@@ -216,7 +216,7 @@
    "competicion": "primera_federacion",
    "grupo": "Grupo 1",
    "temporada": "2026/2027",
-   "jugadores": 28
+   "jugadores": 29
   },
   {
    "club": "CD Tenerife",
@@ -224,7 +224,7 @@
    "competicion": "hypermotion",
    "grupo": null,
    "temporada": "2026/2027",
-   "jugadores": 26
+   "jugadores": 28
   },
   {
    "club": "CD Teruel",
@@ -232,7 +232,7 @@
    "competicion": "primera_federacion",
    "grupo": "Grupo 2",
    "temporada": "2026/2027",
-   "jugadores": 22
+   "jugadores": 21
   },
   {
    "club": "CD Tudelano",
@@ -248,7 +248,7 @@
    "competicion": "primera_federacion",
    "grupo": "Grupo 2",
    "temporada": "2026/2027",
-   "jugadores": 25
+   "jugadores": 26
   },
   {
    "club": "CE Manresa",
@@ -264,7 +264,7 @@
    "competicion": "hypermotion",
    "grupo": null,
    "temporada": "2026/2027",
-   "jugadores": 33
+   "jugadores": 35
   },
   {
    "club": "Celta Fortuna",
@@ -328,7 +328,7 @@
    "competicion": "primera_federacion",
    "grupo": "Grupo 1",
    "temporada": "2026/2027",
-   "jugadores": 24
+   "jugadores": 23
   },
   {
    "club": "Cultural Leonesa",
@@ -336,7 +336,7 @@
    "competicion": "primera_federacion",
    "grupo": "Grupo 1",
    "temporada": "2026/2027",
-   "jugadores": 31
+   "jugadores": 33
   },
   {
    "club": "Deportivo Alavés B",
@@ -344,7 +344,15 @@
    "competicion": "segunda_federacion",
    "grupo": "Grupo 1",
    "temporada": "2026/2027",
-   "jugadores": 31
+   "jugadores": 26
+  },
+  {
+   "club": "Elche Ilicitano",
+   "slug": "elche-ilicitano",
+   "competicion": "segunda_federacion",
+   "grupo": "Grupo 3",
+   "temporada": "2026/2027",
+   "jugadores": 36
   },
   {
    "club": "FC Andorra",
@@ -352,7 +360,7 @@
    "competicion": "hypermotion",
    "grupo": null,
    "temporada": "2026/2027",
-   "jugadores": 28
+   "jugadores": 27
   },
   {
    "club": "FC Barcelona Atlètic",
@@ -360,7 +368,7 @@
    "competicion": "segunda_federacion",
    "grupo": "Grupo 2",
    "temporada": "2026/2027",
-   "jugadores": 35
+   "jugadores": 36
   },
   {
    "club": "FC Cartagena",
@@ -368,7 +376,7 @@
    "competicion": "primera_federacion",
    "grupo": "Grupo 2",
    "temporada": "2026/2027",
-   "jugadores": 28
+   "jugadores": 27
   },
   {
    "club": "Gimnàstic de Tarragona",
@@ -384,7 +392,7 @@
    "competicion": "hypermotion",
    "grupo": null,
    "temporada": "2026/2027",
-   "jugadores": 33
+   "jugadores": 34
   },
   {
    "club": "Girona FC B",
@@ -456,7 +464,7 @@
    "competicion": "primera_federacion",
    "grupo": "Grupo 1",
    "temporada": "2026/2027",
-   "jugadores": 25
+   "jugadores": 26
   },
   {
    "club": "Rayo Cantabria",
@@ -472,7 +480,7 @@
    "competicion": "primera_federacion",
    "grupo": "Grupo 1",
    "temporada": "2026/2027",
-   "jugadores": 30
+   "jugadores": 31
   },
   {
    "club": "RCD Espanyol B",
@@ -488,7 +496,7 @@
    "competicion": "hypermotion",
    "grupo": null,
    "temporada": "2026/2027",
-   "jugadores": 30
+   "jugadores": 35
   },
   {
    "club": "Real Avilés Industrial",
@@ -496,7 +504,7 @@
    "competicion": "primera_federacion",
    "grupo": "Grupo 1",
    "temporada": "2026/2027",
-   "jugadores": 27
+   "jugadores": 28
   },
   {
    "club": "Real Jaén CF",
@@ -504,7 +512,7 @@
    "competicion": "primera_federacion",
    "grupo": "Grupo 2",
    "temporada": "2026/2027",
-   "jugadores": 28
+   "jugadores": 29
   },
   {
    "club": "Real Madrid Castilla",
@@ -512,7 +520,7 @@
    "competicion": "primera_federacion",
    "grupo": "Grupo 2",
    "temporada": "2026/2027",
-   "jugadores": 37
+   "jugadores": 36
   },
   {
    "club": "Real Murcia CF",
@@ -520,7 +528,7 @@
    "competicion": "primera_federacion",
    "grupo": "Grupo 2",
    "temporada": "2026/2027",
-   "jugadores": 29
+   "jugadores": 28
   },
   {
    "club": "Real Oviedo",
@@ -528,7 +536,7 @@
    "competicion": "hypermotion",
    "grupo": null,
    "temporada": "2026/2027",
-   "jugadores": 32
+   "jugadores": 33
   },
   {
    "club": "Real Oviedo Vetusta",
@@ -552,7 +560,7 @@
    "competicion": "hypermotion",
    "grupo": null,
    "temporada": "2026/2027",
-   "jugadores": 28
+   "jugadores": 30
   },
   {
    "club": "Real Unión Club",
@@ -560,7 +568,7 @@
    "competicion": "primera_federacion",
    "grupo": "Grupo 1",
    "temporada": "2026/2027",
-   "jugadores": 28
+   "jugadores": 30
   },
   {
    "club": "Real Valladolid CF",
@@ -568,7 +576,7 @@
    "competicion": "hypermotion",
    "grupo": null,
    "temporada": "2026/2027",
-   "jugadores": 33
+   "jugadores": 39
   },
   {
    "club": "Real Zaragoza",
@@ -584,7 +592,7 @@
    "competicion": "segunda_federacion",
    "grupo": "Grupo 4",
    "temporada": "2026/2027",
-   "jugadores": 29
+   "jugadores": 30
   },
   {
    "club": "Reus FC Reddis",
@@ -648,7 +656,7 @@
    "competicion": "primera_federacion",
    "grupo": "Grupo 2",
    "temporada": "2026/2027",
-   "jugadores": 29
+   "jugadores": 30
   },
   {
    "club": "SD Logroñés",
@@ -688,7 +696,7 @@
    "competicion": "hypermotion",
    "grupo": null,
    "temporada": "2026/2027",
-   "jugadores": 30
+   "jugadores": 32
   },
   {
    "club": "UD Barbastro",
@@ -704,7 +712,7 @@
    "competicion": "primera_federacion",
    "grupo": "Grupo 2",
    "temporada": "2026/2027",
-   "jugadores": 25
+   "jugadores": 24
   },
   {
    "club": "UD Las Palmas",
@@ -712,7 +720,7 @@
    "competicion": "hypermotion",
    "grupo": null,
    "temporada": "2026/2027",
-   "jugadores": 38
+   "jugadores": 37
   },
   {
    "club": "UD Llanera",
@@ -728,7 +736,7 @@
    "competicion": "primera_federacion",
    "grupo": "Grupo 1",
    "temporada": "2026/2027",
-   "jugadores": 27
+   "jugadores": 28
   },
   {
    "club": "UD Logroñés B",
@@ -792,7 +800,7 @@
    "competicion": "primera_federacion",
    "grupo": "Grupo 2",
    "temporada": "2026/2027",
-   "jugadores": 27
+   "jugadores": 28
   },
   {
    "club": "Zamora CF",
